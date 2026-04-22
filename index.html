@@ -700,7 +700,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.22.12</div>
+<div id="header-version" class="nav-version-pill">V2026.04.22.13</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1490,6 +1490,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             dockDisplayInventoryById = new Map();
             dockIssueSourceRowsCacheKey = '';
             dockIssueSourceRowsById = new Map();
+            dockIssueSourceRowsByMatchKey = new Map();
             requestScopedItemsCacheKey = '';
             requestScopedItemsCache = null;
             reservesScopedItemsCacheKey = '';
@@ -1511,6 +1512,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             dockDisplayInventoryById = new Map();
             dockIssueSourceRowsCacheKey = '';
             dockIssueSourceRowsById = new Map();
+            dockIssueSourceRowsByMatchKey = new Map();
         }
 
         function pruneRecentLocalRealtimeWrites(now = Date.now()) {
@@ -6244,7 +6246,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
-        let dockIssueStatusByUid=new Map(); let dockIssueAllocationsBySourceUid=new Map(); let dockIssueAllocationsById=new Map(); let dockIssueDataPromise=null; let dockIssueDataLoaded=false; let dockIssueStatusSchemaReady=null; let dockIssueStatusSchemaPromise=null; let dockIssueAllocationSchemaReady=null; let dockIssueAllocationSchemaPromise=null; let dockIssueSchemaWarningShown=false; let dockViewMode='docks'; let selectedDockIssueUid=null; let dockResolvedStateCacheKey=''; let dockResolvedStateCache=null; let dockDisplayInventory=[]; let dockDisplayInventoryById=new Map(); let dockIssueSourceRowsCacheKey=''; let dockIssueSourceRowsById=new Map();
+        let dockIssueStatusByUid=new Map(); let dockIssueAllocationsBySourceUid=new Map(); let dockIssueAllocationsById=new Map(); let dockIssueDataPromise=null; let dockIssueDataLoaded=false; let dockIssueStatusSchemaReady=null; let dockIssueStatusSchemaPromise=null; let dockIssueAllocationSchemaReady=null; let dockIssueAllocationSchemaPromise=null; let dockIssueSchemaWarningShown=false; let dockViewMode='docks'; let selectedDockIssueUid=null; let dockResolvedStateCacheKey=''; let dockResolvedStateCache=null; let dockDisplayInventory=[]; let dockDisplayInventoryById=new Map(); let dockIssueSourceRowsCacheKey=''; let dockIssueSourceRowsById=new Map(); let dockIssueSourceRowsByMatchKey=new Map();
         let detailRequestSourceDomIds=[];
         let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false;
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
@@ -6548,7 +6550,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.22.12';
+const APP_VERSION = 'V2026.04.22.13';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -11956,7 +11958,12 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function normalizeDockIssueMatchValue(value = '') {
-            return String(value || '').trim().toUpperCase().replace(/\s+/g, ' ');
+            return String(value || '')
+                .trim()
+                .toUpperCase()
+                .replace(/[^A-Z0-9]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
         }
 
         function buildDockIssueCommonSizeKey(itemOrCommonName = null, explicitContSize = '') {
@@ -11964,6 +11971,22 @@ function toggleDriveQuickRequestItem(domId) {
                 return [normalizeDockIssueMatchValue(itemOrCommonName.COMMONNAME), normalizeDockIssueMatchValue(itemOrCommonName.CONTSIZE)].join('||');
             }
             return [normalizeDockIssueMatchValue(itemOrCommonName), normalizeDockIssueMatchValue(explicitContSize)].join('||');
+        }
+
+        function buildDockIssueSourceMatchKey(source = null) {
+            if (!source || typeof source !== 'object') return '';
+            const parts = [
+                firstNonEmptyValue(source.DOCK_NUM, source.dockNum, source.dock_num, source.DOCK, source.dock, ''),
+                firstNonEmptyValue(source.STOPNUMBER, source.stopNumber, source.stop_number, ''),
+                firstNonEmptyValue(source.CUSTOMERNAME, source.sourceCustomerName, source.source_customername, source.CUSTOMER, ''),
+                firstNonEmptyValue(source.CONSIGNEENAME, source.sourceConsigneeName, source.source_consigneename, source.CONSIGNEE, ''),
+                firstNonEmptyValue(source.SALESREPNAME, source.sourceSalesRep, source.source_salesrep, source.SALESREP, source.SALES_REP, ''),
+                firstNonEmptyValue(source.ITEMCODE, source.sourceItemCode, source.source_itemcode, ''),
+                firstNonEmptyValue(source.CONTSIZE, source.sourceContSize, source.source_contsize, ''),
+                firstNonEmptyValue(source.LOCATIONCODE, source.sourceLocationCode, source.source_locationcode, ''),
+                firstNonEmptyValue(source.LOTCODE, source.sourceLotCode, source.source_lotcode, '')
+            ].map((value) => normalizeDockIssueMatchValue(value));
+            return parts.some(Boolean) ? parts.join('||') : '';
         }
 
         function buildDockDisplaySearchText(item = null) {
@@ -12022,6 +12045,8 @@ function toggleDriveQuickRequestItem(domId) {
             row.CUSTOMERNAME = firstNonEmptyValue(row.CUSTOMERNAME, row.CUSTOMER, 'Unknown Customer');
             row.CONSIGNEENAME = firstNonEmptyValue(row.CONSIGNEENAME, row.CONSIGNEE, '');
             row.DOM_ID = firstNonEmptyValue(row.DOM_ID, 'dock_' + firstNonEmptyValue(row.UNIQUE_ID, indexHint, Date.now()));
+            row.DOCK_ISSUE_SOURCE_UID = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(row.DOCK_ISSUE_SOURCE_UID, row.UNIQUE_ID, row.unique_id, ''));
+            row.DOCK_ISSUE_SOURCE_MATCH_KEY = firstNonEmptyValue(row.DOCK_ISSUE_SOURCE_MATCH_KEY, buildDockIssueSourceMatchKey(row), '');
             row.DOCK_NOTE = firstNonEmptyValue(row.DOCK_ISSUE_NOTE, row.DOCK_NOTE, '');
             row.DISPLAY_DOCK_QTY = getDockDisplayQty(row);
             row._search = buildDockDisplaySearchText(row);
@@ -12046,6 +12071,7 @@ function toggleDriveQuickRequestItem(domId) {
                 sourceSalesRep: '',
                 sourceCustomerName: '',
                 sourceConsigneeName: '',
+                sourceMatchKey: '',
                 issueNote: '',
                 issueState: 'open',
                 flaggedBy: '',
@@ -12077,6 +12103,7 @@ function toggleDriveQuickRequestItem(domId) {
                 sourceSalesRep: String(firstNonEmptyValue(raw.source_salesrep, raw.SOURCE_SALESREP, '')).trim(),
                 sourceCustomerName: String(firstNonEmptyValue(raw.source_customername, raw.SOURCE_CUSTOMERNAME, '')).trim(),
                 sourceConsigneeName: String(firstNonEmptyValue(raw.source_consigneename, raw.SOURCE_CONSIGNEENAME, '')).trim(),
+                sourceMatchKey: String(firstNonEmptyValue(raw.source_match_key, raw.SOURCE_MATCH_KEY, buildDockIssueSourceMatchKey(raw), '')).trim(),
                 issueNote: String(firstNonEmptyValue(raw.issue_note, raw.ISSUE_NOTE, '')).trim(),
                 issueState: normalizeDockIssueState(firstNonEmptyValue(raw.issue_state, raw.ISSUE_STATE, base.issueState)),
                 flaggedBy: String(firstNonEmptyValue(raw.flagged_by, raw.FLAGGED_BY, '')).trim(),
@@ -12167,6 +12194,16 @@ function toggleDriveQuickRequestItem(domId) {
             const normalizedUid = normalizeDockIssueSourceUniqueId(uniqueId);
             if (!normalizedUid) return null;
             return dockIssueStatusByUid.has(normalizedUid) ? normalizeDockIssueStatusRow(dockIssueStatusByUid.get(normalizedUid)) : null;
+        }
+
+        function getDockIssueStatusBySourceMatchKey(matchKey = '') {
+            const normalizedKey = String(matchKey || '').trim();
+            if (!normalizedKey) return null;
+            for (const row of dockIssueStatusByUid.values()) {
+                const issue = normalizeDockIssueStatusRow(row);
+                if (issue && issue.sourceMatchKey === normalizedKey) return issue;
+            }
+            return null;
         }
 
         function getDockIssueAllocations(issueSourceUniqueId = '') {
@@ -12321,11 +12358,14 @@ function toggleDriveQuickRequestItem(domId) {
             if (!item) return null;
             const opts = options || {};
             const nowIso = new Date().toISOString();
-            const existingIssue = getDockIssueStatus(item.UNIQUE_ID);
+            const sourceUid = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(item.DOCK_ISSUE_SOURCE_UID, item.UNIQUE_ID, item.unique_id, ''));
+            const sourceMatchKey = firstNonEmptyValue(item.DOCK_ISSUE_SOURCE_MATCH_KEY, buildDockIssueSourceMatchKey(item), '');
+            const existingIssue = getDockIssueStatus(sourceUid) || getDockIssueStatusBySourceMatchKey(sourceMatchKey);
+            const persistedSourceUid = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(existingIssue && existingIssue.issueSourceUniqueId, sourceUid));
             const linkedMaster = findLinkedMasterRow(item);
             const normalizedQty = Math.max(0, parseAppNumber(firstNonEmptyValue(opts.sourceQty, existingIssue && existingIssue.sourceQty, getDockDisplayQty(item), '0')) || 0);
             return {
-                issue_source_unique_id: String(item.UNIQUE_ID || '').trim(),
+                issue_source_unique_id: persistedSourceUid || null,
                 source_master_unique_id: String(firstNonEmptyValue(item.MASTER_UNIQUE_ID, linkedMaster && linkedMaster.UNIQUE_ID, existingIssue && existingIssue.sourceMasterUniqueId, '')).trim() || null,
                 source_master_id: String(firstNonEmptyValue(item.MASTER_ID, linkedMaster && linkedMaster.UNIQUE_ID, existingIssue && existingIssue.sourceMasterId, '')).trim() || null,
                 dock_num: String(firstNonEmptyValue(item.DOCK_NUM, item.DOCK, existingIssue && existingIssue.dockNum, '')).trim() || null,
@@ -12418,6 +12458,7 @@ function toggleDriveQuickRequestItem(domId) {
                 DOCK_ISSUE_NOTE: '',
                 DOCK_ISSUE_STATE: '',
                 DOCK_ISSUE_SOURCE_UID: issue.issueSourceUniqueId,
+                DOCK_ISSUE_SOURCE_MATCH_KEY: firstNonEmptyValue(sourceRow.DOCK_ISSUE_SOURCE_MATCH_KEY, issue.sourceMatchKey, buildDockIssueSourceMatchKey(sourceRow), ''),
                 IS_SYNTHETIC_DOCK_ROW: true,
                 SYNTHETIC_DOCK_ALLOCATION_UID: allocationUniqueId,
                 SYNTHETIC_DOCK_ISSUE_UID: issue.issueSourceUniqueId
@@ -12435,27 +12476,57 @@ function toggleDriveQuickRequestItem(domId) {
             return { allocations, totalAllocatedQty };
         }
 
-        function getCurrentDockIssueSourceRowsById() {
+        function getCurrentDockIssueSourceRowsState() {
             const cacheKey = [
                 getDatasetLoadSignature('soc'),
                 Array.isArray(socInventory) ? socInventory.length : 0
             ].join('|');
-            if (dockIssueSourceRowsCacheKey === cacheKey && dockIssueSourceRowsById instanceof Map && dockIssueSourceRowsById.size >= 0) {
-                return dockIssueSourceRowsById;
+            if (dockIssueSourceRowsCacheKey === cacheKey && dockIssueSourceRowsById instanceof Map && dockIssueSourceRowsByMatchKey instanceof Map) {
+                return {
+                    rowsByUid: dockIssueSourceRowsById,
+                    rowsByMatchKey: dockIssueSourceRowsByMatchKey
+                };
             }
-            const nextMap = new Map();
+            const nextByUid = new Map();
+            const nextByMatchKey = new Map();
             (Array.isArray(socInventory) ? socInventory : []).forEach((item, idx) => {
                 const uniqueId = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, ''));
                 if (!uniqueId) return;
-                nextMap.set(uniqueId, cloneDockRowWithMeta(item, {
+                const sourceMatchKey = buildDockIssueSourceMatchKey(item);
+                const nextRow = cloneDockRowWithMeta(item, {
                     UNIQUE_ID: uniqueId,
                     DOM_ID: firstNonEmptyValue(item && item.DOM_ID, 'dock_' + uniqueId, 'dock_' + idx),
-                    DOCK_ISSUE_SOURCE_UID: uniqueId
-                }));
+                    DOCK_ISSUE_SOURCE_UID: uniqueId,
+                    DOCK_ISSUE_SOURCE_MATCH_KEY: sourceMatchKey
+                });
+                nextByUid.set(uniqueId, nextRow);
+                if (sourceMatchKey) {
+                    if (!nextByMatchKey.has(sourceMatchKey)) nextByMatchKey.set(sourceMatchKey, []);
+                    nextByMatchKey.get(sourceMatchKey).push(nextRow);
+                }
             });
             dockIssueSourceRowsCacheKey = cacheKey;
-            dockIssueSourceRowsById = nextMap;
-            return dockIssueSourceRowsById;
+            dockIssueSourceRowsById = nextByUid;
+            dockIssueSourceRowsByMatchKey = nextByMatchKey;
+            return {
+                rowsByUid: dockIssueSourceRowsById,
+                rowsByMatchKey: dockIssueSourceRowsByMatchKey
+            };
+        }
+
+        function getCurrentDockIssueSourceRowsById() {
+            return getCurrentDockIssueSourceRowsState().rowsByUid;
+        }
+
+        function getDockIssueSourceCandidateScore(row = null, issue = null) {
+            if (!row || !issue) return 0;
+            let score = 0;
+            if (normalizeDockIssueMatchValue(firstNonEmptyValue(row.DOCK_NUM, row.DOCK, '')) === normalizeDockIssueMatchValue(issue.dockNum)) score += 32;
+            if (normalizeDockIssueMatchValue(firstNonEmptyValue(row.STOPNUMBER, '')) === normalizeDockIssueMatchValue(issue.stopNumber)) score += 16;
+            if (normalizeDockIssueMatchValue(firstNonEmptyValue(row.ITEMCODE, '')) === normalizeDockIssueMatchValue(issue.sourceItemCode)) score += 8;
+            if (normalizeDockIssueMatchValue(firstNonEmptyValue(row.LOCATIONCODE, '')) === normalizeDockIssueMatchValue(issue.sourceLocationCode)) score += 4;
+            if (normalizeDockIssueMatchValue(firstNonEmptyValue(row.LOTCODE, '')) === normalizeDockIssueMatchValue(issue.sourceLotCode)) score += 2;
+            return score;
         }
 
         function applyDockIssueStateToRow(item = null, issue = null) {
@@ -12465,13 +12536,15 @@ function toggleDriveQuickRequestItem(domId) {
                 DOCK_NOTE: firstNonEmptyValue(issue.issueNote, item.DOCK_ISSUE_NOTE, item.DOCK_NOTE, ''),
                 DOCK_ISSUE_NOTE: firstNonEmptyValue(issue.issueNote, item.DOCK_ISSUE_NOTE, item.DOCK_NOTE, ''),
                 DOCK_ISSUE_STATE: normalizeDockIssueState(firstNonEmptyValue(issue.issueState, item.DOCK_ISSUE_STATE, 'open')),
-                DOCK_ISSUE_SOURCE_UID: normalizeDockIssueSourceUniqueId(firstNonEmptyValue(issue.issueSourceUniqueId, item.DOCK_ISSUE_SOURCE_UID, item.UNIQUE_ID, item.unique_id, ''))
+                DOCK_ISSUE_SOURCE_UID: normalizeDockIssueSourceUniqueId(firstNonEmptyValue(issue.issueSourceUniqueId, item.DOCK_ISSUE_SOURCE_UID, item.UNIQUE_ID, item.unique_id, '')),
+                DOCK_ISSUE_SOURCE_MATCH_KEY: firstNonEmptyValue(issue.sourceMatchKey, item.DOCK_ISSUE_SOURCE_MATCH_KEY, buildDockIssueSourceMatchKey(item), '')
             });
         }
 
         function refreshDockIssueUi(reasonKey = 'issue-refresh') {
             updateDockModeToggleUi();
             markViewDirty('docks');
+            scheduleDocksRender(0);
             scheduleTrackedViewRender('docks', `docks:${String(reasonKey || 'issue-refresh').trim() || 'issue-refresh'}`, {
                 delay: 0,
                 forceRender: true,
@@ -12484,30 +12557,51 @@ function toggleDriveQuickRequestItem(domId) {
             });
         }
 
-        function findDockMistakeSourceRowByUniqueId(uniqueId = '') {
+        function findDockMistakeSourceRowByUniqueId(uniqueId = '', issueRow = null) {
             const normalizedUid = normalizeDockIssueSourceUniqueId(uniqueId);
-            if (!normalizedUid) return null;
-            const sourceMap = getCurrentDockIssueSourceRowsById();
-            const sourceRow =
+            const issue = normalizeDockIssueStatusRow(issueRow) || getDockIssueStatus(normalizedUid);
+            if (!normalizedUid && !issue) return null;
+            const sourceState = getCurrentDockIssueSourceRowsState();
+            const sourceMap = sourceState.rowsByUid;
+            let sourceRow =
                 sourceMap.get(normalizedUid)
                 || socInventoryById.get(normalizedUid)
                 || (Array.isArray(socInventory) ? socInventory.find((row) => normalizeDockIssueSourceUniqueId(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '')) === normalizedUid) : null)
-                || dockDisplayInventoryById.get(normalizedUid)
+                || (() => {
+                    const directDisplayRow = dockDisplayInventoryById.get(normalizedUid);
+                    return directDisplayRow && !directDisplayRow.IS_SYNTHETIC_DOCK_ROW ? directDisplayRow : null;
+                })()
                 || (() => {
                     const fallbackRow = findItemByUniqueId(normalizedUid);
-                    return normalizeDockIssueSourceUniqueId(firstNonEmptyValue(fallbackRow && fallbackRow.UNIQUE_ID, fallbackRow && fallbackRow.unique_id, '')) === normalizedUid ? fallbackRow : null;
+                    return normalizeDockIssueSourceUniqueId(firstNonEmptyValue(fallbackRow && fallbackRow.UNIQUE_ID, fallbackRow && fallbackRow.unique_id, '')) === normalizedUid && !(fallbackRow && fallbackRow.IS_SYNTHETIC_DOCK_ROW) ? fallbackRow : null;
                 })();
+            const sourceMatchKey = firstNonEmptyValue(
+                issue && issue.sourceMatchKey,
+                sourceRow && sourceRow.DOCK_ISSUE_SOURCE_MATCH_KEY,
+                buildDockIssueSourceMatchKey(issue || {})
+            );
+            if (!sourceRow && sourceMatchKey) {
+                const candidates = (sourceState.rowsByMatchKey.get(sourceMatchKey) || []).filter((row) => row && !row.IS_SYNTHETIC_DOCK_ROW);
+                if (candidates.length) {
+                    sourceRow = candidates.slice().sort((a, b) => {
+                        const scoreDiff = getDockIssueSourceCandidateScore(b, issue || {}) - getDockIssueSourceCandidateScore(a, issue || {});
+                        if (scoreDiff !== 0) return scoreDiff;
+                        return String(firstNonEmptyValue(a && a.UNIQUE_ID, '')).localeCompare(String(firstNonEmptyValue(b && b.UNIQUE_ID, '')), undefined, { sensitivity: 'base' });
+                    })[0];
+                }
+            }
             if (!sourceRow || sourceRow.IS_SYNTHETIC_DOCK_ROW) return null;
             return cloneDockRowWithMeta(sourceRow, {
-                UNIQUE_ID: normalizedUid,
-                DOCK_ISSUE_SOURCE_UID: normalizedUid
+                UNIQUE_ID: firstNonEmptyValue(sourceRow && sourceRow.UNIQUE_ID, sourceRow && sourceRow.unique_id, normalizedUid),
+                DOCK_ISSUE_SOURCE_UID: normalizeDockIssueSourceUniqueId(firstNonEmptyValue(issue && issue.issueSourceUniqueId, sourceRow && sourceRow.DOCK_ISSUE_SOURCE_UID, normalizedUid)),
+                DOCK_ISSUE_SOURCE_MATCH_KEY: firstNonEmptyValue(sourceRow && sourceRow.DOCK_ISSUE_SOURCE_MATCH_KEY, sourceMatchKey, buildDockIssueSourceMatchKey(sourceRow), '')
             });
         }
 
         function buildDockMistakeIssueView(issueRow = null) {
             const issue = normalizeDockIssueStatusRow(issueRow);
             if (!issue || issue.issueState !== 'open') return null;
-            const sourceRow = findDockMistakeSourceRowByUniqueId(issue.issueSourceUniqueId);
+            const sourceRow = findDockMistakeSourceRowByUniqueId(issue.issueSourceUniqueId, issue);
             if (!sourceRow) return null;
             const { allocations, totalAllocatedQty } = getDockIssueAllocationTotals(issue.issueSourceUniqueId);
             const sourceQty = Math.max(0, parseAppNumber(firstNonEmptyValue(issue.sourceQty, getDockDisplayQty(sourceRow), '0')) || 0);
@@ -12518,7 +12612,9 @@ function toggleDriveQuickRequestItem(domId) {
                 DOCK_ISSUE_NOTE: issue.issueNote,
                 DOCK_ISSUE_STATE: issue.issueState,
                 DOCK_ISSUE_SOURCE_UID: issue.issueSourceUniqueId,
+                DOCK_ISSUE_SOURCE_MATCH_KEY: firstNonEmptyValue(issue.sourceMatchKey, displaySourceRow.DOCK_ISSUE_SOURCE_MATCH_KEY, ''),
                 sourceRow: displaySourceRow,
+                currentSourceUniqueId: normalizeDockIssueSourceUniqueId(firstNonEmptyValue(displaySourceRow && displaySourceRow.UNIQUE_ID, displaySourceRow && displaySourceRow.unique_id, '')),
                 allocations,
                 totalAllocatedQty,
                 sourceQty,
@@ -12565,12 +12661,14 @@ function toggleDriveQuickRequestItem(domId) {
                 let progressed = false;
                 resolvedIssues.forEach((issue) => {
                     if (!issue || appliedResolvedIssues.has(issue.issueSourceUniqueId)) return;
-                    const sourceRow = rowMap.get(issue.issueSourceUniqueId);
+                    const resolvedSourceRow = findDockMistakeSourceRowByUniqueId(issue.issueSourceUniqueId, issue);
+                    const sourceRowKey = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(resolvedSourceRow && resolvedSourceRow.UNIQUE_ID, resolvedSourceRow && resolvedSourceRow.unique_id, ''));
+                    const sourceRow = sourceRowKey ? rowMap.get(sourceRowKey) : null;
                     if (!sourceRow) return;
                     const { allocations, totalAllocatedQty } = getDockIssueAllocationTotals(issue.issueSourceUniqueId);
                     const sourceQty = Math.max(0, parseAppNumber(firstNonEmptyValue(issue.sourceQty, getDockDisplayQty(sourceRow), '0')) || 0);
                     const remainingQty = Math.max(0, sourceQty - totalAllocatedQty);
-                    const sourceIndex = orderList.indexOf(issue.issueSourceUniqueId);
+                    const sourceIndex = orderList.indexOf(sourceRowKey);
                     if (sourceIndex < 0) return;
                     const nextSourceRow = remainingQty > 0
                         ? cloneDockRowWithMeta(sourceRow, {
@@ -12584,9 +12682,9 @@ function toggleDriveQuickRequestItem(domId) {
                         : null;
                     const insertionRows = allocations.map((allocation) => buildSyntheticDockAllocationRow(sourceRow, issue, allocation)).filter(Boolean);
                     if (nextSourceRow) {
-                        rowMap.set(issue.issueSourceUniqueId, nextSourceRow);
+                        rowMap.set(sourceRowKey, nextSourceRow);
                     } else {
-                        rowMap.delete(issue.issueSourceUniqueId);
+                        rowMap.delete(sourceRowKey);
                         orderList.splice(sourceIndex, 1);
                     }
                     let insertAt = nextSourceRow ? sourceIndex + 1 : sourceIndex;
@@ -12609,19 +12707,17 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             const openIssues = [];
-            issueRows.forEach((issue) => {
-                if (!issue) return;
-                const sourceRow = rowMap.get(issue.issueSourceUniqueId);
+            getVisibleDockMistakeIssues().forEach((issueView) => {
+                if (!issueView) return;
+                const sourceRowKey = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(issueView.currentSourceUniqueId, issueView.sourceRow && issueView.sourceRow.UNIQUE_ID, issueView.sourceRow && issueView.sourceRow.unique_id, ''));
+                const sourceRow = sourceRowKey ? rowMap.get(sourceRowKey) : null;
                 if (!sourceRow) return;
-                if (issue.issueState === 'open') {
-                    rowMap.set(issue.issueSourceUniqueId, applyDockIssueStateToRow(sourceRow, issue));
-                    openIssues.push({
-                        ...issue,
-                        sourceRow: rowMap.get(issue.issueSourceUniqueId),
-                        sourceQty: Math.max(0, parseAppNumber(firstNonEmptyValue(issue.sourceQty, getDockDisplayQty(sourceRow), '0')) || 0),
-                        remainingQty: Math.max(0, parseAppNumber(firstNonEmptyValue(issue.sourceQty, getDockDisplayQty(sourceRow), '0')) || 0) - getDockIssueAllocationTotals(issue.issueSourceUniqueId).totalAllocatedQty
-                    });
-                }
+                const updatedSourceRow = applyDockIssueStateToRow(sourceRow, issueView);
+                rowMap.set(sourceRowKey, updatedSourceRow);
+                openIssues.push({
+                    ...issueView,
+                    sourceRow: updatedSourceRow
+                });
             });
 
             const rows = orderList.map((uniqueId) => rowMap.get(uniqueId)).filter(Boolean).map((row, idx) => cloneDockRowWithMeta(row, { DOM_ID: firstNonEmptyValue(row && row.DOM_ID, 'dock_' + firstNonEmptyValue(row && row.UNIQUE_ID, idx)) }));
@@ -12703,7 +12799,7 @@ function toggleDriveQuickRequestItem(domId) {
         function openDockAllocationModal(issueSourceUniqueId = '', altMasterUniqueId = '') {
             const issueView = getDockMistakeIssueViewByUniqueId(issueSourceUniqueId);
             const issue = issueView || getDockIssueStatus(issueSourceUniqueId);
-            const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(issueSourceUniqueId);
+            const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(issueSourceUniqueId, issue);
             const masterRow = masterInventoryById.get(String(altMasterUniqueId || '').trim()) || fullInventory.find((row) => String(row && row.UNIQUE_ID || '').trim() === String(altMasterUniqueId || '').trim()) || null;
             if (!issue || !sourceRow || !masterRow) return;
             const existingAllocation = getDockIssueAllocations(issueSourceUniqueId).find((allocation) => allocation && allocation.altMasterUniqueId === String(altMasterUniqueId || '').trim());
@@ -12738,7 +12834,7 @@ function toggleDriveQuickRequestItem(domId) {
         function getDockIssueCandidateRows(issueSourceUniqueId = '') {
             const issueView = getDockMistakeIssueViewByUniqueId(issueSourceUniqueId);
             const issue = issueView || getDockIssueStatus(issueSourceUniqueId);
-            const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(issueSourceUniqueId);
+            const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(issueSourceUniqueId, issue);
             if (!issue || !sourceRow) return [];
             const matchKey = buildDockIssueCommonSizeKey(issue.sourceCommonName || sourceRow.COMMONNAME, issue.sourceContSize || sourceRow.CONTSIZE);
             const linkedMaster = findLinkedMasterRow(sourceRow);
@@ -16729,7 +16825,7 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
         const chunkRenderTokensByKey = Object.create(null);
-        const DEFAULT_RENDER_SIGNATURE_FIELDS = ['UNIQUE_ID','DOM_ID','COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PRIORITY','PTRAVAILABLE','S_LTS','SEASON','AV_NOTE','HOLDSTOPREASON','LISTPRICE','HOT_PRICE','HOTPRICE','REQ_STATUS','REQ_QTY','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','DOCK_NUM','STOPNUMBER','CUSTOMERNAME','SALESREPNAME','FOLDERNAME','COUNT','LABEL','NAME','LOCATIONBUCKET','BLOCKALPHA','STATUS','LINECOUNT','TOTALQTY','ROW_PHOTO_LINK','REQ_PHOTO_LINK','DOCK_PHOTO_LINK','FLYER_PHOTO_LINK','DOCK_NOTE','DOCK_ISSUE_NOTE','DOCK_ISSUE_STATE','DOCK_ISSUE_SOURCE_UID','issueSourceUniqueId','issueState','issueNote','sourceQty','remainingQty'];
+        const DEFAULT_RENDER_SIGNATURE_FIELDS = ['UNIQUE_ID','DOM_ID','COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PRIORITY','PTRAVAILABLE','S_LTS','SEASON','AV_NOTE','HOLDSTOPREASON','LISTPRICE','HOT_PRICE','HOTPRICE','REQ_STATUS','REQ_QTY','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','DOCK_NUM','STOPNUMBER','CUSTOMERNAME','SALESREPNAME','FOLDERNAME','COUNT','LABEL','NAME','LOCATIONBUCKET','BLOCKALPHA','STATUS','LINECOUNT','TOTALQTY','ROW_PHOTO_LINK','REQ_PHOTO_LINK','DOCK_PHOTO_LINK','FLYER_PHOTO_LINK','DOCK_NOTE','DOCK_ISSUE_NOTE','DOCK_ISSUE_STATE','DOCK_ISSUE_SOURCE_UID','DOCK_ISSUE_SOURCE_MATCH_KEY','issueSourceUniqueId','issueState','issueNote','sourceQty','remainingQty','sourceMatchKey','currentSourceUniqueId'];
 
         function normalizeRenderSignature(value = '') {
             return String(value || '').trim();
@@ -17374,9 +17470,10 @@ function toggleDriveQuickRequestItem(domId) {
 
         function openDockItemMistakeModal(uid) {
             const normalizedUid = normalizeDockIssueSourceUniqueId(uid);
-            const item = findDockMistakeSourceRowByUniqueId(normalizedUid);
             const issue = getDockIssueStatus(normalizedUid);
-            document.getElementById('dock-mistake-uid').value = normalizedUid;
+            const item = findDockMistakeSourceRowByUniqueId(normalizedUid, issue);
+            const issueSourceUid = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(item && item.DOCK_ISSUE_SOURCE_UID, issue && issue.issueSourceUniqueId, normalizedUid));
+            document.getElementById('dock-mistake-uid').value = issueSourceUid;
             document.getElementById('dock-mistake-text').value = String(firstNonEmptyValue(issue && issue.issueNote, item && item.DOCK_ISSUE_NOTE, item && item.DOCK_NOTE, '')).trim();
             const label = document.getElementById('dock-mistake-modal-label');
             if (label) label.innerText = item ? `${item.COMMONNAME || 'Dock Item'} • ${item.CONTSIZE || '-'} • ${item.LOCATIONCODE || 'No Loc'}` : '';
@@ -17386,7 +17483,7 @@ function toggleDriveQuickRequestItem(domId) {
         async function submitDockItemMistake() {
             const uid = normalizeDockIssueSourceUniqueId(document.getElementById('dock-mistake-uid').value);
             const text = document.getElementById('dock-mistake-text').value.toUpperCase().trim();
-            const item = findDockMistakeSourceRowByUniqueId(uid);
+            const item = findDockMistakeSourceRowByUniqueId(uid, getDockIssueStatus(uid));
             if (!item) {
                 showToast("Error", "Could not find that dock row.", true);
                 return;
@@ -17420,7 +17517,7 @@ function toggleDriveQuickRequestItem(domId) {
             const qtyValue = parseAppNumber(document.getElementById('dock-allocation-qty').value);
             const issueView = getDockMistakeIssueViewByUniqueId(issueSourceUniqueId);
             const issue = issueView || getDockIssueStatus(issueSourceUniqueId);
-            const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(issueSourceUniqueId);
+            const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(issueSourceUniqueId, issue);
             const masterRow = masterInventoryById.get(altMasterUniqueId) || fullInventory.find((row) => String(row && row.UNIQUE_ID || '').trim() === altMasterUniqueId) || null;
             if (!issue || !sourceRow || !masterRow) {
                 showToast("Error", "Could not prepare that alternate location.", true);
@@ -17500,7 +17597,7 @@ function toggleDriveQuickRequestItem(domId) {
             const normalizedUid = normalizeDockIssueSourceUniqueId(issueSourceUniqueId);
             const issueView = getDockMistakeIssueViewByUniqueId(normalizedUid);
             const issue = issueView || getDockIssueStatus(normalizedUid);
-            const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(normalizedUid);
+            const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(normalizedUid, issue);
             if (!issue || !sourceRow) {
                 showToast("Error", "Could not find that dock issue.", true);
                 return;
@@ -17600,7 +17697,7 @@ function toggleDriveQuickRequestItem(domId) {
         function renderDockMistakeDetail(container, crumb, term = '') {
             const issueView = getDockMistakeIssueViewByUniqueId(selectedDockIssueUid);
             const issue = issueView || getDockIssueStatus(selectedDockIssueUid);
-            const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(selectedDockIssueUid);
+            const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(selectedDockIssueUid, issue);
             if (!issue || !sourceRow) {
                 selectedDockIssueUid = null;
                 scheduleDocksRender(0);
@@ -21905,6 +22002,7 @@ function toggleDriveQuickRequestItem(domId) {
             const isChecked=selectedItems.has(item.DOM_ID)?'checked':'';
             const tagColor=item.FIELDTAGCOLOR||'-';
             const safeUidJs=esc(item.UNIQUE_ID);
+            const safeDockIssueSourceUidJs=esc(firstNonEmptyValue(item.DOCK_ISSUE_SOURCE_UID, item.UNIQUE_ID, item.unique_id, ''));
             const rawHoldCode = firstNonEmptyValue(item.HOLDSTOPCODE, item.HOLD_STOP_CODE, item.HOLDSTOP);
             const holdCode = String(rawHoldCode || '').trim().toUpperCase();
             const cleanHoldCode = holdCode && holdCode !== 'NULL' && holdCode !== '-' ? holdCode : '';
@@ -22045,7 +22143,7 @@ function toggleDriveQuickRequestItem(domId) {
                     ? `<span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-200">Alt Loc</span>`
                     : '';
 
-                let actionBtns = `<div class="flex gap-2 mt-3 pt-3 border-t border-gray-100"><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${chkClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'checker')"><i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Verified</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${inspClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'inspector')"><i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspect</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border border-red-200 bg-red-50 text-red-600 shadow-sm transition-colors hover:bg-red-100 active:scale-95" onclick="event.stopPropagation(); openDockItemMistakeModal('${safeUidJs}')"><i class="ph-bold ph-flag mr-1 text-lg align-middle"></i> Flag Issue</button></div>`;
+                let actionBtns = `<div class="flex gap-2 mt-3 pt-3 border-t border-gray-100"><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${chkClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'checker')"><i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Verified</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${inspClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'inspector')"><i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspect</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border border-red-200 bg-red-50 text-red-600 shadow-sm transition-colors hover:bg-red-100 active:scale-95" onclick="event.stopPropagation(); openDockItemMistakeModal('${safeDockIssueSourceUidJs}')"><i class="ph-bold ph-flag mr-1 text-lg align-middle"></i> Flag Issue</button></div>`;
 
         return `<div class="flex items-start w-full item-row app-smart-card relative bg-white p-4 rounded-xl border border-gray-300 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start border-b border-gray-100 pb-2 mb-2 w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="app-card-title font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="text-[10px] font-mono text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded border border-gray-200 w-max">ID: ${item.ITEMCODE||'-'}</div></div>${inlineThumbHtml}</div><div class="flex flex-wrap gap-2 mb-2 text-[10px] font-black uppercase tracking-[0.14em]">${issueBadgeHtml}${syntheticBadgeHtml}</div><div class="app-card-meta-grid grid grid-cols-2 gap-3 mb-2"><div><div class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Quantity & Specs</div><div class="font-bold text-sm text-[#007a4d]">${qty} EA &bull; ${item.CONTSIZE||'-'}</div></div><div><div class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Location</div><div class="font-bold text-sm text-blue-700">${item.LOCATIONCODE||'No Loc'}</div></div></div>${item.DOCK_SPEC || item.DOCK_CALIPER ? `<div class="text-[11px] font-bold text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-100 mb-2 w-max">Spec: ${item.DOCK_SPEC||'N/A'} | Caliper: ${item.DOCK_CALIPER||'N/A'}</div>` : ''}${noteHtml}${actionBtns}</div></div>`;
             }
