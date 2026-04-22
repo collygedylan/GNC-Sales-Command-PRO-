@@ -1254,11 +1254,15 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             fieldUiOnlyRefreshes: 0,
             saveDurations: Object.create(null),
             realtimeApplyDurations: Object.create(null),
+            viewSwitchDurations: Object.create(null),
             viewRenderDurations: Object.create(null),
             searchRenderDurations: Object.create(null),
             chunkRenderDurations: Object.create(null),
             viewActivationDurations: Object.create(null),
-            visibleRefreshDurations: Object.create(null)
+            visibleRefreshDurations: Object.create(null),
+            deferredDatasetLoads: 0,
+            deferredVisibleCatchups: 0,
+            deferredViewEnterRefreshes: 0
         });
         let recentLocalRealtimeWrites = new Map();
         let pendingPhotoUploads = new Map();
@@ -4174,6 +4178,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 syncCatchupTimer = null;
                 if (!currentUser || document.hidden || navigator.onLine === false || backgroundRefreshInFlight) return;
                 if (shouldDeferInteractiveBackgroundWork()) {
+                    incrementInternalPerfCounter('deferredVisibleCatchups');
+                    incrementInternalPerfCounter('interactionBlockedRefreshes');
                     queueVisibleDatasetCatchup(Math.max(INTERACTION_REFRESH_DEFER_MS, Number(delay) || 0));
                     return;
                 }
@@ -4517,28 +4523,33 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             scheduleUiRender(key, runWhenReady, safeDelay);
         }
 
-        function scrollMainAreaToTop() {
+        function getMainAreaScrollTarget() {
             const scrollArea = document.getElementById('main-scroll-area');
-            if (scrollArea) scrollArea.scrollTop = 0;
+            if (scrollArea) return scrollArea;
             const wrapper = document.getElementById('view-wrapper');
-            if (wrapper) wrapper.scrollTop = 0;
+            if (wrapper) return wrapper;
+            return null;
+        }
+
+        function scrollMainAreaToTop() {
+            const scrollTarget = getMainAreaScrollTarget();
+            if (scrollTarget) {
+                if (Math.abs(Number(scrollTarget.scrollTop || 0)) > 1) scrollTarget.scrollTop = 0;
+                return;
+            }
             if (document.documentElement) document.documentElement.scrollTop = 0;
             if (document.body) document.body.scrollTop = 0;
             try { window.scrollTo(0, 0); } catch (err) {}
         }
 
         function forceMainAreaToTopImmediate() {
-            const scrollArea = document.getElementById('main-scroll-area');
-            const wrapper = document.getElementById('view-wrapper');
-            const previousScrollBehavior = scrollArea ? scrollArea.style.scrollBehavior : '';
-            const previousWrapperBehavior = wrapper ? wrapper.style.scrollBehavior : '';
-            if (scrollArea) scrollArea.style.scrollBehavior = 'auto';
-            if (wrapper) wrapper.style.scrollBehavior = 'auto';
+            const scrollTarget = getMainAreaScrollTarget();
+            const previousScrollBehavior = scrollTarget ? scrollTarget.style.scrollBehavior : '';
+            if (scrollTarget) scrollTarget.style.scrollBehavior = 'auto';
             scrollMainAreaToTop();
             requestAnimationFrame(() => {
                 scrollMainAreaToTop();
-                if (scrollArea) scrollArea.style.scrollBehavior = previousScrollBehavior;
-                if (wrapper) wrapper.style.scrollBehavior = previousWrapperBehavior;
+                if (scrollTarget) scrollTarget.style.scrollBehavior = previousScrollBehavior;
             });
         }
 
@@ -4569,25 +4580,39 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
 
         function getMainAreaScrollTop() {
-            const scrollArea = document.getElementById('main-scroll-area');
-            if (scrollArea) return Number(scrollArea.scrollTop || 0);
-            const wrapper = document.getElementById('view-wrapper');
-            if (wrapper) return Number(wrapper.scrollTop || 0);
+            const scrollTarget = getMainAreaScrollTarget();
+            if (scrollTarget) return Number(scrollTarget.scrollTop || 0);
             return Number(window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0);
         }
 
         function setMainAreaScrollTop(value = 0) {
             const nextTop = Math.max(0, Number(value || 0));
-            const scrollArea = document.getElementById('main-scroll-area');
-            if (scrollArea && Math.abs(Number(scrollArea.scrollTop || 0) - nextTop) > 1) scrollArea.scrollTop = nextTop;
-            const wrapper = document.getElementById('view-wrapper');
-            if (wrapper && Math.abs(Number(wrapper.scrollTop || 0) - nextTop) > 1) wrapper.scrollTop = nextTop;
+            const scrollTarget = getMainAreaScrollTarget();
+            if (scrollTarget) {
+                if (Math.abs(Number(scrollTarget.scrollTop || 0) - nextTop) > 1) scrollTarget.scrollTop = nextTop;
+                return;
+            }
             if (document.documentElement && Math.abs(Number(document.documentElement.scrollTop || 0) - nextTop) > 1) document.documentElement.scrollTop = nextTop;
             if (document.body && Math.abs(Number(document.body.scrollTop || 0) - nextTop) > 1) document.body.scrollTop = nextTop;
             const windowScrollTop = Number(window.pageYOffset || 0);
             if (Math.abs(windowScrollTop - nextTop) > 1) {
                 try { window.scrollTo(0, nextTop); } catch (err) {}
             }
+        }
+
+        function schedulePrimaryViewChromeRefresh(viewId = '', options = {}) {
+            const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const safeViewId = String(viewId || getCurrentVisibleViewId() || '').trim() || 'home';
+            const delay = Math.max(0, Number(nextOptions.delay) || 0);
+            scheduleUiRender(`view-chrome:${safeViewId}`, () => {
+                updateGlobalBackButton();
+                syncGlobalHeaderChrome({ reason: `view:${safeViewId}` });
+                updateFooterNavState();
+                if (Object.prototype.hasOwnProperty.call(nextOptions, 'requestSyncDelay')) {
+                    syncRequestViewLiveSync(safeViewId === 'request' ? Math.max(0, Number(nextOptions.requestSyncDelay) || 0) : 0);
+                }
+                scheduleStickyRailOffsetSync(`view-chrome:${safeViewId}`);
+            }, delay);
         }
 
         function rememberDetailReturnPosition(viewId = '') {
@@ -4673,12 +4698,18 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (!safeViewId) return false;
             const nextOptions = (options && typeof options === 'object') ? options : {};
             const delay = Math.max(0, Number(nextOptions.delay) || 0);
+            const typingDelay = Math.max(90, Number(nextOptions.typingDelay) || 180);
             markViewDirty(safeViewId);
-            scheduleUiRender(`tracked-view:${safeViewId}:${String(renderKey || 'render')}`, () => {
+            scheduleTypingAwareUiRender(`tracked-view:${safeViewId}:${String(renderKey || 'render')}`, () => {
                 const targetView = document.getElementById('view-' + safeViewId);
                 if (!targetView || targetView.classList.contains('hidden')) return;
                 renderViewContent(safeViewId, !!nextOptions.forceReset, !!nextOptions.forceRender);
-            }, delay);
+            }, delay, typingDelay, {
+                allowWhileTyping: !!nextOptions.allowWhileTyping,
+                touchDelayMs: Math.max(180, Number(nextOptions.touchDelayMs) || 220),
+                scrollDelayMs: Math.max(160, Number(nextOptions.scrollDelayMs) || 200),
+                interactionDelayMs: Math.max(120, Number(nextOptions.interactionDelayMs) || 150)
+            });
             return false;
         }
 
@@ -5877,7 +5908,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (id.endsWith('-match')) return `${id.slice(0, -5)}-`;
             if (id.endsWith('-pick')) return `${id.slice(0, -4)}-`;
             if (id.endsWith('-comments')) return `${id.slice(0, -9)}-`;
+            if (id === 'req-reserve') return 'req-';
             if (id === 'flyer-notes') return 'flyer-';
+            if (id === 'flyer-cat' || id === 'flyer-title' || id === 'flyer-inst' || id === 'flyer-assigned') return 'flyer-';
             if (id === 'dock-sales-desc') return 'dock-';
             return '';
         }
@@ -5885,6 +5918,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function getDetailInputSaveDebounceMs(inputId = '') {
             const safeId = String(inputId || '').trim();
             if (safeId.endsWith('-av-note')) return DETAIL_AV_INPUT_SAVE_DEBOUNCE_MS;
+            if (safeId === 'req-reserve') return DETAIL_INPUT_SAVE_DEBOUNCE_MS;
             if (safeId.endsWith('-comments') || safeId === 'flyer-notes' || safeId === 'dock-sales-desc') return DETAIL_TEXTAREA_INPUT_SAVE_DEBOUNCE_MS;
             return DETAIL_INPUT_SAVE_DEBOUNCE_MS;
         }
@@ -5914,7 +5948,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
         function shouldUseDebouncedDetailInputSave(inputId = '') {
             const safeId = String(inputId || '').trim();
-            if (safeId === 'flyer-notes' || safeId === 'dock-sales-desc') return true;
+            if (safeId === 'flyer-notes' || safeId === 'dock-sales-desc' || safeId === 'req-reserve') return true;
+            if (safeId === 'flyer-cat' || safeId === 'flyer-title' || safeId === 'flyer-inst' || safeId === 'flyer-assigned') return true;
             const prefix = extractDetailPrefixFromInputId(safeId);
             if (!isLagSensitiveDetailPrefix(prefix)) return false;
             return safeId.endsWith('-av-note')
@@ -6981,6 +7016,12 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             if (datasetQueueTimers[queueKey]) clearTimeout(datasetQueueTimers[queueKey]);
             datasetQueueTimers[queueKey] = setTimeout(() => {
                 delete datasetQueueTimers[queueKey];
+                if (shouldDeferInteractiveBackgroundWork()) {
+                    incrementInternalPerfCounter('deferredDatasetLoads');
+                    incrementInternalPerfCounter('interactionBlockedRefreshes');
+                    queueDatasetLoad(key, mode, Math.max(260, Number(delayMs) || 180));
+                    return;
+                }
                 ensureDatasetLoaded(key, mode).catch(() => {});
             }, delayMs);
         }
@@ -7195,6 +7236,12 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             const targetView = resolveRealtimeContextViewId(viewId);
             if (!targetView) return;
             const now = Date.now();
+            if (!options.force && shouldDeferInteractiveBackgroundWork()) {
+                incrementInternalPerfCounter('deferredViewEnterRefreshes');
+                incrementInternalPerfCounter('interactionBlockedRefreshes');
+                queueVisibleDatasetCatchup(Math.max(INTERACTION_REFRESH_DEFER_MS, Number(options.backgroundDelay) || 90));
+                return;
+            }
             const realtimeHealthy = !options.force && hasHealthyCoreRealtimeSubscriptions(targetView);
             const defaultInterval = realtimeHealthy ? VIEW_ENTER_REFRESH_REALTIME_HEALTHY_MS : VIEW_ENTER_REFRESH_MIN_INTERVAL_MS;
             const minInterval = Number(options.minInterval !== undefined ? options.minInterval : defaultInterval);
@@ -12189,16 +12236,17 @@ function toggleDriveQuickRequestItem(domId) {
                     if (getCurrentVisibleViewId() !== targetViewId) return;
                     refreshViewDatasetsOnEnter(targetViewId);
                     recordInternalPerfDuration('viewActivationDurations', activationStartedAt, targetViewId);
-                }, 24, 160, {
-                    allowWhileTyping: true,
-                    touchDelayMs: 150,
-                    scrollDelayMs: 140,
-                    interactionDelayMs: 90
+                }, 32, 220, {
+                    allowWhileTyping: false,
+                    touchDelayMs: 240,
+                    scrollDelayMs: 220,
+                    interactionDelayMs: 180
                 });
             });
         }
 
         function switchView(viewId, options = {}) {
+            const viewSwitchStartedAt = beginInternalPerfMeasure();
             closeDriveQuickFiltersModal();
             if (String(viewId || '').trim() !== 'tasks') closeTaskDropdowns(false);
             const switchOptions = (options && typeof options === 'object') ? options : {};
@@ -12226,11 +12274,9 @@ function toggleDriveQuickRequestItem(domId) {
             if (currentViewId === nextViewId && nextState.initialized && !nextState.dirty) {
                 incrementInternalPerfCounter('warmViewReuseHits');
                 if (targetScrollTop != null) scheduleUiRender(`view-restore:${nextViewId}:${targetScrollTop}`, () => setMainAreaScrollTop(targetScrollTop));
-                updateGlobalBackButton();
-                syncGlobalHeaderChrome();
-                updateFooterNavState();
-                syncRequestViewLiveSync(nextViewId === 'request' ? 120 : 0);
+                schedulePrimaryViewChromeRefresh(nextViewId, { requestSyncDelay: nextViewId === 'request' ? 120 : 0 });
                 scheduleViewActivationWork(nextViewId);
+                recordInternalPerfDuration('viewSwitchDurations', viewSwitchStartedAt, `${currentViewId || 'none'}->${nextViewId}`);
                 return false;
             }
             const targetView = getViewElementById(nextViewId);
@@ -12245,16 +12291,16 @@ function toggleDriveQuickRequestItem(domId) {
             if (targetScrollTop != null) {
                 scheduleUiRender(`view-restore:${nextViewId}:${targetScrollTop}`, () => {
                     setMainAreaScrollTop(targetScrollTop);
-                    requestAnimationFrame(() => setMainAreaScrollTop(targetScrollTop));
+                    requestAnimationFrame(() => {
+                        if (Math.abs(getMainAreaScrollTop() - targetScrollTop) > 2) setMainAreaScrollTop(targetScrollTop);
+                    });
                 });
-            } else {
+            } else if (currentViewId !== nextViewId) {
                 queueScrollMainAreaToTop(`view:${nextViewId}`);
             }
-            updateGlobalBackButton();
-            syncGlobalHeaderChrome();
-            updateFooterNavState();
-            syncRequestViewLiveSync(nextViewId === 'request' ? 120 : 0);
+            schedulePrimaryViewChromeRefresh(nextViewId, { requestSyncDelay: nextViewId === 'request' ? 120 : 0 });
             scheduleViewActivationWork(nextViewId);
+            recordInternalPerfDuration('viewSwitchDurations', viewSwitchStartedAt, `${currentViewId || 'none'}->${nextViewId}`);
             return false;
         }
         function goBackUniversal() {
@@ -15145,10 +15191,10 @@ function toggleDriveQuickRequestItem(domId) {
             const chunkSize = touchOptimized
                 ? (total > 1800 ? 28 : (total > 900 ? 36 : 44))
                 : (total > 1400 ? 20 : (total > 700 ? 24 : 32));
-            const initialScreens = touchOptimized ? 5 : 4;
+            const initialScreens = touchOptimized ? 4 : 3;
             const initialTarget = Math.min(total, Math.max(chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 56) : Math.max(chunkSize, 40);
-            const frameBudgetMs = touchOptimized ? 5 : 4;
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 40) : Math.max(chunkSize, 30);
+            const frameBudgetMs = touchOptimized ? 4 : 3.5;
             const hasFollowupChunks = total > initialTarget;
             let index = 0;
 
@@ -15183,9 +15229,9 @@ function toggleDriveQuickRequestItem(domId) {
             const renderBatch = (targetCount, useBudget) => {
                 let html = '';
                 let rendered = 0;
-                const interactionSlowMode = isUserActivelyTouching() || isUserActivelyScrolling() || isRecentViewSwitchActivity();
-                const batchTarget = interactionSlowMode ? Math.min(targetCount, Math.max(12, Math.ceil(targetCount / 3))) : targetCount;
-                const timeBudget = interactionSlowMode ? Math.max(2.5, frameBudgetMs - 1.5) : frameBudgetMs;
+                const interactionSlowMode = shouldDeferInteractiveBackgroundWork() || isRecentViewSwitchActivity();
+                const batchTarget = interactionSlowMode ? Math.min(targetCount, Math.max(8, Math.ceil(targetCount / 4))) : targetCount;
+                const timeBudget = interactionSlowMode ? Math.max(2, frameBudgetMs - 1.75) : frameBudgetMs;
                 const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
                 while (index < total && rendered < batchTarget) {
                     html += renderRow(rows[index], index);
@@ -15215,9 +15261,9 @@ function toggleDriveQuickRequestItem(domId) {
             };
 
             const queueNextChunkFrame = () => {
-                const interactionSlowMode = isUserActivelyTouching() || isUserActivelyScrolling() || isRecentViewSwitchActivity();
+                const interactionSlowMode = shouldDeferInteractiveBackgroundWork() || isRecentViewSwitchActivity();
                 if (interactionSlowMode) {
-                    setTimeout(() => requestAnimationFrame(renderNextChunk), 24);
+                    setTimeout(() => requestAnimationFrame(renderNextChunk), 48);
                     return;
                 }
                 requestAnimationFrame(renderNextChunk);
@@ -15259,10 +15305,10 @@ function toggleDriveQuickRequestItem(domId) {
             const chunkSize = touchOptimized
                 ? (total > 1600 ? 56 : (total > 800 ? 64 : 72))
                 : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = touchOptimized ? 14 : 8;
+            const initialScreens = touchOptimized ? 8 : 5;
             const initialTarget = Math.min(total, Math.max(chunkSize * 2, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize * 2, 128) : Math.max(chunkSize, 72);
-            const frameBudgetMs = touchOptimized ? 10 : 7;
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 72) : Math.max(chunkSize, 52);
+            const frameBudgetMs = touchOptimized ? 6 : 5;
             let index = 0;
             crumb.innerText = crumbText;
             if (renderSignature && getContainerRenderSignature(container) === renderSignature) {
@@ -15282,23 +15328,23 @@ function toggleDriveQuickRequestItem(domId) {
             const renderBatch = (targetCount, useBudget) => {
                 let html = '';
                 let rendered = 0;
-                const interactionSlowMode = isUserActivelyTouching() || isUserActivelyScrolling() || isRecentViewSwitchActivity();
-                const batchTarget = interactionSlowMode ? Math.min(targetCount, Math.max(Math.ceil(chunkSize / 2), Math.ceil(targetCount / 3))) : targetCount;
-                const timeBudget = interactionSlowMode ? Math.max(3, frameBudgetMs - 3) : frameBudgetMs;
+                const interactionSlowMode = shouldDeferInteractiveBackgroundWork() || isRecentViewSwitchActivity();
+                const batchTarget = interactionSlowMode ? Math.min(targetCount, Math.max(10, Math.ceil(targetCount / 4))) : targetCount;
+                const timeBudget = interactionSlowMode ? Math.max(2.5, frameBudgetMs - 2.5) : frameBudgetMs;
                 const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
                 while (index < total && rendered < batchTarget) {
                     html += generateCard(rows[index], sourceView, 'status-teal');
                     index += 1;
                     rendered += 1;
-                    if (useBudget && rendered >= Math.max(12, Math.ceil(chunkSize / 2)) && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= timeBudget) break;
+                    if (useBudget && rendered >= Math.max(8, Math.ceil(chunkSize / 3)) && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= timeBudget) break;
                 }
                 return html;
             };
             setContainerHtml(container, renderBatch(initialTarget, false));
             const queueNextChunkFrame = () => {
-                const interactionSlowMode = isUserActivelyTouching() || isUserActivelyScrolling() || isRecentViewSwitchActivity();
+                const interactionSlowMode = shouldDeferInteractiveBackgroundWork() || isRecentViewSwitchActivity();
                 if (interactionSlowMode) {
-                    setTimeout(() => requestAnimationFrame(renderNextChunk), 24);
+                    setTimeout(() => requestAnimationFrame(renderNextChunk), 48);
                     return;
                 }
                 requestAnimationFrame(renderNextChunk);
@@ -15336,10 +15382,10 @@ function toggleDriveQuickRequestItem(domId) {
             const chunkSize = touchOptimized
                 ? (total > 1600 ? 56 : (total > 800 ? 64 : 72))
                 : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = touchOptimized ? 14 : 8;
+            const initialScreens = touchOptimized ? 8 : 5;
             const initialTarget = Math.min(total, Math.max(chunkSize * 2, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize * 2, 128) : Math.max(chunkSize, 72);
-            const frameBudgetMs = touchOptimized ? 10 : 7;
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 72) : Math.max(chunkSize, 52);
+            const frameBudgetMs = touchOptimized ? 6 : 5;
             let index = 0;
             crumb.innerText = crumbText;
             if (renderSignature && getContainerRenderSignature(container) === renderSignature) {
@@ -15359,23 +15405,23 @@ function toggleDriveQuickRequestItem(domId) {
             const renderBatch = (targetCount, useBudget) => {
                 let html = '';
                 let rendered = 0;
-                const interactionSlowMode = isUserActivelyTouching() || isUserActivelyScrolling() || isRecentViewSwitchActivity();
-                const batchTarget = interactionSlowMode ? Math.min(targetCount, Math.max(Math.ceil(chunkSize / 2), Math.ceil(targetCount / 3))) : targetCount;
-                const timeBudget = interactionSlowMode ? Math.max(3, frameBudgetMs - 3) : frameBudgetMs;
+                const interactionSlowMode = shouldDeferInteractiveBackgroundWork() || isRecentViewSwitchActivity();
+                const batchTarget = interactionSlowMode ? Math.min(targetCount, Math.max(10, Math.ceil(targetCount / 4))) : targetCount;
+                const timeBudget = interactionSlowMode ? Math.max(2.5, frameBudgetMs - 2.5) : frameBudgetMs;
                 const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
                 while (index < total && rendered < batchTarget) {
                     html += renderRow(rows[index], index);
                     index += 1;
                     rendered += 1;
-                    if (useBudget && rendered >= Math.max(12, Math.ceil(chunkSize / 2)) && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= timeBudget) break;
+                    if (useBudget && rendered >= Math.max(8, Math.ceil(chunkSize / 3)) && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= timeBudget) break;
                 }
                 return html;
             };
             setContainerHtml(container, renderBatch(initialTarget, false));
             const queueNextChunkFrame = () => {
-                const interactionSlowMode = isUserActivelyTouching() || isUserActivelyScrolling() || isRecentViewSwitchActivity();
+                const interactionSlowMode = shouldDeferInteractiveBackgroundWork() || isRecentViewSwitchActivity();
                 if (interactionSlowMode) {
-                    setTimeout(() => requestAnimationFrame(renderNextChunk), 24);
+                    setTimeout(() => requestAnimationFrame(renderNextChunk), 48);
                     return;
                 }
                 requestAnimationFrame(renderNextChunk);
@@ -15581,7 +15627,7 @@ function toggleDriveQuickRequestItem(domId) {
                 container.innerHTML = html;
             }
         }
-        const debouncedDocksSearch=debounce(()=>{requestAnimationFrame(()=>renderDocks())},80);
+        const debouncedDocksSearch=debounce((term='')=>{ scheduleTrackedSearchViewRender('docks', 'docks', term, { skipDebounce: true }); },80);
         function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; selectedDockNum=null; selectedDockStop=null; scheduleDocksRender(0); }
         function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} scheduleTrackedSearchViewRender('docks', 'docks', term); }
         function resetDockView(shouldRender = true) { dockViewLevel = 0; selectedDockNum = null; selectedDockStop = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); if (shouldRender) scheduleDocksRender(0); }
@@ -15721,8 +15767,8 @@ function toggleDriveQuickRequestItem(domId) {
             const access = getRoleAccessState();
             const canEditDockConfig = canEditDockWorkflow();
             if (access.isQc && !access.isAdmin && !access.isQcSupervisor && (((!dockTeamStatusLoaded) && dockTeamSchemaReady !== false) || ((!dockItemProgressLoaded) && dockItemSchemaReady !== false))) {
-                if (!dockTeamStatusPromise) ensureDockTeamStatusLoaded().then(() => renderDocks()).catch(() => renderDocks());
-                if (!dockItemProgressPromise) ensureDockItemStatusLoaded().then(() => renderDocks()).catch(() => renderDocks());
+                if (!dockTeamStatusPromise) ensureDockTeamStatusLoaded().then(() => scheduleDocksRender(0)).catch(() => scheduleDocksRender(0));
+                if (!dockItemProgressPromise) ensureDockItemStatusLoaded().then(() => scheduleDocksRender(0)).catch(() => scheduleDocksRender(0));
                 if (!containerHasRenderableContent(container)) setContainerHtml(container, `<div class="p-8 text-center text-gray-400">Loading dock workflow...</div>`);
                 crumb.innerText = 'Loading Assignments';
                 return;
@@ -15829,7 +15875,7 @@ function toggleDriveQuickRequestItem(domId) {
                 return progress.checker && progress.inspector;
             }).length;
             crumb.innerText = `Dock ${selectedDockNum} > Stop ${selectedDockStop}`;
-            let html = `<div class="back-btn" onclick="dockViewLevel=1; renderDocks()"><i class="ph-bold ph-arrow-left"></i> Back to Stops</div>`;
+            let html = `<div class="back-btn" onclick="dockViewLevel=1; scheduleDocksRender(0)"><i class="ph-bold ph-arrow-left"></i> Back to Stops</div>`;
             html += `<details class="bg-white border border-green-200 rounded-xl shadow-lg mb-4 overflow-hidden" open><summary class="list-none cursor-pointer bg-gradient-to-r from-[#007a4d] to-[#119b6a] text-white p-4 border-b border-green-200/40"><div class="flex justify-between items-center gap-3 mb-2 border-b border-white/20 pb-2"><div><div class="font-black text-xl tracking-wider">STOP ${selectedDockStop}</div><div class="text-[10px] font-bold text-green-50 uppercase tracking-wider mt-1">${stopItems.length} Rows</div></div><div class="flex items-center gap-2"><div class="text-[10px] font-bold bg-white/15 px-2 py-1 rounded text-white uppercase border border-white/15"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="text-[10px] font-bold bg-white/15 px-2 py-1 rounded text-white uppercase border border-white/15">${doneCount}/${stopItems.length} Done</div><i class="ph-bold ph-caret-down text-white/80 text-xl"></i></div></div><div class="font-bold text-[15px] leading-tight mb-0.5">${cust}</div>${cons && cons !== cust ? `<div class="text-[12px] text-green-50 font-semibold mb-2 flex items-center gap-1"><i class="ph-bold ph-arrow-bend-down-right"></i> ${cons}</div>` : '<div class="mb-2"></div>'}<div class="text-[10px] font-bold text-green-50 uppercase tracking-wider flex items-center gap-1"><i class="ph-bold ph-map-pin"></i> State: <span class="text-white">${state}</span></div></summary><div class="p-3 bg-gray-50/70">${stopItems.map((item) => generateCard(item, 'docks', 'status-orange')).join('')}</div></details>`;
             container.innerHTML = html;
         }
@@ -16526,6 +16572,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function openDetail(uid, sourceView) {
+            const detailOpenStartedAt = beginInternalPerfMeasure();
             const currentViewBeforeOpen = getCurrentVisibleViewId();
             if (currentViewBeforeOpen && currentViewBeforeOpen !== 'detail') {
                 rememberDetailReturnPosition(sourceView || currentViewBeforeOpen);
@@ -16546,11 +16593,12 @@ function toggleDriveQuickRequestItem(domId) {
             lastViewSwitchAt = Date.now();
             renderDetailView();
             showOnlyPrimaryView('detail');
-            updateGlobalBackButton();
-            syncGlobalHeaderChrome();
-            updateFooterNavState();
-            forceMainAreaToTopImmediate();
-            scheduleStickyRailOffsetSync();
+            schedulePrimaryViewChromeRefresh('detail');
+            setMainAreaScrollTop(0);
+            requestAnimationFrame(() => {
+                if (Math.abs(getMainAreaScrollTop()) > 2) setMainAreaScrollTop(0);
+            });
+            recordInternalPerfDuration('detailOpenDurations', detailOpenStartedAt, resolvedSourceView || 'detail');
             return false;
         }
 
@@ -16959,6 +17007,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function goBackFromDetail() {
+            const detailBackStartedAt = beginInternalPerfMeasure();
             if (document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) document.activeElement.blur();
             setDetailEditingChromeState(false);
             const restoreViewId = String(lastView || 'home').trim() || 'home';
@@ -16973,12 +17022,11 @@ function toggleDriveQuickRequestItem(domId) {
             if (restoreView && (!restoreViewState.initialized || restoreViewState.dirty)) {
                 renderViewContent(safeRestoreViewId, false, false);
             }
-            if (restoreView) restoreView.classList.remove('hidden');
             showOnlyPrimaryView(restoreView ? safeRestoreViewId : 'home');
             restoreDetailReturnPosition(safeRestoreViewId);
-            updateGlobalBackButton();
-            syncGlobalHeaderChrome();
-            updateFooterNavState();
+            schedulePrimaryViewChromeRefresh(safeRestoreViewId);
+            scheduleViewActivationWork(safeRestoreViewId);
+            recordInternalPerfDuration('detailBackDurations', detailBackStartedAt, safeRestoreViewId);
             return false;
         }
         function toggleExpand() {
@@ -23466,12 +23514,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                         count: tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === folderName).length
                     }));
                     renderMarkupChunkedByKey('tasks-endcap-folders', container, null, folderRows, '', (folderRow) => {
-                        return `<div class="bg-white border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedEndCapFolder='${esc(folderRow.folderName)}'; taskViewLevel=1; renderTasks()"><div class="flex items-center gap-3"><div class="bg-yellow-50 p-2 rounded-lg"><i class="ph-fill ph-storefront text-2xl text-yellow-500"></i></div><span class="font-bold text-lg text-yellow-800">${folderRow.folderName}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${folderRow.count} Items</span></div>`;
+                        return `<div class="bg-white border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedEndCapFolder='${esc(folderRow.folderName)}'; taskViewLevel=1; scheduleTasksRender(0)"><div class="flex items-center gap-3"><div class="bg-yellow-50 p-2 rounded-lg"><i class="ph-fill ph-storefront text-2xl text-yellow-500"></i></div><span class="font-bold text-lg text-yellow-800">${folderRow.folderName}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${folderRow.count} Items</span></div>`;
                     }, { approxCardHeight: 96, emptyHtml: `<div class="p-8 text-center text-gray-400">No end cap folders found.</div>` });
                 } else if (taskViewLevel === 1) {
                     let fItems = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === selectedEndCapFolder);
                     fItems.sort((a,b) => String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || '')));
-                    const prefixHtml = `<div class="back-btn" onclick="taskViewLevel=0; renderTasks()"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>`;
+                    const prefixHtml = `<div class="back-btn" onclick="taskViewLevel=0; scheduleTasksRender(0)"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>`;
                     renderMarkupChunkedByKey('tasks-endcap-items', container, null, fItems, '', (item) => generateCard(item, 'tasks', 'status-yellow'), {
                         prefixHtml,
                         approxCardHeight: 260,
@@ -23721,7 +23769,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return;
             }
 
-            if (isComplete) clearQueuedLagSensitiveInputSave(prefix);
+            if (isComplete || !isCoordinatedAutoSave) clearQueuedLagSensitiveInputSave(prefix);
             if (isCoordinatedAutoSave && hasPendingRowSaveCompletionIntent(rowSaveKey)) return;
             if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'SAVING...';
 
