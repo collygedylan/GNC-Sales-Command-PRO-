@@ -686,7 +686,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.22.05</div>
+<div id="header-version" class="nav-version-pill">V2026.04.22.06</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1234,6 +1234,9 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         const LOGIN_FETCH_RETRY_COUNT = 2;
         const LOGIN_FETCH_RETRY_DELAY_MS = 450;
         const VERIFIED_LOGIN_STORAGE_KEY = 'gnc_verified_login_v1';
+        const EXPLICIT_LOGOUT_STORAGE_KEY = 'gnc_explicit_logout_v1';
+        const LOGIN_DISPLAY_NAME_STORAGE_KEY = 'gnc_user_display_v1';
+        const LEGACY_OFFLINE_CLEANUP_STORAGE_KEY = 'gnc_legacy_offline_cleanup_v1';
         const SUPABASE_WRITE_TIMEOUT_MS = 22000;
         const DETAIL_ROW_WRITE_TIMEOUT_MS = 30000;
         const DETAIL_ROW_TOUCH_WRITE_TIMEOUT_MS = 40000;
@@ -2146,7 +2149,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             }
         }
         async function clearLegacyOfflineState(force = false) {
-            if (!force && isIOSDevice()) return;
+            if (!force) return false;
             if ('serviceWorker' in navigator) {
                 const registrations = await navigator.serviceWorker.getRegistrations();
                 for (let registration of registrations) {
@@ -2159,6 +2162,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
                     await caches.delete(key);
                 }
             }
+            try { localStorage.setItem(LEGACY_OFFLINE_CLEANUP_STORAGE_KEY, 'done'); } catch (error) {}
+            return true;
         }
 
         function syncShellBuildUrl(build) {
@@ -2357,7 +2362,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             });
         }
 
-        async function clearBootCacheForShellUpdate() {
+        async function clearBootCacheForShellUpdate(force = false) {
             cacheWarmPromise = null;
             if (cachePersistTimer) {
                 clearTimeout(cachePersistTimer);
@@ -2367,7 +2372,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
                 try { cancelIdleCallback(cachePersistIdleHandle); } catch (error) {}
                 cachePersistIdleHandle = null;
             }
-            await deleteAppCacheDatabase();
+            if (force) await deleteAppCacheDatabase();
         }
 
         async function ensureCurrentShellBuild() {
@@ -4649,9 +4654,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             cleanupRealtime();
             clearManualSyncStatusPoll();
             manualSyncStatusState = null;
-            ['gnc_user_v3','gnc_pin_v3','gnc_role_v3'].forEach((key) => {
-                try { localStorage.removeItem(key); } catch (e) {}
-            });
+            setExplicitLogoutMarker();
+            clearPersistedLoginSession();
             sessionStorage.clear();
             location.reload();
         }
@@ -5705,9 +5709,69 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             })();
             return productivityHistorySchemaPromise;
         }
-        function buildTrustedLoginUserRecord(username, role, source = 'local-cache') {
+        function normalizeSessionIdentity(value = '') {
+            return String(value || '').trim().toLowerCase();
+        }
+
+        function getStoredDisplayName() {
+            try {
+                return String(localStorage.getItem(LOGIN_DISPLAY_NAME_STORAGE_KEY) || '').trim();
+            } catch (error) {
+                return '';
+            }
+        }
+
+        function hasExplicitLogoutMarker() {
+            try {
+                return String(localStorage.getItem(EXPLICIT_LOGOUT_STORAGE_KEY) || '').trim() === '1';
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function setExplicitLogoutMarker() {
+            try { localStorage.setItem(EXPLICIT_LOGOUT_STORAGE_KEY, '1'); } catch (error) {}
+        }
+
+        function clearExplicitLogoutMarker() {
+            try { localStorage.removeItem(EXPLICIT_LOGOUT_STORAGE_KEY); } catch (error) {}
+        }
+
+        function clearPersistedLoginSession() {
+            [
+                'gnc_user_v3',
+                'gnc_pin_v3',
+                'gnc_role_v3',
+                LOGIN_DISPLAY_NAME_STORAGE_KEY,
+                VERIFIED_LOGIN_STORAGE_KEY
+            ].forEach((key) => {
+                try { localStorage.removeItem(key); } catch (error) {}
+            });
+        }
+
+        function isDefaultPasswordForUser(username = '', displayName = '', password = '') {
+            const normalizedPassword = String(password || '').trim();
+            if (!normalizedPassword) return false;
+            const candidates = ['1234', '12345', 'welcome', 'password'];
+            const normalizedUsername = String(username || '').trim();
+            const normalizedDisplayName = String(displayName || '').trim();
+            if (normalizedUsername) candidates.push(normalizedUsername);
+            if (normalizedDisplayName) candidates.push(normalizedDisplayName);
+            return candidates.includes(normalizedPassword);
+        }
+
+        function shouldRequirePasswordChangeForUser(username = '', password = '', isBiometricLogin = false, displayName = '') {
+            const normalizedUsername = normalizeSessionIdentity(username);
+            if (!normalizedUsername) return false;
+            if (!isDefaultPasswordForUser(normalizedUsername, displayName, password)) return false;
+            const hasChangedLocally = localStorage.getItem('gnc_pw_changed_' + normalizedUsername) === 'true';
+            return !hasChangedLocally && !isBiometricLogin;
+        }
+
+        function buildTrustedLoginUserRecord(username, role, source = 'local-cache', displayName = '') {
             return {
                 username: String(username || '').trim(),
+                displayName: String(displayName || username || '').trim(),
                 role: String(role || '').trim(),
                 _fromLocalCache: source !== 'remote',
                 _deferCacheWarm: true,
@@ -5722,11 +5786,13 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 const parsed = JSON.parse(raw);
                 if (!parsed || typeof parsed !== 'object') return null;
                 const username = String(parsed.username || '').trim();
+                const displayName = String(firstNonEmptyValue(parsed.displayName, parsed.username, '')).trim();
                 const password = String(parsed.password || '').trim();
                 const role = String(parsed.role || '').trim();
                 if (!username || !password || !role) return null;
                 return {
                     username,
+                    displayName,
                     password,
                     role,
                     verifiedAt: String(parsed.verifiedAt || '').trim()
@@ -5736,14 +5802,16 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }
         }
 
-        function persistVerifiedLoginRecord(username, password, role) {
+        function persistVerifiedLoginRecord(username, password, role, displayName = '') {
             const normalizedUsername = String(username || '').trim().toLowerCase();
             const normalizedPassword = String(password || '').trim();
             const normalizedRole = String(role || '').trim();
+            const normalizedDisplayName = String(displayName || username || '').trim();
             if (!normalizedUsername || !normalizedPassword || !normalizedRole) return false;
             try {
                 localStorage.setItem(VERIFIED_LOGIN_STORAGE_KEY, JSON.stringify({
                     username: normalizedUsername,
+                    displayName: normalizedDisplayName || normalizedUsername,
                     password: normalizedPassword,
                     role: normalizedRole,
                     verifiedAt: new Date().toISOString()
@@ -5760,10 +5828,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const savedUser = String(localStorage.getItem('gnc_user_v3') || '').trim();
             const savedPassword = String(localStorage.getItem('gnc_pin_v3') || '').trim();
             const savedRole = String(localStorage.getItem('gnc_role_v3') || '').trim();
+            const savedDisplayName = getStoredDisplayName();
             if (!savedUser || !savedPassword || !savedRole) return null;
             if (savedUser.toLowerCase() !== normalizedUsername) return null;
             if (savedPassword !== normalizedPassword) return null;
-            return buildTrustedLoginUserRecord(savedUser, savedRole, 'local-cache');
+            return buildTrustedLoginUserRecord(savedUser, savedRole, 'local-cache', savedDisplayName || savedUser);
         }
 
         async function tryVerifiedLoginRecord(username, password) {
@@ -5773,7 +5842,71 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (!record) return null;
             if (String(record.username || '').trim().toLowerCase() !== normalizedUsername) return null;
             if (String(record.password || '') !== normalizedPassword) return null;
-            return buildTrustedLoginUserRecord(record.username, record.role, 'verified-cache');
+            return buildTrustedLoginUserRecord(record.username, record.role, 'verified-cache', record.displayName || record.username);
+        }
+
+        function getPersistedSessionRestoreRecord() {
+            if (hasExplicitLogoutMarker()) return null;
+            const savedUser = normalizeSessionIdentity(localStorage.getItem('gnc_user_v3'));
+            const savedPassword = String(localStorage.getItem('gnc_pin_v3') || '').trim();
+            const savedRole = String(localStorage.getItem('gnc_role_v3') || '').trim();
+            const savedDisplayName = getStoredDisplayName();
+            if (savedUser && savedPassword && savedRole) {
+                return {
+                    username: savedUser,
+                    displayName: savedDisplayName || savedUser,
+                    password: savedPassword,
+                    role: savedRole,
+                    source: 'local-session'
+                };
+            }
+            const verifiedRecord = readVerifiedLoginRecord();
+            if (!verifiedRecord) return null;
+            return {
+                username: normalizeSessionIdentity(verifiedRecord.username),
+                displayName: verifiedRecord.displayName || verifiedRecord.username,
+                password: verifiedRecord.password,
+                role: verifiedRecord.role,
+                source: 'verified-cache'
+            };
+        }
+
+        function doesCacheSnapshotMatchCurrentSession(cachedRes = null) {
+            if (!cachedRes || typeof cachedRes !== 'object') return false;
+            if (!currentUser || !safeRole) return false;
+            const cachedMeta = cachedRes && cachedRes.meta ? cachedRes.meta : {};
+            const cachedUser = normalizeSessionIdentity(firstNonEmptyValue(cachedMeta.scopedUser, ''));
+            const cachedRole = normalizeSessionIdentity(firstNonEmptyValue(cachedMeta.scopedRole, ''));
+            if (!cachedUser || !cachedRole) return false;
+            return cachedUser === normalizeSessionIdentity(currentUser) && cachedRole === normalizeSessionIdentity(safeRole || currentRole);
+        }
+
+        function hasWarmAppData() {
+            return !!(
+                (Array.isArray(fullInventory) && fullInventory.length)
+                || (Array.isArray(avOpenInventory) && avOpenInventory.length)
+                || (Array.isArray(requestsInventory) && requestsInventory.length)
+                || (Array.isArray(socInventory) && socInventory.length)
+                || (Array.isArray(reservesInventory) && reservesInventory.length)
+                || (Array.isArray(salesOfficeInventory) && salesOfficeInventory.length)
+                || (Array.isArray(cavInventory) && cavInventory.length)
+                || (Array.isArray(avNotesDb) && avNotesDb.length)
+            );
+        }
+
+        function scheduleBackgroundLoginValidation(username = '', password = '') {
+            const normalizedUsername = normalizeSessionIdentity(username);
+            const normalizedPassword = String(password || '').trim();
+            if (!normalizedUsername || !normalizedPassword || navigator.onLine === false) return;
+            setTimeout(async () => {
+                try {
+                    const result = await fetchRemoteLoginUser(normalizedUsername, normalizedPassword);
+                    if (!result || !result.ok || !result.user) return;
+                    const remoteRole = String(firstNonEmptyValue(result.user.role, result.user.ROLE, currentRole, '')).trim() || currentRole;
+                    persistVerifiedLoginRecord(normalizedUsername, normalizedPassword, remoteRole, currentUserDisplay || normalizedUsername);
+                    try { localStorage.setItem('gnc_role_v3', remoteRole); } catch (error) {}
+                } catch (error) {}
+            }, 2200);
         }
 
         function getLoginReadHeaders() {
@@ -5912,7 +6045,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return items.map((item) => stripTransientCacheFields(item));
         }
 
-        const CACHE_SCHEMA_VERSION = 6;
+        const CACHE_SCHEMA_VERSION = 7;
         const INLINE_CACHE_RESERVE_LIMIT = 180;
         function buildCacheSnapshot() {
             const inlineReserveRows = buildCacheRows(reservesInventory.slice(0, INLINE_CACHE_RESERVE_LIMIT));
@@ -5928,6 +6061,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 avNotesData: buildCacheRows(avNotesDb),
                 meta: {
                     cacheSchemaVersion: CACHE_SCHEMA_VERSION,
+                    scopedUser: normalizeSessionIdentity(currentUser),
+                    scopedRole: normalizeSessionIdentity(safeRole || currentRole),
                     datasetLoadState: serializeDatasetLoadState(),
                     inlineDatasetMeta: {
                         reserves: {
@@ -5991,6 +6126,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (!cacheWarmPromise) {
                 cacheWarmPromise = loadFromCache().then((cachedRes) => {
                     if (!cachedRes) return false;
+                    if (!doesCacheSnapshotMatchCurrentSession(cachedRes)) return false;
                     const normalizedCache = normalizeCachedInventorySnapshot(cachedRes);
                     processAndLoadData({ ...normalizedCache, _fromCache: true });
                     hydrateDatasetLoadState(getCachedDatasetLoadState(normalizedCache));
@@ -6399,7 +6535,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.22.05';
+const APP_VERSION = 'V2026.04.22.06';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -6817,11 +6953,11 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             try {
                 const shellUpdated = await ensureCurrentShellBuild();
                 if (shellUpdated) return;
-                await clearLegacyOfflineState();
-                const savedUser=localStorage.getItem('gnc_user_v3'); const savedPin=localStorage.getItem('gnc_pin_v3');
                 resetLoginUiState();
-                runAfterShellInteractive(() => warmCachedInventory().catch(() => {}), isTouchConstrainedDevice() ? 60 : 0);
-                if(savedUser) document.getElementById('username-input').value=savedUser;
+                const restored = await restorePersistedSessionOnStartup();
+                if (restored) return;
+                const savedUser=localStorage.getItem('gnc_user_v3'); const savedPin=localStorage.getItem('gnc_pin_v3'); const savedDisplayName=getStoredDisplayName();
+                if(savedUser) document.getElementById('username-input').value=savedDisplayName || savedUser;
                 if(savedPin) document.getElementById('pin-code').value=savedPin;
             } catch (err) {
                 console.error('Startup failed', err);
@@ -10792,6 +10928,44 @@ function toggleDriveQuickRequestItem(domId) {
             if (copyBtn) copyBtn.classList.add('hidden');
             if (modal) modal.classList.add('hidden');
         }
+        async function restorePersistedSessionOnStartup() {
+            const sessionRecord = getPersistedSessionRestoreRecord();
+            if (!sessionRecord) return false;
+            const normalizedUsername = normalizeSessionIdentity(sessionRecord.username);
+            const password = String(sessionRecord.password || '').trim();
+            const role = String(sessionRecord.role || '').trim();
+            const displayName = String(firstNonEmptyValue(sessionRecord.displayName, sessionRecord.username, normalizedUsername) || '').trim();
+            if (!normalizedUsername || !password || !role) return false;
+            if (shouldRequirePasswordChangeForUser(normalizedUsername, password, false, displayName)) return false;
+            const usernameInput = document.getElementById('username-input');
+            const pinInput = document.getElementById('pin-code');
+            const loginInputs = document.getElementById('login-inputs');
+            const spinner = document.getElementById('loading-spinner');
+            if (usernameInput) usernameInput.value = displayName || normalizedUsername;
+            if (pinInput) pinInput.value = password;
+            if (loginInputs) loginInputs.classList.add('hidden');
+            if (spinner) spinner.classList.remove('hidden');
+            beginInitialAppLoad('Restoring your workspace...');
+            currentUser = normalizedUsername;
+            currentUserDisplay = displayName || normalizedUsername;
+            currentRole = role;
+            safeRole = String(currentRole).toUpperCase().replace(/\s+/g,'');
+            try {
+                await finalizeLogin(currentUser, password, false, { restoredSession: true, skipBiometricPrompt: true, sessionSource: sessionRecord.source || 'startup-restore' });
+                showToast('Success', 'Signed in from saved session.');
+                return true;
+            } catch (error) {
+                finishInitialAppLoad();
+                setBootingSession(false);
+                currentUser = '';
+                currentUserDisplay = '';
+                currentRole = '';
+                safeRole = '';
+                resetLoginUiState();
+                return false;
+            }
+        }
+
         function handleLogin(isBiometricLogin=false) {
             const rawUser=document.getElementById('username-input').value.trim();
             const inputUser=rawUser.toLowerCase();
@@ -10810,16 +10984,14 @@ function toggleDriveQuickRequestItem(domId) {
                 if(result && result.ok && result.user){
                     const userRecord=result.user;
                     currentUser=String(userRecord.username || userRecord.USERNAME || inputUser).trim().toLowerCase();
-                    currentUserDisplay=String(userRecord.username || userRecord.USERNAME || rawUser || currentUser).trim();
+                    currentUserDisplay=String(firstNonEmptyValue(userRecord.displayName, userRecord.username, userRecord.USERNAME, rawUser, currentUser)).trim();
                     currentRole=userRecord.role||userRecord.ROLE||'User';
                     if (result.source === 'verified-cache') {
                         if (result.warning) console.warn('Login remote fetch failed; using verified cache.', result.warning);
                         showToast('Success', 'Signed in with saved verified login.');
                     }
                     safeRole=String(currentRole).toUpperCase().replace(/\s+/g,'');
-                    const isDefaultPassword=['1234','12345','welcome','password',currentUser,currentUserDisplay].includes(inputPass);
-                    const hasChangedLocally=localStorage.getItem('gnc_pw_changed_'+currentUser)==='true';
-                    if(isDefaultPassword&&!hasChangedLocally&&!isBiometricLogin){
+                    if(shouldRequirePasswordChangeForUser(currentUser,inputPass,isBiometricLogin,currentUserDisplay)){
                         finishInitialAppLoad();
                         setBootingSession(false);
                         document.getElementById('view-login').style.display='none';
@@ -10964,6 +11136,9 @@ function toggleDriveQuickRequestItem(domId) {
             timerId = setTimeout(invoke, safeDelay);
         }
         function getLoginWarmupPlan(openedFromCache = false) {
+            if (openedFromCache) {
+                return { initialQueue: [], fullQueue: [] };
+            }
             const access = getRoleAccessState();
             const allowedViews = access.allowedViews instanceof Set ? access.allowedViews : new Set(access.allowedViews || []);
             const initialTargets = new Map();
@@ -11036,22 +11211,31 @@ function toggleDriveQuickRequestItem(domId) {
             });
             return warmupPlan;
         }
-        async function finalizeLogin(user,pass,isBiometricLogin) {
+        async function finalizeLogin(user,pass,isBiometricLogin,options = {}) {
+            const loginOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             setBootingSession(false);
+            clearExplicitLogoutMarker();
             localStorage.setItem('gnc_user_v3',user);
             localStorage.setItem('gnc_pin_v3',pass);
             localStorage.setItem('gnc_role_v3',currentRole);
-            persistVerifiedLoginRecord(user, pass, currentRole);
+            localStorage.setItem(LOGIN_DISPLAY_NAME_STORAGE_KEY, currentUserDisplay || currentUser || user);
+            persistVerifiedLoginRecord(user, pass, currentRole, currentUserDisplay || currentUser || user);
             document.getElementById('header-user').innerText=currentUserDisplay || currentUser;
             const roleAccess = getRoleAccessState();
             const deferHeavyLoginWarm = isTouchConstrainedDevice();
             const shouldWarmReserveCache = roleAccess.allowedViews && typeof roleAccess.allowedViews.has === 'function' && (roleAccess.allowedViews.has('av') || roleAccess.allowedViews.has('reserves') || roleAccess.allowedViews.has('reports'));
             const shellWarmDelay = deferHeavyLoginWarm ? 900 : 0;
-            const cacheWarmDelay = deferHeavyLoginWarm ? 180 : 0;
             const queueWarmDelay = deferHeavyLoginWarm ? 260 : 0;
             const postShellUiDelay = deferHeavyLoginWarm ? 180 : 40;
-            const shouldPromptBiometric = !deferHeavyLoginWarm && !isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled')!=='true';
+            const shouldPromptBiometric = !loginOptions.skipBiometricPrompt && !deferHeavyLoginWarm && !isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled')!=='true';
             setLoginProgress(Math.max(currentProgress, 30), 'Preparing your workspace...');
+
+            const localWarmTasks = [];
+            if (!hasWarmAppData()) localWarmTasks.push(warmCachedInventory().catch(() => false));
+            if (shouldWarmReserveCache && (!Array.isArray(reservesInventory) || reservesInventory.length === 0)) {
+                localWarmTasks.push(warmUserScopedDatasetCaches().catch(() => false));
+            }
+            if (localWarmTasks.length) await Promise.allSettled(localWarmTasks);
 
             let appOpened = false;
             const openApp = (fromCache = false) => {
@@ -11063,7 +11247,7 @@ function toggleDriveQuickRequestItem(domId) {
                 }
             };
 
-            const openedFromCache = fullInventory.length > 0;
+            const openedFromCache = hasWarmAppData();
             openApp(openedFromCache);
             refreshManualSyncStatus(true).catch(() => {});
 
@@ -11087,35 +11271,26 @@ function toggleDriveQuickRequestItem(domId) {
                 }, shellWarmDelay);
             }
 
-            const reserveCacheWarmPromise = shouldWarmReserveCache
-                ? new Promise((resolve) => {
-                    runAfterShellInteractive(() => {
-                        warmUserScopedDatasetCaches().then(resolve).catch(() => resolve(false));
-                    }, cacheWarmDelay);
-                })
-                : Promise.resolve(false);
-
-            if (fullInventory.length === 0) {
-                runAfterShellInteractive(() => {
-                    warmCachedInventory().then((hasCache) => {
-                        if (hasCache) {
-                            setTimeout(() => queueVisibleTrackedViewRefresh('cache-warm', 0, 180), postShellUiDelay);
-                            syncGlobalHeaderChrome();
-                            updateFooterNavState();
-                        }
-                    }).catch(() => {});
-                }, cacheWarmDelay);
+            if (openedFromCache) {
+                setTimeout(() => {
+                    queueVisibleTrackedViewRefresh('cache-warm', 0, 180);
+                    syncGlobalHeaderChrome();
+                    updateFooterNavState();
+                }, postShellUiDelay);
             }
 
             runAfterShellInteractive(() => {
                 const warmupPlan = primeLoginDataLoad(openedFromCache);
-                if (!openedFromCache) {
+                if (!openedFromCache && (warmupPlan.initialQueue.length || warmupPlan.fullQueue.length)) {
                     showToast("Ready", "Fast mode is on. Data is warming in the background.", false);
                 }
                 warmupPlan.fullQueue.forEach((item) => {
                     queueDatasetLoad(item.key, item.mode, item.delay);
                 });
                 scheduleTaskHotCacheWarmup('login-warm', openedFromCache ? 220 : 140);
+                if (openedFromCache) {
+                    refreshLoadedDatasets(false).catch(() => {});
+                }
                 if (roleAccess.allowedViews && roleAccess.allowedViews.has('request')) {
                     setTimeout(() => {
                         subscribeCurrentDeviceForPush({ prompt: false }).catch(() => {});
@@ -11123,13 +11298,9 @@ function toggleDriveQuickRequestItem(domId) {
                 }
             }, queueWarmDelay);
 
-            reserveCacheWarmPromise.then((warmedScopedDatasetCache) => {
-                if (warmedScopedDatasetCache) {
-                    setTimeout(() => queueVisibleTrackedViewRefresh('cache-warm', 0, 180), postShellUiDelay);
-                    syncGlobalHeaderChrome();
-                    updateFooterNavState();
-                }
-            }).catch(() => {});
+            if (loginOptions.restoredSession !== false) {
+                scheduleBackgroundLoginValidation(user, pass);
+            }
             loginPrefetchPromise = null;
             loginPrefetchMode = '';
         }
