@@ -700,7 +700,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.22.08</div>
+<div id="header-version" class="nav-version-pill">V2026.04.22.09</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -6544,7 +6544,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.22.08';
+        const APP_VERSION = 'V2026.04.22.09';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -12530,6 +12530,12 @@ function toggleDriveQuickRequestItem(domId) {
             return dockResolvedStateCache;
         }
 
+        function getVisibleDockMistakeIssues(resolvedState = null) {
+            const state = resolvedState && typeof resolvedState === 'object' ? resolvedState : getDockResolvedState();
+            const sourceRowIds = new Set((Array.isArray(state.rows) ? state.rows : []).map((row) => String(row && row.UNIQUE_ID || '').trim()).filter(Boolean));
+            return (Array.isArray(state.openIssues) ? state.openIssues : []).filter((issue) => issue && sourceRowIds.has(String(issue.issueSourceUniqueId || '').trim()));
+        }
+
         function findDockDisplayRowByUniqueId(uniqueId = '') {
             const normalizedUid = normalizeDockIssueSourceUniqueId(uniqueId);
             if (!normalizedUid) return null;
@@ -12540,13 +12546,14 @@ function toggleDriveQuickRequestItem(domId) {
         function updateDockModeToggleUi() {
             const docksBtn = document.getElementById('dock-mode-btn-docks');
             const mistakeBtn = document.getElementById('dock-mode-btn-mistakes');
+            const resolvedState = getDockResolvedState();
             if (docksBtn) {
                 const isActive = dockViewMode === 'docks';
                 docksBtn.className = `rounded-xl border px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] shadow-sm active:scale-95 ${isActive ? 'border-green-200 bg-[#007a4d] text-white' : 'border-green-200 bg-white text-[#007a4d]'}`;
             }
             if (mistakeBtn) {
                 const isActive = dockViewMode === 'mistakes';
-                const openCount = getDockResolvedState().openIssues.length;
+                const openCount = getVisibleDockMistakeIssues(resolvedState).length;
                 mistakeBtn.className = `rounded-xl border px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] shadow-sm active:scale-95 ${isActive ? 'border-red-200 bg-red-600 text-white' : 'border-red-200 bg-white text-red-600'}`;
                 mistakeBtn.innerText = openCount > 0 ? `Mistake (${openCount})` : 'Mistake';
             }
@@ -17463,9 +17470,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function renderDockMistakeQueue(container, crumb, term = '') {
             const resolvedState = getDockResolvedState();
-            const scopedRows = getScopedDocksItems(resolvedState.rows, `dock-display:${resolvedState.cacheKey}`);
-            const scopedRowIds = new Set(scopedRows.map((row) => String(row && row.UNIQUE_ID || '').trim()).filter(Boolean));
-            const queueItems = resolvedState.openIssues.filter((issue) => issue && scopedRowIds.has(issue.issueSourceUniqueId)).filter((issue) => {
+            const queueItems = getVisibleDockMistakeIssues(resolvedState).filter((issue) => {
                 if (!term) return true;
                 return getDockIssueQueueSearchText(issue).includes(term);
             }).sort((a, b) => {
