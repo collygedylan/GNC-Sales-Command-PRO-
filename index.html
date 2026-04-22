@@ -6154,6 +6154,10 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         );
         let requestModalCustomerOptionsCacheKey = '';
         let requestModalCustomerOptionsByRepCache = new Map();
+        let requestModalCustomerOptionsLoading = false;
+        let requestModalCustomerOptionsReady = false;
+        let requestModalCustomerOptionsError = '';
+        let requestModalCustomerOptionsLoadPromise = null;
         const PRODUCTIVITY_HOME_VIEWERS = new Set(['dylan_collyge','jd_jones']);
         const PRODUCTIVITY_TRACKED_USERS = Object.freeze([
             { username: 'dylan_collyge', display: 'dylan_collyge' },
@@ -8770,6 +8774,18 @@ function toggleDriveQuickRequestItem(domId) {
             return `${resolvedViewStateEpoch}|${getDatasetLoadSignature('soc')}|${getDatasetLoadSignature('reserves')}`;
         }
 
+        function areRequestModalCustomerDatasetsReady() {
+            return isDatasetLoaded('soc', 'initial') && isDatasetLoaded('reserves', 'initial');
+        }
+
+        function refreshRequestModalCustomerStepIfVisible() {
+            const customerStep = document.getElementById('step-2-cust');
+            if (!customerStep || customerStep.classList.contains('hidden')) return;
+            const input = document.getElementById('cust-search-input');
+            const searchValue = input ? String(input.value || '') : '';
+            scheduleRequestModalSearchRender('customer', searchValue, () => populateCustomerList(searchValue), { force: true });
+        }
+
         function buildRequestModalCustomerSearchOption(customer = '', consignee = '') {
             const customerName = String(customer || '').trim();
             const consigneeName = String(consignee || '').trim();
@@ -8816,6 +8832,40 @@ function toggleDriveQuickRequestItem(domId) {
             return requestModalCustomerOptionsByRepCache;
         }
 
+        function ensureRequestModalCustomerOptionsReady(force = false) {
+            if (!force && areRequestModalCustomerDatasetsReady()) {
+                requestModalCustomerOptionsReady = true;
+                requestModalCustomerOptionsLoading = false;
+                requestModalCustomerOptionsError = '';
+                buildRequestModalCustomerOptionsCache(true);
+                refreshRequestModalCustomerStepIfVisible();
+                return Promise.resolve(true);
+            }
+            if (!force && requestModalCustomerOptionsLoadPromise) return requestModalCustomerOptionsLoadPromise;
+            requestModalCustomerOptionsLoading = true;
+            requestModalCustomerOptionsReady = areRequestModalCustomerDatasetsReady();
+            requestModalCustomerOptionsError = '';
+            requestModalCustomerOptionsLoadPromise = Promise.all([
+                ensureDatasetLoaded('soc', 'initial'),
+                ensureDatasetLoaded('reserves', 'initial')
+            ]).then(() => {
+                requestModalCustomerOptionsReady = areRequestModalCustomerDatasetsReady();
+                requestModalCustomerOptionsError = requestModalCustomerOptionsReady ? '' : 'Customer / consignee suggestions are still unavailable.';
+                buildRequestModalCustomerOptionsCache(true);
+                refreshRequestModalCustomerStepIfVisible();
+                return requestModalCustomerOptionsReady;
+            }).catch(() => {
+                requestModalCustomerOptionsReady = areRequestModalCustomerDatasetsReady();
+                requestModalCustomerOptionsError = 'Could not load customer / consignee suggestions. You can still type a custom name.';
+                refreshRequestModalCustomerStepIfVisible();
+                return false;
+            }).finally(() => {
+                requestModalCustomerOptionsLoading = false;
+                requestModalCustomerOptionsLoadPromise = null;
+            });
+            return requestModalCustomerOptionsLoadPromise;
+        }
+
         function getRequestModalCustomerOptionsForRep(repName = '') {
             const canonicalRepName = resolveCanonicalRequestRepName(repName);
             const repKey = normalizeRepMatchToken(canonicalRepName);
@@ -8857,7 +8907,13 @@ function toggleDriveQuickRequestItem(domId) {
             document.getElementById('rep-search-input').value = '';
             document.getElementById('cust-search-input').value = '';
             configureRequestCustomerStep();
+            requestModalCustomerOptionsCacheKey = '';
+            requestModalCustomerOptionsByRepCache = new Map();
+            requestModalCustomerOptionsLoading = false;
+            requestModalCustomerOptionsReady = areRequestModalCustomerDatasetsReady();
+            requestModalCustomerOptionsError = '';
             buildRequestModalCustomerOptionsCache(true);
+            ensureRequestModalCustomerOptionsReady();
             scheduleRequestModalSearchRender('rep', '', () => filterRepList(''), { force: true });
         }
 
@@ -8876,6 +8932,10 @@ function toggleDriveQuickRequestItem(domId) {
             previousReqStep = '';
             requestModalCustomerOptionsCacheKey = '';
             requestModalCustomerOptionsByRepCache = new Map();
+            requestModalCustomerOptionsLoading = false;
+            requestModalCustomerOptionsReady = false;
+            requestModalCustomerOptionsError = '';
+            requestModalCustomerOptionsLoadPromise = null;
             detailRequestSourceDomIds = [];
             resetQuickDriveRequestState();
             configureRequestCustomerStep();
@@ -9448,6 +9508,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (consigneeInput) consigneeInput.value = '';
             configureRequestCustomerStep();
             buildRequestModalCustomerOptionsCache();
+            ensureRequestModalCustomerOptionsReady();
             scheduleRequestModalSearchRender('customer', '', () => populateCustomerList(''), { force: true });
         }
 
@@ -20190,6 +20251,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function selectRepForRequest(repName) {
             tempSelectedReqRep = resolveCanonicalRequestRepName(repName);
+            ensureRequestModalCustomerOptionsReady();
             document.getElementById('step-1-rep').classList.add('hidden');
             document.getElementById('request-rep-modal').classList.remove('hidden');
             if (isQuickDriveRequestMode()) {
@@ -20226,12 +20288,30 @@ function toggleDriveQuickRequestItem(domId) {
             const val = normalizeRepMatchToken(rawVal);
             const container = document.getElementById('cust-list-container');
             if (!container) return;
+            if (!tempSelectedReqRep) {
+                container.innerHTML = `<div class="text-xs text-gray-400 p-2 text-center">Choose a sales rep first.</div>`;
+                return;
+            }
+            if (!requestModalCustomerOptionsReady) {
+                ensureRequestModalCustomerOptionsReady();
+                if (requestModalCustomerOptionsLoading) {
+                    container.innerHTML = `<div class="text-xs text-gray-400 p-2 text-center">Loading customer / consignee options...</div>`;
+                    return;
+                }
+                if (requestModalCustomerOptionsError) {
+                    container.innerHTML = `<div class="text-xs text-gray-400 p-2 text-center">${esc(requestModalCustomerOptionsError)}</div>`;
+                    return;
+                }
+            }
             const options = getRequestModalCustomerOptionsForRep(tempSelectedReqRep);
             let html = options
                 .filter((option) => !val || String(option.searchToken || '').includes(val))
                 .map((option) => `<div class="bg-orange-50 text-orange-800 font-bold p-3 rounded-lg border border-orange-200 shadow-sm text-left cursor-pointer active:bg-orange-100 mb-2" onclick="setCustomerInput('${esc(option.label)}')">${option.label}</div>`)
                 .join('');
-            if (html === '') html = `<div class="text-xs text-gray-400 p-2 text-center">No matching customers found. Type above to use a custom name.</div>`;
+            if (html === '') {
+                const hasOptions = options.length > 0;
+                html = `<div class="text-xs text-gray-400 p-2 text-center">${hasOptions ? 'No matching customer / consignee options found. Type above to use a custom name.' : 'No customer / consignee options found for this sales rep yet. Type above to use a custom name.'}</div>`;
+            }
             container.innerHTML = html;
         }
 
