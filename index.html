@@ -438,12 +438,26 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
     </div>
     <div id="dock-mistake-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
-            <h3 class="font-black text-2xl mb-2 text-red-600">Report Mistake</h3>
+            <h3 class="font-black text-2xl mb-1 text-red-600">Flag Dock Issue</h3>
+            <div id="dock-mistake-modal-label" class="text-[11px] font-semibold text-slate-500 mb-2"></div>
             <input type="hidden" id="dock-mistake-uid">
             <textarea id="dock-mistake-text" class="input-field border-red-200 focus:border-red-500 h-24 text-left resize-none" placeholder="E.g. Missing 3 plants..."></textarea>
             <div class="flex gap-2 mt-2">
                 <button class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95" onclick="document.getElementById('dock-mistake-modal').classList.add('hidden')">CANCEL</button>
-                <button class="w-2/3 bg-red-600 text-white font-bold p-3 rounded-lg shadow-md active:scale-95" onclick="submitDockItemMistake()">SAVE NOTE</button>
+                <button class="w-2/3 bg-red-600 text-white font-bold p-3 rounded-lg shadow-md active:scale-95" onclick="submitDockItemMistake()">SAVE ISSUE</button>
+            </div>
+        </div>
+    </div>
+    <div id="dock-allocation-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
+            <h3 class="font-black text-2xl mb-1 text-[#007a4d]">Move Quantity</h3>
+            <div id="dock-allocation-modal-label" class="text-[11px] font-semibold text-slate-500 mb-3"></div>
+            <input type="hidden" id="dock-allocation-issue-uid">
+            <input type="hidden" id="dock-allocation-master-uid">
+            <input id="dock-allocation-qty" type="number" min="0" step="1" inputmode="decimal" class="input-field border-green-200 focus:border-[#007a4d] text-center text-xl font-black" placeholder="0">
+            <div class="flex gap-2 mt-2">
+                <button class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95" onclick="closeDockAllocationModal()">CANCEL</button>
+                <button class="w-2/3 bg-[#007a4d] text-white font-bold p-3 rounded-lg shadow-md active:scale-95" onclick="submitDockIssueAllocation()">SAVE QTY</button>
             </div>
         </div>
     </div>
@@ -858,6 +872,10 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <input type="text" id="docks-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Docks or Items..." oninput="handleDocksSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="docks-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDocksSearch()"></i>
                     </div>
+                    <div id="docks-mode-toggle" class="mb-3 grid grid-cols-2 gap-2">
+                        <button id="dock-mode-btn-docks" class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-95" onclick="setDockViewMode('docks')">Docks</button>
+                        <button id="dock-mode-btn-mistakes" class="rounded-xl border border-red-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-red-600 shadow-sm active:scale-95" onclick="setDockViewMode('mistakes')">Mistake</button>
+                    </div>
                     <div id="docks-crumb" class="text-xs font-bold text-orange-600 mb-3 mt-3">Select a Dock</div>
                     </div>
                     <div id="docks-content"></div>
@@ -1178,7 +1196,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             'sales-office': { realtimeTables: ['v2_sales_office'], pollMs: 'visible-default' },
             av: { realtimeTables: [], pollMs: 'visible-default' },
             reserves: { realtimeTables: [], pollMs: 'visible-default' },
-            docks: { realtimeTables: ['v2_soc_master', 'v2_dock_team_status', 'v2_dock_item_status'], pollMs: 0 },
+            docks: { realtimeTables: ['v2_soc_master', 'v2_dock_team_status', 'v2_dock_item_status', 'v2_dock_issue_status', 'v2_dock_issue_allocations'], pollMs: 0 },
             reports: { realtimeTables: [], pollMs: 'visible-default' },
             review: { realtimeTables: [], pollMs: 'visible-default' },
             'low-stock': { realtimeTables: [], pollMs: 'visible-default' },
@@ -1454,6 +1472,10 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             }
             docksScopedItemsCacheKey = '';
             docksScopedItemsCache = null;
+            dockResolvedStateCacheKey = '';
+            dockResolvedStateCache = null;
+            dockDisplayInventory = [];
+            dockDisplayInventoryById = new Map();
             requestScopedItemsCacheKey = '';
             requestScopedItemsCache = null;
             reservesScopedItemsCacheKey = '';
@@ -1469,6 +1491,10 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             dockWorkflowStateEpoch += 1;
             docksScopedItemsCacheKey = '';
             docksScopedItemsCache = null;
+            dockResolvedStateCacheKey = '';
+            dockResolvedStateCache = null;
+            dockDisplayInventory = [];
+            dockDisplayInventoryById = new Map();
         }
 
         function pruneRecentLocalRealtimeWrites(now = Date.now()) {
@@ -2658,7 +2684,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         function closeLoginBlockingLayers() {
             try { closePhotoModal(); } catch (e) {}
             try { toggleMenu(false); } catch (e) {}
-            ['tab-select-modal', 'assign-modal', 'endcap-modal', 'dock-mistake-modal', 'dock-info-modal', 'sales-office-av-modal', 'request-publish-modal', 'ncr-email-modal', 'request-rep-modal', 'bloom-picker-modal', 'drawer-overlay', 'side-drawer'].forEach(forceHideUiLayer);
+            ['tab-select-modal', 'assign-modal', 'endcap-modal', 'dock-mistake-modal', 'dock-allocation-modal', 'dock-info-modal', 'sales-office-av-modal', 'request-publish-modal', 'ncr-email-modal', 'request-rep-modal', 'bloom-picker-modal', 'drawer-overlay', 'side-drawer'].forEach(forceHideUiLayer);
         }
 
         function resetLoginUiState() {
@@ -4079,6 +4105,38 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 markViewDirty('docks');
                 scheduleDocksRender(72);
                 recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'dock-item');
+                return true;
+            }
+
+            if (tableName === 'v2_dock_issue_status') {
+                const rawRow = eventType === 'DELETE' ? (payload.old || {}) : (payload.new || {});
+                const uniqueId = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(rawRow.issue_source_unique_id, rawRow.ISSUE_SOURCE_UNIQUE_ID, rawRow.unique_id, rawRow.UNIQUE_ID, ''));
+                if (!uniqueId) return false;
+                if (eventType === 'DELETE') {
+                    dockIssueStatusByUid.delete(uniqueId);
+                } else {
+                    cacheDockIssueStatus(uniqueId, rawRow);
+                }
+                dockIssueDataLoaded = true;
+                markViewDirty('docks');
+                scheduleDocksRender(72);
+                recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'dock-issue');
+                return true;
+            }
+
+            if (tableName === 'v2_dock_issue_allocations') {
+                const rawRow = eventType === 'DELETE' ? (payload.old || {}) : (payload.new || {});
+                const allocationUniqueId = String(firstNonEmptyValue(rawRow.allocation_unique_id, rawRow.ALLOCATION_UNIQUE_ID, '')).trim();
+                if (!allocationUniqueId) return false;
+                if (eventType === 'DELETE') {
+                    removeDockIssueAllocationFromCache(allocationUniqueId);
+                } else {
+                    cacheDockIssueAllocation(rawRow);
+                }
+                dockIssueDataLoaded = true;
+                markViewDirty('docks');
+                scheduleDocksRender(72);
+                recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'dock-allocation');
                 return true;
             }
 
@@ -6037,6 +6095,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
+        let dockIssueStatusByUid=new Map(); let dockIssueAllocationsBySourceUid=new Map(); let dockIssueAllocationsById=new Map(); let dockIssueDataPromise=null; let dockIssueDataLoaded=false; let dockIssueStatusSchemaReady=null; let dockIssueStatusSchemaPromise=null; let dockIssueAllocationSchemaReady=null; let dockIssueAllocationSchemaPromise=null; let dockIssueSchemaWarningShown=false; let dockViewMode='docks'; let selectedDockIssueUid=null; let dockResolvedStateCacheKey=''; let dockResolvedStateCache=null; let dockDisplayInventory=[]; let dockDisplayInventoryById=new Map();
         let detailRequestSourceDomIds=[];
         let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false;
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
@@ -7644,6 +7703,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
                     || cavInventoryById.get(normalizedUid)
                     || requestsInventoryById.get(normalizedUid)
                     || socInventoryById.get(normalizedUid)
+                    || dockDisplayInventoryById.get(normalizedUid)
                     || managerReviewInventoryById.get(normalizedUid)
                     || salesOfficeInventoryById.get(normalizedUid)
                 )
@@ -7660,6 +7720,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
                 || cavInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
                 || requestsInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
                 || socInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
+                || dockDisplayInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
                 || managerReviewInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
                 || salesOfficeInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
                 || null;
@@ -8161,6 +8222,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
                 || cavInventory.find(i=>i.DOM_ID===domId)
                 || requestsInventory.find(i=>i.DOM_ID===domId)
                 || socInventory.find(i=>i.DOM_ID===domId)
+                || dockDisplayInventory.find(i=>i.DOM_ID===domId)
                 || managerReviewInventory.find(i=>i.DOM_ID===domId)
                 || salesOfficeInventory.find(i=>i.DOM_ID===domId)
                 || null;
@@ -11020,6 +11082,7 @@ function toggleDriveQuickRequestItem(domId) {
                     ensureDockAssignableUsers().catch(() => {});
                     ensureDockTeamStatusLoaded().then(() => { scheduleDocksRender(24); }).catch(() => {});
                     ensureDockItemStatusLoaded().then(() => { scheduleDocksRender(24); }).catch(() => {});
+                    ensureDockIssueDataLoaded().then(() => { scheduleDocksRender(24); }).catch(() => {});
                     ensureAvRuleColumnsReady().catch(() => {});
                 }, shellWarmDelay);
             }
@@ -11126,12 +11189,17 @@ function toggleDriveQuickRequestItem(domId) {
 
                 const previousDockTeamSnapshot = JSON.stringify(Array.from(dockTeamStatusByDock.entries()));
                 const previousDockItemSnapshot = JSON.stringify(Array.from(dockItemProgressByUid.entries()));
+                const previousDockIssueSnapshot = JSON.stringify(Array.from(dockIssueStatusByUid.entries()));
+                const previousDockAllocationSnapshot = JSON.stringify(Array.from(dockIssueAllocationsById.entries()));
                 await Promise.allSettled([
                     ensureDockTeamStatusLoaded(true),
-                    ensureDockItemStatusLoaded(true)
+                    ensureDockItemStatusLoaded(true),
+                    ensureDockIssueDataLoaded(true)
                 ]);
                 const dockWorkflowChanged = previousDockTeamSnapshot !== JSON.stringify(Array.from(dockTeamStatusByDock.entries()))
-                    || previousDockItemSnapshot !== JSON.stringify(Array.from(dockItemProgressByUid.entries()));
+                    || previousDockItemSnapshot !== JSON.stringify(Array.from(dockItemProgressByUid.entries()))
+                    || previousDockIssueSnapshot !== JSON.stringify(Array.from(dockIssueStatusByUid.entries()))
+                    || previousDockAllocationSnapshot !== JSON.stringify(Array.from(dockIssueAllocationsById.entries()));
                 if (dockWorkflowChanged) {
                     markViewDirty('docks');
                     queueInteractiveViewRender('docks', false, true, 48, 220);
@@ -11678,6 +11746,736 @@ function toggleDriveQuickRequestItem(domId) {
             return dockItemProgressPromise;
         }
 
+        function normalizeDockIssueSourceUniqueId(uniqueId = '') {
+            return String(uniqueId || '').trim();
+        }
+
+        function normalizeDockIssueState(state = '') {
+            return String(state || '').trim().toLowerCase() === 'resolved' ? 'resolved' : 'open';
+        }
+
+        function buildDockIssueAllocationUniqueId(issueSourceUniqueId = '', altMasterUniqueId = '') {
+            const sourceUid = normalizeDockIssueSourceUniqueId(issueSourceUniqueId);
+            const masterUid = String(altMasterUniqueId || '').trim();
+            if (!sourceUid || !masterUid) return '';
+            return `${sourceUid}__ALT__${masterUid}`;
+        }
+
+        function normalizeDockIssueMatchValue(value = '') {
+            return String(value || '').trim().toUpperCase().replace(/\s+/g, ' ');
+        }
+
+        function buildDockIssueCommonSizeKey(itemOrCommonName = null, explicitContSize = '') {
+            if (itemOrCommonName && typeof itemOrCommonName === 'object') {
+                return [normalizeDockIssueMatchValue(itemOrCommonName.COMMONNAME), normalizeDockIssueMatchValue(itemOrCommonName.CONTSIZE)].join('||');
+            }
+            return [normalizeDockIssueMatchValue(itemOrCommonName), normalizeDockIssueMatchValue(explicitContSize)].join('||');
+        }
+
+        function buildDockDisplaySearchText(item = null) {
+            if (!item) return '';
+            return [
+                firstNonEmptyValue(item.COMMONNAME, item['PLANT_NAME'], ''),
+                firstNonEmptyValue(item.CONTSIZE, ''),
+                firstNonEmptyValue(item.CUSTOMERNAME, item.CUSTOMER, ''),
+                firstNonEmptyValue(item.CONSIGNEENAME, item.CONSIGNEE, ''),
+                firstNonEmptyValue(item.SALESREPNAME, item.SALESREP, item.SALES_REP, ''),
+                firstNonEmptyValue(item.STOPNUMBER, ''),
+                firstNonEmptyValue(item.TRIPNUMBER, ''),
+                firstNonEmptyValue(item.DOCK_NUM, item.DOCK, ''),
+                firstNonEmptyValue(item.LOCATIONCODE, ''),
+                firstNonEmptyValue(item.LOTCODE, ''),
+                firstNonEmptyValue(item.ITEMCODE, ''),
+                firstNonEmptyValue(item.DOCK_NOTE, item.DOCK_ISSUE_NOTE, '')
+            ].map((value) => String(value || '').trim()).filter(Boolean).join(' ').toLowerCase();
+        }
+
+        function getDockIssueQueueSearchText(issue = null) {
+            if (!issue) return '';
+            return [
+                firstNonEmptyValue(issue.sourceCommonName, issue.sourceRow && issue.sourceRow.COMMONNAME, ''),
+                firstNonEmptyValue(issue.sourceContSize, issue.sourceRow && issue.sourceRow.CONTSIZE, ''),
+                firstNonEmptyValue(issue.dockNum, issue.sourceRow && issue.sourceRow.DOCK_NUM, ''),
+                firstNonEmptyValue(issue.stopNumber, issue.sourceRow && issue.sourceRow.STOPNUMBER, ''),
+                firstNonEmptyValue(issue.sourceLocationCode, issue.sourceRow && issue.sourceRow.LOCATIONCODE, ''),
+                firstNonEmptyValue(issue.sourceItemCode, issue.sourceRow && issue.sourceRow.ITEMCODE, ''),
+                firstNonEmptyValue(issue.sourceLotCode, issue.sourceRow && issue.sourceRow.LOTCODE, ''),
+                firstNonEmptyValue(issue.sourceCustomerName, issue.sourceRow && issue.sourceRow.CUSTOMERNAME, ''),
+                firstNonEmptyValue(issue.sourceConsigneeName, issue.sourceRow && issue.sourceRow.CONSIGNEENAME, ''),
+                firstNonEmptyValue(issue.sourceSalesRep, issue.sourceRow && issue.sourceRow.SALESREPNAME, ''),
+                firstNonEmptyValue(issue.issueNote, '')
+            ].map((value) => String(value || '').trim()).filter(Boolean).join(' ').toLowerCase();
+        }
+
+        function getDockDisplayQty(item = null) {
+            if (!item) return 0;
+            const qtyValue = parseAppNumber(firstNonEmptyValue(item.DISPLAY_DOCK_QTY, item.QUANTITYORDERED, item.QTY_ORDERED, item.PTRAVAILABLE, '0'));
+            return qtyValue == null ? 0 : Math.max(0, qtyValue);
+        }
+
+        function formatDockDisplayQty(qty = 0) {
+            const numericQty = parseAppNumber(qty);
+            if (numericQty == null) return '0';
+            if (Math.abs(numericQty - Math.round(numericQty)) < 0.000001) return String(Math.round(numericQty));
+            return String(Number(numericQty.toFixed(2)));
+        }
+
+        function normalizeDockDisplayRow(item = null, indexHint = '') {
+            if (!item || typeof item !== 'object') return null;
+            const row = { ...item };
+            row.DOCK_NUM = firstNonEmptyValue(row.DOCK_NUM, row.DOCK, row.dock, '');
+            row.SALESREPNAME = firstNonEmptyValue(row.SALESREPNAME, row.SALESREP, row.SALES_REP, row.SALESREPID, 'Unknown Rep');
+            row.CUSTOMERNAME = firstNonEmptyValue(row.CUSTOMERNAME, row.CUSTOMER, 'Unknown Customer');
+            row.CONSIGNEENAME = firstNonEmptyValue(row.CONSIGNEENAME, row.CONSIGNEE, '');
+            row.DOM_ID = firstNonEmptyValue(row.DOM_ID, 'dock_' + firstNonEmptyValue(row.UNIQUE_ID, indexHint, Date.now()));
+            row.DOCK_NOTE = firstNonEmptyValue(row.DOCK_ISSUE_NOTE, row.DOCK_NOTE, '');
+            row.DISPLAY_DOCK_QTY = getDockDisplayQty(row);
+            row._search = buildDockDisplaySearchText(row);
+            normalizeRowPhotoFields(row);
+            buildSearchIndex(row);
+            return row;
+        }
+
+        function getDefaultDockIssueStatus() {
+            return {
+                issueSourceUniqueId: '',
+                sourceMasterUniqueId: '',
+                sourceMasterId: '',
+                dockNum: '',
+                stopNumber: '',
+                sourceLocationCode: '',
+                sourceItemCode: '',
+                sourceCommonName: '',
+                sourceContSize: '',
+                sourceLotCode: '',
+                sourceQty: 0,
+                sourceSalesRep: '',
+                sourceCustomerName: '',
+                sourceConsigneeName: '',
+                issueNote: '',
+                issueState: 'open',
+                flaggedBy: '',
+                flaggedAt: '',
+                resolvedBy: '',
+                resolvedAt: '',
+                updatedBy: '',
+                updatedAt: ''
+            };
+        }
+
+        function normalizeDockIssueStatusRow(row = null) {
+            const base = getDefaultDockIssueStatus();
+            const raw = row && typeof row === 'object' ? row : {};
+            const issueSourceUniqueId = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(raw.issue_source_unique_id, raw.ISSUE_SOURCE_UNIQUE_ID, raw.unique_id, raw.UNIQUE_ID, ''));
+            if (!issueSourceUniqueId) return null;
+            return {
+                issueSourceUniqueId,
+                sourceMasterUniqueId: String(firstNonEmptyValue(raw.source_master_unique_id, raw.SOURCE_MASTER_UNIQUE_ID, '')).trim(),
+                sourceMasterId: String(firstNonEmptyValue(raw.source_master_id, raw.SOURCE_MASTER_ID, '')).trim(),
+                dockNum: String(firstNonEmptyValue(raw.dock_num, raw.DOCK_NUM, '')).trim(),
+                stopNumber: String(firstNonEmptyValue(raw.stop_number, raw.STOP_NUMBER, raw.stopnumber, raw.STOPNUMBER, '')).trim(),
+                sourceLocationCode: String(firstNonEmptyValue(raw.source_locationcode, raw.SOURCE_LOCATIONCODE, '')).trim(),
+                sourceItemCode: String(firstNonEmptyValue(raw.source_itemcode, raw.SOURCE_ITEMCODE, '')).trim(),
+                sourceCommonName: String(firstNonEmptyValue(raw.source_commonname, raw.SOURCE_COMMONNAME, '')).trim(),
+                sourceContSize: String(firstNonEmptyValue(raw.source_contsize, raw.SOURCE_CONTSIZE, '')).trim(),
+                sourceLotCode: String(firstNonEmptyValue(raw.source_lotcode, raw.SOURCE_LOTCODE, '')).trim(),
+                sourceQty: Math.max(0, parseAppNumber(firstNonEmptyValue(raw.source_qty, raw.SOURCE_QTY, 0)) || 0),
+                sourceSalesRep: String(firstNonEmptyValue(raw.source_salesrep, raw.SOURCE_SALESREP, '')).trim(),
+                sourceCustomerName: String(firstNonEmptyValue(raw.source_customername, raw.SOURCE_CUSTOMERNAME, '')).trim(),
+                sourceConsigneeName: String(firstNonEmptyValue(raw.source_consigneename, raw.SOURCE_CONSIGNEENAME, '')).trim(),
+                issueNote: String(firstNonEmptyValue(raw.issue_note, raw.ISSUE_NOTE, '')).trim(),
+                issueState: normalizeDockIssueState(firstNonEmptyValue(raw.issue_state, raw.ISSUE_STATE, base.issueState)),
+                flaggedBy: String(firstNonEmptyValue(raw.flagged_by, raw.FLAGGED_BY, '')).trim(),
+                flaggedAt: String(firstNonEmptyValue(raw.flagged_at, raw.FLAGGED_AT, '')).trim(),
+                resolvedBy: String(firstNonEmptyValue(raw.resolved_by, raw.RESOLVED_BY, '')).trim(),
+                resolvedAt: String(firstNonEmptyValue(raw.resolved_at, raw.RESOLVED_AT, '')).trim(),
+                updatedBy: String(firstNonEmptyValue(raw.updated_by, raw.UPDATED_BY, '')).trim(),
+                updatedAt: String(firstNonEmptyValue(raw.updated_at, raw.UPDATED_AT, '')).trim()
+            };
+        }
+
+        function getDefaultDockIssueAllocation() {
+            return {
+                allocationUniqueId: '',
+                issueSourceUniqueId: '',
+                altMasterUniqueId: '',
+                altMasterId: '',
+                allocatedQty: 0,
+                altLocationCode: '',
+                altLotCode: '',
+                altItemCode: '',
+                altCommonName: '',
+                altContSize: '',
+                altPtrAvailable: 0,
+                updatedBy: '',
+                updatedAt: ''
+            };
+        }
+
+        function normalizeDockIssueAllocationRow(row = null) {
+            const base = getDefaultDockIssueAllocation();
+            const raw = row && typeof row === 'object' ? row : {};
+            const issueSourceUniqueId = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(raw.issue_source_unique_id, raw.ISSUE_SOURCE_UNIQUE_ID, ''));
+            const altMasterUniqueId = String(firstNonEmptyValue(raw.alt_master_unique_id, raw.ALT_MASTER_UNIQUE_ID, '')).trim();
+            const allocationUniqueId = String(firstNonEmptyValue(raw.allocation_unique_id, raw.ALLOCATION_UNIQUE_ID, buildDockIssueAllocationUniqueId(issueSourceUniqueId, altMasterUniqueId))).trim();
+            if (!allocationUniqueId || !issueSourceUniqueId || !altMasterUniqueId) return null;
+            return {
+                allocationUniqueId,
+                issueSourceUniqueId,
+                altMasterUniqueId,
+                altMasterId: String(firstNonEmptyValue(raw.alt_master_id, raw.ALT_MASTER_ID, '')).trim(),
+                allocatedQty: Math.max(0, parseAppNumber(firstNonEmptyValue(raw.allocated_qty, raw.ALLOCATED_QTY, 0)) || 0),
+                altLocationCode: String(firstNonEmptyValue(raw.alt_locationcode, raw.ALT_LOCATIONCODE, '')).trim(),
+                altLotCode: String(firstNonEmptyValue(raw.alt_lotcode, raw.ALT_LOTCODE, '')).trim(),
+                altItemCode: String(firstNonEmptyValue(raw.alt_itemcode, raw.ALT_ITEMCODE, '')).trim(),
+                altCommonName: String(firstNonEmptyValue(raw.alt_commonname, raw.ALT_COMMONNAME, '')).trim(),
+                altContSize: String(firstNonEmptyValue(raw.alt_contsize, raw.ALT_CONTSIZE, '')).trim(),
+                altPtrAvailable: Math.max(0, parseAppNumber(firstNonEmptyValue(raw.alt_ptravailable, raw.ALT_PTRAVAILABLE, 0)) || 0),
+                updatedBy: String(firstNonEmptyValue(raw.updated_by, raw.UPDATED_BY, '')).trim(),
+                updatedAt: String(firstNonEmptyValue(raw.updated_at, raw.UPDATED_AT, '')).trim()
+            };
+        }
+
+        function cacheDockIssueStatus(uniqueId = '', issue = null) {
+            const normalized = normalizeDockIssueStatusRow({ ...(issue || {}), issue_source_unique_id: uniqueId || firstNonEmptyValue(issue && issue.issueSourceUniqueId, issue && issue.issue_source_unique_id, '') });
+            if (!normalized) return getDefaultDockIssueStatus();
+            dockIssueStatusByUid.set(normalized.issueSourceUniqueId, normalized);
+            invalidateDockWorkflowResolvedState();
+            return normalized;
+        }
+
+        function cacheDockIssueAllocation(allocation = null) {
+            const normalized = normalizeDockIssueAllocationRow(allocation);
+            if (!normalized) return getDefaultDockIssueAllocation();
+            dockIssueAllocationsById.set(normalized.allocationUniqueId, normalized);
+            if (!dockIssueAllocationsBySourceUid.has(normalized.issueSourceUniqueId)) dockIssueAllocationsBySourceUid.set(normalized.issueSourceUniqueId, []);
+            const nextRows = (dockIssueAllocationsBySourceUid.get(normalized.issueSourceUniqueId) || []).filter((row) => row && row.allocationUniqueId !== normalized.allocationUniqueId);
+            nextRows.push(normalized);
+            dockIssueAllocationsBySourceUid.set(normalized.issueSourceUniqueId, nextRows);
+            invalidateDockWorkflowResolvedState();
+            return normalized;
+        }
+
+        function removeDockIssueAllocationFromCache(allocationUniqueId = '') {
+            const normalizedId = String(allocationUniqueId || '').trim();
+            if (!normalizedId) return;
+            const existing = dockIssueAllocationsById.get(normalizedId);
+            if (existing && dockIssueAllocationsBySourceUid.has(existing.issueSourceUniqueId)) {
+                const nextRows = (dockIssueAllocationsBySourceUid.get(existing.issueSourceUniqueId) || []).filter((row) => row && row.allocationUniqueId !== normalizedId);
+                if (nextRows.length) dockIssueAllocationsBySourceUid.set(existing.issueSourceUniqueId, nextRows);
+                else dockIssueAllocationsBySourceUid.delete(existing.issueSourceUniqueId);
+            }
+            dockIssueAllocationsById.delete(normalizedId);
+            invalidateDockWorkflowResolvedState();
+        }
+
+        function getDockIssueStatus(uniqueId = '') {
+            const normalizedUid = normalizeDockIssueSourceUniqueId(uniqueId);
+            if (!normalizedUid) return null;
+            return dockIssueStatusByUid.has(normalizedUid) ? normalizeDockIssueStatusRow(dockIssueStatusByUid.get(normalizedUid)) : null;
+        }
+
+        function getDockIssueAllocations(issueSourceUniqueId = '') {
+            const normalizedUid = normalizeDockIssueSourceUniqueId(issueSourceUniqueId);
+            if (!normalizedUid) return [];
+            return (dockIssueAllocationsBySourceUid.get(normalizedUid) || []).map((row) => normalizeDockIssueAllocationRow(row)).filter(Boolean).sort((a, b) => {
+                const locationCompare = String(a.altLocationCode || '').localeCompare(String(b.altLocationCode || ''), undefined, { numeric: true, sensitivity: 'base' });
+                if (locationCompare !== 0) return locationCompare;
+                return String(a.altLotCode || '').localeCompare(String(b.altLotCode || ''), undefined, { numeric: true, sensitivity: 'base' });
+            });
+        }
+
+        function maybeWarnDockIssueSchemaMissing() {
+            if (dockIssueSchemaWarningShown || !currentUser) return;
+            dockIssueSchemaWarningShown = true;
+            showToast('Schema Required', 'Run dock_issue_resolution_migration.sql in Supabase to enable the shared dock mistake queue and alternate-location splits.', true);
+        }
+
+        async function ensureDockIssueStatusSchemaReady(force = false) {
+            if (dockIssueStatusSchemaReady === true && !force) return true;
+            if (dockIssueStatusSchemaReady === false && !force) return false;
+            if (dockIssueStatusSchemaPromise && !force) return dockIssueStatusSchemaPromise;
+            dockIssueStatusSchemaPromise = (async () => {
+                if (navigator.onLine === false) return false;
+                try {
+                    const url = `${SUPABASE_URL}/rest/v1/v2_dock_issue_status?select=issue_source_unique_id,issue_state&limit=1`;
+                    const response = await fetchWithTimeout(url, {
+                        method: 'GET',
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
+                    }, SUPABASE_READ_TIMEOUT_MS, 'Dock Issue Schema');
+                    if (!response.ok) {
+                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
+                        const normalizedError = String(errorText || '').toLowerCase();
+                        if (normalizedError.includes('v2_dock_issue_status') || normalizedError.includes('issue_source_unique_id') || normalizedError.includes('issue_state') || normalizedError.includes('relation') || normalizedError.includes('column')) {
+                            dockIssueStatusSchemaReady = false;
+                            maybeWarnDockIssueSchemaMissing();
+                            return false;
+                        }
+                        return false;
+                    }
+                    dockIssueStatusSchemaReady = true;
+                    return true;
+                } catch (error) {
+                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
+                    if (normalizedError.includes('v2_dock_issue_status') || normalizedError.includes('issue_source_unique_id') || normalizedError.includes('issue_state') || normalizedError.includes('relation') || normalizedError.includes('column')) {
+                        dockIssueStatusSchemaReady = false;
+                        maybeWarnDockIssueSchemaMissing();
+                        return false;
+                    }
+                    return false;
+                } finally {
+                    dockIssueStatusSchemaPromise = null;
+                }
+            })();
+            return dockIssueStatusSchemaPromise;
+        }
+
+        async function ensureDockIssueAllocationSchemaReady(force = false) {
+            if (dockIssueAllocationSchemaReady === true && !force) return true;
+            if (dockIssueAllocationSchemaReady === false && !force) return false;
+            if (dockIssueAllocationSchemaPromise && !force) return dockIssueAllocationSchemaPromise;
+            dockIssueAllocationSchemaPromise = (async () => {
+                if (navigator.onLine === false) return false;
+                try {
+                    const url = `${SUPABASE_URL}/rest/v1/v2_dock_issue_allocations?select=allocation_unique_id,issue_source_unique_id,alt_master_unique_id&limit=1`;
+                    const response = await fetchWithTimeout(url, {
+                        method: 'GET',
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
+                    }, SUPABASE_READ_TIMEOUT_MS, 'Dock Allocation Schema');
+                    if (!response.ok) {
+                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
+                        const normalizedError = String(errorText || '').toLowerCase();
+                        if (normalizedError.includes('v2_dock_issue_allocations') || normalizedError.includes('allocation_unique_id') || normalizedError.includes('issue_source_unique_id') || normalizedError.includes('alt_master_unique_id') || normalizedError.includes('relation') || normalizedError.includes('column')) {
+                            dockIssueAllocationSchemaReady = false;
+                            maybeWarnDockIssueSchemaMissing();
+                            return false;
+                        }
+                        return false;
+                    }
+                    dockIssueAllocationSchemaReady = true;
+                    return true;
+                } catch (error) {
+                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
+                    if (normalizedError.includes('v2_dock_issue_allocations') || normalizedError.includes('allocation_unique_id') || normalizedError.includes('issue_source_unique_id') || normalizedError.includes('alt_master_unique_id') || normalizedError.includes('relation') || normalizedError.includes('column')) {
+                        dockIssueAllocationSchemaReady = false;
+                        maybeWarnDockIssueSchemaMissing();
+                        return false;
+                    }
+                    return false;
+                } finally {
+                    dockIssueAllocationSchemaPromise = null;
+                }
+            })();
+            return dockIssueAllocationSchemaPromise;
+        }
+
+        async function ensureDockIssueSchemaReady(force = false) {
+            const [statusReady, allocationReady] = await Promise.all([
+                ensureDockIssueStatusSchemaReady(force),
+                ensureDockIssueAllocationSchemaReady(force)
+            ]);
+            return !!(statusReady && allocationReady);
+        }
+
+        async function ensureDockIssueDataLoaded(forceRefresh = false) {
+            if (!forceRefresh && dockIssueDataLoaded) return { issues: dockIssueStatusByUid, allocations: dockIssueAllocationsBySourceUid };
+            if (!forceRefresh && dockIssueDataPromise) return dockIssueDataPromise;
+            dockIssueDataPromise = (async () => {
+                const schemaReady = await ensureDockIssueSchemaReady(forceRefresh);
+                if (!schemaReady) {
+                    dockIssueDataLoaded = false;
+                    return { issues: dockIssueStatusByUid, allocations: dockIssueAllocationsBySourceUid };
+                }
+                const [issueRows, allocationRows] = await Promise.all([
+                    supabaseFetch('v2_dock_issue_status', 'GET', null, 'select=*'),
+                    supabaseFetch('v2_dock_issue_allocations', 'GET', null, 'select=*')
+                ]);
+                const nextIssueMap = new Map();
+                (issueRows || []).forEach((row) => {
+                    const normalized = normalizeDockIssueStatusRow(row);
+                    if (!normalized) return;
+                    nextIssueMap.set(normalized.issueSourceUniqueId, normalized);
+                });
+                const nextAllocationById = new Map();
+                const nextAllocationBySource = new Map();
+                (allocationRows || []).forEach((row) => {
+                    const normalized = normalizeDockIssueAllocationRow(row);
+                    if (!normalized) return;
+                    nextAllocationById.set(normalized.allocationUniqueId, normalized);
+                    if (!nextAllocationBySource.has(normalized.issueSourceUniqueId)) nextAllocationBySource.set(normalized.issueSourceUniqueId, []);
+                    nextAllocationBySource.get(normalized.issueSourceUniqueId).push(normalized);
+                });
+                dockIssueStatusByUid = nextIssueMap;
+                dockIssueAllocationsById = nextAllocationById;
+                dockIssueAllocationsBySourceUid = nextAllocationBySource;
+                dockIssueDataLoaded = true;
+                invalidateDockWorkflowResolvedState();
+                return { issues: dockIssueStatusByUid, allocations: dockIssueAllocationsBySourceUid };
+            })().catch(() => ({ issues: dockIssueStatusByUid, allocations: dockIssueAllocationsBySourceUid })).finally(() => {
+                dockIssueDataPromise = null;
+            });
+            return dockIssueDataPromise;
+        }
+
+        function buildSupabaseEqQuery(column = '', value = '') {
+            const safeColumn = String(column || '').trim();
+            if (!safeColumn) return '';
+            return `${safeColumn}=eq.${encodeURIComponent(String(value || '').trim())}`;
+        }
+
+        function buildDockIssuePayloadFromRow(item = null, options = {}) {
+            if (!item) return null;
+            const opts = options || {};
+            const nowIso = new Date().toISOString();
+            const existingIssue = getDockIssueStatus(item.UNIQUE_ID);
+            const linkedMaster = findLinkedMasterRow(item);
+            const normalizedQty = Math.max(0, parseAppNumber(firstNonEmptyValue(opts.sourceQty, existingIssue && existingIssue.sourceQty, getDockDisplayQty(item), '0')) || 0);
+            return {
+                issue_source_unique_id: String(item.UNIQUE_ID || '').trim(),
+                source_master_unique_id: String(firstNonEmptyValue(item.MASTER_UNIQUE_ID, linkedMaster && linkedMaster.UNIQUE_ID, existingIssue && existingIssue.sourceMasterUniqueId, '')).trim() || null,
+                source_master_id: String(firstNonEmptyValue(item.MASTER_ID, linkedMaster && linkedMaster.UNIQUE_ID, existingIssue && existingIssue.sourceMasterId, '')).trim() || null,
+                dock_num: String(firstNonEmptyValue(item.DOCK_NUM, item.DOCK, existingIssue && existingIssue.dockNum, '')).trim() || null,
+                stop_number: String(firstNonEmptyValue(item.STOPNUMBER, existingIssue && existingIssue.stopNumber, '')).trim() || null,
+                source_locationcode: String(firstNonEmptyValue(item.LOCATIONCODE, existingIssue && existingIssue.sourceLocationCode, '')).trim() || null,
+                source_itemcode: String(firstNonEmptyValue(item.ITEMCODE, existingIssue && existingIssue.sourceItemCode, '')).trim() || null,
+                source_commonname: String(firstNonEmptyValue(item.COMMONNAME, existingIssue && existingIssue.sourceCommonName, '')).trim() || null,
+                source_contsize: String(firstNonEmptyValue(item.CONTSIZE, existingIssue && existingIssue.sourceContSize, '')).trim() || null,
+                source_lotcode: String(firstNonEmptyValue(item.LOTCODE, existingIssue && existingIssue.sourceLotCode, '')).trim() || null,
+                source_qty: normalizedQty,
+                source_salesrep: String(firstNonEmptyValue(item.SALESREPNAME, item.SALESREP, existingIssue && existingIssue.sourceSalesRep, '')).trim() || null,
+                source_customername: String(firstNonEmptyValue(item.CUSTOMERNAME, item.CUSTOMER, existingIssue && existingIssue.sourceCustomerName, '')).trim() || null,
+                source_consigneename: String(firstNonEmptyValue(item.CONSIGNEENAME, item.CONSIGNEE, existingIssue && existingIssue.sourceConsigneeName, '')).trim() || null,
+                issue_note: String(firstNonEmptyValue(opts.issueNote, existingIssue && existingIssue.issueNote, '')).trim() || null,
+                issue_state: normalizeDockIssueState(firstNonEmptyValue(opts.issueState, existingIssue && existingIssue.issueState, 'open')),
+                flagged_by: String(firstNonEmptyValue(existingIssue && existingIssue.flaggedBy, currentUserDisplay, currentUser, '')).trim() || null,
+                flagged_at: String(firstNonEmptyValue(existingIssue && existingIssue.flaggedAt, nowIso)).trim() || nowIso,
+                resolved_by: normalizeDockIssueState(firstNonEmptyValue(opts.issueState, existingIssue && existingIssue.issueState, 'open')) === 'resolved'
+                    ? (String(firstNonEmptyValue(opts.resolvedBy, currentUserDisplay, currentUser, '')).trim() || null)
+                    : null,
+                resolved_at: normalizeDockIssueState(firstNonEmptyValue(opts.issueState, existingIssue && existingIssue.issueState, 'open')) === 'resolved'
+                    ? (String(firstNonEmptyValue(opts.resolvedAt, nowIso)).trim() || nowIso)
+                    : null,
+                updated_by: String(firstNonEmptyValue(currentUserDisplay, currentUser, '')).trim() || null,
+                updated_at: nowIso
+            };
+        }
+
+        function buildDockIssueAllocationPayload(issueSourceUniqueId = '', masterItem = null, qty = 0) {
+            const normalizedIssueUid = normalizeDockIssueSourceUniqueId(issueSourceUniqueId);
+            const altMasterUniqueId = String(firstNonEmptyValue(masterItem && masterItem.UNIQUE_ID, masterItem && masterItem.unique_id, '')).trim();
+            const allocationUniqueId = buildDockIssueAllocationUniqueId(normalizedIssueUid, altMasterUniqueId);
+            const nowIso = new Date().toISOString();
+            if (!normalizedIssueUid || !altMasterUniqueId || !allocationUniqueId) return null;
+            return {
+                allocation_unique_id: allocationUniqueId,
+                issue_source_unique_id: normalizedIssueUid,
+                alt_master_unique_id: altMasterUniqueId,
+                alt_master_id: String(firstNonEmptyValue(masterItem && masterItem.UNIQUE_ID, masterItem && masterItem.unique_id, '')).trim() || null,
+                allocated_qty: Math.max(0, parseAppNumber(qty) || 0),
+                alt_locationcode: String(firstNonEmptyValue(masterItem && masterItem.LOCATIONCODE, masterItem && masterItem.locationcode, '')).trim() || null,
+                alt_lotcode: String(firstNonEmptyValue(masterItem && masterItem.LOTCODE, masterItem && masterItem.lotcode, '')).trim() || null,
+                alt_itemcode: String(firstNonEmptyValue(masterItem && masterItem.ITEMCODE, masterItem && masterItem.itemcode, '')).trim() || null,
+                alt_commonname: String(firstNonEmptyValue(masterItem && masterItem.COMMONNAME, masterItem && masterItem.commonname, '')).trim() || null,
+                alt_contsize: String(firstNonEmptyValue(masterItem && masterItem.CONTSIZE, masterItem && masterItem.contsize, '')).trim() || null,
+                alt_ptravailable: Math.max(0, parseAppNumber(firstNonEmptyValue(masterItem && masterItem.PTRAVAILABLE, masterItem && masterItem.ptravailable, '0')) || 0),
+                updated_by: String(firstNonEmptyValue(currentUserDisplay, currentUser, '')).trim() || null,
+                updated_at: nowIso
+            };
+        }
+
+        function cloneDockRowWithMeta(item = null, overrides = {}) {
+            return normalizeDockDisplayRow({ ...(item || {}), ...(overrides || {}) }, firstNonEmptyValue(overrides && overrides.UNIQUE_ID, item && item.UNIQUE_ID, 'dock'));
+        }
+
+        function buildSyntheticDockAllocationRow(sourceRow = null, issue = null, allocation = null) {
+            if (!sourceRow || !issue || !allocation) return null;
+            const allocationUniqueId = String(allocation.allocationUniqueId || '').trim();
+            if (!allocationUniqueId) return null;
+            const linkedMaster = masterInventoryById.get(allocation.altMasterUniqueId) || fullInventory.find((row) => String(row && row.UNIQUE_ID || '').trim() === allocation.altMasterUniqueId) || null;
+            const seedRow = linkedMaster ? { ...linkedMaster } : {};
+            const syntheticRow = {
+                ...seedRow,
+                UNIQUE_ID: allocationUniqueId,
+                MASTER_UNIQUE_ID: allocation.altMasterUniqueId,
+                MASTER_ID: firstNonEmptyValue(allocation.altMasterId, allocation.altMasterUniqueId, ''),
+                DOM_ID: 'dock_' + allocationUniqueId,
+                DOCK_NUM: sourceRow.DOCK_NUM,
+                DOCK: sourceRow.DOCK_NUM,
+                STOPNUMBER: sourceRow.STOPNUMBER,
+                TRIPNUMBER: sourceRow.TRIPNUMBER,
+                SALESREPNAME: sourceRow.SALESREPNAME,
+                CUSTOMERNAME: sourceRow.CUSTOMERNAME,
+                CONSIGNEENAME: sourceRow.CONSIGNEENAME,
+                CONSIGNEE: sourceRow.CONSIGNEE,
+                CONSIGNEESTATE: sourceRow.CONSIGNEESTATE,
+                STATE: sourceRow.STATE,
+                DOCK_SPEC: sourceRow.DOCK_SPEC,
+                DOCK_CALIPER: sourceRow.DOCK_CALIPER,
+                QUANTITYORDERED: allocation.allocatedQty,
+                QTY_ORDERED: allocation.allocatedQty,
+                DISPLAY_DOCK_QTY: allocation.allocatedQty,
+                LOCATIONCODE: firstNonEmptyValue(seedRow.LOCATIONCODE, allocation.altLocationCode, ''),
+                LOTCODE: firstNonEmptyValue(seedRow.LOTCODE, allocation.altLotCode, ''),
+                ITEMCODE: firstNonEmptyValue(seedRow.ITEMCODE, allocation.altItemCode, sourceRow.ITEMCODE, ''),
+                COMMONNAME: firstNonEmptyValue(seedRow.COMMONNAME, allocation.altCommonName, sourceRow.COMMONNAME, ''),
+                CONTSIZE: firstNonEmptyValue(seedRow.CONTSIZE, allocation.altContSize, sourceRow.CONTSIZE, ''),
+                PTRAVAILABLE: firstNonEmptyValue(seedRow.PTRAVAILABLE, allocation.altPtrAvailable, '0'),
+                DOCK_NOTE: '',
+                DOCK_ISSUE_NOTE: '',
+                DOCK_ISSUE_STATE: '',
+                DOCK_ISSUE_SOURCE_UID: issue.issueSourceUniqueId,
+                IS_SYNTHETIC_DOCK_ROW: true,
+                SYNTHETIC_DOCK_ALLOCATION_UID: allocationUniqueId,
+                SYNTHETIC_DOCK_ISSUE_UID: issue.issueSourceUniqueId
+            };
+            if (linkedMaster) {
+                syncMasterFieldsToRequestRow(linkedMaster, syntheticRow);
+                syntheticRow.APP_TAB_ASSIGNMENT = firstNonEmptyValue(syntheticRow.APP_TAB_ASSIGNMENT, linkedMaster.APP_TAB_ASSIGNMENT);
+            }
+            return cloneDockRowWithMeta(syntheticRow);
+        }
+
+        function getDockIssueAllocationTotals(issueSourceUniqueId = '') {
+            const allocations = getDockIssueAllocations(issueSourceUniqueId);
+            const totalAllocatedQty = allocations.reduce((sum, allocation) => sum + (parseAppNumber(allocation && allocation.allocatedQty) || 0), 0);
+            return { allocations, totalAllocatedQty };
+        }
+
+        function getDockResolvedState() {
+            const cacheKey = [
+                resolvedViewStateEpoch,
+                dockWorkflowStateEpoch,
+                getDatasetLoadSignature('soc'),
+                getDatasetLoadSignature('master'),
+                dockIssueStatusByUid.size,
+                dockIssueAllocationsById.size
+            ].join('|');
+            if (dockResolvedStateCacheKey === cacheKey && dockResolvedStateCache && Array.isArray(dockResolvedStateCache.rows)) {
+                dockDisplayInventory = dockResolvedStateCache.rows.slice();
+                dockDisplayInventoryById = new Map(dockResolvedStateCache.rows.map((row) => [String(row && row.UNIQUE_ID || '').trim(), row]).filter((entry) => entry[0]));
+                return dockResolvedStateCache;
+            }
+
+            const baseRows = (Array.isArray(socInventory) ? socInventory : []).map((item, idx) => cloneDockRowWithMeta(item, { DOM_ID: firstNonEmptyValue(item && item.DOM_ID, 'dock_' + firstNonEmptyValue(item && item.UNIQUE_ID, idx)) })).filter(Boolean);
+            const rowMap = new Map();
+            const orderList = [];
+            baseRows.forEach((row) => {
+                const uniqueId = String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim();
+                if (!uniqueId || rowMap.has(uniqueId)) return;
+                rowMap.set(uniqueId, row);
+                orderList.push(uniqueId);
+            });
+
+            const issueRows = Array.from(dockIssueStatusByUid.values()).map((row) => normalizeDockIssueStatusRow(row)).filter(Boolean);
+            const resolvedIssues = issueRows.filter((issue) => issue.issueState === 'resolved');
+            const appliedResolvedIssues = new Set();
+            let guard = 0;
+            while (appliedResolvedIssues.size < resolvedIssues.length && guard < 2000) {
+                let progressed = false;
+                resolvedIssues.forEach((issue) => {
+                    if (!issue || appliedResolvedIssues.has(issue.issueSourceUniqueId)) return;
+                    const sourceRow = rowMap.get(issue.issueSourceUniqueId);
+                    if (!sourceRow) return;
+                    const { allocations, totalAllocatedQty } = getDockIssueAllocationTotals(issue.issueSourceUniqueId);
+                    const sourceQty = Math.max(0, parseAppNumber(firstNonEmptyValue(issue.sourceQty, getDockDisplayQty(sourceRow), '0')) || 0);
+                    const remainingQty = Math.max(0, sourceQty - totalAllocatedQty);
+                    const sourceIndex = orderList.indexOf(issue.issueSourceUniqueId);
+                    if (sourceIndex < 0) return;
+                    const nextSourceRow = remainingQty > 0
+                        ? cloneDockRowWithMeta(sourceRow, {
+                            DISPLAY_DOCK_QTY: remainingQty,
+                            QUANTITYORDERED: remainingQty,
+                            QTY_ORDERED: remainingQty,
+                            DOCK_ISSUE_NOTE: issue.issueNote,
+                            DOCK_ISSUE_STATE: issue.issueState,
+                            DOCK_ISSUE_SOURCE_UID: issue.issueSourceUniqueId
+                        })
+                        : null;
+                    const insertionRows = allocations.map((allocation) => buildSyntheticDockAllocationRow(sourceRow, issue, allocation)).filter(Boolean);
+                    if (nextSourceRow) {
+                        rowMap.set(issue.issueSourceUniqueId, nextSourceRow);
+                    } else {
+                        rowMap.delete(issue.issueSourceUniqueId);
+                        orderList.splice(sourceIndex, 1);
+                    }
+                    let insertAt = nextSourceRow ? sourceIndex + 1 : sourceIndex;
+                    insertionRows.forEach((row) => {
+                        const uniqueId = String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim();
+                        if (!uniqueId) return;
+                        if (rowMap.has(uniqueId)) {
+                            const existingIndex = orderList.indexOf(uniqueId);
+                            if (existingIndex > -1) orderList.splice(existingIndex, 1);
+                        }
+                        rowMap.set(uniqueId, row);
+                        orderList.splice(insertAt, 0, uniqueId);
+                        insertAt += 1;
+                    });
+                    appliedResolvedIssues.add(issue.issueSourceUniqueId);
+                    progressed = true;
+                });
+                if (!progressed) break;
+                guard += 1;
+            }
+
+            const openIssues = [];
+            issueRows.forEach((issue) => {
+                if (!issue) return;
+                const sourceRow = rowMap.get(issue.issueSourceUniqueId);
+                if (!sourceRow) return;
+                if (issue.issueState === 'open') {
+                    rowMap.set(issue.issueSourceUniqueId, cloneDockRowWithMeta(sourceRow, {
+                        DOCK_ISSUE_NOTE: issue.issueNote,
+                        DOCK_ISSUE_STATE: issue.issueState,
+                        DOCK_ISSUE_SOURCE_UID: issue.issueSourceUniqueId
+                    }));
+                    openIssues.push({
+                        ...issue,
+                        sourceRow: rowMap.get(issue.issueSourceUniqueId),
+                        sourceQty: Math.max(0, parseAppNumber(firstNonEmptyValue(issue.sourceQty, getDockDisplayQty(sourceRow), '0')) || 0),
+                        remainingQty: Math.max(0, parseAppNumber(firstNonEmptyValue(issue.sourceQty, getDockDisplayQty(sourceRow), '0')) || 0) - getDockIssueAllocationTotals(issue.issueSourceUniqueId).totalAllocatedQty
+                    });
+                }
+            });
+
+            const rows = orderList.map((uniqueId) => rowMap.get(uniqueId)).filter(Boolean).map((row, idx) => cloneDockRowWithMeta(row, { DOM_ID: firstNonEmptyValue(row && row.DOM_ID, 'dock_' + firstNonEmptyValue(row && row.UNIQUE_ID, idx)) }));
+            dockDisplayInventory = rows.slice();
+            dockDisplayInventoryById = new Map(rows.map((row) => [String(row && row.UNIQUE_ID || '').trim(), row]).filter((entry) => entry[0]));
+            dockResolvedStateCache = {
+                rows,
+                rowsById: dockDisplayInventoryById,
+                openIssues,
+                cacheKey
+            };
+            dockResolvedStateCacheKey = cacheKey;
+            return dockResolvedStateCache;
+        }
+
+        function findDockDisplayRowByUniqueId(uniqueId = '') {
+            const normalizedUid = normalizeDockIssueSourceUniqueId(uniqueId);
+            if (!normalizedUid) return null;
+            const resolvedState = getDockResolvedState();
+            return resolvedState.rowsById.get(normalizedUid) || null;
+        }
+
+        function updateDockModeToggleUi() {
+            const docksBtn = document.getElementById('dock-mode-btn-docks');
+            const mistakeBtn = document.getElementById('dock-mode-btn-mistakes');
+            if (docksBtn) {
+                const isActive = dockViewMode === 'docks';
+                docksBtn.className = `rounded-xl border px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] shadow-sm active:scale-95 ${isActive ? 'border-green-200 bg-[#007a4d] text-white' : 'border-green-200 bg-white text-[#007a4d]'}`;
+            }
+            if (mistakeBtn) {
+                const isActive = dockViewMode === 'mistakes';
+                const openCount = getDockResolvedState().openIssues.length;
+                mistakeBtn.className = `rounded-xl border px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] shadow-sm active:scale-95 ${isActive ? 'border-red-200 bg-red-600 text-white' : 'border-red-200 bg-white text-red-600'}`;
+                mistakeBtn.innerText = openCount > 0 ? `Mistake (${openCount})` : 'Mistake';
+            }
+        }
+
+        function setDockViewMode(mode = 'docks', shouldRender = true) {
+            const nextMode = String(mode || '').trim().toLowerCase() === 'mistakes' ? 'mistakes' : 'docks';
+            dockViewMode = nextMode;
+            if (nextMode === 'docks') {
+                selectedDockIssueUid = null;
+            } else {
+                dockViewLevel = 0;
+                selectedDockNum = null;
+                selectedDockStop = null;
+            }
+            updateDockModeToggleUi();
+            if (shouldRender) scheduleDocksRender(0);
+        }
+
+        function openDockIssueDetail(uniqueId = '') {
+            const normalizedUid = normalizeDockIssueSourceUniqueId(uniqueId);
+            if (!normalizedUid) return;
+            dockViewMode = 'mistakes';
+            selectedDockIssueUid = normalizedUid;
+            updateDockModeToggleUi();
+            scheduleDocksRender(0);
+            queueScrollMainAreaToTop(`dock-issue:${normalizedUid}`);
+        }
+
+        function closeDockAllocationModal() {
+            const modal = document.getElementById('dock-allocation-modal');
+            if (modal) modal.classList.add('hidden');
+            const qtyInput = document.getElementById('dock-allocation-qty');
+            if (qtyInput) qtyInput.value = '';
+            const label = document.getElementById('dock-allocation-modal-label');
+            if (label) label.innerText = '';
+            const issueUidEl = document.getElementById('dock-allocation-issue-uid');
+            if (issueUidEl) issueUidEl.value = '';
+            const masterUidEl = document.getElementById('dock-allocation-master-uid');
+            if (masterUidEl) masterUidEl.value = '';
+        }
+
+        function openDockAllocationModal(issueSourceUniqueId = '', altMasterUniqueId = '') {
+            const issue = getDockIssueStatus(issueSourceUniqueId);
+            const sourceRow = findDockDisplayRowByUniqueId(issueSourceUniqueId);
+            const masterRow = masterInventoryById.get(String(altMasterUniqueId || '').trim()) || fullInventory.find((row) => String(row && row.UNIQUE_ID || '').trim() === String(altMasterUniqueId || '').trim()) || null;
+            if (!issue || !sourceRow || !masterRow) return;
+            const existingAllocation = getDockIssueAllocations(issueSourceUniqueId).find((allocation) => allocation && allocation.altMasterUniqueId === String(altMasterUniqueId || '').trim());
+            const issueUidEl = document.getElementById('dock-allocation-issue-uid');
+            const masterUidEl = document.getElementById('dock-allocation-master-uid');
+            const label = document.getElementById('dock-allocation-modal-label');
+            const qtyInput = document.getElementById('dock-allocation-qty');
+            if (issueUidEl) issueUidEl.value = issueSourceUniqueId;
+            if (masterUidEl) masterUidEl.value = String(altMasterUniqueId || '').trim();
+            if (label) label.innerText = `${sourceRow.COMMONNAME || issue.sourceCommonName || 'Dock Issue'} • ${masterRow.LOCATIONCODE || '-'} • Available ${formatDockDisplayQty(masterRow.PTRAVAILABLE)}`;
+            if (qtyInput) {
+                qtyInput.value = existingAllocation ? formatDockDisplayQty(existingAllocation.allocatedQty) : '';
+                qtyInput.focus();
+                qtyInput.select();
+            }
+            const modal = document.getElementById('dock-allocation-modal');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function renderDockIssueAllocationSummary(issueSourceUniqueId = '') {
+            const allocations = getDockIssueAllocations(issueSourceUniqueId);
+            if (!allocations.length) {
+                return `<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-4 text-sm font-semibold text-slate-500">No alternate locations have been assigned yet.</div>`;
+            }
+            return allocations.map((allocation) => {
+                const safeAllocationId = esc(allocation.allocationUniqueId || '');
+                const safeIssueUid = esc(allocation.issueSourceUniqueId || '');
+                return `<div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Alternate Location</div><div class="mt-1 text-base font-black text-slate-900">${esc(allocation.altLocationCode || '-')}</div><div class="mt-1 text-[11px] font-semibold text-slate-500">${esc(allocation.altLotCode || '-')} • ${esc(allocation.altItemCode || '-')}</div></div><div class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Qty ${esc(formatDockDisplayQty(allocation.allocatedQty))}</div></div><div class="mt-3 flex gap-2"><button class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-700 active:scale-95" onclick="openDockAllocationModal('${safeIssueUid}', '${esc(allocation.altMasterUniqueId || '')}')">Update Qty</button><button class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-red-600 active:scale-95" onclick="removeDockIssueAllocation('${safeAllocationId}')">Remove</button></div></div>`;
+            }).join('');
+        }
+
+        function getDockIssueCandidateRows(issueSourceUniqueId = '') {
+            const issue = getDockIssueStatus(issueSourceUniqueId);
+            const sourceRow = findDockDisplayRowByUniqueId(issueSourceUniqueId);
+            if (!issue || !sourceRow) return [];
+            const matchKey = buildDockIssueCommonSizeKey(issue.sourceCommonName || sourceRow.COMMONNAME, issue.sourceContSize || sourceRow.CONTSIZE);
+            const linkedMaster = findLinkedMasterRow(sourceRow);
+            const originalMasterUniqueId = String(firstNonEmptyValue(sourceRow.MASTER_UNIQUE_ID, linkedMaster && linkedMaster.UNIQUE_ID, issue.sourceMasterUniqueId, '')).trim();
+            const originalAllocation = originalMasterUniqueId ? (masterInventoryById.get(originalMasterUniqueId) || fullInventory.find((row) => String(row && row.UNIQUE_ID || '').trim() === originalMasterUniqueId) || null) : null;
+            const otherRows = fullInventory.filter((row) => buildDockIssueCommonSizeKey(row) === matchKey).sort((a, b) => {
+                const ptrDiff = (parseAppNumber(firstNonEmptyValue(b && b.PTRAVAILABLE, '0')) || 0) - (parseAppNumber(firstNonEmptyValue(a && a.PTRAVAILABLE, '0')) || 0);
+                if (ptrDiff !== 0) return ptrDiff;
+                const locationCompare = String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true, sensitivity: 'base' });
+                if (locationCompare !== 0) return locationCompare;
+                return String(a.LOTCODE || '').localeCompare(String(b.LOTCODE || ''), undefined, { numeric: true, sensitivity: 'base' });
+            });
+            const deduped = [];
+            const seen = new Set();
+            if (originalAllocation) {
+                const uniqueId = String(firstNonEmptyValue(originalAllocation.UNIQUE_ID, '')).trim();
+                if (uniqueId) {
+                    deduped.push({ row: originalAllocation, isOriginal: true });
+                    seen.add(uniqueId);
+                }
+            }
+            otherRows.forEach((row) => {
+                const uniqueId = String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim();
+                if (!uniqueId || seen.has(uniqueId)) return;
+                deduped.push({ row, isOriginal: uniqueId === originalMasterUniqueId });
+                seen.add(uniqueId);
+            });
+            return deduped;
+        }
+
         function canEditDockWorkflow() {
             const access = getRoleAccessState();
             return !!(access.isAdmin || access.isQcSupervisor);
@@ -11825,14 +12623,15 @@ function toggleDriveQuickRequestItem(domId) {
             return assignedKeys.some(key => userKeys.has(key));
         }
 
-        function getScopedDocksItems(items = socInventory) {
+        function getScopedDocksItems(items = socInventory, cacheScopeKey = '') {
             const { isAdmin, isRep, isQcSupervisor, isQc } = getRoleAccessState();
             let nextItems = Array.isArray(items) ? [...items] : [];
-            const canUseCache = items === socInventory;
+            const scopeKey = String(firstNonEmptyValue(cacheScopeKey, items === socInventory ? getDatasetLoadSignature('soc') : '', '')).trim();
+            const canUseCache = !!scopeKey;
             const cacheKey = canUseCache ? [
                 resolvedViewStateEpoch,
                 dockWorkflowStateEpoch,
-                getDatasetLoadSignature('soc'),
+                scopeKey,
                 currentUser,
                 currentUserDisplay,
                 isAdmin ? '1' : '0',
@@ -12924,6 +13723,17 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             if (currentView === 'docks') {
+                if (dockViewMode === 'mistakes') {
+                    if (selectedDockIssueUid) {
+                        selectedDockIssueUid = null;
+                        scheduleDocksRender(0);
+                        updateGlobalBackButton();
+                        return false;
+                    }
+                    setDockViewMode('docks');
+                    updateGlobalBackButton();
+                    return false;
+                }
                 if (dockViewLevel === 2) {
                     dockViewLevel = 1;
                     selectedDockStop = null;
@@ -16196,11 +17006,11 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
         const debouncedDocksSearch=debounce((term='')=>{ scheduleTrackedSearchViewRender('docks', 'docks', term, { skipDebounce: true }); },80);
-        function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); dockViewLevel=0; selectedDockNum=null; selectedDockStop=null; scheduleDocksRender(0); }
-        function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden');dockViewLevel=0;}else{clearBtn.classList.add('hidden');dockViewLevel=0;} scheduleTrackedSearchViewRender('docks', 'docks', term); }
-        function resetDockView(shouldRender = true) { dockViewLevel = 0; selectedDockNum = null; selectedDockStop = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); if (shouldRender) scheduleDocksRender(0); }
-        function selectDock(dock) { selectedDockNum = dock; selectedDockStop = null; dockViewLevel = 1; scheduleDocksRender(0); queueScrollMainAreaToTop(`dock:${dock}`); }
-        function selectDockStop(stop) { selectedDockStop = stop; dockViewLevel = 2; scheduleDocksRender(0); queueScrollMainAreaToTop(`dock-stop:${stop}`); }
+        function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); if (dockViewMode === 'docks') { dockViewLevel=0; selectedDockNum=null; selectedDockStop=null; } scheduleDocksRender(0); }
+        function handleDocksSearch(){ const term=document.getElementById('docks-search').value.toLowerCase(); const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); if (dockViewMode === 'docks' && !selectedDockIssueUid) dockViewLevel=0;}else{clearBtn.classList.add('hidden'); if (dockViewMode === 'docks' && !selectedDockIssueUid) dockViewLevel=0;} scheduleTrackedSearchViewRender('docks', 'docks', term); }
+        function resetDockView(shouldRender = true) { dockViewMode = 'docks'; selectedDockIssueUid = null; dockViewLevel = 0; selectedDockNum = null; selectedDockStop = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); updateDockModeToggleUi(); if (shouldRender) scheduleDocksRender(0); }
+        function selectDock(dock) { dockViewMode = 'docks'; selectedDockIssueUid = null; updateDockModeToggleUi(); selectedDockNum = dock; selectedDockStop = null; dockViewLevel = 1; scheduleDocksRender(0); queueScrollMainAreaToTop(`dock:${dock}`); }
+        function selectDockStop(stop) { dockViewMode = 'docks'; selectedDockIssueUid = null; updateDockModeToggleUi(); selectedDockStop = stop; dockViewLevel = 2; scheduleDocksRender(0); queueScrollMainAreaToTop(`dock-stop:${stop}`); }
 
         function openDockInfoModal(dockNum) {
             if (!canEditDockWorkflow()) {
@@ -16270,25 +17080,168 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function openDockItemMistakeModal(uid) {
-            document.getElementById('dock-mistake-uid').value = uid;
-            let item = socInventory.find(i => i.UNIQUE_ID === uid);
-            document.getElementById('dock-mistake-text').value = item && item.DOCK_NOTE ? item.DOCK_NOTE : "";
+            const normalizedUid = normalizeDockIssueSourceUniqueId(uid);
+            const item = findDockDisplayRowByUniqueId(normalizedUid) || socInventory.find(i => String(i && i.UNIQUE_ID || '') === normalizedUid) || null;
+            const issue = getDockIssueStatus(normalizedUid);
+            document.getElementById('dock-mistake-uid').value = normalizedUid;
+            document.getElementById('dock-mistake-text').value = String(firstNonEmptyValue(issue && issue.issueNote, item && item.DOCK_ISSUE_NOTE, item && item.DOCK_NOTE, '')).trim();
+            const label = document.getElementById('dock-mistake-modal-label');
+            if (label) label.innerText = item ? `${item.COMMONNAME || 'Dock Item'} • ${item.CONTSIZE || '-'} • ${item.LOCATIONCODE || 'No Loc'}` : '';
             document.getElementById('dock-mistake-modal').classList.remove('hidden');
         }
 
-        function submitDockItemMistake() {
-            let uid = document.getElementById('dock-mistake-uid').value;
-            let text = document.getElementById('dock-mistake-text').value.toUpperCase().trim();
-            let item = socInventory.find(i => i.UNIQUE_ID === uid);
-            if (item && item.MASTER_UNIQUE_ID) {
-                item.DOCK_NOTE = text;
-                showToast("Saving...", "Updating mistake...", false);
-                supabaseFetch('v2_master_inventory', 'PATCH', { dock_note: text }, `unique_id=eq.${item.MASTER_UNIQUE_ID}`).then(() => { showToast("Success", "Mistake saved!"); document.getElementById('dock-mistake-modal').classList.add('hidden'); scheduleDocksRender(16); }).catch(err => { showToast("Error", "Failed to save mistake", true); });
+        async function submitDockItemMistake() {
+            const uid = normalizeDockIssueSourceUniqueId(document.getElementById('dock-mistake-uid').value);
+            const text = document.getElementById('dock-mistake-text').value.toUpperCase().trim();
+            const item = findDockDisplayRowByUniqueId(uid) || socInventory.find(i => String(i && i.UNIQUE_ID || '') === uid) || null;
+            if (!item) {
+                showToast("Error", "Could not find that dock row.", true);
+                return;
+            }
+            const schemaReady = await ensureDockIssueSchemaReady();
+            if (!schemaReady) {
+                showToast("Schema Required", "Run dock_issue_resolution_migration.sql in Supabase first.", true);
+                return;
+            }
+            const payload = buildDockIssuePayloadFromRow(item, { issueNote: text, issueState: 'open', sourceQty: getDockDisplayQty(item) });
+            if (!payload) {
+                showToast("Error", "Could not save that dock issue.", true);
+                return;
+            }
+            cacheDockIssueStatus(uid, payload);
+            dockIssueDataLoaded = true;
+            markViewDirty('docks');
+            document.getElementById('dock-mistake-modal').classList.add('hidden');
+            scheduleDocksRender(16);
+            showToast("Saving...", "Updating dock issue...", false);
+            try {
+                await supabaseFetch('v2_dock_issue_status', 'POST', [payload]);
+                showToast("Success", "Dock issue saved!");
+            } catch (error) {
+                showToast("Error", "Dock issue saved on this device, but the shared issue update failed.", true);
+            }
+        }
+
+        async function submitDockIssueAllocation() {
+            const issueSourceUniqueId = normalizeDockIssueSourceUniqueId(document.getElementById('dock-allocation-issue-uid').value);
+            const altMasterUniqueId = String(document.getElementById('dock-allocation-master-uid').value || '').trim();
+            const qtyValue = parseAppNumber(document.getElementById('dock-allocation-qty').value);
+            const issue = getDockIssueStatus(issueSourceUniqueId);
+            const sourceRow = findDockDisplayRowByUniqueId(issueSourceUniqueId);
+            const masterRow = masterInventoryById.get(altMasterUniqueId) || fullInventory.find((row) => String(row && row.UNIQUE_ID || '').trim() === altMasterUniqueId) || null;
+            if (!issue || !sourceRow || !masterRow) {
+                showToast("Error", "Could not prepare that alternate location.", true);
+                return;
+            }
+            const originalMasterUniqueId = String(firstNonEmptyValue(sourceRow.MASTER_UNIQUE_ID, issue.sourceMasterUniqueId, findLinkedMasterRow(sourceRow) && findLinkedMasterRow(sourceRow).UNIQUE_ID, '')).trim();
+            if (altMasterUniqueId === originalMasterUniqueId) {
+                showToast("Error", "Choose a different location than the original dock row.", true);
+                return;
+            }
+            if (qtyValue == null || qtyValue <= 0) {
+                showToast("Error", "Enter a quantity greater than zero.", true);
+                return;
+            }
+            const candidateAvailable = Math.max(0, parseAppNumber(firstNonEmptyValue(masterRow.PTRAVAILABLE, '0')) || 0);
+            if (qtyValue > candidateAvailable) {
+                showToast("Error", `That location only has ${formatDockDisplayQty(candidateAvailable)} available.`, true);
+                return;
+            }
+            const sourceQty = Math.max(0, parseAppNumber(firstNonEmptyValue(issue.sourceQty, getDockDisplayQty(sourceRow), '0')) || 0);
+            const existingAllocation = getDockIssueAllocations(issueSourceUniqueId).find((allocation) => allocation && allocation.altMasterUniqueId === altMasterUniqueId);
+            const otherTotal = getDockIssueAllocations(issueSourceUniqueId).reduce((sum, allocation) => {
+                if (!allocation || allocation.altMasterUniqueId === altMasterUniqueId) return sum;
+                return sum + (parseAppNumber(allocation.allocatedQty) || 0);
+            }, 0);
+            if ((otherTotal + qtyValue) > sourceQty) {
+                showToast("Error", `Total moved quantity cannot exceed ${formatDockDisplayQty(sourceQty)}.`, true);
+                return;
+            }
+            const schemaReady = await ensureDockIssueSchemaReady();
+            if (!schemaReady) {
+                showToast("Schema Required", "Run dock_issue_resolution_migration.sql in Supabase first.", true);
+                return;
+            }
+            const payload = buildDockIssueAllocationPayload(issueSourceUniqueId, masterRow, qtyValue);
+            if (!payload) {
+                showToast("Error", "Could not save that allocation.", true);
+                return;
+            }
+            cacheDockIssueAllocation(payload);
+            dockIssueDataLoaded = true;
+            markViewDirty('docks');
+            closeDockAllocationModal();
+            scheduleDocksRender(16);
+            showToast("Saving...", "Updating alternate location...", false);
+            try {
+                await supabaseFetch('v2_dock_issue_allocations', 'POST', [payload]);
+                showToast("Success", existingAllocation ? "Alternate location updated." : "Alternate location saved.");
+            } catch (error) {
+                showToast("Error", "Alternate location saved on this device, but the shared update failed.", true);
+            }
+        }
+
+        async function removeDockIssueAllocation(allocationUniqueId = '') {
+            const normalizedId = String(allocationUniqueId || '').trim();
+            const existing = dockIssueAllocationsById.get(normalizedId);
+            if (!existing) return;
+            const schemaReady = await ensureDockIssueSchemaReady();
+            if (!schemaReady) {
+                showToast("Schema Required", "Run dock_issue_resolution_migration.sql in Supabase first.", true);
+                return;
+            }
+            removeDockIssueAllocationFromCache(normalizedId);
+            dockIssueDataLoaded = true;
+            markViewDirty('docks');
+            scheduleDocksRender(16);
+            showToast("Saving...", "Removing alternate location...", false);
+            try {
+                await supabaseFetch('v2_dock_issue_allocations', 'DELETE', null, buildSupabaseEqQuery('allocation_unique_id', normalizedId));
+                showToast("Success", "Alternate location removed.");
+            } catch (error) {
+                showToast("Error", "Alternate location was removed on this device, but the shared delete failed.", true);
+            }
+        }
+
+        async function resolveDockIssue(issueSourceUniqueId = '') {
+            const normalizedUid = normalizeDockIssueSourceUniqueId(issueSourceUniqueId);
+            const issue = getDockIssueStatus(normalizedUid);
+            const sourceRow = findDockDisplayRowByUniqueId(normalizedUid);
+            if (!issue || !sourceRow) {
+                showToast("Error", "Could not find that dock issue.", true);
+                return;
+            }
+            const schemaReady = await ensureDockIssueSchemaReady();
+            if (!schemaReady) {
+                showToast("Schema Required", "Run dock_issue_resolution_migration.sql in Supabase first.", true);
+                return;
+            }
+            const payload = buildDockIssuePayloadFromRow(sourceRow, { issueNote: issue.issueNote, issueState: 'resolved', sourceQty: firstNonEmptyValue(issue.sourceQty, getDockDisplayQty(sourceRow), '0') });
+            if (!payload) {
+                showToast("Error", "Could not resolve that dock issue.", true);
+                return;
+            }
+            cacheDockIssueStatus(normalizedUid, payload);
+            dockIssueDataLoaded = true;
+            dockViewMode = 'docks';
+            selectedDockIssueUid = null;
+            selectedDockNum = firstNonEmptyValue(sourceRow.DOCK_NUM, payload.dock_num, null);
+            selectedDockStop = firstNonEmptyValue(sourceRow.STOPNUMBER, payload.stop_number, null);
+            dockViewLevel = selectedDockStop ? 2 : (selectedDockNum ? 1 : 0);
+            updateDockModeToggleUi();
+            markViewDirty('docks');
+            scheduleDocksRender(16);
+            showToast("Saving...", "Resolving dock issue...", false);
+            try {
+                await supabaseFetch('v2_dock_issue_status', 'POST', [payload]);
+                showToast("Success", "Dock issue resolved.");
+            } catch (error) {
+                showToast("Error", "Dock issue resolved on this device, but the shared update failed.", true);
             }
         }
 
         async function toggleDockItemState(uid, type) {
-            const item = socInventory.find(i => String(i.UNIQUE_ID || '') === String(uid || ''));
+            const item = findDockDisplayRowByUniqueId(uid) || socInventory.find(i => String(i.UNIQUE_ID || '') === String(uid || ''));
             if (!item) return;
             const stage = type === 'inspector' ? 'inspector' : 'checker';
             if (!canCurrentUserMarkDockStage(item, stage)) {
@@ -16328,21 +17281,98 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
 
+        function renderDockMistakeQueue(container, crumb, term = '') {
+            const resolvedState = getDockResolvedState();
+            const scopedRows = getScopedDocksItems(resolvedState.rows, `dock-display:${resolvedState.cacheKey}`);
+            const scopedRowIds = new Set(scopedRows.map((row) => String(row && row.UNIQUE_ID || '').trim()).filter(Boolean));
+            const queueItems = resolvedState.openIssues.filter((issue) => issue && scopedRowIds.has(issue.issueSourceUniqueId)).filter((issue) => {
+                if (!term) return true;
+                return getDockIssueQueueSearchText(issue).includes(term);
+            }).sort((a, b) => {
+                const dockCompare = String(a.dockNum || '').localeCompare(String(b.dockNum || ''), undefined, { numeric: true, sensitivity: 'base' });
+                if (dockCompare !== 0) return dockCompare;
+                const stopCompare = String(a.stopNumber || '').localeCompare(String(b.stopNumber || ''), undefined, { numeric: true, sensitivity: 'base' });
+                if (stopCompare !== 0) return stopCompare;
+                return String(a.sourceCommonName || '').localeCompare(String(b.sourceCommonName || ''), undefined, { sensitivity: 'base' });
+            });
+            renderMarkupChunkedByKey('dock-mistakes', container, crumb, queueItems, 'Mistake Queue', (issue) => {
+                const safeUid = esc(issue.issueSourceUniqueId || '');
+                const remainingQty = Math.max(0, parseAppNumber(issue.remainingQty) || 0);
+                return `<div class="rounded-2xl border border-red-200 bg-white p-4 shadow-sm cursor-pointer active:scale-[0.99] transition-transform mb-3" onclick="openDockIssueDetail('${safeUid}')"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-red-500">Flagged Issue</div><div class="mt-1 text-lg font-black text-slate-900 leading-tight break-words">${esc(issue.sourceCommonName || 'Dock Item')}</div><div class="mt-1 text-sm font-semibold text-slate-500 break-words">${esc(issue.sourceContSize || '-')}</div></div><div class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-red-600">Qty ${esc(formatDockDisplayQty(issue.sourceQty))}</div></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.14em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Dock ${esc(issue.dockNum || '-')}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Stop ${esc(issue.stopNumber || '-')}</span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">Loc ${esc(issue.sourceLocationCode || '-')}</span><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">Remain ${esc(formatDockDisplayQty(remainingQty))}</span></div><div class="mt-3 rounded-xl border border-orange-200 bg-orange-50 px-3 py-3 text-[12px] font-semibold text-orange-800 whitespace-pre-wrap"><span class="font-black">Issue:</span> ${esc(issue.issueNote || 'No note provided')}</div><div class="mt-3 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.14em] text-slate-400"><span>${esc(issue.sourceCustomerName || 'Unknown Customer')}</span><span><i class="ph-bold ph-caret-right text-lg align-middle text-slate-300"></i></span></div></div>`;
+            }, { approxCardHeight: 215, emptyHtml: `<div class="p-8 text-center text-gray-400">No open dock issues.</div>` });
+        }
+
+        function renderDockMistakeDetail(container, crumb, term = '') {
+            const issue = getDockIssueStatus(selectedDockIssueUid);
+            const sourceRow = findDockDisplayRowByUniqueId(selectedDockIssueUid);
+            if (!issue || !sourceRow) {
+                selectedDockIssueUid = null;
+                scheduleDocksRender(0);
+                return;
+            }
+            const { allocations, totalAllocatedQty } = getDockIssueAllocationTotals(issue.issueSourceUniqueId);
+            const sourceQty = Math.max(0, parseAppNumber(firstNonEmptyValue(issue.sourceQty, getDockDisplayQty(sourceRow), '0')) || 0);
+            const remainingQty = Math.max(0, sourceQty - totalAllocatedQty);
+            const safeIssueUid = esc(issue.issueSourceUniqueId || '');
+            const candidates = getDockIssueCandidateRows(issue.issueSourceUniqueId).filter((entry) => {
+                if (!entry || !entry.row) return false;
+                if (!term) return true;
+                return [
+                    entry.row.COMMONNAME,
+                    entry.row.CONTSIZE,
+                    entry.row.LOCATIONCODE,
+                    entry.row.LOTCODE,
+                    entry.row.ITEMCODE
+                ].map((value) => String(value || '').trim()).filter(Boolean).join(' ').toLowerCase().includes(term);
+            });
+            crumb.innerText = `Mistake Queue > ${issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item'}`;
+            const sourceDetailHtml = `<div class="rounded-2xl border border-red-200 bg-white p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-red-500">Original Dock Row</div><div class="mt-1 text-xl font-black text-slate-900 leading-tight break-words">${esc(sourceRow.COMMONNAME || issue.sourceCommonName || 'Dock Item')}</div><div class="mt-1 text-sm font-semibold text-slate-500 break-words">${esc(sourceRow.CONTSIZE || issue.sourceContSize || '-')}</div></div><div class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-red-600">Qty ${esc(formatDockDisplayQty(sourceQty))}</div></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.14em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Dock ${esc(sourceRow.DOCK_NUM || issue.dockNum || '-')}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Stop ${esc(sourceRow.STOPNUMBER || issue.stopNumber || '-')}</span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">Original Loc ${esc(sourceRow.LOCATIONCODE || issue.sourceLocationCode || '-')}</span><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">Remaining ${esc(formatDockDisplayQty(remainingQty))}</span></div><div class="mt-3 rounded-xl border border-orange-200 bg-orange-50 px-3 py-3 text-[12px] font-semibold text-orange-800 whitespace-pre-wrap"><span class="font-black">Issue:</span> ${esc(issue.issueNote || 'No note provided')}</div></div>`;
+            const allocationSummaryHtml = `<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm"><div class="flex items-center justify-between gap-3 mb-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Allocation Summary</div><div class="mt-1 text-base font-black text-slate-900">${esc(formatDockDisplayQty(totalAllocatedQty))} moved • ${esc(formatDockDisplayQty(remainingQty))} remaining</div></div><button class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="resolveDockIssue('${safeIssueUid}')">Resolve Issue</button></div>${renderDockIssueAllocationSummary(issue.issueSourceUniqueId)}</div>`;
+            const candidateRowsHtml = candidates.length ? candidates.map((entry) => {
+                const row = entry.row;
+                const masterUniqueId = String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim();
+                const existingAllocation = allocations.find((allocation) => allocation && allocation.altMasterUniqueId === masterUniqueId);
+                const isOriginal = !!entry.isOriginal;
+                const candidateQty = Math.max(0, parseAppNumber(firstNonEmptyValue(row && row.PTRAVAILABLE, '0')) || 0);
+                const buttonHtml = isOriginal
+                    ? `<button class="rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 cursor-default" disabled>Original Dock Location</button>`
+                    : `<button class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-sm active:scale-95" onclick="openDockAllocationModal('${safeIssueUid}', '${esc(masterUniqueId)}')">${existingAllocation ? `Update Qty (${esc(formatDockDisplayQty(existingAllocation.allocatedQty))})` : 'Use This Location'}</button>`;
+                return `<div class="rounded-2xl border ${isOriginal ? 'border-blue-200 bg-blue-50/70' : 'border-slate-200 bg-white'} p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] ${isOriginal ? 'text-blue-600' : 'text-slate-500'}">${isOriginal ? 'Original Row Reference' : 'Alternate Location'}</div><div class="mt-1 text-lg font-black text-slate-900 break-words">${esc(row.LOCATIONCODE || '-')}</div><div class="mt-1 text-sm font-semibold text-slate-500 break-words">${esc(row.LOTCODE || '-')} • ${esc(row.ITEMCODE || '-')}</div></div><div class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Avail ${esc(formatDockDisplayQty(candidateQty))}</div></div><div class="mt-3 text-sm font-semibold text-slate-600 break-words">${esc(row.COMMONNAME || issue.sourceCommonName || 'Dock Item')} • ${esc(row.CONTSIZE || issue.sourceContSize || '-')}</div><div class="mt-3 flex justify-end">${buttonHtml}</div></div>`;
+            }).join('') : `<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-center text-sm font-semibold text-slate-500">No matching alternate locations found for this search.</div>`;
+            container.innerHTML = `<div class="back-btn" onclick="selectedDockIssueUid=null; scheduleDocksRender(0)"><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${sourceDetailHtml}${allocationSummaryHtml}<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 mb-3">Matching ${esc(issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item')} • ${esc(issue.sourceContSize || sourceRow.CONTSIZE || '-')} Locations</div><div class="space-y-3">${candidateRowsHtml}</div></div></div>`;
+        }
+
         function renderDocks() {
             if (ensureViewDataForRender('docks')) return;
             const container = document.getElementById('docks-content');
             const crumb = document.getElementById('docks-crumb');
             const access = getRoleAccessState();
             const canEditDockConfig = canEditDockWorkflow();
-            if (access.isQc && !access.isAdmin && !access.isQcSupervisor && (((!dockTeamStatusLoaded) && dockTeamSchemaReady !== false) || ((!dockItemProgressLoaded) && dockItemSchemaReady !== false))) {
+            updateDockModeToggleUi();
+            const waitingForDockAssignments = access.isQc && !access.isAdmin && !access.isQcSupervisor && (((!dockTeamStatusLoaded) && dockTeamSchemaReady !== false) || ((!dockItemProgressLoaded) && dockItemSchemaReady !== false));
+            const waitingForDockIssues = (!dockIssueDataLoaded) && dockIssueStatusSchemaReady !== false && dockIssueAllocationSchemaReady !== false;
+            if (waitingForDockAssignments || waitingForDockIssues) {
                 if (!dockTeamStatusPromise) ensureDockTeamStatusLoaded().then(() => scheduleDocksRender(0)).catch(() => scheduleDocksRender(0));
                 if (!dockItemProgressPromise) ensureDockItemStatusLoaded().then(() => scheduleDocksRender(0)).catch(() => scheduleDocksRender(0));
+                if (!dockIssueDataPromise) ensureDockIssueDataLoaded().then(() => scheduleDocksRender(0)).catch(() => scheduleDocksRender(0));
                 if (!containerHasRenderableContent(container)) setContainerHtml(container, `<div class="p-8 text-center text-gray-400">Loading dock workflow...</div>`);
                 crumb.innerText = 'Loading Assignments';
                 return;
             }
             const term = document.getElementById('docks-search').value.toLowerCase().trim();
-            let items = getScopedDocksItems(socInventory);
+            const resolvedState = getDockResolvedState();
+            if (dockViewMode === 'mistakes') {
+                if (dockIssueStatusSchemaReady === false || dockIssueAllocationSchemaReady === false) {
+                    container.innerHTML = `<div class="p-8 text-center text-gray-400">Run dock_issue_resolution_migration.sql in Supabase to use the shared dock mistake queue.</div>`;
+                    crumb.innerText = 'Dock Setup Required';
+                    return;
+                }
+                if (selectedDockIssueUid) renderDockMistakeDetail(container, crumb, term);
+                else renderDockMistakeQueue(container, crumb, term);
+                return;
+            }
+
+            let items = getScopedDocksItems(resolvedState.rows, `dock-display:${resolvedState.cacheKey}`);
             if(term) items = filterBySearch(items, term, 'docks');
             if (items.length === 0) {
                 if (access.isQc && !access.isAdmin && !access.isQcSupervisor && (dockTeamSchemaReady === false || dockItemSchemaReady === false)) {
@@ -16368,9 +17398,9 @@ function toggleDriveQuickRequestItem(domId) {
                 let stopA = parseFloat(a.STOPNUMBER); if(isNaN(stopA)) stopA = 9999;
                 let stopB = parseFloat(b.STOPNUMBER); if(isNaN(stopB)) stopB = 9999;
                 if(stopA !== stopB) return stopA - stopB;
-                const nameCompare = String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''));
+                const nameCompare = String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''), undefined, { sensitivity: 'base' });
                 if (nameCompare !== 0) return nameCompare;
-                return String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, {numeric:true});
+                return String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, {numeric:true, sensitivity:'base'});
             };
 
             if (dockViewLevel === 0) {
@@ -16971,7 +18001,7 @@ function toggleDriveQuickRequestItem(domId) {
                 return salesOfficeInventoryById.get(normalizedUid) || findItemByUniqueId(normalizedUid);
             }
             if (normalizedSourceView === 'docks') {
-                return socInventoryById.get(normalizedUid) || findItemByUniqueId(normalizedUid);
+                return dockDisplayInventoryById.get(normalizedUid) || socInventoryById.get(normalizedUid) || findItemByUniqueId(normalizedUid);
             }
             return findItemByUniqueId(normalizedUid);
         }
@@ -19538,6 +20568,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (document.getElementById('endcap-modal') && !document.getElementById('endcap-modal').classList.contains('hidden')) return true;
             if (document.getElementById('dock-info-modal') && !document.getElementById('dock-info-modal').classList.contains('hidden')) return true;
             if (document.getElementById('dock-mistake-modal') && !document.getElementById('dock-mistake-modal').classList.contains('hidden')) return true;
+            if (document.getElementById('dock-allocation-modal') && !document.getElementById('dock-allocation-modal').classList.contains('hidden')) return true;
             return !!target.closest('input, textarea, select, button, label, a, .task-tab, .detail-tab, .back-btn, [contenteditable="true"], .protected-edit-bar');
         }
 
@@ -20645,19 +21676,27 @@ function toggleDriveQuickRequestItem(domId) {
         return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory relative bg-white p-4 rounded-xl border border-purple-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="flex justify-between items-start mb-1 gap-2"><div class="min-w-0 flex-1">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}</div><div class="font-black text-purple-700 bg-purple-50 px-2 py-1 rounded text-sm whitespace-nowrap ml-2 border border-purple-100">QTY: ${reqQty}</div></div><div class="app-card-meta-grid grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${statusChip}${reserveBadge}<span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">PTRAVAILABLE: ${item.PTRAVAILABLE||'0'}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${lot}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${priority}</span></div>${holdHtml}${requestSalesNoteHtml}</div>${inlineThumbHtml}</div>${actionBadge}</div></div>`;
             }
             if(sourceView === 'docks'){
-                let qty = item.QUANTITYORDERED || item.QTY_ORDERED || item.PTRAVAILABLE || '1';
+                const qty = formatDockDisplayQty(getDockDisplayQty(item));
+                const noteText = String(firstNonEmptyValue(item.DOCK_ISSUE_NOTE, item.DOCK_NOTE, '')).trim();
+                const issueState = String(firstNonEmptyValue(item.DOCK_ISSUE_STATE, '')).trim().toLowerCase();
                 let noteHtml = '';
-                if(item.DOCK_NOTE && String(item.DOCK_NOTE).trim() !== '') noteHtml += `<div class="mt-2 text-[12px] text-orange-800 bg-orange-100 p-2 rounded border border-orange-200 shadow-sm whitespace-pre-wrap"><span class="font-black">MISTAKE / NOTE:</span> ${item.DOCK_NOTE}</div>`;
+                if(noteText) noteHtml += `<div class="mt-2 text-[12px] text-orange-800 bg-orange-100 p-2 rounded border border-orange-200 shadow-sm whitespace-pre-wrap"><span class="font-black">MISTAKE / NOTE:</span> ${esc(noteText)}</div>`;
 
-                let checkState = JSON.parse(localStorage.getItem('gnc_dock_item_' + item.UNIQUE_ID) || '{"checker":false,"inspector":false}');
-                let isDimmed = checkState.checker && checkState.inspector;
+                const checkState = getDockItemProgress(item.UNIQUE_ID);
+                const isDimmed = checkState.checker && checkState.inspector;
                 let cardOpacity = isDimmed ? 'opacity-50' : 'opacity-100';
                 let chkClass = checkState.checker ? 'bg-[#007a4d] text-white border-[#007a4d]' : 'bg-gray-50 text-gray-500 border-gray-200';
                 let inspClass = checkState.inspector ? 'bg-[#007a4d] text-white border-[#007a4d]' : 'bg-gray-50 text-gray-500 border-gray-200';
+                const issueBadgeHtml = issueState === 'open'
+                    ? `<span class="bg-red-50 text-red-700 px-2 py-1 rounded border border-red-200">Issue Open</span>`
+                    : (issueState === 'resolved' ? `<span class="bg-amber-50 text-amber-700 px-2 py-1 rounded border border-amber-200">Issue Resolved</span>` : '');
+                const syntheticBadgeHtml = item.IS_SYNTHETIC_DOCK_ROW
+                    ? `<span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-200">Alt Loc</span>`
+                    : '';
 
                 let actionBtns = `<div class="flex gap-2 mt-3 pt-3 border-t border-gray-100"><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${chkClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'checker')"><i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Verified</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${inspClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'inspector')"><i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspect</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border border-red-200 bg-red-50 text-red-600 shadow-sm transition-colors hover:bg-red-100 active:scale-95" onclick="event.stopPropagation(); openDockItemMistakeModal('${safeUidJs}')"><i class="ph-bold ph-flag mr-1 text-lg align-middle"></i> Flag Issue</button></div>`;
 
-        return `<div class="flex items-start w-full item-row app-smart-card relative bg-white p-4 rounded-xl border border-gray-300 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start border-b border-gray-100 pb-2 mb-2 w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="app-card-title font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="text-[10px] font-mono text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded border border-gray-200 w-max">ID: ${item.ITEMCODE||'-'}</div></div>${inlineThumbHtml}</div><div class="app-card-meta-grid grid grid-cols-2 gap-3 mb-2"><div><div class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Quantity & Specs</div><div class="font-bold text-sm text-[#007a4d]">${qty} EA &bull; ${item.CONTSIZE||'-'}</div></div><div><div class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Location</div><div class="font-bold text-sm text-blue-700">${item.LOCATIONCODE||'No Loc'}</div></div></div>${item.DOCK_SPEC || item.DOCK_CALIPER ? `<div class="text-[11px] font-bold text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-100 mb-2 w-max">Spec: ${item.DOCK_SPEC||'N/A'} | Caliper: ${item.DOCK_CALIPER||'N/A'}</div>` : ''}${noteHtml}${actionBtns}</div></div>`;
+        return `<div class="flex items-start w-full item-row app-smart-card relative bg-white p-4 rounded-xl border border-gray-300 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" onclick="handleCardClick('${item.DOM_ID}', '${safeUidJs}', '${sourceView}')"><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start border-b border-gray-100 pb-2 mb-2 w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="app-card-title font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="text-[10px] font-mono text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded border border-gray-200 w-max">ID: ${item.ITEMCODE||'-'}</div></div>${inlineThumbHtml}</div><div class="flex flex-wrap gap-2 mb-2 text-[10px] font-black uppercase tracking-[0.14em]">${issueBadgeHtml}${syntheticBadgeHtml}</div><div class="app-card-meta-grid grid grid-cols-2 gap-3 mb-2"><div><div class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Quantity & Specs</div><div class="font-bold text-sm text-[#007a4d]">${qty} EA &bull; ${item.CONTSIZE||'-'}</div></div><div><div class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Location</div><div class="font-bold text-sm text-blue-700">${item.LOCATIONCODE||'No Loc'}</div></div></div>${item.DOCK_SPEC || item.DOCK_CALIPER ? `<div class="text-[11px] font-bold text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-100 mb-2 w-max">Spec: ${item.DOCK_SPEC||'N/A'} | Caliper: ${item.DOCK_CALIPER||'N/A'}</div>` : ''}${noteHtml}${actionBtns}</div></div>`;
             }
             if(sourceView==='sales-office-order'){
                 const orderQty = firstNonEmptyValue(item.ORDER_QTY, item.REQ_QTY, '0');
