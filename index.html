@@ -671,7 +671,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.21.05</div>
+        <div id="header-version" class="nav-version-pill">V2026.04.22.03</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1197,6 +1197,9 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         const REALTIME_RECOVERY_GRACE_MS = 3200;
         const DISABLE_POLLING_WHEN_REALTIME_SUPPORTED = true;
         const HEAVY_DATASET_KEYS = new Set(['master', 'avOpen', 'reserves', 'soc', 'salesOffice', 'cav', 'avHotPriceKeys', 'avNotes']);
+        const MANUAL_SYNC_STATUS_POLL_MS = 2500;
+        const MANUAL_SYNC_STATUS_STALE_MS = 12000;
+        const MANUAL_SYNC_FROZEN_DATASET_KEYS = new Set(['master', 'avOpen', 'soc', 'reserves', 'cav', 'salesOffice', 'avHotPriceKeys']);
         let realtimeChannels = [];
         let realtimeChangeTimer = null;
         let realtimeChangeQueue = [];
@@ -1234,6 +1237,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         const PHOTO_JPEG_QUALITY = 0.98;
         const PHOTO_FIELD_PERSIST_DEBOUNCE_MS = 100;
         const INTERACTION_REFRESH_DEFER_MS = 1400;
+        const DETAIL_TRANSITION_GRACE_MS = 650;
+        const DETAIL_HYDRATION_DELAY_MS = 24;
         const LOCAL_REALTIME_ECHO_TTL_MS = 4200;
         const MAX_INTERNAL_PERF_SAMPLES = 40;
         const MAX_SEARCH_FILTER_CACHE_ENTRIES = 12;
@@ -1262,7 +1267,16 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             visibleRefreshDurations: Object.create(null),
             deferredDatasetLoads: 0,
             deferredVisibleCatchups: 0,
-            deferredViewEnterRefreshes: 0
+            deferredViewEnterRefreshes: 0,
+            detailLookupMapHits: 0,
+            detailLookupFallbackScans: 0,
+            taskHotCacheHits: 0,
+            detailLookupDurations: Object.create(null),
+            detailShellDurations: Object.create(null),
+            detailHydrationDurations: Object.create(null),
+            taskStateBuildDurations: Object.create(null),
+            taskDrilldownDurations: Object.create(null),
+            taskFilterRenderDurations: Object.create(null)
         });
         let recentLocalRealtimeWrites = new Map();
         let pendingPhotoUploads = new Map();
@@ -1314,8 +1328,16 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         let avResolvedBaseStateCache = null;
         let taskResolvedStateKey = '';
         let taskResolvedStateCache = null;
+        let taskHotStateCache = new Map();
         let taskHotPriceSubsetCacheKey = '';
         let taskHotPriceSubsetCache = null;
+        let taskGenusOptionsCache = new Map();
+        let taskContSizeOptionsCache = new Map();
+        let taskLocationDetailStateCache = new Map();
+        let taskGenusFilterScopeKey = '';
+        let taskContSizeFilterScopeKey = '';
+        let taskLocationDetailFilterScopeKey = '';
+        let taskHotCacheWarmTimer = null;
         let docksScopedItemsCacheKey = '';
         let docksScopedItemsCache = null;
         let requestScopedItemsCacheKey = '';
@@ -1407,8 +1429,19 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             avResolvedBaseStateCache = null;
             taskResolvedStateKey = '';
             taskResolvedStateCache = null;
+            taskHotStateCache.clear();
             taskHotPriceSubsetCacheKey = '';
             taskHotPriceSubsetCache = null;
+            taskGenusOptionsCache.clear();
+            taskContSizeOptionsCache.clear();
+            taskLocationDetailStateCache.clear();
+            taskGenusFilterScopeKey = '';
+            taskContSizeFilterScopeKey = '';
+            taskLocationDetailFilterScopeKey = '';
+            if (taskHotCacheWarmTimer) {
+                clearTimeout(taskHotCacheWarmTimer);
+                taskHotCacheWarmTimer = null;
+            }
             docksScopedItemsCacheKey = '';
             docksScopedItemsCache = null;
             requestScopedItemsCacheKey = '';
@@ -4030,6 +4063,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 invalidateAvNotesCommonNameIndex();
             }
 
+            if (changed) refreshRealtimeDetailLookupIndexes(tableName);
+
             if (isLocalEcho) {
                 if (tableName === 'v2_active_request') requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
                 recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, `${tableName}:echo`);
@@ -4118,6 +4153,16 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return (Date.now() - lastViewSwitchAt) < VIEW_SWITCH_GRACE_MS;
         }
 
+        function isDetailTransitionActive() {
+            return Date.now() < detailTransitionActiveUntil;
+        }
+
+        function markDetailTransitionActivity(durationMs = DETAIL_TRANSITION_GRACE_MS) {
+            const nextUntil = Date.now() + Math.max(180, Number(durationMs) || DETAIL_TRANSITION_GRACE_MS);
+            detailTransitionActiveUntil = Math.max(detailTransitionActiveUntil, nextUntil);
+            return detailTransitionActiveUntil;
+        }
+
         function shouldDeferInteractiveBackgroundWork() {
             return !!(
                 hasActiveTextEntryFocus()
@@ -4125,6 +4170,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 || isUserActivelyScrolling()
                 || isUserActivelyTouching()
                 || isUserInRecentInteractionWindow()
+                || isDetailTransitionActive()
                 || hasExtendedInteractionBlockers()
             );
         }
@@ -4205,7 +4251,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
         async function forceRefreshViewDatasets(viewId, options = {}) {
             const targetView = resolveRealtimeContextViewId(viewId);
-            const targets = getViewRefreshTargets(targetView, { includeBackground: options.includeBackground !== false, loadedOnly: true });
+            await refreshManualSyncStatus(false).catch(() => {});
+            if (shouldPauseManualSyncViewRefresh(targetView)) {
+                updateSyncDiagnostics('manual-sync');
+                return false;
+            }
+            const targets = filterManualSyncEligibleTargets(getViewRefreshTargets(targetView, { includeBackground: options.includeBackground !== false, loadedOnly: true }));
             if (!targets.length || backgroundRefreshInFlight) return false;
             backgroundRefreshInFlight = true;
             updateSyncDiagnostics('refreshing');
@@ -4247,6 +4298,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 clearVisibleViewPollSync();
                 return;
             }
+            if (hasActiveManualSync() && shouldPauseManualSyncViewRefresh(policy.viewId)) {
+                clearVisibleViewPollSync();
+                updateSyncDiagnostics('manual-sync');
+                return;
+            }
             if (backgroundRefreshInFlight || shouldDeferInteractiveBackgroundWork()) {
                 syncVisibleViewPoll(policy.viewId, { delay: Math.max(800, INTERACTION_REFRESH_DEFER_MS) });
                 return;
@@ -4265,6 +4321,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 visibleViewPollTimer = null;
             }
             const policy = getLiveSyncPolicy(viewId);
+            if (hasActiveManualSync() && shouldPauseManualSyncViewRefresh(policy.viewId)) {
+                clearVisibleViewPollSync();
+                updateSyncDiagnostics('manual-sync');
+                return;
+            }
             activeVisibleViewPollViewId = policy.viewId;
             activeVisibleViewPollMs = policy.pollMs;
             if (!policy.pollMs || !currentUser || document.hidden) {
@@ -4291,6 +4352,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 fallbackSyncInterval = null;
             }
             if (!currentUser) return;
+            if (hasActiveManualSync() && shouldPauseManualSyncViewRefresh()) {
+                liveSyncMode = 'idle';
+                updateSyncDiagnostics('manual-sync');
+                return;
+            }
             const tableList = normalizeRealtimeTableList(requiredTables);
             if (!tableList.length) {
                 realtimeStartupUntil = 0;
@@ -4348,6 +4414,15 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function setRealtimeSubscriptionsForView(viewId, force = false) {
             const nextView = String(viewId || '').trim() || 'home';
             const policy = getLiveSyncPolicy(nextView);
+            if (hasActiveManualSync() && shouldPauseManualSyncViewRefresh(policy.viewId)) {
+                cleanupRealtime();
+                clearVisibleViewPollSync();
+                activeRealtimeViewId = nextView;
+                activeRealtimeContextViewId = policy.viewId;
+                activeRealtimeTables = [];
+                updateSyncDiagnostics('manual-sync');
+                return;
+            }
             const desiredTables = policy.realtimeTables;
             const desiredPollMs = policy.pollMs;
             const sameTables = realtimeTableListsEqual(activeRealtimeTables, desiredTables);
@@ -4446,6 +4521,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
         function performLogout() {
             cleanupRealtime();
+            clearManualSyncStatusPoll();
+            manualSyncStatusState = null;
             ['gnc_user_v3','gnc_pin_v3','gnc_role_v3'].forEach((key) => {
                 try { localStorage.removeItem(key); } catch (e) {}
             });
@@ -4628,7 +4705,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const restoreTop = Math.max(0, Number(detailReturnState.scrollTop || 0));
             scheduleUiRender(`detail-return:${detailReturnState.viewId}:${restoreTop}`, () => {
                 setMainAreaScrollTop(restoreTop);
-                requestAnimationFrame(() => setMainAreaScrollTop(restoreTop));
+                requestAnimationFrame(() => {
+                    if (Math.abs(getMainAreaScrollTop() - restoreTop) > 2) setMainAreaScrollTop(restoreTop);
+                });
             });
         }
 
@@ -5867,7 +5946,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
 
         let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let salesOfficeInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
-        let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
+        let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let managerReviewInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
         let reviewSearchTerm=''; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set();
         let ncrCompletionSchemaReady=null; let ncrCompletionSchemaPromise=null; let ncrCompletionSchemaWarningShown=false; let ncrCompletionLoadPromise=null; let ncrCompletionsLoaded=false;
         let ncrEmailPromptResolver=null;
@@ -5879,7 +5958,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         let lastBackgroundRefreshAt=0;
         let cacheWarmPromise=null;
         let cachePersistTimer=null; let cachePersistIdleHandle=null; let lastCachePersistAt=0; let pendingCachePersist=false;
-        let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let hasAppliedInitialHomeView=false;
+        let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0;
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
@@ -6133,6 +6212,11 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let lastSyncTime=new Date().toISOString();
         let lastSuccessfulSyncTime = "";
         let syncDiagnosticsOverride = "";
+        let manualSyncStatusState = null;
+        let manualSyncStatusPollTimer = null;
+        let manualSyncStatusPollInFlight = false;
+        let lastManualSyncStatusCheckedAt = 0;
+        let manualSyncPostRefreshInFlight = false;
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         let pendingEditsCache = null;
@@ -6181,7 +6265,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.21.06';
+        const APP_VERSION = 'V2026.04.22.03';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -6302,26 +6386,179 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             return [currentUser, currentUserDisplay].some(value => isSharedTaskCollaboratorUser(value));
         }
 
+        function normalizeManualSyncStatusPayload(raw = null) {
+            const source = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
+            return {
+                active: !!source.active,
+                runId: String(firstNonEmptyValue(source.runId, source.run_id, '')).trim(),
+                currentStage: String(firstNonEmptyValue(source.currentStage, source.current_stage, '')).trim().toLowerCase(),
+                currentStageLabel: String(firstNonEmptyValue(source.currentStageLabel, source.current_stage_label, '')).trim(),
+                stageIndex: Math.max(0, Number(firstNonEmptyValue(source.stageIndex, source.stage_index, 0)) || 0),
+                stageOrder: Array.isArray(source.stageOrder) ? source.stageOrder.filter(Boolean).map((value) => String(value || '').trim()) : [],
+                completedStages: Array.isArray(source.completedStages) ? source.completedStages.filter(Boolean).map((value) => String(value || '').trim()) : [],
+                stageResults: Array.isArray(source.stageResults) ? source.stageResults.slice() : [],
+                message: String(firstNonEmptyValue(source.message, '')).trim(),
+                error: String(firstNonEmptyValue(source.error, '')).trim(),
+                startedAt: String(firstNonEmptyValue(source.startedAt, source.started_at, '')).trim(),
+                updatedAt: String(firstNonEmptyValue(source.updatedAt, source.updated_at, '')).trim(),
+                finishedAt: String(firstNonEmptyValue(source.finishedAt, source.finished_at, '')).trim()
+            };
+        }
+
+        function hasActiveManualSync() {
+            return !!(manualSyncStatusState && manualSyncStatusState.active);
+        }
+
+        function getManualSyncProgressInfo(status = manualSyncStatusState) {
+            const state = normalizeManualSyncStatusPayload(status);
+            const total = Math.max(0, Array.isArray(state.stageOrder) ? state.stageOrder.length : 0);
+            const completed = Math.min(total || state.stageIndex, Math.max(0, Number(state.stageIndex) || 0));
+            return {
+                completed,
+                total,
+                text: total ? `${completed}/${total}` : ''
+            };
+        }
+
+        function getManualSyncStatusText(status = manualSyncStatusState) {
+            const state = normalizeManualSyncStatusPayload(status);
+            return String(firstNonEmptyValue(state.message, state.currentStageLabel, state.currentStage, '')).trim();
+        }
+
+        function isDatasetFrozenDuringManualSync(key = '') {
+            return hasActiveManualSync() && MANUAL_SYNC_FROZEN_DATASET_KEYS.has(String(key || '').trim());
+        }
+
+        function getManualSyncViewRefreshTargets(viewId = '') {
+            const targetView = resolveRealtimeContextViewId(viewId || activeRealtimeContextViewId || activeRealtimeViewId || getCurrentVisibleViewId() || 'home');
+            return getViewRefreshTargets(targetView, { includeBackground: true, loadedOnly: false });
+        }
+
+        function shouldPauseManualSyncViewRefresh(viewId = '') {
+            if (!hasActiveManualSync()) return false;
+            return getManualSyncViewRefreshTargets(viewId).some((item) => isDatasetFrozenDuringManualSync(item && item.key));
+        }
+
+        function filterManualSyncEligibleTargets(targets = []) {
+            return (Array.isArray(targets) ? targets : []).filter((item) => !isDatasetFrozenDuringManualSync(item && item.key));
+        }
+
+        function clearManualSyncStatusPoll() {
+            if (manualSyncStatusPollTimer) {
+                clearTimeout(manualSyncStatusPollTimer);
+                manualSyncStatusPollTimer = null;
+            }
+        }
+
+        async function fetchManualSyncStatusFromScript() {
+            const responseData = await postGoogleScriptJsonPayload({ type: 'manual_status' }, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Manual Sync Status');
+            if (responseData && responseData.ok === false) {
+                throw new Error(String(firstNonEmptyValue(responseData.message, 'Could not load manual sync status.')).trim());
+            }
+            return normalizeManualSyncStatusPayload(responseData);
+        }
+
+        function scheduleManualSyncStatusPoll(delayMs = MANUAL_SYNC_STATUS_POLL_MS) {
+            clearManualSyncStatusPoll();
+            if (!currentUser || navigator.onLine === false) return;
+            manualSyncStatusPollTimer = setTimeout(() => {
+                manualSyncStatusPollTimer = null;
+                refreshManualSyncStatus(true).catch(() => {
+                    if (hasActiveManualSync()) scheduleManualSyncStatusPoll(Math.max(MANUAL_SYNC_STATUS_POLL_MS, 4000));
+                });
+            }, Math.max(500, Number(delayMs) || MANUAL_SYNC_STATUS_POLL_MS));
+        }
+
+        function applyManualSyncStatus(status = null, options = {}) {
+            const opts = options || {};
+            const previous = normalizeManualSyncStatusPayload(manualSyncStatusState);
+            const next = normalizeManualSyncStatusPayload(status);
+            const wasActive = !!previous.active;
+            const isActive = !!next.active;
+            manualSyncStatusState = next;
+            syncGoogleScriptButton();
+
+            if (isActive) {
+                if (shouldPauseManualSyncViewRefresh()) {
+                    cleanupRealtime();
+                    clearVisibleViewPollSync();
+                }
+                updateSyncDiagnostics('manual-sync');
+                if (!opts.skipPollSchedule) scheduleManualSyncStatusPoll(opts.delayMs);
+                return next;
+            }
+
+            clearManualSyncStatusPoll();
+            if (wasActive) {
+                refreshRealtimeSubscriptionsForCurrentView(true);
+                if (!manualSyncPostRefreshInFlight) {
+                    manualSyncPostRefreshInFlight = true;
+                    fetchBackgroundData('force')
+                        .catch(() => {})
+                        .finally(() => {
+                            manualSyncPostRefreshInFlight = false;
+                            updateSyncDiagnostics(liveSyncMode === 'offline' ? 'offline' : (liveSyncMode || 'idle'));
+                        });
+                } else {
+                    updateSyncDiagnostics(liveSyncMode === 'offline' ? 'offline' : (liveSyncMode || 'idle'));
+                }
+                if (!opts.suppressToast) {
+                    if (next.error) showToast('Sync Error', next.message || next.error, true);
+                    else showToast('Sync Complete', next.message || 'Manual sync complete.', false);
+                }
+            } else {
+                updateSyncDiagnostics(liveSyncMode === 'offline' ? 'offline' : (liveSyncMode || 'idle'));
+            }
+            return next;
+        }
+
+        async function refreshManualSyncStatus(force = false) {
+            if (!currentUser || navigator.onLine === false) return manualSyncStatusState;
+            if (manualSyncStatusPollInFlight) return manualSyncStatusState;
+            const now = Date.now();
+            if (!force && !hasActiveManualSync() && lastManualSyncStatusCheckedAt && (now - lastManualSyncStatusCheckedAt) < MANUAL_SYNC_STATUS_STALE_MS) {
+                return manualSyncStatusState;
+            }
+            manualSyncStatusPollInFlight = true;
+            try {
+                const nextStatus = await fetchManualSyncStatusFromScript();
+                lastManualSyncStatusCheckedAt = Date.now();
+                return applyManualSyncStatus(nextStatus, { skipPollSchedule: false, suppressToast: true });
+            } catch (error) {
+                lastManualSyncStatusCheckedAt = Date.now();
+                throw error;
+            } finally {
+                manualSyncStatusPollInFlight = false;
+            }
+        }
+
         function syncGoogleScriptButton() {
             const button = document.getElementById('run-google-script-btn');
             if (!button) return;
             const label = button.querySelector('[data-run-script-label]');
             const isVisible = isDylanCollygeUser();
+            const manualSyncActive = hasActiveManualSync();
+            const progress = getManualSyncProgressInfo();
             button.classList.toggle('hidden', !isVisible);
-            button.disabled = !!window.googleScriptRunInFlight;
-            button.classList.toggle('opacity-60', !!window.googleScriptRunInFlight);
-            button.classList.toggle('cursor-wait', !!window.googleScriptRunInFlight);
-            if (label) label.innerText = window.googleScriptRunInFlight ? 'Running...' : 'Run Script';
+            button.disabled = !!window.googleScriptRunInFlight || manualSyncActive;
+            button.classList.toggle('opacity-60', !!window.googleScriptRunInFlight || manualSyncActive);
+            button.classList.toggle('cursor-wait', !!window.googleScriptRunInFlight || manualSyncActive);
+            if (label) {
+                if (window.googleScriptRunInFlight) label.innerText = 'Starting...';
+                else if (manualSyncActive) label.innerText = progress.text ? `Sync ${progress.text}` : 'Syncing...';
+                else label.innerText = 'Run Script';
+            }
         }
 
         async function runGoogleAppsScriptTrigger() {
             if (!isDylanCollygeUser() || window.googleScriptRunInFlight) return false;
             window.googleScriptRunInFlight = true;
             syncGoogleScriptButton();
-            showToast('Processing...', 'Starting Google Apps Script...', false);
+            showToast('Processing...', 'Starting full manual sync...', false);
             try {
                 const payload = {
                     type: 'manual_run',
+                    job: 'all',
                     trigger: 'header_button',
                     requested_by: currentUserDisplay || currentUser || 'Unknown',
                     requested_at: new Date().toISOString()
@@ -6333,10 +6570,33 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
                     throw new Error(responseMessage || `Manual sync failed (${responseData.status || 0})`);
                 }
                 if (responseStatus === 'busy') {
+                    applyManualSyncStatus({
+                        active: true,
+                        runId: String(firstNonEmptyValue(responseData && responseData.runId, '')).trim(),
+                        currentStage: String(firstNonEmptyValue(responseData && responseData.currentStage, '')).trim(),
+                        currentStageLabel: String(firstNonEmptyValue(responseData && responseData.currentStageLabel, responseData && responseData.currentStage, '')).trim(),
+                        message: responseMessage || 'A manual sync is already running.'
+                    }, { delayMs: 500, suppressToast: true });
                     showToast('Already Running', responseMessage || 'A manual sync is already running.', true);
                 } else if (responseStatus === 'queued') {
+                    applyManualSyncStatus({
+                        active: true,
+                        runId: String(firstNonEmptyValue(responseData && responseData.runId, '')).trim(),
+                        stageOrder: Array.isArray(responseData && responseData.stageOrder) ? responseData.stageOrder : ['drive','soc','reserves','cav'],
+                        stageIndex: 0,
+                        currentStage: 'queued',
+                        currentStageLabel: 'Queued',
+                        message: responseMessage || 'Manual sync queued.'
+                    }, { delayMs: 700, suppressToast: true });
                     showToast('Started', responseMessage || 'Google Apps Script queued successfully.');
                 } else {
+                    applyManualSyncStatus({
+                        active: true,
+                        runId: String(firstNonEmptyValue(responseData && responseData.runId, '')).trim(),
+                        currentStage: 'queued',
+                        currentStageLabel: 'Queued',
+                        message: responseMessage || 'Manual sync request sent.'
+                    }, { delayMs: 700, suppressToast: true });
                     showToast('Started', responseMessage || 'Google Apps Script request sent.');
                 }
             } catch (err) {
@@ -6954,6 +7214,9 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             if (!definition) return false;
             const wantsFull = mode === 'full';
             const state = getDatasetState(key);
+            if (isDatasetFrozenDuringManualSync(key)) {
+                return wantsFull ? !!state.fullLoaded : !!(state.initialLoaded || state.fullLoaded);
+            }
 
             if (options.force && !wantsFull && state.fullLoaded) {
                 return ensureDatasetLoaded(key, 'full', options);
@@ -7013,6 +7276,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         function queueDatasetLoad(key, mode = 'full', delayMs = 180) {
             const queueKey = `${key}:${mode}`;
             const state = getDatasetState(key);
+            if (isDatasetFrozenDuringManualSync(key)) return;
             const alreadyLoaded = mode === 'full'
                 ? (state.fullLoaded || !!state.fullPromise)
                 : (state.initialLoaded || state.fullLoaded || !!state.initialPromise || !!state.fullPromise);
@@ -7176,14 +7440,24 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         function ensureViewDataForRender(viewId) {
             const config = getViewLoadingConfig(viewId);
             if (!config) return false;
+            const blockedByManualSync = hasActiveManualSync() && config.required.some((item) => isDatasetFrozenDuringManualSync(item.key) && !isDatasetLoaded(item.key, item.mode));
+            if (blockedByManualSync) {
+                showViewLoadingState(viewId, 'Manual sync running...');
+                updateSyncDiagnostics('manual-sync');
+                return true;
+            }
             const pending = config.required.filter((item) => !isDatasetLoaded(item.key, item.mode));
             if (!pending.length) {
-                (config.background || []).forEach((item) => queueDatasetLoad(item.key, item.mode));
+                (config.background || []).forEach((item) => {
+                    if (!isDatasetFrozenDuringManualSync(item.key)) queueDatasetLoad(item.key, item.mode);
+                });
                 return false;
             }
             showViewLoadingState(viewId, config.label);
             Promise.all(pending.map((item) => ensureDatasetLoaded(item.key, item.mode))).then(() => {
-                (config.background || []).forEach((item) => queueDatasetLoad(item.key, item.mode));
+                (config.background || []).forEach((item) => {
+                    if (!isDatasetFrozenDuringManualSync(item.key)) queueDatasetLoad(item.key, item.mode);
+                });
                 markViewDirty(viewId);
                 if (isViewVisible(viewId)) renderViewContent(viewId, false, true);
             }).catch((error) => {
@@ -7198,6 +7472,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
                 updateSyncDiagnostics('offline');
                 return false;
             }
+            await refreshManualSyncStatus(false).catch(() => {});
             if (backgroundRefreshInFlight) return false;
             if (!force && shouldDeferInteractiveBackgroundWork()) {
                 queueVisibleDatasetCatchup(INTERACTION_REFRESH_DEFER_MS);
@@ -7221,6 +7496,12 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
                 : getVisibleRefreshTargets(loadedKeys, { includeBackground: false })
                     .filter((item) => isDatasetStale(item.key, getDatasetRefreshMaxAge(item.key, item.mode)))
                     .filter((item) => !(item.key === 'requests' && shouldRunRequestViewLiveSync()));
+            const eligibleTargets = filterManualSyncEligibleTargets(targets);
+            if (!eligibleTargets.length) {
+                if (hasActiveManualSync()) updateSyncDiagnostics('manual-sync');
+                else updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'idle');
+                return true;
+            }
             if (!targets.length) {
                 updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'idle');
                 return true;
@@ -7228,7 +7509,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             backgroundRefreshInFlight = true;
             updateSyncDiagnostics('refreshing');
             try {
-                await Promise.all(targets.map((item) => ensureDatasetLoaded(item.key, item.mode, { force: true })));
+                await Promise.all(eligibleTargets.map((item) => ensureDatasetLoaded(item.key, item.mode, { force: true })));
                 lastBackgroundRefreshAt = Date.now();
                 updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'idle');
                 return true;
@@ -7239,6 +7520,10 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         function refreshViewDatasetsOnEnter(viewId, options = {}) {
             const targetView = resolveRealtimeContextViewId(viewId);
             if (!targetView) return;
+            if (shouldPauseManualSyncViewRefresh(targetView)) {
+                updateSyncDiagnostics('manual-sync');
+                return;
+            }
             const now = Date.now();
             if (!options.force && shouldDeferInteractiveBackgroundWork()) {
                 incrementInternalPerfCounter('deferredViewEnterRefreshes');
@@ -7273,18 +7558,96 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         }
         function findItemByUniqueId(uid) {
             const normalizedUid = String(uid || '').trim();
-            const masterItem = normalizedUid ? (masterInventoryById.get(normalizedUid) || fullInventory.find(i=>i.UNIQUE_ID===uid)) : null;
+            const masterItem = normalizedUid ? (masterInventoryById.get(normalizedUid) || fullInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)) : null;
             if (masterItem) return masterItem;
-            return avOpenInventory.find(i=>i.UNIQUE_ID===uid)
-                || avHotPriceKeysInventory.find(i=>i.UNIQUE_ID===uid)
-                || lowStockInventory.find(i=>i.UNIQUE_ID===uid)
-                || reservesInventory.find(i=>i.UNIQUE_ID===uid)
-                || cavInventory.find(i=>i.UNIQUE_ID===uid)
-                || requestsInventory.find(i=>i.UNIQUE_ID===uid)
-                || socInventory.find(i=>i.UNIQUE_ID===uid)
-                || managerReviewInventory.find(i=>i.UNIQUE_ID===uid)
-                || salesOfficeInventory.find(i=>i.UNIQUE_ID===uid)
+            const indexedMatch = normalizedUid
+                ? (
+                    avOpenInventoryById.get(normalizedUid)
+                    || avHotPriceKeysInventoryById.get(normalizedUid)
+                    || lowStockInventoryById.get(normalizedUid)
+                    || reservesInventoryById.get(normalizedUid)
+                    || cavInventoryById.get(normalizedUid)
+                    || requestsInventoryById.get(normalizedUid)
+                    || socInventoryById.get(normalizedUid)
+                    || managerReviewInventoryById.get(normalizedUid)
+                    || salesOfficeInventoryById.get(normalizedUid)
+                )
+                : null;
+            if (indexedMatch) {
+                incrementInternalPerfCounter('detailLookupMapHits');
+                return indexedMatch;
+            }
+            incrementInternalPerfCounter('detailLookupFallbackScans');
+            return avOpenInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
+                || avHotPriceKeysInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
+                || lowStockInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
+                || reservesInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
+                || cavInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
+                || requestsInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
+                || socInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
+                || managerReviewInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
+                || salesOfficeInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
                 || null;
+        }
+
+        function rebuildInventoryByIdMap(rows = []) {
+            const nextMap = new Map();
+            (Array.isArray(rows) ? rows : []).forEach((item) => {
+                const uniqueId = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '')).trim();
+                if (uniqueId && !nextMap.has(uniqueId)) nextMap.set(uniqueId, item);
+            });
+            return nextMap;
+        }
+
+        function rebuildRequestInventoryIndexes() {
+            requestsInventoryById = rebuildInventoryByIdMap(requestsInventory);
+            requestsInventoryByMasterId = new Map();
+            (Array.isArray(requestsInventory) ? requestsInventory : []).forEach((row) => {
+                const masterId = String(firstNonEmptyValue(row && row.MASTER_ID, row && row.MASTER_UNIQUE_ID, row && row.master_id, '')).trim();
+                if (!masterId) return;
+                if (!requestsInventoryByMasterId.has(masterId)) requestsInventoryByMasterId.set(masterId, []);
+                requestsInventoryByMasterId.get(masterId).push(row);
+            });
+        }
+
+        function rebuildDetailLookupIndexes() {
+            avOpenInventoryById = rebuildInventoryByIdMap(avOpenInventory);
+            avHotPriceKeysInventoryById = rebuildInventoryByIdMap(avHotPriceKeysInventory);
+            lowStockInventoryById = rebuildInventoryByIdMap(lowStockInventory);
+            socInventoryById = rebuildInventoryByIdMap(socInventory);
+            reservesInventoryById = rebuildInventoryByIdMap(reservesInventory);
+            managerReviewInventoryById = rebuildInventoryByIdMap(managerReviewInventory);
+            salesOfficeInventoryById = rebuildInventoryByIdMap(salesOfficeInventory);
+            cavInventoryById = rebuildInventoryByIdMap(cavInventory);
+            rebuildRequestInventoryIndexes();
+        }
+
+        function refreshRealtimeDetailLookupIndexes(tableName = '') {
+            const safeTableName = String(tableName || '').trim();
+            if (!safeTableName) return;
+            if (safeTableName === 'v2_active_request') {
+                rebuildRequestInventoryIndexes();
+                return;
+            }
+            if (safeTableName === 'v2_reserves') {
+                reservesInventoryById = rebuildInventoryByIdMap(reservesInventory);
+                return;
+            }
+            if (safeTableName === 'v2_soc_master') {
+                socInventoryById = rebuildInventoryByIdMap(socInventory);
+                return;
+            }
+            if (safeTableName === 'v2_sales_office') {
+                salesOfficeInventoryById = rebuildInventoryByIdMap(salesOfficeInventory);
+                return;
+            }
+            if (safeTableName === 'v2_cav_import') {
+                cavInventoryById = rebuildInventoryByIdMap(cavInventory);
+                return;
+            }
+            if (safeTableName === 'v2_master_inventory') {
+                avOpenInventoryById = rebuildInventoryByIdMap(avOpenInventory);
+            }
         }
 
         function getMasterInventoryExactKey(item) {
@@ -7689,14 +8052,26 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         function findRequestRowByUniqueId(uid) {
             const normalizedUid = String(uid || '').trim();
             if (!normalizedUid) return null;
-            const exact = requestsInventory.find((row) => String((row && row.UNIQUE_ID) || '').trim() === normalizedUid);
-            if (exact) return exact;
-            const linkedPending = requestsInventory.find((row) => {
+            const exact = requestsInventoryById.get(normalizedUid);
+            if (exact) {
+                incrementInternalPerfCounter('detailLookupMapHits');
+                return exact;
+            }
+            const linkedRows = requestsInventoryByMasterId.get(normalizedUid) || [];
+            if (linkedRows.length) {
+                incrementInternalPerfCounter('detailLookupMapHits');
+                const linkedPending = linkedRows.find((row) => row && !row.REQ_ARCHIVED && !isRequestComplete(row));
+                return linkedPending || linkedRows[0] || null;
+            }
+            incrementInternalPerfCounter('detailLookupFallbackScans');
+            const fallbackExact = requestsInventory.find((row) => String((row && row.UNIQUE_ID) || '').trim() === normalizedUid);
+            if (fallbackExact) return fallbackExact;
+            const fallbackPending = requestsInventory.find((row) => {
                 if (!row || row.REQ_ARCHIVED) return false;
                 const masterId = String(firstNonEmptyValue(row.MASTER_ID, row.MASTER_UNIQUE_ID, row.master_id, '')).trim();
                 return masterId === normalizedUid && !isRequestComplete(row);
             });
-            if (linkedPending) return linkedPending;
+            if (fallbackPending) return fallbackPending;
             return requestsInventory.find((row) => {
                 const masterId = String(firstNonEmptyValue(row && row.MASTER_ID, row && row.MASTER_UNIQUE_ID, row && row.master_id, '')).trim();
                 return masterId === normalizedUid;
@@ -7986,6 +8361,37 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             const cleanConsignee = String(consignee || '').trim();
             if (!cleanCustomer) return '';
             return cleanConsignee && cleanConsignee.toLowerCase() !== cleanCustomer.toLowerCase() ? `${cleanCustomer} | ${cleanConsignee}` : cleanCustomer;
+        }
+        const REQUEST_EMAIL_SUBJECT_DATE_FORMATTER = typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function'
+            ? new Intl.DateTimeFormat('en-US', {
+                timeZone: 'America/Chicago',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            })
+            : null;
+        function normalizeRequestEmailSubjectCustomer(customer = '') {
+            const base = String(customer || '').trim();
+            if (!base) return 'Request';
+            const normalized = base
+                .replace(/\s*\|\s*/g, '/')
+                .replace(/\s*\/\s*/g, '/')
+                .replace(/\s+/g, ' ')
+                .trim();
+            return normalized || 'Request';
+        }
+        function formatRequestEmailSubjectDate(value = new Date()) {
+            const date = value instanceof Date ? value : new Date(value);
+            const resolvedDate = (date instanceof Date && !Number.isNaN(date.getTime())) ? date : new Date();
+            if (REQUEST_EMAIL_SUBJECT_DATE_FORMATTER) {
+                return REQUEST_EMAIL_SUBJECT_DATE_FORMATTER.format(resolvedDate);
+            }
+            return resolvedDate.toLocaleDateString('en-US');
+        }
+        function buildRequestEmailSubjectLine(customer = '', dateValue = new Date()) {
+            const customerLabel = normalizeRequestEmailSubjectCustomer(customer);
+            const dateLabel = formatRequestEmailSubjectDate(dateValue);
+            return dateLabel ? `${customerLabel} ${dateLabel}` : customerLabel;
         }
         function getRequestRepMatchTokens(repName = '') {
             const variants = new Set();
@@ -10471,7 +10877,7 @@ function toggleDriveQuickRequestItem(domId) {
                 initialQueue.push({ key, mode: target.mode, delay: initialStart + (initialQueue.length * initialStep) });
             });
 
-            const fullPriority = ['requests', 'soc', 'salesOffice', 'avNotes', 'cav', 'avOpen', 'reserves', 'master'];
+            const fullPriority = ['master', 'avNotes', 'cav', 'avOpen', 'requests', 'soc', 'salesOffice', 'reserves'];
             const fullKeys = fullPriority.concat(Array.from(fullTargets.keys()).filter((key) => !fullPriority.includes(key)));
             const fullQueue = [];
             const fullStart = openedFromCache ? (prefersDeferredWarm ? 1200 : 1600) : (prefersDeferredWarm ? 650 : 900);
@@ -10522,6 +10928,7 @@ function toggleDriveQuickRequestItem(domId) {
 
             const openedFromCache = fullInventory.length > 0;
             openApp(openedFromCache);
+            refreshManualSyncStatus(true).catch(() => {});
 
             const scheduleAfterTouch = deferHeavyLoginWarm ? runAfterTouchInteraction : runAfterShellInteractive;
 
@@ -10570,6 +10977,7 @@ function toggleDriveQuickRequestItem(domId) {
                 warmupPlan.fullQueue.forEach((item) => {
                     queueDatasetLoad(item.key, item.mode, item.delay);
                 });
+                scheduleTaskHotCacheWarmup('login-warm', openedFromCache ? 220 : 140);
                 if (roleAccess.allowedViews && roleAccess.allowedViews.has('request')) {
                     setTimeout(() => {
                         subscribeCurrentDeviceForPush({ prompt: false }).catch(() => {});
@@ -10916,10 +11324,15 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             if (didStructuralDataChange) {
+                rebuildDetailLookupIndexes();
+            }
+
+            if (didStructuralDataChange) {
                 invalidateResolvedViewStateCaches();
                 applyLocalEdits();
                 applyPendingRequestArchives();
                 refreshAffectedViews(changedDatasetKeys);
+                scheduleTaskHotCacheWarmup('dataset-change', hasMaster ? 90 : 160);
                 if (changedDatasetKeys.includes('requests')) flushPendingRequestArchives().catch(() => {});
             }
             updateDashboardSyncSummary();
@@ -12565,6 +12978,7 @@ function toggleDriveQuickRequestItem(domId) {
             selectedEndCapFolder=null;
             selectedFlyerFolder=null;
             scheduleTasksRender();
+            scheduleTaskHotCacheWarmup('task-tab', 60);
             queueScrollMainAreaToTop(`task-tab:${tab}`);
         }
 
@@ -12579,6 +12993,7 @@ function toggleDriveQuickRequestItem(domId) {
             syncTaskModeControls(activeTaskTab);
             syncTaskSubviewControls(activeTaskTab);
             scheduleTasksRender();
+            scheduleTaskHotCacheWarmup('task-subview', 60);
             return false;
         }
 
@@ -13042,6 +13457,17 @@ function toggleDriveQuickRequestItem(domId) {
             const targetFolderId = String(folderId || '').trim();
             const targetCustomer = normalizeSearchValue(customer);
             const existingThreadRecord = targetFolderId ? await getRequestEmailThreadRecord(targetFolderId) : null;
+            const requestSubjectCustomer = safeType === 'request_complete'
+                ? String(firstNonEmptyValue(existingThreadRecord && existingThreadRecord.request_customer, customer, '')).trim()
+                : String(customer || '').trim();
+            const storedInitialEmailStamp = String(firstNonEmptyValue(existingThreadRecord && existingThreadRecord.initial_email_sent_at, '')).trim();
+            const requestSubjectDateSource = (safeType === 'request_complete' && storedInitialEmailStamp)
+                ? storedInitialEmailStamp
+                : new Date();
+            const requestSubjectDateIso = requestSubjectDateSource instanceof Date
+                ? requestSubjectDateSource.toISOString()
+                : String(requestSubjectDateSource || '').trim();
+            const requestSubject = buildRequestEmailSubjectLine(requestSubjectCustomer, requestSubjectDateSource);
             const { repEmail, recipientEmails } = buildRequestEmailRecipients(repName, safeDetails);
             const finalRecipientEmails = (safeType === 'request_complete' && existingThreadRecord && Array.isArray(existingThreadRecord.recipients) && existingThreadRecord.recipients.length)
                 ? dedupeRequestEmailRecipients(existingThreadRecord.recipients)
@@ -13057,6 +13483,9 @@ function toggleDriveQuickRequestItem(domId) {
                 repEmail: repEmail,
                 salesRepEmail: repEmail,
                 customer: String(customer || '').trim(),
+                requestCustomer: requestSubjectCustomer,
+                subjectDate: requestSubjectDateIso,
+                subject: requestSubject,
                 itemsCount: Number(itemsCount) || 0,
                 requestedBy: String(repName || '').trim(),
                 dylanEmail: REQUEST_EMAIL_INTERNAL_RECIPIENTS[0],
@@ -16322,13 +16751,13 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
         function handleCardClick(domId,uniqueId,sourceView) {
-            let item=findItemByUniqueId(uniqueId);
             if(sourceView==='av-photo'){
+                const item=findItemByUniqueId(uniqueId);
                 openAvGallery(item);
             }else if(sourceView==='av'){
+                const item=findItemByUniqueId(uniqueId);
                 openAvGallery(item, { silentIfMissing: true });
             }else{
-                applyCameraPermissions(sourceView, item);
                 openDetail(uniqueId,sourceView);
             }
         }
@@ -16460,72 +16889,143 @@ function toggleDriveQuickRequestItem(domId) {
                 return findRequestRowByUniqueId(normalizedUid) || findItemByUniqueId(normalizedUid);
             }
             if (normalizedSourceView === 'sales-office') {
-                return salesOfficeInventory.find(i => String(i.UNIQUE_ID || '').trim() === normalizedUid) || findItemByUniqueId(normalizedUid);
+                return salesOfficeInventoryById.get(normalizedUid) || findItemByUniqueId(normalizedUid);
             }
             if (normalizedSourceView === 'docks') {
-                return socInventory.find(i => String(i.UNIQUE_ID || '').trim() === normalizedUid) || findItemByUniqueId(normalizedUid);
+                return socInventoryById.get(normalizedUid) || findItemByUniqueId(normalizedUid);
             }
             return findItemByUniqueId(normalizedUid);
         }
 
-        function renderDetailView() {
-            if (!activeItem) return;
-            const detailSourceView = String(activeDetailSourceView || lastView || '').trim();
-            const detailUid = String(activeItem.UNIQUE_ID || '').trim();
+        function clearPendingDetailHydration() {
+            if (detailHydrationTimer) {
+                clearTimeout(detailHydrationTimer);
+                detailHydrationTimer = null;
+            }
+            pendingDetailHydrationToken = 0;
+        }
 
-            document.getElementById('det-common').innerText = activeItem.COMMONNAME || '--';
-            document.getElementById('det-size').innerText = activeItem.CONTSIZE || '--';
-            const detLocation = document.getElementById('det-location');
-            if (detLocation) detLocation.innerText = activeItem.LOCATIONCODE || '--';
-            const detailSalesNote = String(firstNonEmptyValue(activeItem.SALES_NOTE, activeItem.SALESNOTE, activeItem.SALES_DESC, activeItem.SALESDESC, '') || '').trim();
-            document.getElementById('det-extra-info').innerHTML = `<div class="detail-meta-line">PRIORITY: ${activeItem.PRIORITY||'--'} &bull; PTRAVAILABLE: ${activeItem.PTRAVAILABLE||0} &bull; s_LTS: ${activeItem.S_LTS||0}</div>${detailSalesNote ? `<div class="detail-sales-note"><span class="detail-sales-note-label">Sales Note</span>${esc(detailSalesNote)}</div>` : ''}`;
+        function resetDetailOverviewShellState(detailSourceView = '') {
+            const overviewWrap = document.getElementById('detail-overview-drive-fields');
+            const countEl = document.getElementById('detail-overview-field-count');
+            const listEl = document.getElementById('detail-overview-fields-list');
+            const emptyEl = document.getElementById('detail-overview-fields-empty');
+            const expandSection = document.getElementById('expand-section');
+            const expandContent = document.getElementById('expand-content');
+            if (overviewWrap) overviewWrap.classList.add('hidden');
+            if (countEl) countEl.innerText = '0 Fields';
+            if (listEl) listEl.innerHTML = '';
+            if (emptyEl) {
+                emptyEl.classList.add('hidden');
+                emptyEl.innerText = 'No matching item detail fields.';
+            }
+            if (expandSection) {
+                expandSection.classList.toggle('hidden', String(detailSourceView || '').trim() === 'drive');
+                expandSection.classList.remove('expanded');
+                const icon = expandSection.querySelector('i');
+                if (icon) {
+                    icon.classList.remove('ph-caret-up');
+                    icon.classList.add('ph-caret-down');
+                }
+            }
+            if (expandContent) expandContent.innerHTML = '';
+            syncDetailOverviewSearchUi();
+        }
 
-            document.getElementById('ov-loc').innerText = activeItem.LOCATIONCODE || '--';
-            document.getElementById('ov-avail').innerText = activeItem.PTRAVAILABLE || '0';
-            document.getElementById('ov-item').innerText = activeItem.ITEMCODE || '--';
-            document.getElementById('ov-lot').innerText = activeItem.LOTCODE || '--';
-            document.getElementById('ov-qual').innerText = activeItem.QUALITYCODE || '--';
-            document.getElementById('ov-prior').innerText = activeItem.PRIORITY || '--';
-            document.getElementById('ov-tag').innerText = activeItem.FIELDTAGCOLOR || '--';
-            document.getElementById('ov-season').innerText = firstNonEmptyValue(activeItem.SEASON_SUPPLY, activeItem.SEASONSUPPLY, '0');
+        function resetDetailDeferredMediaShell() {
+            [
+                ['ssn-photo-preview', 'ssn-photo-list-container'],
+                ['lsn-photo-preview', 'lsn-photo-list-container'],
+                ['na-photo-preview', 'na-photo-list-container'],
+                ['req-photo-preview', 'req-photo-list-container'],
+                ['dock-photo-preview', 'dock-photo-list-container'],
+                ['flyer-photo-preview', 'flyer-photo-list-container'],
+                ['ncr-photo-preview', 'ncr-photo-list-container']
+            ].forEach(([wrapId, listId]) => {
+                const wrap = document.getElementById(wrapId);
+                const list = document.getElementById(listId);
+                if (wrap) wrap.classList.add('hidden');
+                if (list) list.innerHTML = '';
+            });
+            const gallerySections = document.getElementById('gallery-sections');
+            const galleryEmpty = document.getElementById('gallery-empty');
+            if (gallerySections) gallerySections.innerHTML = '';
+            if (galleryEmpty) {
+                galleryEmpty.classList.add('hidden');
+                galleryEmpty.innerText = 'No photos on file for this row.';
+            }
+        }
 
+        function getPrimaryDetailTabForItemContext(item = activeItem, detailSourceView = '') {
+            const safeSourceView = String(detailSourceView || activeDetailSourceView || lastView || '').trim();
+            const assignment = String(firstNonEmptyValue(item && item.APP_TAB_ASSIGNMENT, item && item.app_tab_assignment, '')).toLowerCase();
+            if (safeSourceView === 'tasks' && activeTaskTab) return getTaskDetailTabForItem(item, activeTaskTab);
+            if (safeSourceView === 'request') return 'request';
+            if (safeSourceView === 'docks') return 'docks';
+            if (safeSourceView === 'review') return 'ncr';
+            if (safeSourceView === 'av' && activeAVTab === 'reserves') return 'request';
+            if (safeSourceView === 'low-stock') {
+                if (assignment === 'season') return 'season';
+                if (assignment === 'location') return 'location';
+            }
+            return 'overview';
+        }
+
+        function getDetailTabPrefix(tab = '') {
+            const safeTab = String(tab || '').trim().toLowerCase();
+            if (safeTab === 'season') return 'ssn-';
+            if (safeTab === 'location') return 'lsn-';
+            if (safeTab === 'notes') return 'na-';
+            if (safeTab === 'request') return 'req-';
+            if (safeTab === 'docks') return 'dock-';
+            if (safeTab === 'flyer') return 'flyer-';
+            return '';
+        }
+
+        function isDetailTabVisible(tab = '') {
+            const el = document.getElementById('dtab-' + String(tab || '').trim());
+            return !!(el && !el.classList.contains('hidden'));
+        }
+
+        function configureDetailTabsForItem(item = activeItem, detailSourceView = '') {
+            const safeSourceView = String(detailSourceView || activeDetailSourceView || lastView || '').trim();
             const detTabsContainer = document.getElementById('det-tabs-container');
             if (detTabsContainer) {
                 detTabsContainer.classList.remove('hidden');
                 detTabsContainer.querySelectorAll('.detail-tab').forEach(el => el.classList.add('hidden'));
             }
 
-            const assignment = String(activeItem.APP_TAB_ASSIGNMENT || '').toLowerCase();
-            if (detailSourceView === 'drive') {
+            const assignment = String(firstNonEmptyValue(item && item.APP_TAB_ASSIGNMENT, item && item.app_tab_assignment, '')).toLowerCase();
+            if (safeSourceView === 'drive') {
                 document.getElementById('dtab-overview').classList.remove('hidden');
                 if (assignment === 'season') document.getElementById('dtab-season').classList.remove('hidden');
                 if (assignment === 'location') document.getElementById('dtab-location').classList.remove('hidden');
                 document.getElementById('dtab-notes').classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
-            } else if (detailSourceView === 'av') {
+            } else if (safeSourceView === 'av') {
                 if (activeAVTab === 'reserves') document.getElementById('dtab-request').classList.remove('hidden');
-            } else if (detailSourceView === 'low-stock') {
+            } else if (safeSourceView === 'low-stock') {
                 document.getElementById('dtab-overview').classList.remove('hidden');
                 document.getElementById('dtab-season').classList.remove('hidden');
                 document.getElementById('dtab-location').classList.remove('hidden');
                 document.getElementById('dtab-request').classList.remove('hidden');
                 document.getElementById('dtab-notes').classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
-            } else if (detailSourceView === 'tasks') {
+            } else if (safeSourceView === 'tasks') {
                 document.getElementById('dtab-overview').classList.remove('hidden');
-                const taskDetailTab = getTaskDetailTabForItem(activeItem, activeTaskTab);
-                let t = document.getElementById('dtab-' + taskDetailTab);
-                if(t) t.classList.remove('hidden');
+                const taskDetailTab = getTaskDetailTabForItem(item, activeTaskTab);
+                const taskTabEl = document.getElementById('dtab-' + taskDetailTab);
+                if (taskTabEl) taskTabEl.classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
-            } else if (detailSourceView === 'docks') {
+            } else if (safeSourceView === 'docks') {
                 document.getElementById('dtab-overview').classList.remove('hidden');
                 document.getElementById('dtab-docks').classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
-            } else if (detailSourceView === 'request') {
+            } else if (safeSourceView === 'request') {
                 document.getElementById('dtab-overview').classList.remove('hidden');
                 document.getElementById('dtab-request').classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
-            } else if (detailSourceView === 'review') {
+            } else if (safeSourceView === 'review') {
                 document.getElementById('dtab-overview').classList.remove('hidden');
                 document.getElementById('dtab-ncr').classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
@@ -16533,73 +17033,143 @@ function toggleDriveQuickRequestItem(domId) {
                 document.getElementById('dtab-overview').classList.remove('hidden');
             }
 
+            const primaryDetailTab = getPrimaryDetailTabForItemContext(item, safeSourceView);
+            reorderVisibleDetailTabs(primaryDetailTab);
             if (detTabsContainer) {
                 const visibleTabCount = Array.from(detTabsContainer.querySelectorAll('.detail-tab')).filter((el) => !el.classList.contains('hidden')).length;
                 detTabsContainer.classList.toggle('hidden', visibleTabCount === 0);
             }
+            return primaryDetailTab;
+        }
 
-            let primaryDetailTab = 'overview';
-            if (detailSourceView === 'tasks' && activeTaskTab) {
-                primaryDetailTab = getTaskDetailTabForItem(activeItem, activeTaskTab);
-            } else if (detailSourceView === 'request') {
-                primaryDetailTab = 'request';
-            } else if (detailSourceView === 'docks') {
-                primaryDetailTab = 'docks';
-            } else if (detailSourceView === 'review') {
-                primaryDetailTab = 'ncr';
-            } else if (detailSourceView === 'low-stock') {
-                if (assignment === 'season') primaryDetailTab = 'season';
-                else if (assignment === 'location') primaryDetailTab = 'location';
-            } else if (detailSourceView === 'av' && activeAVTab === 'reserves') {
-                primaryDetailTab = 'request';
-            }
-            reorderVisibleDetailTabs(primaryDetailTab);
-            renderDriveDetailOverviewFields();
+        function populateDetailSummaryValues(item = activeItem, detailSourceView = '') {
+            if (!item) return;
+            document.getElementById('det-common').innerText = item.COMMONNAME || '--';
+            document.getElementById('det-size').innerText = item.CONTSIZE || '--';
+            const detLocation = document.getElementById('det-location');
+            if (detLocation) detLocation.innerText = item.LOCATIONCODE || '--';
+            const detailSalesNote = String(firstNonEmptyValue(item.SALES_NOTE, item.SALESNOTE, item.SALES_DESC, item.SALESDESC, '') || '').trim();
+            document.getElementById('det-extra-info').innerHTML = `<div class="detail-meta-line">PRIORITY: ${item.PRIORITY||'--'} &bull; PTRAVAILABLE: ${item.PTRAVAILABLE||0} &bull; s_LTS: ${item.S_LTS||0}</div>${detailSalesNote ? `<div class="detail-sales-note"><span class="detail-sales-note-label">Sales Note</span>${esc(detailSalesNote)}</div>` : ''}`;
+
+            document.getElementById('ov-loc').innerText = item.LOCATIONCODE || '--';
+            document.getElementById('ov-avail').innerText = item.PTRAVAILABLE || '0';
+            document.getElementById('ov-item').innerText = item.ITEMCODE || '--';
+            document.getElementById('ov-lot').innerText = item.LOTCODE || '--';
+            document.getElementById('ov-qual').innerText = item.QUALITYCODE || '--';
+            document.getElementById('ov-prior').innerText = item.PRIORITY || '--';
+            document.getElementById('ov-tag').innerText = item.FIELDTAGCOLOR || '--';
+            document.getElementById('ov-season').innerText = firstNonEmptyValue(item.SEASON_SUPPLY, item.SEASONSUPPLY, '0');
 
             const globalAvContainer = document.getElementById('global-av-container');
             if (globalAvContainer) globalAvContainer.classList.add('hidden');
             const globalAvNote = document.getElementById('global-av-note');
-            if (globalAvNote) globalAvNote.value = activeItem.AV_NOTE || "";
+            if (globalAvNote) globalAvNote.value = item.AV_NOTE || "";
 
-            ['ssn-', 'lsn-', 'na-', 'req-', 'dock-', 'flyer-'].forEach(p => {
-                let match = document.getElementById(p + 'match');
-                let spec = document.getElementById(p + 'spec');
-                let caliper = document.getElementById(p + 'caliper');
-                let pick = document.getElementById(p + 'pick');
-                let comments = p === 'req-' ? document.getElementById('req-comments') : ((p === 'ssn-' || p === 'lsn-' || p === 'na-') ? document.getElementById(p + 'comments') : null);
-                let desc = p === 'dock-' ? document.getElementById('dock-sales-desc') : null;
-                let avNote = document.getElementById(p + 'av-note');
-                const standardPick = getStandardPickNoteForItem(activeItem);
+            resetDetailOverviewShellState(detailSourceView);
+        }
 
-                if(match) match.value = p === 'req-' ? firstNonEmptyValue(activeItem.REQ_MATCH, activeItem.MATCH, '') : firstNonEmptyValue(activeItem.MATCH, '');
-                if(spec) spec.value = p === 'req-' ? (activeItem.REQ_SPEC || activeItem.SPEC || '') : (p === 'dock-' ? (activeItem.DOCK_SPEC || '') : (activeItem.SPEC || ''));
-                if(caliper) caliper.value = p === 'req-' ? (activeItem.REQ_CALIPER || activeItem.CALIPER || '') : (p === 'dock-' ? (activeItem.DOCK_CALIPER || '') : (activeItem.CALIPER || ''));
-                if(pick) pick.value = p === 'req-' ? firstNonEmptyValue(activeItem.REQ_PICK, activeItem.PICK, standardPick, '') : firstNonEmptyValue(activeItem.PICK, standardPick, '');
-                if(comments) comments.value = p === 'req-' ? (activeItem.REQ_COMMENTS || '') : '';
-                if(desc) desc.value = activeItem.DOCK_NOTE || '';
-                if(avNote) avNote.value = activeItem.AV_NOTE || '';
-                if (p === 'req-') {
-                    let res = document.getElementById('req-reserve'); if(res) res.value = activeItem.REQ_RESERVE || "NO";
-                }
-                if (p === 'flyer-') {
-                    let fcat = document.getElementById('flyer-cat'); if(fcat) fcat.value = activeItem.FLYER_CAT || "";
-                    let ftitle = document.getElementById('flyer-title'); if(ftitle) ftitle.value = getFlyerFolderName(activeItem) || "";
-                    let finst = document.getElementById('flyer-inst'); if(finst) finst.value = activeItem.FLYER_INST || "";
-                    let fass = document.getElementById('flyer-assigned'); if(fass) fass.value = activeItem.FLYER_ASSIGNED || "";
-                    let fnotes = document.getElementById('flyer-notes'); if(fnotes) fnotes.value = activeItem.FLYER_NOTES || "";
-                }
+        function populateDetailInputsForPrefix(prefix, item = activeItem) {
+            if (!item) return;
+            const safePrefix = String(prefix || '').trim();
+            if (!safePrefix) return;
+            const match = document.getElementById(safePrefix + 'match');
+            const spec = document.getElementById(safePrefix + 'spec');
+            const caliper = document.getElementById(safePrefix + 'caliper');
+            const pick = document.getElementById(safePrefix + 'pick');
+            const comments = safePrefix === 'req-' ? document.getElementById('req-comments') : ((safePrefix === 'ssn-' || safePrefix === 'lsn-' || safePrefix === 'na-') ? document.getElementById(safePrefix + 'comments') : null);
+            const desc = safePrefix === 'dock-' ? document.getElementById('dock-sales-desc') : null;
+            const avNote = document.getElementById(safePrefix + 'av-note');
+            const standardPick = getStandardPickNoteForItem(item);
 
-                let isTree = activeItem.PLANTGROUPCODE && String(activeItem.PLANTGROUPCODE).includes('330_TREES');
-                let isCaliperSize = ["#7","#10","#15","#25","#45"].includes(activeItem.CONTSIZE);
-                let calContainer = document.getElementById(p + 'container-caliper');
-                if (calContainer) {
-                    if(isTree && isCaliperSize) calContainer.classList.remove('hidden');
-                    else calContainer.classList.add('hidden');
-                }
-                if(match) calculateMatchQty(p);
-            });
+            if (match) match.value = safePrefix === 'req-' ? firstNonEmptyValue(item.REQ_MATCH, item.MATCH, '') : (safePrefix === 'flyer-' ? firstNonEmptyValue(item.FLYER_MATCH, item.MATCH, '') : firstNonEmptyValue(item.MATCH, ''));
+            if (spec) spec.value = safePrefix === 'req-' ? (item.REQ_SPEC || item.SPEC || '') : (safePrefix === 'dock-' ? (item.DOCK_SPEC || '') : (safePrefix === 'flyer-' ? firstNonEmptyValue(item.FLYER_SPEC, item.SPEC, '') : (item.SPEC || '')));
+            if (caliper) caliper.value = safePrefix === 'req-' ? (item.REQ_CALIPER || item.CALIPER || '') : (safePrefix === 'dock-' ? (item.DOCK_CALIPER || '') : (safePrefix === 'flyer-' ? firstNonEmptyValue(item.FLYER_CALIPER, item.CALIPER, '') : (item.CALIPER || '')));
+            if (pick) pick.value = safePrefix === 'req-' ? firstNonEmptyValue(item.REQ_PICK, item.PICK, standardPick, '') : (safePrefix === 'flyer-' ? firstNonEmptyValue(item.FLYER_PICK, item.PICK, standardPick, '') : firstNonEmptyValue(item.PICK, standardPick, ''));
+            if (comments) comments.value = safePrefix === 'req-' ? (item.REQ_COMMENTS || '') : '';
+            if (desc) desc.value = item.DOCK_NOTE || '';
+            if (avNote) avNote.value = safePrefix === 'flyer-' ? firstNonEmptyValue(item.FLYER_AV_NOTE, item.AV_NOTE, '') : (item.AV_NOTE || '');
 
-            applyCameraPermissions(detailSourceView);
+            if (safePrefix === 'req-') {
+                const reserveSelect = document.getElementById('req-reserve');
+                if (reserveSelect) reserveSelect.value = item.REQ_RESERVE || "NO";
+            }
+
+            if (safePrefix === 'flyer-') {
+                const flyerCat = document.getElementById('flyer-cat'); if (flyerCat) flyerCat.value = item.FLYER_CAT || "";
+                const flyerTitle = document.getElementById('flyer-title'); if (flyerTitle) flyerTitle.value = getFlyerFolderName(item) || "";
+                const flyerInst = document.getElementById('flyer-inst'); if (flyerInst) flyerInst.value = item.FLYER_INST || "";
+                const flyerAssigned = document.getElementById('flyer-assigned'); if (flyerAssigned) flyerAssigned.value = item.FLYER_ASSIGNED || "";
+                const flyerNotes = document.getElementById('flyer-notes'); if (flyerNotes) flyerNotes.value = item.FLYER_NOTES || "";
+            }
+
+            const isTree = item.PLANTGROUPCODE && String(item.PLANTGROUPCODE).includes('330_TREES');
+            const isCaliperSize = ["#7","#10","#15","#25","#45"].includes(item.CONTSIZE);
+            const calContainer = document.getElementById(safePrefix + 'container-caliper');
+            if (calContainer) {
+                if (isTree && isCaliperSize) calContainer.classList.remove('hidden');
+                else calContainer.classList.add('hidden');
+            }
+            if (match) calculateMatchQty(safePrefix);
+        }
+
+        function populatePrimaryDetailTabShell(primaryDetailTab = '', detailSourceView = '', item = activeItem) {
+            if (!item) return;
+            const safeTab = String(primaryDetailTab || '').trim().toLowerCase();
+            if (safeTab === 'ncr') {
+                syncNcrDraftInputs(item);
+                return;
+            }
+            const prefix = getDetailTabPrefix(safeTab);
+            if (prefix) populateDetailInputsForPrefix(prefix, item);
+        }
+
+        function renderDetailShellView() {
+            if (!activeItem) return 'overview';
+            const detailShellStartedAt = beginInternalPerfMeasure();
+            const detailSourceView = String(activeDetailSourceView || lastView || '').trim();
+            const primaryDetailTab = configureDetailTabsForItem(activeItem, detailSourceView);
+            populateDetailSummaryValues(activeItem, detailSourceView);
+            resetDetailDeferredMediaShell();
+            applyCameraPermissions(detailSourceView, activeItem);
+            populatePrimaryDetailTabShell(primaryDetailTab, detailSourceView, activeItem);
+            switchDetailTab(primaryDetailTab, { suppressScroll: true, skipHydrate: true });
+            recordInternalPerfDuration('detailShellDurations', detailShellStartedAt, detailSourceView || 'detail');
+            return primaryDetailTab;
+        }
+
+        function runDeferredDetailHydration(token = 0) {
+            const expectedToken = Number(token) || 0;
+            if (!expectedToken || expectedToken !== detailHydrationToken) return false;
+            if (getCurrentVisibleViewId() !== 'detail' || !activeItem) return false;
+            const hydrationStartedAt = beginInternalPerfMeasure();
+            const preferredTab = String(activeDetailTab || getPrimaryDetailTabForItemContext(activeItem, activeDetailSourceView || lastView || '') || '').trim();
+            renderDetailView({ preferredTab, suppressScroll: true });
+            recordInternalPerfDuration('detailHydrationDurations', hydrationStartedAt, activeDetailSourceView || 'detail');
+            return true;
+        }
+
+        function scheduleDeferredDetailHydration(token = detailHydrationToken, delayMs = DETAIL_HYDRATION_DELAY_MS) {
+            clearPendingDetailHydration();
+            pendingDetailHydrationToken = Number(token) || 0;
+            detailHydrationTimer = setTimeout(() => {
+                detailHydrationTimer = null;
+                const nextToken = Number(pendingDetailHydrationToken) || 0;
+                pendingDetailHydrationToken = 0;
+                scheduleUiRender(`detail-hydrate:${nextToken}`, () => {
+                    runDeferredDetailHydration(nextToken);
+                });
+            }, Math.max(0, Number(delayMs) || 0));
+        }
+
+        function renderDetailView(options = {}) {
+            if (!activeItem) return;
+            const renderOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const detailSourceView = String(activeDetailSourceView || lastView || '').trim();
+            const primaryDetailTab = configureDetailTabsForItem(activeItem, detailSourceView);
+            populateDetailSummaryValues(activeItem, detailSourceView);
+            renderDriveDetailOverviewFields();
+            refreshDetailInputsFromActiveItem();
+            applyCameraPermissions(detailSourceView, activeItem);
 
             try {
                 renderSavedPhotos();
@@ -16614,22 +17184,14 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (detailSourceView === 'review') syncNcrDraftInputs(activeItem);
 
-            if (detailSourceView === 'tasks' && activeTaskTab) {
-                switchDetailTab(getTaskDetailTabForItem(activeItem, activeTaskTab));
-            } else if (detailSourceView === 'request') {
-                switchDetailTab('request');
-            } else if (detailSourceView === 'review') {
-                switchDetailTab('ncr');
-            } else if (detailSourceView === 'av' && activeAVTab === 'reserves') {
-                switchDetailTab('request');
-            } else {
-                switchDetailTab('overview');
-            }
+            const requestedDetailTab = String(firstNonEmptyValue(renderOptions.preferredTab, '') || '').trim();
+            const targetDetailTab = requestedDetailTab && isDetailTabVisible(requestedDetailTab) ? requestedDetailTab : primaryDetailTab;
+            switchDetailTab(targetDetailTab, { suppressScroll: !!renderOptions.suppressScroll });
 
             updateGlobalBackButton();
-            syncGlobalHeaderChrome();
+            syncGlobalHeaderChrome({ reason: `detail:${detailSourceView || 'detail'}` });
             updateFooterNavState();
-            scheduleStickyRailOffsetSync();
+            scheduleStickyRailOffsetSync(`detail:${detailSourceView || 'detail'}`);
         }
 
         function openDetail(uid, sourceView) {
@@ -16645,20 +17207,24 @@ function toggleDriveQuickRequestItem(domId) {
                 lastView ||
                 'drive'
             ).trim();
+            const detailLookupStartedAt = beginInternalPerfMeasure();
             const nextItem = resolveDetailItemBySource(uid, resolvedSourceView);
+            recordInternalPerfDuration('detailLookupDurations', detailLookupStartedAt, resolvedSourceView || 'detail');
             if (!nextItem) return false;
+            clearPendingDetailHydration();
+            detailHydrationToken += 1;
+            const currentDetailHydrationToken = detailHydrationToken;
+            markDetailTransitionActivity();
             lastView = resolvedSourceView;
             activeDetailSourceView = resolvedSourceView;
             activeItem = nextItem;
             resetDetailOverviewFieldSearch();
             lastViewSwitchAt = Date.now();
-            renderDetailView();
+            renderDetailShellView();
             showOnlyPrimaryView('detail');
+            if (Math.abs(getMainAreaScrollTop()) > 2) setMainAreaScrollTop(0);
             schedulePrimaryViewChromeRefresh('detail');
-            setMainAreaScrollTop(0);
-            requestAnimationFrame(() => {
-                if (Math.abs(getMainAreaScrollTop()) > 2) setMainAreaScrollTop(0);
-            });
+            scheduleDeferredDetailHydration(currentDetailHydrationToken);
             recordInternalPerfDuration('detailOpenDurations', detailOpenStartedAt, resolvedSourceView || 'detail');
             return false;
         }
@@ -17035,9 +17601,11 @@ function toggleDriveQuickRequestItem(domId) {
             galleryEmpty.classList.toggle('hidden', html !== '');
         }
 
-        function switchDetailTab(tab) {
+        function switchDetailTab(tab, options = {}) {
+            const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const safeTab = String(tab || 'overview').trim() || 'overview';
             const previousTab = activeDetailTab;
-            activeDetailTab = tab;
+            activeDetailTab = safeTab;
             const detTabsContainer = document.getElementById('det-tabs-container');
             if (detTabsContainer) {
                 detTabsContainer.querySelectorAll('.detail-tab').forEach(el => {
@@ -17046,7 +17614,7 @@ function toggleDriveQuickRequestItem(domId) {
                     el.style.color = '';
                 });
             }
-            let activeEl = document.getElementById('dtab-' + tab);
+            let activeEl = document.getElementById('dtab-' + safeTab);
             if(activeEl) {
                 activeEl.classList.add('active');
                 activeEl.style.borderBottomColor = '';
@@ -17054,7 +17622,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             const detailContentIds = ['det-overview-content','det-season-content','det-location-content','det-request-content','det-ncr-content','det-notes-content','det-docks-content','det-flyer-content','det-gallery-content'];
-            const targetContentId = 'det-' + tab + '-content';
+            const targetContentId = 'det-' + safeTab + '-content';
             const contentEl = document.getElementById(targetContentId);
             if(contentEl) contentEl.classList.remove('hidden');
             detailContentIds.forEach((contentId) => {
@@ -17062,14 +17630,23 @@ function toggleDriveQuickRequestItem(domId) {
                 const panel = document.getElementById(contentId);
                 if (panel) panel.classList.add('hidden');
             });
-            if (tab === 'overview' && activeItem) renderDriveDetailOverviewFields();
-            if (tab === 'ncr' && activeItem) syncNcrDraftInputs(activeItem);
-            if (tab !== previousTab) queueScrollMainAreaToTop(`detail-tab:${tab}`);
+            if (!nextOptions.skipHydrate && activeItem) {
+                if (pendingDetailHydrationToken && pendingDetailHydrationToken === detailHydrationToken) {
+                    scheduleDeferredDetailHydration(detailHydrationToken, 0);
+                }
+                if (safeTab === 'overview') renderDriveDetailOverviewFields();
+                else if (safeTab === 'ncr') syncNcrDraftInputs(activeItem);
+                else populatePrimaryDetailTabShell(safeTab, activeDetailSourceView || lastView || '', activeItem);
+            }
+            if (safeTab !== previousTab && !nextOptions.suppressScroll) queueScrollMainAreaToTop(`detail-tab:${safeTab}`);
         }
 
         function goBackFromDetail() {
             const detailBackStartedAt = beginInternalPerfMeasure();
             if (document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) document.activeElement.blur();
+            clearPendingDetailHydration();
+            detailHydrationToken += 1;
+            markDetailTransitionActivity(420);
             setDetailEditingChromeState(false);
             const restoreViewId = String(lastView || 'home').trim() || 'home';
             resetDetailOverviewFieldSearch();
@@ -17080,14 +17657,21 @@ function toggleDriveQuickRequestItem(domId) {
             const safeRestoreViewId = restoreViewId === 'detail' ? 'home' : restoreViewId;
             const restoreViewState = ensureViewRenderState(safeRestoreViewId);
             const restoreView = getViewElementById(safeRestoreViewId);
-            if (restoreView && (!restoreViewState.initialized || restoreViewState.dirty)) {
+            const hasWarmRestoreView = !!(restoreView && restoreViewState.initialized);
+            if (restoreView && !hasWarmRestoreView && (!restoreViewState.initialized || restoreViewState.dirty)) {
                 renderViewContent(safeRestoreViewId, false, false);
             }
-            showOnlyPrimaryView(restoreView ? safeRestoreViewId : 'home');
-            restoreDetailReturnPosition(safeRestoreViewId);
-            schedulePrimaryViewChromeRefresh(safeRestoreViewId);
-            scheduleViewActivationWork(safeRestoreViewId);
-            recordInternalPerfDuration('detailBackDurations', detailBackStartedAt, safeRestoreViewId);
+            const visibleRestoreViewId = restoreView ? safeRestoreViewId : 'home';
+            showOnlyPrimaryView(visibleRestoreViewId);
+            restoreDetailReturnPosition(visibleRestoreViewId);
+            schedulePrimaryViewChromeRefresh(visibleRestoreViewId);
+            if (restoreView && hasWarmRestoreView && restoreViewState.dirty) {
+                queueInteractiveViewRender(safeRestoreViewId, false, false, 60, 120);
+            }
+            scheduleUiRender(`detail-back-activate:${visibleRestoreViewId}`, () => {
+                scheduleViewActivationWork(visibleRestoreViewId);
+            }, hasWarmRestoreView ? 70 : 0);
+            recordInternalPerfDuration('detailBackDurations', detailBackStartedAt, visibleRestoreViewId);
             return false;
         }
         function toggleExpand() {
@@ -18834,30 +19418,35 @@ function toggleDriveQuickRequestItem(domId) {
             const badge = document.getElementById('sync-diagnostics-badge');
             const detail = document.getElementById('sync-diagnostics-detail');
             if (!badge || !detail) return;
-            const show = isIOSDevice() || isStandaloneApp();
+            const show = isIOSDevice() || isStandaloneApp() || hasActiveManualSync();
             badge.classList.toggle('hidden', !show);
             detail.classList.toggle('hidden', !show);
             if (!show) return;
-            const effectiveMode = !navigator.onLine ? 'offline' : (modeOverride || syncDiagnosticsOverride || liveSyncMode || 'idle');
-            const labelMap = { realtime: 'REALTIME', polling: 'POLLING', refreshing: 'REFRESH', queued: 'QUEUED', offline: 'OFFLINE', idle: 'IDLE' };
+            const effectiveMode = !navigator.onLine ? 'offline' : (hasActiveManualSync() ? 'manual-sync' : (modeOverride || syncDiagnosticsOverride || liveSyncMode || 'idle'));
+            const labelMap = { realtime: 'REALTIME', polling: 'POLLING', refreshing: 'REFRESH', queued: 'QUEUED', offline: 'OFFLINE', idle: 'IDLE', 'manual-sync': 'SYNC' };
             const styleMap = {
                 realtime: 'border-emerald-200 bg-emerald-300 text-emerald-950',
                 polling: 'border-amber-200 bg-amber-300 text-amber-950',
                 refreshing: 'border-sky-200 bg-sky-300 text-sky-950',
                 queued: 'border-indigo-200 bg-indigo-300 text-indigo-950',
                 offline: 'border-red-200 bg-red-300 text-red-950',
-                idle: 'border-white/20 bg-white/10 text-white'
+                idle: 'border-white/20 bg-white/10 text-white',
+                'manual-sync': 'border-fuchsia-200 bg-fuchsia-300 text-fuchsia-950'
             };
-            const modeLabel = labelMap[effectiveMode] || 'IDLE';
+            const modeLabel = effectiveMode === 'manual-sync'
+                ? `SYNC ${getManualSyncProgressInfo().text || ''}`.trim()
+                : (labelMap[effectiveMode] || 'IDLE');
             badge.className = `px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${styleMap[effectiveMode] || styleMap.idle}`;
             badge.innerText = modeLabel;
-            detail.innerText = `${getDiagnosticsPlatformLabel()} | ${navigator.onLine ? 'Online' : 'Offline'} | Last Sync ${formatDiagnosticsTime(lastSuccessfulSyncTime)}`;
-            if (!modeOverride || modeOverride === 'realtime' || modeOverride === 'polling' || modeOverride === 'idle' || modeOverride === 'offline') syncDiagnosticsOverride = '';
+            detail.innerText = effectiveMode === 'manual-sync'
+                ? `Manual Sync | ${getManualSyncStatusText() || 'Running...'}` 
+                : `${getDiagnosticsPlatformLabel()} | ${navigator.onLine ? 'Online' : 'Offline'} | Last Sync ${formatDiagnosticsTime(lastSuccessfulSyncTime)}`;
+            if (!modeOverride || modeOverride === 'realtime' || modeOverride === 'polling' || modeOverride === 'idle' || modeOverride === 'offline' || modeOverride === 'manual-sync') syncDiagnosticsOverride = '';
         }
 
         function canUseManualPullRefresh() {
             if (!ENABLE_MANUAL_PULL_REFRESH) return false;
-            return !!(navigator.onLine !== false && !isStandaloneApp() && liveSyncMode !== 'realtime' && !backgroundRefreshInFlight && !pullRefreshState.refreshing);
+            return !!(navigator.onLine !== false && !isStandaloneApp() && liveSyncMode !== 'realtime' && !backgroundRefreshInFlight && !pullRefreshState.refreshing && !hasActiveManualSync());
         }
         function shouldIgnorePullRefreshTarget(target) {
             if (!target) return false;
@@ -22832,9 +23421,15 @@ ${folderNote ? `Folder Note: ${folderNote}
             return explicit;
         }
 
-        function buildTaskGenusFilterState(items = []) {
-            const options = [...new Set((items || []).map(getTaskGenusName).filter(Boolean))]
-                .sort((a, b) => String(a).localeCompare(String(b)));
+        function buildTaskGenusFilterState(items = [], scopeKey = taskGenusFilterScopeKey) {
+            const normalizedScopeKey = String(scopeKey || '').trim() || `task-genus:${resolvedViewStateEpoch}:${Array.isArray(items) ? items.length : 0}`;
+            let options = taskGenusOptionsCache.get(normalizedScopeKey);
+            if (!Array.isArray(options)) {
+                options = [...new Set((items || []).map(getTaskGenusName).filter(Boolean))]
+                    .sort((a, b) => String(a).localeCompare(String(b)));
+                taskGenusOptionsCache.set(normalizedScopeKey, options);
+                trimInternalCacheMap(taskGenusOptionsCache, 18);
+            }
             const available = new Set(options);
             if (selectedTaskGenusNames.size) {
                 selectedTaskGenusNames = new Set([...selectedTaskGenusNames].filter(name => available.has(name)));
@@ -22993,21 +23588,28 @@ ${folderNote ? `Folder Note: ${folderNote}
             return false;
         }
 
-        function renderTaskGenusFilter(items = []) {
+        function renderTaskGenusFilter(items = [], scopeKey = '') {
             const container = document.getElementById('task-genus-filters');
             if (!container) return;
             taskGenusFilterItemsCache = Array.isArray(items) ? items : [];
+            taskGenusFilterScopeKey = String(firstNonEmptyValue(scopeKey, taskGenusFilterScopeKey, '') || '').trim() || `task-genus:${resolvedViewStateEpoch}:${taskGenusFilterItemsCache.length}`;
             if (!container.dataset.genusReady) {
                 container.dataset.genusReady = '1';
                 container.innerHTML = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskGenusDropdown()"><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus Filter</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-genus-summary>All Genus</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div data-genus-chips></div><div class="task-top-control-panel mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ${taskGenusFilterOpen ? '' : 'hidden '}" data-genus-panel><div class="p-2 border-b border-emerald-100"><input id="task-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white" placeholder="Search genus..." value="${esc(taskGenusSearchTerm)}" oninput="setTaskGenusSearchTerm(this.value)" onkeydown="handleTaskGenusSearchKeydown(event)"></div><div class="max-h-60 overflow-y-auto" data-genus-options></div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-genus-clear onclick="return clearTaskGenusFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskGenusDropdown()">Done</button></div></div></div>`;
             }
-            const state = buildTaskGenusFilterState(taskGenusFilterItemsCache);
+            const state = buildTaskGenusFilterState(taskGenusFilterItemsCache, taskGenusFilterScopeKey);
             updateTaskGenusFilterUi(state, container);
         }
 
-        function buildTaskContSizeFilterState(items = []) {
-            const options = [...new Set((items || []).map(getTaskLocationDetailContSize).filter(Boolean))]
-                .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+        function buildTaskContSizeFilterState(items = [], scopeKey = taskContSizeFilterScopeKey) {
+            const normalizedScopeKey = String(scopeKey || '').trim() || `task-contsize:${resolvedViewStateEpoch}:${Array.isArray(items) ? items.length : 0}`;
+            let options = taskContSizeOptionsCache.get(normalizedScopeKey);
+            if (!Array.isArray(options)) {
+                options = [...new Set((items || []).map(getTaskLocationDetailContSize).filter(Boolean))]
+                    .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+                taskContSizeOptionsCache.set(normalizedScopeKey, options);
+                trimInternalCacheMap(taskContSizeOptionsCache, 18);
+            }
             const available = new Set(options);
             if (selectedTaskContSizes.size) {
                 selectedTaskContSizes = new Set([...selectedTaskContSizes].filter(value => available.has(value)));
@@ -23153,11 +23755,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             container.classList.remove('hidden');
         }
 
-        function renderTaskContSizeFilter(items = []) {
+        function renderTaskContSizeFilter(items = [], scopeKey = '') {
             const container = document.getElementById('task-contsize-filters');
             if (!container) return;
             taskContSizeFilterItemsCache = Array.isArray(items) ? items : [];
-            const state = buildTaskContSizeFilterState(items);
+            taskContSizeFilterScopeKey = String(firstNonEmptyValue(scopeKey, taskContSizeFilterScopeKey, '') || '').trim() || `task-contsize:${resolvedViewStateEpoch}:${taskContSizeFilterItemsCache.length}`;
+            const state = buildTaskContSizeFilterState(taskContSizeFilterItemsCache, taskContSizeFilterScopeKey);
             if (!container.dataset.contsizeReady) {
                 container.dataset.contsizeReady = '1';
                 container.innerHTML = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-green-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">CONTSIZE</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-contsize-summary>All Sizes</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ${taskContSizeDropdownOpen ? '' : 'hidden '}" data-contsize-panel><div class="p-2 border-b border-emerald-100"><input id="task-contsize-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white" placeholder="Search cont size..." value="${esc(taskContSizeSearchTerm)}" oninput="setTaskContSizeSearchTerm(this.value)" onkeydown="handleTaskContSizeSearchKeydown(event)"></div><div class="max-h-60 overflow-y-auto" data-contsize-options></div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-contsize-clear onclick="return clearTaskContSizeFilter()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskContSizeDropdown()">Done</button></div></div></div>`;
@@ -23190,15 +23793,25 @@ ${folderNote ? `Folder Note: ${folderNote}
             return String(firstNonEmptyValue(item && item.LOTCODE, item && item.lotcode, '-')).trim() || '-';
         }
 
-        function buildTaskLocationDetailFilterState(items = []) {
+        function buildTaskLocationDetailFilterState(items = [], scopeKey = taskLocationDetailFilterScopeKey) {
             const scopedItems = Array.isArray(items) ? items : [];
-            const compareOptionValues = (left, right) => String(left || '').localeCompare(String(right || ''), undefined, { numeric: true });
-            const genusOptions = activeTaskTab === 'location'
-                ? [...new Set(scopedItems.map(getTaskGenusName).filter(Boolean))].sort(compareOptionValues)
-                : [];
-            const lotCodes = activeTaskTab === 'location'
-                ? [...new Set(scopedItems.map(getTaskLocationDetailLotCode).filter(Boolean))].sort(compareOptionValues)
-                : [];
+            const normalizedScopeKey = String(scopeKey || '').trim() || `task-location-detail:${resolvedViewStateEpoch}:${scopedItems.length}`;
+            let cachedState = taskLocationDetailStateCache.get(normalizedScopeKey);
+            if (!cachedState) {
+                const compareOptionValues = (left, right) => String(left || '').localeCompare(String(right || ''), undefined, { numeric: true });
+                cachedState = {
+                    genusOptions: activeTaskTab === 'location'
+                        ? [...new Set(scopedItems.map(getTaskGenusName).filter(Boolean))].sort(compareOptionValues)
+                        : [],
+                    lotCodes: activeTaskTab === 'location'
+                        ? [...new Set(scopedItems.map(getTaskLocationDetailLotCode).filter(Boolean))].sort(compareOptionValues)
+                        : []
+                };
+                taskLocationDetailStateCache.set(normalizedScopeKey, cachedState);
+                trimInternalCacheMap(taskLocationDetailStateCache, 18);
+            }
+            const genusOptions = cachedState.genusOptions || [];
+            const lotCodes = cachedState.lotCodes || [];
             if (selectedTaskLocationDetailGenus && !genusOptions.includes(selectedTaskLocationDetailGenus)) selectedTaskLocationDetailGenus = '';
             if (selectedTaskLocationDetailLotCode && !lotCodes.includes(selectedTaskLocationDetailLotCode)) selectedTaskLocationDetailLotCode = '';
             return { genusOptions, lotCodes };
@@ -23227,7 +23840,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function setTaskLocationDetailSearchTerm(value = '') {
             taskLocationDetailSearchTerm = String(value || '');
             syncTaskLocationDetailFilterUi();
-            scheduleTasksRenderWithOptions({ skipTaskLocationDetailFilterRender: true }, 0, 180, false, 'tasks:location-detail-search');
+            scheduleTasksRenderWithOptions({ skipTaskLocationDetailFilterRender: true }, 0, 100, false, 'tasks:location-detail-search');
         }
 
         function clearTaskLocationDetailSearch() {
@@ -23255,7 +23868,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             return false;
         }
 
-        function renderTaskLocationDetailFilters(items = []) {
+        function renderTaskLocationDetailFilters(items = [], scopeKey = '') {
             const container = document.getElementById('task-location-detail-filters');
             if (!container) return;
             if (!shouldShowTaskInlineDetailFilters(activeTaskTab, taskViewLevel)) {
@@ -23264,7 +23877,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 syncTaskLocationDetailFilterUi();
                 return;
             }
-            const state = buildTaskLocationDetailFilterState(items);
+            taskLocationDetailFilterScopeKey = String(firstNonEmptyValue(scopeKey, taskLocationDetailFilterScopeKey, '') || '').trim() || `task-location-detail:${resolvedViewStateEpoch}:${Array.isArray(items) ? items.length : 0}`;
+            const state = buildTaskLocationDetailFilterState(items, taskLocationDetailFilterScopeKey);
             const buildOptionHtml = (label, values, selectedValue) => {
                 const defaultOption = `<option value="">${label}</option>`;
                 return [defaultOption].concat(values.map(value => `<option value="${esc(value)}" ${selectedValue === value ? 'selected' : ''}>${esc(value)}</option>`)).join('');
@@ -23372,6 +23986,276 @@ ${folderNote ? `Folder Note: ${folderNote}
             return left.raw.localeCompare(right.raw, undefined, { numeric: true });
         }
 
+        function sortTaskLocationDetailItems(items = []) {
+            return [...(Array.isArray(items) ? items : [])].sort((a, b) => {
+                const locationCompare = compareLocationCodeValues(a && a.LOCATIONCODE, b && b.LOCATIONCODE);
+                if (locationCompare !== 0) return locationCompare;
+                const nameCompare = String(firstNonEmptyValue(a && a.COMMONNAME, '')).localeCompare(String(firstNonEmptyValue(b && b.COMMONNAME, '')));
+                if (nameCompare !== 0) return nameCompare;
+                return String(firstNonEmptyValue(a && a.CONTSIZE, '')).localeCompare(String(firstNonEmptyValue(b && b.CONTSIZE, '')), undefined, { numeric: true });
+            });
+        }
+
+        function sortFlyerFolderTaskItems(items = []) {
+            return [...(Array.isArray(items) ? items : [])].sort((a, b) => {
+                const locationCompare = compareLocationCodeValues(a && a.LOCATIONCODE, b && b.LOCATIONCODE);
+                if (locationCompare !== 0) return locationCompare;
+                const completeCompare = String(firstNonEmptyValue(a && a.FLYER_COMPLETED, a && a.DATE_COMPLETED, '')).localeCompare(String(firstNonEmptyValue(b && b.FLYER_COMPLETED, b && b.DATE_COMPLETED, '')));
+                if (completeCompare !== 0) return completeCompare;
+                return String(firstNonEmptyValue(a && a.COMMONNAME, '')).localeCompare(String(firstNonEmptyValue(b && b.COMMONNAME, '')));
+            });
+        }
+
+        function sortEndCapFolderTaskItems(items = []) {
+            return [...(Array.isArray(items) ? items : [])].sort((a, b) => {
+                const nameCompare = String(firstNonEmptyValue(a && a.COMMONNAME, '')).localeCompare(String(firstNonEmptyValue(b && b.COMMONNAME, '')));
+                if (nameCompare !== 0) return nameCompare;
+                const sizeCompare = String(firstNonEmptyValue(a && a.CONTSIZE, '')).localeCompare(String(firstNonEmptyValue(b && b.CONTSIZE, '')), undefined, { numeric: true });
+                if (sizeCompare !== 0) return sizeCompare;
+                return compareLocationCodeValues(a && a.LOCATIONCODE, b && b.LOCATIONCODE);
+            });
+        }
+
+        function buildTaskHotState(options = {}) {
+            const safeTab = String(firstNonEmptyValue(options && options.tab, activeTaskTab, '') || '').trim().toLowerCase();
+            const safeSubview = String(firstNonEmptyValue(options && options.subview, activeTaskSubview, '') || '').trim().toLowerCase();
+            const safeTargetUser = String(firstNonEmptyValue(options && options.targetUser, currentUser, '') || '').trim();
+            const useSharedTaskQueue = options && typeof options.useSharedTaskQueue === 'boolean'
+                ? options.useSharedTaskQueue
+                : shouldUseSharedTaskQueue(safeTab);
+            const colorWalkSearchTerm = safeTab === 'colorwalk'
+                ? String(firstNonEmptyValue(options && options.colorWalkSearchTerm, selectedColorWalkSearchTerm, '') || '').trim().toLowerCase()
+                : '';
+            const hotPriceSignature = isTaskHotPriceSubview(safeTab, safeSubview) ? getDatasetLoadSignature('avHotPriceKeys') : 'avHotPriceKeys:na';
+            const cavSignature = safeTab === 'season' ? getDatasetLoadSignature('cav') : 'cav:na';
+            const cacheKey = [
+                resolvedViewStateEpoch,
+                getDatasetLoadSignature('master'),
+                cavSignature,
+                hotPriceSignature,
+                safeRole,
+                currentUser || '',
+                safeTargetUser,
+                safeTab,
+                safeSubview,
+                useSharedTaskQueue ? '1' : '0',
+                safeTab === 'flyer' ? getFlyerFolderTabValue(activeFlyerFolderTab) : 'flyer-tab:na',
+                colorWalkSearchTerm
+            ].join('::');
+            if (taskHotStateCache.has(cacheKey)) {
+                const cachedState = taskHotStateCache.get(cacheKey);
+                taskHotStateCache.delete(cacheKey);
+                taskHotStateCache.set(cacheKey, cachedState);
+                incrementInternalPerfCounter('taskHotCacheHits');
+                return cachedState;
+            }
+
+            const perfKey = `${safeTab}:${safeSubview || 'all'}`;
+            const taskBuildStartedAt = beginInternalPerfMeasure();
+            let scopedItems = getScopedTaskQueueItems(safeTab, safeTargetUser);
+            const seasonTaskItems = safeTab === 'season' ? getTaskTabItems(scopedItems, 'season') : [];
+            const seasonSubviewItems = safeTab === 'season'
+                ? getResolvedTaskSubviewItems(scopedItems, 'season', safeSubview, { targetUser: safeTargetUser, useSharedTaskQueue })
+                : [];
+            let tabItems = getResolvedTaskSubviewItems(scopedItems, safeTab, safeSubview, { targetUser: safeTargetUser, useSharedTaskQueue });
+            if (safeTab === 'colorwalk' && colorWalkSearchTerm) {
+                tabItems = filterBySearch(tabItems, colorWalkSearchTerm, 'colorwalk');
+            }
+
+            const itemsByBlock = new Map();
+            const itemsByLocation = new Map();
+            const blockRows = [];
+            const locationRowsByBlock = new Map();
+            if (taskTabUsesBlockDrill(safeTab)) {
+                tabItems.forEach((item) => {
+                    const blockAlpha = getTaskBlockAlpha(item);
+                    const locationCode = getTaskLocationBucket(item);
+                    if (!itemsByBlock.has(blockAlpha)) itemsByBlock.set(blockAlpha, []);
+                    itemsByBlock.get(blockAlpha).push(item);
+                    if (!itemsByLocation.has(locationCode)) itemsByLocation.set(locationCode, []);
+                    itemsByLocation.get(locationCode).push(item);
+                });
+                itemsByLocation.forEach((items, locationCode) => {
+                    itemsByLocation.set(locationCode, sortTaskLocationDetailItems(items));
+                });
+                Array.from(itemsByBlock.keys()).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })).forEach((blockAlpha) => {
+                    const blockItems = itemsByBlock.get(blockAlpha) || [];
+                    blockRows.push({ blockAlpha, count: blockItems.length });
+                    const locationCounts = new Map();
+                    blockItems.forEach((item) => {
+                        const locationCode = getTaskLocationBucket(item);
+                        locationCounts.set(locationCode, (locationCounts.get(locationCode) || 0) + 1);
+                    });
+                    const locationRows = Array.from(locationCounts.entries())
+                        .map(([locationCode, count]) => ({ locationCode, count }))
+                        .sort((left, right) => compareLocationCodeValues(left.locationCode, right.locationCode));
+                    locationRowsByBlock.set(blockAlpha, locationRows);
+                });
+            }
+
+            const itemsByFlyerFolder = new Map();
+            const flyerFolderRows = [];
+            if (safeTab === 'flyer') {
+                const folderTabValue = getFlyerFolderTabValue(activeFlyerFolderTab);
+                const visibleFlyerItems = tabItems.filter((item) => folderTabValue === (isFlyerFolderArchived(item) ? 'archive' : 'active'));
+                const folderMeta = new Map();
+                visibleFlyerItems.forEach((item) => {
+                    const folderName = getFlyerFolderName(item);
+                    if (!folderName) return;
+                    if (!itemsByFlyerFolder.has(folderName)) itemsByFlyerFolder.set(folderName, []);
+                    itemsByFlyerFolder.get(folderName).push(item);
+                    if (!folderMeta.has(folderName)) folderMeta.set(folderName, { count: 0, complete: 0, assignees: new Set() });
+                    const entry = folderMeta.get(folderName);
+                    entry.count += 1;
+                    if (String(firstNonEmptyValue(item && item.FLYER_COMPLETED, item && item.DATE_COMPLETED, '')).trim() !== '') entry.complete += 1;
+                    getFlyerAssigneeList(firstNonEmptyValue(item && item.FLYER_ASSIGNED, item && item.ASSIGNEDTO, '')).forEach((name) => entry.assignees.add(name));
+                });
+                Array.from(itemsByFlyerFolder.keys()).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })).forEach((folderName) => {
+                    itemsByFlyerFolder.set(folderName, sortFlyerFolderTaskItems(itemsByFlyerFolder.get(folderName)));
+                    const meta = folderMeta.get(folderName) || { count: 0, complete: 0, assignees: new Set() };
+                    flyerFolderRows.push({
+                        folderName,
+                        meta,
+                        assignees: Array.from(meta.assignees || []).join(', ') || 'Unassigned'
+                    });
+                });
+            }
+
+            const itemsByEndCapFolder = new Map();
+            const endCapFolderRows = [];
+            if (safeTab === 'endcap') {
+                tabItems.forEach((item) => {
+                    const folderName = String(firstNonEmptyValue(item && item.END_CAP_FOLDER, 'Unassigned') || 'Unassigned');
+                    if (!itemsByEndCapFolder.has(folderName)) itemsByEndCapFolder.set(folderName, []);
+                    itemsByEndCapFolder.get(folderName).push(item);
+                });
+                Array.from(itemsByEndCapFolder.keys()).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })).forEach((folderName) => {
+                    const folderItems = sortEndCapFolderTaskItems(itemsByEndCapFolder.get(folderName));
+                    itemsByEndCapFolder.set(folderName, folderItems);
+                    endCapFolderRows.push({ folderName, count: folderItems.length });
+                });
+            }
+
+            const nextState = {
+                key: cacheKey,
+                tab: safeTab,
+                subview: safeSubview,
+                targetUser: safeTargetUser,
+                useSharedTaskQueue,
+                scopedItems,
+                seasonTaskItems,
+                seasonSubviewItems,
+                tabItems,
+                itemsByBlock,
+                itemsByLocation,
+                blockRows,
+                locationRowsByBlock,
+                itemsByFlyerFolder,
+                flyerFolderRows,
+                itemsByEndCapFolder,
+                endCapFolderRows
+            };
+            taskHotStateCache.set(cacheKey, nextState);
+            trimInternalCacheMap(taskHotStateCache, 18);
+            recordInternalPerfDuration('taskStateBuildDurations', taskBuildStartedAt, perfKey);
+            return nextState;
+        }
+
+        function getTaskDrilldownBaseItems(hotState = null) {
+            const safeHotState = hotState || buildTaskHotState();
+            if (activeTaskTab === 'flyer' && taskViewLevel === 1 && selectedFlyerFolder) {
+                return safeHotState.itemsByFlyerFolder.get(selectedFlyerFolder) || [];
+            }
+            if (activeTaskTab === 'endcap' && taskViewLevel === 1 && selectedEndCapFolder) {
+                return safeHotState.itemsByEndCapFolder.get(selectedEndCapFolder) || [];
+            }
+            if (taskTabUsesBlockDrill(activeTaskTab)) {
+                if (taskViewLevel >= 2 && selectedTaskLoc) {
+                    return safeHotState.itemsByLocation.get(selectedTaskLoc) || [];
+                }
+                if (taskViewLevel >= 1 && selectedTaskBlock) {
+                    return safeHotState.itemsByBlock.get(selectedTaskBlock) || [];
+                }
+            }
+            return safeHotState.tabItems || [];
+        }
+
+        function getTaskHotCacheWarmTargets() {
+            const access = getRoleAccessState();
+            const allowedViews = access.allowedViews instanceof Set ? access.allowedViews : new Set(access.allowedViews || []);
+            if (!allowedViews.has('tasks')) return [];
+            const targets = [];
+            const seen = new Set();
+            const addTarget = (tab = 'season', subview = 'all', extra = {}) => {
+                const safeTab = String(tab || '').trim().toLowerCase();
+                if (!safeTab) return;
+                const safeSubview = String(subview || 'all').trim().toLowerCase() || 'all';
+                const warmKey = [
+                    safeTab,
+                    safeSubview,
+                    String(extra.targetUser || ''),
+                    String(extra.useSharedTaskQueue ? '1' : '0'),
+                    safeTab === 'flyer' ? getFlyerFolderTabValue(activeFlyerFolderTab) : '',
+                    safeTab === 'colorwalk' ? String(firstNonEmptyValue(extra.colorWalkSearchTerm, selectedColorWalkSearchTerm, '') || '').trim().toLowerCase() : ''
+                ].join('::');
+                if (seen.has(warmKey)) return;
+                seen.add(warmKey);
+                targets.push({
+                    tab: safeTab,
+                    subview: safeSubview,
+                    targetUser: extra.targetUser,
+                    useSharedTaskQueue: !!extra.useSharedTaskQueue,
+                    colorWalkSearchTerm: extra.colorWalkSearchTerm
+                });
+            };
+            const activeTargetUser = safeRole === 'ADMIN' && !shouldUseSharedTaskQueue(activeTaskTab) ? taskViewTargetUser : currentUser;
+            addTarget(activeTaskTab, activeTaskSubview, {
+                targetUser: activeTargetUser,
+                useSharedTaskQueue: shouldUseSharedTaskQueue(activeTaskTab),
+                colorWalkSearchTerm: selectedColorWalkSearchTerm
+            });
+            addTarget('season', 'all', { targetUser: currentUser, useSharedTaskQueue: shouldUseSharedTaskQueue('season') });
+            addTarget('location', 'all', { targetUser: currentUser, useSharedTaskQueue: shouldUseSharedTaskQueue('location') });
+            addTarget('flyer', 'all', { targetUser: currentUser, useSharedTaskQueue: shouldUseSharedTaskQueue('flyer') });
+            addTarget('endcap', 'all', { targetUser: currentUser, useSharedTaskQueue: shouldUseSharedTaskQueue('endcap') });
+            addTarget('colorwalk', 'all', { targetUser: currentUser, useSharedTaskQueue: shouldUseSharedTaskQueue('colorwalk'), colorWalkSearchTerm: '' });
+            const cavState = getDatasetState('cav');
+            if (cavState.initialLoaded || cavState.fullLoaded) {
+                addTarget('season', 'av-blanks', { targetUser: currentUser, useSharedTaskQueue: shouldUseSharedTaskQueue('season') });
+            }
+            const hotPriceState = getDatasetState('avHotPriceKeys');
+            if (hotPriceState.fullLoaded) {
+                addTarget('season', 'hot-price', { targetUser: currentUser, useSharedTaskQueue: shouldUseSharedTaskQueue('season') });
+                addTarget('location', 'hot-price', { targetUser: currentUser, useSharedTaskQueue: shouldUseSharedTaskQueue('location') });
+            }
+            return targets;
+        }
+
+        async function warmTaskHotCacheEntries() {
+            const targets = getTaskHotCacheWarmTargets();
+            if (!targets.length || !Array.isArray(fullInventory) || !fullInventory.length) return false;
+            for (const target of targets) {
+                if (shouldDeferInteractiveBackgroundWork()) {
+                    scheduleTaskHotCacheWarmup('task-hot-resume', 220);
+                    return false;
+                }
+                buildTaskHotState(target);
+                await yieldToUiFrame();
+            }
+            return true;
+        }
+
+        function scheduleTaskHotCacheWarmup(reason = 'task-hot', delay = 180) {
+            if (taskHotCacheWarmTimer) clearTimeout(taskHotCacheWarmTimer);
+            taskHotCacheWarmTimer = setTimeout(() => {
+                taskHotCacheWarmTimer = null;
+                runAfterShellInteractive(() => {
+                    warmTaskHotCacheEntries().catch(() => {});
+                }, 0);
+            }, Math.max(0, Number(delay) || 0));
+            return false;
+        }
+
         function normalizeSeasonTaskValue(value = '') {
             return String(value || '').trim().toUpperCase();
         }
@@ -23397,82 +24281,251 @@ ${folderNote ? `Folder Note: ${folderNote}
             const useSharedTaskQueue = shouldUseSharedTaskQueue(activeTaskTab);
             const targetUser = safeRole === 'ADMIN' && !useSharedTaskQueue ? taskViewTargetUser : currentUser;
             const baseNotesTitle = getTaskTabLabel(activeTaskTab);
-            const taskHotPriceSignature = isTaskHotPriceSubview(activeTaskTab, activeTaskSubview) ? getDatasetLoadSignature('avHotPriceKeys') : 'avHotPriceKeys:na';
-            const taskCavSignature = activeTaskTab === 'season' && activeTaskSubview === 'av-blanks' ? getDatasetLoadSignature('cav') : 'cav:na';
             const notesTitle = useBlockDrill && activeTaskSubview !== 'all'
                 ? `${baseNotesTitle} > ${getTaskSubviewLabel(activeTaskSubview)}`
                 : baseNotesTitle;
             const flyerFolderTabLabel = getFlyerFolderTabValue(activeFlyerFolderTab) === 'archive' ? 'Archive' : 'Active';
+            const hotState = buildTaskHotState({
+                tab: activeTaskTab,
+                subview: activeTaskSubview,
+                targetUser,
+                useSharedTaskQueue,
+                colorWalkSearchTerm: selectedColorWalkSearchTerm
+            });
+
+            if (taskTabUsesBlockDrill(activeTaskTab)) {
+                const hasSelectedBlock = !!(selectedTaskBlock && hotState.itemsByBlock.has(selectedTaskBlock));
+                if (taskViewLevel === 2) {
+                    const selectedLocationItems = selectedTaskLoc ? (hotState.itemsByLocation.get(selectedTaskLoc) || []) : [];
+                    const hasSelectedLocation = !!(selectedTaskLoc && selectedLocationItems.length && (!selectedTaskBlock || getTaskBlockAlpha(selectedLocationItems[0]) === selectedTaskBlock));
+                    if (!hasSelectedLocation) {
+                        if (hasSelectedBlock) {
+                            taskViewLevel = 1;
+                            selectedTaskLoc = null;
+                        } else {
+                            taskViewLevel = 0;
+                            selectedTaskBlock = null;
+                            selectedTaskLoc = null;
+                        }
+                    }
+                }
+                if (taskViewLevel === 1 && !hasSelectedBlock) {
+                    taskViewLevel = 0;
+                    selectedTaskBlock = null;
+                    selectedTaskLoc = null;
+                }
+            } else if (activeTaskTab === 'flyer' && taskViewLevel === 1 && selectedFlyerFolder && !hotState.itemsByFlyerFolder.has(selectedFlyerFolder)) {
+                taskViewLevel = 0;
+                selectedFlyerFolder = null;
+            } else if (activeTaskTab === 'endcap' && taskViewLevel === 1 && selectedEndCapFolder && !hotState.itemsByEndCapFolder.has(selectedEndCapFolder)) {
+                taskViewLevel = 0;
+                selectedEndCapFolder = null;
+            }
+
+            const buildStartedAt = beginInternalPerfMeasure();
+            const computeFilteredTaskState = () => {
+                const drilldownBaseItems = getTaskDrilldownBaseItems(hotState);
+                const nextTaskGenusBaseItems = Array.isArray(drilldownBaseItems) ? drilldownBaseItems : [];
+                const nextTaskContSizeBaseItems = selectedTaskGenusNames.size
+                    ? nextTaskGenusBaseItems.filter((item) => selectedTaskGenusNames.has(getTaskGenusName(item)))
+                    : nextTaskGenusBaseItems;
+                const nextTabItems = selectedTaskContSizes.size
+                    ? nextTaskContSizeBaseItems.filter((item) => selectedTaskContSizes.has(getTaskLocationDetailContSize(item)))
+                    : nextTaskContSizeBaseItems;
+                return {
+                    taskGenusBaseItems: nextTaskGenusBaseItems,
+                    taskContSizeBaseItems: nextTaskContSizeBaseItems,
+                    tabItems: nextTabItems
+                };
+            };
+            let {
+                taskGenusBaseItems,
+                taskContSizeBaseItems,
+                tabItems
+            } = computeFilteredTaskState();
+            let taskStateSelectionChanged = false;
+
+            if (taskTabUsesBlockDrill(activeTaskTab)) {
+                const filteredBlockSet = new Set(tabItems.map((item) => getTaskBlockAlpha(item)));
+                const hasSelectedBlock = !!(selectedTaskBlock && filteredBlockSet.has(selectedTaskBlock));
+                if (taskViewLevel === 2) {
+                    const hasSelectedLocation = !!(selectedTaskLoc && tabItems.some((item) => getTaskLocationBucket(item) === selectedTaskLoc));
+                    if (!hasSelectedLocation) {
+                        if (hasSelectedBlock) {
+                            taskViewLevel = 1;
+                            selectedTaskLoc = null;
+                            taskStateSelectionChanged = true;
+                        } else {
+                            taskViewLevel = 0;
+                            selectedTaskBlock = null;
+                            selectedTaskLoc = null;
+                            taskStateSelectionChanged = true;
+                        }
+                    }
+                }
+                if (taskViewLevel === 1 && !hasSelectedBlock) {
+                    taskViewLevel = 0;
+                    selectedTaskBlock = null;
+                    selectedTaskLoc = null;
+                    taskStateSelectionChanged = true;
+                }
+            } else if (activeTaskTab === 'flyer' && taskViewLevel === 1 && selectedFlyerFolder) {
+                const visibleFlyerItems = tabItems.filter((item) => getFlyerFolderTabValue(activeFlyerFolderTab) === (isFlyerFolderArchived(item) ? 'archive' : 'active'));
+                if (!visibleFlyerItems.some((item) => getFlyerFolderName(item) === selectedFlyerFolder)) {
+                    taskViewLevel = 0;
+                    selectedFlyerFolder = null;
+                    taskStateSelectionChanged = true;
+                }
+            } else if (activeTaskTab === 'endcap' && taskViewLevel === 1 && selectedEndCapFolder) {
+                if (!tabItems.some((item) => String(firstNonEmptyValue(item && item.END_CAP_FOLDER, 'Unassigned') || 'Unassigned') === selectedEndCapFolder)) {
+                    taskViewLevel = 0;
+                    selectedEndCapFolder = null;
+                    taskStateSelectionChanged = true;
+                }
+            }
+
+            if (taskStateSelectionChanged) {
+                ({
+                    taskGenusBaseItems,
+                    taskContSizeBaseItems,
+                    tabItems
+                } = computeFilteredTaskState());
+            }
+
+            const genusSelectionKey = buildSelectionStateKey(selectedTaskGenusNames);
+            const contSizeSelectionKey = buildSelectionStateKey(selectedTaskContSizes);
             const resolvedStateKey = [
-                resolvedViewStateEpoch,
-                getDatasetLoadSignature('master'),
-                taskCavSignature,
-                taskHotPriceSignature,
-                safeRole,
-                currentUser || '',
-                taskViewTargetUser || '',
-                activeTaskTab,
-                activeTaskSubview,
+                hotState.key,
                 taskViewLevel,
                 selectedTaskBlock || '',
                 selectedTaskLoc || '',
                 selectedFlyerFolder || '',
                 selectedEndCapFolder || '',
-                activeFlyerFolderTab || '',
-                String(selectedColorWalkSearchTerm || '').trim().toLowerCase(),
-                buildSelectionStateKey(selectedTaskGenusNames),
-                buildSelectionStateKey(selectedTaskContSizes)
+                genusSelectionKey,
+                contSizeSelectionKey
             ].join('::');
             if (taskResolvedStateKey === resolvedStateKey && taskResolvedStateCache) {
                 incrementInternalPerfCounter('viewStateCacheHits');
                 return taskResolvedStateCache;
             }
-            let scopedItems = getScopedTaskQueueItems(activeTaskTab, targetUser);
-            const seasonTaskItems = activeTaskTab === 'season' ? getTaskTabItems(scopedItems, 'season') : [];
-            const seasonSubviewItems = activeTaskTab === 'season'
-                ? getResolvedTaskSubviewItems(scopedItems, 'season', activeTaskSubview, { targetUser, useSharedTaskQueue })
-                : [];
-            let tabItems = getResolvedTaskSubviewItems(scopedItems, activeTaskTab, activeTaskSubview, { targetUser, useSharedTaskQueue });
-            if (activeTaskTab === 'colorwalk' && selectedColorWalkSearchTerm) {
-                tabItems = filterBySearch(tabItems, selectedColorWalkSearchTerm, 'colorwalk');
+
+            const itemsByBlock = new Map();
+            const itemsByLocation = new Map();
+            const blockRows = [];
+            const locationRowsByBlock = new Map();
+            if (useBlockDrill) {
+                tabItems.forEach((item) => {
+                    const blockAlpha = getTaskBlockAlpha(item);
+                    const locationCode = getTaskLocationBucket(item);
+                    if (!itemsByBlock.has(blockAlpha)) itemsByBlock.set(blockAlpha, []);
+                    itemsByBlock.get(blockAlpha).push(item);
+                    if (!itemsByLocation.has(locationCode)) itemsByLocation.set(locationCode, []);
+                    itemsByLocation.get(locationCode).push(item);
+                });
+                itemsByLocation.forEach((items, locationCode) => {
+                    itemsByLocation.set(locationCode, sortTaskLocationDetailItems(items));
+                });
+                Array.from(itemsByBlock.keys()).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })).forEach((blockAlpha) => {
+                    const blockItems = itemsByBlock.get(blockAlpha) || [];
+                    blockRows.push({ blockAlpha, count: blockItems.length });
+                    const locationCounts = new Map();
+                    blockItems.forEach((item) => {
+                        const locationCode = getTaskLocationBucket(item);
+                        locationCounts.set(locationCode, (locationCounts.get(locationCode) || 0) + 1);
+                    });
+                    locationRowsByBlock.set(blockAlpha, Array.from(locationCounts.entries())
+                        .map(([locationCode, count]) => ({ locationCode, count }))
+                        .sort((left, right) => compareLocationCodeValues(left.locationCode, right.locationCode)));
+                });
             }
-            const taskGenusBaseItems = tabItems.filter((item) => {
-                if (taskTabUsesBlockDrill(activeTaskTab)) {
-                    if (taskViewLevel >= 1 && selectedTaskBlock && getTaskBlockAlpha(item) !== selectedTaskBlock) return false;
-                    if (taskViewLevel >= 2 && selectedTaskLoc && getTaskLocationBucket(item) !== selectedTaskLoc) return false;
-                }
-                if (activeTaskTab === 'flyer' && taskViewLevel === 1 && selectedFlyerFolder && getFlyerFolderName(item) !== selectedFlyerFolder) return false;
-                if (activeTaskTab === 'endcap' && taskViewLevel === 1 && selectedEndCapFolder && (item.END_CAP_FOLDER || 'Unassigned') !== selectedEndCapFolder) return false;
-                return true;
-            });
-            if (selectedTaskGenusNames.size) {
-                tabItems = tabItems.filter(i => selectedTaskGenusNames.has(getTaskGenusName(i)));
+
+            const itemsByFlyerFolder = new Map();
+            const flyerFolderRows = [];
+            if (activeTaskTab === 'flyer') {
+                const visibleFlyerItems = tabItems.filter((item) => getFlyerFolderTabValue(activeFlyerFolderTab) === (isFlyerFolderArchived(item) ? 'archive' : 'active'));
+                const folderMeta = new Map();
+                visibleFlyerItems.forEach((item) => {
+                    const folderName = getFlyerFolderName(item);
+                    if (!folderName) return;
+                    if (!itemsByFlyerFolder.has(folderName)) itemsByFlyerFolder.set(folderName, []);
+                    itemsByFlyerFolder.get(folderName).push(item);
+                    if (!folderMeta.has(folderName)) folderMeta.set(folderName, { count: 0, complete: 0, assignees: new Set() });
+                    const entry = folderMeta.get(folderName);
+                    entry.count += 1;
+                    if (String(firstNonEmptyValue(item && item.FLYER_COMPLETED, item && item.DATE_COMPLETED, '')).trim() !== '') entry.complete += 1;
+                    getFlyerAssigneeList(firstNonEmptyValue(item && item.FLYER_ASSIGNED, item && item.ASSIGNEDTO, '')).forEach((name) => entry.assignees.add(name));
+                });
+                Array.from(itemsByFlyerFolder.keys()).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })).forEach((folderName) => {
+                    itemsByFlyerFolder.set(folderName, sortFlyerFolderTaskItems(itemsByFlyerFolder.get(folderName)));
+                    const meta = folderMeta.get(folderName) || { count: 0, complete: 0, assignees: new Set() };
+                    flyerFolderRows.push({
+                        folderName,
+                        meta,
+                        assignees: Array.from(meta.assignees || []).join(', ') || 'Unassigned'
+                    });
+                });
             }
-            const taskContSizeBaseItems = selectedTaskGenusNames.size
-                ? taskGenusBaseItems.filter(i => selectedTaskGenusNames.has(getTaskGenusName(i)))
-                : taskGenusBaseItems;
-            if (selectedTaskContSizes.size) {
-                tabItems = tabItems.filter(i => selectedTaskContSizes.has(getTaskLocationDetailContSize(i)));
+
+            const itemsByEndCapFolder = new Map();
+            const endCapFolderRows = [];
+            if (activeTaskTab === 'endcap') {
+                tabItems.forEach((item) => {
+                    const folderName = String(firstNonEmptyValue(item && item.END_CAP_FOLDER, 'Unassigned') || 'Unassigned');
+                    if (!itemsByEndCapFolder.has(folderName)) itemsByEndCapFolder.set(folderName, []);
+                    itemsByEndCapFolder.get(folderName).push(item);
+                });
+                Array.from(itemsByEndCapFolder.keys()).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })).forEach((folderName) => {
+                    const folderItems = sortEndCapFolderTaskItems(itemsByEndCapFolder.get(folderName));
+                    itemsByEndCapFolder.set(folderName, folderItems);
+                    endCapFolderRows.push({ folderName, count: folderItems.length });
+                });
             }
+
+            const taskFilterScopeKey = [
+                hotState.key,
+                taskViewLevel,
+                selectedTaskBlock || '',
+                selectedTaskLoc || '',
+                selectedFlyerFolder || '',
+                selectedEndCapFolder || ''
+            ].join('::');
+            const taskGenusScopeKey = `${taskFilterScopeKey}:genus`;
+            const taskContSizeScopeKey = `${taskFilterScopeKey}:contsize:${genusSelectionKey}`;
+            const taskLocationDetailScopeKey = `${taskFilterScopeKey}:detail:${selectedTaskLoc || ''}`;
+
             taskResolvedStateKey = resolvedStateKey;
             taskResolvedStateCache = {
+                hotState,
                 useBlockDrill,
                 useSharedTaskQueue,
                 targetUser,
                 baseNotesTitle,
                 notesTitle,
                 flyerFolderTabLabel,
-                scopedItems,
-                seasonTaskItems,
-                seasonSubviewItems,
+                scopedItems: hotState.scopedItems,
+                seasonTaskItems: hotState.seasonTaskItems,
+                seasonSubviewItems: hotState.seasonSubviewItems,
                 tabItems,
                 taskGenusBaseItems,
-                taskContSizeBaseItems
+                taskContSizeBaseItems,
+                blockRows,
+                locationRowsByBlock,
+                itemsByLocation,
+                itemsByFlyerFolder,
+                flyerFolderRows,
+                itemsByEndCapFolder,
+                endCapFolderRows,
+                taskFilterScopeKey,
+                taskGenusScopeKey,
+                taskContSizeScopeKey,
+                taskLocationDetailScopeKey
             };
+            recordInternalPerfDuration('taskStateBuildDurations', buildStartedAt, `${activeTaskTab}:${activeTaskSubview || 'all'}:resolved`);
             return taskResolvedStateCache;
         }
 
         function renderTasks(options = {}) {
+            const taskRenderStartedAt = beginInternalPerfMeasure();
             const skipColorWalkFilterRender = !!(options && options.skipColorWalkFilterRender);
             const skipTaskLocationDetailFilterRender = !!(options && options.skipTaskLocationDetailFilterRender);
             if (ensureViewDataForRender('tasks')) return;
@@ -23487,16 +24540,27 @@ ${folderNote ? `Folder Note: ${folderNote}
                 targetUser,
                 notesTitle,
                 flyerFolderTabLabel,
-                tabItems: resolvedTabItems,
+                tabItems,
                 taskGenusBaseItems,
-                taskContSizeBaseItems
+                taskContSizeBaseItems,
+                blockRows,
+                locationRowsByBlock,
+                itemsByLocation,
+                itemsByFlyerFolder,
+                flyerFolderRows,
+                itemsByEndCapFolder,
+                endCapFolderRows,
+                taskGenusScopeKey,
+                taskContSizeScopeKey,
+                taskLocationDetailScopeKey
             } = buildResolvedTaskState();
             if (!useSharedTaskQueue && !targetUser) return;
 
+            const taskPerfKey = `${activeTaskTab}:${activeTaskSubview || 'all'}:level${taskViewLevel}`;
+            const finishTaskPerf = () => recordInternalPerfDuration('taskDrilldownDurations', taskRenderStartedAt, taskPerfKey);
             const container = document.getElementById('task-content');
             const crumb = document.getElementById('task-crumb');
             bumpChunkRenderTokenByKey('tasks-main');
-            let tabItems = resolvedTabItems;
 
             const applyTaskCrumb = () => {
                 if (useSharedTaskQueue && useBlockDrill) {
@@ -23525,122 +24589,65 @@ ${folderNote ? `Folder Note: ${folderNote}
                 renderColorWalkFilters();
             }
 
-            if (taskTabUsesBlockDrill(activeTaskTab)) {
-                const hasSelectedBlock = !!(selectedTaskBlock && tabItems.some(i => getTaskBlockAlpha(i) === selectedTaskBlock));
-                if (taskViewLevel === 2) {
-                    const hasSelectedLocation = !!(selectedTaskLoc && tabItems.some(i => getTaskLocationBucket(i) === selectedTaskLoc));
-                    if (!hasSelectedLocation) {
-                        if (hasSelectedBlock) {
-                            taskViewLevel = 1;
-                            selectedTaskLoc = null;
-                        } else {
-                            taskViewLevel = 0;
-                            selectedTaskBlock = null;
-                            selectedTaskLoc = null;
-                        }
-                    }
-                }
-                if (taskViewLevel === 1 && !hasSelectedBlock) {
-                    taskViewLevel = 0;
-                    selectedTaskBlock = null;
-                    selectedTaskLoc = null;
-                }
-            } else if (activeTaskTab === 'flyer' && taskViewLevel === 1 && selectedFlyerFolder) {
-                const hasSelectedFolder = tabItems.some(i => getFlyerFolderTabValue(activeFlyerFolderTab) === (isFlyerFolderArchived(i) ? 'archive' : 'active') && getFlyerFolderName(i) === selectedFlyerFolder);
-                if (!hasSelectedFolder) {
-                    taskViewLevel = 0;
-                    selectedFlyerFolder = null;
-                }
-            } else if (activeTaskTab === 'endcap' && taskViewLevel === 1 && selectedEndCapFolder) {
-                const hasSelectedFolder = tabItems.some(i => (i.END_CAP_FOLDER || 'Unassigned') === selectedEndCapFolder);
-                if (!hasSelectedFolder) {
-                    taskViewLevel = 0;
-                    selectedEndCapFolder = null;
-                }
-            }
-
-            renderTaskGenusFilter(taskGenusBaseItems);
-            renderTaskContSizeFilter(taskContSizeBaseItems);
+            const filterStartedAt = beginInternalPerfMeasure();
+            renderTaskGenusFilter(taskGenusBaseItems, taskGenusScopeKey);
+            renderTaskContSizeFilter(taskContSizeBaseItems, taskContSizeScopeKey);
 
             const shouldRenderTaskLocationDetailFilters = shouldShowTaskLocationDetailFilters(activeTaskTab, taskViewLevel);
             let taskLocationDetailBaseItems = [];
             let taskLocationDetailItems = [];
             if (shouldRenderTaskLocationDetailFilters && selectedTaskLoc) {
-                taskLocationDetailBaseItems = tabItems.filter(i => getTaskLocationBucket(i) === selectedTaskLoc && (!selectedTaskBlock || getTaskBlockAlpha(i) === selectedTaskBlock));
-                if (!skipTaskLocationDetailFilterRender) renderTaskLocationDetailFilters(taskLocationDetailBaseItems);
+                taskLocationDetailBaseItems = itemsByLocation.get(selectedTaskLoc) || [];
+                if (!skipTaskLocationDetailFilterRender) renderTaskLocationDetailFilters(taskLocationDetailBaseItems, taskLocationDetailScopeKey);
                 else {
-                    buildTaskLocationDetailFilterState(taskLocationDetailBaseItems);
+                    buildTaskLocationDetailFilterState(taskLocationDetailBaseItems, taskLocationDetailScopeKey);
                     syncTaskLocationDetailFilterUi();
                 }
                 taskLocationDetailItems = applyTaskLocationDetailFilters(taskLocationDetailBaseItems);
             } else {
-                renderTaskLocationDetailFilters([]);
+                renderTaskLocationDetailFilters([], '');
             }
             syncTaskSharedFilterArea();
             syncTaskLocationDetailFilterUi();
             syncGlobalHeaderChrome();
-
+            recordInternalPerfDuration('taskFilterRenderDurations', filterStartedAt, taskPerfKey);
 
             applyTaskCrumb();
 
             if (activeTaskTab !== 'flyer' && tabItems.length === 0) {
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${notesTitle} rows.</div>`;
+                finishTaskPerf();
                 return;
             }
             if (activeTaskTab === 'endcap') {
                 if (taskViewLevel === 0) {
-                    const folderRows = [...new Set(tabItems.map(i => i.END_CAP_FOLDER || 'Unassigned'))].sort().map((folderName) => ({
-                        folderName,
-                        count: tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === folderName).length
-                    }));
-                    renderMarkupChunkedByKey('tasks-endcap-folders', container, null, folderRows, '', (folderRow) => {
+                    renderMarkupChunkedByKey('tasks-endcap-folders', container, null, endCapFolderRows, '', (folderRow) => {
                         return `<div class="bg-white border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedEndCapFolder='${esc(folderRow.folderName)}'; taskViewLevel=1; scheduleTasksRender(0)"><div class="flex items-center gap-3"><div class="bg-yellow-50 p-2 rounded-lg"><i class="ph-fill ph-storefront text-2xl text-yellow-500"></i></div><span class="font-bold text-lg text-yellow-800">${folderRow.folderName}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${folderRow.count} Items</span></div>`;
                     }, { approxCardHeight: 96, emptyHtml: `<div class="p-8 text-center text-gray-400">No end cap folders found.</div>` });
                 } else if (taskViewLevel === 1) {
-                    let fItems = tabItems.filter(i => (i.END_CAP_FOLDER || 'Unassigned') === selectedEndCapFolder);
-                    fItems.sort((a,b) => String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || '')));
+                    const folderItems = itemsByEndCapFolder.get(selectedEndCapFolder) || [];
                     const prefixHtml = `<div class="back-btn" onclick="taskViewLevel=0; scheduleTasksRender(0)"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>`;
-                    renderMarkupChunkedByKey('tasks-endcap-items', container, null, fItems, '', (item) => generateCard(item, 'tasks', 'status-yellow'), {
+                    renderMarkupChunkedByKey('tasks-endcap-items', container, null, folderItems, '', (item) => generateCard(item, 'tasks', 'status-yellow'), {
                         prefixHtml,
                         approxCardHeight: 260,
                         emptyHtml: `<div class="p-8 text-center text-gray-400">No rows remain in this folder.</div>`
                     });
                 }
-            } else if (activeTaskTab === 'flyer') {
+                finishTaskPerf();
+                return;
+            }
+            if (activeTaskTab === 'flyer') {
                 const flyerTabsHtml = `<div class="flex gap-2 mb-3"><button class="task-tab ${flyerFolderTabLabel === 'Active' ? 'active' : ''}" onclick="return setFlyerFolderTab('active')">Active</button><button class="task-tab ${flyerFolderTabLabel === 'Archive' ? 'active' : ''}" onclick="return setFlyerFolderTab('archive')">Archive</button></div>`;
-                const visibleFlyerItems = tabItems.filter(i => getFlyerFolderTabValue(activeFlyerFolderTab) === (isFlyerFolderArchived(i) ? 'archive' : 'active'));
                 if (taskViewLevel === 0) {
-                    let folderMap = {};
-                    visibleFlyerItems.forEach(i => {
-                        const folderName = getFlyerFolderName(i);
-                        if (!folderName) return;
-                        if (!folderMap[folderName]) folderMap[folderName] = { count: 0, complete: 0, assignees: new Set() };
-                        folderMap[folderName].count++;
-                        if (String(i.FLYER_COMPLETED || i.DATE_COMPLETED || '').trim() !== '') folderMap[folderName].complete++;
-                        getFlyerAssigneeList(i.FLYER_ASSIGNED || i.ASSIGNEDTO || '').forEach(name => folderMap[folderName].assignees.add(name));
-                    });
-                    const folderNames = Object.keys(folderMap).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
                     const emptyFoldersHtml = `<div class="p-8 text-center text-gray-400">No ${flyerFolderTabLabel.toLowerCase()} flyer folders.</div>`;
                     const nextTab = flyerFolderTabLabel === 'Archive' ? 'active' : 'archive';
                     const actionLabel = flyerFolderTabLabel === 'Archive' ? 'Restore' : 'Archive';
                     const actionStyle = flyerFolderTabLabel === 'Archive' ? 'color:#0f766e;background:#ecfeff;' : 'color:#4338ca;background:#eef2ff;';
-                    const folderRows = folderNames.map((folderName) => ({
-                        folderName,
-                        meta: folderMap[folderName],
-                        assignees: Array.from((folderMap[folderName] && folderMap[folderName].assignees) || []).join(', ') || 'Unassigned'
-                    }));
-                    renderMarkupChunkedByKey('tasks-flyer-folders', container, null, folderRows, '', (folderRow) => {
+                    renderMarkupChunkedByKey('tasks-flyer-folders', container, null, flyerFolderRows, '', (folderRow) => {
                         return `<div class="request-swipe-row flyer-folder-swipe-row"><button type="button" class="request-swipe-action" style="${actionStyle}" onclick="event.preventDefault(); event.stopPropagation(); return setFlyerFolderArchiveState('${esc(folderRow.folderName)}', '${nextTab}', { currentTab: '${getFlyerFolderTabValue(activeFlyerFolderTab)}' })">${actionLabel}</button><div class="request-swipe-surface" onclick="return handleFlyerFolderSurfaceClick(event, this, '${esc(folderRow.folderName)}', '${getFlyerFolderTabValue(activeFlyerFolderTab)}')"><div class="bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform"><div class="min-w-0 pr-3"><div class="font-bold text-lg text-indigo-800 truncate">${folderRow.folderName}</div><div class="text-xs font-semibold text-indigo-500 mt-1 truncate">${folderRow.assignees}</div></div><div class="text-right shrink-0"><div class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${folderRow.meta.count} Rows</div><div class="text-[11px] font-semibold text-gray-500 mt-2">${folderRow.meta.complete} Complete</div></div></div></div></div>`;
                     }, { prefixHtml: flyerTabsHtml, approxCardHeight: 118, emptyHtml: emptyFoldersHtml });
                 } else if (taskViewLevel === 1) {
-                    let folderItems = visibleFlyerItems.filter(i => getFlyerFolderName(i) === selectedFlyerFolder);
-                    folderItems.sort((a,b) => {
-                        const locationCompare = compareLocationCodeValues(a.LOCATIONCODE, b.LOCATIONCODE);
-                        if (locationCompare !== 0) return locationCompare;
-                        const completeCompare = String(a.FLYER_COMPLETED || a.DATE_COMPLETED || '').localeCompare(String(b.FLYER_COMPLETED || b.DATE_COMPLETED || ''));
-                        if (completeCompare !== 0) return completeCompare;
-                        return String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''));
-                    });
+                    const folderItems = itemsByFlyerFolder.get(selectedFlyerFolder) || [];
                     const folderAssignees = getFlyerFolderAssignedNames(selectedFlyerFolder, folderItems, activeFlyerFolderTab).join(', ') || 'Unassigned';
                     const folderActionButton = getFlyerFolderTabValue(activeFlyerFolderTab) === 'archive'
                         ? `<button class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-emerald-200 text-emerald-700 shadow-sm hover:bg-emerald-50" onclick="return setFlyerFolderArchiveState('${esc(selectedFlyerFolder || '')}', 'active', { currentTab: 'archive', keepOpen: true })">Restore Folder</button>`
@@ -23654,52 +24661,36 @@ ${folderNote ? `Folder Note: ${folderNote}
                         onComplete: () => decorateFlyerTaskRows()
                     });
                 }
-            } else {
-                if (taskViewLevel === 0) {
-                    const blockCounts = tabItems.reduce((acc, item) => {
-                        const blockAlpha = getTaskBlockAlpha(item);
-                        if (!acc[blockAlpha]) acc[blockAlpha] = 0;
-                        acc[blockAlpha] += 1;
-                        return acc;
-                    }, {});
-                    const blockRows = Object.keys(blockCounts).sort().map((blockAlpha) => ({ blockAlpha, count: blockCounts[blockAlpha] }));
-                    renderMarkupChunkedByKey('tasks-blocks', container, null, blockRows, '', (blockRow) => {
-                        return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="return openTaskBlockView('${esc(blockRow.blockAlpha)}')"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${blockRow.blockAlpha}</div><span class="font-bold text-lg text-gray-700">Block ${blockRow.blockAlpha}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blockRow.count} Items</span></div>`;
-                    }, { approxCardHeight: 88, emptyHtml: `<div class="p-8 text-center text-gray-400">No task blocks found.</div>` });
-                } else if (taskViewLevel === 1) {
-                    let bItems = tabItems.filter(i => getTaskBlockAlpha(i) === selectedTaskBlock);
-                    const locCounts = bItems.reduce((acc, item) => {
-                        const locationCode = getTaskLocationBucket(item);
-                        if (!acc[locationCode]) acc[locationCode] = 0;
-                        acc[locationCode] += 1;
-                        return acc;
-                    }, {});
-                    const locRows = Object.keys(locCounts).sort((a,b) => compareLocationCodeValues(a, b)).map((locationCode) => ({ locationCode, count: locCounts[locationCode] }));
-                    const prefixHtml = `<div class="back-btn" onclick="return backToTaskBlockList()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
-                    renderMarkupChunkedByKey('tasks-locations', container, null, locRows, '', (locationRow) => {
-                        return `<div class="drill-item" onclick="return openTaskLocationView('${esc(locationRow.locationCode)}')"><span class="font-bold text-lg text-gray-800">${locationRow.locationCode} <span class="text-gray-400 text-sm font-normal">(${locationRow.count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
-                    }, { prefixHtml, approxCardHeight: 72, emptyHtml: `<div class="p-8 text-center text-gray-400">No locations found for this block.</div>` });
-                } else if (taskViewLevel === 2) {
-                    let fItems = shouldRenderTaskLocationDetailFilters ? taskLocationDetailItems : tabItems.filter(i => getTaskLocationBucket(i) === selectedTaskLoc);
-                    fItems.sort((a,b) => {
-                        const locationCompare = compareLocationCodeValues(a.LOCATIONCODE, b.LOCATIONCODE);
-                        if (locationCompare !== 0) return locationCompare;
-                        const nameCompare = String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''));
-                        if (nameCompare !== 0) return nameCompare;
-                        return String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, { numeric: true });
-                    });
-                    const prefixHtml = `<div class="back-btn" onclick="return backToTaskLocationList()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>`;
-                    const renderRow = (item) => generateCard(item, 'tasks', getTaskRowColorClass(item, activeTaskTab));
-                    const emptyHtml = shouldRenderTaskLocationDetailFilters && hasActiveTaskLocationDetailFilters()
-                        ? `<div class="p-8 text-center text-gray-400">No rows match current filters.</div>`
-                        : `<div class="p-8 text-center text-gray-400">No rows found for this location.</div>`;
-                    renderMarkupChunkedByKey('tasks-main', container, null, fItems, '', renderRow, {
-                        prefixHtml,
-                        approxCardHeight: isTaskHotPriceSubview(activeTaskTab, activeTaskSubview) ? 290 : 260,
-                        emptyHtml
-                    });
-                }
+                finishTaskPerf();
+                return;
             }
+
+            if (taskViewLevel === 0) {
+                renderMarkupChunkedByKey('tasks-blocks', container, null, blockRows, '', (blockRow) => {
+                    return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="return openTaskBlockView('${esc(blockRow.blockAlpha)}')"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${blockRow.blockAlpha}</div><span class="font-bold text-lg text-gray-700">Block ${blockRow.blockAlpha}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blockRow.count} Items</span></div>`;
+                }, { approxCardHeight: 88, emptyHtml: `<div class="p-8 text-center text-gray-400">No task blocks found.</div>` });
+            } else if (taskViewLevel === 1) {
+                const locRows = locationRowsByBlock.get(selectedTaskBlock) || [];
+                const prefixHtml = `<div class="back-btn" onclick="return backToTaskBlockList()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
+                renderMarkupChunkedByKey('tasks-locations', container, null, locRows, '', (locationRow) => {
+                    return `<div class="drill-item" onclick="return openTaskLocationView('${esc(locationRow.locationCode)}')"><span class="font-bold text-lg text-gray-800">${locationRow.locationCode} <span class="text-gray-400 text-sm font-normal">(${locationRow.count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                }, { prefixHtml, approxCardHeight: 72, emptyHtml: `<div class="p-8 text-center text-gray-400">No locations found for this block.</div>` });
+            } else if (taskViewLevel === 2) {
+                const locationItems = shouldRenderTaskLocationDetailFilters
+                    ? taskLocationDetailItems
+                    : (itemsByLocation.get(selectedTaskLoc) || []);
+                const prefixHtml = `<div class="back-btn" onclick="return backToTaskLocationList()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>`;
+                const renderRow = (item) => generateCard(item, 'tasks', getTaskRowColorClass(item, activeTaskTab));
+                const emptyHtml = shouldRenderTaskLocationDetailFilters && hasActiveTaskLocationDetailFilters()
+                    ? `<div class="p-8 text-center text-gray-400">No rows match current filters.</div>`
+                    : `<div class="p-8 text-center text-gray-400">No rows found for this location.</div>`;
+                renderMarkupChunkedByKey('tasks-main', container, null, locationItems, '', renderRow, {
+                    prefixHtml,
+                    approxCardHeight: isTaskHotPriceSubview(activeTaskTab, activeTaskSubview) ? 290 : 260,
+                    emptyHtml
+                });
+            }
+            finishTaskPerf();
         }
 
         function renderReserves() {
