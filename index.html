@@ -700,7 +700,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.22.09</div>
+<div id="header-version" class="nav-version-pill">V2026.04.22.10</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -6544,7 +6544,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = 'V2026.04.22.09';
+const APP_VERSION = 'V2026.04.22.10';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -12421,6 +12421,47 @@ function toggleDriveQuickRequestItem(domId) {
             return { allocations, totalAllocatedQty };
         }
 
+        function findDockMistakeSourceRowByUniqueId(uniqueId = '') {
+            const normalizedUid = normalizeDockIssueSourceUniqueId(uniqueId);
+            if (!normalizedUid) return null;
+            const sourceRow =
+                socInventoryById.get(normalizedUid)
+                || (Array.isArray(socInventory) ? socInventory.find((row) => normalizeDockIssueSourceUniqueId(firstNonEmptyValue(row && row.UNIQUE_ID, '')) === normalizedUid) : null)
+                || dockDisplayInventoryById.get(normalizedUid)
+                || (() => {
+                    const fallbackRow = findItemByUniqueId(normalizedUid);
+                    return normalizeDockIssueSourceUniqueId(firstNonEmptyValue(fallbackRow && fallbackRow.UNIQUE_ID, '')) === normalizedUid ? fallbackRow : null;
+                })();
+            if (!sourceRow || sourceRow.IS_SYNTHETIC_DOCK_ROW) return null;
+            return cloneDockRowWithMeta(sourceRow, {
+                UNIQUE_ID: normalizedUid,
+                DOCK_ISSUE_SOURCE_UID: normalizedUid
+            });
+        }
+
+        function buildDockMistakeIssueView(issueRow = null) {
+            const issue = normalizeDockIssueStatusRow(issueRow);
+            if (!issue || issue.issueState !== 'open') return null;
+            const sourceRow = findDockMistakeSourceRowByUniqueId(issue.issueSourceUniqueId);
+            if (!sourceRow) return null;
+            const { allocations, totalAllocatedQty } = getDockIssueAllocationTotals(issue.issueSourceUniqueId);
+            const sourceQty = Math.max(0, parseAppNumber(firstNonEmptyValue(issue.sourceQty, getDockDisplayQty(sourceRow), '0')) || 0);
+            return {
+                ...issue,
+                sourceRow,
+                allocations,
+                totalAllocatedQty,
+                sourceQty,
+                remainingQty: Math.max(0, sourceQty - totalAllocatedQty)
+            };
+        }
+
+        function getDockMistakeIssueViewByUniqueId(uniqueId = '') {
+            const normalizedUid = normalizeDockIssueSourceUniqueId(uniqueId);
+            if (!normalizedUid) return null;
+            return buildDockMistakeIssueView(getDockIssueStatus(normalizedUid));
+        }
+
         function getDockResolvedState() {
             const cacheKey = [
                 resolvedViewStateEpoch,
@@ -12530,10 +12571,8 @@ function toggleDriveQuickRequestItem(domId) {
             return dockResolvedStateCache;
         }
 
-        function getVisibleDockMistakeIssues(resolvedState = null) {
-            const state = resolvedState && typeof resolvedState === 'object' ? resolvedState : getDockResolvedState();
-            const sourceRowIds = new Set((Array.isArray(state.rows) ? state.rows : []).map((row) => String(row && row.UNIQUE_ID || '').trim()).filter(Boolean));
-            return (Array.isArray(state.openIssues) ? state.openIssues : []).filter((issue) => issue && sourceRowIds.has(String(issue.issueSourceUniqueId || '').trim()));
+        function getVisibleDockMistakeIssues() {
+            return Array.from(dockIssueStatusByUid.values()).map((issueRow) => buildDockMistakeIssueView(issueRow)).filter(Boolean);
         }
 
         function findDockDisplayRowByUniqueId(uniqueId = '') {
@@ -12546,14 +12585,13 @@ function toggleDriveQuickRequestItem(domId) {
         function updateDockModeToggleUi() {
             const docksBtn = document.getElementById('dock-mode-btn-docks');
             const mistakeBtn = document.getElementById('dock-mode-btn-mistakes');
-            const resolvedState = getDockResolvedState();
             if (docksBtn) {
                 const isActive = dockViewMode === 'docks';
                 docksBtn.className = `rounded-xl border px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] shadow-sm active:scale-95 ${isActive ? 'border-green-200 bg-[#007a4d] text-white' : 'border-green-200 bg-white text-[#007a4d]'}`;
             }
             if (mistakeBtn) {
                 const isActive = dockViewMode === 'mistakes';
-                const openCount = getVisibleDockMistakeIssues(resolvedState).length;
+                const openCount = getVisibleDockMistakeIssues().length;
                 mistakeBtn.className = `rounded-xl border px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] shadow-sm active:scale-95 ${isActive ? 'border-red-200 bg-red-600 text-white' : 'border-red-200 bg-white text-red-600'}`;
                 mistakeBtn.innerText = openCount > 0 ? `Mistake (${openCount})` : 'Mistake';
             }
@@ -12597,8 +12635,9 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function openDockAllocationModal(issueSourceUniqueId = '', altMasterUniqueId = '') {
-            const issue = getDockIssueStatus(issueSourceUniqueId);
-            const sourceRow = findDockDisplayRowByUniqueId(issueSourceUniqueId);
+            const issueView = getDockMistakeIssueViewByUniqueId(issueSourceUniqueId);
+            const issue = issueView || getDockIssueStatus(issueSourceUniqueId);
+            const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(issueSourceUniqueId);
             const masterRow = masterInventoryById.get(String(altMasterUniqueId || '').trim()) || fullInventory.find((row) => String(row && row.UNIQUE_ID || '').trim() === String(altMasterUniqueId || '').trim()) || null;
             if (!issue || !sourceRow || !masterRow) return;
             const existingAllocation = getDockIssueAllocations(issueSourceUniqueId).find((allocation) => allocation && allocation.altMasterUniqueId === String(altMasterUniqueId || '').trim());
@@ -12631,8 +12670,9 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getDockIssueCandidateRows(issueSourceUniqueId = '') {
-            const issue = getDockIssueStatus(issueSourceUniqueId);
-            const sourceRow = findDockDisplayRowByUniqueId(issueSourceUniqueId);
+            const issueView = getDockMistakeIssueViewByUniqueId(issueSourceUniqueId);
+            const issue = issueView || getDockIssueStatus(issueSourceUniqueId);
+            const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(issueSourceUniqueId);
             if (!issue || !sourceRow) return [];
             const matchKey = buildDockIssueCommonSizeKey(issue.sourceCommonName || sourceRow.COMMONNAME, issue.sourceContSize || sourceRow.CONTSIZE);
             const linkedMaster = findLinkedMasterRow(sourceRow);
@@ -17268,7 +17308,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function openDockItemMistakeModal(uid) {
             const normalizedUid = normalizeDockIssueSourceUniqueId(uid);
-            const item = findDockDisplayRowByUniqueId(normalizedUid) || socInventory.find(i => String(i && i.UNIQUE_ID || '') === normalizedUid) || null;
+            const item = findDockMistakeSourceRowByUniqueId(normalizedUid);
             const issue = getDockIssueStatus(normalizedUid);
             document.getElementById('dock-mistake-uid').value = normalizedUid;
             document.getElementById('dock-mistake-text').value = String(firstNonEmptyValue(issue && issue.issueNote, item && item.DOCK_ISSUE_NOTE, item && item.DOCK_NOTE, '')).trim();
@@ -17280,7 +17320,7 @@ function toggleDriveQuickRequestItem(domId) {
         async function submitDockItemMistake() {
             const uid = normalizeDockIssueSourceUniqueId(document.getElementById('dock-mistake-uid').value);
             const text = document.getElementById('dock-mistake-text').value.toUpperCase().trim();
-            const item = findDockDisplayRowByUniqueId(uid) || socInventory.find(i => String(i && i.UNIQUE_ID || '') === uid) || null;
+            const item = findDockMistakeSourceRowByUniqueId(uid);
             if (!item) {
                 showToast("Error", "Could not find that dock row.", true);
                 return;
@@ -17313,8 +17353,9 @@ function toggleDriveQuickRequestItem(domId) {
             const issueSourceUniqueId = normalizeDockIssueSourceUniqueId(document.getElementById('dock-allocation-issue-uid').value);
             const altMasterUniqueId = String(document.getElementById('dock-allocation-master-uid').value || '').trim();
             const qtyValue = parseAppNumber(document.getElementById('dock-allocation-qty').value);
-            const issue = getDockIssueStatus(issueSourceUniqueId);
-            const sourceRow = findDockDisplayRowByUniqueId(issueSourceUniqueId);
+            const issueView = getDockMistakeIssueViewByUniqueId(issueSourceUniqueId);
+            const issue = issueView || getDockIssueStatus(issueSourceUniqueId);
+            const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(issueSourceUniqueId);
             const masterRow = masterInventoryById.get(altMasterUniqueId) || fullInventory.find((row) => String(row && row.UNIQUE_ID || '').trim() === altMasterUniqueId) || null;
             if (!issue || !sourceRow || !masterRow) {
                 showToast("Error", "Could not prepare that alternate location.", true);
@@ -17392,8 +17433,9 @@ function toggleDriveQuickRequestItem(domId) {
 
         async function resolveDockIssue(issueSourceUniqueId = '') {
             const normalizedUid = normalizeDockIssueSourceUniqueId(issueSourceUniqueId);
-            const issue = getDockIssueStatus(normalizedUid);
-            const sourceRow = findDockDisplayRowByUniqueId(normalizedUid);
+            const issueView = getDockMistakeIssueViewByUniqueId(normalizedUid);
+            const issue = issueView || getDockIssueStatus(normalizedUid);
+            const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(normalizedUid);
             if (!issue || !sourceRow) {
                 showToast("Error", "Could not find that dock issue.", true);
                 return;
@@ -17469,8 +17511,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function renderDockMistakeQueue(container, crumb, term = '') {
-            const resolvedState = getDockResolvedState();
-            const queueItems = getVisibleDockMistakeIssues(resolvedState).filter((issue) => {
+            const queueItems = getVisibleDockMistakeIssues().filter((issue) => {
                 if (!term) return true;
                 return getDockIssueQueueSearchText(issue).includes(term);
             }).sort((a, b) => {
@@ -17488,16 +17529,18 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function renderDockMistakeDetail(container, crumb, term = '') {
-            const issue = getDockIssueStatus(selectedDockIssueUid);
-            const sourceRow = findDockDisplayRowByUniqueId(selectedDockIssueUid);
+            const issueView = getDockMistakeIssueViewByUniqueId(selectedDockIssueUid);
+            const issue = issueView || getDockIssueStatus(selectedDockIssueUid);
+            const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(selectedDockIssueUid);
             if (!issue || !sourceRow) {
                 selectedDockIssueUid = null;
                 scheduleDocksRender(0);
                 return;
             }
-            const { allocations, totalAllocatedQty } = getDockIssueAllocationTotals(issue.issueSourceUniqueId);
-            const sourceQty = Math.max(0, parseAppNumber(firstNonEmptyValue(issue.sourceQty, getDockDisplayQty(sourceRow), '0')) || 0);
-            const remainingQty = Math.max(0, sourceQty - totalAllocatedQty);
+            const allocations = issueView && Array.isArray(issueView.allocations) ? issueView.allocations : getDockIssueAllocationTotals(issue.issueSourceUniqueId).allocations;
+            const totalAllocatedQty = issueView ? issueView.totalAllocatedQty : getDockIssueAllocationTotals(issue.issueSourceUniqueId).totalAllocatedQty;
+            const sourceQty = issueView ? issueView.sourceQty : Math.max(0, parseAppNumber(firstNonEmptyValue(issue.sourceQty, getDockDisplayQty(sourceRow), '0')) || 0);
+            const remainingQty = issueView ? issueView.remainingQty : Math.max(0, sourceQty - totalAllocatedQty);
             const safeIssueUid = esc(issue.issueSourceUniqueId || '');
             const candidates = getDockIssueCandidateRows(issue.issueSourceUniqueId).filter((entry) => {
                 if (!entry || !entry.row) return false;
