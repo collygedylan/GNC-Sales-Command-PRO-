@@ -700,7 +700,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.22.16</div>
+<div id="header-version" class="nav-version-pill">V2026.04.22.17</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -6557,7 +6557,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.22.16';
+const APP_VERSION = 'V2026.04.22.17';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -12950,6 +12950,33 @@ function toggleDriveQuickRequestItem(domId) {
             }).join('');
         }
 
+        function buildDockMistakeDriveCandidateCardHtml(entry = null, issue = null, allocations = [], options = {}) {
+            const row = entry && entry.row ? entry.row : null;
+            if (!row || !issue) return '';
+            const isOriginal = !!entry.isOriginal;
+            const safeIssueUid = esc(issue.issueSourceUniqueId || '');
+            const masterUniqueId = String(firstNonEmptyValue(entry && entry.masterUniqueId, row && row.UNIQUE_ID, row && row.unique_id, '')).trim();
+            const existingAllocation = !isOriginal ? (allocations || []).find((allocation) => allocation && allocation.altMasterUniqueId === masterUniqueId) : null;
+            const seasonValue = String(firstNonEmptyValue(row.SEASON, row.season, 'S1') || '').trim().toUpperCase() || 'S1';
+            const availableQty = Math.max(0, parseAppNumber(firstNonEmptyValue(row.PTRAVAILABLE, '0')) || 0);
+            const sourceQty = Math.max(0, parseAppNumber(firstNonEmptyValue(options.sourceQty, issue.sourceQty, getDockDisplayQty(row), '0')) || 0);
+            const remainingQty = Math.max(0, parseAppNumber(firstNonEmptyValue(options.remainingQty, sourceQty, '0')) || 0);
+            const shellToneClass = isOriginal ? 'border-2 border-emerald-400 bg-emerald-50/40' : 'border border-emerald-200 bg-white';
+            const topLabel = isOriginal ? 'Original Dock Row' : `Drive Mode ${seasonValue}`;
+            const topToneClass = isOriginal ? 'text-[#007a4d]' : 'text-emerald-600';
+            const primaryQtyLabel = isOriginal ? `Qty ${formatDockDisplayQty(sourceQty)}` : `Avail ${formatDockDisplayQty(availableQty)}`;
+            const metaHtml = isOriginal
+                ? `<div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.14em]"><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-700">Dock ${esc(row.DOCK_NUM || issue.dockNum || '-')}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-700">Stop ${esc(row.STOPNUMBER || issue.stopNumber || '-')}</span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">Loc ${esc(row.LOCATIONCODE || issue.sourceLocationCode || '-')}</span><span class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-emerald-700">Remaining ${esc(formatDockDisplayQty(remainingQty))}</span></div>`
+                : `<div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.14em]"><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">Season ${esc(seasonValue)}</span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">Loc ${esc(row.LOCATIONCODE || '-')}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Lot ${esc(row.LOTCODE || '-')}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Item ${esc(row.ITEMCODE || '-')}</span></div>`;
+            const issueNoteHtml = isOriginal && issue.issueNote
+                ? `<div class="mt-3 rounded-xl border border-orange-200 bg-orange-50 px-3 py-3 text-[12px] font-semibold text-orange-800 whitespace-pre-wrap"><span class="font-black">Issue:</span> ${esc(issue.issueNote)}</div>`
+                : '';
+            const actionHtml = isOriginal
+                ? `<div class="rounded-xl border border-emerald-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Reference Row</div>`
+                : `<button class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-sm active:scale-95" onclick="openDockAllocationModal('${safeIssueUid}', '${esc(masterUniqueId)}')">${existingAllocation ? `Update Qty (${esc(formatDockDisplayQty(existingAllocation.allocatedQty))})` : 'Use This Location'}</button>`;
+            return `<div class="rounded-2xl ${shellToneClass} p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] ${topToneClass}">${topLabel}</div><div class="mt-1 text-xl font-black text-slate-900 leading-tight break-words">${esc(row.COMMONNAME || issue.sourceCommonName || 'Dock Item')}</div><div class="mt-1 text-sm font-semibold text-slate-500 break-words">${esc(row.CONTSIZE || issue.sourceContSize || '-')}</div></div><div class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">${esc(primaryQtyLabel)}</div></div>${metaHtml}<div class="mt-3 text-[12px] font-bold text-slate-600 break-words">${esc(row.LOCATIONCODE || 'No Loc')}${row.LOTCODE ? ` | ${esc(row.LOTCODE)}` : ''}${row.ITEMCODE ? ` | ${esc(row.ITEMCODE)}` : ''}</div>${issueNoteHtml}<div class="mt-3 flex justify-end">${actionHtml}</div></div>`;
+        }
+
         function getDockIssueCandidateRows(issueSourceUniqueId = '') {
             const issueView = getDockMistakeIssueViewByUniqueId(issueSourceUniqueId);
             const issue = issueView || getDockIssueStatus(issueSourceUniqueId);
@@ -12958,27 +12985,30 @@ function toggleDriveQuickRequestItem(domId) {
             const matchKey = buildDockIssueCommonSizeKey(issue.sourceCommonName || sourceRow.COMMONNAME, issue.sourceContSize || sourceRow.CONTSIZE);
             const linkedMaster = findLinkedMasterRow(sourceRow);
             const originalMasterUniqueId = String(firstNonEmptyValue(sourceRow.MASTER_UNIQUE_ID, linkedMaster && linkedMaster.UNIQUE_ID, issue.sourceMasterUniqueId, '')).trim();
-            const originalAllocation = originalMasterUniqueId ? (masterInventoryById.get(originalMasterUniqueId) || fullInventory.find((row) => String(row && row.UNIQUE_ID || '').trim() === originalMasterUniqueId) || null) : null;
-            const otherRows = fullInventory.filter((row) => buildDockIssueCommonSizeKey(row) === matchKey).sort((a, b) => {
-                const ptrDiff = (parseAppNumber(firstNonEmptyValue(b && b.PTRAVAILABLE, '0')) || 0) - (parseAppNumber(firstNonEmptyValue(a && a.PTRAVAILABLE, '0')) || 0);
-                if (ptrDiff !== 0) return ptrDiff;
-                const locationCompare = String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true, sensitivity: 'base' });
-                if (locationCompare !== 0) return locationCompare;
-                return String(a.LOTCODE || '').localeCompare(String(b.LOTCODE || ''), undefined, { numeric: true, sensitivity: 'base' });
-            });
-            const deduped = [];
-            const seen = new Set();
-            if (originalAllocation) {
-                const uniqueId = String(firstNonEmptyValue(originalAllocation.UNIQUE_ID, '')).trim();
-                if (uniqueId) {
-                    deduped.push({ row: originalAllocation, isOriginal: true });
-                    seen.add(uniqueId);
-                }
-            }
-            otherRows.forEach((row) => {
+            const originalSourceUid = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(sourceRow.DOCK_ISSUE_SOURCE_UID, issue.issueSourceUniqueId, sourceRow.UNIQUE_ID, sourceRow.unique_id, ''));
+            const driveRows = sortDriveCardItems(getDriveModeItems().filter((row) => {
+                if (!row) return false;
+                const uniqueId = String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim();
+                if (!uniqueId || uniqueId === originalMasterUniqueId) return false;
+                if (buildDockIssueCommonSizeKey(row) !== matchKey) return false;
+                return String(firstNonEmptyValue(row.SEASON, row.season, '') || '').trim().toUpperCase() === 'S1';
+            }));
+            const deduped = [{
+                row: applyDockIssueStateToRow(sourceRow, issue),
+                isOriginal: true,
+                masterUniqueId: originalMasterUniqueId,
+                issueSourceUniqueId: originalSourceUid
+            }];
+            const seen = new Set(deduped.map((entry) => String(firstNonEmptyValue(entry && entry.masterUniqueId, '')).trim()).filter(Boolean));
+            driveRows.forEach((row) => {
                 const uniqueId = String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim();
                 if (!uniqueId || seen.has(uniqueId)) return;
-                deduped.push({ row, isOriginal: uniqueId === originalMasterUniqueId });
+                deduped.push({
+                    row,
+                    isOriginal: false,
+                    masterUniqueId: uniqueId,
+                    issueSourceUniqueId: originalSourceUid
+                });
                 seen.add(uniqueId);
             });
             return deduped;
@@ -17814,6 +17844,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function renderDockMistakeDetail(container, crumb, term = '') {
+            return renderDockMistakeDetailV3(container, crumb, term);
             const issueView = getDockMistakeIssueViewByUniqueId(selectedDockIssueUid);
             const issue = issueView || getDockIssueStatus(selectedDockIssueUid);
             const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(selectedDockIssueUid, issue);
@@ -17827,19 +17858,20 @@ function toggleDriveQuickRequestItem(domId) {
             const sourceQty = issueView ? issueView.sourceQty : Math.max(0, parseAppNumber(firstNonEmptyValue(issue.sourceQty, getDockDisplayQty(sourceRow), '0')) || 0);
             const remainingQty = issueView ? issueView.remainingQty : Math.max(0, sourceQty - totalAllocatedQty);
             const safeIssueUid = esc(issue.issueSourceUniqueId || '');
-            const candidates = getDockIssueCandidateRows(issue.issueSourceUniqueId).filter((entry) => {
-                if (!entry || !entry.row) return false;
+            const candidateEntries = getDockIssueCandidateRows(issue.issueSourceUniqueId);
+            const originalEntry = candidateEntries.find((entry) => entry && entry.isOriginal && entry.row) || null;
+            const driveEntries = candidateEntries.filter((entry) => entry && !entry.isOriginal && entry.row).filter((entry) => {
                 if (!term) return true;
                 return [
                     entry.row.COMMONNAME,
                     entry.row.CONTSIZE,
                     entry.row.LOCATIONCODE,
                     entry.row.LOTCODE,
-                    entry.row.ITEMCODE
+                    entry.row.ITEMCODE,
+                    entry.row.SEASON
                 ].map((value) => String(value || '').trim()).filter(Boolean).join(' ').toLowerCase().includes(term);
             });
             crumb.innerText = `Mistake Queue > ${issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item'}`;
-            const sourceDetailHtml = `<div class="rounded-2xl border border-red-200 bg-white p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-red-500">Original Dock Row</div><div class="mt-1 text-xl font-black text-slate-900 leading-tight break-words">${esc(sourceRow.COMMONNAME || issue.sourceCommonName || 'Dock Item')}</div><div class="mt-1 text-sm font-semibold text-slate-500 break-words">${esc(sourceRow.CONTSIZE || issue.sourceContSize || '-')}</div></div><div class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-red-600">Qty ${esc(formatDockDisplayQty(sourceQty))}</div></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.14em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Dock ${esc(sourceRow.DOCK_NUM || issue.dockNum || '-')}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Stop ${esc(sourceRow.STOPNUMBER || issue.stopNumber || '-')}</span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">Original Loc ${esc(sourceRow.LOCATIONCODE || issue.sourceLocationCode || '-')}</span><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">Remaining ${esc(formatDockDisplayQty(remainingQty))}</span></div><div class="mt-3 rounded-xl border border-orange-200 bg-orange-50 px-3 py-3 text-[12px] font-semibold text-orange-800 whitespace-pre-wrap"><span class="font-black">Issue:</span> ${esc(issue.issueNote || 'No note provided')}</div></div>`;
             const allocationSummaryHtml = `<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm"><div class="flex items-center justify-between gap-3 mb-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Allocation Summary</div><div class="mt-1 text-base font-black text-slate-900">${esc(formatDockDisplayQty(totalAllocatedQty))} moved • ${esc(formatDockDisplayQty(remainingQty))} remaining</div></div><button class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="resolveDockIssue('${safeIssueUid}')">Resolve Issue</button></div>${renderDockIssueAllocationSummary(issue.issueSourceUniqueId)}</div>`;
             const candidateRowsHtml = candidates.length ? candidates.map((entry) => {
                 const row = entry.row;
@@ -17853,6 +17885,92 @@ function toggleDriveQuickRequestItem(domId) {
                 return `<div class="rounded-2xl border ${isOriginal ? 'border-blue-200 bg-blue-50/70' : 'border-slate-200 bg-white'} p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] ${isOriginal ? 'text-blue-600' : 'text-slate-500'}">${isOriginal ? 'Original Row Reference' : 'Alternate Location'}</div><div class="mt-1 text-lg font-black text-slate-900 break-words">${esc(row.LOCATIONCODE || '-')}</div><div class="mt-1 text-sm font-semibold text-slate-500 break-words">${esc(row.LOTCODE || '-')} • ${esc(row.ITEMCODE || '-')}</div></div><div class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Avail ${esc(formatDockDisplayQty(candidateQty))}</div></div><div class="mt-3 text-sm font-semibold text-slate-600 break-words">${esc(row.COMMONNAME || issue.sourceCommonName || 'Dock Item')} • ${esc(row.CONTSIZE || issue.sourceContSize || '-')}</div><div class="mt-3 flex justify-end">${buttonHtml}</div></div>`;
             }).join('') : `<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-center text-sm font-semibold text-slate-500">No matching alternate locations found for this search.</div>`;
             container.innerHTML = `<div class="back-btn" onclick="selectedDockIssueUid=null; scheduleDocksRender(0)"><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${sourceDetailHtml}${allocationSummaryHtml}<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 mb-3">Matching ${esc(issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item')} • ${esc(issue.sourceContSize || sourceRow.CONTSIZE || '-')} Locations</div><div class="space-y-3">${candidateRowsHtml}</div></div></div>`;
+        }
+
+        function renderDockMistakeDetailV2(container, crumb, term = '') {
+            const issueView = getDockMistakeIssueViewByUniqueId(selectedDockIssueUid);
+            const issue = issueView || getDockIssueStatus(selectedDockIssueUid);
+            const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(selectedDockIssueUid, issue);
+            if (!issue || !sourceRow) {
+                selectedDockIssueUid = null;
+                scheduleDocksRender(0);
+                return;
+            }
+            const allocations = issueView && Array.isArray(issueView.allocations) ? issueView.allocations : getDockIssueAllocationTotals(issue.issueSourceUniqueId).allocations;
+            const totalAllocatedQty = issueView ? issueView.totalAllocatedQty : getDockIssueAllocationTotals(issue.issueSourceUniqueId).totalAllocatedQty;
+            const sourceQty = issueView ? issueView.sourceQty : Math.max(0, parseAppNumber(firstNonEmptyValue(issue.sourceQty, getDockDisplayQty(sourceRow), '0')) || 0);
+            const remainingQty = issueView ? issueView.remainingQty : Math.max(0, sourceQty - totalAllocatedQty);
+            const safeIssueUid = esc(issue.issueSourceUniqueId || '');
+            const candidateEntries = getDockIssueCandidateRows(issue.issueSourceUniqueId);
+            const originalEntry = candidateEntries.find((entry) => entry && entry.isOriginal && entry.row) || null;
+            const driveEntries = candidateEntries.filter((entry) => entry && !entry.isOriginal && entry.row).filter((entry) => {
+                if (!term) return true;
+                return [
+                    entry.row.COMMONNAME,
+                    entry.row.CONTSIZE,
+                    entry.row.LOCATIONCODE,
+                    entry.row.LOTCODE,
+                    entry.row.ITEMCODE,
+                    entry.row.SEASON
+                ].map((value) => String(value || '').trim()).filter(Boolean).join(' ').toLowerCase().includes(term);
+            });
+            crumb.innerText = `Mistake Queue > ${issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item'}`;
+            const driveRowsSectionHtml = `<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 mb-3">Drive Mode S1 ${esc(issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item')} â€¢ ${esc(issue.sourceContSize || sourceRow.CONTSIZE || '-')}</div><div class="space-y-3">${[
+                originalEntry ? buildDockMistakeDriveCandidateCardHtml(originalEntry, issue, allocations, { sourceQty, remainingQty }) : '',
+                driveEntries.length
+                    ? driveEntries.map((entry) => buildDockMistakeDriveCandidateCardHtml(entry, issue, allocations, { sourceQty, remainingQty })).join('')
+                    : `<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-center text-sm font-semibold text-slate-500">No matching Drive Mode S1 rows found for this search.</div>`
+            ].filter(Boolean).join('')}</div></div>`;
+            const allocationSummaryHtml = `<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm"><div class="flex items-center justify-between gap-3 mb-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Allocation Summary</div><div class="mt-1 text-base font-black text-slate-900">${esc(formatDockDisplayQty(totalAllocatedQty))} moved â€¢ ${esc(formatDockDisplayQty(remainingQty))} remaining</div></div><button class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="resolveDockIssue('${safeIssueUid}')">Resolve Issue</button></div>${renderDockIssueAllocationSummary(issue.issueSourceUniqueId)}</div>`;
+            container.innerHTML = `<div class="back-btn" onclick="selectedDockIssueUid=null; scheduleDocksRender(0)"><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${driveRowsSectionHtml}${allocationSummaryHtml}</div>`;
+        }
+
+        function renderDockMistakeDetailV3(container, crumb, term = '') {
+            const issueView = getDockMistakeIssueViewByUniqueId(selectedDockIssueUid);
+            const issue = issueView || getDockIssueStatus(selectedDockIssueUid);
+            const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(selectedDockIssueUid, issue);
+            if (!issue || !sourceRow) {
+                selectedDockIssueUid = null;
+                scheduleDocksRender(0);
+                return;
+            }
+            const allocationTotals = issueView
+                ? { allocations: issueView.allocations || [], totalAllocatedQty: issueView.totalAllocatedQty || 0 }
+                : getDockIssueAllocationTotals(issue.issueSourceUniqueId);
+            const allocations = Array.isArray(allocationTotals.allocations) ? allocationTotals.allocations : [];
+            const totalAllocatedQty = Math.max(0, parseAppNumber(firstNonEmptyValue(allocationTotals.totalAllocatedQty, '0')) || 0);
+            const sourceQty = issueView
+                ? Math.max(0, parseAppNumber(firstNonEmptyValue(issueView.sourceQty, '0')) || 0)
+                : Math.max(0, parseAppNumber(firstNonEmptyValue(issue.sourceQty, getDockDisplayQty(sourceRow), '0')) || 0);
+            const remainingQty = issueView
+                ? Math.max(0, parseAppNumber(firstNonEmptyValue(issueView.remainingQty, sourceQty - totalAllocatedQty, '0')) || 0)
+                : Math.max(0, sourceQty - totalAllocatedQty);
+            const safeIssueUid = esc(issue.issueSourceUniqueId || '');
+            const candidateEntries = getDockIssueCandidateRows(issue.issueSourceUniqueId);
+            const originalEntry = candidateEntries.find((entry) => entry && entry.isOriginal && entry.row) || null;
+            const driveEntries = candidateEntries
+                .filter((entry) => entry && !entry.isOriginal && entry.row)
+                .filter((entry) => {
+                    if (!term) return true;
+                    return [
+                        entry.row.COMMONNAME,
+                        entry.row.CONTSIZE,
+                        entry.row.LOCATIONCODE,
+                        entry.row.LOTCODE,
+                        entry.row.ITEMCODE,
+                        entry.row.SEASON
+                    ].map((value) => String(value || '').trim()).filter(Boolean).join(' ').toLowerCase().includes(term);
+                });
+            crumb.innerText = `Mistake Queue > ${issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item'}`;
+            const driveRowsHtml = [
+                originalEntry ? buildDockMistakeDriveCandidateCardHtml(originalEntry, issue, allocations, { sourceQty, remainingQty }) : '',
+                driveEntries.length
+                    ? driveEntries.map((entry) => buildDockMistakeDriveCandidateCardHtml(entry, issue, allocations, { sourceQty, remainingQty })).join('')
+                    : `<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-center text-sm font-semibold text-slate-500">No matching Drive Mode S1 rows found for this search.</div>`
+            ].filter(Boolean).join('');
+            const driveRowsSectionHtml = `<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 mb-3">Drive Mode S1 ${esc(issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item')} | ${esc(issue.sourceContSize || sourceRow.CONTSIZE || '-')}</div><div class="space-y-3">${driveRowsHtml}</div></div>`;
+            const allocationSummaryHtml = `<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm"><div class="mb-3 flex items-center justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Allocation Summary</div><div class="mt-1 text-base font-black text-slate-900">${esc(formatDockDisplayQty(totalAllocatedQty))} moved | ${esc(formatDockDisplayQty(remainingQty))} remaining</div></div><button class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="resolveDockIssue('${safeIssueUid}')">Resolve Issue</button></div>${renderDockIssueAllocationSummary(issue.issueSourceUniqueId)}</div>`;
+            container.innerHTML = `<div class="back-btn" onclick="selectedDockIssueUid=null; scheduleDocksRender(0)"><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${driveRowsSectionHtml}${allocationSummaryHtml}</div>`;
         }
 
         function renderDocks() {
