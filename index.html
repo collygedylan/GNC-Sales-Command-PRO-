@@ -700,7 +700,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.22.17</div>
+<div id="header-version" class="nav-version-pill">V2026.04.22.18</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -6557,7 +6557,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.22.17';
+const APP_VERSION = 'V2026.04.22.18';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -12983,6 +12983,8 @@ function toggleDriveQuickRequestItem(domId) {
             const sourceRow = issueView && issueView.sourceRow ? issueView.sourceRow : findDockMistakeSourceRowByUniqueId(issueSourceUniqueId, issue);
             if (!issue || !sourceRow) return [];
             const matchKey = buildDockIssueCommonSizeKey(issue.sourceCommonName || sourceRow.COMMONNAME, issue.sourceContSize || sourceRow.CONTSIZE);
+            const sourceLotCode = normalizeDockIssueMatchValue(firstNonEmptyValue(issue.sourceLotCode, issue.sourceLotcode, sourceRow.LOTCODE, sourceRow.lotcode, ''));
+            const sourceSeason = normalizeDockIssueMatchValue(firstNonEmptyValue(issue.sourceSeason, issue.source_season, sourceRow.SEASON, sourceRow.season, ''));
             const linkedMaster = findLinkedMasterRow(sourceRow);
             const originalMasterUniqueId = String(firstNonEmptyValue(sourceRow.MASTER_UNIQUE_ID, linkedMaster && linkedMaster.UNIQUE_ID, issue.sourceMasterUniqueId, '')).trim();
             const originalSourceUid = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(sourceRow.DOCK_ISSUE_SOURCE_UID, issue.issueSourceUniqueId, sourceRow.UNIQUE_ID, sourceRow.unique_id, ''));
@@ -12991,7 +12993,12 @@ function toggleDriveQuickRequestItem(domId) {
                 const uniqueId = String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim();
                 if (!uniqueId || uniqueId === originalMasterUniqueId) return false;
                 if (buildDockIssueCommonSizeKey(row) !== matchKey) return false;
-                return String(firstNonEmptyValue(row.SEASON, row.season, '') || '').trim().toUpperCase() === 'S1';
+                const rowLotCode = normalizeDockIssueMatchValue(firstNonEmptyValue(row.LOTCODE, row.lotcode, ''));
+                const rowSeason = normalizeDockIssueMatchValue(firstNonEmptyValue(row.SEASON, row.season, ''));
+                const lotMatches = !!sourceLotCode && rowLotCode === sourceLotCode;
+                const seasonMatches = !!sourceSeason && rowSeason === sourceSeason;
+                if (sourceLotCode || sourceSeason) return lotMatches || seasonMatches;
+                return false;
             }));
             const deduped = [{
                 row: applyDockIssueStateToRow(sourceRow, issue),
@@ -17966,9 +17973,9 @@ function toggleDriveQuickRequestItem(domId) {
                 originalEntry ? buildDockMistakeDriveCandidateCardHtml(originalEntry, issue, allocations, { sourceQty, remainingQty }) : '',
                 driveEntries.length
                     ? driveEntries.map((entry) => buildDockMistakeDriveCandidateCardHtml(entry, issue, allocations, { sourceQty, remainingQty })).join('')
-                    : `<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-center text-sm font-semibold text-slate-500">No matching Drive Mode S1 rows found for this search.</div>`
+                    : `<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-center text-sm font-semibold text-slate-500">No matching Drive Mode rows found by lot code or season for this search.</div>`
             ].filter(Boolean).join('');
-            const driveRowsSectionHtml = `<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 mb-3">Drive Mode S1 ${esc(issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item')} | ${esc(issue.sourceContSize || sourceRow.CONTSIZE || '-')}</div><div class="space-y-3">${driveRowsHtml}</div></div>`;
+            const driveRowsSectionHtml = `<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 mb-3">Drive Mode Lot/Season Match ${esc(issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item')} | ${esc(issue.sourceContSize || sourceRow.CONTSIZE || '-')}</div><div class="space-y-3">${driveRowsHtml}</div></div>`;
             const allocationSummaryHtml = `<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm"><div class="mb-3 flex items-center justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Allocation Summary</div><div class="mt-1 text-base font-black text-slate-900">${esc(formatDockDisplayQty(totalAllocatedQty))} moved | ${esc(formatDockDisplayQty(remainingQty))} remaining</div></div><button class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="resolveDockIssue('${safeIssueUid}')">Resolve Issue</button></div>${renderDockIssueAllocationSummary(issue.issueSourceUniqueId)}</div>`;
             container.innerHTML = `<div class="back-btn" onclick="selectedDockIssueUid=null; scheduleDocksRender(0)"><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${driveRowsSectionHtml}${allocationSummaryHtml}</div>`;
         }
