@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.23.12';
+        window.__APP_SHELL_VERSION__ = 'V2026.04.23.13';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -717,7 +717,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.23.12</div>
+                    <div id="header-version" class="nav-version-pill">V2026.04.23.13</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1198,7 +1198,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.23.12';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.23.13';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7113,7 +7113,8 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = String(window.__APP_SHELL_VERSION__ || 'V2026.04.23.12').trim() || 'V2026.04.23.12';
+        const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
+const APP_VERSION = String(window.__APP_SHELL_VERSION__ || 'V2026.04.23.13').trim() || 'V2026.04.23.13';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -14071,6 +14072,42 @@ function toggleDriveQuickRequestItem(domId) {
             }).catch((error) => console.log(error));
         }
 
+        function getActiveRequestFolderItems(folderId = '') {
+            const safeFolderId = String(folderId || '').trim();
+            if (!safeFolderId) return [];
+            return requestsInventory.filter((item) => {
+                const itemFolderId = String(firstNonEmptyValue(item && item.REQUEST_FOLDER, item && item.request_folder, '')).trim();
+                if (itemFolderId !== safeFolderId) return false;
+                const archivedRaw = firstNonEmptyValue(item && item.REQ_ARCHIVED, item && item.req_archived, false);
+                return !(archivedRaw === true || archivedRaw === 1 || archivedRaw === '1' || String(archivedRaw || '').trim().toLowerCase() === 'true');
+            });
+        }
+
+        function isAutoCompleteRequestSubmissionEligible(savedRequestIds = [], autoCompleteSavedIds = [], folderId = '') {
+            const normalizedSavedIds = normalizeRequestIdList(savedRequestIds);
+            if (!normalizedSavedIds.length) return false;
+            const autoCompleteIdSet = new Set(normalizeRequestIdList(autoCompleteSavedIds));
+            if (normalizedSavedIds.some((requestId) => !autoCompleteIdSet.has(requestId))) return false;
+            const folderItems = getActiveRequestFolderItems(folderId);
+            return !!(folderItems.length && folderItems.every((item) => isRequestComplete(item)));
+        }
+
+        async function sendRequestSubmissionNotifications(folderId, repName, customer, itemsCount, summaryDetails = null, completionDetails = null, options = {}) {
+            const safeOptions = options || {};
+            sendPushNotification('new_request', folderId, repName, customer, itemsCount);
+            const summaryEmailResult = await sendEmailNotification('new_request', folderId, repName, customer, itemsCount, summaryDetails || {}, {
+                suppressFailureToast: !!safeOptions.suppressSummaryFailureToast
+            });
+            let delayedReplyResult = null;
+            if (safeOptions.queueDelayedCompletionReply && summaryEmailResult && summaryEmailResult.ok) {
+                delayedReplyResult = await sendEmailNotification('request_complete', folderId, repName, customer, itemsCount, completionDetails || {}, {
+                    suppressFailureToast: !!safeOptions.suppressDelayedReplyFailureToast,
+                    delayMs: Math.max(REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS, Number(safeOptions.delayMs) || 0)
+                });
+            }
+            return { summaryEmailResult, delayedReplyResult };
+        }
+
         function notifyRequestEvent(type, folderId, repName, customer, itemsCount, details = null) {
             sendEmailNotification(type, folderId, repName, customer, itemsCount, details);
             sendPushNotification(type, folderId, repName, customer, itemsCount);
@@ -15539,6 +15576,7 @@ function toggleDriveQuickRequestItem(domId) {
             const safeType = String(type || '').trim().toLowerCase();
             const safeDetails = details || {};
             const safeOptions = options || {};
+            const requestedDelayMs = Math.max(0, Number(safeOptions.delayMs) || 0);
             const targetFolderId = String(folderId || '').trim();
             const targetCustomer = normalizeSearchValue(customer);
             const existingThreadRecord = targetFolderId ? await getRequestEmailThreadRecord(targetFolderId) : null;
@@ -15626,6 +15664,10 @@ function toggleDriveQuickRequestItem(domId) {
             if (safeType === 'request_complete') {
                 const folderNote = String(safeDetails.folderNote || '').trim();
                 if (folderNote) payload.folderNote = folderNote;
+                if (requestedDelayMs > 0) {
+                    payload.delayMs = requestedDelayMs;
+                    payload.queueDelivery = true;
+                }
             }
             const existingThreadId = String(firstNonEmptyValue(safeDetails.threadId, existingThreadRecord && existingThreadRecord.initial_thread_id, '')).trim();
             const existingMessageId = String(firstNonEmptyValue(safeDetails.messageId, existingThreadRecord && existingThreadRecord.initial_message_id, '')).trim();
@@ -15639,8 +15681,10 @@ function toggleDriveQuickRequestItem(domId) {
                     error.responseData = responseData;
                     throw error;
                 }
-                await persistRequestEmailThreadAfterSend(safeType, payload, responseData, existingThreadRecord);
-                return { ok: true, responseData, payload };
+                if (!(responseData && responseData.queued)) {
+                    await persistRequestEmailThreadAfterSend(safeType, payload, responseData, existingThreadRecord);
+                }
+                return { ok: true, responseData, payload, queued: !!(responseData && responseData.queued) };
             } catch (error) {
                 const responseData = error && error.responseData ? error.responseData : null;
                 console.error('Request email send failed', { type: safeType, folderId: targetFolderId, error });
@@ -24032,7 +24076,7 @@ function toggleDriveQuickRequestItem(domId) {
                 for (const requestId of autoCompleteSavedIds) {
                     const autoCompleteItem = requestsInventory.find((item) => String((item && item.UNIQUE_ID) || '').trim() === String(requestId || '').trim());
                     if (!autoCompleteItem) continue;
-                    await saveData(true, 'req-', true, autoCompleteItem);
+                    await saveData(true, 'req-', true, autoCompleteItem, { suppressRequestCompletionEmail: true, autoCompleteOnCreate: true });
                 }
                 const normalizedRequestCustomer = normalizeSearchValue(cust);
                 const savedNotificationItems = getSavedRequestItems(savedRequestIds).filter((item) => {
@@ -24045,21 +24089,30 @@ function toggleDriveQuickRequestItem(domId) {
                     return true;
                 });
                 const requestNotificationDetails = {
-                    items: savedNotificationItems,
                     requestIds: savedRequestIds,
                     isNewFolder: !appendingToExistingFolder,
                     appendedToExistingFolder: appendingToExistingFolder
                 };
+                const shouldQueueDelayedCompletionReply = isAutoCompleteRequestSubmissionEligible(savedRequestIds, autoCompleteSavedIds, folderId);
+                const completionNotificationItems = shouldQueueDelayedCompletionReply ? getActiveRequestFolderItems(folderId) : [];
+                const completionNotificationDetails = shouldQueueDelayedCompletionReply ? {
+                    items: completionNotificationItems,
+                    folderNote: getRequestFolderNote(folderId, 'Complete', requestedBy)
+                } : null;
                 if (!missingIds.length && savedCount > 0) {
                     showToast("Success","Request tickets cloned!",false);
-                    notifyRequestEvent('new_request', folderId, requestedBy, cust, savedCount, requestNotificationDetails);
+                    await sendRequestSubmissionNotifications(folderId, requestedBy, cust, savedCount, requestNotificationDetails, completionNotificationDetails, {
+                        queueDelayedCompletionReply: shouldQueueDelayedCompletionReply
+                    });
                     return;
                 }
                 if (savedCount > 0) {
                     rollbackOptimisticRequestIds(missingIds);
                     restoreQuickModeRows(missingIds);
                     showToast("Partial Save","Some requests saved. Retry the missing rows.",true);
-                    notifyRequestEvent('new_request', folderId, requestedBy, cust, savedCount, requestNotificationDetails);
+                    await sendRequestSubmissionNotifications(folderId, requestedBy, cust, savedCount, requestNotificationDetails, completionNotificationDetails, {
+                        queueDelayedCompletionReply: shouldQueueDelayedCompletionReply
+                    });
                     return;
                 }
                 rollbackOptimisticRequestIds(optimisticIds);
@@ -28230,7 +28283,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         }
                     }
 
-                    if (prefix === 'req-' && isComplete && !wasAlreadyComplete) {
+                    if (prefix === 'req-' && isComplete && !wasAlreadyComplete && !saveOptions.suppressRequestCompletionEmail) {
                         deferNonCriticalWork('request-complete-email', () => {
                             let folderItems = requestsInventory.filter(i => i.REQUEST_FOLDER === itemToSave.REQUEST_FOLDER && !i.REQ_ARCHIVED);
                             let allComplete = folderItems.length > 0 && folderItems.every(i => isRequestComplete(i) || i.UNIQUE_ID === itemToSave.UNIQUE_ID);
