@@ -700,7 +700,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.22.15</div>
+<div id="header-version" class="nav-version-pill">V2026.04.22.16</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -6557,7 +6557,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.22.15';
+const APP_VERSION = 'V2026.04.22.16';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -12116,32 +12116,32 @@ function toggleDriveQuickRequestItem(domId) {
         function normalizeDockIssueStatusRow(row = null) {
             const base = getDefaultDockIssueStatus();
             const raw = row && typeof row === 'object' ? row : {};
-            const issueSourceUniqueId = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(raw.issue_source_unique_id, raw.ISSUE_SOURCE_UNIQUE_ID, raw.unique_id, raw.UNIQUE_ID, ''));
+            const issueSourceUniqueId = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(raw.issue_source_unique_id, raw.ISSUE_SOURCE_UNIQUE_ID, raw.issueSourceUniqueId, raw.unique_id, raw.UNIQUE_ID, ''));
             if (!issueSourceUniqueId) return null;
             return {
                 issueSourceUniqueId,
-                sourceMasterUniqueId: String(firstNonEmptyValue(raw.source_master_unique_id, raw.SOURCE_MASTER_UNIQUE_ID, '')).trim(),
-                sourceMasterId: String(firstNonEmptyValue(raw.source_master_id, raw.SOURCE_MASTER_ID, '')).trim(),
-                dockNum: String(firstNonEmptyValue(raw.dock_num, raw.DOCK_NUM, '')).trim(),
-                stopNumber: String(firstNonEmptyValue(raw.stop_number, raw.STOP_NUMBER, raw.stopnumber, raw.STOPNUMBER, '')).trim(),
-                sourceLocationCode: String(firstNonEmptyValue(raw.source_locationcode, raw.SOURCE_LOCATIONCODE, '')).trim(),
-                sourceItemCode: String(firstNonEmptyValue(raw.source_itemcode, raw.SOURCE_ITEMCODE, '')).trim(),
-                sourceCommonName: String(firstNonEmptyValue(raw.source_commonname, raw.SOURCE_COMMONNAME, '')).trim(),
-                sourceContSize: String(firstNonEmptyValue(raw.source_contsize, raw.SOURCE_CONTSIZE, '')).trim(),
-                sourceLotCode: String(firstNonEmptyValue(raw.source_lotcode, raw.SOURCE_LOTCODE, '')).trim(),
-                sourceQty: Math.max(0, parseAppNumber(firstNonEmptyValue(raw.source_qty, raw.SOURCE_QTY, 0)) || 0),
-                sourceSalesRep: String(firstNonEmptyValue(raw.source_salesrep, raw.SOURCE_SALESREP, '')).trim(),
-                sourceCustomerName: String(firstNonEmptyValue(raw.source_customername, raw.SOURCE_CUSTOMERNAME, '')).trim(),
-                sourceConsigneeName: String(firstNonEmptyValue(raw.source_consigneename, raw.SOURCE_CONSIGNEENAME, '')).trim(),
-                sourceMatchKey: String(firstNonEmptyValue(raw.source_match_key, raw.SOURCE_MATCH_KEY, buildDockIssueSourceMatchKey(raw), '')).trim(),
-                issueNote: String(firstNonEmptyValue(raw.issue_note, raw.ISSUE_NOTE, '')).trim(),
-                issueState: normalizeDockIssueState(firstNonEmptyValue(raw.issue_state, raw.ISSUE_STATE, base.issueState)),
-                flaggedBy: String(firstNonEmptyValue(raw.flagged_by, raw.FLAGGED_BY, '')).trim(),
-                flaggedAt: String(firstNonEmptyValue(raw.flagged_at, raw.FLAGGED_AT, '')).trim(),
-                resolvedBy: String(firstNonEmptyValue(raw.resolved_by, raw.RESOLVED_BY, '')).trim(),
-                resolvedAt: String(firstNonEmptyValue(raw.resolved_at, raw.RESOLVED_AT, '')).trim(),
-                updatedBy: String(firstNonEmptyValue(raw.updated_by, raw.UPDATED_BY, '')).trim(),
-                updatedAt: String(firstNonEmptyValue(raw.updated_at, raw.UPDATED_AT, '')).trim()
+                sourceMasterUniqueId: String(firstNonEmptyValue(raw.source_master_unique_id, raw.SOURCE_MASTER_UNIQUE_ID, raw.sourceMasterUniqueId, '')).trim(),
+                sourceMasterId: String(firstNonEmptyValue(raw.source_master_id, raw.SOURCE_MASTER_ID, raw.sourceMasterId, '')).trim(),
+                dockNum: String(firstNonEmptyValue(raw.dock_num, raw.DOCK_NUM, raw.dockNum, '')).trim(),
+                stopNumber: String(firstNonEmptyValue(raw.stop_number, raw.STOP_NUMBER, raw.stopnumber, raw.STOPNUMBER, raw.stopNumber, '')).trim(),
+                sourceLocationCode: String(firstNonEmptyValue(raw.source_locationcode, raw.SOURCE_LOCATIONCODE, raw.sourceLocationCode, '')).trim(),
+                sourceItemCode: String(firstNonEmptyValue(raw.source_itemcode, raw.SOURCE_ITEMCODE, raw.sourceItemCode, '')).trim(),
+                sourceCommonName: String(firstNonEmptyValue(raw.source_commonname, raw.SOURCE_COMMONNAME, raw.sourceCommonName, '')).trim(),
+                sourceContSize: String(firstNonEmptyValue(raw.source_contsize, raw.SOURCE_CONTSIZE, raw.sourceContSize, '')).trim(),
+                sourceLotCode: String(firstNonEmptyValue(raw.source_lotcode, raw.SOURCE_LOTCODE, raw.sourceLotCode, '')).trim(),
+                sourceQty: Math.max(0, parseAppNumber(firstNonEmptyValue(raw.source_qty, raw.SOURCE_QTY, raw.sourceQty, 0)) || 0),
+                sourceSalesRep: String(firstNonEmptyValue(raw.source_salesrep, raw.SOURCE_SALESREP, raw.sourceSalesRep, '')).trim(),
+                sourceCustomerName: String(firstNonEmptyValue(raw.source_customername, raw.SOURCE_CUSTOMERNAME, raw.sourceCustomerName, '')).trim(),
+                sourceConsigneeName: String(firstNonEmptyValue(raw.source_consigneename, raw.SOURCE_CONSIGNEENAME, raw.sourceConsigneeName, '')).trim(),
+                sourceMatchKey: String(firstNonEmptyValue(raw.source_match_key, raw.SOURCE_MATCH_KEY, raw.sourceMatchKey, buildDockIssueSourceMatchKey(raw), '')).trim(),
+                issueNote: String(firstNonEmptyValue(raw.issue_note, raw.ISSUE_NOTE, raw.issueNote, '')).trim(),
+                issueState: normalizeDockIssueState(firstNonEmptyValue(raw.issue_state, raw.ISSUE_STATE, raw.issueState, base.issueState)),
+                flaggedBy: String(firstNonEmptyValue(raw.flagged_by, raw.FLAGGED_BY, raw.flaggedBy, '')).trim(),
+                flaggedAt: String(firstNonEmptyValue(raw.flagged_at, raw.FLAGGED_AT, raw.flaggedAt, '')).trim(),
+                resolvedBy: String(firstNonEmptyValue(raw.resolved_by, raw.RESOLVED_BY, raw.resolvedBy, '')).trim(),
+                resolvedAt: String(firstNonEmptyValue(raw.resolved_at, raw.RESOLVED_AT, raw.resolvedAt, '')).trim(),
+                updatedBy: String(firstNonEmptyValue(raw.updated_by, raw.UPDATED_BY, raw.updatedBy, '')).trim(),
+                updatedAt: String(firstNonEmptyValue(raw.updated_at, raw.UPDATED_AT, raw.updatedAt, '')).trim()
             };
         }
 
@@ -12166,24 +12166,24 @@ function toggleDriveQuickRequestItem(domId) {
         function normalizeDockIssueAllocationRow(row = null) {
             const base = getDefaultDockIssueAllocation();
             const raw = row && typeof row === 'object' ? row : {};
-            const issueSourceUniqueId = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(raw.issue_source_unique_id, raw.ISSUE_SOURCE_UNIQUE_ID, ''));
-            const altMasterUniqueId = String(firstNonEmptyValue(raw.alt_master_unique_id, raw.ALT_MASTER_UNIQUE_ID, '')).trim();
-            const allocationUniqueId = String(firstNonEmptyValue(raw.allocation_unique_id, raw.ALLOCATION_UNIQUE_ID, buildDockIssueAllocationUniqueId(issueSourceUniqueId, altMasterUniqueId))).trim();
+            const issueSourceUniqueId = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(raw.issue_source_unique_id, raw.ISSUE_SOURCE_UNIQUE_ID, raw.issueSourceUniqueId, ''));
+            const altMasterUniqueId = String(firstNonEmptyValue(raw.alt_master_unique_id, raw.ALT_MASTER_UNIQUE_ID, raw.altMasterUniqueId, '')).trim();
+            const allocationUniqueId = String(firstNonEmptyValue(raw.allocation_unique_id, raw.ALLOCATION_UNIQUE_ID, raw.allocationUniqueId, buildDockIssueAllocationUniqueId(issueSourceUniqueId, altMasterUniqueId))).trim();
             if (!allocationUniqueId || !issueSourceUniqueId || !altMasterUniqueId) return null;
             return {
                 allocationUniqueId,
                 issueSourceUniqueId,
                 altMasterUniqueId,
-                altMasterId: String(firstNonEmptyValue(raw.alt_master_id, raw.ALT_MASTER_ID, '')).trim(),
-                allocatedQty: Math.max(0, parseAppNumber(firstNonEmptyValue(raw.allocated_qty, raw.ALLOCATED_QTY, 0)) || 0),
-                altLocationCode: String(firstNonEmptyValue(raw.alt_locationcode, raw.ALT_LOCATIONCODE, '')).trim(),
-                altLotCode: String(firstNonEmptyValue(raw.alt_lotcode, raw.ALT_LOTCODE, '')).trim(),
-                altItemCode: String(firstNonEmptyValue(raw.alt_itemcode, raw.ALT_ITEMCODE, '')).trim(),
-                altCommonName: String(firstNonEmptyValue(raw.alt_commonname, raw.ALT_COMMONNAME, '')).trim(),
-                altContSize: String(firstNonEmptyValue(raw.alt_contsize, raw.ALT_CONTSIZE, '')).trim(),
-                altPtrAvailable: Math.max(0, parseAppNumber(firstNonEmptyValue(raw.alt_ptravailable, raw.ALT_PTRAVAILABLE, 0)) || 0),
-                updatedBy: String(firstNonEmptyValue(raw.updated_by, raw.UPDATED_BY, '')).trim(),
-                updatedAt: String(firstNonEmptyValue(raw.updated_at, raw.UPDATED_AT, '')).trim()
+                altMasterId: String(firstNonEmptyValue(raw.alt_master_id, raw.ALT_MASTER_ID, raw.altMasterId, '')).trim(),
+                allocatedQty: Math.max(0, parseAppNumber(firstNonEmptyValue(raw.allocated_qty, raw.ALLOCATED_QTY, raw.allocatedQty, 0)) || 0),
+                altLocationCode: String(firstNonEmptyValue(raw.alt_locationcode, raw.ALT_LOCATIONCODE, raw.altLocationCode, '')).trim(),
+                altLotCode: String(firstNonEmptyValue(raw.alt_lotcode, raw.ALT_LOTCODE, raw.altLotCode, '')).trim(),
+                altItemCode: String(firstNonEmptyValue(raw.alt_itemcode, raw.ALT_ITEMCODE, raw.altItemCode, '')).trim(),
+                altCommonName: String(firstNonEmptyValue(raw.alt_commonname, raw.ALT_COMMONNAME, raw.altCommonName, '')).trim(),
+                altContSize: String(firstNonEmptyValue(raw.alt_contsize, raw.ALT_CONTSIZE, raw.altContSize, '')).trim(),
+                altPtrAvailable: Math.max(0, parseAppNumber(firstNonEmptyValue(raw.alt_ptravailable, raw.ALT_PTRAVAILABLE, raw.altPtrAvailable, 0)) || 0),
+                updatedBy: String(firstNonEmptyValue(raw.updated_by, raw.UPDATED_BY, raw.updatedBy, '')).trim(),
+                updatedAt: String(firstNonEmptyValue(raw.updated_at, raw.UPDATED_AT, raw.updatedAt, '')).trim()
             };
         }
 
