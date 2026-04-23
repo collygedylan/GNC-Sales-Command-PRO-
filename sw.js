@@ -2,8 +2,10 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_URL = './index.html?shellv=V2026.04.23.03';
-const CACHE_NAME = 'greenleaf-v4.2-rebuild-V2026.04.23.03';
+const APP_SHELL_BUILD = 'V2026.04.23.04';
+const APP_SHELL_QUERY_PARAM = 'shellv';
+const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
+const CACHE_NAME = 'greenleaf-v4.2-rebuild-' + APP_SHELL_BUILD;
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -13,6 +15,39 @@ const ASSETS_TO_CACHE = [
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/@phosphor-icons/web'
 ];
+
+function normalizeShellBuild(value = '') {
+  return String(value || '').trim();
+}
+
+function buildShellUrl(build = '') {
+  const safeBuild = normalizeShellBuild(build) || APP_SHELL_BUILD;
+  return './index.html?' + APP_SHELL_QUERY_PARAM + '=' + encodeURIComponent(safeBuild);
+}
+
+function getRequestUrl(requestOrUrl) {
+  try {
+    return new URL(typeof requestOrUrl === 'string' ? requestOrUrl : requestOrUrl.url, self.location.href);
+  } catch (error) {
+    return null;
+  }
+}
+
+function getRequestedShellBuild(request) {
+  const requestUrl = getRequestUrl(request);
+  if (!requestUrl) return '';
+  return normalizeShellBuild(requestUrl.searchParams.get(APP_SHELL_QUERY_PARAM) || '');
+}
+
+async function cacheShellResponse(cache, requestedShellUrl, networkResponse) {
+  if (!cache || !requestedShellUrl || !networkResponse || networkResponse.status !== 200) return;
+  const responseClone = networkResponse.clone();
+  const responseCloneForIndex = networkResponse.clone();
+  await Promise.all([
+    cache.put(requestedShellUrl, responseClone).catch(() => {}),
+    cache.put('./index.html', responseCloneForIndex).catch(() => {})
+  ]);
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -40,25 +75,33 @@ self.addEventListener('fetch', (event) => {
   if (event.request.mode === 'navigate') {
     event.respondWith(
       (async () => {
+        const requestedBuild = getRequestedShellBuild(event.request) || APP_SHELL_BUILD;
+        const requestedShellUrl = buildShellUrl(requestedBuild);
+        const cache = await caches.open(CACHE_NAME).catch(() => null);
         try {
-          const networkResponse = await fetch(APP_SHELL_URL, { cache: 'no-store' });
+          const networkResponse = await fetch(requestedShellUrl, { cache: 'no-store' });
           if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            const responseCloneForIndex = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => Promise.all([
-              cache.put(APP_SHELL_URL, responseClone),
-              cache.put('./index.html', responseCloneForIndex)
-            ])).catch(() => {});
+            await cacheShellResponse(cache, requestedShellUrl, networkResponse);
           }
           return networkResponse;
         } catch (error) {
         }
-        const cachedShell = await caches.match(APP_SHELL_URL);
-        if (cachedShell) return cachedShell;
-        const cachedRequestedShell = await caches.match(event.request);
-        if (cachedRequestedShell) return cachedRequestedShell;
-        const cachedIndex = await caches.match('./index.html');
-        if (cachedIndex) return cachedIndex;
+        if (cache) {
+          const cachedRequestedShell = await cache.match(requestedShellUrl);
+          if (cachedRequestedShell) return cachedRequestedShell;
+          const cachedCurrentShell = await cache.match(APP_SHELL_URL);
+          if (cachedCurrentShell) return cachedCurrentShell;
+          const cachedIndex = await cache.match('./index.html');
+          if (cachedIndex) return cachedIndex;
+        }
+        const globalRequestedShell = await caches.match(requestedShellUrl);
+        if (globalRequestedShell) return globalRequestedShell;
+        const globalCurrentShell = await caches.match(APP_SHELL_URL);
+        if (globalCurrentShell) return globalCurrentShell;
+        const cachedRequestedNavigation = await caches.match(event.request);
+        if (cachedRequestedNavigation) return cachedRequestedNavigation;
+        const globalIndex = await caches.match('./index.html');
+        if (globalIndex) return globalIndex;
         return Response.error();
       })()
     );
