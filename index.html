@@ -700,7 +700,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.22.14</div>
+<div id="header-version" class="nav-version-pill">V2026.04.22.15</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1488,8 +1488,10 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             dockResolvedStateCache = null;
             dockDisplayInventory = [];
             dockDisplayInventoryById = new Map();
+            dockDisplayInventoryBySourceUid = new Map();
             dockIssueSourceRowsCacheKey = '';
             dockIssueSourceRowsById = new Map();
+            dockIssueSourceRowsByCurrentUid = new Map();
             dockIssueSourceRowsByMatchKey = new Map();
             requestScopedItemsCacheKey = '';
             requestScopedItemsCache = null;
@@ -1510,8 +1512,10 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             dockResolvedStateCache = null;
             dockDisplayInventory = [];
             dockDisplayInventoryById = new Map();
+            dockDisplayInventoryBySourceUid = new Map();
             dockIssueSourceRowsCacheKey = '';
             dockIssueSourceRowsById = new Map();
+            dockIssueSourceRowsByCurrentUid = new Map();
             dockIssueSourceRowsByMatchKey = new Map();
         }
 
@@ -3856,6 +3860,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             socInventory = (Array.isArray(socInventory) ? socInventory : []).map((item) => {
                 if (!item) return item;
                 const uniqueId = String(item.UNIQUE_ID || '').trim();
+                const sourceUid = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(item.DOCK_ISSUE_SOURCE_UID, uniqueId, item.unique_id, ''));
                 const masterId = String(firstNonEmptyValue(item.MASTER_ID, item.MASTER_UNIQUE_ID, item.master_id, '')).trim();
                 if (scopedIds && !scopedIds.has(uniqueId) && !scopedIds.has(masterId)) return item;
                 item.DOCK_NUM = item.DOCK_NUM || item.DOCK || item.dock;
@@ -3867,8 +3872,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (masterItem) {
                     syncMasterFieldsToRequestRow(masterItem, item);
                     item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
+                    stampDockIssueSourceIdentity(item, { sourceUid });
                     return item;
                 }
+                stampDockIssueSourceIdentity(item, { sourceUid });
                 normalizeRowPhotoFields(item);
                 buildSearchIndex(item);
                 return item;
@@ -6246,7 +6253,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
-        let dockIssueStatusByUid=new Map(); let dockIssueAllocationsBySourceUid=new Map(); let dockIssueAllocationsById=new Map(); let dockIssueDataPromise=null; let dockIssueDataLoaded=false; let dockIssueStatusSchemaReady=null; let dockIssueStatusSchemaPromise=null; let dockIssueAllocationSchemaReady=null; let dockIssueAllocationSchemaPromise=null; let dockIssueSchemaWarningShown=false; let dockViewMode='docks'; let selectedDockIssueUid=null; let dockResolvedStateCacheKey=''; let dockResolvedStateCache=null; let dockDisplayInventory=[]; let dockDisplayInventoryById=new Map(); let dockIssueSourceRowsCacheKey=''; let dockIssueSourceRowsById=new Map(); let dockIssueSourceRowsByMatchKey=new Map();
+        let dockIssueStatusByUid=new Map(); let dockIssueAllocationsBySourceUid=new Map(); let dockIssueAllocationsById=new Map(); let dockIssueDataPromise=null; let dockIssueDataLoaded=false; let dockIssueStatusSchemaReady=null; let dockIssueStatusSchemaPromise=null; let dockIssueAllocationSchemaReady=null; let dockIssueAllocationSchemaPromise=null; let dockIssueSchemaWarningShown=false; let dockViewMode='docks'; let selectedDockIssueUid=null; let dockResolvedStateCacheKey=''; let dockResolvedStateCache=null; let dockDisplayInventory=[]; let dockDisplayInventoryById=new Map(); let dockDisplayInventoryBySourceUid=new Map(); let dockIssueSourceRowsCacheKey=''; let dockIssueSourceRowsById=new Map(); let dockIssueSourceRowsByCurrentUid=new Map(); let dockIssueSourceRowsByMatchKey=new Map();
         let detailRequestSourceDomIds=[];
         let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false;
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
@@ -6550,7 +6557,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.22.14';
+const APP_VERSION = 'V2026.04.22.15';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -11614,6 +11621,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasSoc || (hasMaster && socInventory.length)) {
                 const socSource = hasSoc ? (res.socData || []) : socInventory;
                 socInventory = socSource.map(item=>{
+                    const sourceUid = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(item && item.DOCK_ISSUE_SOURCE_UID, item && item.UNIQUE_ID, item && item.unique_id, ''));
                     item.DOCK_NUM=item.DOCK_NUM||item.DOCK||item.dock;
                     item.SALESREPNAME=item.SALESREPNAME||item.SALESREP||item['SALES_REP']||'Unknown Rep';
                     item.CUSTOMERNAME=item.CUSTOMERNAME||item.CUSTOMER||'Unknown Customer';
@@ -11624,6 +11632,7 @@ function toggleDriveQuickRequestItem(domId) {
                 syncMasterFieldsToRequestRow(masterItem, item);
                 item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
             }
+                    stampDockIssueSourceIdentity(item, { sourceUid });
                     normalizeRowPhotoFields(item);
                     buildSearchIndex(item);
                     return item;
@@ -11989,6 +11998,28 @@ function toggleDriveQuickRequestItem(domId) {
             return parts.some(Boolean) ? parts.join('||') : '';
         }
 
+        function stampDockIssueSourceIdentity(item = null, options = {}) {
+            if (!item || typeof item !== 'object') return item;
+            const opts = options || {};
+            const sourceUid = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(
+                opts.sourceUid,
+                item.DOCK_ISSUE_SOURCE_UID,
+                item.ISSUE_SOURCE_UNIQUE_ID,
+                item.issue_source_unique_id,
+                item.UNIQUE_ID,
+                item.unique_id,
+                ''
+            ));
+            item.DOCK_ISSUE_SOURCE_UID = sourceUid;
+            item.DOCK_ISSUE_SOURCE_MATCH_KEY = String(firstNonEmptyValue(
+                opts.sourceMatchKey,
+                item.DOCK_ISSUE_SOURCE_MATCH_KEY,
+                buildDockIssueSourceMatchKey(item),
+                ''
+            )).trim();
+            return item;
+        }
+
         function buildDockDisplaySearchText(item = null) {
             if (!item) return '';
             return [
@@ -12045,8 +12076,7 @@ function toggleDriveQuickRequestItem(domId) {
             row.CUSTOMERNAME = firstNonEmptyValue(row.CUSTOMERNAME, row.CUSTOMER, 'Unknown Customer');
             row.CONSIGNEENAME = firstNonEmptyValue(row.CONSIGNEENAME, row.CONSIGNEE, '');
             row.DOM_ID = firstNonEmptyValue(row.DOM_ID, 'dock_' + firstNonEmptyValue(row.UNIQUE_ID, indexHint, Date.now()));
-            row.DOCK_ISSUE_SOURCE_UID = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(row.DOCK_ISSUE_SOURCE_UID, row.UNIQUE_ID, row.unique_id, ''));
-            row.DOCK_ISSUE_SOURCE_MATCH_KEY = firstNonEmptyValue(row.DOCK_ISSUE_SOURCE_MATCH_KEY, buildDockIssueSourceMatchKey(row), '');
+            stampDockIssueSourceIdentity(row);
             row.DOCK_NOTE = firstNonEmptyValue(row.DOCK_ISSUE_NOTE, row.DOCK_NOTE, '');
             row.DISPLAY_DOCK_QTY = getDockDisplayQty(row);
             row._search = buildDockDisplaySearchText(row);
@@ -12155,6 +12185,16 @@ function toggleDriveQuickRequestItem(domId) {
                 updatedBy: String(firstNonEmptyValue(raw.updated_by, raw.UPDATED_BY, '')).trim(),
                 updatedAt: String(firstNonEmptyValue(raw.updated_at, raw.UPDATED_AT, '')).trim()
             };
+        }
+
+        function getDockIssueUpdatedAtMs(row = null) {
+            const stamp = Date.parse(String(firstNonEmptyValue(row && row.updatedAt, row && row.updated_at, '')).trim());
+            return Number.isFinite(stamp) ? stamp : 0;
+        }
+
+        function getDockIssueAllocationUpdatedAtMs(row = null) {
+            const stamp = Date.parse(String(firstNonEmptyValue(row && row.updatedAt, row && row.updated_at, '')).trim());
+            return Number.isFinite(stamp) ? stamp : 0;
         }
 
         function cacheDockIssueStatus(uniqueId = '', issue = null) {
@@ -12322,17 +12362,35 @@ function toggleDriveQuickRequestItem(domId) {
                     supabaseFetch('v2_dock_issue_allocations', 'GET', null, 'select=*')
                 ]);
                 const nextIssueMap = new Map();
-                (issueRows || []).forEach((row) => {
+                Array.from(dockIssueStatusByUid.values()).forEach((row) => {
                     const normalized = normalizeDockIssueStatusRow(row);
                     if (!normalized) return;
                     nextIssueMap.set(normalized.issueSourceUniqueId, normalized);
                 });
+                (issueRows || []).forEach((row) => {
+                    const normalized = normalizeDockIssueStatusRow(row);
+                    if (!normalized) return;
+                    const existing = nextIssueMap.get(normalized.issueSourceUniqueId);
+                    if (!existing || getDockIssueUpdatedAtMs(normalized) >= getDockIssueUpdatedAtMs(existing)) {
+                        nextIssueMap.set(normalized.issueSourceUniqueId, normalized);
+                    }
+                });
                 const nextAllocationById = new Map();
-                const nextAllocationBySource = new Map();
-                (allocationRows || []).forEach((row) => {
+                Array.from(dockIssueAllocationsById.values()).forEach((row) => {
                     const normalized = normalizeDockIssueAllocationRow(row);
                     if (!normalized) return;
                     nextAllocationById.set(normalized.allocationUniqueId, normalized);
+                });
+                (allocationRows || []).forEach((row) => {
+                    const normalized = normalizeDockIssueAllocationRow(row);
+                    if (!normalized) return;
+                    const existing = nextAllocationById.get(normalized.allocationUniqueId);
+                    if (!existing || getDockIssueAllocationUpdatedAtMs(normalized) >= getDockIssueAllocationUpdatedAtMs(existing)) {
+                        nextAllocationById.set(normalized.allocationUniqueId, normalized);
+                    }
+                });
+                const nextAllocationBySource = new Map();
+                Array.from(nextAllocationById.values()).forEach((normalized) => {
                     if (!nextAllocationBySource.has(normalized.issueSourceUniqueId)) nextAllocationBySource.set(normalized.issueSourceUniqueId, []);
                     nextAllocationBySource.get(normalized.issueSourceUniqueId).push(normalized);
                 });
@@ -12480,43 +12538,53 @@ function toggleDriveQuickRequestItem(domId) {
         function getCurrentDockIssueSourceRowsState() {
             const cacheKey = [
                 getDatasetLoadSignature('soc'),
-                Array.isArray(socInventory) ? socInventory.length : 0
+                Array.isArray(socInventory) ? socInventory.length : 0,
+                dockWorkflowStateEpoch
             ].join('|');
-            if (dockIssueSourceRowsCacheKey === cacheKey && dockIssueSourceRowsById instanceof Map && dockIssueSourceRowsByMatchKey instanceof Map) {
+            if (dockIssueSourceRowsCacheKey === cacheKey && dockIssueSourceRowsById instanceof Map && dockIssueSourceRowsByCurrentUid instanceof Map && dockIssueSourceRowsByMatchKey instanceof Map) {
                 return {
-                    rowsByUid: dockIssueSourceRowsById,
+                    rowsBySourceUid: dockIssueSourceRowsById,
+                    rowsByCurrentUid: dockIssueSourceRowsByCurrentUid,
                     rowsByMatchKey: dockIssueSourceRowsByMatchKey
                 };
             }
-            const nextByUid = new Map();
+            const nextBySourceUid = new Map();
+            const nextByCurrentUid = new Map();
             const nextByMatchKey = new Map();
             (Array.isArray(socInventory) ? socInventory : []).forEach((item, idx) => {
-                const uniqueId = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, ''));
-                if (!uniqueId) return;
-                const sourceMatchKey = buildDockIssueSourceMatchKey(item);
+                const sourceUid = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(item && item.DOCK_ISSUE_SOURCE_UID, item && item.UNIQUE_ID, item && item.unique_id, ''));
+                const currentUid = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, sourceUid));
+                if (!sourceUid && !currentUid) return;
                 const nextRow = cloneDockRowWithMeta(item, {
-                    UNIQUE_ID: uniqueId,
-                    DOM_ID: firstNonEmptyValue(item && item.DOM_ID, 'dock_' + uniqueId, 'dock_' + idx),
-                    DOCK_ISSUE_SOURCE_UID: uniqueId,
-                    DOCK_ISSUE_SOURCE_MATCH_KEY: sourceMatchKey
+                    UNIQUE_ID: currentUid || sourceUid,
+                    DOM_ID: firstNonEmptyValue(item && item.DOM_ID, 'dock_' + (currentUid || sourceUid), 'dock_' + idx),
+                    DOCK_ISSUE_SOURCE_UID: sourceUid
                 });
-                nextByUid.set(uniqueId, nextRow);
+                const sourceMatchKey = String(firstNonEmptyValue(nextRow && nextRow.DOCK_ISSUE_SOURCE_MATCH_KEY, buildDockIssueSourceMatchKey(nextRow), '')).trim();
+                if (sourceUid && !nextBySourceUid.has(sourceUid)) nextBySourceUid.set(sourceUid, nextRow);
+                if (currentUid && !nextByCurrentUid.has(currentUid)) nextByCurrentUid.set(currentUid, nextRow);
                 if (sourceMatchKey) {
                     if (!nextByMatchKey.has(sourceMatchKey)) nextByMatchKey.set(sourceMatchKey, []);
                     nextByMatchKey.get(sourceMatchKey).push(nextRow);
                 }
             });
             dockIssueSourceRowsCacheKey = cacheKey;
-            dockIssueSourceRowsById = nextByUid;
+            dockIssueSourceRowsById = nextBySourceUid;
+            dockIssueSourceRowsByCurrentUid = nextByCurrentUid;
             dockIssueSourceRowsByMatchKey = nextByMatchKey;
             return {
-                rowsByUid: dockIssueSourceRowsById,
+                rowsBySourceUid: dockIssueSourceRowsById,
+                rowsByCurrentUid: dockIssueSourceRowsByCurrentUid,
                 rowsByMatchKey: dockIssueSourceRowsByMatchKey
             };
         }
 
         function getCurrentDockIssueSourceRowsById() {
-            return getCurrentDockIssueSourceRowsState().rowsByUid;
+            return getCurrentDockIssueSourceRowsState().rowsBySourceUid;
+        }
+
+        function getCurrentDockDisplayRowsBySourceUid() {
+            return dockDisplayInventoryBySourceUid instanceof Map ? dockDisplayInventoryBySourceUid : new Map();
         }
 
         function getDockIssueSourceCandidateScore(row = null, issue = null) {
@@ -12558,26 +12626,38 @@ function toggleDriveQuickRequestItem(domId) {
             });
         }
 
-        function findDockMistakeSourceRowByUniqueId(uniqueId = '', issueRow = null) {
+        function resolveDockIssueSourceRow(uniqueId = '', issueRow = null, options = {}) {
             const normalizedUid = normalizeDockIssueSourceUniqueId(uniqueId);
             const issue = normalizeDockIssueStatusRow(issueRow) || getDockIssueStatus(normalizedUid);
-            if (!normalizedUid && !issue) return null;
+            if (!normalizedUid && !issue) return { issue: null, sourceRow: null, sourceUid: '', sourceMatchKey: '' };
             const sourceState = getCurrentDockIssueSourceRowsState();
-            const sourceMap = sourceState.rowsByUid;
+            const sourceMap = sourceState.rowsBySourceUid;
+            const currentSourceUid = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(issue && issue.issueSourceUniqueId, normalizedUid));
+            const currentMatchKey = String(firstNonEmptyValue(issue && issue.sourceMatchKey, '')).trim();
             let sourceRow =
-                sourceMap.get(normalizedUid)
+                sourceMap.get(currentSourceUid)
+                || sourceState.rowsByCurrentUid.get(currentSourceUid)
+                || sourceState.rowsByCurrentUid.get(normalizedUid)
+                || socInventoryById.get(currentSourceUid)
                 || socInventoryById.get(normalizedUid)
+                || (Array.isArray(socInventory) ? socInventory.find((row) => normalizeDockIssueSourceUniqueId(firstNonEmptyValue(row && row.DOCK_ISSUE_SOURCE_UID, row && row.UNIQUE_ID, row && row.unique_id, '')) === currentSourceUid) : null)
                 || (Array.isArray(socInventory) ? socInventory.find((row) => normalizeDockIssueSourceUniqueId(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '')) === normalizedUid) : null)
                 || (() => {
-                    const directDisplayRow = dockDisplayInventoryById.get(normalizedUid);
+                    const directDisplayRow =
+                        getCurrentDockDisplayRowsBySourceUid().get(currentSourceUid)
+                        || dockDisplayInventoryById.get(currentSourceUid)
+                        || getCurrentDockDisplayRowsBySourceUid().get(normalizedUid)
+                        || dockDisplayInventoryById.get(normalizedUid);
                     return directDisplayRow && !directDisplayRow.IS_SYNTHETIC_DOCK_ROW ? directDisplayRow : null;
                 })()
                 || (() => {
-                    const fallbackRow = findItemByUniqueId(normalizedUid);
-                    return normalizeDockIssueSourceUniqueId(firstNonEmptyValue(fallbackRow && fallbackRow.UNIQUE_ID, fallbackRow && fallbackRow.unique_id, '')) === normalizedUid && !(fallbackRow && fallbackRow.IS_SYNTHETIC_DOCK_ROW) ? fallbackRow : null;
+                    const fallbackRow = findItemByUniqueId(currentSourceUid) || findItemByUniqueId(normalizedUid);
+                    if (!fallbackRow || fallbackRow.IS_SYNTHETIC_DOCK_ROW) return null;
+                    const fallbackSourceUid = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(fallbackRow && fallbackRow.DOCK_ISSUE_SOURCE_UID, fallbackRow && fallbackRow.UNIQUE_ID, fallbackRow && fallbackRow.unique_id, ''));
+                    return fallbackSourceUid === currentSourceUid || fallbackSourceUid === normalizedUid ? fallbackRow : null;
                 })();
             const sourceMatchKey = firstNonEmptyValue(
-                issue && issue.sourceMatchKey,
+                currentMatchKey,
                 sourceRow && sourceRow.DOCK_ISSUE_SOURCE_MATCH_KEY,
                 buildDockIssueSourceMatchKey(issue || {})
             );
@@ -12591,18 +12671,38 @@ function toggleDriveQuickRequestItem(domId) {
                     })[0];
                 }
             }
-            if (!sourceRow || sourceRow.IS_SYNTHETIC_DOCK_ROW) return null;
-            return cloneDockRowWithMeta(sourceRow, {
-                UNIQUE_ID: firstNonEmptyValue(sourceRow && sourceRow.UNIQUE_ID, sourceRow && sourceRow.unique_id, normalizedUid),
-                DOCK_ISSUE_SOURCE_UID: normalizeDockIssueSourceUniqueId(firstNonEmptyValue(issue && issue.issueSourceUniqueId, sourceRow && sourceRow.DOCK_ISSUE_SOURCE_UID, normalizedUid)),
-                DOCK_ISSUE_SOURCE_MATCH_KEY: firstNonEmptyValue(sourceRow && sourceRow.DOCK_ISSUE_SOURCE_MATCH_KEY, sourceMatchKey, buildDockIssueSourceMatchKey(sourceRow), '')
-            });
+            if (!sourceRow || sourceRow.IS_SYNTHETIC_DOCK_ROW) {
+                if (issue && issue.issueState === 'open' && !(options && options.suppressWarning)) {
+                    incrementInternalPerfCounter('dockIssueReconnectMisses');
+                    console.warn('[DockIssue] Open issue could not resolve back to a current SOC row.', issue);
+                }
+                return {
+                    issue,
+                    sourceRow: null,
+                    sourceUid: currentSourceUid,
+                    sourceMatchKey
+                };
+            }
+            return {
+                issue,
+                sourceUid: normalizeDockIssueSourceUniqueId(firstNonEmptyValue(currentSourceUid, sourceRow && sourceRow.DOCK_ISSUE_SOURCE_UID, sourceRow && sourceRow.UNIQUE_ID, sourceRow && sourceRow.unique_id, '')),
+                sourceMatchKey,
+                sourceRow: cloneDockRowWithMeta(sourceRow, {
+                    DOCK_ISSUE_SOURCE_UID: normalizeDockIssueSourceUniqueId(firstNonEmptyValue(currentSourceUid, sourceRow && sourceRow.DOCK_ISSUE_SOURCE_UID, sourceRow && sourceRow.UNIQUE_ID, sourceRow && sourceRow.unique_id, '')),
+                    DOCK_ISSUE_SOURCE_MATCH_KEY: firstNonEmptyValue(sourceRow && sourceRow.DOCK_ISSUE_SOURCE_MATCH_KEY, sourceMatchKey, buildDockIssueSourceMatchKey(sourceRow), '')
+                })
+            };
         }
 
-        function buildDockMistakeIssueView(issueRow = null) {
+        function findDockMistakeSourceRowByUniqueId(uniqueId = '', issueRow = null) {
+            return resolveDockIssueSourceRow(uniqueId, issueRow).sourceRow;
+        }
+
+        function buildDockMistakeIssueView(issueRow = null, options = {}) {
             const issue = normalizeDockIssueStatusRow(issueRow);
             if (!issue || issue.issueState !== 'open') return null;
-            const sourceRow = findDockMistakeSourceRowByUniqueId(issue.issueSourceUniqueId, issue);
+            const resolvedSource = resolveDockIssueSourceRow(issue.issueSourceUniqueId, issue, options);
+            const sourceRow = resolvedSource && resolvedSource.sourceRow ? resolvedSource.sourceRow : null;
             if (!sourceRow) return null;
             const { allocations, totalAllocatedQty } = getDockIssueAllocationTotals(issue.issueSourceUniqueId);
             const sourceQty = Math.max(0, parseAppNumber(firstNonEmptyValue(issue.sourceQty, getDockDisplayQty(sourceRow), '0')) || 0);
@@ -12615,7 +12715,7 @@ function toggleDriveQuickRequestItem(domId) {
                 DOCK_ISSUE_SOURCE_UID: issue.issueSourceUniqueId,
                 DOCK_ISSUE_SOURCE_MATCH_KEY: firstNonEmptyValue(issue.sourceMatchKey, displaySourceRow.DOCK_ISSUE_SOURCE_MATCH_KEY, ''),
                 sourceRow: displaySourceRow,
-                currentSourceUniqueId: normalizeDockIssueSourceUniqueId(firstNonEmptyValue(displaySourceRow && displaySourceRow.UNIQUE_ID, displaySourceRow && displaySourceRow.unique_id, '')),
+                currentSourceUniqueId: normalizeDockIssueSourceUniqueId(firstNonEmptyValue(resolvedSource && resolvedSource.sourceUid, displaySourceRow && displaySourceRow.DOCK_ISSUE_SOURCE_UID, issue.issueSourceUniqueId, '')),
                 allocations,
                 totalAllocatedQty,
                 sourceQty,
@@ -12641,16 +12741,25 @@ function toggleDriveQuickRequestItem(domId) {
             if (dockResolvedStateCacheKey === cacheKey && dockResolvedStateCache && Array.isArray(dockResolvedStateCache.rows)) {
                 dockDisplayInventory = dockResolvedStateCache.rows.slice();
                 dockDisplayInventoryById = new Map(dockResolvedStateCache.rows.map((row) => [String(row && row.UNIQUE_ID || '').trim(), row]).filter((entry) => entry[0]));
+                dockDisplayInventoryBySourceUid = dockResolvedStateCache.rowsBySourceUid instanceof Map
+                    ? new Map(dockResolvedStateCache.rowsBySourceUid)
+                    : new Map(dockResolvedStateCache.rows.map((row) => {
+                        const sourceUid = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(row && row.DOCK_ISSUE_SOURCE_UID, row && row.UNIQUE_ID, row && row.unique_id, ''));
+                        return sourceUid && !(row && row.IS_SYNTHETIC_DOCK_ROW) ? [sourceUid, row] : null;
+                    }).filter(Boolean));
                 return dockResolvedStateCache;
             }
 
             const baseRows = (Array.isArray(socInventory) ? socInventory : []).map((item, idx) => cloneDockRowWithMeta(item, { DOM_ID: firstNonEmptyValue(item && item.DOM_ID, 'dock_' + firstNonEmptyValue(item && item.UNIQUE_ID, idx)) })).filter(Boolean);
             const rowMap = new Map();
+            const rowSourceKeyMap = new Map();
             const orderList = [];
             baseRows.forEach((row) => {
                 const uniqueId = String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim();
                 if (!uniqueId || rowMap.has(uniqueId)) return;
                 rowMap.set(uniqueId, row);
+                const sourceUid = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(row && row.DOCK_ISSUE_SOURCE_UID, row && row.UNIQUE_ID, row && row.unique_id, ''));
+                if (sourceUid && !rowSourceKeyMap.has(sourceUid)) rowSourceKeyMap.set(sourceUid, uniqueId);
                 orderList.push(uniqueId);
             });
 
@@ -12662,8 +12771,9 @@ function toggleDriveQuickRequestItem(domId) {
                 let progressed = false;
                 resolvedIssues.forEach((issue) => {
                     if (!issue || appliedResolvedIssues.has(issue.issueSourceUniqueId)) return;
-                    const resolvedSourceRow = findDockMistakeSourceRowByUniqueId(issue.issueSourceUniqueId, issue);
-                    const sourceRowKey = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(resolvedSourceRow && resolvedSourceRow.UNIQUE_ID, resolvedSourceRow && resolvedSourceRow.unique_id, ''));
+                    const resolvedSource = resolveDockIssueSourceRow(issue.issueSourceUniqueId, issue, { suppressWarning: true });
+                    const resolvedSourceRow = resolvedSource && resolvedSource.sourceRow ? resolvedSource.sourceRow : null;
+                    const sourceRowKey = rowSourceKeyMap.get(issue.issueSourceUniqueId) || normalizeDockIssueSourceUniqueId(firstNonEmptyValue(resolvedSourceRow && resolvedSourceRow.UNIQUE_ID, resolvedSourceRow && resolvedSourceRow.unique_id, ''));
                     const sourceRow = sourceRowKey ? rowMap.get(sourceRowKey) : null;
                     if (!sourceRow) return;
                     const { allocations, totalAllocatedQty } = getDockIssueAllocationTotals(issue.issueSourceUniqueId);
@@ -12684,8 +12794,10 @@ function toggleDriveQuickRequestItem(domId) {
                     const insertionRows = allocations.map((allocation) => buildSyntheticDockAllocationRow(sourceRow, issue, allocation)).filter(Boolean);
                     if (nextSourceRow) {
                         rowMap.set(sourceRowKey, nextSourceRow);
+                        rowSourceKeyMap.set(issue.issueSourceUniqueId, sourceRowKey);
                     } else {
                         rowMap.delete(sourceRowKey);
+                        rowSourceKeyMap.delete(issue.issueSourceUniqueId);
                         orderList.splice(sourceIndex, 1);
                     }
                     let insertAt = nextSourceRow ? sourceIndex + 1 : sourceIndex;
@@ -12710,11 +12822,12 @@ function toggleDriveQuickRequestItem(domId) {
             const openIssues = [];
             getVisibleDockMistakeIssues().forEach((issueView) => {
                 if (!issueView) return;
-                const sourceRowKey = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(issueView.currentSourceUniqueId, issueView.sourceRow && issueView.sourceRow.UNIQUE_ID, issueView.sourceRow && issueView.sourceRow.unique_id, ''));
+                const sourceRowKey = rowSourceKeyMap.get(issueView.issueSourceUniqueId) || normalizeDockIssueSourceUniqueId(firstNonEmptyValue(issueView.currentSourceUniqueId, issueView.issueSourceUniqueId, issueView.sourceRow && issueView.sourceRow.UNIQUE_ID, issueView.sourceRow && issueView.sourceRow.unique_id, ''));
                 const sourceRow = sourceRowKey ? rowMap.get(sourceRowKey) : null;
                 if (!sourceRow) return;
                 const updatedSourceRow = applyDockIssueStateToRow(sourceRow, issueView);
                 rowMap.set(sourceRowKey, updatedSourceRow);
+                rowSourceKeyMap.set(issueView.issueSourceUniqueId, sourceRowKey);
                 openIssues.push({
                     ...issueView,
                     sourceRow: updatedSourceRow
@@ -12724,9 +12837,14 @@ function toggleDriveQuickRequestItem(domId) {
             const rows = orderList.map((uniqueId) => rowMap.get(uniqueId)).filter(Boolean).map((row, idx) => cloneDockRowWithMeta(row, { DOM_ID: firstNonEmptyValue(row && row.DOM_ID, 'dock_' + firstNonEmptyValue(row && row.UNIQUE_ID, idx)) }));
             dockDisplayInventory = rows.slice();
             dockDisplayInventoryById = new Map(rows.map((row) => [String(row && row.UNIQUE_ID || '').trim(), row]).filter((entry) => entry[0]));
+            dockDisplayInventoryBySourceUid = new Map(rows.map((row) => {
+                const sourceUid = normalizeDockIssueSourceUniqueId(firstNonEmptyValue(row && row.DOCK_ISSUE_SOURCE_UID, row && row.UNIQUE_ID, row && row.unique_id, ''));
+                return sourceUid && !(row && row.IS_SYNTHETIC_DOCK_ROW) ? [sourceUid, row] : null;
+            }).filter(Boolean));
             dockResolvedStateCache = {
                 rows,
                 rowsById: dockDisplayInventoryById,
+                rowsBySourceUid: dockDisplayInventoryBySourceUid,
                 openIssues,
                 cacheKey
             };
