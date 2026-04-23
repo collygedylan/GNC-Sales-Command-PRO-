@@ -700,7 +700,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.22.13</div>
+<div id="header-version" class="nav-version-pill">V2026.04.22.14</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -6550,7 +6550,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-const APP_VERSION = 'V2026.04.22.13';
+const APP_VERSION = 'V2026.04.22.14';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -12219,7 +12219,7 @@ function toggleDriveQuickRequestItem(domId) {
         function maybeWarnDockIssueSchemaMissing() {
             if (dockIssueSchemaWarningShown || !currentUser) return;
             dockIssueSchemaWarningShown = true;
-            showToast('Schema Required', 'Run dock_issue_resolution_migration.sql in Supabase to enable the shared dock mistake queue and alternate-location splits.', true);
+            showToast('Schema Required', 'Run dock_issue_resolution_migration.sql and dock_issue_source_match_key_migration.sql in Supabase to enable the shared dock mistake queue and reconnect flagged issues.', true);
         }
 
         async function ensureDockIssueStatusSchemaReady(force = false) {
@@ -12229,7 +12229,7 @@ function toggleDriveQuickRequestItem(domId) {
             dockIssueStatusSchemaPromise = (async () => {
                 if (navigator.onLine === false) return false;
                 try {
-                    const url = `${SUPABASE_URL}/rest/v1/v2_dock_issue_status?select=issue_source_unique_id,issue_state&limit=1`;
+                    const url = `${SUPABASE_URL}/rest/v1/v2_dock_issue_status?select=issue_source_unique_id,issue_state,source_match_key&limit=1`;
                     const response = await fetchWithTimeout(url, {
                         method: 'GET',
                         headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
@@ -12237,7 +12237,7 @@ function toggleDriveQuickRequestItem(domId) {
                     if (!response.ok) {
                         const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
                         const normalizedError = String(errorText || '').toLowerCase();
-                        if (normalizedError.includes('v2_dock_issue_status') || normalizedError.includes('issue_source_unique_id') || normalizedError.includes('issue_state') || normalizedError.includes('relation') || normalizedError.includes('column')) {
+                        if (normalizedError.includes('v2_dock_issue_status') || normalizedError.includes('issue_source_unique_id') || normalizedError.includes('issue_state') || normalizedError.includes('source_match_key') || normalizedError.includes('relation') || normalizedError.includes('column')) {
                             dockIssueStatusSchemaReady = false;
                             maybeWarnDockIssueSchemaMissing();
                             return false;
@@ -12248,7 +12248,7 @@ function toggleDriveQuickRequestItem(domId) {
                     return true;
                 } catch (error) {
                     const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
-                    if (normalizedError.includes('v2_dock_issue_status') || normalizedError.includes('issue_source_unique_id') || normalizedError.includes('issue_state') || normalizedError.includes('relation') || normalizedError.includes('column')) {
+                    if (normalizedError.includes('v2_dock_issue_status') || normalizedError.includes('issue_source_unique_id') || normalizedError.includes('issue_state') || normalizedError.includes('source_match_key') || normalizedError.includes('relation') || normalizedError.includes('column')) {
                         dockIssueStatusSchemaReady = false;
                         maybeWarnDockIssueSchemaMissing();
                         return false;
@@ -12366,6 +12366,7 @@ function toggleDriveQuickRequestItem(domId) {
             const normalizedQty = Math.max(0, parseAppNumber(firstNonEmptyValue(opts.sourceQty, existingIssue && existingIssue.sourceQty, getDockDisplayQty(item), '0')) || 0);
             return {
                 issue_source_unique_id: persistedSourceUid || null,
+                source_match_key: sourceMatchKey || null,
                 source_master_unique_id: String(firstNonEmptyValue(item.MASTER_UNIQUE_ID, linkedMaster && linkedMaster.UNIQUE_ID, existingIssue && existingIssue.sourceMasterUniqueId, '')).trim() || null,
                 source_master_id: String(firstNonEmptyValue(item.MASTER_ID, linkedMaster && linkedMaster.UNIQUE_ID, existingIssue && existingIssue.sourceMasterId, '')).trim() || null,
                 dock_num: String(firstNonEmptyValue(item.DOCK_NUM, item.DOCK, existingIssue && existingIssue.dockNum, '')).trim() || null,
@@ -17490,7 +17491,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const schemaReady = await ensureDockIssueSchemaReady();
             if (!schemaReady) {
-                showToast("Schema Required", "Run dock_issue_resolution_migration.sql in Supabase first.", true);
+                showToast("Schema Required", "Run dock_issue_resolution_migration.sql and dock_issue_source_match_key_migration.sql in Supabase first.", true);
                 return;
             }
             const payload = buildDockIssuePayloadFromRow(item, { issueNote: text, issueState: 'open', sourceQty: getDockDisplayQty(item) });
@@ -17549,7 +17550,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const schemaReady = await ensureDockIssueSchemaReady();
             if (!schemaReady) {
-                showToast("Schema Required", "Run dock_issue_resolution_migration.sql in Supabase first.", true);
+                showToast("Schema Required", "Run dock_issue_resolution_migration.sql and dock_issue_source_match_key_migration.sql in Supabase first.", true);
                 return;
             }
             const payload = buildDockIssueAllocationPayload(issueSourceUniqueId, masterRow, qtyValue);
@@ -17577,7 +17578,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!existing) return;
             const schemaReady = await ensureDockIssueSchemaReady();
             if (!schemaReady) {
-                showToast("Schema Required", "Run dock_issue_resolution_migration.sql in Supabase first.", true);
+                showToast("Schema Required", "Run dock_issue_resolution_migration.sql and dock_issue_source_match_key_migration.sql in Supabase first.", true);
                 return;
             }
             removeDockIssueAllocationFromCache(normalizedId);
@@ -17604,7 +17605,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const schemaReady = await ensureDockIssueSchemaReady();
             if (!schemaReady) {
-                showToast("Schema Required", "Run dock_issue_resolution_migration.sql in Supabase first.", true);
+                showToast("Schema Required", "Run dock_issue_resolution_migration.sql and dock_issue_source_match_key_migration.sql in Supabase first.", true);
                 return;
             }
             const payload = buildDockIssuePayloadFromRow(sourceRow, { issueNote: issue.issueNote, issueState: 'resolved', sourceQty: firstNonEmptyValue(issue.sourceQty, getDockDisplayQty(sourceRow), '0') });
@@ -17757,7 +17758,7 @@ function toggleDriveQuickRequestItem(domId) {
             const resolvedState = getDockResolvedState();
             if (dockViewMode === 'mistakes') {
                 if (dockIssueStatusSchemaReady === false || dockIssueAllocationSchemaReady === false) {
-                    container.innerHTML = `<div class="p-8 text-center text-gray-400">Run dock_issue_resolution_migration.sql in Supabase to use the shared dock mistake queue.</div>`;
+                    container.innerHTML = `<div class="p-8 text-center text-gray-400">Run dock_issue_resolution_migration.sql and dock_issue_source_match_key_migration.sql in Supabase to use the shared dock mistake queue.</div>`;
                     crumb.innerText = 'Dock Setup Required';
                     return;
                 }
