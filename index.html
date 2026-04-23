@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.23.14';
+window.__APP_SHELL_VERSION__ = 'V2026.04.23.15';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -717,7 +717,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.23.14</div>
+<div id="header-version" class="nav-version-pill">V2026.04.23.15</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1198,7 +1198,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.23.14';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.23.15';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7052,7 +7052,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
 let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
-let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveSeason=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let drivePlantFilterItemsCache=[]; let drivePlantFilterGenusOptions=[]; let drivePlantFilterContSizeOptions=[]; let driveGenusSelectionMode='all'; let driveContSizeSelectionMode='all'; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS); let driveResolvedCardStateKey=''; let driveResolvedCardStateCache=null;
+        let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveSeason=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let drivePlantFilterItemsCache=[]; let drivePlantFilterGenusOptions=[]; let drivePlantFilterContSizeOptions=[]; let driveGenusSelectionMode='all'; let driveContSizeSelectionMode='all'; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS); let driveResolvedCardStateKey=''; let driveResolvedCardStateCache=null; let driveSearchRequiresManualSelection=false;
 
 let activeTaskTab="season"; let activeTaskSubview="all"; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let selectedTaskContSizes=new Set(); let taskContSizeSearchTerm=""; let taskContSizeDropdownOpen=false; let taskContSizeFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         let detailReturnState = { viewId: '', scrollTop: 0 };
@@ -7126,7 +7126,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(window.__APP_SHELL_VERSION__ || 'V2026.04.23.14').trim() || 'V2026.04.23.14';
+        const APP_VERSION = String(window.__APP_SHELL_VERSION__ || 'V2026.04.23.15').trim() || 'V2026.04.23.15';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -15407,6 +15407,7 @@ function toggleDriveQuickRequestItem(domId) {
             driveViewDropdownOpen = false;
             driveSeasonDropdownOpen = false;
             driveSelectedSeasons = new Set(DRIVE_SEASON_OPTIONS);
+            setDriveSearchManualSelectionLock(hasActiveDriveSearchTerm());
             invalidateDriveResolvedCardState();
             scheduleDriveRender();
             queueScrollMainAreaToTop(`drive-mode:${mode}`);
@@ -15422,6 +15423,7 @@ function toggleDriveQuickRequestItem(domId) {
             driveGenusFilterOpen = false;
             driveContSizeFilterOpen = false;
             resetDriveDrillSelectionState();
+            setDriveSearchManualSelectionLock(nextTab !== 'card' && hasActiveDriveSearchTerm());
             invalidateDriveResolvedCardState();
             scheduleDriveRender();
             queueScrollMainAreaToTop(`drive-tab:${nextTab}`);
@@ -15434,12 +15436,14 @@ function toggleDriveQuickRequestItem(domId) {
             driveGenusFilterOpen = false;
             driveContSizeFilterOpen = false;
             resetDriveDrillSelectionState();
+            setDriveSearchManualSelectionLock(activeDriveTab !== 'card' && hasActiveDriveSearchTerm());
             invalidateDriveResolvedCardState();
             scheduleDriveRender();
         }
 
         function selectDriveBlock(block) {
             return runDirectTrackedNavigation('drive', `drive-block:${String(block || '').trim()}`, () => {
+                setDriveSearchManualSelectionLock(false);
                 selectedDriveBlock = block;
                 selectedDriveLoc = null;
                 driveViewLevel = 1;
@@ -15447,6 +15451,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
         function selectDriveLoc(loc) {
             return runDirectTrackedNavigation('drive', `drive-loc:${String(loc || '').trim()}`, () => {
+                setDriveSearchManualSelectionLock(false);
                 selectedDriveLoc = loc;
                 driveViewLevel = 2;
             }, { delay: 0, typingDelay: 160 });
@@ -15460,6 +15465,7 @@ function toggleDriveQuickRequestItem(domId) {
             selectedDriveCommonNames = new Set(); driveCommonNameSearchTerm = ''; driveCommonNameFilterOpen = false; selectedDriveGenusNames = new Set(); driveGenusSelectionMode = 'all'; driveGenusSearchTerm = ''; driveGenusFilterOpen = false; selectedDriveContSizes = new Set(); driveContSizeSelectionMode = 'all'; driveContSizeSearchTerm = ''; driveContSizeFilterOpen = false; drivePlantFilterItemsCache = []; drivePlantFilterGenusOptions = []; drivePlantFilterContSizeOptions = [];
             driveViewDropdownOpen = false; driveSeasonDropdownOpen = false;
             document.getElementById('drive-search').value = ""; document.getElementById('drive-search-clear').classList.add('hidden');
+            setDriveSearchManualSelectionLock(false);
             driveSelectedSeasons = new Set(DRIVE_SEASON_OPTIONS);
             driveQuickHoldStopOnly = false;
             invalidateDriveResolvedCardState();
@@ -20416,17 +20422,20 @@ function toggleDriveQuickRequestItem(domId) {
                 renderViewContent(safeRestoreViewId, false, false);
             }
             const visibleRestoreViewId = restoreView ? safeRestoreViewId : 'home';
+            const skipWarmDriveActivation = visibleRestoreViewId === 'drive' && hasWarmRestoreView;
             showPrimaryViewWithScrollPolicy(visibleRestoreViewId, { scrollPolicy: 'restore', restoreViewId: visibleRestoreViewId });
             schedulePrimaryViewChromeRefresh(visibleRestoreViewId, {
-                delay: hasWarmRestoreView ? 12 : 0,
+                delay: skipWarmDriveActivation ? 0 : (hasWarmRestoreView ? 12 : 0),
                 requestSyncDelay: visibleRestoreViewId === 'request' ? 120 : 0,
-                passive: hasWarmRestoreView,
-                passiveDelay: hasWarmRestoreView ? 36 : 0
+                passive: hasWarmRestoreView && !skipWarmDriveActivation,
+                passiveDelay: hasWarmRestoreView && !skipWarmDriveActivation ? 36 : 0,
+                skipHeaderSync: skipWarmDriveActivation,
+                skipStickySync: skipWarmDriveActivation
             });
             if (restoreView && hasWarmRestoreView && restoreViewState.dirty) {
-                queueInteractiveViewRender(safeRestoreViewId, false, false, 60, 120);
+                queueInteractiveViewRender(safeRestoreViewId, false, false, skipWarmDriveActivation ? 0 : 60, skipWarmDriveActivation ? 90 : 120);
             }
-            if (!hasWarmRestoreView || restoreViewState.dirty) {
+            if ((!hasWarmRestoreView || restoreViewState.dirty) && !skipWarmDriveActivation) {
                 schedulePassiveViewActivationWork(visibleRestoreViewId, {
                     delay: hasWarmRestoreView ? 120 : 60,
                     backgroundDelay: hasWarmRestoreView ? 220 : 140,
@@ -24889,15 +24898,51 @@ ${folderNote ? `Folder Note: ${folderNote}
         function closeAssignModal() { driveQuickAssignFlow = false; document.getElementById('assign-modal').classList.add('hidden') }
 
         const debouncedDriveSearch = debounce((term) => {
-            scheduleTrackedSearchViewRender('drive', 'drive-search', term, { skipDebounce: true });
-        }, 60);
+            scheduleDriveSearchRender(term, { skipDebounce: true, typingDelay: 50 });
+        }, 32);
+
+        function getDriveSearchTerm() {
+            const input = document.getElementById('drive-search');
+            if (input) return String(input.value || '').trim();
+            return String(searchRenderLastTerm['drive-search'] || '').trim();
+        }
+
+        function hasActiveDriveSearchTerm() {
+            return getDriveSearchTerm() !== '';
+        }
+
+        function setDriveSearchManualSelectionLock(locked = false) {
+            driveSearchRequiresManualSelection = !!locked;
+        }
+
+        function shouldLockDriveSearchToTopLevel() {
+            return driveSearchRequiresManualSelection && hasActiveDriveSearchTerm() && (activeDriveTab === 'name' || activeDriveTab === 'loc');
+        }
+
+        function scheduleDriveSearchRender(term = '', options = {}) {
+            const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            cancelPendingNavigationScrollResets();
+            invalidateDriveResolvedCardState();
+            markViewDirty('drive');
+            scheduleSearchRender('drive-search', () => {
+                const targetView = document.getElementById('view-drive');
+                if (!targetView || targetView.classList.contains('hidden')) return;
+                renderViewContent('drive', false, false);
+            }, term, {
+                force: !!nextOptions.force,
+                skipDebounce: !!nextOptions.skipDebounce,
+                debounceDelay: Math.max(0, Number(nextOptions.debounceDelay) || 0),
+                typingDelay: Math.max(45, Number(nextOptions.typingDelay) || 50)
+            });
+        }
 
         function clearDriveSearch() {
             document.getElementById('drive-search').value = "";
             document.getElementById('drive-search-clear').classList.add('hidden');
+            setDriveSearchManualSelectionLock(false);
             if (activeDriveTab === 'name' || activeDriveTab === 'loc') resetDriveDrillSelectionState();
             else driveViewLevel = 0;
-            scheduleTrackedSearchViewRender('drive', 'drive-search', '', { force: true, debounceDelay: 0 });
+            scheduleDriveSearchRender('', { force: true, debounceDelay: 0, typingDelay: 45 });
         }
 
         function getDrivePlantContSize(item) {
@@ -25217,6 +25262,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             driveGenusSelectionMode = state.filteredGenusOptions.length === state.genusOptions.length ? 'all' : 'custom';
             driveGenusSearchTerm = '';
             resetDriveDrillSelectionState();
+            setDriveSearchManualSelectionLock(activeDriveTab !== 'card' && hasActiveDriveSearchTerm());
             driveViewDropdownOpen = false;
             driveSeasonDropdownOpen = false;
             driveGenusFilterOpen = false;
@@ -25234,6 +25280,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             driveContSizeSelectionMode = state.filteredSizeOptions.length === state.sizeOptions.length ? 'all' : 'custom';
             driveContSizeSearchTerm = '';
             resetDriveDrillSelectionState();
+            setDriveSearchManualSelectionLock(activeDriveTab !== 'card' && hasActiveDriveSearchTerm());
             driveViewDropdownOpen = false;
             driveSeasonDropdownOpen = false;
             driveGenusFilterOpen = false;
@@ -25262,6 +25309,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             else selectedDriveGenusNames.add(value);
             driveGenusSelectionMode = 'custom';
             resetDriveDrillSelectionState();
+            setDriveSearchManualSelectionLock(activeDriveTab !== 'card' && hasActiveDriveSearchTerm());
             driveViewDropdownOpen = false;
             driveSeasonDropdownOpen = false;
             driveGenusFilterOpen = true;
@@ -25280,6 +25328,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             else selectedDriveContSizes.add(value);
             driveContSizeSelectionMode = 'custom';
             resetDriveDrillSelectionState();
+            setDriveSearchManualSelectionLock(activeDriveTab !== 'card' && hasActiveDriveSearchTerm());
             driveViewDropdownOpen = false;
             driveSeasonDropdownOpen = false;
             driveGenusFilterOpen = false;
@@ -25317,6 +25366,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             driveGenusSearchTerm = '';
             driveGenusFilterOpen = false;
             resetDriveDrillSelectionState();
+            setDriveSearchManualSelectionLock(activeDriveTab !== 'card' && hasActiveDriveSearchTerm());
             invalidateDriveResolvedCardState();
             scheduleDriveRender();
             queueScrollMainAreaToTop('drive-top-controls');
@@ -25330,6 +25380,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             driveContSizeSearchTerm = '';
             driveContSizeFilterOpen = false;
             resetDriveDrillSelectionState();
+            setDriveSearchManualSelectionLock(activeDriveTab !== 'card' && hasActiveDriveSearchTerm());
             invalidateDriveResolvedCardState();
             scheduleDriveRender();
             queueScrollMainAreaToTop('drive-top-controls');
@@ -25348,6 +25399,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             driveContSizeFilterOpen = false;
             drivePlantFilterItemsCache = [];
             resetDriveDrillSelectionState();
+            setDriveSearchManualSelectionLock(activeDriveTab !== 'card' && hasActiveDriveSearchTerm());
             invalidateDriveResolvedCardState();
             scheduleDriveRender();
             queueScrollMainAreaToTop('drive-top-controls');
@@ -25361,6 +25413,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function handleDriveSearch() {
+            beginDirectNavigationActivity();
             const term = document.getElementById('drive-search').value.toLowerCase();
             const clearBtn = document.getElementById('drive-search-clear');
             if(term.length > 0) {
@@ -25368,13 +25421,19 @@ ${folderNote ? `Folder Note: ${folderNote}
             } else {
                 clearBtn.classList.add('hidden');
             }
-            if (activeDriveTab === 'name' || activeDriveTab === 'loc') resetDriveDrillSelectionState();
-            else driveViewLevel = 0;
+            if (activeDriveTab === 'name' || activeDriveTab === 'loc') {
+                resetDriveDrillSelectionState();
+                setDriveSearchManualSelectionLock(term.length > 0);
+            } else {
+                driveViewLevel = 0;
+                setDriveSearchManualSelectionLock(false);
+            }
             debouncedDriveSearch(term);
         }
 
         function selectDriveName(name) {
             return runDirectTrackedNavigation('drive', `drive-name:${String(name || '').trim()}`, () => {
+                setDriveSearchManualSelectionLock(false);
                 selectedDriveName = name;
                 selectedDriveSize = null;
                 selectedDriveSeason = null;
@@ -25383,6 +25442,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
         function selectDriveSize(size) {
             return runDirectTrackedNavigation('drive', `drive-size:${String(size || '').trim()}`, () => {
+                setDriveSearchManualSelectionLock(false);
                 selectedDriveSize = size;
                 selectedDriveSeason = null;
                 driveViewLevel = 2;
@@ -25390,6 +25450,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
         function selectDriveSeason(season) {
             return runDirectTrackedNavigation('drive', `drive-season:${String(season || '').trim()}`, () => {
+                setDriveSearchManualSelectionLock(false);
                 selectedDriveSeason = season;
                 driveViewLevel = 3;
             }, { delay: 0, typingDelay: 160 });
@@ -25509,8 +25570,8 @@ ${folderNote ? `Folder Note: ${folderNote}
         function syncDriveFilterStrip(container, html = '', signature = '') {
             if (!container) return;
             const nextSignature = String(signature || `drive-filters:${String(html || '').length}`);
-            setContainerHtmlWithSignature(container, html, nextSignature);
-            scheduleStickyRailOffsetSync();
+            const didUpdate = setContainerHtmlWithSignature(container, html, nextSignature);
+            if (didUpdate) scheduleStickyRailOffsetSync('drive-filter-strip');
         }
 
         function buildDriveVisibleItemsState() {
@@ -25653,11 +25714,12 @@ ${folderNote ? `Folder Note: ${folderNote}
         function renderDriveCommonNameDrill(container, crumb, driveModeLabel = '') {
             const resolvedDriveModeLabel = String(driveModeLabel || DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode');
             const { visibleItems } = buildDriveVisibleItemsState();
+            const forceTopLevelSearchResults = shouldLockDriveSearchToTopLevel();
             if (!visibleItems.length) {
                 applyDriveRenderMarkup(container, crumb, `${resolvedDriveModeLabel} > Common Name`, `<div class="p-8 text-center text-gray-400">No rows match the current Drive filters.</div>`, 'drive:name:empty');
                 return;
             }
-            if (driveViewLevel <= 0 || !selectedDriveName) {
+            if (driveViewLevel <= 0 || !selectedDriveName || forceTopLevelSearchResults) {
                 const nameMap = new Map();
                 visibleItems.forEach((item) => {
                     const commonName = getDrivePlantCommonName(item) || 'Unknown';
@@ -25759,11 +25821,12 @@ ${folderNote ? `Folder Note: ${folderNote}
         function renderDriveLocationDrill(container, crumb, driveModeLabel = '') {
             const resolvedDriveModeLabel = String(driveModeLabel || DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode');
             const { visibleItems } = buildDriveVisibleItemsState();
+            const forceTopLevelSearchResults = shouldLockDriveSearchToTopLevel();
             if (!visibleItems.length) {
                 applyDriveRenderMarkup(container, crumb, `${resolvedDriveModeLabel} > Location`, `<div class="p-8 text-center text-gray-400">No rows match the current Drive filters.</div>`, 'drive:loc:empty');
                 return;
             }
-            if (driveViewLevel <= 0 || !selectedDriveBlock) {
+            if (driveViewLevel <= 0 || !selectedDriveBlock || forceTopLevelSearchResults) {
                 const blockCounts = {};
                 visibleItems.forEach((item) => {
                     const blockAlpha = getTaskBlockAlpha(item);
@@ -25882,6 +25945,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             else driveSelectedSeasons.add(value);
             if (!driveSelectedSeasons.size) driveSelectedSeasons = new Set(DRIVE_SEASON_OPTIONS);
             resetDriveDrillSelectionState();
+            setDriveSearchManualSelectionLock(activeDriveTab !== 'card' && hasActiveDriveSearchTerm());
             driveViewDropdownOpen = false;
             driveSeasonDropdownOpen = true;
             driveGenusFilterOpen = false;
