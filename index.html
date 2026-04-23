@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.23.07';
+window.__APP_SHELL_VERSION__ = 'V2026.04.23.08';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -143,12 +143,15 @@ body.viewport-compact .app-av-card-thumb-action{font-size:.48rem;padding:.24rem 
         body.viewport-compact #task-tabs-container.task-top-inline .task-top-control-button i{font-size:.8rem !important}
         body.viewport-compact #task-tabs-container.task-top-inline .task-top-control-title{font-size:.45rem !important;letter-spacing:.11em !important}
         body.viewport-compact #task-tabs-container.task-top-inline .task-top-control-summary{margin-top:.14rem !important;font-size:.6rem !important;line-height:1.05 !important}
-        body.viewport-compact #task-tabs-container.task-top-inline .task-top-control-panel{position:absolute;top:calc(100% + .28rem);left:0;z-index:80;width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
-        body.viewport-compact #task-tabs-container.task-top-inline #task-tab-dropdown-host .task-top-control-panel,
-        body.viewport-compact #task-tabs-container.task-top-inline #task-subtabs-container .task-top-control-panel,
-        body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .task-top-control-panel,
-        body.viewport-compact #task-tabs-container.task-top-inline #task-contsize-filters .task-top-control-panel{left:auto;right:0}
-        body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .task-top-control-panel{width:min(17rem,calc(100vw - (var(--shell-gutter) * 2)))}
+body.viewport-compact #task-tabs-container.task-top-inline,
+body.viewport-compact #task-tabs-container.task-top-inline>.min-w-0,
+body.viewport-compact #task-tabs-container.task-top-inline .task-top-control-shell{overflow:visible}
+body.viewport-compact #task-tabs-container.task-top-inline .task-top-control-panel{position:absolute;top:calc(100% + .28rem);left:0;right:auto;z-index:90;width:min(20rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
+body.viewport-compact #task-tabs-container.task-top-inline #task-tab-dropdown-host .task-top-control-panel,
+body.viewport-compact #task-tabs-container.task-top-inline #task-subtabs-container .task-top-control-panel,
+body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .task-top-control-panel,
+body.viewport-compact #task-tabs-container.task-top-inline #task-contsize-filters .task-top-control-panel{left:0;right:auto}
+body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .task-top-control-panel{width:min(20rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #drive-season-filters.drive-top-inline{display:block;overflow:visible !important;padding:0 !important;margin-bottom:.35rem !important}
         #drive-season-filters.drive-top-inline .drive-top-controls-row{display:grid;grid-template-columns:minmax(0,1.34fr) minmax(0,1.22fr) minmax(0,1.12fr) minmax(0,.9fr);gap:.42rem;align-items:start}
         #drive-season-filters.drive-top-inline .task-top-control-shell{position:relative;height:100%;padding:.38rem .4rem;border-radius:1rem;min-width:0}
@@ -1192,7 +1195,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.23.07';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.23.08';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -5088,12 +5091,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const delay = Math.max(0, Number(nextOptions.delay) || 0);
             scheduleUiRender(`view-chrome:${safeViewId}`, () => {
                 updateGlobalBackButton();
-                syncGlobalHeaderChrome({ reason: `view:${safeViewId}` });
+                if (!nextOptions.skipHeaderSync) syncGlobalHeaderChrome({ reason: `view:${safeViewId}` });
                 updateFooterNavState();
                 if (Object.prototype.hasOwnProperty.call(nextOptions, 'requestSyncDelay')) {
                     syncRequestViewLiveSync(safeViewId === 'request' ? Math.max(0, Number(nextOptions.requestSyncDelay) || 0) : 0);
                 }
-                scheduleStickyRailOffsetSync(`view-chrome:${safeViewId}`);
+                if (!nextOptions.skipStickySync) scheduleStickyRailOffsetSync(`view-chrome:${safeViewId}`);
             }, delay);
         }
 
@@ -5807,7 +5810,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 scheduleUiRender(renderKey, () => {
                     incrementInternalPerfCounter('photoUiOnlyRefreshes');
                     renderSavedPhotos();
-                    renderPhotoGallery();
+                    if (activeDetailTab === 'gallery') renderPhotoGallery();
                 }, 16);
                 return;
             }
@@ -7068,7 +7071,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
-        const APP_VERSION = String(window.__APP_SHELL_VERSION__ || 'V2026.04.23.07').trim() || 'V2026.04.23.07';
+const APP_VERSION = String(window.__APP_SHELL_VERSION__ || 'V2026.04.23.08').trim() || 'V2026.04.23.08';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -14702,6 +14705,22 @@ function toggleDriveQuickRequestItem(domId) {
             });
         }
 
+        function schedulePassiveViewActivationWork(viewId, options = {}) {
+            const targetViewId = String(viewId || '').trim();
+            if (!targetViewId) return;
+            const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const delay = Math.max(0, Number(nextOptions.delay) || 0);
+            const backgroundDelay = Math.max(90, Number(nextOptions.backgroundDelay) || 180);
+            const syncRealtime = nextOptions.syncRealtime !== false;
+            runAfterShellInteractive(() => {
+                scheduleUiRender(`view-activate-passive:${targetViewId}`, () => {
+                    if (getCurrentVisibleViewId() !== targetViewId) return;
+                    if (syncRealtime) setRealtimeSubscriptionsForView(targetViewId);
+                    refreshViewDatasetsOnEnter(targetViewId, { backgroundDelay });
+                }, delay);
+            });
+        }
+
         function switchView(viewId, options = {}) {
             const viewSwitchStartedAt = beginInternalPerfMeasure();
             closeDriveQuickFiltersModal();
@@ -19542,7 +19561,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (getCurrentVisibleViewId() !== 'detail' || !activeItem) return false;
             const hydrationStartedAt = beginInternalPerfMeasure();
             const preferredTab = String(activeDetailTab || getPrimaryDetailTabForItemContext(activeItem, activeDetailSourceView || lastView || '') || '').trim();
-            renderDetailView({ preferredTab, suppressScroll: true });
+            renderDetailView({ preferredTab, suppressScroll: true, skipChromeSync: true, skipGalleryRender: true });
             recordInternalPerfDuration('detailHydrationDurations', hydrationStartedAt, activeDetailSourceView || 'detail');
             return true;
         }
@@ -19576,10 +19595,12 @@ function toggleDriveQuickRequestItem(domId) {
                 console.error('Detail saved photos render failed', error);
             }
 
-            try {
-                renderPhotoGallery();
-            } catch (error) {
-                console.error('Detail photo gallery render failed', error);
+            if (!renderOptions.skipGalleryRender) {
+                try {
+                    renderPhotoGallery();
+                } catch (error) {
+                    console.error('Detail photo gallery render failed', error);
+                }
             }
             if (detailSourceView === 'review') syncNcrDraftInputs(activeItem);
 
@@ -19587,10 +19608,12 @@ function toggleDriveQuickRequestItem(domId) {
             const targetDetailTab = requestedDetailTab && isDetailTabVisible(requestedDetailTab) ? requestedDetailTab : primaryDetailTab;
             switchDetailTab(targetDetailTab, { suppressScroll: !!renderOptions.suppressScroll });
 
-            updateGlobalBackButton();
-            syncGlobalHeaderChrome({ reason: `detail:${detailSourceView || 'detail'}` });
-            updateFooterNavState();
-            scheduleStickyRailOffsetSync(`detail:${detailSourceView || 'detail'}`);
+            if (!renderOptions.skipChromeSync) {
+                updateGlobalBackButton();
+                syncGlobalHeaderChrome({ reason: `detail:${detailSourceView || 'detail'}` });
+                updateFooterNavState();
+                scheduleStickyRailOffsetSync(`detail:${detailSourceView || 'detail'}`);
+            }
         }
 
         function openDetail(uid, sourceView) {
@@ -19625,8 +19648,8 @@ function toggleDriveQuickRequestItem(domId) {
             renderDetailShellView();
             if (detailTapStartedAt) recordInternalPerfDuration('detailTapToShellDurations', detailTapStartedAt, resolvedSourceView || 'detail');
             showPrimaryViewWithScrollPolicy('detail', { scrollPolicy: 'reset', scrollTop: 0 });
-            schedulePrimaryViewChromeRefresh('detail');
-            scheduleDeferredDetailHydration(currentDetailHydrationToken);
+            schedulePrimaryViewChromeRefresh('detail', { delay: isTouchConstrainedDevice() ? 18 : 0 });
+            scheduleDeferredDetailHydration(currentDetailHydrationToken, isTouchConstrainedDevice() ? 72 : DETAIL_HYDRATION_DELAY_MS);
             recordInternalPerfDuration('detailOpenDurations', detailOpenStartedAt, resolvedSourceView || 'detail');
             return false;
         }
@@ -20041,6 +20064,7 @@ function toggleDriveQuickRequestItem(domId) {
                     scheduleDeferredDetailHydration(detailHydrationToken, 0);
                 }
                 if (safeTab === 'overview') renderDriveDetailOverviewFields();
+                else if (safeTab === 'gallery') renderPhotoGallery();
                 else if (safeTab === 'ncr') syncNcrDraftInputs(activeItem);
                 else populatePrimaryDetailTabShell(safeTab, activeDetailSourceView || lastView || '', activeItem);
             }
@@ -20069,13 +20093,17 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const visibleRestoreViewId = restoreView ? safeRestoreViewId : 'home';
             showPrimaryViewWithScrollPolicy(visibleRestoreViewId, { scrollPolicy: 'restore', restoreViewId: visibleRestoreViewId });
-            schedulePrimaryViewChromeRefresh(visibleRestoreViewId);
+            schedulePrimaryViewChromeRefresh(visibleRestoreViewId, {
+                delay: hasWarmRestoreView ? 12 : 0,
+                requestSyncDelay: visibleRestoreViewId === 'request' ? 120 : 0
+            });
             if (restoreView && hasWarmRestoreView && restoreViewState.dirty) {
                 queueInteractiveViewRender(safeRestoreViewId, false, false, 60, 120);
             }
-            scheduleUiRender(`detail-back-activate:${visibleRestoreViewId}`, () => {
-                scheduleViewActivationWork(visibleRestoreViewId);
-            }, hasWarmRestoreView ? 70 : 0);
+            schedulePassiveViewActivationWork(visibleRestoreViewId, {
+                delay: hasWarmRestoreView ? 120 : 60,
+                backgroundDelay: hasWarmRestoreView ? 220 : 140
+            });
             recordInternalPerfDuration('detailBackDurations', detailBackStartedAt, visibleRestoreViewId);
             return false;
         }
@@ -25704,6 +25732,62 @@ ${folderNote ? `Folder Note: ${folderNote}
             return getTaskSubviewControlValues(tab).map((value) => ({ value, label: getTaskSubviewLabel(value) }));
         }
 
+        let lastTaskSelectorRowLayoutSignature = '';
+
+        function clearCompactTaskTopControlPanelPosition(panel) {
+            if (!panel) return;
+            panel.style.left = '';
+            panel.style.right = '';
+            panel.style.width = '';
+            panel.style.maxWidth = '';
+            panel.style.transform = '';
+        }
+
+        function syncCompactTaskTopControlPanels() {
+            const container = document.getElementById('task-tabs-container');
+            if (!container) return;
+            const panels = Array.from(container.querySelectorAll('.task-top-control-panel'));
+            if (!panels.length) return;
+            const isCompactViewport = !!(document.body && document.body.classList.contains('viewport-compact'));
+            const inlineTopControls = container.classList.contains('task-top-inline');
+            if (!isCompactViewport || !inlineTopControls || container.classList.contains('hidden')) {
+                panels.forEach(clearCompactTaskTopControlPanelPosition);
+                return;
+            }
+            const mainArea = document.getElementById('main-scroll-area');
+            const mainAreaRect = mainArea ? mainArea.getBoundingClientRect() : null;
+            const viewportWidth = Math.max(window.innerWidth || 0, document.documentElement ? document.documentElement.clientWidth : 0);
+            const viewportLeftInset = mainAreaRect ? Math.max(12, Math.round(mainAreaRect.left)) : 12;
+            const viewportRightInset = mainAreaRect ? Math.max(12, Math.round(viewportWidth - mainAreaRect.right)) : 12;
+            const availableWidth = Math.max(220, viewportWidth - viewportLeftInset - viewportRightInset);
+            const panelWidth = Math.min(360, availableWidth);
+
+            panels.forEach((panel) => {
+                clearCompactTaskTopControlPanelPosition(panel);
+                if (panel.classList.contains('hidden')) return;
+                const shell = panel.closest('.task-top-control-shell');
+                if (!shell) return;
+                panel.style.left = '0px';
+                panel.style.right = 'auto';
+                panel.style.transform = 'none';
+                panel.style.width = `${panelWidth}px`;
+                panel.style.maxWidth = `${panelWidth}px`;
+                const shellRect = shell.getBoundingClientRect();
+                const panelRect = panel.getBoundingClientRect();
+                const minLeft = viewportLeftInset;
+                const maxLeft = Math.max(minLeft, viewportWidth - viewportRightInset - panelRect.width);
+                let targetLeft = shellRect.left + ((shellRect.width - panelRect.width) / 2);
+                targetLeft = Math.max(minLeft, Math.min(maxLeft, targetLeft));
+                panel.style.left = `${Math.round(targetLeft - shellRect.left)}px`;
+            });
+        }
+
+        function scheduleCompactTaskTopControlPanelSync(reason = 'default') {
+            scheduleUiRender('task-top-control-panels', () => {
+                syncCompactTaskTopControlPanels();
+            });
+        }
+
         function syncTaskSelectorRowLayout(tab = activeTaskTab) {
             const container = document.getElementById('task-tabs-container');
             if (!container) return;
@@ -25762,7 +25846,20 @@ ${folderNote ? `Folder Note: ${folderNote}
             setHostClasses('task-genus-filters', genusExtra);
             setHostClasses('task-contsize-filters', contSizeExtra);
             setHostClasses('task-location-detail-filters', detailExtra);
-            scheduleStickyRailOffsetSync();
+            scheduleCompactTaskTopControlPanelSync('layout');
+            const nextLayoutSignature = [
+                String(tab || activeTaskTab || '').trim().toLowerCase(),
+                visibleCount,
+                inlineTopControls ? 'inline' : 'grid',
+                isCompactViewport ? 'compact' : 'wide',
+                shouldShowDetailFilters ? 'detail' : 'top',
+                shouldShowGenus ? 'genus' : 'no-genus',
+                shouldShowContSize ? 'contsize' : 'no-contsize'
+            ].join('|');
+            if (nextLayoutSignature !== lastTaskSelectorRowLayoutSignature) {
+                lastTaskSelectorRowLayoutSignature = nextLayoutSignature;
+                scheduleStickyRailOffsetSync('tasks:selector-layout', true);
+            }
         }
 
         function closeTaskDropdowns(syncUi = true) {
@@ -25834,6 +25931,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             }).join('');
             const html = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskModeDropdown()"><i class="ph-bold ph-squares-four text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Task View</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${taskTabDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${optionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskModeDropdown()">Done</button></div></div></div>`;
             setContainerHtmlWithSignature(host, html, `task-mode:${safeTab}:${taskTabDropdownOpen ? 'open' : 'closed'}`);
+            scheduleCompactTaskTopControlPanelSync('task-mode');
         }
 
         function syncTaskSubviewControls(tab = activeTaskTab) {
@@ -25850,6 +25948,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             container.classList.remove('hidden');
             const html = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskSubviewDropdown()"><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Task Filter</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${taskSubviewDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${optionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskSubviewDropdown()">Done</button></div></div></div>`;
             setContainerHtmlWithSignature(container, html, `task-subview:${String(tab || activeTaskTab || '').trim().toLowerCase()}:${activeTaskSubview}:${taskSubviewDropdownOpen ? 'open' : 'closed'}`);
+            scheduleCompactTaskTopControlPanelSync('task-subview');
         }
 
         function syncTaskSharedFilterArea() {
@@ -25959,6 +26058,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     input.value = taskGenusSearchTerm;
                 }
                 container.classList.remove('hidden');
+                scheduleCompactTaskTopControlPanelSync('task-genus-empty');
                 return;
             }
             const summaryLabel = state.selectedCount ? `${state.selectedCount} selected` : 'All Genus';
@@ -25995,6 +26095,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 input.value = taskGenusSearchTerm;
             }
             container.classList.remove('hidden');
+            scheduleCompactTaskTopControlPanelSync('task-genus');
         }
 
         function toggleTaskGenusDropdown() {
@@ -26247,6 +26348,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 input.value = taskContSizeSearchTerm;
             }
             container.classList.remove('hidden');
+            scheduleCompactTaskTopControlPanelSync('task-contsize');
         }
 
         function renderTaskContSizeFilter(items = [], scopeKey = '') {
@@ -28133,6 +28235,18 @@ ${folderNote ? `Folder Note: ${folderNote}
             saveData(false, prefix, true, null, { photoChanged: true });
         }
 
+        function scheduleDeferredPhotoUploadStart(task) {
+            if (typeof task !== 'function') return;
+            const runTask = () => {
+                if (typeof requestIdleCallback === 'function') {
+                    requestIdleCallback(() => task(), { timeout: isTouchConstrainedDevice() ? 220 : 120 });
+                    return;
+                }
+                runAfterShellInteractive(task, isTouchConstrainedDevice() ? 24 : 0);
+            };
+            runAfterShellInteractive(runTask, isTouchConstrainedDevice() ? 28 : 0);
+        }
+
         async function handlePhotoUpload(input, prefix) {
             if (!input.files || input.files.length === 0 || !activeItem) return;
             markCameraActivity();
@@ -28199,6 +28313,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                         cleanupUploadResources();
                         finishPreview(true);
                         reject(error instanceof Error ? error : new Error(String(error || 'Could not process the selected image.')));
+                    };
+                    const startPreparedUpload = (sourceImage) => {
+                        runAfterShellInteractive(() => {
+                            beginUpload(sourceImage).catch(failUpload);
+                        }, isTouchConstrainedDevice() ? 24 : 0);
                     };
                     const beginUpload = async (sourceImage) => {
                         const sourceWidth = Number(sourceImage.width || sourceImage.naturalWidth || 0);
@@ -28267,14 +28386,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                         img = new Image();
                         img.decoding = 'async';
                         img.onerror = () => failUpload(new Error('Could not process the selected image.'));
-                        img.onload = () => beginUpload(img).catch(failUpload);
+                        img.onload = () => startPreparedUpload(img);
                         img.src = previewUrl;
                     };
                     if (window.createImageBitmap) {
                         createImageBitmap(file)
                             .then((imageBitmap) => {
                                 bitmap = imageBitmap;
-                                return beginUpload(imageBitmap);
+                                startPreparedUpload(imageBitmap);
                             })
                             .catch(() => startFallbackImageLoad());
                     } else {
@@ -28288,11 +28407,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 });
             };
 
-            if (window.requestAnimationFrame) {
-                requestAnimationFrame(() => setTimeout(startUpload, 0));
-            } else {
-                setTimeout(startUpload, 0);
-            }
+            scheduleDeferredPhotoUploadStart(startUpload);
         }
     </script>
     <script>
