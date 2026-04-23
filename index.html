@@ -22072,6 +22072,24 @@ function toggleDriveQuickRequestItem(domId) {
             releaseRequestSwipeMoveListener();
         }
 
+        function resolveRequestSwipeUidFromRow(row = null) {
+            if (!row) return '';
+            const datasetUid = String(row.dataset && row.dataset.requestUid || '').trim();
+            if (datasetUid) return datasetUid;
+
+            const domId = String(row.dataset && row.dataset.domId || '').trim();
+            if (domId) {
+                const requestRowByDomId = requestsInventory.find((entry) => String(entry && entry.DOM_ID || '').trim() === domId);
+                if (requestRowByDomId && requestRowByDomId.UNIQUE_ID) return String(requestRowByDomId.UNIQUE_ID || '').trim();
+                const linkedRow = findItemByDomId(domId);
+                if (linkedRow && linkedRow.UNIQUE_ID) return String(linkedRow.UNIQUE_ID || '').trim();
+            }
+
+            const onclickAttr = row.getAttribute('onclick') || '';
+            const uidMatch = onclickAttr.match(/handleCardClick\('[^']*',\s*'([^']+)'/);
+            return uidMatch && uidMatch[1] ? String(uidMatch[1] || '').trim() : '';
+        }
+
         function decorateRequestRows() {
             const container = document.getElementById('request-content');
             if (!container) return;
@@ -22094,11 +22112,10 @@ function toggleDriveQuickRequestItem(domId) {
             }
             container.querySelectorAll('.item-row').forEach((row) => {
                 if (row.dataset.swipeEnhanced === 'true') return;
-                const onclickAttr = row.getAttribute('onclick') || '';
-                const uidMatch = onclickAttr.match(/handleCardClick\('[^']*',\s*'([^']+)'/);
-                if (!uidMatch) return;
+                const requestUid = resolveRequestSwipeUidFromRow(row);
+                if (!requestUid) return;
                 row.dataset.swipeEnhanced = 'true';
-                row.dataset.requestUid = uidMatch[1];
+                row.dataset.requestUid = requestUid;
                 row.classList.add('request-swipe-row');
                 ['ontouchstart', 'ontouchmove', 'ontouchend', 'ontouchcancel'].forEach((attr) => row.removeAttribute(attr));
 
@@ -22922,7 +22939,7 @@ function toggleDriveQuickRequestItem(domId) {
                         actionBadge = `<div class="flex gap-2 mt-3"><button class="flex-1 bg-green-50 text-green-700 border border-green-200 font-bold py-2 rounded-lg shadow-sm hover:bg-green-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Approved')">APPROVE</button><button class="flex-1 bg-red-50 text-red-700 border border-red-200 font-bold py-2 rounded-lg shadow-sm hover:bg-red-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Rejected')">REJECT</button></div>`;
                     }
                 }
-        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open request row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="flex justify-between items-start mb-1 gap-2"><div class="min-w-0 flex-1">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}</div><div class="font-black text-purple-700 bg-purple-50 px-2 py-1 rounded text-sm whitespace-nowrap ml-2 border border-purple-100">QTY: ${reqQty}</div></div><div class="app-card-meta-grid grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${statusChip}${reserveBadge}<span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">PTRAVAILABLE: ${item.PTRAVAILABLE||'0'}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${lot}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${priority}</span></div>${holdHtml}${requestSalesNoteHtml}</div>${inlineThumbHtml}</div>${actionBadge}</div></div>`;
+        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" data-request-uid="${esc(item.UNIQUE_ID)}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open request row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="flex justify-between items-start mb-1 gap-2"><div class="min-w-0 flex-1">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}</div><div class="font-black text-purple-700 bg-purple-50 px-2 py-1 rounded text-sm whitespace-nowrap ml-2 border border-purple-100">QTY: ${reqQty}</div></div><div class="app-card-meta-grid grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${statusChip}${reserveBadge}<span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">PTRAVAILABLE: ${item.PTRAVAILABLE||'0'}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${lot}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${priority}</span></div>${holdHtml}${requestSalesNoteHtml}</div>${inlineThumbHtml}</div>${actionBadge}</div></div>`;
             }
             if(sourceView === 'docks'){
                 const qty = formatDockDisplayQty(getDockDisplayQty(item));
