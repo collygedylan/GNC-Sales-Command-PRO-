@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.24.09';
+window.__APP_SHELL_VERSION__ = 'V2026.04.24.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -719,7 +719,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.24.09').trim() || 'V2026.04.24.09';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.24.10').trim() || 'V2026.04.24.10';</script>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1200,7 +1200,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.24.09';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.24.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -5186,6 +5186,29 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             });
         }
 
+        function schedulePostRenderMainAreaTopReset(viewId = '', key = 'global') {
+            const safeViewId = String(viewId || '').trim();
+            const safeKey = String(key || safeViewId || 'global').trim() || 'global';
+            const applyTopReset = () => {
+                if (safeViewId && getCurrentVisibleViewId() !== safeViewId) return;
+                if (Math.abs(getMainAreaScrollTop()) <= 1) return;
+                setMainAreaScrollTop(0);
+            };
+            cancelPendingNavigationScrollResets();
+            applyTopReset();
+            requestAnimationFrame(() => {
+                applyTopReset();
+                requestAnimationFrame(() => {
+                    applyTopReset();
+                });
+            });
+            setTimeout(() => applyTopReset(), 80);
+            setTimeout(() => applyTopReset(), 180);
+            scheduleUiRender(`scroll-top:post-render:${safeKey}`, () => {
+                applyTopReset();
+            });
+        }
+
         function queueViewRender(viewId, forceReset = false, forceRender = false) {
             const state = ensureViewRenderState(viewId);
             if (!forceReset && !forceRender && state.initialized && !state.dirty) return;
@@ -5276,6 +5299,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (!targetView || targetView.classList.contains('hidden')) return false;
             renderViewContent(safeViewId, !!nextOptions.forceReset, !!nextOptions.forceRender);
             if (touchRenderStartedAt) recordInternalPerfDuration('touchToRenderDurations', touchRenderStartedAt, safeViewId);
+            if (typeof nextOptions.afterRender === 'function') nextOptions.afterRender();
             return true;
         }
 
@@ -5291,7 +5315,15 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 && targetView
                 && !targetView.classList.contains('hidden')
             );
-            return scheduleTrackedViewRender(viewId, renderKey, {
+            const afterRenderCallbacks = [];
+            if (typeof nextOptions.afterRender === 'function') afterRenderCallbacks.push(nextOptions.afterRender);
+            if (nextOptions.resetScrollTopAfterRender) {
+                const scrollResetKey = String(nextOptions.scrollResetKey || renderKey || safeViewId || 'tracked').trim() || safeViewId || 'tracked';
+                afterRenderCallbacks.push(() => {
+                    schedulePostRenderMainAreaTopReset(safeViewId, scrollResetKey);
+                });
+            }
+            const trackedOptions = {
                 delay: 0,
                 userAction: true,
                 preferImmediate: true,
@@ -5302,7 +5334,19 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 interactionDelayMs: 32,
                 scrollDelayMs: 120,
                 ...nextOptions
-            });
+            };
+            if (afterRenderCallbacks.length) {
+                trackedOptions.afterRender = () => {
+                    afterRenderCallbacks.forEach((callback) => {
+                        try { callback(); } catch (error) {}
+                    });
+                };
+            } else {
+                delete trackedOptions.afterRender;
+            }
+            delete trackedOptions.resetScrollTopAfterRender;
+            delete trackedOptions.scrollResetKey;
+            return scheduleTrackedViewRender(viewId, renderKey, trackedOptions);
         }
 
         function showOnlyPrimaryView(viewId = '') {
@@ -5339,6 +5383,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (!targetView || targetView.classList.contains('hidden')) return;
                 renderViewContent(safeViewId, !!nextOptions.forceReset, !!nextOptions.forceRender);
                 if (touchRenderStartedAt) recordInternalPerfDuration('touchToRenderDurations', touchRenderStartedAt, safeViewId);
+                if (typeof nextOptions.afterRender === 'function') nextOptions.afterRender();
             }, delay, typingDelay, {
                 allowWhileTyping: !!nextOptions.allowWhileTyping,
                 allowWhileTouching: !!nextOptions.allowWhileTouching,
@@ -7219,7 +7264,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.24.09').trim() || 'V2026.04.24.09';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.24.10').trim() || 'V2026.04.24.10';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -15634,7 +15679,7 @@ function toggleDriveQuickRequestItem(domId) {
                 selectedDriveBlock = block;
                 selectedDriveLoc = null;
                 driveViewLevel = 1;
-            }, { delay: 0, typingDelay: 160 });
+            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
         }
         function selectDriveLoc(loc) {
             cancelDriveSearchRenderWork();
@@ -15642,7 +15687,7 @@ function toggleDriveQuickRequestItem(domId) {
                 setDriveSearchManualSelectionLock(false);
                 selectedDriveLoc = loc;
                 driveViewLevel = 2;
-            }, { delay: 0, typingDelay: 160 });
+            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
         }
         function resetDriveView(shouldRender = true) {
             activeDriveMode = 'ok';
@@ -25808,7 +25853,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 selectedDriveSize = null;
                 selectedDriveSeason = null;
                 driveViewLevel = 1;
-            }, { delay: 0, typingDelay: 160 });
+            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
         }
         function selectDriveSize(size) {
             cancelDriveSearchRenderWork();
@@ -25817,7 +25862,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 selectedDriveSize = size;
                 selectedDriveSeason = null;
                 driveViewLevel = 2;
-            }, { delay: 0, typingDelay: 160 });
+            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
         }
         function selectDriveSeason(season) {
             cancelDriveSearchRenderWork();
@@ -25825,14 +25870,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                 setDriveSearchManualSelectionLock(false);
                 selectedDriveSeason = season;
                 driveViewLevel = 3;
-            }, { delay: 0, typingDelay: 160 });
+            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
         }
         function backToDriveSeasons() {
             cancelDriveSearchRenderWork();
             return runDirectTrackedNavigation('drive', `drive-size:${String(selectedDriveSize || '').trim()}`, () => {
                 driveViewLevel = 2;
                 selectedDriveSeason = null;
-            }, { delay: 0, typingDelay: 160 });
+            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
         }
         function backToDriveSizes() {
             cancelDriveSearchRenderWork();
@@ -25840,7 +25885,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 driveViewLevel = 1;
                 selectedDriveSize = null;
                 selectedDriveSeason = null;
-            }, { delay: 0, typingDelay: 160 });
+            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
         }
         function backToDriveNames() {
             cancelDriveSearchRenderWork();
@@ -25849,7 +25894,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 selectedDriveName = null;
                 selectedDriveSize = null;
                 selectedDriveSeason = null;
-            }, { delay: 0, typingDelay: 160 });
+            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
         }
         function backToDriveBlocks() {
             cancelDriveSearchRenderWork();
@@ -25857,14 +25902,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                 driveViewLevel = 0;
                 selectedDriveBlock = null;
                 selectedDriveLoc = null;
-            }, { delay: 0, typingDelay: 160 });
+            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
         }
         function backToDriveLocations() {
             cancelDriveSearchRenderWork();
             return runDirectTrackedNavigation('drive', `drive-block:${String(selectedDriveBlock || '').trim()}`, () => {
                 driveViewLevel = 1;
                 selectedDriveLoc = null;
-            }, { delay: 0, typingDelay: 160 });
+            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
         }
 
        function sortDriveCardItems(items) {
