@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.24.06';
+window.__APP_SHELL_VERSION__ = 'V2026.04.24.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -718,7 +718,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.24.06</div>
+<div id="header-version" class="nav-version-pill">V2026.04.24.07</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1199,7 +1199,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.24.06';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.24.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1387,9 +1387,9 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         const ACTIVE_TYPING_GRACE_MS = 450;
         const ACTIVE_SCROLL_GRACE_MS = 450;
         const FAST_PRESS_MOVE_THRESHOLD_PX = 14;
-        const FAST_PRESS_CLICK_SUPPRESS_MS = 900;
-        const FAST_PRESS_SCOPE_SUPPRESS_MS = 700;
-        const DRIVE_DRILL_CARD_CLICK_SUPPRESS_MS = 700;
+        const FAST_PRESS_CLICK_SUPPRESS_MS = 420;
+        const FAST_PRESS_SCOPE_SUPPRESS_MS = 280;
+        const DRIVE_DRILL_CARD_CLICK_SUPPRESS_MS = 420;
         const ACTIVE_TOUCH_GRACE_MS = 90;
         const ACTIVE_INTERACTION_GRACE_MS = 400;
         const CHUNK_RENDER_GRACE_MS = 450;
@@ -5560,9 +5560,17 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function shouldSuppressFastPressClick(actionType = '', actionName = '', encodedArgs = '') {
             if (shouldSuppressDriveDrillCardClick(actionType, actionName)) return true;
             const actionKey = getFastPressActionKey(actionType, actionName, encodedArgs);
-            if (!!actionKey && actionKey === lastFastPressActionKey && (Date.now() - lastFastPressActionAt) <= FAST_PRESS_CLICK_SUPPRESS_MS) return true;
-            const actionScope = getFastPressActionScope(actionType, actionName);
-            return !!actionScope && actionScope === lastFastPressActionScope && (Date.now() - lastFastPressActionScopeAt) <= FAST_PRESS_SCOPE_SUPPRESS_MS;
+            const now = Date.now();
+            if (!!actionKey && actionKey === lastFastPressActionKey && (now - lastFastPressActionAt) <= FAST_PRESS_CLICK_SUPPRESS_MS) {
+                lastFastPressActionKey = '';
+                lastFastPressActionAt = 0;
+                return true;
+            }
+            if (lastFastPressActionScope && (now - lastFastPressActionScopeAt) > FAST_PRESS_SCOPE_SUPPRESS_MS) {
+                lastFastPressActionScope = '';
+                lastFastPressActionScopeAt = 0;
+            }
+            return false;
         }
 
         function handleFastPressClick(event, actionType = '', actionName = '', encodedArgs = '') {
@@ -7200,7 +7208,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(window.__APP_SHELL_VERSION__ || 'V2026.04.24.06').trim() || 'V2026.04.24.06';
+const APP_VERSION = String(window.__APP_SHELL_VERSION__ || 'V2026.04.24.07').trim() || 'V2026.04.24.07';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -11148,12 +11156,12 @@ function toggleDriveQuickRequestItem(domId) {
             if (searchRenderFrame[safeKey]) cancelAnimationFrame(searchRenderFrame[safeKey]);
             const touchOptimized = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
             const baseDelay = safeKey === 'drive-search'
-                ? (touchOptimized ? 12 : 8)
-                : (touchOptimized ? 10 : 6);
+                ? (touchOptimized ? 8 : 6)
+                : (touchOptimized ? 7 : 5);
             const debounceDelay = options && options.skipDebounce
                 ? 0
                 : Math.max(0, Number(options.debounceDelay) || baseDelay);
-            const typingDelay = Math.max(22, Number(options && options.typingDelay) || (touchOptimized ? 42 : 30));
+            const typingDelay = Math.max(18, Number(options && options.typingDelay) || (touchOptimized ? 30 : 22));
             searchRenderTimer[safeKey] = setTimeout(() => {
                 delete searchRenderTimer[safeKey];
                 scheduleTypingAwareUiRender(`search:${safeKey}`, () => {
@@ -11164,9 +11172,9 @@ function toggleDriveQuickRequestItem(domId) {
                 }, 0, typingDelay, {
                     allowWhileTyping: true,
                     allowDuringExtendedBlock: true,
-                    touchDelayMs: Math.max(44, typingDelay + 10),
-                    scrollDelayMs: Math.max(40, typingDelay + 8),
-                    interactionDelayMs: 42
+                    touchDelayMs: Math.max(28, typingDelay + 4),
+                    scrollDelayMs: Math.max(28, typingDelay + 4),
+                    interactionDelayMs: 28
                 });
             }, debounceDelay);
         }
@@ -15084,18 +15092,20 @@ function toggleDriveQuickRequestItem(domId) {
             const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const viewState = ensureViewRenderState(targetViewId);
             const allowWarmRefresh = nextOptions.allowWarmRefresh !== false;
+            const syncRealtime = nextOptions.syncRealtime !== false;
+            const needsDataRefresh = !viewState.initialized || !!viewState.dirty || allowWarmRefresh;
             const cooldownMs = Math.max(240, Number(nextOptions.cooldownMs) || 520);
             const lastScheduledAt = Number(passiveViewActivationByView[targetViewId] || 0);
-            if (!nextOptions.force && viewState.initialized && !viewState.dirty && !allowWarmRefresh) return;
+            if (!nextOptions.force && viewState.initialized && !viewState.dirty && !allowWarmRefresh && !syncRealtime) return;
             if (!nextOptions.force && lastScheduledAt && (Date.now() - lastScheduledAt) < cooldownMs) return;
             const delay = Math.max(0, Number(nextOptions.delay) || 0);
             const backgroundDelay = Math.max(90, Number(nextOptions.backgroundDelay) || 180);
-            const syncRealtime = nextOptions.syncRealtime !== false;
             passiveViewActivationByView[targetViewId] = Date.now();
             runAfterShellInteractive(() => {
                 scheduleUiRender(`view-activate-passive:${targetViewId}`, () => {
                     if (getCurrentVisibleViewId() !== targetViewId) return;
                     if (syncRealtime) setRealtimeSubscriptionsForView(targetViewId);
+                    if (!needsDataRefresh) return;
                     refreshViewDatasetsOnEnter(targetViewId, { backgroundDelay });
                 }, delay);
             });
@@ -15135,14 +15145,9 @@ function toggleDriveQuickRequestItem(domId) {
                     delay: 0,
                     requestSyncDelay: nextViewId === 'request' ? 120 : 0,
                     passive: true,
-                    passiveDelay: isTouchConstrainedDevice() ? 36 : 12,
-                    skipStickySync: true
-                });
-                scheduleWarmViewFollowup(nextViewId, nextState, {
-                    allowWarmRefresh: true,
-                    syncRealtime: true,
-                    delay: isTouchConstrainedDevice() ? 132 : 84,
-                    backgroundDelay: isTouchConstrainedDevice() ? 220 : 160
+                    passiveDelay: isTouchConstrainedDevice() ? 54 : 18,
+                    skipStickySync: true,
+                    skipHeaderSync: true
                 });
                 recordInternalPerfDuration('viewSwitchDurations', viewSwitchStartedAt, `${currentViewId || 'none'}->${nextViewId}`);
                 return false;
@@ -15172,7 +15177,7 @@ function toggleDriveQuickRequestItem(domId) {
                 delay: warmCleanTarget ? 0 : 0,
                 requestSyncDelay: nextViewId === 'request' ? 120 : 0,
                 passive: warmCleanTarget,
-                passiveDelay: warmCleanTarget ? (isTouchConstrainedDevice() ? 42 : 18) : 0,
+                passiveDelay: warmCleanTarget ? (isTouchConstrainedDevice() ? 56 : 22) : 0,
                 skipStickySync: warmCleanTarget,
                 skipHeaderSync: false
             });
@@ -15180,10 +15185,10 @@ function toggleDriveQuickRequestItem(domId) {
                 scheduleViewActivationWork(nextViewId);
             } else {
                 scheduleWarmViewFollowup(nextViewId, nextState, {
-                    allowWarmRefresh: true,
+                    allowWarmRefresh: !warmCleanTarget,
                     syncRealtime: true,
-                    delay: isTouchConstrainedDevice() ? 128 : 80,
-                    backgroundDelay: isTouchConstrainedDevice() ? 220 : 160
+                    delay: warmCleanTarget ? (isTouchConstrainedDevice() ? 168 : 104) : (isTouchConstrainedDevice() ? 128 : 80),
+                    backgroundDelay: warmCleanTarget ? (isTouchConstrainedDevice() ? 260 : 180) : (isTouchConstrainedDevice() ? 220 : 160)
                 });
             }
             recordInternalPerfDuration('viewSwitchDurations', viewSwitchStartedAt, `${currentViewId || 'none'}->${nextViewId}`);
@@ -18170,15 +18175,15 @@ function toggleDriveQuickRequestItem(domId) {
             const reserveOffset = Number(options.reserveOffset) || 0;
             const renderSignature = normalizeRenderSignature(options.renderSignature || buildRowsRenderSignature(`${key}|${String(crumbText || '')}|${prefixHtml}`, rows));
             const chunkSize = touchOptimized
-                ? (total > 1800 ? 16 : (total > 900 ? 18 : 22))
+                ? (total > 1800 ? 14 : (total > 900 ? 16 : 20))
                 : (total > 1400 ? 20 : (total > 700 ? 24 : 32));
-            const initialScreens = touchOptimized ? 1.18 : 3;
-            const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(16, chunkSize) : chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 20) : Math.max(chunkSize, 30);
-            const frameBudgetMs = touchOptimized ? 3.2 : 3.5;
+            const initialScreens = touchOptimized ? 0.95 : 3;
+            const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(12, chunkSize) : chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 18) : Math.max(chunkSize, 30);
+            const frameBudgetMs = touchOptimized ? 2.8 : 3.5;
             const hasFollowupChunks = total > initialTarget;
             const reserveHeightCap = touchOptimized
-                ? Math.max(viewportHeight * 2.2, approxCardHeight * Math.max(10, initialTarget + Math.ceil(chunkSize * 0.75)))
+                ? Math.max(viewportHeight * 1.8, approxCardHeight * Math.max(8, initialTarget + Math.ceil(chunkSize * 0.5)))
                 : Number.POSITIVE_INFINITY;
             let index = 0;
 
@@ -18294,12 +18299,12 @@ function toggleDriveQuickRequestItem(domId) {
             const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
             const approxCardHeight = sourceView === 'reserves_drill' ? 255 : (getIsAvPhotoSubview() ? 230 : 245);
             const chunkSize = touchOptimized
-                ? (total > 1600 ? 24 : (total > 800 ? 28 : 34))
+                ? (total > 1600 ? 16 : (total > 800 ? 20 : 24))
                 : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = touchOptimized ? 1.45 : 5;
+            const initialScreens = touchOptimized ? 0.98 : 5;
             const initialTarget = Math.min(total, Math.max(chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 30) : Math.max(chunkSize, 52);
-            const frameBudgetMs = touchOptimized ? 4 : 5;
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 22) : Math.max(chunkSize, 52);
+            const frameBudgetMs = touchOptimized ? 3 : 5;
             let index = 0;
             crumb.innerText = crumbText;
             if (renderSignature && getContainerRenderSignature(container) === renderSignature) {
@@ -18308,7 +18313,7 @@ function toggleDriveQuickRequestItem(domId) {
                 recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, `av-open:${sourceView}`);
                 return;
             }
-            const reserveHeight = Math.max(0, Math.round(Math.min(total * approxCardHeight, Math.max(viewportHeight * 2.5, approxCardHeight * Math.max(12, initialTarget + chunkSize)))));
+            const reserveHeight = Math.max(0, Math.round(Math.min(total * approxCardHeight, Math.max(viewportHeight * 1.9, approxCardHeight * Math.max(10, initialTarget + Math.ceil(chunkSize * 0.65))))));
             container.style.minHeight = reserveHeight ? `${reserveHeight}px` : '';
             if (!total) {
                 container.style.minHeight = '';
@@ -18372,12 +18377,12 @@ function toggleDriveQuickRequestItem(domId) {
             const approxCardHeight = Math.max(120, Number(options.approxCardHeight) || 185);
             const emptyHtml = options.emptyHtml || `<div class="p-6 text-center text-gray-400">No rows found.</div>`;
             const chunkSize = touchOptimized
-                ? (total > 1600 ? 24 : (total > 800 ? 28 : 34))
+                ? (total > 1600 ? 16 : (total > 800 ? 20 : 24))
                 : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = touchOptimized ? 1.45 : 5;
+            const initialScreens = touchOptimized ? 0.98 : 5;
             const initialTarget = Math.min(total, Math.max(chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 30) : Math.max(chunkSize, 52);
-            const frameBudgetMs = touchOptimized ? 4 : 5;
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 22) : Math.max(chunkSize, 52);
+            const frameBudgetMs = touchOptimized ? 3 : 5;
             let index = 0;
             crumb.innerText = crumbText;
             if (renderSignature && getContainerRenderSignature(container) === renderSignature) {
@@ -18386,7 +18391,7 @@ function toggleDriveQuickRequestItem(domId) {
                 recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, String(options.chunkKey || 'av-generic'));
                 return;
             }
-            const reserveHeight = Math.max(0, Math.round(Math.min(total * approxCardHeight, Math.max(viewportHeight * 2.5, approxCardHeight * Math.max(12, initialTarget + chunkSize)))));
+            const reserveHeight = Math.max(0, Math.round(Math.min(total * approxCardHeight, Math.max(viewportHeight * 1.9, approxCardHeight * Math.max(10, initialTarget + Math.ceil(chunkSize * 0.65))))));
             container.style.minHeight = reserveHeight ? `${reserveHeight}px` : '';
             if (!total) {
                 container.style.minHeight = '';
@@ -20146,10 +20151,10 @@ function toggleDriveQuickRequestItem(domId) {
             schedulePrimaryViewChromeRefresh('detail', {
                 delay: 0,
                 passive: true,
-                passiveDelay: isTouchConstrainedDevice() ? 52 : 16,
+                passiveDelay: isTouchConstrainedDevice() ? 72 : 20,
                 skipStickySync: isTouchConstrainedDevice()
             });
-            scheduleDeferredDetailHydration(currentDetailHydrationToken, isTouchConstrainedDevice() ? 104 : DETAIL_HYDRATION_DELAY_MS);
+            scheduleDeferredDetailHydration(currentDetailHydrationToken, isTouchConstrainedDevice() ? 132 : DETAIL_HYDRATION_DELAY_MS);
             recordInternalPerfDuration('detailOpenDurations', detailOpenStartedAt, resolvedSourceView || 'detail');
             return false;
         }
@@ -20612,19 +20617,19 @@ function toggleDriveQuickRequestItem(domId) {
                 delay: 0,
                 requestSyncDelay: visibleRestoreViewId === 'request' ? 120 : 0,
                 passive: hasWarmRestoreView,
-                passiveDelay: hasWarmRestoreView ? (isTouchConstrainedDevice() ? 44 : 18) : 0,
+                passiveDelay: hasWarmRestoreView ? (isTouchConstrainedDevice() ? 32 : 14) : 0,
                 skipHeaderSync: hasWarmCleanRestoreView,
                 skipStickySync: hasWarmCleanRestoreView
             });
             if (restoreView && hasWarmRestoreView && restoreViewState.dirty) {
-                queueInteractiveViewRender(safeRestoreViewId, false, false, skipWarmDriveActivation ? 0 : 60, skipWarmDriveActivation ? 90 : 120);
+                queueInteractiveViewRender(safeRestoreViewId, false, false, skipWarmDriveActivation ? 0 : 36, skipWarmDriveActivation ? 72 : 96);
             }
             if (!hasWarmCleanRestoreView && !skipWarmDriveActivation) {
                 scheduleWarmViewFollowup(visibleRestoreViewId, restoreViewState, {
                     allowWarmRefresh: false,
                     syncRealtime: true,
-                    delay: hasWarmRestoreView ? 132 : 72,
-                    backgroundDelay: hasWarmRestoreView ? 220 : 150,
+                    delay: hasWarmRestoreView ? 108 : 60,
+                    backgroundDelay: hasWarmRestoreView ? 180 : 132,
                     cooldownMs: hasWarmRestoreView ? 980 : 560
                 });
             }
@@ -21595,6 +21600,7 @@ function toggleDriveQuickRequestItem(domId) {
         let pullRefreshState = { active: false, armed: false, refreshing: false, startX: 0, startY: 0, distance: 0 };
         let interactiveChromeInitialized = false;
         let foregroundRefreshTimer = null;
+        let lastForegroundRefreshRunAt = 0;
 
         let requestViewLiveSyncTimer = null;
         let requestViewLiveSyncInFlight = false;
@@ -21675,10 +21681,17 @@ function toggleDriveQuickRequestItem(domId) {
 
         function queueForegroundRefresh(delay = 220) {
             if (!currentUser) return;
+            const requestedDelay = Math.max(0, Number(delay) || 0);
+            const now = Date.now();
+            const minQueueGap = isTouchConstrainedDevice() ? 260 : 180;
+            const nextDelay = lastForegroundRefreshRunAt && (now - lastForegroundRefreshRunAt) < minQueueGap
+                ? Math.max(requestedDelay, minQueueGap - (now - lastForegroundRefreshRunAt))
+                : requestedDelay;
             if (foregroundRefreshTimer) clearTimeout(foregroundRefreshTimer);
             updateSyncDiagnostics('queued');
             foregroundRefreshTimer = setTimeout(() => {
                 foregroundRefreshTimer = null;
+                lastForegroundRefreshRunAt = Date.now();
                 const currentSyncView = resolveRealtimeContextViewId(typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : (activeRealtimeViewId || 'home'));
                 const liveSyncPolicy = getLiveSyncPolicy(currentSyncView);
                 const requiresRealtime = liveSyncPolicy.realtimeTables.length > 0;
@@ -21690,7 +21703,7 @@ function toggleDriveQuickRequestItem(domId) {
                 }
                 if (shouldDeferInteractiveBackgroundWork()) {
                     updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'queued');
-                    queueForegroundRefresh(Math.max(INTERACTION_REFRESH_DEFER_MS, Number(delay) || 0));
+                    queueForegroundRefresh(Math.max(INTERACTION_REFRESH_DEFER_MS, requestedDelay));
                     return;
                 }
                 if (shouldUseRealtime()) {
@@ -21717,7 +21730,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (usesVisiblePolling) forceRefreshViewDatasets(currentSyncView, { includeBackground: true }).catch(() => {});
                 else fetchBackgroundData('background').catch(() => {});
                 if (requiresRealtime && !hasHealthyCoreRealtimeSubscriptions(currentSyncView) && !isRealtimeStartupPending()) refreshRealtimeSubscriptionsForCurrentView(true);
-            }, delay);
+            }, nextDelay);
         }
         function formatDiagnosticsTime(value) {
             if (!value) return 'Awaiting first sync';
@@ -22450,7 +22463,7 @@ function toggleDriveQuickRequestItem(domId) {
             const safeReason = normalizeUiSyncReason(reason) || 'resume';
             const now = Date.now();
             const delay = Math.max(0, Number(nextOptions.delay) || 0);
-            const cooldownMs = Math.max(isTouchConstrainedDevice() ? 1200 : 900, Number(nextOptions.cooldownMs) || 0);
+            const cooldownMs = Math.max(isTouchConstrainedDevice() ? 1500 : 1100, Number(nextOptions.cooldownMs) || 0);
             const cooldownDelay = nextOptions.force ? 0 : Math.max(0, lifecycleResumeCooldownUntil - now);
             if (!nextOptions.force && cooldownDelay > 0 && !nextOptions.forceChrome) return;
             lifecycleResumePendingReasons.add(safeReason);
