@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.23.18';
+window.__APP_SHELL_VERSION__ = 'V2026.04.23.19';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -37,6 +37,42 @@ window.__APP_SHELL_VERSION__ = 'V2026.04.23.18';
         .footer-nav-btn:active{transform:scale(.97)}
         .footer-nav-btn.active,.footer-nav-btn.menu-open{color:#007a4d;background:#ecfdf5;border-color:#a7f3d0;box-shadow:0 6px 16px rgba(7,94,63,.12)}
         .footer-nav-badge{position:absolute;top:3px;right:8px;min-width:18px;height:18px;padding:0 4px;background:#ef4444;color:#fff;font-size:10px;font-weight:900;border-radius:999px;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+        body.home-fit-active #main-scroll-area{padding-bottom:calc(6.2rem + env(safe-area-inset-bottom));scroll-padding-bottom:calc(5.75rem + env(safe-area-inset-bottom))}
+        body.app-standalone.home-fit-active #main-scroll-area{padding-bottom:calc(6.2rem + env(safe-area-inset-bottom))}
+        #view-home{--home-section-gap:1rem;--home-module-cols:2;--home-productivity-cols:1;--home-hero-pad-y:1rem;--home-hero-pad-x:1.05rem;--home-hero-title:1.35rem;--home-kicker-size:.6rem;--home-powered-size:.76rem;--home-module-gap:.75rem;--home-module-pad-y:.95rem;--home-module-pad-x:.55rem;--home-module-icon:1.8rem;--home-module-label-size:.72rem;--home-module-min-height:5.15rem;--home-toggle-pad-y:.55rem;--home-toggle-pad-x:.88rem;--home-toggle-font:.62rem;--home-productivity-card-pad:1rem;--home-user-card-pad:.95rem;--home-user-card-title:1rem}
+        #view-home.home-density-comfortable{--home-section-gap:1rem;--home-hero-pad-y:1rem;--home-hero-pad-x:1.05rem;--home-hero-title:1.35rem;--home-kicker-size:.6rem;--home-powered-size:.76rem;--home-module-gap:.75rem;--home-module-pad-y:.95rem;--home-module-pad-x:.55rem;--home-module-icon:1.8rem;--home-module-label-size:.72rem;--home-module-min-height:5.15rem;--home-toggle-pad-y:.55rem;--home-toggle-pad-x:.88rem;--home-toggle-font:.62rem;--home-productivity-card-pad:1rem;--home-user-card-pad:.95rem;--home-user-card-title:1rem}
+        #view-home.home-density-compact{--home-section-gap:.72rem;--home-hero-pad-y:.82rem;--home-hero-pad-x:.9rem;--home-hero-title:1.08rem;--home-kicker-size:.53rem;--home-powered-size:.67rem;--home-module-gap:.58rem;--home-module-pad-y:.78rem;--home-module-pad-x:.45rem;--home-module-icon:1.55rem;--home-module-label-size:.66rem;--home-module-min-height:4.55rem;--home-toggle-pad-y:.48rem;--home-toggle-pad-x:.75rem;--home-toggle-font:.56rem;--home-productivity-card-pad:.82rem;--home-user-card-pad:.78rem;--home-user-card-title:.92rem}
+        #view-home.home-density-tight{--home-section-gap:.5rem;--home-hero-pad-y:.68rem;--home-hero-pad-x:.82rem;--home-hero-title:.96rem;--home-kicker-size:.46rem;--home-powered-size:.58rem;--home-module-gap:.42rem;--home-module-pad-y:.62rem;--home-module-pad-x:.34rem;--home-module-icon:1.28rem;--home-module-label-size:.56rem;--home-module-min-height:4rem;--home-toggle-pad-y:.4rem;--home-toggle-pad-x:.62rem;--home-toggle-font:.5rem;--home-productivity-card-pad:.7rem;--home-user-card-pad:.68rem;--home-user-card-title:.82rem}
+        #view-home .home-dynamic-content{display:flex;flex-direction:column;gap:var(--home-section-gap)}
+        #view-home .home-dashboard-content:not(.hidden){display:flex;flex-direction:column;gap:var(--home-section-gap)}
+        #view-home .home-dashboard-hero-shell{padding:var(--home-hero-pad-y) var(--home-hero-pad-x) !important;margin-bottom:0 !important;border-radius:22px !important}
+        #view-home .home-dashboard-hero-title{font-size:var(--home-hero-title) !important;line-height:1.02 !important;letter-spacing:-.03em !important;margin-bottom:.16rem !important;margin-top:0 !important}
+        #view-home .home-dashboard-kicker{font-size:var(--home-kicker-size) !important;margin-bottom:.34rem !important;letter-spacing:.2em !important}
+        #view-home .home-dashboard-powered{padding-top:.45rem !important;margin-top:.25rem !important}
+        #view-home .home-dashboard-powered-label{font-size:.46rem !important;letter-spacing:.22em !important;margin-bottom:.12rem !important}
+        #view-home .home-dashboard-powered-name{font-size:var(--home-powered-size) !important;letter-spacing:.14em !important;line-height:1.08 !important}
+        #view-home .home-dashboard-sync{margin-bottom:0 !important}
+        #view-home .home-dashboard-sync>summary{padding:.68rem .8rem !important}
+        #view-home .home-dashboard-sync #dashboard-sync-stamp{font-size:clamp(.8rem,2vw,.98rem) !important;line-height:1.1 !important}
+        #view-home .home-dashboard-sync #dashboard-sync-files{margin-top:.55rem !important}
+        #view-home .home-dashboard-sync .w-11.h-11{width:2.2rem !important;height:2.2rem !important;border-radius:.85rem !important}
+        #view-home .home-dashboard-sync .w-8.h-8{width:1.9rem !important;height:1.9rem !important;border-radius:.7rem !important}
+        #view-home .home-dashboard-modules{display:flex;flex-direction:column;gap:.45rem}
+        #view-home .home-dashboard-modules-heading{margin-bottom:0 !important;padding-left:.15rem !important;font-size:.62rem !important;letter-spacing:.18em !important}
+        #home-dashboard-grid{display:grid;grid-template-columns:repeat(var(--home-module-cols),minmax(0,1fr));gap:var(--home-module-gap) !important;margin-bottom:0 !important}
+        #home-dashboard-grid [data-home-module]{padding:var(--home-module-pad-y) var(--home-module-pad-x) !important;min-height:var(--home-module-min-height);gap:.4rem !important;border-radius:18px !important}
+        #home-dashboard-grid [data-home-module] i{font-size:var(--home-module-icon) !important}
+        #home-dashboard-grid [data-home-module-label]{font-size:var(--home-module-label-size) !important;line-height:1.08 !important;letter-spacing:.08em !important;text-align:center;text-wrap:balance}
+        #view-home .home-tab-toggle-shell{padding:.34rem .42rem !important}
+        #view-home .home-tab-toggle-shell button{padding:var(--home-toggle-pad-y) var(--home-toggle-pad-x) !important;font-size:var(--home-toggle-font) !important}
+        #view-home .home-productivity-shell{padding:var(--home-productivity-card-pad) !important}
+        #view-home .home-productivity-user-grid{display:grid;grid-template-columns:repeat(var(--home-productivity-cols),minmax(0,1fr));gap:var(--home-module-gap) !important}
+        #view-home .home-productivity-user-card{padding:var(--home-user-card-pad) !important;border-radius:18px !important}
+        #view-home .home-productivity-user-card [data-home-productivity-user-name]{font-size:var(--home-user-card-title) !important;line-height:1.08 !important}
+        #view-home.home-density-tight .home-dashboard-modules-heading{display:none}
+        #view-home.home-density-tight .home-dashboard-bg-bubble{display:none}
+        #view-home.home-density-tight .home-dashboard-powered-label{display:none}
+        #view-home.home-density-tight .home-dashboard-sync #run-google-script-btn{padding:.45rem .55rem !important}
         .app-card-shell{background:#fff;border:1px solid #dbe4dc;border-radius:18px !important;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}
         .app-card-ready{border-left:6px solid #22c55e !important}
         .app-card-hold{border-left:6px solid #facc15 !important}
@@ -717,7 +753,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.23.18</div>
+                            <div id="header-version" class="nav-version-pill">V2026.04.23.19</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -760,20 +796,20 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 <div class="pull-refresh-pill bg-white border border-gray-200 text-gray-500 text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-full shadow-sm">Pull to Refresh</div>
             </div>
             <div id="view-wrapper" style="position:relative; z-index:20; width:100%; max-width:100%; overflow-x:hidden;">
-                <div id="view-home" class="hidden">
-                    <div id="home-dashboard-hero" class="bg-[#007a4d] text-white p-6 rounded-xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
-                        <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
-                        <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div>
-                        <h1 class="text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">GREENLEAF NURSERY COMPANY</h1>
-                        <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
-                        <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
-                            <span class="text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
-                            <div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">GREENLEAF NURSERY COMPANY</div>
+                <div id="view-home" class="hidden home-density-comfortable">
+                    <div id="home-dashboard-hero" class="home-dashboard-hero-shell bg-[#007a4d] text-white p-6 rounded-xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
+                        <div class="home-dashboard-bg-bubble absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
+                        <div class="home-dashboard-bg-bubble absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div>
+                        <h1 class="home-dashboard-hero-title text-2xl font-black tracking-tight mb-1 z-10 relative mt-4">GREENLEAF NURSERY COMPANY</h1>
+                        <p class="home-dashboard-kicker text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
+                        <div class="home-dashboard-powered flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
+                            <span class="home-dashboard-powered-label text-[9px] font-bold text-white/70 uppercase tracking-[0.3em] mb-1">Powered By</span>
+                            <div class="home-dashboard-powered-name text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">GREENLEAF NURSERY COMPANY</div>
                         </div>
                     </div>
-                    <div id="home-dynamic-content" class="space-y-6"></div>
-                    <div id="home-dashboard-content">
-                        <details id="dashboard-sync-accordion" class="hidden group bg-white rounded-2xl border border-emerald-100 shadow-sm mb-6 overflow-hidden">
+                    <div id="home-dynamic-content" class="space-y-6 home-dynamic-content"></div>
+                    <div id="home-dashboard-content" class="home-dashboard-content">
+                        <details id="dashboard-sync-accordion" class="home-dashboard-sync hidden group bg-white rounded-2xl border border-emerald-100 shadow-sm mb-6 overflow-hidden">
                             <summary class="list-none cursor-pointer p-4 flex items-start justify-between gap-3">
                                 <div class="min-w-0 flex-1">
                                     <div id="dashboard-sync-stamp" class="text-lg font-black text-slate-900">Awaiting imported file data</div>
@@ -791,19 +827,19 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 </div>
                             </div>
                         </details>
-                        <div id="home-dashboard-modules">
-                            <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
-                            <div class="grid grid-cols-2 gap-3 mb-8">
-                                <div onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-qc-supervisor hidden"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
-                                <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
-                                <div onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-qc-supervisor role-qc hidden"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
-                                <div onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
-                                <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
-                                <div onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
-                                <div onclick="openSalesOfficeView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
-                                <div onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
-                                <div onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
-                                <div onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">New Crop Release</span></div>
+                        <div id="home-dashboard-modules" class="home-dashboard-modules">
+                            <h2 class="home-dashboard-modules-heading text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
+                            <div id="home-dashboard-grid" class="grid grid-cols-2 gap-3 mb-8 home-dashboard-grid">
+                                <div onclick="switchView('drive')" data-home-module data-home-short-label="Drive" class="home-module-card bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-qc-supervisor hidden"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span data-home-module-label class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
+                                <div onclick="switchView('tasks')" data-home-module data-home-short-label="Tasks" class="home-module-card bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span data-home-module-label class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
+                                <div onclick="switchView('docks')" data-home-module data-home-short-label="Docks" class="home-module-card bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-qc-supervisor role-qc hidden"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span data-home-module-label class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
+                                <div onclick="switchView('av')" data-home-module data-home-short-label="AV" class="home-module-card bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span data-home-module-label class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
+                                <div onclick="switchView('request')" data-home-module data-home-short-label="Reqs" class="home-module-card bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span data-home-module-label class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
+                                <div onclick="switchView('reserves')" data-home-module data-home-short-label="Reserves" class="home-module-card bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span data-home-module-label class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
+                                <div onclick="openSalesOfficeView()" data-home-module data-home-short-label="Sales" class="home-module-card bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span data-home-module-label class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
+                                <div onclick="switchView('reports')" data-home-module data-home-short-label="Reports" class="home-module-card bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span data-home-module-label class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
+                                <div onclick="switchView('hours')" data-home-module data-home-short-label="Hours" class="home-module-card bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span data-home-module-label class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
+                                <div onclick="switchView('review')" data-home-module data-home-short-label="NCR" class="home-module-card bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span data-home-module-label class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">New Crop Release</span></div>
                             </div>
                         </div>
                     </div>
@@ -1198,7 +1234,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.23.18';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.23.19';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6848,7 +6884,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         let detailRequestSourceDomIds=[];
         let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false;
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
-        let activeHomeTab='dashboard'; let selectedProductivityUser=''; let productivityViewMode='cards'; let productivityHistoryByUser=new Map(); let productivityHistoryLoadState=new Map(); let productivityHistorySchemaReady=null; let productivityHistorySchemaPromise=null; let productivityHistorySchemaWarningShown=false; let productivityHistoryBackfillPromise=null;
+        let activeHomeTab='dashboard'; let selectedProductivityUser=''; let productivityViewMode='cards'; let productivityHistoryByUser=new Map(); let productivityHistoryLoadState=new Map(); let productivityHistorySchemaReady=null; let productivityHistorySchemaPromise=null; let productivityHistorySchemaWarningShown=false; let productivityHistoryBackfillPromise=null; let homeViewportFitFrame=0;
 
         function isLagSensitiveDetailPrefix(prefix) {
             return prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'req-' || prefix === 'dock-' || prefix === 'flyer-';
@@ -7149,7 +7185,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(window.__APP_SHELL_VERSION__ || 'V2026.04.23.18').trim() || 'V2026.04.23.18';
+const APP_VERSION = String(window.__APP_SHELL_VERSION__ || 'V2026.04.23.19').trim() || 'V2026.04.23.19';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -14047,7 +14083,9 @@ function toggleDriveQuickRequestItem(domId) {
             if (!hasAppliedInitialHomeView) {
                 hasAppliedInitialHomeView = true;
                 switchView('home');
+                return;
             }
+            scheduleHomeViewportFit('role-permissions');
         }
         function toggleMenu(forceOpen = null) { const drawer = document.getElementById('side-drawer'); const overlay = document.getElementById('drawer-overlay'); if (!drawer || !overlay) return; const shouldOpen = forceOpen === null ? !drawer.classList.contains('open') : !!forceOpen; drawer.classList.toggle('open', shouldOpen); overlay.classList.toggle('open', shouldOpen); updateFooterNavState(); }
 
@@ -15052,6 +15090,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (targetScrollTop != null) scheduleUiRender(`view-restore:${nextViewId}:${targetScrollTop}`, () => setMainAreaScrollTop(targetScrollTop));
                 schedulePrimaryViewChromeRefresh(nextViewId, { requestSyncDelay: nextViewId === 'request' ? 120 : 0 });
                 scheduleViewActivationWork(nextViewId);
+                scheduleHomeViewportFit(`switch:${nextViewId}`);
                 recordInternalPerfDuration('viewSwitchDurations', viewSwitchStartedAt, `${currentViewId || 'none'}->${nextViewId}`);
                 return false;
             }
@@ -15076,6 +15115,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             schedulePrimaryViewChromeRefresh(nextViewId, { requestSyncDelay: nextViewId === 'request' ? 120 : 0 });
             scheduleViewActivationWork(nextViewId);
+            scheduleHomeViewportFit(`switch:${nextViewId}`);
             recordInternalPerfDuration('viewSwitchDurations', viewSwitchStartedAt, `${currentViewId || 'none'}->${nextViewId}`);
             return false;
         }
@@ -21664,6 +21704,7 @@ function toggleDriveQuickRequestItem(domId) {
                     '<div class="mt-2 space-y-1 text-[11px] font-semibold text-slate-700">' + fileListHtml + '</div>' +
                     '</div>';
             }).join('');
+            scheduleHomeViewportFit('dashboard-sync-summary');
         }
 
         function normalizeProductivityUsername(value = '') {
@@ -21684,6 +21725,96 @@ function toggleDriveQuickRequestItem(domId) {
 
         function shouldShowHomeProductivityBackButton() {
             return getCurrentVisibleViewId() === 'home' && canViewProductivityHome() && activeHomeTab === 'productivity' && !!selectedProductivityUser;
+        }
+
+        function getVisibleHomeModuleTiles() {
+            return Array.from(document.querySelectorAll('#home-dashboard-grid [data-home-module]')).filter((el) => el && !el.classList.contains('hidden'));
+        }
+
+        function setHomeModuleLabelMode(mode = 'full') {
+            const compactMode = String(mode || '').trim().toLowerCase() === 'compact';
+            document.querySelectorAll('#home-dashboard-grid [data-home-module]').forEach((el) => {
+                const labelEl = el.querySelector('[data-home-module-label]');
+                if (!labelEl) return;
+                const fullLabel = String(labelEl.dataset.fullLabel || labelEl.textContent || '').trim();
+                if (!labelEl.dataset.fullLabel) labelEl.dataset.fullLabel = fullLabel;
+                const shortLabel = String(el.dataset.homeShortLabel || fullLabel).trim() || fullLabel;
+                labelEl.textContent = compactMode ? shortLabel : fullLabel;
+            });
+        }
+
+        function resolveHomeModuleColumnCount(density = 'comfortable', visibleCount = 0) {
+            const count = Math.max(1, Number(visibleCount) || 0);
+            const scrollArea = document.getElementById('main-scroll-area');
+            const shellWidth = Math.max(
+                (scrollArea && scrollArea.clientWidth) || 0,
+                (document.getElementById('view-wrapper') && document.getElementById('view-wrapper').clientWidth) || 0,
+                window.innerWidth || 0
+            );
+            if (shellWidth >= 980) return Math.min(5, count);
+            if (shellWidth >= 700) return Math.min(4, count);
+            if (String(density || '') === 'tight' && count >= 8) return Math.min(4, count);
+            return Math.min(3, count);
+        }
+
+        function resolveHomeProductivityColumnCount() {
+            const count = Math.max(1, getTrackedProductivityUsers().length || 0);
+            const scrollArea = document.getElementById('main-scroll-area');
+            const shellWidth = Math.max(
+                (scrollArea && scrollArea.clientWidth) || 0,
+                (document.getElementById('view-wrapper') && document.getElementById('view-wrapper').clientWidth) || 0,
+                window.innerWidth || 0
+            );
+            if (shellWidth >= 700) return Math.min(3, count);
+            return Math.min(2, count);
+        }
+
+        function applyHomeViewportDensity(homeView, density = 'comfortable', visibleCount = 0) {
+            if (!homeView) return;
+            homeView.classList.remove('home-density-comfortable', 'home-density-compact', 'home-density-tight');
+            homeView.classList.add(`home-density-${density}`);
+            homeView.style.setProperty('--home-module-cols', String(resolveHomeModuleColumnCount(density, visibleCount)));
+            homeView.style.setProperty('--home-productivity-cols', String(resolveHomeProductivityColumnCount()));
+            setHomeModuleLabelMode(density === 'tight' ? 'compact' : 'full');
+        }
+
+        function syncHomeViewportFit(reason = 'home-fit') {
+            const homeView = document.getElementById('view-home');
+            const scrollArea = document.getElementById('main-scroll-area');
+            if (!homeView || !scrollArea) return false;
+            const currentView = getCurrentVisibleViewId();
+            const isSelectedHistoryView = activeHomeTab === 'productivity' && !!selectedProductivityUser;
+            const fitModeActive = currentView === 'home' && !isSelectedHistoryView;
+            document.body.classList.toggle('home-fit-active', fitModeActive);
+            if (!fitModeActive) {
+                homeView.classList.remove('home-density-compact', 'home-density-tight');
+                homeView.classList.add('home-density-comfortable');
+                homeView.style.setProperty('--home-module-cols', String(resolveHomeModuleColumnCount('comfortable', getVisibleHomeModuleTiles().length)));
+                homeView.style.setProperty('--home-productivity-cols', String(resolveHomeProductivityColumnCount()));
+                setHomeModuleLabelMode('full');
+                return false;
+            }
+            const visibleCount = getVisibleHomeModuleTiles().length;
+            const viewportBudget = Math.max(0, scrollArea.clientHeight - 8);
+            const densities = ['comfortable', 'compact', 'tight'];
+            let selectedDensity = 'tight';
+            for (const density of densities) {
+                applyHomeViewportDensity(homeView, density, visibleCount);
+                if (homeView.scrollHeight <= (viewportBudget + 6)) {
+                    selectedDensity = density;
+                    break;
+                }
+            }
+            applyHomeViewportDensity(homeView, selectedDensity, visibleCount);
+            return true;
+        }
+
+        function scheduleHomeViewportFit(reason = 'home-fit') {
+            if (homeViewportFitFrame) cancelAnimationFrame(homeViewportFitFrame);
+            homeViewportFitFrame = requestAnimationFrame(() => {
+                homeViewportFitFrame = 0;
+                syncHomeViewportFit(reason);
+            });
         }
 
         function scheduleHomeRender(forceRender = true) {
@@ -22200,10 +22331,10 @@ function toggleDriveQuickRequestItem(domId) {
             dashboardContent.classList.toggle('hidden', activeTab !== 'dashboard');
             const tabButtonClass = (isActive) => isActive ? 'rounded-full border border-[#007a4d] bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm' : 'rounded-full border border-emerald-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm';
             let html = '';
-            if (canViewProductivity) html += `<div class="bg-white rounded-2xl border border-emerald-100 shadow-sm p-3 flex flex-wrap gap-2"><button type="button" class="${tabButtonClass(activeTab === 'dashboard')}" onclick="return setHomeTab('dashboard')">Dashboard</button><button type="button" class="${tabButtonClass(activeTab === 'productivity')}" onclick="return setHomeTab('productivity')">Productivity</button></div>`;
+            if (canViewProductivity) html += `<div class="home-tab-toggle-shell bg-white rounded-2xl border border-emerald-100 shadow-sm p-3 flex flex-wrap gap-2"><button type="button" class="${tabButtonClass(activeTab === 'dashboard')}" onclick="return setHomeTab('dashboard')">Dashboard</button><button type="button" class="${tabButtonClass(activeTab === 'productivity')}" onclick="return setHomeTab('productivity')">Productivity</button></div>`;
             if (activeTab === 'productivity') {
                 if (!selectedProductivityUser) {
-                    html += `<div class="bg-white rounded-2xl border border-emerald-100 shadow-sm p-5"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Productivity</div><div class="mt-2 text-sm font-semibold text-slate-500">Select a team member to see durable completion history grouped by date.</div><div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">${getTrackedProductivityUsers().map((entry) => `<button type="button" class="rounded-2xl border border-emerald-100 bg-[#f6fffb] px-4 py-4 text-left shadow-sm active:scale-[0.99] transition-transform" onclick="return openProductivityUserHistory('${esc(entry.username)}')"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">View History</div><div class="mt-1 text-base font-black text-slate-900 break-words">${esc(entry.display)}</div></button>`).join('')}</div></div>`;
+                    html += `<div class="home-productivity-shell bg-white rounded-2xl border border-emerald-100 shadow-sm p-5"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Productivity</div><div class="mt-2 text-sm font-semibold text-slate-500">Select a team member to see durable completion history grouped by date.</div><div class="home-productivity-user-grid mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">${getTrackedProductivityUsers().map((entry) => `<button type="button" class="home-productivity-user-card rounded-2xl border border-emerald-100 bg-[#f6fffb] px-4 py-4 text-left shadow-sm active:scale-[0.99] transition-transform" onclick="return openProductivityUserHistory('${esc(entry.username)}')"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">View History</div><div data-home-productivity-user-name class="mt-1 text-base font-black text-slate-900 break-words">${esc(entry.display)}</div></button>`).join('')}</div></div>`;
                 } else {
                     const state = getProductivityHistoryState(selectedProductivityUser);
                     const rows = productivityHistoryByUser.get(selectedProductivityUser) || [];
@@ -22216,6 +22347,7 @@ function toggleDriveQuickRequestItem(domId) {
                 }
             }
             dynamicContent.innerHTML = html;
+            scheduleHomeViewportFit('render-home');
         }
         function updateSyncDiagnostics(modeOverride = '') {
             if (modeOverride) syncDiagnosticsOverride = modeOverride;
@@ -22317,6 +22449,7 @@ function toggleDriveQuickRequestItem(domId) {
                     closeAllRequestSwipes();
                     closeAllFlyerSwipes();
                 }
+                scheduleHomeViewportFit(`lifecycle:${combinedReason}`);
                 if (nextOptions.hidePullRefresh) setPullRefreshIndicator('hidden');
                 if (nextOptions.queueForeground !== false) {
                     queueForegroundRefresh(Math.max(80, Number(nextOptions.foregroundDelay) || 120));
@@ -22372,6 +22505,8 @@ function toggleDriveQuickRequestItem(domId) {
                     foregroundDelay: 350
                 });
             }, { passive: true });
+            window.addEventListener('resize', () => scheduleHomeViewportFit('window-resize'), { passive: true });
+            window.addEventListener('orientationchange', () => scheduleHomeViewportFit('orientationchange'), { passive: true });
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) {
                     cleanupRealtime();
