@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.24.13';
+window.__APP_SHELL_VERSION__ = 'V2026.04.24.14';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -719,7 +719,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.24.13').trim() || 'V2026.04.24.13';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.24.14').trim() || 'V2026.04.24.14';</script>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1200,7 +1200,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.24.13';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.24.14';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1387,6 +1387,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         let lifecycleResumeCooldownUntil = 0;
         let lifecycleResumePendingReasons = new Set();
         let passiveViewActivationByView = Object.create(null);
+        let foregroundRefreshQueuedAt = 0;
         const ACTIVE_TYPING_GRACE_MS = 450;
         const ACTIVE_SCROLL_GRACE_MS = 450;
         const FAST_PRESS_MOVE_THRESHOLD_PX = 14;
@@ -5374,7 +5375,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (!safeViewId) return false;
             const nextOptions = (options && typeof options === 'object') ? options : {};
             const delay = Math.max(0, Number(nextOptions.delay) || 0);
-            const typingDelay = Math.max(90, Number(nextOptions.typingDelay) || 180);
+            const typingDelay = Math.max(42, Number(nextOptions.typingDelay) || 128);
             const touchRenderStartedAt = nextOptions.userAction ? beginInternalPerfMeasure() : 0;
             markViewDirty(safeViewId);
             if (nextOptions.preferImmediate && canRunImmediateTrackedViewRender(safeViewId, { ...nextOptions, delay })) {
@@ -5393,9 +5394,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 allowWhileScrolling: !!nextOptions.allowWhileScrolling,
                 allowDuringRecentInteraction: !!nextOptions.allowDuringRecentInteraction,
                 allowDuringExtendedBlock: !!nextOptions.allowDuringExtendedBlock,
-                touchDelayMs: Math.max(180, Number(nextOptions.touchDelayMs) || 220),
-                scrollDelayMs: Math.max(160, Number(nextOptions.scrollDelayMs) || 200),
-                interactionDelayMs: Math.max(120, Number(nextOptions.interactionDelayMs) || 150)
+                touchDelayMs: Math.max(32, Number(nextOptions.touchDelayMs) || 96),
+                scrollDelayMs: Math.max(48, Number(nextOptions.scrollDelayMs) || 96),
+                interactionDelayMs: Math.max(32, Number(nextOptions.interactionDelayMs) || 72)
             });
             return false;
         }
@@ -7271,7 +7272,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.24.13').trim() || 'V2026.04.24.13';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.24.14').trim() || 'V2026.04.24.14';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -9271,9 +9272,10 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
         let protectedUnlockTimers = {};
         let photoDeletePressTimers = {};
         let photoDeleteLongPressFired = false;
-        let searchRenderFrame = {};
-        let searchRenderTimer = {};
-        let searchRenderLastTerm = {};
+let searchRenderFrame = {};
+let searchRenderTimer = {};
+let searchRenderLastTerm = {};
+let searchRenderToken = {};
         let avRenderChunkToken = 0;
         let bloomPickerFolderManuallyEdited = false;
         let bloomPickerReservePartyOptions = [];
@@ -11217,27 +11219,36 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (searchRenderTimer[safeKey]) clearTimeout(searchRenderTimer[safeKey]);
             if (searchRenderFrame[safeKey]) cancelAnimationFrame(searchRenderFrame[safeKey]);
+            cancelScheduledUiRenderByPrefix(`search:${safeKey}`);
+            const renderToken = (Number(searchRenderToken[safeKey] || 0) + 1);
+            searchRenderToken[safeKey] = renderToken;
             const touchOptimized = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
             const baseDelay = safeKey === 'drive-search'
-                ? (touchOptimized ? 8 : 6)
-                : (touchOptimized ? 7 : 5);
+                ? (touchOptimized ? 5 : 4)
+                : (touchOptimized ? 4 : 3);
             const debounceDelay = options && options.skipDebounce
                 ? 0
                 : Math.max(0, Number(options.debounceDelay) || baseDelay);
-            const typingDelay = Math.max(18, Number(options && options.typingDelay) || (touchOptimized ? 30 : 22));
+            const typingDelay = Math.max(14, Number(options && options.typingDelay) || (touchOptimized ? 24 : 18));
             searchRenderTimer[safeKey] = setTimeout(() => {
                 delete searchRenderTimer[safeKey];
-                scheduleTypingAwareUiRender(`search:${safeKey}`, () => {
-                    if (normalizedTerm !== null && searchRenderLastTerm[safeKey] !== normalizedTerm) return;
-                    const searchRenderStartedAt = beginInternalPerfMeasure();
-                    renderFn();
-                    recordInternalPerfDuration('searchRenderDurations', searchRenderStartedAt, safeKey);
-                }, 0, typingDelay, {
-                    allowWhileTyping: true,
-                    allowDuringExtendedBlock: true,
-                    touchDelayMs: Math.max(28, typingDelay + 4),
-                    scrollDelayMs: Math.max(28, typingDelay + 4),
-                    interactionDelayMs: 28
+                if (Number(searchRenderToken[safeKey] || 0) !== renderToken) return;
+                searchRenderFrame[safeKey] = requestAnimationFrame(() => {
+                    delete searchRenderFrame[safeKey];
+                    if (Number(searchRenderToken[safeKey] || 0) !== renderToken) return;
+                    scheduleTypingAwareUiRender(`search:${safeKey}`, () => {
+                        if (Number(searchRenderToken[safeKey] || 0) !== renderToken) return;
+                        if (normalizedTerm !== null && searchRenderLastTerm[safeKey] !== normalizedTerm) return;
+                        const searchRenderStartedAt = beginInternalPerfMeasure();
+                        renderFn();
+                        recordInternalPerfDuration('searchRenderDurations', searchRenderStartedAt, safeKey);
+                    }, 0, typingDelay, {
+                        allowWhileTyping: true,
+                        allowDuringExtendedBlock: true,
+                        touchDelayMs: Math.max(24, typingDelay + 2),
+                        scrollDelayMs: Math.max(24, typingDelay + 2),
+                        interactionDelayMs: 24
+                    });
                 });
             }, debounceDelay);
         }
@@ -15112,11 +15123,12 @@ function toggleDriveQuickRequestItem(domId) {
                     if (getCurrentVisibleViewId() !== targetViewId) return;
                     refreshViewDatasetsOnEnter(targetViewId);
                     recordInternalPerfDuration('viewActivationDurations', activationStartedAt, targetViewId);
-                }, 32, 220, {
+                }, 12, 148, {
                     allowWhileTyping: false,
-                    touchDelayMs: 240,
-                    scrollDelayMs: 220,
-                    interactionDelayMs: 180
+                    allowDuringRecentInteraction: true,
+                    touchDelayMs: 96,
+                    scrollDelayMs: 104,
+                    interactionDelayMs: 72
                 });
             });
         }
@@ -15208,7 +15220,7 @@ function toggleDriveQuickRequestItem(domId) {
                     delay: 0,
                     requestSyncDelay: nextViewId === 'request' ? 120 : 0,
                     passive: true,
-                    passiveDelay: isTouchConstrainedDevice() ? 54 : 18,
+                    passiveDelay: isTouchConstrainedDevice() ? 28 : 10,
                     skipStickySync: true,
                     skipHeaderSync: true
                 });
@@ -15240,7 +15252,7 @@ function toggleDriveQuickRequestItem(domId) {
                 delay: warmCleanTarget ? 0 : 0,
                 requestSyncDelay: nextViewId === 'request' ? 120 : 0,
                 passive: warmCleanTarget,
-                passiveDelay: warmCleanTarget ? (isTouchConstrainedDevice() ? 56 : 22) : 0,
+                passiveDelay: warmCleanTarget ? (isTouchConstrainedDevice() ? 34 : 12) : 0,
                 skipStickySync: warmCleanTarget,
                 skipHeaderSync: false
             });
@@ -15250,8 +15262,8 @@ function toggleDriveQuickRequestItem(domId) {
                 scheduleWarmViewFollowup(nextViewId, nextState, {
                     allowWarmRefresh: !warmCleanTarget,
                     syncRealtime: true,
-                    delay: warmCleanTarget ? (isTouchConstrainedDevice() ? 168 : 104) : (isTouchConstrainedDevice() ? 128 : 80),
-                    backgroundDelay: warmCleanTarget ? (isTouchConstrainedDevice() ? 260 : 180) : (isTouchConstrainedDevice() ? 220 : 160)
+                    delay: warmCleanTarget ? (isTouchConstrainedDevice() ? 96 : 56) : (isTouchConstrainedDevice() ? 88 : 52),
+                    backgroundDelay: warmCleanTarget ? (isTouchConstrainedDevice() ? 200 : 140) : (isTouchConstrainedDevice() ? 168 : 124)
                 });
             }
             recordInternalPerfDuration('viewSwitchDurations', viewSwitchStartedAt, `${currentViewId || 'none'}->${nextViewId}`);
@@ -17257,8 +17269,8 @@ function toggleDriveQuickRequestItem(domId) {
         function syncAvFilterStrip(container, html = '', signature = '') {
             if (!container) return;
             const nextSignature = String(signature || `av-filters:${String(html || '').length}`);
-            setContainerHtmlWithSignature(container, html, nextSignature);
-            scheduleStickyRailOffsetSync();
+            const didUpdate = setContainerHtmlWithSignature(container, html, nextSignature);
+            if (didUpdate) scheduleStickyRailOffsetSync('av-filter-strip');
         }
 
         function renderAvTopControls(items = []) {
@@ -18242,15 +18254,15 @@ function toggleDriveQuickRequestItem(domId) {
             const reserveOffset = Number(options.reserveOffset) || 0;
             const renderSignature = normalizeRenderSignature(options.renderSignature || buildRowsRenderSignature(`${key}|${String(crumbText || '')}|${prefixHtml}`, rows));
             const chunkSize = touchOptimized
-                ? (total > 1800 ? 14 : (total > 900 ? 16 : 20))
+                ? (total > 1800 ? 12 : (total > 900 ? 14 : 18))
                 : (total > 1400 ? 20 : (total > 700 ? 24 : 32));
-            const initialScreens = touchOptimized ? 0.95 : 3;
-            const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(12, chunkSize) : chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 18) : Math.max(chunkSize, 30);
-            const frameBudgetMs = touchOptimized ? 2.8 : 3.5;
+            const initialScreens = touchOptimized ? 0.72 : 2.6;
+            const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(10, chunkSize - 2) : chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 14) : Math.max(chunkSize, 28);
+            const frameBudgetMs = touchOptimized ? 2.2 : 3.2;
             const hasFollowupChunks = total > initialTarget;
             const reserveHeightCap = touchOptimized
-                ? Math.max(viewportHeight * 1.8, approxCardHeight * Math.max(8, initialTarget + Math.ceil(chunkSize * 0.5)))
+                ? Math.max(viewportHeight * 1.35, approxCardHeight * Math.max(6, initialTarget + Math.ceil(chunkSize * 0.35)))
                 : Number.POSITIVE_INFINITY;
             let index = 0;
 
@@ -18366,12 +18378,12 @@ function toggleDriveQuickRequestItem(domId) {
             const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
             const approxCardHeight = sourceView === 'reserves_drill' ? 255 : (getIsAvPhotoSubview() ? 230 : 245);
             const chunkSize = touchOptimized
-                ? (total > 1600 ? 16 : (total > 800 ? 20 : 24))
+                ? (total > 1600 ? 14 : (total > 800 ? 18 : 20))
                 : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = touchOptimized ? 0.98 : 5;
+            const initialScreens = touchOptimized ? 0.7 : 3.8;
             const initialTarget = Math.min(total, Math.max(chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 22) : Math.max(chunkSize, 52);
-            const frameBudgetMs = touchOptimized ? 3 : 5;
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 18) : Math.max(chunkSize, 44);
+            const frameBudgetMs = touchOptimized ? 2.4 : 4.2;
             let index = 0;
             crumb.innerText = crumbText;
             if (renderSignature && getContainerRenderSignature(container) === renderSignature) {
@@ -18380,7 +18392,7 @@ function toggleDriveQuickRequestItem(domId) {
                 recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, `av-open:${sourceView}`);
                 return;
             }
-            const reserveHeight = Math.max(0, Math.round(Math.min(total * approxCardHeight, Math.max(viewportHeight * 1.9, approxCardHeight * Math.max(10, initialTarget + Math.ceil(chunkSize * 0.65))))));
+            const reserveHeight = Math.max(0, Math.round(Math.min(total * approxCardHeight, Math.max(viewportHeight * 1.45, approxCardHeight * Math.max(8, initialTarget + Math.ceil(chunkSize * 0.4))))));
             container.style.minHeight = reserveHeight ? `${reserveHeight}px` : '';
             if (!total) {
                 container.style.minHeight = '';
@@ -18444,12 +18456,12 @@ function toggleDriveQuickRequestItem(domId) {
             const approxCardHeight = Math.max(120, Number(options.approxCardHeight) || 185);
             const emptyHtml = options.emptyHtml || `<div class="p-6 text-center text-gray-400">No rows found.</div>`;
             const chunkSize = touchOptimized
-                ? (total > 1600 ? 16 : (total > 800 ? 20 : 24))
+                ? (total > 1600 ? 14 : (total > 800 ? 18 : 20))
                 : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = touchOptimized ? 0.98 : 5;
+            const initialScreens = touchOptimized ? 0.68 : 3.8;
             const initialTarget = Math.min(total, Math.max(chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 22) : Math.max(chunkSize, 52);
-            const frameBudgetMs = touchOptimized ? 3 : 5;
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 18) : Math.max(chunkSize, 44);
+            const frameBudgetMs = touchOptimized ? 2.4 : 4.2;
             let index = 0;
             crumb.innerText = crumbText;
             if (renderSignature && getContainerRenderSignature(container) === renderSignature) {
@@ -18458,7 +18470,7 @@ function toggleDriveQuickRequestItem(domId) {
                 recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, String(options.chunkKey || 'av-generic'));
                 return;
             }
-            const reserveHeight = Math.max(0, Math.round(Math.min(total * approxCardHeight, Math.max(viewportHeight * 1.9, approxCardHeight * Math.max(10, initialTarget + Math.ceil(chunkSize * 0.65))))));
+            const reserveHeight = Math.max(0, Math.round(Math.min(total * approxCardHeight, Math.max(viewportHeight * 1.45, approxCardHeight * Math.max(8, initialTarget + Math.ceil(chunkSize * 0.4))))));
             container.style.minHeight = reserveHeight ? `${reserveHeight}px` : '';
             if (!total) {
                 container.style.minHeight = '';
@@ -20218,10 +20230,10 @@ function toggleDriveQuickRequestItem(domId) {
             schedulePrimaryViewChromeRefresh('detail', {
                 delay: 0,
                 passive: true,
-                passiveDelay: isTouchConstrainedDevice() ? 72 : 20,
+                passiveDelay: isTouchConstrainedDevice() ? 104 : 28,
                 skipStickySync: isTouchConstrainedDevice()
             });
-            scheduleDeferredDetailHydration(currentDetailHydrationToken, isTouchConstrainedDevice() ? 132 : DETAIL_HYDRATION_DELAY_MS);
+            scheduleDeferredDetailHydration(currentDetailHydrationToken, isTouchConstrainedDevice() ? 180 : Math.max(32, DETAIL_HYDRATION_DELAY_MS));
             recordInternalPerfDuration('detailOpenDurations', detailOpenStartedAt, resolvedSourceView || 'detail');
             return false;
         }
@@ -20684,20 +20696,20 @@ function toggleDriveQuickRequestItem(domId) {
                 delay: 0,
                 requestSyncDelay: visibleRestoreViewId === 'request' ? 120 : 0,
                 passive: hasWarmRestoreView,
-                passiveDelay: hasWarmRestoreView ? (isTouchConstrainedDevice() ? 32 : 14) : 0,
+                passiveDelay: hasWarmRestoreView ? (isTouchConstrainedDevice() ? 20 : 8) : 0,
                 skipHeaderSync: hasWarmCleanRestoreView,
                 skipStickySync: hasWarmCleanRestoreView
             });
             if (restoreView && hasWarmRestoreView && restoreViewState.dirty) {
-                queueInteractiveViewRender(safeRestoreViewId, false, false, skipWarmDriveActivation ? 0 : 36, skipWarmDriveActivation ? 72 : 96);
+                queueInteractiveViewRender(safeRestoreViewId, false, false, skipWarmDriveActivation ? 0 : 20, skipWarmDriveActivation ? 56 : 72);
             }
             if (!hasWarmCleanRestoreView && !skipWarmDriveActivation) {
                 scheduleWarmViewFollowup(visibleRestoreViewId, restoreViewState, {
                     allowWarmRefresh: false,
                     syncRealtime: true,
-                    delay: hasWarmRestoreView ? 108 : 60,
-                    backgroundDelay: hasWarmRestoreView ? 180 : 132,
-                    cooldownMs: hasWarmRestoreView ? 980 : 560
+                    delay: hasWarmRestoreView ? 72 : 40,
+                    backgroundDelay: hasWarmRestoreView ? 140 : 96,
+                    cooldownMs: hasWarmRestoreView ? 860 : 480
                 });
             }
             recordInternalPerfDuration('detailBackDurations', detailBackStartedAt, visibleRestoreViewId);
@@ -21375,45 +21387,60 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function openRequestRepView(repName) {
-            selectedReqRepView = String(repName || '').trim() || 'Unknown Rep';
-            selectedReqStatus = 'Pending';
-            selectedReqFolderView = null;
-            requestViewLevel = 1;
-            scheduleRequestRender(0);
-            queueScrollMainAreaToTop(`request-rep:${selectedReqRepView}`);
-            return false;
+            const safeRepName = String(repName || '').trim() || 'Unknown Rep';
+            return runDirectTrackedNavigation('request', 'request:rep', () => {
+                selectedReqRepView = safeRepName;
+                selectedReqStatus = 'Pending';
+                selectedReqFolderView = null;
+                requestViewLevel = 1;
+            }, {
+                resetScrollTopAfterRender: true,
+                scrollResetKey: `request-rep:${safeRepName}`
+            });
         }
 
         function openRequestStatusView(status) {
-            selectedReqStatus = status === 'Complete' ? 'Complete' : 'Pending';
-            selectedReqFolderView = null;
-            requestViewLevel = 2;
-            scheduleRequestRender(0);
-            queueScrollMainAreaToTop(`request-status:${selectedReqStatus}`);
-            return false;
+            const safeStatus = status === 'Complete' ? 'Complete' : 'Pending';
+            return runDirectTrackedNavigation('request', 'request:status', () => {
+                selectedReqStatus = safeStatus;
+                selectedReqFolderView = null;
+                requestViewLevel = 2;
+            }, {
+                resetScrollTopAfterRender: true,
+                scrollResetKey: `request-status:${safeStatus}`
+            });
         }
 
         function openRequestFolderView(folderName) {
-            selectedReqFolderView = String(folderName || '').trim() || 'Unassigned';
-            requestViewLevel = 3;
-            scheduleRequestRender(0);
-            queueScrollMainAreaToTop(`request-folder:${selectedReqFolderView}`);
-            return false;
+            const safeFolderName = String(folderName || '').trim() || 'Unassigned';
+            return runDirectTrackedNavigation('request', 'request:folder', () => {
+                selectedReqFolderView = safeFolderName;
+                requestViewLevel = 3;
+            }, {
+                resetScrollTopAfterRender: true,
+                scrollResetKey: `request-folder:${safeFolderName}`
+            });
         }
 
         function backToRequestRepList() {
-            requestViewLevel = 0;
-            selectedReqRepView = null;
-            selectedReqFolderView = null;
-            scheduleRequestRender(0);
-            return false;
+            return runDirectTrackedNavigation('request', 'request:rep:list', () => {
+                requestViewLevel = 0;
+                selectedReqRepView = null;
+                selectedReqFolderView = null;
+            }, {
+                resetScrollTopAfterRender: true,
+                scrollResetKey: 'request-rep-list'
+            });
         }
 
         function backToRequestStatusList() {
-            requestViewLevel = 1;
-            selectedReqFolderView = null;
-            scheduleRequestRender(0);
-            return false;
+            return runDirectTrackedNavigation('request', 'request:status:list', () => {
+                requestViewLevel = 1;
+                selectedReqFolderView = null;
+            }, {
+                resetScrollTopAfterRender: true,
+                scrollResetKey: `request-rep:${selectedReqRepView || ''}`
+            });
         }
 
         function backToRequestFolderList() {
@@ -21595,7 +21622,7 @@ function toggleDriveQuickRequestItem(domId) {
                         applyRequestRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No sales reps found.</div>`, 'request:reps:empty');
                         return;
                     }
-                    const html = reps.map(r => `<div class="drill-item" onclick="return openRequestRepView('${esc(r)}')"><span class="font-bold text-lg">${r}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                    const html = reps.map(r => `<div class="drill-item" ${buildFastInvokeAttrs('openRequestRepView', [r], 'Open ' + r)}><span class="font-bold text-lg">${r}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
                     applyRequestRenderMarkup(container, crumb, crumbText, html);
                     return;
                 } else if (requestViewLevel === 1) {
@@ -21604,12 +21631,12 @@ function toggleDriveQuickRequestItem(domId) {
                     let pendingCount = repItems.filter(i => !isRequestComplete(i)).length;
                     let completeCount = repItems.filter(i => isRequestComplete(i)).length;
                     const html = `
-                        <div class="back-btn" onclick="return backToRequestRepList()"><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>
-                        <div class="bg-orange-50 border border-orange-200 rounded-xl shadow-sm mb-4 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="return openRequestStatusView('Pending')">
+                        <div class="back-btn" ${buildFastInvokeAttrs('backToRequestRepList', [], 'Back to Reps')}><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>
+                        <div class="bg-orange-50 border border-orange-200 rounded-xl shadow-sm mb-4 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('openRequestStatusView', ['Pending'], 'Open Pending Requests')}>
                             <div class="flex items-center gap-3"><i class="ph-bold ph-clock text-2xl text-orange-500"></i><span class="font-bold text-lg text-orange-800">Pending Requests</span></div>
                             <span class="text-xs font-bold text-white bg-orange-500 px-2 py-1 rounded-lg">${pendingCount}</span>
                         </div>
-                        <div class="bg-green-50 border border-green-200 rounded-xl shadow-sm mb-4 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="return openRequestStatusView('Complete')">
+                        <div class="bg-green-50 border border-green-200 rounded-xl shadow-sm mb-4 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('openRequestStatusView', ['Complete'], 'Open Completed Requests')}>
                             <div class="flex items-center gap-3"><i class="ph-bold ph-check-circle text-2xl text-green-500"></i><span class="font-bold text-lg text-green-800">Completed Requests</span></div>
                             <span class="text-xs font-bold text-white bg-green-500 px-2 py-1 rounded-lg">${completeCount}</span>
                         </div>
@@ -21622,20 +21649,20 @@ function toggleDriveQuickRequestItem(domId) {
                     let statusItems = repItems.filter(i => selectedReqStatus === 'Pending' ? !isRequestComplete(i) : isRequestComplete(i));
 
                     if (statusItems.length === 0) {
-                        const html = `<div class="back-btn" onclick="return backToRequestStatusList()"><i class="ph-bold ph-arrow-left"></i> Back to Status</div><div class="p-8 text-center text-gray-400">No ${selectedReqStatus.toLowerCase()} requests.</div>`;
+                        const html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestStatusList', [], 'Back to Status')}><i class="ph-bold ph-arrow-left"></i> Back to Status</div><div class="p-8 text-center text-gray-400">No ${selectedReqStatus.toLowerCase()} requests.</div>`;
                         applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:${selectedReqStatus}:empty`);
                         return;
                     }
 
                     let folders = [...new Set(statusItems.map(i => (i.REQUEST_FOLDER || 'Unassigned')))].sort();
-                    let html = `<div class="back-btn" onclick="return backToRequestStatusList()"><i class="ph-bold ph-arrow-left"></i> Back to Status</div>`;
+                    let html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestStatusList', [], 'Back to Status')}><i class="ph-bold ph-arrow-left"></i> Back to Status</div>`;
                     html += folders.map(f => {
                         let count = statusItems.filter(i => ((i.REQUEST_FOLDER || 'Unassigned')) === f).length;
                         const folderNote = getRequestFolderNote(f, selectedReqStatus, selectedReqRepView);
                         const noteHtml = folderNote ? `<div class="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-2 text-[11px] font-semibold text-amber-900 whitespace-pre-wrap"><span class="font-black uppercase text-[10px] tracking-wider text-amber-700">Folder Note</span><div class="mt-1">${esc(folderNote)}</div></div>` : '';
                         const showResendAction = selectedReqStatus === 'Complete';
                         const shareActions = canShareRequestFolders() ? `<div class="grid ${showResendAction ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'} gap-2 mt-3"><button class="bg-white border border-purple-200 text-purple-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('copy', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Copy</button><button class="bg-white border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('email', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Email</button><button class="bg-white border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('text', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Text</button>${showResendAction ? `<button class="bg-white border border-sky-200 text-sky-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); resendRequestCompletionEmail('${esc(f)}', '${esc(selectedReqRepView)}')">Resend</button>` : ''}<button class="bg-white border border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); setRequestFolderNote('${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Note</button></div>` : '';
-                        return `<div class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" onclick="return openRequestFolderView('${esc(f)}')"><div class="flex justify-between items-center"><div class="flex items-center gap-3 min-w-0"><div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div><span class="font-bold text-sm text-purple-800 break-all">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg min-w-max ml-2">${count} Items</span></div>${noteHtml}${shareActions}</div>`;
+                        return `<div class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('openRequestFolderView', [f], 'Open folder ' + f)}><div class="flex justify-between items-center"><div class="flex items-center gap-3 min-w-0"><div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div><span class="font-bold text-sm text-purple-800 break-all">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg min-w-max ml-2">${count} Items</span></div>${noteHtml}${shareActions}</div>`;
                     }).join('');
                     applyRequestRenderMarkup(container, crumb, crumbText, html);
                     return;
@@ -21754,10 +21781,14 @@ function toggleDriveQuickRequestItem(domId) {
             const nextDelay = lastForegroundRefreshRunAt && (now - lastForegroundRefreshRunAt) < minQueueGap
                 ? Math.max(requestedDelay, minQueueGap - (now - lastForegroundRefreshRunAt))
                 : requestedDelay;
+            const queuedRunAt = now + nextDelay;
+            if (foregroundRefreshTimer && foregroundRefreshQueuedAt && foregroundRefreshQueuedAt <= queuedRunAt) return;
             if (foregroundRefreshTimer) clearTimeout(foregroundRefreshTimer);
+            foregroundRefreshQueuedAt = queuedRunAt;
             updateSyncDiagnostics('queued');
             foregroundRefreshTimer = setTimeout(() => {
                 foregroundRefreshTimer = null;
+                foregroundRefreshQueuedAt = 0;
                 lastForegroundRefreshRunAt = Date.now();
                 const currentSyncView = resolveRealtimeContextViewId(typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : (activeRealtimeViewId || 'home'));
                 const liveSyncPolicy = getLiveSyncPolicy(currentSyncView);
@@ -26455,45 +26486,76 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function openTaskBlockView(block) {
-            closeTaskDropdowns(false);
-            resetTaskLocationDetailFilters();
-            selectedTaskBlock = block;
-            selectedTaskLoc = null;
-            taskViewLevel = 1;
-            scheduleTasksRender(0);
-            queueScrollMainAreaToTop(`task-block:${block}`);
-            return false;
+            const safeBlock = String(block || '').trim();
+            return runDirectTrackedNavigation('tasks', 'tasks:block', () => {
+                closeTaskDropdowns(false);
+                resetTaskLocationDetailFilters();
+                selectedTaskBlock = safeBlock;
+                selectedTaskLoc = null;
+                taskViewLevel = 1;
+            }, {
+                resetScrollTopAfterRender: true,
+                scrollResetKey: `task-block:${safeBlock}`
+            });
         }
 
         function openTaskLocationView(loc) {
-            closeTaskDropdowns(false);
-            resetTaskLocationDetailFilters();
-            selectedTaskLoc = loc;
-            taskViewLevel = 2;
-            scheduleTasksRender(0);
-            queueScrollMainAreaToTop(`task-loc:${loc}`);
-            return false;
+            const safeLoc = String(loc || '').trim();
+            return runDirectTrackedNavigation('tasks', 'tasks:location', () => {
+                closeTaskDropdowns(false);
+                resetTaskLocationDetailFilters();
+                selectedTaskLoc = safeLoc;
+                taskViewLevel = 2;
+            }, {
+                resetScrollTopAfterRender: true,
+                scrollResetKey: `task-loc:${safeLoc}`
+            });
         }
 
         function backToTaskBlockList() {
-            closeTaskDropdowns(false);
-            resetTaskLocationDetailFilters();
-            taskViewLevel = 0;
-            selectedTaskBlock = null;
-            selectedTaskLoc = null;
-            scheduleTasksRender(0);
-            queueScrollMainAreaToTop('task-block-list');
-            return false;
+            return runDirectTrackedNavigation('tasks', 'tasks:block:list', () => {
+                closeTaskDropdowns(false);
+                resetTaskLocationDetailFilters();
+                taskViewLevel = 0;
+                selectedTaskBlock = null;
+                selectedTaskLoc = null;
+            }, {
+                resetScrollTopAfterRender: true,
+                scrollResetKey: 'task-block-list'
+            });
         }
 
         function backToTaskLocationList() {
-            closeTaskDropdowns(false);
-            resetTaskLocationDetailFilters();
-            taskViewLevel = 1;
-            selectedTaskLoc = null;
-            scheduleTasksRender(0);
-            queueScrollMainAreaToTop(`task-block:${selectedTaskBlock || ''}`);
-            return false;
+            return runDirectTrackedNavigation('tasks', 'tasks:location:list', () => {
+                closeTaskDropdowns(false);
+                resetTaskLocationDetailFilters();
+                taskViewLevel = 1;
+                selectedTaskLoc = null;
+            }, {
+                resetScrollTopAfterRender: true,
+                scrollResetKey: `task-block:${selectedTaskBlock || ''}`
+            });
+        }
+
+        function openTaskEndCapFolder(folderName = '') {
+            const safeFolderName = String(folderName || '').trim() || 'Unassigned';
+            return runDirectTrackedNavigation('tasks', 'tasks:endcap:folder', () => {
+                selectedEndCapFolder = safeFolderName;
+                taskViewLevel = 1;
+            }, {
+                resetScrollTopAfterRender: true,
+                scrollResetKey: `task-endcap:${safeFolderName}`
+            });
+        }
+
+        function backToTaskEndCapFolderList() {
+            return runDirectTrackedNavigation('tasks', 'tasks:endcap:list', () => {
+                selectedEndCapFolder = null;
+                taskViewLevel = 0;
+            }, {
+                resetScrollTopAfterRender: true,
+                scrollResetKey: 'task-endcap:list'
+            });
         }
 
         function setFlyerFolderTab(tab = 'active') {
@@ -28358,11 +28420,11 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (activeTaskTab === 'endcap') {
                 if (taskViewLevel === 0) {
                     renderMarkupChunkedByKey('tasks-endcap-folders', container, null, endCapFolderRows, '', (folderRow) => {
-                        return `<div class="bg-white border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="selectedEndCapFolder='${esc(folderRow.folderName)}'; taskViewLevel=1; scheduleTasksRender(0)"><div class="flex items-center gap-3"><div class="bg-yellow-50 p-2 rounded-lg"><i class="ph-fill ph-storefront text-2xl text-yellow-500"></i></div><span class="font-bold text-lg text-yellow-800">${folderRow.folderName}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${folderRow.count} Items</span></div>`;
+                        return `<div class="bg-white border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('openTaskEndCapFolder', [folderRow.folderName], 'Open end cap folder ' + folderRow.folderName)}><div class="flex items-center gap-3"><div class="bg-yellow-50 p-2 rounded-lg"><i class="ph-fill ph-storefront text-2xl text-yellow-500"></i></div><span class="font-bold text-lg text-yellow-800">${folderRow.folderName}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${folderRow.count} Items</span></div>`;
                     }, { approxCardHeight: 96, emptyHtml: `<div class="p-8 text-center text-gray-400">No end cap folders found.</div>` });
                 } else if (taskViewLevel === 1) {
                     const folderItems = itemsByEndCapFolder.get(selectedEndCapFolder) || [];
-                    const prefixHtml = `<div class="back-btn" onclick="taskViewLevel=0; scheduleTasksRender(0)"><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>`;
+                    const prefixHtml = `<div class="back-btn" ${buildFastInvokeAttrs('backToTaskEndCapFolderList', [], 'Back to End Caps')}><i class="ph-bold ph-arrow-left"></i> Back to End Caps</div>`;
                     renderMarkupChunkedByKey('tasks-endcap-items', container, null, folderItems, '', (item) => generateCard(item, 'tasks', 'status-yellow'), {
                         prefixHtml,
                         approxCardHeight: 260,
@@ -28407,19 +28469,19 @@ ${folderNote ? `Folder Note: ${folderNote}
 
             if (taskViewLevel === 0) {
                 renderMarkupChunkedByKey('tasks-blocks', container, null, blockRows, '', (blockRow) => {
-                    return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="return openTaskBlockView('${esc(blockRow.blockAlpha)}')"><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${blockRow.blockAlpha}</div><span class="font-bold text-lg text-gray-700">Block ${blockRow.blockAlpha}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blockRow.count} Items</span></div>`;
+                    return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('openTaskBlockView', [blockRow.blockAlpha], 'Open block ' + blockRow.blockAlpha)}><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${blockRow.blockAlpha}</div><span class="font-bold text-lg text-gray-700">Block ${blockRow.blockAlpha}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blockRow.count} Items</span></div>`;
                 }, { approxCardHeight: 88, emptyHtml: `<div class="p-8 text-center text-gray-400">No task blocks found.</div>` });
             } else if (taskViewLevel === 1) {
                 const locRows = locationRowsByBlock.get(selectedTaskBlock) || [];
-                const prefixHtml = `<div class="back-btn" onclick="return backToTaskBlockList()"><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
+                const prefixHtml = `<div class="back-btn" ${buildFastInvokeAttrs('backToTaskBlockList', [], 'Back to Blocks')}><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
                 renderMarkupChunkedByKey('tasks-locations', container, null, locRows, '', (locationRow) => {
-                    return `<div class="drill-item" onclick="return openTaskLocationView('${esc(locationRow.locationCode)}')"><span class="font-bold text-lg text-gray-800">${locationRow.locationCode} <span class="text-gray-400 text-sm font-normal">(${locationRow.count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
+                    return `<div class="drill-item" ${buildFastInvokeAttrs('openTaskLocationView', [locationRow.locationCode], 'Open location ' + locationRow.locationCode)}><span class="font-bold text-lg text-gray-800">${locationRow.locationCode} <span class="text-gray-400 text-sm font-normal">(${locationRow.count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
                 }, { prefixHtml, approxCardHeight: 72, emptyHtml: `<div class="p-8 text-center text-gray-400">No locations found for this block.</div>` });
             } else if (taskViewLevel === 2) {
                 const locationItems = shouldRenderTaskLocationDetailFilters
                     ? taskLocationDetailItems
                     : (itemsByLocation.get(selectedTaskLoc) || []);
-                const prefixHtml = `<div class="back-btn" onclick="return backToTaskLocationList()"><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>`;
+                const prefixHtml = `<div class="back-btn" ${buildFastInvokeAttrs('backToTaskLocationList', [], 'Back to Locations')}><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>`;
                 const renderRow = (item) => generateCard(item, 'tasks', getTaskRowColorClass(item, activeTaskTab));
                 const emptyHtml = shouldRenderTaskLocationDetailFilters && hasActiveTaskLocationDetailFilters()
                     ? `<div class="p-8 text-center text-gray-400">No rows match current filters.</div>`
