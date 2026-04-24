@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.24.14';
+window.__APP_SHELL_VERSION__ = 'V2026.04.24.15';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -719,7 +719,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.24.14').trim() || 'V2026.04.24.14';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.24.15').trim() || 'V2026.04.24.15';</script>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -746,7 +746,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <div class="drawer-item text-orange-600 font-bold role-access role-admin role-rep role-qc-supervisor role-qc hidden" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
             <div class="drawer-item text-teal-600 font-bold role-access role-admin role-rep hidden" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> AV</div>
             <hr class="my-2">
-            <div class="drawer-item text-blue-600 font-bold role-access role-admin role-rep hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
+        <div class="drawer-item text-blue-600 font-bold role-access role-admin role-rep role-request-enabled hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
             <div class="drawer-item text-indigo-600 font-bold role-access role-admin hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
             <div class="drawer-item text-purple-600 font-bold role-access role-admin role-rep hidden" onclick="openSalesOfficeView(); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
             <div class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
@@ -800,7 +800,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
                                 <div onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-qc-supervisor role-qc hidden"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
                                 <div onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
-                                <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
+                                <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-request-enabled hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
                                 <div onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
                                 <div onclick="openSalesOfficeView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
                                 <div onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
@@ -1200,7 +1200,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.24.14';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.24.15';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7229,7 +7229,8 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         let pendingEditsPersistTimer = null;
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
-        const salesRepList=["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
+        const salesRepList=["Abbey Burka","Alyssa Beitz","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Tony Bono","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
+        const REQUEST_REP_ENABLED_TOKENS = new Set(['alyssa_beitz','alyssa beitz','alyssabeitz','tony_bono','tony bono','tonybono']);
         const REQUEST_MODAL_REP_OPTIONS = Object.freeze(
             [...new Set(salesRepList.map((rep) => String(rep || '').trim()).filter(Boolean))]
                 .sort((a, b) => a.localeCompare(b))
@@ -7272,7 +7273,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.24.14').trim() || 'V2026.04.24.14';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.24.15').trim() || 'V2026.04.24.15';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -9267,6 +9268,42 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
                 return normalized.includes(candidate) || collapsed.includes(candidateCollapsed);
             });
         }
+
+        function getRequestRepScopedIdentityTokens() {
+            const tokens = new Set();
+            [currentUser, currentUserDisplay].forEach((value) => {
+                const raw = String(value || '').trim();
+                if (!raw) return;
+                const lower = raw.toLowerCase();
+                const normalized = normalizeRepMatchToken(raw);
+                tokens.add(lower);
+                tokens.add(lower.replace(/_/g, ' '));
+                if (normalized) {
+                    tokens.add(normalized);
+                    tokens.add(normalized.replace(/\s+/g, ''));
+                }
+            });
+            return tokens;
+        }
+
+        function canUseRequestRepScopedAccess() {
+            const tokens = getRequestRepScopedIdentityTokens();
+            for (const token of tokens) {
+                if (REQUEST_REP_ENABLED_TOKENS.has(token)) return true;
+            }
+            return false;
+        }
+
+        function doesCurrentUserMatchRepName(repNameStr = '') {
+            if (!repNameStr) return false;
+            const normalized = normalizeRepMatchToken(repNameStr);
+            const collapsed = normalized.replace(/\s+/g, '');
+            return repPermutations.some((value) => {
+                const candidate = normalizeRepMatchToken(value);
+                const candidateCollapsed = candidate.replace(/\s+/g, '');
+                return normalized.includes(candidate) || collapsed.includes(candidateCollapsed);
+            });
+        }
         let activeReportTab = 'ALL';
         let protectedEditState = {};
         let protectedUnlockTimers = {};
@@ -9323,7 +9360,7 @@ let searchRenderToken = {};
         function canUseDriveQuickRequest() {
             const tokens = getProtectedUserTokens();
             const hasAdminViews = canAccessView('drive') && canAccessView('tasks');
-            return hasAdminViews || tokens.has('dylan') || tokens.has('dylan_collyge') || tokens.has('jd') || tokens.has('jd_jones') || tokens.has('kayla') || tokens.has('kayla_knepp') || tokens.has('morgan') || tokens.has('morgan_anderson');
+            return hasAdminViews || canUseRequestRepScopedAccess() || tokens.has('dylan') || tokens.has('dylan_collyge') || tokens.has('jd') || tokens.has('jd_jones') || tokens.has('kayla') || tokens.has('kayla_knepp') || tokens.has('morgan') || tokens.has('morgan_anderson');
         }
 
         function canUseFooterRequestShortcut() {
@@ -11940,7 +11977,7 @@ function toggleDriveQuickRequestItem(domId) {
                 addLoginWarmupTarget(initialTargets, 'reserves', reserveInitialMode);
                 addLoginWarmupTarget(fullTargets, 'reserves', 'full');
             }
-            if (allowedViews.has('request') || allowedViews.has('reports')) {
+            if (allowedViews.has('request') || allowedViews.has('reports') || canUseRequestRepScopedAccess()) {
                 addLoginWarmupTarget(initialTargets, 'requests', 'initial');
                 addLoginWarmupTarget(fullTargets, 'requests', 'full');
             }
@@ -12090,7 +12127,7 @@ function toggleDriveQuickRequestItem(domId) {
                     queueDatasetLoad(item.key, item.mode, item.delay);
                 });
                 scheduleTaskHotCacheWarmup('login-warm', openedFromCache ? 220 : 140);
-                if (roleAccess.allowedViews && roleAccess.allowedViews.has('request')) {
+                if (canAccessView('request')) {
                     setTimeout(() => {
                         subscribeCurrentDeviceForPush({ prompt: false }).catch(() => {});
                     }, openedFromCache ? 450 : 1200);
@@ -14079,6 +14116,7 @@ function toggleDriveQuickRequestItem(domId) {
             const isQcSupervisor = normalizedRole.includes('QCSUPERVISOR') || normalizedRole.includes('QCSUP') || roleDisplay.includes('QC SUPERVISOR');
             const isQc = !isQcSupervisor && (normalizedRole === 'QC' || normalizedRole.startsWith('QC'));
             const isCsr = normalizedRole === 'CSR' || normalizedRole.includes('CSR');
+            const isRequestRepScopedUser = canUseRequestRepScopedAccess();
             const isAdmin = normalizedRole.includes('ADMIN') || normalizedRole.includes('MANAGER') || isCsr || (!isRep && !isQcSupervisor && !isQc);
             const allowedViews = new Set(['home']);
             if (isAdmin) {
@@ -14090,12 +14128,13 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (isQc) {
                 ['docks'].forEach(viewId => allowedViews.add(viewId));
             }
-            return { isAdmin, isRep, isQcSupervisor, isQc, allowedViews };
+            return { isAdmin, isRep, isQcSupervisor, isQc, isRequestRepScopedUser, allowedViews };
         }
 
         function canAccessView(viewId) {
             const targetView = String(viewId || '').trim();
             if (!targetView || targetView === 'home' || targetView === 'detail') return true;
+            if (targetView === 'request' && canUseRequestRepScopedAccess()) return true;
             return getRoleAccessState().allowedViews.has(targetView);
         }
 
@@ -14164,6 +14203,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const isAllowed =
                     (access.isAdmin && el.classList.contains('role-admin')) ||
                     (access.isRep && el.classList.contains('role-rep')) ||
+                    (access.isRequestRepScopedUser && el.classList.contains('role-request-enabled')) ||
                     (access.isQcSupervisor && el.classList.contains('role-qc-supervisor')) ||
                     (access.isQc && el.classList.contains('role-qc'));
                 el.classList.toggle('hidden', !isAllowed);
@@ -14210,7 +14250,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getPushPromptUserScope() {
             const access = getRoleAccessState();
-            return !!(currentUser && access.allowedViews && access.allowedViews.has('request'));
+            return !!(currentUser && (canAccessView('request') || (access.allowedViews && access.allowedViews.has('request'))));
         }
 
         function maybeWarnPushSchemaMissing() {
@@ -16158,7 +16198,8 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getDefaultRequestRepName() {
-            if (!getRoleAccessState().isRep) return '';
+            const access = getRoleAccessState();
+            if (!access.isRep && !access.isRequestRepScopedUser) return '';
             const rawUser = String(currentUser || currentUserDisplay || '').trim();
             if (!rawUser) return '';
             const parts = rawUser.split(/[_\s]+/).filter(Boolean);
@@ -16170,7 +16211,7 @@ function toggleDriveQuickRequestItem(domId) {
                     ? clean.toUpperCase()
                     : (clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase());
             };
-            return parts.map(formatPart).filter(Boolean).join(' ').trim();
+            return resolveCanonicalRequestRepName(parts.map(formatPart).filter(Boolean).join(' ').trim());
         }
 
         function resetHoursView() {
@@ -21322,11 +21363,12 @@ function toggleDriveQuickRequestItem(domId) {
         function getScopedRequestItems(items = requestsInventory) {
             let nextItems = Array.isArray(items) ? [...items] : [];
             const roleAccess = getRoleAccessState();
+            const isRequestScopedUser = !!(roleAccess.isRep || roleAccess.isRequestRepScopedUser);
             const canUseCache = items === requestsInventory;
             const cacheKey = canUseCache ? [
                 resolvedViewStateEpoch,
                 getDatasetLoadSignature('requests'),
-                roleAccess.isRep ? '1' : '0',
+                isRequestScopedUser ? '1' : '0',
                 currentUser,
                 currentUserDisplay
             ].join('|') : '';
@@ -21334,7 +21376,7 @@ function toggleDriveQuickRequestItem(domId) {
                 incrementInternalPerfCounter('viewStateCacheHits');
                 return requestScopedItemsCache.slice();
             }
-            if (roleAccess.isRep) nextItems = nextItems.filter(item => isMyRep(getRequestAssignedRep(item)));
+            if (isRequestScopedUser) nextItems = nextItems.filter(item => doesCurrentUserMatchRepName(getRequestAssignedRep(item)));
             if (canUseCache) {
                 requestScopedItemsCacheKey = cacheKey;
                 requestScopedItemsCache = nextItems.slice();
@@ -21714,7 +21756,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function shouldRunRequestViewLiveSync() {
             const roleAccess = getRoleAccessState();
-            const canSeeRequests = !!(roleAccess.allowedViews && typeof roleAccess.allowedViews.has === 'function' && (roleAccess.allowedViews.has('request') || roleAccess.allowedViews.has('reports')));
+            const canSeeRequests = !!(canAccessView('request') || (roleAccess.allowedViews && typeof roleAccess.allowedViews.has === 'function' && roleAccess.allowedViews.has('reports')));
             const requestState = getDatasetState('requests');
             const requestDatasetReady = !!((requestState && (requestState.initialLoaded || requestState.fullLoaded)) || (Array.isArray(requestsInventory) && requestsInventory.length));
             const isRequestContextVisible = isViewVisible('request')
