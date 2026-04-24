@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.24.15';
+window.__APP_SHELL_VERSION__ = 'V2026.04.24.16';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -719,7 +719,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.24.15').trim() || 'V2026.04.24.15';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.24.16').trim() || 'V2026.04.24.16';</script>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -738,23 +738,23 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         <div id="drawer-overlay" onclick="toggleMenu()"></div>
         <div id="side-drawer">
             <div class="drawer-header">Menu</div>
-            <div class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div>
-            <div class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData('force'); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div>
+            <div id="drawer-home-btn" class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div>
+            <div id="drawer-force-sync-btn" class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData('force'); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div>
             <hr class="my-2">
-            <div class="drawer-item role-access role-admin role-qc-supervisor hidden" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
-            <div class="drawer-item role-access role-admin hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
-            <div class="drawer-item text-orange-600 font-bold role-access role-admin role-rep role-qc-supervisor role-qc hidden" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
-            <div class="drawer-item text-teal-600 font-bold role-access role-admin role-rep hidden" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> AV</div>
+            <div id="drawer-drive-btn" class="drawer-item role-access role-admin role-qc-supervisor hidden" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
+            <div id="drawer-tasks-btn" class="drawer-item role-access role-admin hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
+            <div id="drawer-docks-btn" class="drawer-item text-orange-600 font-bold role-access role-admin role-rep role-qc-supervisor role-qc hidden" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
+            <div id="drawer-av-btn" class="drawer-item text-teal-600 font-bold role-access role-admin role-rep hidden" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> AV</div>
             <hr class="my-2">
-        <div class="drawer-item text-blue-600 font-bold role-access role-admin role-rep role-request-enabled hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
-            <div class="drawer-item text-indigo-600 font-bold role-access role-admin hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
-            <div class="drawer-item text-purple-600 font-bold role-access role-admin role-rep hidden" onclick="openSalesOfficeView(); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
-            <div class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
-            <div class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('hours'); toggleMenu();"><i class="ph-bold ph-clock"></i> Labor Hours</div>
-            <div class="drawer-item text-red-600 font-bold role-access role-admin hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> NCR</div>
-            <div class="drawer-item text-yellow-600 font-bold role-access role-admin hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> New Crop Release</div>
+        <div id="drawer-request-btn" class="drawer-item text-blue-600 font-bold role-access role-admin role-rep role-request-enabled hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
+            <div id="drawer-reserves-btn" class="drawer-item text-indigo-600 font-bold role-access role-admin hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
+            <div id="drawer-sales-office-btn" class="drawer-item text-purple-600 font-bold role-access role-admin role-rep hidden" onclick="openSalesOfficeView(); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
+            <div id="drawer-reports-btn" class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
+            <div id="drawer-hours-btn" class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('hours'); toggleMenu();"><i class="ph-bold ph-clock"></i> Labor Hours</div>
+            <div id="drawer-low-stock-btn" class="drawer-item text-red-600 font-bold role-access role-admin hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> NCR</div>
+            <div id="drawer-review-btn" class="drawer-item text-yellow-600 font-bold role-access role-admin hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> New Crop Release</div>
             <hr class="my-3 border-gray-200">
-            <div class="drawer-item text-red-600 bg-red-50 font-bold justify-center rounded-lg mx-4 mt-2 mb-8" onclick="performLogout()"><i class="ph-bold ph-sign-out text-xl"></i> Log Out</div>
+            <div id="drawer-logout-btn" class="drawer-item text-red-600 bg-red-50 font-bold justify-center rounded-lg mx-4 mt-2 mb-8" onclick="performLogout()"><i class="ph-bold ph-sign-out text-xl"></i> Log Out</div>
         </div>
 
         <div id="main-scroll-area" class="flex-grow overflow-y-auto overflow-x-hidden p-4 pb-40 relative">
@@ -796,16 +796,16 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div id="home-dashboard-modules">
                             <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                             <div id="home-dashboard-grid" class="grid grid-cols-2 gap-3 mb-8">
-                                <div onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-qc-supervisor hidden"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
-                                <div onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
-                                <div onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-qc-supervisor role-qc hidden"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
-                                <div onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
-                                <div onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-request-enabled hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
-                                <div onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
-                                <div onclick="openSalesOfficeView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
-                                <div onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
-                                <div onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
-                                <div onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">New Crop Release</span></div>
+                                <div id="home-tile-drive" onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-qc-supervisor hidden"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
+                                <div id="home-tile-tasks" onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
+                                <div id="home-tile-docks" onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-qc-supervisor role-qc hidden"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
+                                <div id="home-tile-av" onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
+                                <div id="home-tile-request" onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-request-enabled hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
+                                <div id="home-tile-reserves" onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
+                                <div id="home-tile-sales-office" onclick="openSalesOfficeView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
+                                <div id="home-tile-reports" onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
+                                <div id="home-tile-hours" onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
+                                <div id="home-tile-review" onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">New Crop Release</span></div>
                             </div>
                         </div>
                     </div>
@@ -1200,7 +1200,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.24.15';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.24.16';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1368,6 +1368,9 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         let lastFastPressActionAt = 0;
         let lastFastPressActionScope = '';
         let lastFastPressActionScopeAt = 0;
+        let lastFastPressSuppressSessionId = 0;
+        let lastFastPressSuppressUntil = 0;
+        let lastFastPressSuppressScope = '';
         let driveDrillCardClickSuppressUntil = 0;
         let driveDrillCardClickSuppressCount = 0;
         let driveDrillCardClickArmedAt = 0;
@@ -1388,6 +1391,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         let lifecycleResumePendingReasons = new Set();
         let passiveViewActivationByView = Object.create(null);
         let foregroundRefreshQueuedAt = 0;
+        let staticFastPressBindingsInitialized = false;
         const ACTIVE_TYPING_GRACE_MS = 450;
         const ACTIVE_SCROLL_GRACE_MS = 450;
         const FAST_PRESS_MOVE_THRESHOLD_PX = 14;
@@ -5375,7 +5379,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (!safeViewId) return false;
             const nextOptions = (options && typeof options === 'object') ? options : {};
             const delay = Math.max(0, Number(nextOptions.delay) || 0);
-            const typingDelay = Math.max(42, Number(nextOptions.typingDelay) || 128);
+            const typingDelay = Math.max(28, Number(nextOptions.typingDelay) || 96);
             const touchRenderStartedAt = nextOptions.userAction ? beginInternalPerfMeasure() : 0;
             markViewDirty(safeViewId);
             if (nextOptions.preferImmediate && canRunImmediateTrackedViewRender(safeViewId, { ...nextOptions, delay })) {
@@ -5394,9 +5398,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 allowWhileScrolling: !!nextOptions.allowWhileScrolling,
                 allowDuringRecentInteraction: !!nextOptions.allowDuringRecentInteraction,
                 allowDuringExtendedBlock: !!nextOptions.allowDuringExtendedBlock,
-                touchDelayMs: Math.max(32, Number(nextOptions.touchDelayMs) || 96),
-                scrollDelayMs: Math.max(48, Number(nextOptions.scrollDelayMs) || 96),
-                interactionDelayMs: Math.max(32, Number(nextOptions.interactionDelayMs) || 72)
+                touchDelayMs: Math.max(24, Number(nextOptions.touchDelayMs) || 68),
+                scrollDelayMs: Math.max(32, Number(nextOptions.scrollDelayMs) || 74),
+                interactionDelayMs: Math.max(20, Number(nextOptions.interactionDelayMs) || 44)
             });
             return false;
         }
@@ -5494,6 +5498,48 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const safeName = String(actionName || '').trim();
             if (safeType === 'invoke' && DRIVE_DRILL_FAST_PRESS_ACTIONS.has(safeName)) return 'drive-drill';
             return '';
+        }
+
+        function clearFastPressGhostClickSuppression() {
+            lastFastPressSuppressSessionId = 0;
+            lastFastPressSuppressUntil = 0;
+            lastFastPressSuppressScope = '';
+        }
+
+        function armFastPressGhostClickSuppression(pointerType = '', actionType = '', actionName = '') {
+            const safePointerType = String(pointerType || '').trim().toLowerCase();
+            if (safePointerType === 'mouse') {
+                clearFastPressGhostClickSuppression();
+                return false;
+            }
+            const sessionId = Number(touchInteractionSessionSerial || 0);
+            if (sessionId <= 0) {
+                clearFastPressGhostClickSuppression();
+                return false;
+            }
+            lastFastPressSuppressSessionId = sessionId;
+            lastFastPressSuppressUntil = Date.now() + FAST_PRESS_CLICK_SUPPRESS_MS;
+            lastFastPressSuppressScope = getFastPressActionScope(actionType, actionName);
+            return true;
+        }
+
+        function shouldSuppressFastPressSessionClick(event = null) {
+            const now = Date.now();
+            if (lastFastPressSuppressSessionId <= 0 || now > lastFastPressSuppressUntil) {
+                clearFastPressGhostClickSuppression();
+                return false;
+            }
+            if (Number(touchInteractionSessionSerial || 0) !== lastFastPressSuppressSessionId) {
+                clearFastPressGhostClickSuppression();
+                return false;
+            }
+            if (event && event.target) {
+                const interactiveTarget = event.target.closest('button,a,[onclick],[role="button"],.task-tab,.detail-tab,.drill-item,.drawer-item,.footer-nav-btn,.back-btn,.app-card-shell,.app-smart-card');
+                const textLikeTarget = event.target.closest('input,textarea,select,[contenteditable="true"]');
+                if (!interactiveTarget || textLikeTarget) return false;
+            }
+            clearFastPressGhostClickSuppression();
+            return true;
         }
 
         function armDriveDrillCardClickSuppression(actionType = '', actionName = '', pointerType = '') {
@@ -5609,6 +5655,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (currentPress.pointerType === 'mouse') return true;
             const didRun = dispatchFastPressAction(actionType, actionName, encodedArgs);
             if (!didRun) return true;
+            armFastPressGhostClickSuppression(currentPress.pointerType, actionType, actionName);
             armDriveDrillCardClickSuppression(actionType, actionName, currentPress.pointerType);
             lastFastPressActionKey = currentPress.actionKey;
             lastFastPressActionAt = Date.now();
@@ -5621,8 +5668,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return false;
         }
 
-        function shouldSuppressFastPressClick(actionType = '', actionName = '', encodedArgs = '') {
+        function shouldSuppressFastPressClick(actionType = '', actionName = '', encodedArgs = '', event = null) {
             if (shouldSuppressDriveDrillCardClick(actionType, actionName)) return true;
+            if (shouldSuppressFastPressSessionClick(event)) return true;
             const actionKey = getFastPressActionKey(actionType, actionName, encodedArgs);
             const now = Date.now();
             if (!!actionKey && actionKey === lastFastPressActionKey && (now - lastFastPressActionAt) <= FAST_PRESS_CLICK_SUPPRESS_MS) {
@@ -5639,7 +5687,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
         function handleFastPressClick(event, actionType = '', actionName = '', encodedArgs = '') {
             if (shouldIgnoreFastPressTarget(event)) return true;
-            if (shouldSuppressFastPressClick(actionType, actionName, encodedArgs)) {
+            if (shouldSuppressFastPressClick(actionType, actionName, encodedArgs, event)) {
                 if (event) {
                     if (typeof event.preventDefault === 'function') event.preventDefault();
                     if (typeof event.stopPropagation === 'function') event.stopPropagation();
@@ -5683,6 +5731,188 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function buildFastInvokeAttrs(actionName = '', args = [], label = 'Open') {
             return buildFastPressAttrs('invoke', actionName, args, label);
         }
+
+        function getFastPressBindingConfigFromElement(element) {
+            if (!element) return null;
+            return {
+                actionType: String(element.dataset.fastPressActionType || '').trim(),
+                actionName: String(element.dataset.fastPressActionName || '').trim(),
+                encodedArgs: String(element.dataset.fastPressEncodedArgs || '').trim()
+            };
+        }
+
+        function handleBoundFastPressPointerDown(event) {
+            const config = getFastPressBindingConfigFromElement(event.currentTarget);
+            if (!config) return;
+            beginFastPress(event, config.actionType, config.actionName, config.encodedArgs);
+        }
+
+        function handleBoundFastPressPointerMove(event) {
+            trackFastPressMove(event);
+        }
+
+        function handleBoundFastPressPointerCancel(event) {
+            cancelFastPress(event);
+        }
+
+        function handleBoundFastPressPointerUp(event) {
+            const config = getFastPressBindingConfigFromElement(event.currentTarget);
+            if (!config) return;
+            const handled = finishFastPress(event, config.actionType, config.actionName, config.encodedArgs);
+            if (handled === false) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        }
+
+        function handleBoundFastPressClick(event) {
+            const config = getFastPressBindingConfigFromElement(event.currentTarget);
+            if (!config) return;
+            const handled = handleFastPressClick(event, config.actionType, config.actionName, config.encodedArgs);
+            if (handled === false && typeof event.stopImmediatePropagation === 'function') {
+                event.stopImmediatePropagation();
+            }
+        }
+
+        function handleBoundFastPressKeydown(event) {
+            const config = getFastPressBindingConfigFromElement(event.currentTarget);
+            if (!config) return;
+            const handled = handleFastPressKeydown(event, config.actionType, config.actionName, config.encodedArgs);
+            if (handled === false && typeof event.stopImmediatePropagation === 'function') {
+                event.stopImmediatePropagation();
+            }
+        }
+
+        function bindFastPressTarget(element, actionType = '', actionName = '', args = [], label = '') {
+            if (!element) return false;
+            const safeActionType = String(actionType || '').trim();
+            const safeActionName = String(actionName || '').trim();
+            if (!safeActionType || !safeActionName) return false;
+            const safeLabel = String(label || element.getAttribute('aria-label') || element.innerText || 'Open').trim();
+            element.dataset.fastPressActionType = safeActionType;
+            element.dataset.fastPressActionName = safeActionName;
+            element.dataset.fastPressEncodedArgs = encodeFastPressArgs(args);
+            if (safeLabel) element.setAttribute('aria-label', safeLabel);
+            const tagName = String(element.tagName || '').toUpperCase();
+            const isNativeInteractive = tagName === 'BUTTON' || tagName === 'A' || tagName === 'INPUT' || tagName === 'SELECT' || tagName === 'TEXTAREA';
+            if (!isNativeInteractive) {
+                if (!element.hasAttribute('role')) element.setAttribute('role', 'button');
+                if (!element.hasAttribute('tabindex')) element.setAttribute('tabindex', '0');
+            }
+            element.removeAttribute('onclick');
+            if (element.dataset.fastPressBound === '1') return true;
+            element.dataset.fastPressBound = '1';
+            element.addEventListener('pointerdown', handleBoundFastPressPointerDown);
+            element.addEventListener('pointermove', handleBoundFastPressPointerMove);
+            element.addEventListener('pointercancel', handleBoundFastPressPointerCancel);
+            element.addEventListener('pointerleave', handleBoundFastPressPointerCancel);
+            element.addEventListener('pointerup', handleBoundFastPressPointerUp);
+            element.addEventListener('click', handleBoundFastPressClick);
+            element.addEventListener('keydown', handleBoundFastPressKeydown);
+            return true;
+        }
+
+        function bindFastInvokeById(elementId = '', actionName = '', args = [], label = '') {
+            const element = document.getElementById(String(elementId || '').trim());
+            return bindFastPressTarget(element, 'invoke', actionName, args, label);
+        }
+
+        function openDrawerView(viewId = 'home') {
+            switchView(viewId);
+            toggleMenu();
+            return false;
+        }
+
+        function forceSyncAndCloseMenu() {
+            fetchBackgroundData('force');
+            toggleMenu();
+            return false;
+        }
+
+        function openDrawerSalesOffice() {
+            openSalesOfficeView();
+            toggleMenu();
+            return false;
+        }
+
+        function logoutFromDrawer() {
+            performLogout();
+            return false;
+        }
+
+        function selectCustomRequestRepFromInput() {
+            const input = document.getElementById('rep-search-input');
+            const repName = String(input && input.value || '').trim();
+            if (!repName) return false;
+            selectRepForRequest(repName);
+            return false;
+        }
+
+        function initializeStaticFastPressBindings() {
+            if (staticFastPressBindingsInitialized) return;
+            staticFastPressBindingsInitialized = true;
+            bindFastInvokeById('global-header-inline-back', 'goBackUniversal', [], 'Back');
+            bindFastInvokeById('drawer-overlay', 'toggleMenu', [], 'Close menu');
+            bindFastInvokeById('drawer-home-btn', 'openDrawerView', ['home'], 'Home');
+            bindFastInvokeById('drawer-force-sync-btn', 'forceSyncAndCloseMenu', [], 'Force Data Sync');
+            bindFastInvokeById('drawer-drive-btn', 'openDrawerView', ['drive'], 'Drive Mode');
+            bindFastInvokeById('drawer-tasks-btn', 'openDrawerView', ['tasks'], 'My Tasks');
+            bindFastInvokeById('drawer-docks-btn', 'openDrawerView', ['docks'], 'Docks');
+            bindFastInvokeById('drawer-av-btn', 'openDrawerView', ['av'], 'AV');
+            bindFastInvokeById('drawer-request-btn', 'openDrawerView', ['request'], 'Requests');
+            bindFastInvokeById('drawer-reserves-btn', 'openDrawerView', ['reserves'], 'Reserves');
+            bindFastInvokeById('drawer-sales-office-btn', 'openDrawerSalesOffice', [], 'Sales Office');
+            bindFastInvokeById('drawer-reports-btn', 'openDrawerView', ['reports'], 'Reports');
+            bindFastInvokeById('drawer-hours-btn', 'openDrawerView', ['hours'], 'Labor Hours');
+            bindFastInvokeById('drawer-low-stock-btn', 'openDrawerView', ['low-stock'], 'NCR');
+            bindFastInvokeById('drawer-review-btn', 'openDrawerView', ['review'], 'New Crop Release');
+            bindFastInvokeById('drawer-logout-btn', 'logoutFromDrawer', [], 'Log Out');
+            bindFastInvokeById('home-tile-drive', 'switchView', ['drive'], 'Drive Mode');
+            bindFastInvokeById('home-tile-tasks', 'switchView', ['tasks'], 'Tasks');
+            bindFastInvokeById('home-tile-docks', 'switchView', ['docks'], 'Docks');
+            bindFastInvokeById('home-tile-av', 'switchView', ['av'], 'AV');
+            bindFastInvokeById('home-tile-request', 'switchView', ['request'], 'Requests');
+            bindFastInvokeById('home-tile-reserves', 'switchView', ['reserves'], 'Reserves');
+            bindFastInvokeById('home-tile-sales-office', 'openSalesOfficeView', [], 'Sales Office');
+            bindFastInvokeById('home-tile-reports', 'switchView', ['reports'], 'Reports');
+            bindFastInvokeById('home-tile-hours', 'switchView', ['hours'], 'Labor Hours');
+            bindFastInvokeById('home-tile-review', 'switchView', ['review'], 'New Crop Release');
+            bindFastInvokeById('footer-menu-btn', 'toggleMenu', [], 'Menu');
+            bindFastInvokeById('footer-request-btn', 'switchView', ['request'], 'Requests');
+            bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
+            bindFastInvokeById('custom-rep-btn', 'selectCustomRequestRepFromInput', [], 'Assign custom sales rep');
+            bindFastInvokeById('request-customer-next-btn', 'processCustStep', [], 'Next: Item Details');
+            document.querySelectorAll('#bottom-nav [data-footer-view]').forEach((element) => {
+                const viewId = String(element.getAttribute('data-footer-view') || '').trim();
+                if (!viewId) return;
+                bindFastPressTarget(element, 'invoke', 'switchView', [viewId], element.getAttribute('aria-label') || viewId);
+            });
+            bindFastInvokeById('run-google-script-btn', 'runGoogleAppsScriptTrigger', [], 'Run Script');
+            bindFastInvokeById('tab-av-open', 'setAVTab', ['open'], 'Open Stock');
+            bindFastInvokeById('tab-av-hotprice', 'setAVTab', ['hotprice'], 'HOT PRICE');
+            bindFastInvokeById('tab-av-reserves', 'setAVTab', ['reserves'], 'My Reserves');
+            bindFastInvokeById('tab-av-secondary-all', 'setAvSecondaryTab', ['all'], 'ALL Open Stock');
+            bindFastInvokeById('tab-av-secondary-photos', 'setAvSecondaryTab', ['photos'], 'Photos');
+            ['ALL','S1','F1','U1','U2','U3','X','Y','Z'].forEach((tabId) => bindFastInvokeById(`rtab-${tabId}`, 'setReportTab', [tabId], `Report ${tabId}`));
+            bindFastInvokeById('tab-req-pending', 'setReqTab', ['pending'], 'Pending');
+            bindFastInvokeById('tab-req-reps', 'setReqTab', ['reps'], 'Sales Reps');
+            bindFastInvokeById('dock-mode-btn-docks', 'setDockViewMode', ['docks'], 'Docks');
+            bindFastInvokeById('dock-mode-btn-mistakes', 'setDockViewMode', ['mistakes'], 'Mistake');
+            bindFastInvokeById('sales-office-tab-orders', 'setSalesOfficeTab', ['orders'], 'Bloom Picker Orders');
+            bindFastInvokeById('sales-office-tab-season', 'setSalesOfficeTab', ['season'], 'Season Sales Notes');
+            bindFastInvokeById('tab-drive-name', 'setDriveTab', ['name'], 'COMMONNAME');
+            bindFastInvokeById('tab-drive-loc', 'setDriveTab', ['loc'], 'LOCATION');
+            bindFastInvokeById('tab-drive-card', 'setDriveTab', ['card'], 'CARD');
+        }
+
+        function handleGlobalGhostClickCapture(event) {
+            if (!shouldSuppressFastPressSessionClick(event)) return;
+            if (typeof event.preventDefault === 'function') event.preventDefault();
+            if (typeof event.stopPropagation === 'function') event.stopPropagation();
+            if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+        }
+
+        document.addEventListener('click', handleGlobalGhostClickCapture, true);
 
         let activeFetches=0; let fetchProgressInterval; let currentProgress=0;
         let initialAppLoadActive=false;
@@ -7273,7 +7503,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.24.15').trim() || 'V2026.04.24.15';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.24.16').trim() || 'V2026.04.24.16';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -11261,12 +11491,12 @@ function toggleDriveQuickRequestItem(domId) {
             searchRenderToken[safeKey] = renderToken;
             const touchOptimized = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
             const baseDelay = safeKey === 'drive-search'
-                ? (touchOptimized ? 5 : 4)
-                : (touchOptimized ? 4 : 3);
+                ? (touchOptimized ? 2 : 1)
+                : (touchOptimized ? 2 : 1);
             const debounceDelay = options && options.skipDebounce
                 ? 0
                 : Math.max(0, Number(options.debounceDelay) || baseDelay);
-            const typingDelay = Math.max(14, Number(options && options.typingDelay) || (touchOptimized ? 24 : 18));
+            const typingDelay = Math.max(10, Number(options && options.typingDelay) || (touchOptimized ? 18 : 14));
             searchRenderTimer[safeKey] = setTimeout(() => {
                 delete searchRenderTimer[safeKey];
                 if (Number(searchRenderToken[safeKey] || 0) !== renderToken) return;
@@ -11282,9 +11512,9 @@ function toggleDriveQuickRequestItem(domId) {
                     }, 0, typingDelay, {
                         allowWhileTyping: true,
                         allowDuringExtendedBlock: true,
-                        touchDelayMs: Math.max(24, typingDelay + 2),
-                        scrollDelayMs: Math.max(24, typingDelay + 2),
-                        interactionDelayMs: 24
+                        touchDelayMs: Math.max(16, typingDelay + 2),
+                        scrollDelayMs: Math.max(16, typingDelay + 2),
+                        interactionDelayMs: 18
                     });
                 });
             }, debounceDelay);
@@ -13895,6 +14125,13 @@ function toggleDriveQuickRequestItem(domId) {
             queueScrollMainAreaToTop(`dock-issue:${normalizedUid}`);
         }
 
+        function backToDockMistakeQueue() {
+            selectedDockIssueUid = null;
+            scheduleDocksRender(0);
+            updateGlobalBackButton();
+            return false;
+        }
+
         function closeDockAllocationModal() {
             const modal = document.getElementById('dock-allocation-modal');
             if (modal) modal.classList.add('hidden');
@@ -13921,7 +14158,7 @@ function toggleDriveQuickRequestItem(domId) {
             const qtyInput = document.getElementById('dock-allocation-qty');
             if (issueUidEl) issueUidEl.value = issueSourceUniqueId;
             if (masterUidEl) masterUidEl.value = String(altMasterUniqueId || '').trim();
-            if (label) label.innerText = `${sourceRow.COMMONNAME || issue.sourceCommonName || 'Dock Issue'} • ${masterRow.LOCATIONCODE || '-'} • Available ${formatDockDisplayQty(masterRow.PTRAVAILABLE)}`;
+            if (label) label.innerText = `${sourceRow.COMMONNAME || issue.sourceCommonName || 'Dock Issue'} Ã¢â‚¬Â¢ ${masterRow.LOCATIONCODE || '-'} Ã¢â‚¬Â¢ Available ${formatDockDisplayQty(masterRow.PTRAVAILABLE)}`;
             if (qtyInput) {
                 qtyInput.value = existingAllocation ? formatDockDisplayQty(existingAllocation.allocatedQty) : '';
                 qtyInput.focus();
@@ -13939,7 +14176,7 @@ function toggleDriveQuickRequestItem(domId) {
             return allocations.map((allocation) => {
                 const safeAllocationId = esc(allocation.allocationUniqueId || '');
                 const safeIssueUid = esc(allocation.issueSourceUniqueId || '');
-                return `<div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Alternate Location</div><div class="mt-1 text-base font-black text-slate-900">${esc(allocation.altLocationCode || '-')}</div><div class="mt-1 text-[11px] font-semibold text-slate-500">${esc(allocation.altLotCode || '-')} • ${esc(allocation.altItemCode || '-')}</div></div><div class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Qty ${esc(formatDockDisplayQty(allocation.allocatedQty))}</div></div><div class="mt-3 flex gap-2"><button class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-700 active:scale-95" onclick="openDockAllocationModal('${safeIssueUid}', '${esc(allocation.altMasterUniqueId || '')}')">Update Qty</button><button class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-red-600 active:scale-95" onclick="removeDockIssueAllocation('${safeAllocationId}')">Remove</button></div></div>`;
+                return `<div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Alternate Location</div><div class="mt-1 text-base font-black text-slate-900">${esc(allocation.altLocationCode || '-')}</div><div class="mt-1 text-[11px] font-semibold text-slate-500">${esc(allocation.altLotCode || '-')} Ã¢â‚¬Â¢ ${esc(allocation.altItemCode || '-')}</div></div><div class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Qty ${esc(formatDockDisplayQty(allocation.allocatedQty))}</div></div><div class="mt-3 flex gap-2"><button class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-700 active:scale-95" ${buildFastInvokeAttrs('openDockAllocationModal', [safeIssueUid, allocation.altMasterUniqueId || ''], 'Update Qty')}>Update Qty</button><button class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-red-600 active:scale-95" ${buildFastInvokeAttrs('removeDockIssueAllocation', [safeAllocationId], 'Remove allocation')}>Remove</button></div></div>`;
             }).join('');
         }
 
@@ -13966,7 +14203,7 @@ function toggleDriveQuickRequestItem(domId) {
                 : '';
             const actionHtml = isOriginal
                 ? `<div class="rounded-xl border border-emerald-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Reference Row</div>`
-                : `<button class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-sm active:scale-95" onclick="openDockAllocationModal('${safeIssueUid}', '${esc(masterUniqueId)}')">${existingAllocation ? `Update Qty (${esc(formatDockDisplayQty(existingAllocation.allocatedQty))})` : 'Use This Location'}</button>`;
+                : `<button class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-sm active:scale-95" ${buildFastInvokeAttrs('openDockAllocationModal', [safeIssueUid, masterUniqueId], existingAllocation ? `Update Qty (${formatDockDisplayQty(existingAllocation.allocatedQty)})` : 'Use This Location')}>${existingAllocation ? `Update Qty (${esc(formatDockDisplayQty(existingAllocation.allocatedQty))})` : 'Use This Location'}</button>`;
             return `<div class="rounded-2xl ${shellToneClass} p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] ${topToneClass}">${topLabel}</div><div class="mt-1 text-xl font-black text-slate-900 leading-tight break-words">${esc(row.COMMONNAME || issue.sourceCommonName || 'Dock Item')}</div><div class="mt-1 text-sm font-semibold text-slate-500 break-words">${esc(row.CONTSIZE || issue.sourceContSize || '-')}</div></div><div class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">${esc(primaryQtyLabel)}</div></div>${metaHtml}<div class="mt-3 text-[12px] font-bold text-slate-600 break-words">${esc(row.LOCATIONCODE || 'No Loc')}${row.LOTCODE ? ` | ${esc(row.LOTCODE)}` : ''}${row.ITEMCODE ? ` | ${esc(row.ITEMCODE)}` : ''}</div>${issueNoteHtml}<div class="mt-3 flex justify-end">${actionHtml}</div></div>`;
         }
 
@@ -14808,7 +15045,7 @@ function toggleDriveQuickRequestItem(domId) {
                 String(firstNonEmptyValue(item.COMMONNAME, 'Unknown Item')).trim(),
                 String(firstNonEmptyValue(item.CONTSIZE, '')).trim(),
                 String(firstNonEmptyValue(item.LOCATIONCODE, '')).trim()
-            ].filter(Boolean).join(' • ');
+            ].filter(Boolean).join(' Ã¢â‚¬Â¢ ');
         }
 
         function closeNcrEmailModal(choice = 'cancel') {
@@ -15166,9 +15403,9 @@ function toggleDriveQuickRequestItem(domId) {
                 }, 12, 148, {
                     allowWhileTyping: false,
                     allowDuringRecentInteraction: true,
-                    touchDelayMs: 96,
-                    scrollDelayMs: 104,
-                    interactionDelayMs: 72
+                    touchDelayMs: 72,
+                    scrollDelayMs: 84,
+                    interactionDelayMs: 56
                 });
             });
         }
@@ -15193,8 +15430,8 @@ function toggleDriveQuickRequestItem(domId) {
             }
             schedulePassiveViewActivationWork(targetViewId, {
                 delay: Math.max(48, Number(nextOptions.delay) || (isTouchConstrainedDevice() ? 120 : 72)),
-                backgroundDelay: Math.max(120, Number(nextOptions.backgroundDelay) || (isTouchConstrainedDevice() ? 220 : 160)),
-                cooldownMs: Math.max(720, Number(nextOptions.cooldownMs) || (isTouchConstrainedDevice() ? 1100 : 860)),
+                backgroundDelay: Math.max(96, Number(nextOptions.backgroundDelay) || (isTouchConstrainedDevice() ? 168 : 128)),
+                cooldownMs: Math.max(640, Number(nextOptions.cooldownMs) || (isTouchConstrainedDevice() ? 980 : 760)),
                 allowWarmRefresh: nextOptions.allowWarmRefresh !== false,
                 syncRealtime: nextOptions.syncRealtime !== false
             });
@@ -15258,12 +15495,12 @@ function toggleDriveQuickRequestItem(domId) {
                 if (targetScrollTop != null) scheduleUiRender(`view-restore:${nextViewId}:${targetScrollTop}`, () => setMainAreaScrollTop(targetScrollTop));
                 schedulePrimaryViewChromeRefresh(nextViewId, {
                     delay: 0,
-                    requestSyncDelay: nextViewId === 'request' ? 120 : 0,
-                    passive: true,
-                    passiveDelay: isTouchConstrainedDevice() ? 28 : 10,
-                    skipStickySync: true,
-                    skipHeaderSync: true
-                });
+                requestSyncDelay: nextViewId === 'request' ? 120 : 0,
+                passive: true,
+                passiveDelay: isTouchConstrainedDevice() ? 20 : 6,
+                skipStickySync: true,
+                skipHeaderSync: true
+            });
                 recordInternalPerfDuration('viewSwitchDurations', viewSwitchStartedAt, `${currentViewId || 'none'}->${nextViewId}`);
                 return false;
             }
@@ -15292,7 +15529,7 @@ function toggleDriveQuickRequestItem(domId) {
                 delay: warmCleanTarget ? 0 : 0,
                 requestSyncDelay: nextViewId === 'request' ? 120 : 0,
                 passive: warmCleanTarget,
-                passiveDelay: warmCleanTarget ? (isTouchConstrainedDevice() ? 34 : 12) : 0,
+                passiveDelay: warmCleanTarget ? (isTouchConstrainedDevice() ? 22 : 8) : 0,
                 skipStickySync: warmCleanTarget,
                 skipHeaderSync: false
             });
@@ -15302,8 +15539,8 @@ function toggleDriveQuickRequestItem(domId) {
                 scheduleWarmViewFollowup(nextViewId, nextState, {
                     allowWarmRefresh: !warmCleanTarget,
                     syncRealtime: true,
-                    delay: warmCleanTarget ? (isTouchConstrainedDevice() ? 96 : 56) : (isTouchConstrainedDevice() ? 88 : 52),
-                    backgroundDelay: warmCleanTarget ? (isTouchConstrainedDevice() ? 200 : 140) : (isTouchConstrainedDevice() ? 168 : 124)
+                    delay: warmCleanTarget ? (isTouchConstrainedDevice() ? 64 : 32) : (isTouchConstrainedDevice() ? 56 : 28),
+                    backgroundDelay: warmCleanTarget ? (isTouchConstrainedDevice() ? 148 : 104) : (isTouchConstrainedDevice() ? 128 : 92)
                 });
             }
             recordInternalPerfDuration('viewSwitchDurations', viewSwitchStartedAt, `${currentViewId || 'none'}->${nextViewId}`);
@@ -16603,7 +16840,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const cornerThumbHtml = thumbHtml || `<div class="absolute top-3 right-3 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-1 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">No Photo</div>`;
             const driveOrderHtml = getInventoryCardBottomRailHtml(item.DOM_ID);
-            return `<div class="mb-3 app-card-shell app-smart-card app-smart-card--inventory ${driveOrderHtml ? 'app-card-with-bottom-rail' : ''} rounded-[20px] border border-slate-200 bg-white p-3 pr-[3.75rem] sm:pr-[4.25rem] shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden relative" onclick="selectAvReserveDriveRow('${safeUidJs}')">${cornerThumbHtml}<div class="text-[9px] font-black uppercase tracking-[0.16em] text-sky-600">Drive Mode Row</div><div class="app-card-topline mt-1"><span class="app-card-topline-common">${esc(item.COMMONNAME || 'Unknown')}</span><span class="app-card-topline-size">${esc(item.CONTSIZE || '-')}</span></div><div class="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-mono font-bold text-slate-600"><i class="ph-bold ph-barcode text-slate-400"></i><span class="truncate">${item.ITEMCODE || '-'}</span></div><div class="mt-2 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-blue-700">Loc ${item.LOCATIONCODE || 'No Loc'}</span><span class="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-slate-700">Lot ${item.LOTCODE || '-'}</span><span class="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-1 text-emerald-700">Ava ${item.PTRAVAILABLE || '0'}</span><span class="rounded-full border border-purple-100 bg-purple-50 px-2 py-1 text-purple-700">s_LTS ${item.S_LTS || '0'}</span><span class="rounded-full border border-orange-100 bg-orange-50 px-2 py-1 text-orange-700">Pri ${item.PRIORITY || '-'}</span></div>${driveOrderHtml}</div>`;
+            return `<div class="mb-3 app-card-shell app-smart-card app-smart-card--inventory ${driveOrderHtml ? 'app-card-with-bottom-rail' : ''} rounded-[20px] border border-slate-200 bg-white p-3 pr-[3.75rem] sm:pr-[4.25rem] shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden relative" ${buildFastInvokeAttrs('selectAvReserveDriveRow', [safeUidJs], 'Open Drive Mode row ' + String(item.COMMONNAME || 'Unknown'))}>${cornerThumbHtml}<div class="text-[9px] font-black uppercase tracking-[0.16em] text-sky-600">Drive Mode Row</div><div class="app-card-topline mt-1"><span class="app-card-topline-common">${esc(item.COMMONNAME || 'Unknown')}</span><span class="app-card-topline-size">${esc(item.CONTSIZE || '-')}</span></div><div class="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-mono font-bold text-slate-600"><i class="ph-bold ph-barcode text-slate-400"></i><span class="truncate">${item.ITEMCODE || '-'}</span></div><div class="mt-2 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-blue-700">Loc ${item.LOCATIONCODE || 'No Loc'}</span><span class="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-slate-700">Lot ${item.LOTCODE || '-'}</span><span class="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-1 text-emerald-700">Ava ${item.PTRAVAILABLE || '0'}</span><span class="rounded-full border border-purple-100 bg-purple-50 px-2 py-1 text-purple-700">s_LTS ${item.S_LTS || '0'}</span><span class="rounded-full border border-orange-100 bg-orange-50 px-2 py-1 text-orange-700">Pri ${item.PRIORITY || '-'}</span></div>${driveOrderHtml}</div>`;
         }
 
         function formatAvReserveRequestDate(value = '') {
@@ -18295,15 +18532,15 @@ function toggleDriveQuickRequestItem(domId) {
             const reserveOffset = Number(options.reserveOffset) || 0;
             const renderSignature = normalizeRenderSignature(options.renderSignature || buildRowsRenderSignature(`${key}|${String(crumbText || '')}|${prefixHtml}`, rows));
             const chunkSize = touchOptimized
-                ? (total > 1800 ? 12 : (total > 900 ? 14 : 18))
+                ? (total > 1800 ? 10 : (total > 900 ? 12 : 16))
                 : (total > 1400 ? 20 : (total > 700 ? 24 : 32));
-            const initialScreens = touchOptimized ? 0.72 : 2.6;
-            const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(10, chunkSize - 2) : chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 14) : Math.max(chunkSize, 28);
-            const frameBudgetMs = touchOptimized ? 2.2 : 3.2;
+            const initialScreens = touchOptimized ? 0.56 : 2.4;
+            const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(8, chunkSize - 2) : chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 12) : Math.max(chunkSize, 28);
+            const frameBudgetMs = touchOptimized ? 1.9 : 3.0;
             const hasFollowupChunks = total > initialTarget;
             const reserveHeightCap = touchOptimized
-                ? Math.max(viewportHeight * 1.35, approxCardHeight * Math.max(6, initialTarget + Math.ceil(chunkSize * 0.35)))
+                ? Math.max(viewportHeight * 1.18, approxCardHeight * Math.max(5, initialTarget + Math.ceil(chunkSize * 0.25)))
                 : Number.POSITIVE_INFINITY;
             let index = 0;
 
@@ -18419,12 +18656,12 @@ function toggleDriveQuickRequestItem(domId) {
             const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
             const approxCardHeight = sourceView === 'reserves_drill' ? 255 : (getIsAvPhotoSubview() ? 230 : 245);
             const chunkSize = touchOptimized
-                ? (total > 1600 ? 14 : (total > 800 ? 18 : 20))
+                ? (total > 1600 ? 10 : (total > 800 ? 12 : 16))
                 : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = touchOptimized ? 0.7 : 3.8;
-            const initialTarget = Math.min(total, Math.max(chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 18) : Math.max(chunkSize, 44);
-            const frameBudgetMs = touchOptimized ? 2.4 : 4.2;
+            const initialScreens = touchOptimized ? 0.58 : 3.4;
+            const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(8, chunkSize - 2) : chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 12) : Math.max(chunkSize, 44);
+            const frameBudgetMs = touchOptimized ? 2.0 : 4.0;
             let index = 0;
             crumb.innerText = crumbText;
             if (renderSignature && getContainerRenderSignature(container) === renderSignature) {
@@ -18433,7 +18670,7 @@ function toggleDriveQuickRequestItem(domId) {
                 recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, `av-open:${sourceView}`);
                 return;
             }
-            const reserveHeight = Math.max(0, Math.round(Math.min(total * approxCardHeight, Math.max(viewportHeight * 1.45, approxCardHeight * Math.max(8, initialTarget + Math.ceil(chunkSize * 0.4))))));
+            const reserveHeight = Math.max(0, Math.round(Math.min(total * approxCardHeight, Math.max(viewportHeight * 1.22, approxCardHeight * Math.max(6, initialTarget + Math.ceil(chunkSize * 0.24))))));
             container.style.minHeight = reserveHeight ? `${reserveHeight}px` : '';
             if (!total) {
                 container.style.minHeight = '';
@@ -18497,12 +18734,12 @@ function toggleDriveQuickRequestItem(domId) {
             const approxCardHeight = Math.max(120, Number(options.approxCardHeight) || 185);
             const emptyHtml = options.emptyHtml || `<div class="p-6 text-center text-gray-400">No rows found.</div>`;
             const chunkSize = touchOptimized
-                ? (total > 1600 ? 14 : (total > 800 ? 18 : 20))
+                ? (total > 1600 ? 10 : (total > 800 ? 12 : 16))
                 : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = touchOptimized ? 0.68 : 3.8;
-            const initialTarget = Math.min(total, Math.max(chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 18) : Math.max(chunkSize, 44);
-            const frameBudgetMs = touchOptimized ? 2.4 : 4.2;
+            const initialScreens = touchOptimized ? 0.56 : 3.4;
+            const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(8, chunkSize - 2) : chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 12) : Math.max(chunkSize, 44);
+            const frameBudgetMs = touchOptimized ? 2.0 : 4.0;
             let index = 0;
             crumb.innerText = crumbText;
             if (renderSignature && getContainerRenderSignature(container) === renderSignature) {
@@ -18511,7 +18748,7 @@ function toggleDriveQuickRequestItem(domId) {
                 recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, String(options.chunkKey || 'av-generic'));
                 return;
             }
-            const reserveHeight = Math.max(0, Math.round(Math.min(total * approxCardHeight, Math.max(viewportHeight * 1.45, approxCardHeight * Math.max(8, initialTarget + Math.ceil(chunkSize * 0.4))))));
+            const reserveHeight = Math.max(0, Math.round(Math.min(total * approxCardHeight, Math.max(viewportHeight * 1.22, approxCardHeight * Math.max(6, initialTarget + Math.ceil(chunkSize * 0.24))))));
             container.style.minHeight = reserveHeight ? `${reserveHeight}px` : '';
             if (!total) {
                 container.style.minHeight = '';
@@ -18631,12 +18868,12 @@ function toggleDriveQuickRequestItem(domId) {
             if (activeAvReserveMode !== 'cards' && canSelectAvReserveRep() && !selectedAvResRep) {
                 const repOptions = getAVReserveRepOptions(items);
                 crumb.innerText = 'My Reserves > Sales Reps';
-                container.innerHTML = reserveModeTabsHtml + repOptions.map(rep => `<div class="drill-item" onclick="selectAvResRep('${esc(rep.label)}')"><span class="font-bold text-lg">${rep.label} <span class="text-gray-400 text-sm font-normal">(${rep.count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                container.innerHTML = reserveModeTabsHtml + repOptions.map(rep => `<div class="drill-item" ${buildFastInvokeAttrs('selectAvResRep', [rep.label], 'Open ' + rep.label)}><span class="font-bold text-lg">${rep.label} <span class="text-gray-400 text-sm font-normal">(${rep.count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
                 return;
             }
 
             const reserveBackToRepHtml = selectedAvResRep && activeAvReserveMode !== 'cards'
-                ? `<div class="back-btn" onclick="clearSelectedAvResRep()"><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>`
+                ? `<div class="back-btn" ${buildFastInvokeAttrs('clearSelectedAvResRep', [], 'Back to Sales Reps')}><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>`
                 : '';
             const reserveCrumbBase = selectedAvResRep ? `My Reserves > ${selectedAvResRep}` : 'My Reserves';
             const reserveGroups = getAVReserveGroups(items);
@@ -18675,12 +18912,12 @@ function toggleDriveQuickRequestItem(domId) {
                     ? `${detailCrumb} > ${activeLabel} Search (${activeRowCount} ${activeUnit})`
                     : `${detailCrumb} > ${activeLabel} (${activeRowCount} ${activeUnit})`;
                 const detailTabsHtml = showAdminDetailTabs
-                    ? `<div class="flex flex-wrap gap-2 mb-3"><button class="task-tab ${activeDetailTab === 'customer' ? 'active' : ''}" onclick="return setAvReserveDetailTab('customer')">Customer</button><button class="task-tab ${activeDetailTab === 'location' ? 'active' : ''}" onclick="return setAvReserveDetailTab('location')">Location</button>${showRepDetailTab ? `<button class="task-tab ${activeDetailTab === 'rep' ? 'active' : ''}" onclick="return setAvReserveDetailTab('rep')">Reps</button>` : ''}</div>`
+                    ? `<div class="flex flex-wrap gap-2 mb-3"><button class="task-tab ${activeDetailTab === 'customer' ? 'active' : ''}" ${buildFastInvokeAttrs('setAvReserveDetailTab', ['customer'], 'Customer tab')}>Customer</button><button class="task-tab ${activeDetailTab === 'location' ? 'active' : ''}" ${buildFastInvokeAttrs('setAvReserveDetailTab', ['location'], 'Location tab')}>Location</button>${showRepDetailTab ? `<button class="task-tab ${activeDetailTab === 'rep' ? 'active' : ''}" ${buildFastInvokeAttrs('setAvReserveDetailTab', ['rep'], 'Reps tab')}>Reps</button>` : ''}</div>`
                     : '';
                 const customerBackHtml = selectedCustomerCard
-                    ? `<div class="back-btn" onclick="backToAvReserveCustomerCardList()"><i class="ph-bold ph-user-circle"></i> Back to Customer Cards</div>`
+                    ? `<div class="back-btn" ${buildFastInvokeAttrs('backToAvReserveCustomerCardList', [], 'Back to Customer Cards')}><i class="ph-bold ph-user-circle"></i> Back to Customer Cards</div>`
                     : '';
-                const itemBackHtml = `<div class="back-btn" onclick="backToAvReserveGroupList()"><i class="ph-bold ph-arrow-left"></i> Back to Item Cards</div>`;
+                const itemBackHtml = `<div class="back-btn" ${buildFastInvokeAttrs('backToAvReserveGroupList', [], 'Back to Item Cards')}><i class="ph-bold ph-arrow-left"></i> Back to Item Cards</div>`;
                 const baseIntroHtml = `${reserveModeTabsHtml}${reserveRepFilterHtml}${customerBackHtml}${itemBackHtml}${reserveBackToRepHtml}${detailTabsHtml}`;
                 let html = baseIntroHtml;
 
@@ -18846,7 +19083,7 @@ function toggleDriveQuickRequestItem(domId) {
             document.getElementById('dock-mistake-uid').value = issueSourceUid;
             document.getElementById('dock-mistake-text').value = String(firstNonEmptyValue(issue && issue.issueNote, item && item.DOCK_ISSUE_NOTE, item && item.DOCK_NOTE, '')).trim();
             const label = document.getElementById('dock-mistake-modal-label');
-            if (label) label.innerText = item ? `${item.COMMONNAME || 'Dock Item'} • ${item.CONTSIZE || '-'} • ${item.LOCATIONCODE || 'No Loc'}` : '';
+            if (label) label.innerText = item ? `${item.COMMONNAME || 'Dock Item'} Ã¢â‚¬Â¢ ${item.CONTSIZE || '-'} Ã¢â‚¬Â¢ ${item.LOCATIONCODE || 'No Loc'}` : '';
             document.getElementById('dock-mistake-modal').classList.remove('hidden');
         }
 
@@ -19056,7 +19293,7 @@ function toggleDriveQuickRequestItem(domId) {
             renderMarkupChunkedByKey('dock-mistakes', container, crumb, queueItems, 'Mistake Queue', (issue) => {
                 const safeUid = esc(issue.issueSourceUniqueId || '');
                 const remainingQty = Math.max(0, parseAppNumber(issue.remainingQty) || 0);
-                return `<div class="rounded-2xl border border-red-200 bg-white p-4 shadow-sm cursor-pointer active:scale-[0.99] transition-transform mb-3" onclick="openDockIssueDetail('${safeUid}')"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-red-500">Flagged Issue</div><div class="mt-1 text-lg font-black text-slate-900 leading-tight break-words">${esc(issue.sourceCommonName || 'Dock Item')}</div><div class="mt-1 text-sm font-semibold text-slate-500 break-words">${esc(issue.sourceContSize || '-')}</div></div><div class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-red-600">Qty ${esc(formatDockDisplayQty(issue.sourceQty))}</div></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.14em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Dock ${esc(issue.dockNum || '-')}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Stop ${esc(issue.stopNumber || '-')}</span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">Loc ${esc(issue.sourceLocationCode || '-')}</span><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">Remain ${esc(formatDockDisplayQty(remainingQty))}</span></div><div class="mt-3 rounded-xl border border-orange-200 bg-orange-50 px-3 py-3 text-[12px] font-semibold text-orange-800 whitespace-pre-wrap"><span class="font-black">Issue:</span> ${esc(issue.issueNote || 'No note provided')}</div><div class="mt-3 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.14em] text-slate-400"><span>${esc(issue.sourceCustomerName || 'Unknown Customer')}</span><span><i class="ph-bold ph-caret-right text-lg align-middle text-slate-300"></i></span></div></div>`;
+                return `<div class="rounded-2xl border border-red-200 bg-white p-4 shadow-sm cursor-pointer active:scale-[0.99] transition-transform mb-3" ${buildFastInvokeAttrs('openDockIssueDetail', [safeUid], 'Open dock issue ' + String(issue.sourceCommonName || 'Dock Item'))}><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-red-500">Flagged Issue</div><div class="mt-1 text-lg font-black text-slate-900 leading-tight break-words">${esc(issue.sourceCommonName || 'Dock Item')}</div><div class="mt-1 text-sm font-semibold text-slate-500 break-words">${esc(issue.sourceContSize || '-')}</div></div><div class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-red-600">Qty ${esc(formatDockDisplayQty(issue.sourceQty))}</div></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.14em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Dock ${esc(issue.dockNum || '-')}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">Stop ${esc(issue.stopNumber || '-')}</span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">Loc ${esc(issue.sourceLocationCode || '-')}</span><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">Remain ${esc(formatDockDisplayQty(remainingQty))}</span></div><div class="mt-3 rounded-xl border border-orange-200 bg-orange-50 px-3 py-3 text-[12px] font-semibold text-orange-800 whitespace-pre-wrap"><span class="font-black">Issue:</span> ${esc(issue.issueNote || 'No note provided')}</div><div class="mt-3 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.14em] text-slate-400"><span>${esc(issue.sourceCustomerName || 'Unknown Customer')}</span><span><i class="ph-bold ph-caret-right text-lg align-middle text-slate-300"></i></span></div></div>`;
             }, {
                 approxCardHeight: 215,
                 emptyHtml: `<div class="p-8 text-center text-gray-400">No open dock issues.</div>`,
@@ -19093,7 +19330,7 @@ function toggleDriveQuickRequestItem(domId) {
                 ].map((value) => String(value || '').trim()).filter(Boolean).join(' ').toLowerCase().includes(term);
             });
             crumb.innerText = `Mistake Queue > ${issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item'}`;
-            const allocationSummaryHtml = `<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm"><div class="flex items-center justify-between gap-3 mb-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Allocation Summary</div><div class="mt-1 text-base font-black text-slate-900">${esc(formatDockDisplayQty(totalAllocatedQty))} moved • ${esc(formatDockDisplayQty(remainingQty))} remaining</div></div><button class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="resolveDockIssue('${safeIssueUid}')">Resolve Issue</button></div>${renderDockIssueAllocationSummary(issue.issueSourceUniqueId)}</div>`;
+            const allocationSummaryHtml = `<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm"><div class="flex items-center justify-between gap-3 mb-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Allocation Summary</div><div class="mt-1 text-base font-black text-slate-900">${esc(formatDockDisplayQty(totalAllocatedQty))} moved Ã¢â‚¬Â¢ ${esc(formatDockDisplayQty(remainingQty))} remaining</div></div><button class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" ${buildFastInvokeAttrs('resolveDockIssue', [safeIssueUid], 'Resolve Issue')}>Resolve Issue</button></div>${renderDockIssueAllocationSummary(issue.issueSourceUniqueId)}</div>`;
             const candidateRowsHtml = candidates.length ? candidates.map((entry) => {
                 const row = entry.row;
                 const masterUniqueId = String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim();
@@ -19102,10 +19339,10 @@ function toggleDriveQuickRequestItem(domId) {
                 const candidateQty = Math.max(0, parseAppNumber(firstNonEmptyValue(row && row.PTRAVAILABLE, '0')) || 0);
                 const buttonHtml = isOriginal
                     ? `<button class="rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 cursor-default" disabled>Original Dock Location</button>`
-                    : `<button class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-sm active:scale-95" onclick="openDockAllocationModal('${safeIssueUid}', '${esc(masterUniqueId)}')">${existingAllocation ? `Update Qty (${esc(formatDockDisplayQty(existingAllocation.allocatedQty))})` : 'Use This Location'}</button>`;
-                return `<div class="rounded-2xl border ${isOriginal ? 'border-blue-200 bg-blue-50/70' : 'border-slate-200 bg-white'} p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] ${isOriginal ? 'text-blue-600' : 'text-slate-500'}">${isOriginal ? 'Original Row Reference' : 'Alternate Location'}</div><div class="mt-1 text-lg font-black text-slate-900 break-words">${esc(row.LOCATIONCODE || '-')}</div><div class="mt-1 text-sm font-semibold text-slate-500 break-words">${esc(row.LOTCODE || '-')} • ${esc(row.ITEMCODE || '-')}</div></div><div class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Avail ${esc(formatDockDisplayQty(candidateQty))}</div></div><div class="mt-3 text-sm font-semibold text-slate-600 break-words">${esc(row.COMMONNAME || issue.sourceCommonName || 'Dock Item')} • ${esc(row.CONTSIZE || issue.sourceContSize || '-')}</div><div class="mt-3 flex justify-end">${buttonHtml}</div></div>`;
+                    : `<button class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-sm active:scale-95" ${buildFastInvokeAttrs('openDockAllocationModal', [safeIssueUid, masterUniqueId], existingAllocation ? `Update Qty (${formatDockDisplayQty(existingAllocation.allocatedQty)})` : 'Use This Location')}>${existingAllocation ? `Update Qty (${esc(formatDockDisplayQty(existingAllocation.allocatedQty))})` : 'Use This Location'}</button>`;
+                return `<div class="rounded-2xl border ${isOriginal ? 'border-blue-200 bg-blue-50/70' : 'border-slate-200 bg-white'} p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] ${isOriginal ? 'text-blue-600' : 'text-slate-500'}">${isOriginal ? 'Original Row Reference' : 'Alternate Location'}</div><div class="mt-1 text-lg font-black text-slate-900 break-words">${esc(row.LOCATIONCODE || '-')}</div><div class="mt-1 text-sm font-semibold text-slate-500 break-words">${esc(row.LOTCODE || '-')} Ã¢â‚¬Â¢ ${esc(row.ITEMCODE || '-')}</div></div><div class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Avail ${esc(formatDockDisplayQty(candidateQty))}</div></div><div class="mt-3 text-sm font-semibold text-slate-600 break-words">${esc(row.COMMONNAME || issue.sourceCommonName || 'Dock Item')} Ã¢â‚¬Â¢ ${esc(row.CONTSIZE || issue.sourceContSize || '-')}</div><div class="mt-3 flex justify-end">${buttonHtml}</div></div>`;
             }).join('') : `<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-center text-sm font-semibold text-slate-500">No matching alternate locations found for this search.</div>`;
-            container.innerHTML = `<div class="back-btn" onclick="selectedDockIssueUid=null; scheduleDocksRender(0)"><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${sourceDetailHtml}${allocationSummaryHtml}<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 mb-3">Matching ${esc(issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item')} • ${esc(issue.sourceContSize || sourceRow.CONTSIZE || '-')} Locations</div><div class="space-y-3">${candidateRowsHtml}</div></div></div>`;
+            container.innerHTML = `<div class="back-btn" ${buildFastInvokeAttrs('backToDockMistakeQueue', [], 'Back to Mistake Queue')}><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${sourceDetailHtml}${allocationSummaryHtml}<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 mb-3">Matching ${esc(issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item')} Ã¢â‚¬Â¢ ${esc(issue.sourceContSize || sourceRow.CONTSIZE || '-')} Locations</div><div class="space-y-3">${candidateRowsHtml}</div></div></div>`;
         }
 
         function renderDockMistakeDetailV2(container, crumb, term = '') {
@@ -19136,14 +19373,14 @@ function toggleDriveQuickRequestItem(domId) {
                 ].map((value) => String(value || '').trim()).filter(Boolean).join(' ').toLowerCase().includes(term);
             });
             crumb.innerText = `Mistake Queue > ${issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item'}`;
-            const driveRowsSectionHtml = `<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 mb-3">Drive Mode S1 ${esc(issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item')} â€¢ ${esc(issue.sourceContSize || sourceRow.CONTSIZE || '-')}</div><div class="space-y-3">${[
+            const driveRowsSectionHtml = `<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 mb-3">Drive Mode S1 ${esc(issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item')} ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ ${esc(issue.sourceContSize || sourceRow.CONTSIZE || '-')}</div><div class="space-y-3">${[
                 originalEntry ? buildDockMistakeDriveCandidateCardHtml(originalEntry, issue, allocations, { sourceQty, remainingQty }) : '',
                 driveEntries.length
                     ? driveEntries.map((entry) => buildDockMistakeDriveCandidateCardHtml(entry, issue, allocations, { sourceQty, remainingQty })).join('')
                     : `<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-center text-sm font-semibold text-slate-500">No matching Drive Mode S1 rows found for this search.</div>`
             ].filter(Boolean).join('')}</div></div>`;
-            const allocationSummaryHtml = `<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm"><div class="flex items-center justify-between gap-3 mb-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Allocation Summary</div><div class="mt-1 text-base font-black text-slate-900">${esc(formatDockDisplayQty(totalAllocatedQty))} moved â€¢ ${esc(formatDockDisplayQty(remainingQty))} remaining</div></div><button class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="resolveDockIssue('${safeIssueUid}')">Resolve Issue</button></div>${renderDockIssueAllocationSummary(issue.issueSourceUniqueId)}</div>`;
-            container.innerHTML = `<div class="back-btn" onclick="selectedDockIssueUid=null; scheduleDocksRender(0)"><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${driveRowsSectionHtml}${allocationSummaryHtml}</div>`;
+            const allocationSummaryHtml = `<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm"><div class="flex items-center justify-between gap-3 mb-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Allocation Summary</div><div class="mt-1 text-base font-black text-slate-900">${esc(formatDockDisplayQty(totalAllocatedQty))} moved ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ ${esc(formatDockDisplayQty(remainingQty))} remaining</div></div><button class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" ${buildFastInvokeAttrs('resolveDockIssue', [safeIssueUid], 'Resolve Issue')}>Resolve Issue</button></div>${renderDockIssueAllocationSummary(issue.issueSourceUniqueId)}</div>`;
+            container.innerHTML = `<div class="back-btn" ${buildFastInvokeAttrs('backToDockMistakeQueue', [], 'Back to Mistake Queue')}><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${driveRowsSectionHtml}${allocationSummaryHtml}</div>`;
         }
 
         function renderDockMistakeDetailV3(container, crumb, term = '') {
@@ -19190,8 +19427,8 @@ function toggleDriveQuickRequestItem(domId) {
                     : `<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-center text-sm font-semibold text-slate-500">No matching Drive Mode rows found by lot code or season for this search.</div>`
             ].filter(Boolean).join('');
             const driveRowsSectionHtml = `<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 mb-3">Drive Mode Lot/Season Match ${esc(issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item')} | ${esc(issue.sourceContSize || sourceRow.CONTSIZE || '-')}</div><div class="space-y-3">${driveRowsHtml}</div></div>`;
-            const allocationSummaryHtml = `<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm"><div class="mb-3 flex items-center justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Allocation Summary</div><div class="mt-1 text-base font-black text-slate-900">${esc(formatDockDisplayQty(totalAllocatedQty))} moved | ${esc(formatDockDisplayQty(remainingQty))} remaining</div></div><button class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="resolveDockIssue('${safeIssueUid}')">Resolve Issue</button></div>${renderDockIssueAllocationSummary(issue.issueSourceUniqueId)}</div>`;
-            container.innerHTML = `<div class="back-btn" onclick="selectedDockIssueUid=null; scheduleDocksRender(0)"><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${driveRowsSectionHtml}${allocationSummaryHtml}</div>`;
+            const allocationSummaryHtml = `<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm"><div class="mb-3 flex items-center justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Allocation Summary</div><div class="mt-1 text-base font-black text-slate-900">${esc(formatDockDisplayQty(totalAllocatedQty))} moved | ${esc(formatDockDisplayQty(remainingQty))} remaining</div></div><button class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" ${buildFastInvokeAttrs('resolveDockIssue', [safeIssueUid], 'Resolve Issue')}>Resolve Issue</button></div>${renderDockIssueAllocationSummary(issue.issueSourceUniqueId)}</div>`;
+            container.innerHTML = `<div class="back-btn" ${buildFastInvokeAttrs('backToDockMistakeQueue', [], 'Back to Mistake Queue')}><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${driveRowsSectionHtml}${allocationSummaryHtml}</div>`;
         }
 
         function renderDocks() {
@@ -20271,10 +20508,10 @@ function toggleDriveQuickRequestItem(domId) {
             schedulePrimaryViewChromeRefresh('detail', {
                 delay: 0,
                 passive: true,
-                passiveDelay: isTouchConstrainedDevice() ? 104 : 28,
+                passiveDelay: isTouchConstrainedDevice() ? 72 : 16,
                 skipStickySync: isTouchConstrainedDevice()
             });
-            scheduleDeferredDetailHydration(currentDetailHydrationToken, isTouchConstrainedDevice() ? 180 : Math.max(32, DETAIL_HYDRATION_DELAY_MS));
+            scheduleDeferredDetailHydration(currentDetailHydrationToken, isTouchConstrainedDevice() ? 128 : Math.max(20, DETAIL_HYDRATION_DELAY_MS - 10));
             recordInternalPerfDuration('detailOpenDurations', detailOpenStartedAt, resolvedSourceView || 'detail');
             return false;
         }
@@ -20737,7 +20974,7 @@ function toggleDriveQuickRequestItem(domId) {
                 delay: 0,
                 requestSyncDelay: visibleRestoreViewId === 'request' ? 120 : 0,
                 passive: hasWarmRestoreView,
-                passiveDelay: hasWarmRestoreView ? (isTouchConstrainedDevice() ? 20 : 8) : 0,
+                passiveDelay: hasWarmRestoreView ? (isTouchConstrainedDevice() ? 12 : 4) : 0,
                 skipHeaderSync: hasWarmCleanRestoreView,
                 skipStickySync: hasWarmCleanRestoreView
             });
@@ -20748,9 +20985,9 @@ function toggleDriveQuickRequestItem(domId) {
                 scheduleWarmViewFollowup(visibleRestoreViewId, restoreViewState, {
                     allowWarmRefresh: false,
                     syncRealtime: true,
-                    delay: hasWarmRestoreView ? 72 : 40,
-                    backgroundDelay: hasWarmRestoreView ? 140 : 96,
-                    cooldownMs: hasWarmRestoreView ? 860 : 480
+                    delay: hasWarmRestoreView ? 52 : 28,
+                    backgroundDelay: hasWarmRestoreView ? 112 : 80,
+                    cooldownMs: hasWarmRestoreView ? 760 : 420
                 });
             }
             recordInternalPerfDuration('detailBackDurations', detailBackStartedAt, visibleRestoreViewId);
@@ -21819,7 +22056,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!currentUser) return;
             const requestedDelay = Math.max(0, Number(delay) || 0);
             const now = Date.now();
-            const minQueueGap = isTouchConstrainedDevice() ? 260 : 180;
+            const minQueueGap = isTouchConstrainedDevice() ? 220 : 150;
             const nextDelay = lastForegroundRefreshRunAt && (now - lastForegroundRefreshRunAt) < minQueueGap
                 ? Math.max(requestedDelay, minQueueGap - (now - lastForegroundRefreshRunAt))
                 : requestedDelay;
@@ -22510,19 +22747,19 @@ function toggleDriveQuickRequestItem(domId) {
             dashboardContent.classList.toggle('hidden', activeTab !== 'dashboard');
             const tabButtonClass = (isActive) => isActive ? 'rounded-full border border-[#007a4d] bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm' : 'rounded-full border border-emerald-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm';
             let html = '';
-            if (canViewProductivity) html += `<div class="bg-white rounded-2xl border border-emerald-100 shadow-sm p-3 flex flex-wrap gap-2"><button type="button" class="${tabButtonClass(activeTab === 'dashboard')}" onclick="return setHomeTab('dashboard')">Dashboard</button><button type="button" class="${tabButtonClass(activeTab === 'productivity')}" onclick="return setHomeTab('productivity')">Productivity</button></div>`;
+            if (canViewProductivity) html += `<div class="bg-white rounded-2xl border border-emerald-100 shadow-sm p-3 flex flex-wrap gap-2"><button type="button" class="${tabButtonClass(activeTab === 'dashboard')}" ${buildFastInvokeAttrs('setHomeTab', ['dashboard'], 'Dashboard')}>Dashboard</button><button type="button" class="${tabButtonClass(activeTab === 'productivity')}" ${buildFastInvokeAttrs('setHomeTab', ['productivity'], 'Productivity')}>Productivity</button></div>`;
             if (activeTab === 'productivity') {
                 if (!selectedProductivityUser) {
-                    html += `<div class="bg-white rounded-2xl border border-emerald-100 shadow-sm p-5"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Productivity</div><div class="mt-2 text-sm font-semibold text-slate-500">Select a team member to see durable completion history grouped by date.</div><div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">${getTrackedProductivityUsers().map((entry) => `<button type="button" class="rounded-2xl border border-emerald-100 bg-[#f6fffb] px-4 py-4 text-left shadow-sm active:scale-[0.99] transition-transform" onclick="return openProductivityUserHistory('${esc(entry.username)}')"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">View History</div><div class="mt-1 text-base font-black text-slate-900 break-words">${esc(entry.display)}</div></button>`).join('')}</div></div>`;
+                    html += `<div class="bg-white rounded-2xl border border-emerald-100 shadow-sm p-5"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Productivity</div><div class="mt-2 text-sm font-semibold text-slate-500">Select a team member to see durable completion history grouped by date.</div><div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">${getTrackedProductivityUsers().map((entry) => `<button type="button" class="rounded-2xl border border-emerald-100 bg-[#f6fffb] px-4 py-4 text-left shadow-sm active:scale-[0.99] transition-transform" ${buildFastInvokeAttrs('openProductivityUserHistory', [entry.username], 'Open ' + entry.display)}><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">View History</div><div class="mt-1 text-base font-black text-slate-900 break-words">${esc(entry.display)}</div></button>`).join('')}</div></div>`;
                 } else {
                     const state = getProductivityHistoryState(selectedProductivityUser);
                     const rows = productivityHistoryByUser.get(selectedProductivityUser) || [];
                     const modeButtonClass = (mode) => productivityViewMode === mode ? 'rounded-full border border-[#007a4d] bg-[#007a4d] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm' : 'rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm';
                     let bodyHtml = '';
                     if (state.loading) bodyHtml = '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-[12px] font-semibold text-slate-400">Loading Productivity history...</div>';
-                    else if (state.error) bodyHtml = `<div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-6 text-center"><div class="text-sm font-black text-amber-900">${esc(state.error)}</div><button type="button" class="mt-4 rounded-full border border-amber-300 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700 shadow-sm" onclick="return openProductivityUserHistory('${esc(selectedProductivityUser)}')">Retry</button></div>`;
+                    else if (state.error) bodyHtml = `<div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-6 text-center"><div class="text-sm font-black text-amber-900">${esc(state.error)}</div><button type="button" class="mt-4 rounded-full border border-amber-300 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700 shadow-sm" ${buildFastInvokeAttrs('openProductivityUserHistory', [selectedProductivityUser], 'Retry productivity history')}>Retry</button></div>`;
                     else bodyHtml = renderProductivityGroups(rows);
-                    html += `<div class="space-y-4"><div class="bg-white rounded-2xl border border-emerald-100 shadow-sm p-5"><div class="flex flex-wrap items-center justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Productivity History</div><div class="mt-1 text-xl font-black text-slate-900 break-words">${esc(getTrackedProductivityDisplayName(selectedProductivityUser))}</div><div class="mt-1 text-[11px] font-semibold text-slate-500">Grouped by America/Chicago date and ordered by completion timestamp.</div></div><div class="flex flex-wrap items-center gap-2"><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600 shadow-sm" onclick="return backToProductivityUserList()">Back To Team</button><button type="button" class="${modeButtonClass('cards')}" onclick="return setProductivityViewMode('cards')">Cards</button><button type="button" class="${modeButtonClass('list')}" onclick="return setProductivityViewMode('list')">List</button></div></div></div>${bodyHtml}</div>`;
+                    html += `<div class="space-y-4"><div class="bg-white rounded-2xl border border-emerald-100 shadow-sm p-5"><div class="flex flex-wrap items-center justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Productivity History</div><div class="mt-1 text-xl font-black text-slate-900 break-words">${esc(getTrackedProductivityDisplayName(selectedProductivityUser))}</div><div class="mt-1 text-[11px] font-semibold text-slate-500">Grouped by America/Chicago date and ordered by completion timestamp.</div></div><div class="flex flex-wrap items-center gap-2"><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600 shadow-sm" ${buildFastInvokeAttrs('backToProductivityUserList', [], 'Back To Team')}>Back To Team</button><button type="button" class="${modeButtonClass('cards')}" ${buildFastInvokeAttrs('setProductivityViewMode', ['cards'], 'Cards view')}>Cards</button><button type="button" class="${modeButtonClass('list')}" ${buildFastInvokeAttrs('setProductivityViewMode', ['list'], 'List view')}>List</button></div></div></div>${bodyHtml}</div>`;
                 }
             }
             dynamicContent.innerHTML = html;
@@ -22603,7 +22840,7 @@ function toggleDriveQuickRequestItem(domId) {
             const safeReason = normalizeUiSyncReason(reason) || 'resume';
             const now = Date.now();
             const delay = Math.max(0, Number(nextOptions.delay) || 0);
-            const cooldownMs = Math.max(isTouchConstrainedDevice() ? 1500 : 1100, Number(nextOptions.cooldownMs) || 0);
+            const cooldownMs = Math.max(isTouchConstrainedDevice() ? 1250 : 900, Number(nextOptions.cooldownMs) || 0);
             const cooldownDelay = nextOptions.force ? 0 : Math.max(0, lifecycleResumeCooldownUntil - now);
             if (!nextOptions.force && cooldownDelay > 0 && !nextOptions.forceChrome) return;
             lifecycleResumePendingReasons.add(safeReason);
@@ -22638,6 +22875,7 @@ function toggleDriveQuickRequestItem(domId) {
         function initializeInteractiveChrome() {
             if (interactiveChromeInitialized) return;
             interactiveChromeInitialized = true;
+            initializeStaticFastPressBindings();
             const scrollArea = document.getElementById('main-scroll-area');
             if (!scrollArea) return;
             if (ENABLE_MANUAL_PULL_REFRESH) {
@@ -23288,7 +23526,7 @@ function toggleDriveQuickRequestItem(domId) {
             const parts = [commonName];
             if (contSize) parts.push(contSize);
             if (locationCode) parts.push(locationCode);
-            return parts.join(' • ');
+            return parts.join(' Ã¢â‚¬Â¢ ');
         }
 
         function closeRequestPublishModal(choice = 'cancel') {
@@ -24026,7 +24264,7 @@ function toggleDriveQuickRequestItem(domId) {
             });
             const html = filteredOptions.map((option) => {
                 if (option.token === val || option.collapsedToken === collapsedVal) exactMatch = true;
-                return `<button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm text-left" onclick="selectRepForRequest('${esc(option.label)}')">${option.label}</button>`;
+                return `<button class="bg-orange-50 text-orange-700 font-bold p-4 rounded-lg border border-orange-200 shadow-sm text-left" ${buildFastInvokeAttrs('selectRepForRequest', [option.label], 'Select sales rep ' + option.label)}>${option.label}</button>`;
             }).join('');
             container.innerHTML = html || `<div class="text-xs text-gray-400 p-2 text-center">No matching sales reps found. Type above to use a custom name.</div>`;
             if (val.length > 0 && !exactMatch) {
@@ -24052,7 +24290,7 @@ function toggleDriveQuickRequestItem(domId) {
             const folderKeys=Object.keys(uniqueFolders);
             if(folderKeys.length>0){
                 document.getElementById('step-1.5-folder').classList.remove('hidden');
-                let html=`<div class="flex items-center mb-4 border-b border-gray-100 pb-2 flex-shrink-0">${safeRole!=='SALESREP'?`<i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" onclick="document.getElementById('step-1.5-folder').classList.add('hidden'); document.getElementById('step-1-rep').classList.remove('hidden');"></i>`:''}<h3 class="font-bold text-lg text-orange-600">Select Folder</h3></div><div class="flex flex-col min-h-0">`;
+                let html=`<div class="flex items-center mb-4 border-b border-gray-100 pb-2 flex-shrink-0">${safeRole!=='SALESREP'?`<i class="ph-bold ph-arrow-left text-gray-400 text-2xl mr-2 cursor-pointer p-1" ${buildFastInvokeAttrs('backToRequestRepStep', [], 'Back to Sales Reps')}></i>`:''}<h3 class="font-bold text-lg text-orange-600">Select Folder</h3></div><div class="flex flex-col min-h-0">`;
                 html+=`<div class="overflow-y-auto max-h-[42vh] pr-1 mb-4">`;
                 folderKeys.forEach(fk=>{
                     let fLabel=fk;
@@ -24060,14 +24298,20 @@ function toggleDriveQuickRequestItem(domId) {
                         const p=fk.split('-');
                         fLabel=p.length>=4?`${p[1]}/${p[2]}/${p[3]} - ${uniqueFolders[fk]}`:fk
                     }
-                    html+=`<button class="w-full bg-yellow-50 text-yellow-800 font-bold p-4 rounded-xl shadow-sm border border-yellow-200 mb-2 text-left flex items-center gap-3 active:bg-yellow-100 transition-colors" onclick="goToQtyStep('${esc(fk)}', '${esc(uniqueFolders[fk])}', 'step-1.5-folder', true)"><i class="ph-fill ph-folder text-2xl text-yellow-500"></i><div class="flex flex-col min-w-0"><span class="text-sm truncate">${fLabel}</span><span class="text-[10px] text-gray-500 uppercase font-normal">Append to existing</span></div></button>`
+                    html+=`<button class="w-full bg-yellow-50 text-yellow-800 font-bold p-4 rounded-xl shadow-sm border border-yellow-200 mb-2 text-left flex items-center gap-3 active:bg-yellow-100 transition-colors" ${buildFastInvokeAttrs('goToQtyStep', [fk, uniqueFolders[fk], 'step-1.5-folder', true], 'Open folder ' + fLabel)}><i class="ph-fill ph-folder text-2xl text-yellow-500"></i><div class="flex flex-col min-w-0"><span class="text-sm truncate">${fLabel}</span><span class="text-[10px] text-gray-500 uppercase font-normal">Append to existing</span></div></button>`
                 });
                 html+=`</div>`;
-                html+=`<button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-md mt-auto active:scale-95 transition-transform flex-shrink-0" onclick="showRequestCustomerStep('step-1.5-folder')">+ CREATE NEW FOLDER</button></div>`;
+                html+=`<button class="w-full bg-orange-600 text-white font-bold p-4 rounded-xl shadow-md mt-auto active:scale-95 transition-transform flex-shrink-0" ${buildFastInvokeAttrs('showRequestCustomerStep', ['step-1.5-folder'], 'Create New Folder')}>+ CREATE NEW FOLDER</button></div>`;
                 document.getElementById('existing-folder-container').innerHTML=html
             }else{
                 showRequestCustomerStep('step-1-rep')
             }
+        }
+
+        function backToRequestRepStep() {
+            document.getElementById('step-1.5-folder').classList.add('hidden');
+            document.getElementById('step-1-rep').classList.remove('hidden');
+            return false;
         }
 
         function populateCustomerList(searchValue = null) {
@@ -24094,7 +24338,7 @@ function toggleDriveQuickRequestItem(domId) {
             const options = getRequestModalCustomerOptionsForRep(tempSelectedReqRep);
             let html = options
                 .filter((option) => !val || String(option.searchToken || '').includes(val))
-                .map((option) => `<div class="bg-orange-50 text-orange-800 font-bold p-3 rounded-lg border border-orange-200 shadow-sm text-left cursor-pointer active:bg-orange-100 mb-2" onclick="setCustomerInput('${esc(option.label)}')">${option.label}</div>`)
+                .map((option) => `<div class="bg-orange-50 text-orange-800 font-bold p-3 rounded-lg border border-orange-200 shadow-sm text-left cursor-pointer active:bg-orange-100 mb-2" ${buildFastInvokeAttrs('setCustomerInput', [option.label], 'Select customer ' + option.label)}>${option.label}</div>`)
                 .join('');
             if (html === '') {
                 const hasOptions = options.length > 0;
@@ -26166,12 +26410,12 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function renderDriveCommonNameGroupCard(group) {
             const safeNameJs = esc(group.name);
-            return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectDriveName', [group.name], `Open ${group.name}`)}><div class="min-w-0"><div class="text-lg font-black text-[#007a4d] leading-tight truncate">${esc(group.name)}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows • ${group.sizeCount} Sizes</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
+            return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectDriveName', [group.name], `Open ${group.name}`)}><div class="min-w-0"><div class="text-lg font-black text-[#007a4d] leading-tight truncate">${esc(group.name)}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows Ã¢â‚¬Â¢ ${group.sizeCount} Sizes</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
         }
 
         function renderDriveContSizeGroupCard(group) {
             const safeSizeJs = esc(group.size);
-            return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectDriveSize', [group.size], `Open ${group.size || '-'}`)}><div class="min-w-0"><div class="text-lg font-black text-[#007a4d] leading-tight truncate">${esc(group.size || '-')}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows • ${group.seasonCount} Seasons</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
+            return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectDriveSize', [group.size], `Open ${group.size || '-'}`)}><div class="min-w-0"><div class="text-lg font-black text-[#007a4d] leading-tight truncate">${esc(group.size || '-')}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows Ã¢â‚¬Â¢ ${group.seasonCount} Seasons</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
         }
 
         function renderDriveSeasonGroupCard(group) {
