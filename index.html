@@ -316,9 +316,9 @@ body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .
         #drive-quick-request-bar{display:none !important;margin-bottom:0 !important}
         #team-selector{margin-bottom:.55rem !important}
         #view-detail .freeze-panel > .back-btn.amazon-hidden-back{display:none}
-#view-detail #det-season-content,#view-detail #det-location-content,#view-detail #det-notes-content,#view-detail #det-request-content,#view-detail #det-ncr-content,#view-detail #det-docks-content,#view-detail #det-flyer-content{max-width:780px;margin:0 auto;padding:.85rem 0 calc(12rem + env(safe-area-inset-bottom))}
-#view-detail #det-season-content>div,#view-detail #det-location-content>div,#view-detail #det-notes-content>div,#view-detail #det-request-content>div,#view-detail #det-ncr-content>div,#view-detail #det-docks-content>div,#view-detail #det-flyer-content>div{background:#fff;border:1px solid #dbe4dc;border-radius:20px;padding:14px 14px;box-shadow:0 10px 24px rgba(15,23,42,.06);margin-bottom:14px}
-#view-detail #det-season-content>div:last-child,#view-detail #det-location-content>div:last-child,#view-detail #det-notes-content>div:last-child,#view-detail #det-request-content>div:last-child,#view-detail #det-ncr-content>div:last-child,#view-detail #det-docks-content>div:last-child,#view-detail #det-flyer-content>div:last-child{margin-bottom:0}
+#view-detail #det-season-content,#view-detail #det-location-content,#view-detail #det-notes-content,#view-detail #det-request-content,#view-detail #det-customer-content,#view-detail #det-ncr-content,#view-detail #det-docks-content,#view-detail #det-flyer-content{max-width:780px;margin:0 auto;padding:.85rem 0 calc(12rem + env(safe-area-inset-bottom))}
+#view-detail #det-season-content>div,#view-detail #det-location-content>div,#view-detail #det-notes-content>div,#view-detail #det-request-content>div,#view-detail #det-customer-content>div,#view-detail #det-ncr-content>div,#view-detail #det-docks-content>div,#view-detail #det-flyer-content>div{background:#fff;border:1px solid #dbe4dc;border-radius:20px;padding:14px 14px;box-shadow:0 10px 24px rgba(15,23,42,.06);margin-bottom:14px}
+#view-detail #det-season-content>div:last-child,#view-detail #det-location-content>div:last-child,#view-detail #det-notes-content>div:last-child,#view-detail #det-request-content>div:last-child,#view-detail #det-customer-content>div:last-child,#view-detail #det-ncr-content>div:last-child,#view-detail #det-docks-content>div:last-child,#view-detail #det-flyer-content>div:last-child{margin-bottom:0}
 #view-detail #det-title-row{display:flex;align-items:baseline;gap:.45rem;min-width:0;flex-wrap:nowrap;overflow:hidden;color:#007a4d}
 #view-detail #det-title-row>*{white-space:nowrap}
 #view-detail #det-common{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:clamp(1.35rem,5.4vw,2.4rem);line-height:1.04}
@@ -1016,6 +1016,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div class="detail-tab hidden" onclick="switchDetailTab('season')" id="dtab-season">Season</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('location')" id="dtab-location">Location</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('request')" id="dtab-request">Request</div>
+                        <div class="detail-tab hidden" onclick="switchDetailTab('customer')" id="dtab-customer">Customer</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('notes')" id="dtab-notes">Notes & Actions</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('gallery')" id="dtab-gallery">Photo Gallery</div>
                         <div class="detail-tab hidden" onclick="switchDetailTab('docks')" id="dtab-docks">Docks</div>
@@ -1111,6 +1112,9 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <button id="req-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'req-')">MARK DONE</button>
                         </div>
                         <div id="req-matching-inventory-container"></div>
+                    </div>
+                    <div id="det-customer-content" class="hidden py-4">
+                        <div id="det-customer-panel"></div>
                     </div>
                     <div id="det-ncr-content" class="hidden py-4">
                         <div id="ncr-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-amber-600 mb-2 uppercase">NCR Draft Photos</p><div id="ncr-photo-list-container" class="space-y-2"></div></div>
@@ -7439,7 +7443,7 @@ let activeTaskView="hot-price"; let activeTaskFilter="all"; let activeTaskCustom
 const FIELD_SAVE_GRACE_MS = 1400;
         const VIEW_SWITCH_GRACE_MS = 480;
 
-let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='current'; let activeAvReserveDetailTab='customer';
+let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='all'; let activeAvReserveDetailTab='customer'; let selectedAvReserveDetailCustomerKey=null;
         let selectedAvSeasons=new Set(DRIVE_SEASON_OPTIONS); let avSeasonDropdownOpen=false; let selectedAvGenusNames=new Set(); let avGenusSearchTerm=''; let avGenusFilterOpen=false; let avGenusSelectionMode='all'; let selectedAvContSizes=new Set(); let avContSizeSearchTerm=''; let avContSizeFilterOpen=false; let avContSizeSelectionMode='all'; let avHoldStopOnly=false; let avFilterItemsCache=[]; let avFilterGenusOptions=[]; let avFilterContSizeOptions=[];
 
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
@@ -8258,6 +8262,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         }
 
         function hydrateReserveInventoryRow(item, idx) {
+            const reserveFieldKeys = Object.keys(item || {}).filter((key) => String(key || '').trim() !== '');
             item.DOM_ID='res_'+idx;
             item.UNIQUE_ID=item.UNIQUE_ID||'res_uid_'+idx;
             let masterItem=findLinkedMasterRow(item);
@@ -8277,6 +8282,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
                 item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
             }
             normalizeRowPhotoFields(item);
+            item._reserveSourceFieldKeys = reserveFieldKeys;
             item._search=`${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase();
             item._searchCandidates = null;
             item._searchPrimaryStarts = null;
@@ -8286,6 +8292,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         }
 
         function hydrateReserveInventoryRowFast(item, idx) {
+            const reserveFieldKeys = Object.keys(item || {}).filter((key) => String(key || '').trim() !== '');
             item.DOM_ID='res_'+idx;
             item.UNIQUE_ID=item.UNIQUE_ID||'res_uid_'+idx;
             item.CUSTOMERNAME=firstNonEmptyValue(item.CUSTOMERNAME, item.CUSTOMER, 'Unknown Customer');
@@ -8300,6 +8307,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
             item.SEASONSUPPLY=firstNonEmptyValue(item.SEASONSUPPLY, item.SEASON_SUPPLY, item.season_supply, 0);
             item.PRIORITY=firstNonEmptyValue(item.PRIORITY, item.priority, '-');
             normalizeRowPhotoFields(item);
+            item._reserveSourceFieldKeys = reserveFieldKeys;
             item._search=`${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.CONSIGNEENAME||''} ${item.SALESREPNAME||''} ${item.ITEMCODE||''} ${item.CONTSIZE||''} ${item.LOCATIONCODE||''}`.toLowerCase();
             item._searchCandidates = null;
             item._searchPrimaryStarts = null;
@@ -16002,7 +16010,8 @@ function toggleDriveQuickRequestItem(domId) {
         }
         function getIsAvPhotoSubview() {
             return (activeAVTab === 'open' && activeAvOpenTab === 'photos')
-                || (activeAVTab === 'hotprice' && activeAvHotPriceTab === 'photos');
+                || (activeAVTab === 'hotprice' && activeAvHotPriceTab === 'photos')
+                || (activeAVTab === 'reserves' && activeAvReserveMode === 'photos');
         }
 
         function syncAvSecondaryTabs() {
@@ -16010,13 +16019,14 @@ function toggleDriveQuickRequestItem(domId) {
             const allTab = document.getElementById('tab-av-secondary-all');
             const photosTab = document.getElementById('tab-av-secondary-photos');
             if (!subTabs || !allTab || !photosTab) return;
-            const shouldShow = activeAVTab === 'open' || activeAVTab === 'hotprice';
+            const shouldShow = activeAVTab === 'open' || activeAVTab === 'hotprice' || activeAVTab === 'reserves';
             subTabs.style.display = shouldShow ? 'flex' : 'none';
             if (!shouldShow) return;
             const isHotPrice = activeAVTab === 'hotprice';
-            const activeSecondaryTab = isHotPrice ? activeAvHotPriceTab : activeAvOpenTab;
-            allTab.textContent = isHotPrice ? 'ALL HOT PRICE' : 'ALL Open Stock';
-            photosTab.textContent = 'Photos';
+            const isReserves = activeAVTab === 'reserves';
+            const activeSecondaryTab = isReserves ? activeAvReserveMode : (isHotPrice ? activeAvHotPriceTab : activeAvOpenTab);
+            allTab.textContent = isReserves ? 'All Reserve Locations' : (isHotPrice ? 'ALL HOT PRICE' : 'ALL Open Stock');
+            photosTab.textContent = isReserves ? 'Reserve Location Photos' : 'Photos';
             allTab.classList.toggle('active', activeSecondaryTab !== 'photos');
             photosTab.classList.toggle('active', activeSecondaryTab === 'photos');
         }
@@ -16025,6 +16035,7 @@ function toggleDriveQuickRequestItem(domId) {
             beginDirectNavigationActivity();
             const nextTab = tab === 'photos' ? 'photos' : 'all';
             if (activeAVTab === 'hotprice') activeAvHotPriceTab = nextTab;
+            else if (activeAVTab === 'reserves') activeAvReserveMode = nextTab;
             else activeAvOpenTab = nextTab === 'photos' ? 'photos' : 'name';
             syncAvSecondaryTabs();
             avOpenLevel = 0;
@@ -16032,15 +16043,16 @@ function toggleDriveQuickRequestItem(domId) {
             selectedAvOpenSize = null;
             selectedAvOpenSeason = null;
             selectedAvOpenLot = null;
+            selectedAvReserveDetailCustomerKey = null;
             scheduleAVRender(0);
         }
 
-        function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; avOpenLevel=0; scheduleAVRender(0); }
-        function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; avOpenLevel=0;} scheduleTrackedSearchViewRender('av', 'av', term); }
+        function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; selectedAvReserveDetailCustomerKey=null; avOpenLevel=0; scheduleAVRender(0); }
+        function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; selectedAvReserveDetailCustomerKey=null; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; selectedAvReserveDetailCustomerKey=null; avOpenLevel=0;} scheduleTrackedSearchViewRender('av', 'av', term); }
 
         function resetAVView(shouldRender = true) {
             activeAVTab='open'; activeAvOpenTab='name'; activeAvHotPriceTab='all';
-            avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; activeAvReserveMode='current'; activeAvReserveDetailTab='customer';
+            avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; activeAvReserveMode='all'; activeAvReserveDetailTab='customer'; selectedAvReserveDetailCustomerKey=null;
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             selectedAvSeasons = new Set(DRIVE_SEASON_OPTIONS); avSeasonDropdownOpen = false; selectedAvGenusNames = new Set(); avGenusSearchTerm = ''; avGenusFilterOpen = false; avGenusSelectionMode = 'all'; selectedAvContSizes = new Set(); avContSizeSearchTerm = ''; avContSizeFilterOpen = false; avContSizeSelectionMode = 'all'; avHoldStopOnly = false; avFilterItemsCache = []; avFilterGenusOptions = []; avFilterContSizeOptions = []; avResolvedBaseStateKey = ''; avResolvedBaseStateCache = null;
             document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-hotprice').classList.remove('active'); document.getElementById('tab-av-reserves').classList.remove('active');
@@ -16052,7 +16064,7 @@ function toggleDriveQuickRequestItem(domId) {
             lastViewSwitchAt = Date.now();
             beginDirectNavigationActivity();
             activeAVTab=tab;
-            avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; activeAvReserveMode='current'; activeAvReserveDetailTab='customer';
+            avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; activeAvReserveMode='all'; activeAvReserveDetailTab='customer'; selectedAvReserveDetailCustomerKey=null;
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
             closeAvTopControlDropdowns(false);
             avResolvedBaseStateKey = '';
@@ -16508,12 +16520,14 @@ function toggleDriveQuickRequestItem(domId) {
 
         function setAvReserveMode(mode = 'current') {
             beginDirectNavigationActivity();
-            activeAvReserveMode = mode === 'cards' ? 'cards' : 'current';
+            activeAvReserveMode = mode === 'cards' || mode === 'photos' ? 'photos' : 'all';
             selectedAvResRep = null;
             resetSelectedAvReserveItemState();
             activeAvReserveDetailTab = 'customer';
+            selectedAvReserveDetailCustomerKey = null;
             avResLevel = 0;
             resetAVReserveSearchInput();
+            syncAvSecondaryTabs();
             scheduleAVRender(0);
             return false;
         }
@@ -16534,21 +16548,12 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getAvReserveCardsRepFilterHtml(items = []) {
-            if (activeAVTab !== 'reserves' || activeAvReserveMode !== 'cards') return '';
-            const repOptions = getAVReserveRepOptions(items);
-            const currentValue = String(selectedAvResRep || '');
-            const helperText = currentValue
-                ? `Filtering item cards and customer cards for ${currentValue}.`
-                : `${repOptions.length} sales rep${repOptions.length === 1 ? '' : 's'} available.`;
-            const optionsHtml = [`<option value="">All Sales Reps</option>`]
-                .concat(repOptions.map((rep) => `<option value="${esc(rep.label || '')}" ${normalizeRepMatchToken(rep.label) === normalizeRepMatchToken(currentValue) ? 'selected' : ''}>${esc(rep.label || 'Unknown Rep')} (${Number(rep.count || 0)})</option>`))
-                .join('');
-            return `<div class="mb-3 rounded-[20px] border border-emerald-100 bg-white/95 p-3 shadow-sm"><div class="flex flex-wrap items-center gap-2"><div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm"><i class="ph-bold ph-users-three text-sm"></i>Sales Rep Filter</div><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400 sm:ml-auto">${esc(helperText)}</div><button type="button" class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${currentValue ? '' : 'opacity-50 pointer-events-none'}" onclick="return clearAvReserveCardsRepFilter()"><i class="ph-bold ph-x-circle text-sm"></i>Clear</button></div><div class="mt-3"><label class="mb-2 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Sales Rep Name</label><select class="input-field !mb-0 border-emerald-200 bg-white text-slate-700" onchange="setAvReserveCardsRepFilter(this.value)">${optionsHtml}</select></div></div>`;
+            if (activeAVTab !== 'reserves') return '';
+            return '';
         }
 
         function getAvReserveModeTabsHtml() {
-            if (!canUseAvReserveCardsMode()) return '';
-            return `<div class="flex flex-wrap gap-2 mb-3"><button class="task-tab ${activeAvReserveMode === 'current' ? 'active' : ''}" onclick="return setAvReserveMode('current')">Current</button><button class="task-tab ${activeAvReserveMode === 'cards' ? 'active' : ''}" onclick="return setAvReserveMode('cards')">Item Cards</button></div>`;
+            return '';
         }
 
         function isSelectedAvReserveRep(item, repName = selectedAvResRep) {
@@ -16774,6 +16779,198 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getAvReserveOpenStockBaseItems() {
             return (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => shouldIncludeMasterItemInAvOpenView(i));
+        }
+
+        function getNormalizedAvReserveItemCode(value = '') {
+            return String(value || '').trim().toUpperCase();
+        }
+
+        function getNormalizedAvReserveLotCode(value = '') {
+            return String(value || '').trim().toUpperCase();
+        }
+
+        function buildAvReserveItemLotKey(itemCode = '', lotCode = '') {
+            const normalizedItemCode = getNormalizedAvReserveItemCode(itemCode);
+            if (!normalizedItemCode) return '';
+            const normalizedLotCode = getNormalizedAvReserveLotCode(lotCode);
+            return normalizedLotCode ? `${normalizedItemCode}|||${normalizedLotCode}` : normalizedItemCode;
+        }
+
+        function getScopedAvReserveDemandItems(items = reservesInventory) {
+            let nextItems = getScopedReservesItems(items);
+            if (selectedAvResRep) nextItems = nextItems.filter((item) => isSelectedAvReserveRep(item, selectedAvResRep));
+            return Array.isArray(nextItems) ? nextItems : [];
+        }
+
+        function getAvReserveLocationRows(items = getScopedAvReserveDemandItems()) {
+            const reserveRows = Array.isArray(items) ? items : [];
+            if (!reserveRows.length) return [];
+            const reserveRowsByExactKey = new Map();
+            const reserveRowsByItemCode = new Map();
+            const itemCodeOnlyMatches = new Set();
+            reserveRows.forEach((row) => {
+                const itemCode = getNormalizedAvReserveItemCode(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, ''));
+                if (!itemCode) return;
+                if (!reserveRowsByItemCode.has(itemCode)) reserveRowsByItemCode.set(itemCode, []);
+                reserveRowsByItemCode.get(itemCode).push(row);
+                const lotCode = getNormalizedAvReserveLotCode(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, ''));
+                if (!lotCode) {
+                    itemCodeOnlyMatches.add(itemCode);
+                    return;
+                }
+                const exactKey = buildAvReserveItemLotKey(itemCode, lotCode);
+                if (!reserveRowsByExactKey.has(exactKey)) reserveRowsByExactKey.set(exactKey, []);
+                reserveRowsByExactKey.get(exactKey).push(row);
+            });
+            const seen = new Set();
+            const locationRows = [];
+            getAvReserveOpenStockBaseItems().forEach((row) => {
+                const itemCode = getNormalizedAvReserveItemCode(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, ''));
+                if (!itemCode) return;
+                const lotCode = getNormalizedAvReserveLotCode(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, ''));
+                const exactKey = buildAvReserveItemLotKey(itemCode, lotCode);
+                let matchedReserveRows = exactKey ? reserveRowsByExactKey.get(exactKey) || [] : [];
+                if (!matchedReserveRows.length && itemCodeOnlyMatches.has(itemCode)) {
+                    matchedReserveRows = reserveRowsByItemCode.get(itemCode) || [];
+                }
+                if (!matchedReserveRows.length) return;
+                const uniqueKey = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.DOM_ID, `${itemCode}|${firstNonEmptyValue(row && row.LOCATIONCODE, '')}|${lotCode}`)).trim();
+                if (!uniqueKey || seen.has(uniqueKey)) return;
+                seen.add(uniqueKey);
+                row.AV_RESERVE_ROW_COUNT = matchedReserveRows.length;
+                row.AV_RESERVE_CUSTOMER_COUNT = new Set(matchedReserveRows.map((reserveRow) => getAvReserveCustomerKey(reserveRow))).size;
+                locationRows.push(row);
+            });
+            return sortAvOpenItems(locationRows, 'name');
+        }
+
+        function getAvReserveRowsForLocationItem(item = activeItem, items = getScopedAvReserveDemandItems()) {
+            const reserveRows = Array.isArray(items) ? items : [];
+            const itemCode = getNormalizedAvReserveItemCode(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, ''));
+            if (!itemCode) return [];
+            const lotCode = getNormalizedAvReserveLotCode(firstNonEmptyValue(item && item.LOTCODE, item && item.lotcode, ''));
+            const exactRows = reserveRows.filter((row) => {
+                if (getNormalizedAvReserveItemCode(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, '')) !== itemCode) return false;
+                if (!lotCode) return true;
+                return getNormalizedAvReserveLotCode(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, '')) === lotCode;
+            });
+            if (exactRows.length || lotCode) return sortAvReserveDemandRows(exactRows);
+            return sortAvReserveDemandRows(reserveRows.filter((row) => getNormalizedAvReserveItemCode(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, '')) === itemCode));
+        }
+
+        function getAvReserveDetailCustomerCards(item = activeItem, items = getScopedAvReserveDemandItems()) {
+            const cardMap = new Map();
+            getAvReserveRowsForLocationItem(item, items).forEach((row) => {
+                const customerName = getAvReserveResolvedCustomerName(row);
+                const key = getAvReserveCustomerKey(customerName);
+                if (!key) return;
+                const entry = cardMap.get(key) || { key, customerName, rows: [], consigneeNames: new Set(), salesRepNames: new Set(), photoCount: 0 };
+                entry.rows.push(row);
+                const consigneeName = String(firstNonEmptyValue(row && row.CONSIGNEENAME, row && row.CONSIGNEE, '') || '').trim();
+                if (consigneeName) entry.consigneeNames.add(consigneeName);
+                const salesRepName = String(getReserveSalesRepLabel(row) || '').trim();
+                if (salesRepName) entry.salesRepNames.add(salesRepName);
+                entry.photoCount += getPhotoUrlList(getRowPhotoLink(row, 'av')).length;
+                cardMap.set(key, entry);
+            });
+            return [...cardMap.values()].map((entry) => {
+                const consigneeNames = [...entry.consigneeNames];
+                const salesRepNames = [...entry.salesRepNames];
+                return {
+                    key: entry.key,
+                    customerName: entry.customerName || 'Unknown Customer',
+                    rows: entry.rows,
+                    rowCount: entry.rows.length,
+                    photoCount: entry.photoCount,
+                    consigneePreview: consigneeNames.length === 1 ? consigneeNames[0] : (consigneeNames.length > 1 ? `${consigneeNames.length} consignees` : '-'),
+                    salesRepPreview: salesRepNames.length === 1 ? salesRepNames[0] : (salesRepNames.length > 1 ? `${salesRepNames.length} reps` : '-')
+                };
+            }).sort((a, b) => String(a.customerName || '').localeCompare(String(b.customerName || '')));
+        }
+
+        function getAvReserveDetailSelectedCustomerCard(item = activeItem, customerKey = selectedAvReserveDetailCustomerKey, items = getScopedAvReserveDemandItems()) {
+            if (!customerKey) return null;
+            return getAvReserveDetailCustomerCards(item, items).find((card) => card.key === customerKey) || null;
+        }
+
+        function getAvReserveSourceFieldKeys(row = {}) {
+            const preferredKeys = Array.isArray(row && row._reserveSourceFieldKeys) ? row._reserveSourceFieldKeys : [];
+            const sourceKeys = preferredKeys.length ? preferredKeys : Object.keys(row || {});
+            return sourceKeys.filter((key) => ![
+                'DOM_ID',
+                'SOURCE_TABLE',
+                '_search',
+                '_searchCandidates',
+                '_searchPrimaryStarts',
+                '_searchWordStarts',
+                '_searchProfileWordStarts',
+                '_reserveSourceFieldKeys'
+            ].includes(String(key || '').trim()));
+        }
+
+        function buildAvReserveAllFieldsHtml(row = {}) {
+            const keys = getAvReserveSourceFieldKeys(row);
+            if (!keys.length) return `<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-[11px] font-semibold text-slate-400">No reserve fields found for this row.</div>`;
+            return keys.map((key) => {
+                const value = row[key];
+                const displayValue = value == null || String(value).trim() === '' ? '-' : String(value);
+                return `<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400 break-all">${esc(key)}</div><div class="mt-1 text-[13px] font-bold text-slate-700 break-all whitespace-pre-wrap">${esc(displayValue)}</div></div>`;
+            }).join('');
+        }
+
+        function generateAvReserveDetailCustomerCard(customerCard = null) {
+            if (!customerCard) return '';
+            const safeKeyJs = esc(customerCard.key || '');
+            const customerName = firstNonEmptyValue(customerCard.customerName, 'Unknown Customer');
+            const rowCount = Number(customerCard.rowCount || 0);
+            const photoCount = Number(customerCard.photoCount || 0);
+            return `<div class="mb-3 rounded-[22px] border border-emerald-200 bg-white p-4 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" ${buildFastInvokeAttrs('selectAvReserveDetailCustomer', [safeKeyJs], 'Open reserve customer ' + customerName)}><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Customer</div><div class="mt-2 font-black text-[22px] leading-tight text-slate-900 break-words">${esc(customerName)}</div><div class="mt-1 text-[13px] font-bold text-[#007a4d] break-words">${esc(firstNonEmptyValue(customerCard.salesRepPreview, '-'))}</div><div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2"><div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">Reserve Rows</div><div class="mt-1 text-[13px] font-bold text-slate-700">${rowCount}</div></div><div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">Consignee</div><div class="mt-1 text-[13px] font-bold text-slate-700 break-words">${esc(firstNonEmptyValue(customerCard.consigneePreview, '-'))}</div></div><div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">Photos</div><div class="mt-1 text-[13px] font-bold text-slate-700">${photoCount}</div></div></div></div>`;
+        }
+
+        function generateAvReserveCustomerFieldCard(row = {}) {
+            const customerName = firstNonEmptyValue(row && row.CUSTOMERNAME, row && row.CUSTOMER, 'Unknown Customer');
+            const consigneeName = firstNonEmptyValue(row && row.CONSIGNEENAME, row && row.CONSIGNEE, '-');
+            const locationCode = firstNonEmptyValue(row && row.LOCATIONCODE, 'No Loc');
+            const lotCode = firstNonEmptyValue(row && row.LOTCODE, '-');
+            const itemCode = firstNonEmptyValue(row && row.ITEMCODE, '-');
+            return `<div class="mb-3 rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm"><div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Reserve Row</div><div class="mt-2 font-black text-[20px] leading-tight text-slate-900 break-words">${esc(customerName)}</div><div class="mt-1 text-[13px] font-bold text-[#007a4d] break-words">${esc(consigneeName)}</div></div><div class="flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-sky-100 bg-sky-50 px-2 py-1 text-sky-700">Loc ${esc(locationCode)}</span><span class="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-slate-700">Lot ${esc(lotCode)}</span><span class="rounded-full border border-indigo-100 bg-indigo-50 px-2 py-1 text-indigo-700">${esc(itemCode)}</span></div></div><div class="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">${buildAvReserveAllFieldsHtml(row)}</div></div>`;
+        }
+
+        function selectAvReserveDetailCustomer(customerKey = '') {
+            if (!customerKey) return false;
+            selectedAvReserveDetailCustomerKey = String(customerKey || '').trim() || null;
+            renderAvReserveDetailCustomerPanel();
+            queueScrollMainAreaToTop(`av-reserve-detail-customer:${customerKey}`);
+            return false;
+        }
+
+        function backToAvReserveDetailCustomerList() {
+            selectedAvReserveDetailCustomerKey = null;
+            renderAvReserveDetailCustomerPanel();
+            queueScrollMainAreaToTop('av-reserve-detail-customers');
+            return false;
+        }
+
+        function renderAvReserveDetailCustomerPanel(item = activeItem) {
+            const panel = document.getElementById('det-customer-panel');
+            if (!panel) return;
+            const reserveRows = getAvReserveRowsForLocationItem(item);
+            if (!reserveRows.length) {
+                panel.innerHTML = `<div class="rounded-[22px] border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-[12px] font-semibold text-slate-400">No reserve customers matched this location by ITEMCODE and LOTCODE.</div>`;
+                return;
+            }
+            const customerCards = getAvReserveDetailCustomerCards(item, reserveRows);
+            let selectedCustomerCard = getAvReserveDetailSelectedCustomerCard(item, selectedAvReserveDetailCustomerKey, reserveRows);
+            if (selectedAvReserveDetailCustomerKey && !selectedCustomerCard) {
+                selectedAvReserveDetailCustomerKey = null;
+                selectedCustomerCard = null;
+            }
+            if (!selectedCustomerCard) {
+                const helperText = `${reserveRows.length} reserve row${reserveRows.length === 1 ? '' : 's'} matched this location by ITEMCODE and LOTCODE.`;
+                panel.innerHTML = `<div class="rounded-[22px] border border-sky-200 bg-sky-50/60 p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-sky-700">Reserve Customers</div><div class="mt-2 text-[12px] font-semibold text-slate-600">${esc(helperText)}</div></div>${customerCards.map((card) => generateAvReserveDetailCustomerCard(card)).join('')}`;
+                return;
+            }
+            panel.innerHTML = `<div class="back-btn mb-3" ${buildFastInvokeAttrs('backToAvReserveDetailCustomerList', [], 'Back to customer cards')}><i class="ph-bold ph-arrow-left"></i> Back to Customer Cards</div><div class="rounded-[22px] border border-emerald-200 bg-emerald-50/60 p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Selected Customer</div><div class="mt-2 font-black text-[22px] leading-tight text-slate-900 break-words">${esc(selectedCustomerCard.customerName || 'Unknown Customer')}</div><div class="mt-1 text-[12px] font-semibold text-slate-600">${selectedCustomerCard.rows.length} reserve row${selectedCustomerCard.rows.length === 1 ? '' : 's'} from v2_reserves are shown below with all source columns.</div></div>${selectedCustomerCard.rows.map((row) => generateAvReserveCustomerFieldCard(row)).join('')}`;
         }
 
         function getAvReserveDriveRowsForSelection() {
@@ -17796,10 +17993,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getAvRawTabItems(tab = activeAVTab, options = {}) {
             const safeTab = ['open', 'hotprice', 'reserves'].includes(String(tab || '').trim()) ? String(tab || '').trim() : 'open';
-            const { isRep } = getRoleAccessState();
-            const ignoreCardsRepFilter = !!(options && options.ignoreCardsRepFilter);
             const ignoreSecondaryTab = !!(options && options.ignoreSecondaryTab);
-            const useRepDrill = safeTab === 'reserves' && activeAvReserveMode !== 'cards' && canSelectAvReserveRep();
             let items = [];
             if (safeTab === 'open') {
                 items = (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => shouldIncludeMasterItemInAvOpenView(i));
@@ -17808,15 +18002,8 @@ function toggleDriveQuickRequestItem(domId) {
                 items = getAvHotPriceRows();
                 if (!ignoreSecondaryTab && activeAvHotPriceTab === 'photos') items = items.filter(avItemHasPhotos);
             } else {
-                items = reservesInventory;
-                if (useRepDrill) {
-                    if (selectedAvResRep) items = items.filter(i => isSelectedAvReserveRep(i, selectedAvResRep));
-                } else {
-                    if (isRep) items = items.filter(i => isMyRep(firstNonEmptyValue(i && i.SALESREPNAME, i && i.SALESREP, i && i.SALES_REP, i && i.SALESREPID, '')));
-                    if (activeAvReserveMode === 'cards' && selectedAvResRep && !ignoreCardsRepFilter) {
-                        items = items.filter(i => isSelectedAvReserveRep(i, selectedAvResRep));
-                    }
-                }
+                items = getAvReserveLocationRows(getScopedAvReserveDemandItems());
+                if (!ignoreSecondaryTab && activeAvReserveMode === 'photos') items = items.filter(avItemHasPhotos);
             }
             return Array.isArray(items) ? items : [];
         }
@@ -17899,10 +18086,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function buildResolvedAVBaseState(options = {}) {
             const term = getAvSearchTerm();
-            const { isRep } = getRoleAccessState();
-            const ignoreCardsRepFilter = !!(options && options.ignoreCardsRepFilter);
             const safeTab = String(activeAVTab || 'open').trim();
-            const useRepDrill = safeTab === 'reserves' && activeAvReserveMode !== 'cards' && canSelectAvReserveRep();
             const cacheKey = [
                 resolvedViewStateEpoch,
                 safeTab,
@@ -17910,9 +18094,6 @@ function toggleDriveQuickRequestItem(domId) {
                 activeAvHotPriceTab,
                 activeAvReserveMode,
                 selectedAvResRep || '',
-                ignoreCardsRepFilter ? '1' : '0',
-                isRep ? '1' : '0',
-                useRepDrill ? '1' : '0',
                 [...selectedAvSeasons].sort().join('|'),
                 avHoldStopOnly ? '1' : '0',
                 avGenusSelectionMode,
@@ -17929,14 +18110,13 @@ function toggleDriveQuickRequestItem(domId) {
                 incrementInternalPerfCounter('viewStateCacheHits');
                 return avResolvedBaseStateCache;
             }
-            const filterBaseItems = getAvRawTabItems(safeTab, { ignoreCardsRepFilter });
+            const filterBaseItems = getAvRawTabItems(safeTab);
             const avFilterState = buildAvSharedFilterState(filterBaseItems);
             let items = avFilterState.filteredItems;
-            const allowSearch = safeTab !== 'reserves' || activeAvReserveMode === 'cards' || !useRepDrill || !!selectedAvResRep;
             const searchProfile = safeTab === 'open'
                 ? 'av_open'
                 : (safeTab === 'hotprice' ? 'av_hotprice' : 'av_reserves');
-            if (term && allowSearch) items = filterBySearch(items, term, searchProfile);
+            if (term) items = filterBySearch(items, term, searchProfile);
             avResolvedBaseStateKey = cacheKey;
             avResolvedBaseStateCache = { items, term, filterBaseItems, avFilterState };
             return avResolvedBaseStateCache;
@@ -17987,32 +18167,12 @@ function toggleDriveQuickRequestItem(domId) {
                     fileLabel = 'av-hot-price-search';
                 }
             } else {
-                if (activeAvReserveMode !== 'cards' && canSelectAvReserveRep() && !selectedAvResRep) {
-                    rows = [];
-                } else {
-                    if (selectedAvResRep) {
-                        rows = rows.filter((i) => isSelectedAvReserveRep(i, selectedAvResRep));
-                        title = `AV My Reserves ${selectedAvResRep}`;
-                        fileLabel = `av-my-reserves-${selectedAvResRep}`;
-                    }
-                    if ((selectedAvResItemCode && selectedAvResName && selectedAvResSize) || searchTerm) rows = sortAvReserveDemandRows(rows);
-                    if (selectedAvResItemCode && selectedAvResName && selectedAvResSize) {
-                        rows = getSelectedAvReserveGroupRows(rows);
-                        title = `${title} ${selectedAvResItemCode} ${selectedAvResName} ${selectedAvResSize}`;
-                        fileLabel = `${fileLabel}-${selectedAvResItemCode}-${selectedAvResName}-${selectedAvResSize}`;
-                        if (selectedAvResCustomerKey) {
-                            const customerCard = getSelectedAvReserveCustomerCard(rows);
-                            rows = getSelectedAvReserveCustomerRows(rows);
-                            if (customerCard) {
-                                title = `${title} ${customerCard.customerName}`;
-                                fileLabel = `${fileLabel}-${customerCard.customerName}`;
-                            }
-                        }
-                    }
-                    if (searchTerm) {
-                        title += ' Search';
-                        fileLabel += '-search';
-                    }
+                rows = sortAvOpenItems(rows, 'name');
+                title = activeAvReserveMode === 'photos' ? 'AV Reserve Location Photos' : 'AV All Reserve Locations';
+                fileLabel = activeAvReserveMode === 'photos' ? 'av-reserve-location-photos' : 'av-all-reserve-locations';
+                if (searchTerm) {
+                    title += ' Search';
+                    fileLabel += '-search';
                 }
             }
 
@@ -18025,12 +18185,6 @@ function toggleDriveQuickRequestItem(domId) {
         }
         function getAVVisibleExportCount(baseItems = []) {
             const rows = Array.isArray(baseItems) ? baseItems : [];
-            if (activeAVTab === 'open' || activeAVTab === 'hotprice') return rows.length;
-            if (activeAvReserveMode !== 'cards' && canSelectAvReserveRep() && !selectedAvResRep) return 0;
-            if (selectedAvResItemCode && selectedAvResName && selectedAvResSize) {
-                if (selectedAvResCustomerKey) return getSelectedAvReserveCustomerRows(rows).length;
-                return getSelectedAvReserveGroupRows(rows).length;
-            }
             return rows.length;
         }
         function getAVExportColumns() {
@@ -18819,13 +18973,17 @@ function toggleDriveQuickRequestItem(domId) {
             if (items.length === 0) {
                 const emptyLabel = activeAVTab === 'open'
                     ? (activeAvOpenTab === 'photos' ? 'open stock photos' : 'open stock')
-                    : (activeAVTab === 'hotprice' ? (activeAvHotPriceTab === 'photos' ? 'hot price photos' : 'hot price rows') : 'reserves');
+                    : (activeAVTab === 'hotprice'
+                        ? (activeAvHotPriceTab === 'photos' ? 'hot price photos' : 'hot price rows')
+                        : (activeAvReserveMode === 'photos' ? 'reserve location photos' : 'reserve locations'));
                 updateAVExportButton(0);
                 const emptySignature = buildRowsRenderSignature(`av-empty|${activeAVTab}|${activeAvOpenTab}|${activeAvHotPriceTab}|${activeAvReserveMode}|${term}|${emptyLabel}`, []);
                 setContainerHtmlWithSignature(container, `<div class="p-8 text-center text-gray-400">${activeAVTab === 'hotprice' ? (activeAvHotPriceTab === 'photos' ? 'No hot price photos found.' : 'No hot price rows found.') : `No ${emptyLabel} found.`}</div>`, emptySignature);
                 crumb.innerText = activeAVTab === 'hotprice'
                     ? (term.length > 0 ? 'Search Results (0)' : (activeAvHotPriceTab === 'photos' ? 'HOT PRICE Photos (0 items)' : 'HOT PRICE (0 items)'))
-                    : 'No Results';
+                    : (activeAVTab === 'reserves'
+                        ? (term.length > 0 ? 'Search Results (0)' : (activeAvReserveMode === 'photos' ? 'Reserve Location Photos (0 items)' : 'All Reserve Locations (0 items)'))
+                        : 'No Results');
                 return;
             }
 
@@ -18863,124 +19021,18 @@ function toggleDriveQuickRequestItem(domId) {
                 setContainerHtmlWithSignature(container, hotPriceRows.map(i => generateCard(i, sourceView, 'status-teal')).join(''), renderSignature);
                 return;
             }
-            const reserveModeTabsHtml = getAvReserveModeTabsHtml();
-            const reserveRepFilterHtml = getAvReserveCardsRepFilterHtml(reserveRepFilterSourceItems);
-            if (activeAvReserveMode !== 'cards' && canSelectAvReserveRep() && !selectedAvResRep) {
-                const repOptions = getAVReserveRepOptions(items);
-                crumb.innerText = 'My Reserves > Sales Reps';
-                container.innerHTML = reserveModeTabsHtml + repOptions.map(rep => `<div class="drill-item" ${buildFastInvokeAttrs('selectAvResRep', [rep.label], 'Open ' + rep.label)}><span class="font-bold text-lg">${rep.label} <span class="text-gray-400 text-sm font-normal">(${rep.count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+            const reserveRows = buildAVExportContext(items, term).rows;
+            const crumbText = activeAvReserveMode === 'photos'
+                ? (term.length > 0 ? `Search Results (${reserveRows.length})` : `Reserve Location Photos (${reserveRows.length} items)`)
+                : (term.length > 0 ? `Search Results (${reserveRows.length})` : `All Reserve Locations (${reserveRows.length} items)`);
+            const renderSignature = buildRowsRenderSignature(`av-reserves|${activeAvReserveMode}|${term}|${crumbText}`, reserveRows, ['ITEMCODE','LOTCODE','LOCATIONCODE']);
+            if (shouldUseChunkedAVOpenRender(reserveRows)) {
+                renderAVOpenCardsChunked(container, crumb, reserveRows, 'av', crumbText);
                 return;
             }
-
-            const reserveBackToRepHtml = selectedAvResRep && activeAvReserveMode !== 'cards'
-                ? `<div class="back-btn" ${buildFastInvokeAttrs('clearSelectedAvResRep', [], 'Back to Sales Reps')}><i class="ph-bold ph-arrow-left"></i> Back to Sales Reps</div>`
-                : '';
-            const reserveCrumbBase = selectedAvResRep ? `My Reserves > ${selectedAvResRep}` : 'My Reserves';
-            const reserveGroups = getAVReserveGroups(items);
-            const selectedGroupRows = selectedAvResItemCode && selectedAvResName && selectedAvResSize
-                ? getSelectedAvReserveGroupRows(items)
-                : [];
-            const customerCards = selectedGroupRows.length ? getSelectedAvReserveCustomerCards(items) : [];
-            let selectedCustomerCard = selectedAvResCustomerKey ? customerCards.find((card) => card.key === selectedAvResCustomerKey) || null : null;
-            if (selectedAvResCustomerKey && !selectedCustomerCard) {
-                selectedAvResCustomerKey = null;
-                avResLevel = selectedAvResItemCode && selectedAvResName && selectedAvResSize ? 1 : 0;
-            }
-            const selectedCustomerRows = selectedCustomerCard ? selectedCustomerCard.rows : [];
-            const selectedCustomerLinkedDriveRows = selectedCustomerCard ? selectedCustomerCard.linkedDriveRows : [];
-
-            if (selectedAvResItemCode && selectedAvResName && selectedAvResSize) {
-                const detailCrumbBase = `${reserveCrumbBase} > ${selectedAvResItemCode} | ${selectedAvResName} | ${selectedAvResSize}`;
-                const showAdminDetailTabs = isAdminAvReserveDetailTabsEnabled() && activeAvReserveMode === 'cards';
-                const showRepDetailTab = showAdminDetailTabs && !!getRoleAccessState().isAdmin && canSeeAvReserveRepTab();
-                const activeDetailTab = showAdminDetailTabs
-                    ? (activeAvReserveDetailTab === 'location' ? 'location' : (showRepDetailTab && activeAvReserveDetailTab === 'rep' ? 'rep' : 'customer'))
-                    : 'customer';
-                const locationRows = showAdminDetailTabs ? getSelectedAvReserveLocationRows() : [];
-                const repGroups = showRepDetailTab ? getSelectedAvReserveRepGroups(items) : [];
-                const activeRowCount = activeDetailTab === 'location'
-                    ? locationRows.length
-                    : (activeDetailTab === 'rep' ? repGroups.length : (selectedCustomerCard ? selectedCustomerRows.length : customerCards.length));
-                const activeLabel = activeDetailTab === 'location'
-                    ? 'Location'
-                    : (activeDetailTab === 'rep' ? 'Reps' : (selectedCustomerCard ? 'Customer Rows' : 'Customer'));
-                const activeUnit = activeDetailTab === 'customer' && selectedCustomerCard ? 'rows' : 'cards';
-                const detailCrumb = selectedCustomerCard
-                    ? `${detailCrumbBase} > Customer > ${selectedCustomerCard.customerName}`
-                    : detailCrumbBase;
-                crumb.innerText = term.length > 0
-                    ? `${detailCrumb} > ${activeLabel} Search (${activeRowCount} ${activeUnit})`
-                    : `${detailCrumb} > ${activeLabel} (${activeRowCount} ${activeUnit})`;
-                const detailTabsHtml = showAdminDetailTabs
-                    ? `<div class="flex flex-wrap gap-2 mb-3"><button class="task-tab ${activeDetailTab === 'customer' ? 'active' : ''}" ${buildFastInvokeAttrs('setAvReserveDetailTab', ['customer'], 'Customer tab')}>Customer</button><button class="task-tab ${activeDetailTab === 'location' ? 'active' : ''}" ${buildFastInvokeAttrs('setAvReserveDetailTab', ['location'], 'Location tab')}>Location</button>${showRepDetailTab ? `<button class="task-tab ${activeDetailTab === 'rep' ? 'active' : ''}" ${buildFastInvokeAttrs('setAvReserveDetailTab', ['rep'], 'Reps tab')}>Reps</button>` : ''}</div>`
-                    : '';
-                const customerBackHtml = selectedCustomerCard
-                    ? `<div class="back-btn" ${buildFastInvokeAttrs('backToAvReserveCustomerCardList', [], 'Back to Customer Cards')}><i class="ph-bold ph-user-circle"></i> Back to Customer Cards</div>`
-                    : '';
-                const itemBackHtml = `<div class="back-btn" ${buildFastInvokeAttrs('backToAvReserveGroupList', [], 'Back to Item Cards')}><i class="ph-bold ph-arrow-left"></i> Back to Item Cards</div>`;
-                const baseIntroHtml = `${reserveModeTabsHtml}${reserveRepFilterHtml}${customerBackHtml}${itemBackHtml}${reserveBackToRepHtml}${detailTabsHtml}`;
-                let html = baseIntroHtml;
-
-                if (showAdminDetailTabs && activeDetailTab === 'location') {
-                    if (locationRows.length > 160) {
-                        renderAVMarkupChunked(container, crumb, locationRows, crumb.innerText, (row) => generateAvReserveLocationCard(row), { approxCardHeight: 260, emptyHtml: `<div class="p-8 text-center text-gray-400">No Drive Mode locations found for this item.</div>` });
-                        container.insertAdjacentHTML('afterbegin', baseIntroHtml);
-                    } else {
-                        html += locationRows.length
-                            ? locationRows.map((row) => generateAvReserveLocationCard(row)).join('')
-                            : `<div class="p-8 text-center text-gray-400">No Drive Mode locations found for this item.</div>`;
-                        container.innerHTML = html;
-                    }
-                } else if (showRepDetailTab && activeDetailTab === 'rep') {
-                    if (repGroups.length > 200) {
-                        renderAVMarkupChunked(container, crumb, repGroups, crumb.innerText, (row) => generateAvReserveRepCard(row), { approxCardHeight: 120, emptyHtml: `<div class="p-8 text-center text-gray-400">No sales reps found for this item.</div>` });
-                        container.insertAdjacentHTML('afterbegin', baseIntroHtml);
-                    } else {
-                        html += repGroups.length
-                            ? repGroups.map((rep) => generateAvReserveRepCard(rep)).join('')
-                            : `<div class="p-8 text-center text-gray-400">No sales reps found for this item.</div>`;
-                        container.innerHTML = html;
-                    }
-                } else if (selectedCustomerCard) {
-                    const customerSummaryHtml = getAvReserveSelectedCustomerSummaryHtml(selectedCustomerCard);
-                    const customerSelectionToolbarHtml = getAvReserveCustomerSelectionToolbar(selectedCustomerRows);
-                    if (selectedCustomerRows.length > 180) {
-                        renderAVMarkupChunked(container, crumb, selectedCustomerRows, crumb.innerText, (row) => generateAvReserveRowCard(row), { approxCardHeight: 390, emptyHtml: `<div class="p-8 text-center text-gray-400">No reserve rows found for this customer card.</div>` });
-                        container.insertAdjacentHTML('afterbegin', `${baseIntroHtml}${customerSummaryHtml}${customerSelectionToolbarHtml}`);
-                    } else {
-                        html += customerSummaryHtml;
-                        html += customerSelectionToolbarHtml;
-                        html += selectedCustomerRows.length
-                            ? selectedCustomerRows.map((row) => generateAvReserveRowCard(row)).join('')
-                            : `<div class="p-8 text-center text-gray-400">No reserve rows found for this customer card.</div>`;
-                        html += getAvReserveLinkedDriveSectionHtml(selectedCustomerLinkedDriveRows);
-                        container.innerHTML = html;
-                    }
-                } else {
-                    if (customerCards.length > 180) {
-                        renderAVMarkupChunked(container, crumb, customerCards, crumb.innerText, (card) => generateAvReserveCustomerCard(card), { approxCardHeight: 260, emptyHtml: `<div class="p-8 text-center text-gray-400">No customer cards found for this item.</div>` });
-                        container.insertAdjacentHTML('afterbegin', baseIntroHtml);
-                    } else {
-                        html += customerCards.length
-                            ? customerCards.map((card) => generateAvReserveCustomerCard(card)).join('')
-                            : `<div class="p-8 text-center text-gray-400">No customer cards found for this item.</div>`;
-                        container.innerHTML = html;
-                    }
-                }
-                return;
-            }
-
-            crumb.innerText = term.length > 0
-                ? `${reserveCrumbBase} Search (${reserveGroups.length} item cards)`
-                : `${reserveCrumbBase} (${reserveGroups.length} item cards)`;
-            let html = reserveModeTabsHtml + reserveRepFilterHtml + reserveBackToRepHtml;
-            if (reserveGroups.length > 220) {
-                renderAVMarkupChunked(container, crumb, reserveGroups, crumb.innerText, (group) => generateAvReserveGroupCard(group), { approxCardHeight: 165 });
-                container.insertAdjacentHTML('afterbegin', html);
-            } else {
-                html += reserveGroups.map((group) => generateAvReserveGroupCard(group)).join('');
-                container.innerHTML = html;
-            }
+            crumb.innerText = crumbText;
+            setContainerHtmlWithSignature(container, reserveRows.map((item) => generateCard(item, 'av', 'status-teal')).join(''), renderSignature);
+            return;
         }
         const debouncedDocksSearch=debounce((term='')=>{ scheduleTrackedSearchViewRender('docks', 'docks', term, { skipDebounce: true }); },80);
         function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); if (dockViewMode === 'docks') { dockViewLevel=0; selectedDockNum=null; selectedDockStop=null; } scheduleDocksRender(0); }
@@ -20023,7 +20075,7 @@ function toggleDriveQuickRequestItem(domId) {
         function reorderVisibleDetailTabs(primaryTab = '') {
             const detTabsContainer = document.getElementById('det-tabs-container');
             if (!detTabsContainer) return;
-            const baseOrder = ['dtab-overview','dtab-ncr','dtab-notes','dtab-season','dtab-location','dtab-request','dtab-docks','dtab-flyer','dtab-gallery'];
+            const baseOrder = ['dtab-overview','dtab-ncr','dtab-notes','dtab-season','dtab-location','dtab-request','dtab-customer','dtab-docks','dtab-flyer','dtab-gallery'];
             const desiredOrder = [];
             const primaryId = primaryTab ? `dtab-${primaryTab}` : '';
             if (primaryId && baseOrder.includes(primaryId)) desiredOrder.push(primaryId);
@@ -20226,7 +20278,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (safeSourceView === 'request') return 'request';
             if (safeSourceView === 'docks') return 'docks';
             if (safeSourceView === 'review') return 'ncr';
-            if (safeSourceView === 'av' && activeAVTab === 'reserves') return 'request';
+            if (safeSourceView === 'av' && activeAVTab === 'reserves') return 'overview';
             if (safeSourceView === 'low-stock') {
                 if (assignment === 'season') return 'season';
                 if (assignment === 'location') return 'location';
@@ -20266,7 +20318,12 @@ function toggleDriveQuickRequestItem(domId) {
                 document.getElementById('dtab-notes').classList.remove('hidden');
                 document.getElementById('dtab-gallery').classList.remove('hidden');
             } else if (safeSourceView === 'av') {
-                if (activeAVTab === 'reserves') document.getElementById('dtab-request').classList.remove('hidden');
+                document.getElementById('dtab-overview').classList.remove('hidden');
+                if (activeAVTab === 'reserves') {
+                    document.getElementById('dtab-request').classList.remove('hidden');
+                    document.getElementById('dtab-customer').classList.remove('hidden');
+                    document.getElementById('dtab-gallery').classList.remove('hidden');
+                }
             } else if (safeSourceView === 'low-stock') {
                 document.getElementById('dtab-overview').classList.remove('hidden');
                 document.getElementById('dtab-season').classList.remove('hidden');
@@ -20500,6 +20557,7 @@ function toggleDriveQuickRequestItem(domId) {
             lastView = resolvedSourceView;
             activeDetailSourceView = resolvedSourceView;
             activeItem = nextItem;
+            selectedAvReserveDetailCustomerKey = null;
             resetDetailOverviewFieldSearch();
             lastViewSwitchAt = Date.now();
             renderDetailShellView();
@@ -20925,7 +20983,7 @@ function toggleDriveQuickRequestItem(domId) {
                 activeEl.style.color = '';
             }
 
-            const detailContentIds = ['det-overview-content','det-season-content','det-location-content','det-request-content','det-ncr-content','det-notes-content','det-docks-content','det-flyer-content','det-gallery-content'];
+            const detailContentIds = ['det-overview-content','det-season-content','det-location-content','det-request-content','det-customer-content','det-ncr-content','det-notes-content','det-docks-content','det-flyer-content','det-gallery-content'];
             const targetContentId = 'det-' + safeTab + '-content';
             const contentEl = document.getElementById(targetContentId);
             if(contentEl) contentEl.classList.remove('hidden');
@@ -20940,6 +20998,7 @@ function toggleDriveQuickRequestItem(domId) {
                 }
                 if (safeTab === 'overview') renderDriveDetailOverviewFields();
                 else if (safeTab === 'gallery') renderPhotoGallery();
+                else if (safeTab === 'customer') renderAvReserveDetailCustomerPanel();
                 else if (safeTab === 'ncr') syncNcrDraftInputs(activeItem);
                 else populatePrimaryDetailTabShell(safeTab, activeDetailSourceView || lastView || '', activeItem);
             }
