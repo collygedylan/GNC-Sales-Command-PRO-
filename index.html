@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.24.05';
+window.__APP_SHELL_VERSION__ = 'V2026.04.24.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -718,7 +718,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill">V2026.04.24.05</div>
+<div id="header-version" class="nav-version-pill">V2026.04.24.06</div>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1199,7 +1199,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.24.05';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.24.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7128,7 +7128,7 @@ let activeHomeTab='dashboard'; let selectedProductivityUser=''; let productivity
 let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
         let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveSeason=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let drivePlantFilterItemsCache=[]; let drivePlantFilterGenusOptions=[]; let drivePlantFilterContSizeOptions=[]; let driveGenusSelectionMode='all'; let driveContSizeSelectionMode='all'; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS); let driveResolvedCardStateKey=''; let driveResolvedCardStateCache=null; let driveSearchRequiresManualSelection=false;
 
-let activeTaskView="hot-price"; let activeTaskFilter="all"; let activeTaskTab=activeTaskView; let activeTaskSubview=activeTaskFilter; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let selectedTaskContSizes=new Set(); let taskContSizeSearchTerm=""; let taskContSizeDropdownOpen=false; let taskContSizeFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
+let activeTaskView="hot-price"; let activeTaskFilter="all"; let activeTaskCustomerFilter="all"; let activeTaskTab=activeTaskView; let activeTaskSubview=activeTaskFilter; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let selectedTaskContSizes=new Set(); let taskContSizeSearchTerm=""; let taskContSizeDropdownOpen=false; let taskContSizeFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         let detailReturnState = { viewId: '', scrollTop: 0 };
         let viewHistoryStack = [];
         let pendingFieldSaveCount = 0;
@@ -7200,7 +7200,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(window.__APP_SHELL_VERSION__ || 'V2026.04.24.05').trim() || 'V2026.04.24.05';
+const APP_VERSION = String(window.__APP_SHELL_VERSION__ || 'V2026.04.24.06').trim() || 'V2026.04.24.06';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -15393,8 +15393,13 @@ function toggleDriveQuickRequestItem(domId) {
             taskTabDropdownOpen = false;
             taskSubviewDropdownOpen = false;
             const allowedFilters = getTaskFilterValues(normalizedView);
-            activeTaskFilter = allowedFilters.includes(activeTaskFilter) ? activeTaskFilter : 'all';
-            activeTaskSubview = activeTaskFilter;
+            if (normalizedView === 'cust') {
+                activeTaskCustomerFilter = allowedFilters.includes(activeTaskCustomerFilter) ? activeTaskCustomerFilter : 'all';
+                activeTaskSubview = activeTaskCustomerFilter;
+            } else {
+                activeTaskFilter = allowedFilters.includes(activeTaskFilter) ? activeTaskFilter : 'all';
+                activeTaskSubview = activeTaskFilter;
+            }
             if (normalizedView !== 'colorwalk' && previousTaskView === 'colorwalk') {
                 selectedColorWalkSearchTerm='';
             }
@@ -15409,7 +15414,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (normalizedView !== previousTaskView && (!nextUsesBlockDrill || !previousUsesBlockDrill)) {
                 taskViewLevel = 0;
             }
-            if (!(nextUsesBlockDrill && normalizeTaskFilterValue(activeTaskFilter) === 'location' && taskViewLevel === 2)) {
+            if (!shouldShowTaskInlineDetailFilters(normalizedView, taskViewLevel)) {
                 resetTaskLocationDetailFilters();
             }
             scheduleTasksRender();
@@ -15427,11 +15432,17 @@ function toggleDriveQuickRequestItem(domId) {
             taskTabDropdownOpen = false;
             taskSubviewDropdownOpen = false;
             const allowedFilters = getTaskFilterDropdownOptions(activeTaskView).map((option) => option.value);
-            activeTaskFilter = allowedFilters.includes(filter) ? filter : 'all';
-            activeTaskSubview = activeTaskFilter;
+            const nextFilter = allowedFilters.includes(filter) ? filter : 'all';
+            if (normalizeTaskViewValue(activeTaskView) === 'cust') {
+                activeTaskCustomerFilter = nextFilter;
+                activeTaskSubview = activeTaskCustomerFilter;
+            } else {
+                activeTaskFilter = normalizeTaskFilterValue(nextFilter);
+                activeTaskSubview = activeTaskFilter;
+            }
             syncTaskModeControls(activeTaskView);
             syncTaskSubviewControls(activeTaskView);
-            if (!(taskViewUsesBlockDrill(activeTaskView) && normalizeTaskFilterValue(activeTaskFilter) === 'location' && taskViewLevel === 2)) {
+            if (!shouldShowTaskInlineDetailFilters(activeTaskView, taskViewLevel)) {
                 resetTaskLocationDetailFilters();
             }
             scheduleTasksRender();
@@ -26315,7 +26326,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             return false;
         }
 
-        const TASK_VIEW_VALUES = Object.freeze(['hot-price', 'positive-lts', 'hold', 'av-blanks', 'colorwalk', 'endcap', 'flyer']);
+        const TASK_VIEW_VALUES = Object.freeze(['hot-price', 'positive-lts', 'hold', 'av-blanks', 'colorwalk', 'endcap', 'flyer', 'cust']);
         const TASK_FILTER_VALUES = Object.freeze(['all', 'season', 'location']);
 
         function normalizeTaskViewValue(value = activeTaskView) {
@@ -26328,11 +26339,56 @@ ${folderNote ? `Folder Note: ${folderNote}
             return TASK_FILTER_VALUES.includes(normalized) ? normalized : 'all';
         }
 
+        function normalizeTaskCustomerFilterValue(value = activeTaskCustomerFilter) {
+            const normalized = String(firstNonEmptyValue(value, activeTaskCustomerFilter, activeTaskSubview, 'all') || '').trim().toLowerCase();
+            return normalized || 'all';
+        }
+
+        function getTaskViewTargetUser(tab = activeTaskView) {
+            const safeView = normalizeTaskViewValue(tab);
+            const useSharedTaskQueue = shouldUseSharedTaskQueue(safeView);
+            return safeRole === 'ADMIN' && !useSharedTaskQueue ? taskViewTargetUser : currentUser;
+        }
+
+        function getTaskDesignCustomerName(item = null) {
+            return String(firstNonEmptyValue(item && item.DESIGCUST, item && item.desigcust, '') || '').trim();
+        }
+
+        function getTaskCustomerFilterOptions(items = null, tab = activeTaskView) {
+            const sourceItems = Array.isArray(items) ? items : getScopedTaskQueueItems(tab, getTaskViewTargetUser(tab));
+            const taskEligibleItems = getFilteredSeasonLocationTaskItems(sourceItems, 'all');
+            const customerMap = new Map();
+            taskEligibleItems.forEach((item) => {
+                const customerName = getTaskDesignCustomerName(item);
+                if (!customerName) return;
+                const normalizedName = normalizeTaskCustomerFilterValue(customerName);
+                if (!normalizedName || normalizedName === 'all') return;
+                if (!customerMap.has(normalizedName)) customerMap.set(normalizedName, customerName);
+            });
+            const options = Array.from(customerMap.entries())
+                .sort((left, right) => String(left[1]).localeCompare(String(right[1]), undefined, { numeric: true, sensitivity: 'base' }))
+                .map(([value, label]) => ({ value, label }));
+            return [{ value: 'all', label: 'ALL' }].concat(options);
+        }
+
+        function getNormalizedTaskSubviewValue(tab = activeTaskView, value = activeTaskSubview, items = null) {
+            const safeView = normalizeTaskViewValue(tab);
+            if (safeView === 'cust') {
+                const options = getTaskCustomerFilterOptions(items, safeView).map((option) => option.value);
+                const normalized = normalizeTaskCustomerFilterValue(value);
+                return options.includes(normalized) ? normalized : 'all';
+            }
+            return normalizeTaskFilterValue(value);
+        }
+
         function syncTaskSelectorState() {
             activeTaskView = normalizeTaskViewValue(activeTaskView || activeTaskTab);
-            activeTaskFilter = normalizeTaskFilterValue(activeTaskFilter || activeTaskSubview);
+            activeTaskFilter = normalizeTaskFilterValue(activeTaskFilter);
+            activeTaskCustomerFilter = normalizeTaskCustomerFilterValue(activeTaskCustomerFilter);
             activeTaskTab = activeTaskView;
-            activeTaskSubview = activeTaskFilter;
+            activeTaskSubview = getNormalizedTaskSubviewValue(activeTaskView, activeTaskView === 'cust' ? activeTaskCustomerFilter : activeTaskFilter);
+            if (activeTaskView === 'cust') activeTaskCustomerFilter = activeTaskSubview;
+            else activeTaskFilter = activeTaskSubview;
         }
 
         function taskViewUsesBlockDrill(view = activeTaskView) {
@@ -26341,7 +26397,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 || safeView === 'positive-lts'
                 || safeView === 'hold'
                 || safeView === 'av-blanks'
-                || safeView === 'colorwalk';
+                || safeView === 'colorwalk'
+                || safeView === 'cust';
         }
 
         function taskTabUsesBlockDrill(tab = activeTaskView) {
@@ -26396,10 +26453,17 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (safeView === 'colorwalk') return 'COLOR WALK';
             if (safeView === 'endcap') return 'END CAP';
             if (safeView === 'flyer') return 'FLYER';
+            if (safeView === 'cust') return 'CUST';
             return safeView;
         }
 
-        function getTaskSubviewLabel(subview = activeTaskFilter) {
+        function getTaskSubviewLabel(subview = activeTaskFilter, tab = activeTaskView, items = null) {
+            const safeView = normalizeTaskViewValue(tab);
+            if (safeView === 'cust') {
+                const safeSubview = getNormalizedTaskSubviewValue(safeView, subview, items);
+                const option = getTaskCustomerFilterOptions(items, safeView).find((entry) => entry.value === safeSubview);
+                return option ? option.label : 'ALL';
+            }
             const safeFilter = normalizeTaskFilterValue(subview);
             if (safeFilter === 'season') return 'SEASON SALES NOTES';
             if (safeFilter === 'location') return 'LOCATION SALES NOTES';
@@ -26407,7 +26471,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function getTaskSubviewValues(tab = activeTaskView) {
-            return TASK_FILTER_VALUES.slice();
+            return getTaskFilterValues(tab);
         }
 
         function getTaskSubviewControlValues(tab = activeTaskView) {
@@ -26474,9 +26538,19 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function getTaskTabItems(items, tab = activeTaskView, subview = activeTaskFilter) {
             const safeView = normalizeTaskViewValue(tab);
-            const safeFilter = normalizeTaskFilterValue(subview);
             const scopedItems = Array.isArray(items) ? items : [];
             if (!scopedItems.length) return [];
+            if (safeView === 'cust') {
+                const safeCustomerFilter = getNormalizedTaskSubviewValue(safeView, subview, scopedItems);
+                return getFilteredSeasonLocationTaskItems(scopedItems, 'all')
+                    .filter((item) => {
+                        const customerName = getTaskDesignCustomerName(item);
+                        if (!customerName) return false;
+                        if (safeCustomerFilter === 'all') return true;
+                        return normalizeTaskCustomerFilterValue(customerName) === safeCustomerFilter;
+                    });
+            }
+            const safeFilter = normalizeTaskFilterValue(subview);
             if (safeView === 'hot-price') return getTaskHotPriceRows(scopedItems, safeFilter === 'all' ? '' : safeFilter);
             if (safeView === 'av-blanks') {
                 if (safeFilter === 'location') return [];
@@ -26513,6 +26587,10 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function getTaskFilterValues(tab = activeTaskView) {
+            const safeView = normalizeTaskViewValue(tab);
+            if (safeView === 'cust') {
+                return getTaskCustomerFilterOptions(null, safeView).map((option) => option.value);
+            }
             return TASK_FILTER_VALUES.slice();
         }
 
@@ -26535,11 +26613,14 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function shouldShowTaskInlineDetailFilters(tab = activeTaskView, level = taskViewLevel) {
             const safeView = normalizeTaskViewValue(tab);
-            return level === 2 && taskViewUsesBlockDrill(safeView) && safeView !== 'colorwalk' && normalizeTaskFilterValue(activeTaskFilter) === 'location';
+            const safeSubview = getNormalizedTaskSubviewValue(safeView, activeTaskSubview);
+            return level === 2 && taskViewUsesBlockDrill(safeView) && safeView !== 'colorwalk' && safeView !== 'cust' && normalizeTaskFilterValue(safeSubview) === 'location';
         }
 
         function getTaskFilterDropdownOptions(tab = activeTaskView) {
-            return getTaskFilterValues(tab).map((value) => ({ value, label: getTaskSubviewLabel(value) }));
+            const safeView = normalizeTaskViewValue(tab);
+            if (safeView === 'cust') return getTaskCustomerFilterOptions(null, safeView);
+            return getTaskFilterValues(safeView).map((value) => ({ value, label: getTaskSubviewLabel(value, safeView) }));
         }
 
         function getTaskSubviewDropdownOptions(tab = activeTaskView) {
@@ -26751,7 +26832,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const currentLabel = getTaskTabLabel(safeTab);
             const optionsHtml = getTaskModeDropdownOptions().map((option) => {
                 const isSelected = option.value === safeTab;
-                return `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" onclick="return setTaskTab('${option.value}')"><span class="text-[12px] font-bold">${esc(option.label)}</span>${isSelected ? '<i class="ph-bold ph-check text-sm"></i>' : ''}</button>`;
+                return `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" onclick='return setTaskTab(${JSON.stringify(option.value)})'><span class="text-[12px] font-bold">${esc(option.label)}</span>${isSelected ? '<i class="ph-bold ph-check text-sm"></i>' : ''}</button>`;
             }).join('');
             const html = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskModeDropdown()"><i class="ph-bold ph-squares-four text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Task View</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${taskTabDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${optionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskModeDropdown()">Done</button></div></div></div>`;
             setContainerHtmlWithSignature(host, html, `task-mode:${safeTab}:${taskTabDropdownOpen ? 'open' : 'closed'}`);
@@ -26764,10 +26845,11 @@ ${folderNote ? `Folder Note: ${folderNote}
             syncTaskSelectorRowLayout(tab);
             const options = getTaskSubviewDropdownOptions(tab);
             const currentValue = options.some((option) => option.value === activeTaskSubview) ? activeTaskSubview : 'all';
-            const currentLabel = getTaskSubviewLabel(currentValue);
+            const currentOption = options.find((option) => option.value === currentValue) || options[0] || { label: 'ALL' };
+            const currentLabel = currentOption.label;
             const optionsHtml = options.map((option) => {
                 const isSelected = option.value === activeTaskSubview;
-                return `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" onclick="return setTaskSubview('${option.value}')"><span class="text-[12px] font-bold">${esc(option.label)}</span>${isSelected ? '<i class="ph-bold ph-check text-sm"></i>' : ''}</button>`;
+                return `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" onclick='return setTaskSubview(${JSON.stringify(option.value)})'><span class="text-[12px] font-bold">${esc(option.label)}</span>${isSelected ? '<i class="ph-bold ph-check text-sm"></i>' : ''}</button>`;
             }).join('');
             container.classList.remove('hidden');
             const html = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskSubviewDropdown()"><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Task Filter</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${taskSubviewDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${optionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskSubviewDropdown()">Done</button></div></div></div>`;
@@ -27431,8 +27513,9 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function buildTaskHotState(options = {}) {
             const safeTab = normalizeTaskViewValue(firstNonEmptyValue(options && options.tab, activeTaskView, activeTaskTab, ''));
-            const safeSubview = normalizeTaskFilterValue(firstNonEmptyValue(options && options.subview, activeTaskFilter, activeTaskSubview, 'all'));
             const safeTargetUser = String(firstNonEmptyValue(options && options.targetUser, currentUser, '') || '').trim();
+            const scopedTaskItems = getScopedTaskQueueItems(safeTab, safeTargetUser);
+            const safeSubview = getNormalizedTaskSubviewValue(safeTab, firstNonEmptyValue(options && options.subview, activeTaskSubview, 'all'), scopedTaskItems);
             const useSharedTaskQueue = options && typeof options.useSharedTaskQueue === 'boolean'
                 ? options.useSharedTaskQueue
                 : shouldUseSharedTaskQueue(safeTab);
@@ -27465,7 +27548,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
             const perfKey = `${safeTab}:${safeSubview || 'all'}`;
             const taskBuildStartedAt = beginInternalPerfMeasure();
-            let scopedItems = getScopedTaskQueueItems(safeTab, safeTargetUser);
+            let scopedItems = scopedTaskItems;
             const seasonTaskItems = getTaskAssignmentBucketItems(scopedItems, 'season');
             const seasonSubviewItems = safeSubview === 'location' ? [] : getTaskTabItems(scopedItems, 'av-blanks', 'season');
             let tabItems = getResolvedTaskSubviewItems(scopedItems, safeTab, safeSubview, { targetUser: safeTargetUser, useSharedTaskQueue });
@@ -27600,7 +27683,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const addTarget = (tab = TASK_VIEW_VALUES[0], subview = 'all', extra = {}) => {
                 const safeTab = normalizeTaskViewValue(tab);
                 if (!safeTab) return;
-                const safeSubview = normalizeTaskFilterValue(subview);
+                const safeSubview = getNormalizedTaskSubviewValue(safeTab, subview);
                 const warmKey = [
                     safeTab,
                     safeSubview,
@@ -27694,7 +27777,6 @@ ${folderNote ? `Folder Note: ${folderNote}
             const useSharedTaskQueue = shouldUseSharedTaskQueue(activeTaskTab);
             const targetUser = safeRole === 'ADMIN' && !useSharedTaskQueue ? taskViewTargetUser : currentUser;
             const baseNotesTitle = getTaskTabLabel(activeTaskTab);
-            const notesTitle = `${baseNotesTitle} > ${getTaskSubviewLabel(activeTaskSubview)}`;
             const flyerFolderTabLabel = getFlyerFolderTabValue(activeFlyerFolderTab) === 'archive' ? 'Archive' : 'Active';
             const hotState = buildTaskHotState({
                 tab: activeTaskTab,
@@ -27703,6 +27785,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 useSharedTaskQueue,
                 colorWalkSearchTerm: selectedColorWalkSearchTerm
             });
+            const notesTitle = `${baseNotesTitle} > ${getTaskSubviewLabel(activeTaskSubview, activeTaskTab, hotState.scopedItems)}`;
 
             if (taskTabUsesBlockDrill(activeTaskTab)) {
                 const hasSelectedBlock = !!(selectedTaskBlock && hotState.itemsByBlock.has(selectedTaskBlock));
