@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.24.07';
+window.__APP_SHELL_VERSION__ = 'V2026.04.24.08';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5281,13 +5281,22 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function runDirectTrackedNavigation(viewId, renderKey = '', mutateStateFn = null, options = {}) {
             beginDirectNavigationActivity();
             if (typeof mutateStateFn === 'function') mutateStateFn();
+            const safeViewId = String(viewId || '').trim();
             const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const targetView = safeViewId ? document.getElementById('view-' + safeViewId) : null;
+            const visibleSameView = !!(
+                safeViewId
+                && getCurrentVisibleViewId() === safeViewId
+                && targetView
+                && !targetView.classList.contains('hidden')
+            );
             return scheduleTrackedViewRender(viewId, renderKey, {
                 delay: 0,
                 userAction: true,
                 preferImmediate: true,
                 allowWhileTouching: true,
                 allowDuringRecentInteraction: true,
+                allowDuringExtendedBlock: visibleSameView || !!nextOptions.allowDuringExtendedBlock,
                 touchDelayMs: 32,
                 interactionDelayMs: 32,
                 scrollDelayMs: 120,
@@ -5334,6 +5343,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 allowWhileTouching: !!nextOptions.allowWhileTouching,
                 allowWhileScrolling: !!nextOptions.allowWhileScrolling,
                 allowDuringRecentInteraction: !!nextOptions.allowDuringRecentInteraction,
+                allowDuringExtendedBlock: !!nextOptions.allowDuringExtendedBlock,
                 touchDelayMs: Math.max(180, Number(nextOptions.touchDelayMs) || 220),
                 scrollDelayMs: Math.max(160, Number(nextOptions.scrollDelayMs) || 200),
                 interactionDelayMs: Math.max(120, Number(nextOptions.interactionDelayMs) || 150)
