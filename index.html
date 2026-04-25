@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.25.01';
+window.__APP_SHELL_VERSION__ = 'V2026.04.25.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -720,7 +720,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.25.01').trim() || 'V2026.04.25.01';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.25.02').trim() || 'V2026.04.25.02';</script>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1205,7 +1205,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.25.01';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.25.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -3521,6 +3521,125 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const upper = text.toUpperCase();
             if (upper === 'NULL' || upper === 'N/A' || upper === '-') return '';
             return text;
+        }
+
+        const WINDOWS_1252_EXTRA_CODEPOINT_TO_BYTE = {
+            0x20AC: 0x80,
+            0x201A: 0x82,
+            0x0192: 0x83,
+            0x201E: 0x84,
+            0x2026: 0x85,
+            0x2020: 0x86,
+            0x2021: 0x87,
+            0x02C6: 0x88,
+            0x2030: 0x89,
+            0x0160: 0x8A,
+            0x2039: 0x8B,
+            0x0152: 0x8C,
+            0x017D: 0x8E,
+            0x2018: 0x91,
+            0x2019: 0x92,
+            0x201C: 0x93,
+            0x201D: 0x94,
+            0x2022: 0x95,
+            0x2013: 0x96,
+            0x2014: 0x97,
+            0x02DC: 0x98,
+            0x2122: 0x99,
+            0x0161: 0x9A,
+            0x203A: 0x9B,
+            0x0153: 0x9C,
+            0x017E: 0x9E,
+            0x0178: 0x9F
+        };
+        const DISPLAY_MOJIBAKE_MARKERS = ['Ã', 'Â', 'â€™', 'â€œ', 'â€', 'â€¢', 'Ãƒ', 'Ã¢'];
+        const DISPLAY_MOJIBAKE_ROW_FIELDS = [
+            'COMMONNAME',
+            'DESCRIPTION',
+            'PLANT_NAME',
+            'CONTSIZE',
+            'ITEMSPEC',
+            'LOCATIONCODE',
+            'LOCATION',
+            'LOTCODE',
+            'CUSTOMERNAME',
+            'CUSTOMER',
+            'CONSIGNEENAME',
+            'CONSIGNEE',
+            'SALESREPNAME',
+            'SALESREP',
+            'SALES_REP',
+            'REQUEST_FOLDER',
+            'REQ_FOLDER',
+            'REQ_CUSTOMER',
+            'BLOCKALPHA',
+            'SEASON',
+            'HOLDSTOPREASON',
+            'AV_NOTE',
+            'SALES_NOTE',
+            'GENUS'
+        ];
+
+        function countDisplayMojibakeMarkers(value) {
+            const text = String(value == null ? '' : value);
+            if (!text) return 0;
+            return DISPLAY_MOJIBAKE_MARKERS.reduce((count, marker) => count + (text.split(marker).length - 1), 0);
+        }
+
+        function hasDisplayMojibake(value) {
+            return countDisplayMojibakeMarkers(value) > 0;
+        }
+
+        function getWindows1252ByteFromChar(char) {
+            if (!char) return null;
+            const codePoint = char.codePointAt(0);
+            if (!Number.isFinite(codePoint)) return null;
+            if (codePoint >= 0 && codePoint <= 0xFF) return codePoint;
+            return WINDOWS_1252_EXTRA_CODEPOINT_TO_BYTE[codePoint] ?? null;
+        }
+
+        function decodeWindows1252Utf8RoundTrip(text) {
+            if (typeof text !== 'string' || !text || typeof TextDecoder !== 'function') return null;
+            const bytes = [];
+            for (const char of text) {
+                const byte = getWindows1252ByteFromChar(char);
+                if (byte == null) return null;
+                bytes.push(byte);
+            }
+            try {
+                return new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes));
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function repairDisplayMojibake(value) {
+            if (typeof value !== 'string') return value;
+            const text = value;
+            if (!text || !hasDisplayMojibake(text) || typeof TextDecoder !== 'function') return value;
+            let best = text;
+            let bestCount = countDisplayMojibakeMarkers(text);
+            let current = text;
+            for (let pass = 0; pass < 3; pass += 1) {
+                const repaired = decodeWindows1252Utf8RoundTrip(current);
+                if (!repaired || repaired.includes('\uFFFD')) break;
+                const repairedCount = countDisplayMojibakeMarkers(repaired);
+                if (repairedCount >= bestCount) break;
+                best = repaired;
+                bestCount = repairedCount;
+                current = repaired;
+                if (bestCount === 0) break;
+            }
+            return best;
+        }
+
+        function repairDisplayFieldsOnRow(row, fields = DISPLAY_MOJIBAKE_ROW_FIELDS) {
+            if (!row || typeof row !== 'object') return row;
+            (Array.isArray(fields) ? fields : []).forEach((field) => {
+                if (!field || typeof row[field] !== 'string') return;
+                row[field] = repairDisplayMojibake(row[field]);
+            });
+            return row;
         }
 
         function normalizeHoldStopSnapshotValue(value) {
@@ -7549,7 +7668,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.25.01').trim() || 'V2026.04.25.01';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.25.02').trim() || 'V2026.04.25.02';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -8284,6 +8403,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
                     obj.REQ_STATUS = normalizeRequestStatus(firstNonEmptyValue(obj.REQ_STATUS, obj.STATUS, 'Pending')) || 'Pending';
                     obj.REQ_ARCHIVED = obj.REQ_ARCHIVED === true || obj.REQ_ARCHIVED === 1 || obj.REQ_ARCHIVED === '1' || String(obj.REQ_ARCHIVED || '').trim().toLowerCase() === 'true';
                 }
+                repairDisplayFieldsOnRow(obj);
                 normalizeRowPhotoFields(obj);
                 return obj;
             });
@@ -8319,6 +8439,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
                 syncMasterFieldsToRequestRow(masterItem, item);
                 item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
             }
+            repairDisplayFieldsOnRow(item);
             normalizeRowPhotoFields(item);
             item._reserveSourceFieldKeys = reserveFieldKeys;
             item._search=`${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.ITEMCODE||''}`.toLowerCase();
@@ -8344,6 +8465,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             item.PTRAVAILABLE=firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, 0);
             item.SEASONSUPPLY=firstNonEmptyValue(item.SEASONSUPPLY, item.SEASON_SUPPLY, item.season_supply, 0);
             item.PRIORITY=firstNonEmptyValue(item.PRIORITY, item.priority, '-');
+            repairDisplayFieldsOnRow(item);
             normalizeRowPhotoFields(item);
             item._reserveSourceFieldKeys = reserveFieldKeys;
             item._search=`${item.COMMONNAME||''} ${item.CUSTOMERNAME||''} ${item.CONSIGNEENAME||''} ${item.SALESREPNAME||''} ${item.ITEMCODE||''} ${item.CONTSIZE||''} ${item.LOCATIONCODE||''}`.toLowerCase();
@@ -14204,7 +14326,7 @@ function toggleDriveQuickRequestItem(domId) {
             const qtyInput = document.getElementById('dock-allocation-qty');
             if (issueUidEl) issueUidEl.value = issueSourceUniqueId;
             if (masterUidEl) masterUidEl.value = String(altMasterUniqueId || '').trim();
-            if (label) label.innerText = `${sourceRow.COMMONNAME || issue.sourceCommonName || 'Dock Issue'} Ã¢â‚¬Â¢ ${masterRow.LOCATIONCODE || '-'} Ã¢â‚¬Â¢ Available ${formatDockDisplayQty(masterRow.PTRAVAILABLE)}`;
+            if (label) label.innerText = `${sourceRow.COMMONNAME || issue.sourceCommonName || 'Dock Issue'} - ${masterRow.LOCATIONCODE || '-'} - Available ${formatDockDisplayQty(masterRow.PTRAVAILABLE)}`;
             if (qtyInput) {
                 qtyInput.value = existingAllocation ? formatDockDisplayQty(existingAllocation.allocatedQty) : '';
                 qtyInput.focus();
@@ -14222,7 +14344,7 @@ function toggleDriveQuickRequestItem(domId) {
             return allocations.map((allocation) => {
                 const safeAllocationId = esc(allocation.allocationUniqueId || '');
                 const safeIssueUid = esc(allocation.issueSourceUniqueId || '');
-                return `<div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Alternate Location</div><div class="mt-1 text-base font-black text-slate-900">${esc(allocation.altLocationCode || '-')}</div><div class="mt-1 text-[11px] font-semibold text-slate-500">${esc(allocation.altLotCode || '-')} Ã¢â‚¬Â¢ ${esc(allocation.altItemCode || '-')}</div></div><div class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Qty ${esc(formatDockDisplayQty(allocation.allocatedQty))}</div></div><div class="mt-3 flex gap-2"><button class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-700 active:scale-95" ${buildFastInvokeAttrs('openDockAllocationModal', [safeIssueUid, allocation.altMasterUniqueId || ''], 'Update Qty')}>Update Qty</button><button class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-red-600 active:scale-95" ${buildFastInvokeAttrs('removeDockIssueAllocation', [safeAllocationId], 'Remove allocation')}>Remove</button></div></div>`;
+                return `<div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Alternate Location</div><div class="mt-1 text-base font-black text-slate-900">${esc(allocation.altLocationCode || '-')}</div><div class="mt-1 text-[11px] font-semibold text-slate-500">${esc(allocation.altLotCode || '-')} &bull; ${esc(allocation.altItemCode || '-')}</div></div><div class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Qty ${esc(formatDockDisplayQty(allocation.allocatedQty))}</div></div><div class="mt-3 flex gap-2"><button class="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-700 active:scale-95" ${buildFastInvokeAttrs('openDockAllocationModal', [safeIssueUid, allocation.altMasterUniqueId || ''], 'Update Qty')}>Update Qty</button><button class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-red-600 active:scale-95" ${buildFastInvokeAttrs('removeDockIssueAllocation', [safeAllocationId], 'Remove allocation')}>Remove</button></div></div>`;
             }).join('');
         }
 
@@ -15091,7 +15213,7 @@ function toggleDriveQuickRequestItem(domId) {
                 String(firstNonEmptyValue(item.COMMONNAME, 'Unknown Item')).trim(),
                 String(firstNonEmptyValue(item.CONTSIZE, '')).trim(),
                 String(firstNonEmptyValue(item.LOCATIONCODE, '')).trim()
-            ].filter(Boolean).join(' Ã¢â‚¬Â¢ ');
+            ].filter(Boolean).join(' - ');
         }
 
         function closeNcrEmailModal(choice = 'cancel') {
@@ -19173,7 +19295,7 @@ function toggleDriveQuickRequestItem(domId) {
             document.getElementById('dock-mistake-uid').value = issueSourceUid;
             document.getElementById('dock-mistake-text').value = String(firstNonEmptyValue(issue && issue.issueNote, item && item.DOCK_ISSUE_NOTE, item && item.DOCK_NOTE, '')).trim();
             const label = document.getElementById('dock-mistake-modal-label');
-            if (label) label.innerText = item ? `${item.COMMONNAME || 'Dock Item'} Ã¢â‚¬Â¢ ${item.CONTSIZE || '-'} Ã¢â‚¬Â¢ ${item.LOCATIONCODE || 'No Loc'}` : '';
+            if (label) label.innerText = item ? `${item.COMMONNAME || 'Dock Item'} - ${item.CONTSIZE || '-'} - ${item.LOCATIONCODE || 'No Loc'}` : '';
             document.getElementById('dock-mistake-modal').classList.remove('hidden');
         }
 
@@ -19420,7 +19542,7 @@ function toggleDriveQuickRequestItem(domId) {
                 ].map((value) => String(value || '').trim()).filter(Boolean).join(' ').toLowerCase().includes(term);
             });
             crumb.innerText = `Mistake Queue > ${issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item'}`;
-            const allocationSummaryHtml = `<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm"><div class="flex items-center justify-between gap-3 mb-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Allocation Summary</div><div class="mt-1 text-base font-black text-slate-900">${esc(formatDockDisplayQty(totalAllocatedQty))} moved Ã¢â‚¬Â¢ ${esc(formatDockDisplayQty(remainingQty))} remaining</div></div><button class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" ${buildFastInvokeAttrs('resolveDockIssue', [safeIssueUid], 'Resolve Issue')}>Resolve Issue</button></div>${renderDockIssueAllocationSummary(issue.issueSourceUniqueId)}</div>`;
+            const allocationSummaryHtml = `<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm"><div class="flex items-center justify-between gap-3 mb-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Allocation Summary</div><div class="mt-1 text-base font-black text-slate-900">${esc(formatDockDisplayQty(totalAllocatedQty))} moved &bull; ${esc(formatDockDisplayQty(remainingQty))} remaining</div></div><button class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" ${buildFastInvokeAttrs('resolveDockIssue', [safeIssueUid], 'Resolve Issue')}>Resolve Issue</button></div>${renderDockIssueAllocationSummary(issue.issueSourceUniqueId)}</div>`;
             const candidateRowsHtml = candidates.length ? candidates.map((entry) => {
                 const row = entry.row;
                 const masterUniqueId = String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim();
@@ -19430,9 +19552,9 @@ function toggleDriveQuickRequestItem(domId) {
                 const buttonHtml = isOriginal
                     ? `<button class="rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 cursor-default" disabled>Original Dock Location</button>`
                     : `<button class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-sm active:scale-95" ${buildFastInvokeAttrs('openDockAllocationModal', [safeIssueUid, masterUniqueId], existingAllocation ? `Update Qty (${formatDockDisplayQty(existingAllocation.allocatedQty)})` : 'Use This Location')}>${existingAllocation ? `Update Qty (${esc(formatDockDisplayQty(existingAllocation.allocatedQty))})` : 'Use This Location'}</button>`;
-                return `<div class="rounded-2xl border ${isOriginal ? 'border-blue-200 bg-blue-50/70' : 'border-slate-200 bg-white'} p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] ${isOriginal ? 'text-blue-600' : 'text-slate-500'}">${isOriginal ? 'Original Row Reference' : 'Alternate Location'}</div><div class="mt-1 text-lg font-black text-slate-900 break-words">${esc(row.LOCATIONCODE || '-')}</div><div class="mt-1 text-sm font-semibold text-slate-500 break-words">${esc(row.LOTCODE || '-')} Ã¢â‚¬Â¢ ${esc(row.ITEMCODE || '-')}</div></div><div class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Avail ${esc(formatDockDisplayQty(candidateQty))}</div></div><div class="mt-3 text-sm font-semibold text-slate-600 break-words">${esc(row.COMMONNAME || issue.sourceCommonName || 'Dock Item')} Ã¢â‚¬Â¢ ${esc(row.CONTSIZE || issue.sourceContSize || '-')}</div><div class="mt-3 flex justify-end">${buttonHtml}</div></div>`;
+                return `<div class="rounded-2xl border ${isOriginal ? 'border-blue-200 bg-blue-50/70' : 'border-slate-200 bg-white'} p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="text-[10px] font-black uppercase tracking-[0.16em] ${isOriginal ? 'text-blue-600' : 'text-slate-500'}">${isOriginal ? 'Original Row Reference' : 'Alternate Location'}</div><div class="mt-1 text-lg font-black text-slate-900 break-words">${esc(row.LOCATIONCODE || '-')}</div><div class="mt-1 text-sm font-semibold text-slate-500 break-words">${esc(row.LOTCODE || '-')} &bull; ${esc(row.ITEMCODE || '-')}</div></div><div class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Avail ${esc(formatDockDisplayQty(candidateQty))}</div></div><div class="mt-3 text-sm font-semibold text-slate-600 break-words">${esc(row.COMMONNAME || issue.sourceCommonName || 'Dock Item')} &bull; ${esc(row.CONTSIZE || issue.sourceContSize || '-')}</div><div class="mt-3 flex justify-end">${buttonHtml}</div></div>`;
             }).join('') : `<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-center text-sm font-semibold text-slate-500">No matching alternate locations found for this search.</div>`;
-            container.innerHTML = `<div class="back-btn" ${buildFastInvokeAttrs('backToDockMistakeQueue', [], 'Back to Mistake Queue')}><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${sourceDetailHtml}${allocationSummaryHtml}<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 mb-3">Matching ${esc(issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item')} Ã¢â‚¬Â¢ ${esc(issue.sourceContSize || sourceRow.CONTSIZE || '-')} Locations</div><div class="space-y-3">${candidateRowsHtml}</div></div></div>`;
+            container.innerHTML = `<div class="back-btn" ${buildFastInvokeAttrs('backToDockMistakeQueue', [], 'Back to Mistake Queue')}><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${sourceDetailHtml}${allocationSummaryHtml}<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 mb-3">Matching ${esc(issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item')} &bull; ${esc(issue.sourceContSize || sourceRow.CONTSIZE || '-')} Locations</div><div class="space-y-3">${candidateRowsHtml}</div></div></div>`;
         }
 
         function renderDockMistakeDetailV2(container, crumb, term = '') {
@@ -19463,13 +19585,13 @@ function toggleDriveQuickRequestItem(domId) {
                 ].map((value) => String(value || '').trim()).filter(Boolean).join(' ').toLowerCase().includes(term);
             });
             crumb.innerText = `Mistake Queue > ${issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item'}`;
-            const driveRowsSectionHtml = `<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 mb-3">Drive Mode S1 ${esc(issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item')} ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ ${esc(issue.sourceContSize || sourceRow.CONTSIZE || '-')}</div><div class="space-y-3">${[
+            const driveRowsSectionHtml = `<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 mb-3">Drive Mode S1 ${esc(issue.sourceCommonName || sourceRow.COMMONNAME || 'Dock Item')} &bull; ${esc(issue.sourceContSize || sourceRow.CONTSIZE || '-')}</div><div class="space-y-3">${[
                 originalEntry ? buildDockMistakeDriveCandidateCardHtml(originalEntry, issue, allocations, { sourceQty, remainingQty }) : '',
                 driveEntries.length
                     ? driveEntries.map((entry) => buildDockMistakeDriveCandidateCardHtml(entry, issue, allocations, { sourceQty, remainingQty })).join('')
                     : `<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-center text-sm font-semibold text-slate-500">No matching Drive Mode S1 rows found for this search.</div>`
             ].filter(Boolean).join('')}</div></div>`;
-            const allocationSummaryHtml = `<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm"><div class="flex items-center justify-between gap-3 mb-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Allocation Summary</div><div class="mt-1 text-base font-black text-slate-900">${esc(formatDockDisplayQty(totalAllocatedQty))} moved ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ ${esc(formatDockDisplayQty(remainingQty))} remaining</div></div><button class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" ${buildFastInvokeAttrs('resolveDockIssue', [safeIssueUid], 'Resolve Issue')}>Resolve Issue</button></div>${renderDockIssueAllocationSummary(issue.issueSourceUniqueId)}</div>`;
+            const allocationSummaryHtml = `<div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm"><div class="flex items-center justify-between gap-3 mb-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Allocation Summary</div><div class="mt-1 text-base font-black text-slate-900">${esc(formatDockDisplayQty(totalAllocatedQty))} moved &bull; ${esc(formatDockDisplayQty(remainingQty))} remaining</div></div><button class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" ${buildFastInvokeAttrs('resolveDockIssue', [safeIssueUid], 'Resolve Issue')}>Resolve Issue</button></div>${renderDockIssueAllocationSummary(issue.issueSourceUniqueId)}</div>`;
             container.innerHTML = `<div class="back-btn" ${buildFastInvokeAttrs('backToDockMistakeQueue', [], 'Back to Mistake Queue')}><i class="ph-bold ph-arrow-left"></i> Back to Mistake Queue</div><div class="space-y-4">${driveRowsSectionHtml}${allocationSummaryHtml}</div>`;
         }
 
@@ -23631,7 +23753,7 @@ function toggleDriveQuickRequestItem(domId) {
             const parts = [commonName];
             if (contSize) parts.push(contSize);
             if (locationCode) parts.push(locationCode);
-            return parts.join(' Ã¢â‚¬Â¢ ');
+            return parts.join(' - ');
         }
 
         function closeRequestPublishModal(choice = 'cancel') {
@@ -26520,12 +26642,12 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function renderDriveCommonNameGroupCard(group) {
             const safeNameJs = esc(group.name);
-            return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectDriveName', [group.name], `Open ${group.name}`)}><div class="min-w-0"><div class="text-lg font-black text-[#007a4d] leading-tight truncate">${esc(group.name)}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows Ã¢â‚¬Â¢ ${group.sizeCount} Sizes</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
+            return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectDriveName', [group.name], `Open ${group.name}`)}><div class="min-w-0"><div class="text-lg font-black text-[#007a4d] leading-tight truncate">${esc(group.name)}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows &bull; ${group.sizeCount} Sizes</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
         }
 
         function renderDriveContSizeGroupCard(group) {
             const safeSizeJs = esc(group.size);
-            return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectDriveSize', [group.size], `Open ${group.size || '-'}`)}><div class="min-w-0"><div class="text-lg font-black text-[#007a4d] leading-tight truncate">${esc(group.size || '-')}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows Ã¢â‚¬Â¢ ${group.seasonCount} Seasons</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
+            return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex items-center justify-between gap-3 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectDriveSize', [group.size], `Open ${group.size || '-'}`)}><div class="min-w-0"><div class="text-lg font-black text-[#007a4d] leading-tight truncate">${esc(group.size || '-')}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">${group.rowCount} Rows &bull; ${group.seasonCount} Seasons</div></div><i class="ph-bold ph-caret-right text-lg text-emerald-500"></i></div>`;
         }
 
         function renderDriveSeasonGroupCard(group) {
