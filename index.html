@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.24.18';
+window.__APP_SHELL_VERSION__ = 'V2026.04.25.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -393,6 +393,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 <input type="password" id="pin-code" class="input-field mb-4 text-center border-2 tracking-widest" placeholder="PASSWORD" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="current-password" enterkeyhint="go" onkeydown="if(event.key==='Enter'){return triggerLoginFromUI(event);}">
                 <button id="login-button" type="button" class="w-full bg-[#007a4d] text-white font-bold py-3 rounded-lg shadow-md" onclick="return triggerLoginFromUI(event)">LOGIN</button>
                 <button id="btn-fingerprint" class="hidden w-full bg-gray-50 text-[#007a4d] border-2 border-[#007a4d] font-bold py-3 rounded-lg shadow-md mt-4 flex items-center justify-center gap-2" onclick="loginWithBiometric()"><i class="ph-bold ph-fingerprint text-2xl"></i> LOGIN WITH FINGERPRINT</button>
+                <div id="saved-login-hint" class="hidden mt-3 text-[11px] font-semibold text-slate-500 text-center"></div>
             </div>
             <div id="loading-spinner" class="hidden mt-6 flex flex-col items-center w-full">
                 <div class="spinner"></div>
@@ -719,7 +720,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.24.18').trim() || 'V2026.04.24.18';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.25.01').trim() || 'V2026.04.25.01';</script>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1204,7 +1205,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.24.18';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.25.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2981,6 +2982,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             const progressWrap = document.getElementById('login-progress-wrap');
             const progressBar = document.getElementById('login-progress-bar');
             const progressLabel = document.getElementById('login-progress-label');
+            const savedLoginHint = document.getElementById('saved-login-hint');
+            const loginButton = document.getElementById('login-button');
             const appWrapper = document.getElementById('app-wrapper');
 
             closeLoginBlockingLayers();
@@ -3002,6 +3005,14 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             if (progressWrap) progressWrap.classList.add('hidden');
             if (progressBar) progressBar.style.width = '0%';
             if (progressLabel) progressLabel.innerText = 'Starting...';
+            if (savedLoginHint) {
+                savedLoginHint.innerText = '';
+                savedLoginHint.classList.add('hidden');
+            }
+            if (loginButton) {
+                loginButton.innerText = 'LOGIN';
+                loginButton.setAttribute('aria-label', 'Login');
+            }
 
             ['username-input', 'pin-code', 'login-button', 'save-password-button', 'new-password', 'confirm-password'].forEach((id) => {
                 const el = document.getElementById(id);
@@ -6841,6 +6852,37 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             };
         }
 
+        function setSavedLoginPromptState(sessionRecord = null) {
+            const loginButton = document.getElementById('login-button');
+            const hint = document.getElementById('saved-login-hint');
+            const displayName = String(firstNonEmptyValue(sessionRecord && sessionRecord.displayName, sessionRecord && sessionRecord.username, '') || '').trim();
+            if (loginButton) {
+                loginButton.innerText = displayName ? 'CONTINUE' : 'LOGIN';
+                loginButton.setAttribute('aria-label', displayName ? `Continue as ${displayName}` : 'Login');
+            }
+            if (!hint) return;
+            if (displayName) {
+                hint.innerText = `Saved login ready for ${displayName}. Tap CONTINUE to open the app.`;
+                hint.classList.remove('hidden');
+            } else {
+                hint.innerText = '';
+                hint.classList.add('hidden');
+            }
+        }
+
+        function primeSavedLoginUiOnStartup() {
+            const sessionRecord = getPersistedSessionRestoreRecord();
+            setSavedLoginPromptState(sessionRecord);
+            if (!sessionRecord) return false;
+            const usernameInput = document.getElementById('username-input');
+            const pinInput = document.getElementById('pin-code');
+            const normalizedUsername = normalizeSessionIdentity(sessionRecord.username);
+            const password = String(sessionRecord.password || '').trim();
+            if (usernameInput && normalizedUsername) usernameInput.value = normalizedUsername;
+            if (pinInput && password) pinInput.value = password;
+            return !!(normalizedUsername && password);
+        }
+
         function doesCacheSnapshotMatchCurrentSession(cachedRes = null) {
             if (!cachedRes || typeof cachedRes !== 'object') return false;
             if (!currentUser || !safeRole) return false;
@@ -7507,7 +7549,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.24.18').trim() || 'V2026.04.24.18';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.25.01').trim() || 'V2026.04.25.01';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -7941,11 +7983,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
                 const shellUpdated = await ensureCurrentShellBuild();
                 if (shellUpdated) return;
                 resetLoginUiState();
-                const restored = await restorePersistedSessionOnStartup();
-                if (restored) return;
-                const savedUser=localStorage.getItem('gnc_user_v3'); const savedPin=localStorage.getItem('gnc_pin_v3'); const savedDisplayName=getStoredDisplayName();
-                if(savedUser) document.getElementById('username-input').value=savedDisplayName || savedUser;
-                if(savedPin) document.getElementById('pin-code').value=savedPin;
+                primeSavedLoginUiOnStartup();
             } catch (err) {
                 console.error('Startup failed', err);
                 resetLoginUiState();
