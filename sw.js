@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.04.25.03';
+const APP_SHELL_BUILD = 'V2026.04.25.04';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const CACHE_NAME = 'greenleaf-v4.2-rebuild-' + APP_SHELL_BUILD;
