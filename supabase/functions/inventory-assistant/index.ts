@@ -46,6 +46,33 @@ type MatchRow = {
   score: number;
 };
 
+const DATASET_QUERY_CONFIG: Record<string, {
+  select: string;
+  searchFields: string[];
+  photoFields: string[];
+}> = {
+  v2_master_inventory: {
+    select: "unique_id,commonname,itemcode,contsize,priority,ptravailable,locationcode,lotcode,loc_match_qty,photo_link",
+    searchFields: ["commonname", "itemcode"],
+    photoFields: ["photo_link", "PHOTO_LINK"],
+  },
+  v2_reserves: {
+    select: "unique_id,commonname,itemcode,contsize,lotcode,priority,ptravailable,locationcode,customername,consigneename,salesrepname,quantityordered,photo_link",
+    searchFields: ["commonname", "itemcode", "customername", "consigneename", "salesrepname"],
+    photoFields: ["photo_link", "PHOTO_LINK"],
+  },
+  v2_active_request: {
+    select: "unique_id,commonname,itemcode,contsize,lotcode,priority,ptravailable,locationcode,requested_by,request_folder,req_photo_link",
+    searchFields: ["commonname", "itemcode", "requested_by", "request_folder"],
+    photoFields: ["req_photo_link", "REQ_PHOTO_LINK", "photo_link", "PHOTO_LINK"],
+  },
+  v2_sales_office: {
+    select: "unique_id,commonname,itemcode,contsize,lotcode,priority,ptravailable,locationcode,order_customer,order_folder,photo_link",
+    searchFields: ["commonname", "itemcode", "order_customer", "order_folder"],
+    photoFields: ["photo_link", "PHOTO_LINK"],
+  },
+};
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -74,6 +101,16 @@ function normalizeText(value = "") {
 
 function compactText(value = "") {
   return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function getFirstRowValue(row: Record<string, unknown>, keys: string[] = []) {
+  for (const key of keys) {
+    const value = row?.[key];
+    if (value === undefined || value === null) continue;
+    const text = compactText(String(value));
+    if (text) return text;
+  }
+  return "";
 }
 
 function escapeLike(value = "") {
@@ -205,101 +242,38 @@ async function maybePhraseAnswer(answer: string, matches: MatchRow[], sourceLabe
 }
 
 async function fetchRows(table: string, intent: Intent) {
-  if (table === "v2_master_inventory") {
-    let query = supabase
-      .from(table)
-      .select("unique_id,commonname,plant_name,description,itemcode,contsize,priority,ptravailable,locationcode,lotcode,photo_link,loc_match_qty")
-      .limit(500);
-    const firstToken = escapeLike(intent.tokens[0] || intent.itemPhrase || "");
-    if (firstToken) {
-      query = query.or([
-        `commonname.ilike.*${firstToken}*`,
-        `plant_name.ilike.*${firstToken}*`,
-        `description.ilike.*${firstToken}*`,
-        `itemcode.ilike.*${firstToken}*`,
-      ].join(","));
-    }
-    if (intent.size) query = query.ilike("contsize", `%${intent.size}%`);
-    if (intent.priority) query = query.eq("priority", intent.priority);
-    if (intent.lot) query = query.ilike("lotcode", `%${intent.lot}%`);
-    const { data, error } = await query;
-    if (error) throw error;
-    return Array.isArray(data) ? data : [];
-  }
-
-  if (table === "v2_reserves") {
-    let query = supabase
-      .from(table)
-      .select("unique_id,commonname,itemcode,contsize,lotcode,priority,ptravailable,locationcode,customername,consigneename,salesrepname,quantityordered,photo_link")
-      .limit(500);
-    const firstToken = escapeLike(intent.tokens[0] || intent.itemPhrase || "");
-    if (firstToken) {
-      query = query.or([
-        `commonname.ilike.*${firstToken}*`,
-        `itemcode.ilike.*${firstToken}*`,
-        `customername.ilike.*${firstToken}*`,
-        `consigneename.ilike.*${firstToken}*`,
-      ].join(","));
-    }
-    if (intent.size) query = query.ilike("contsize", `%${intent.size}%`);
-    if (intent.priority) query = query.eq("priority", intent.priority);
-    if (intent.lot) query = query.ilike("lotcode", `%${intent.lot}%`);
-    const { data, error } = await query;
-    if (error) throw error;
-    return Array.isArray(data) ? data : [];
-  }
-
-  if (table === "v2_active_request") {
-    let query = supabase
-      .from(table)
-      .select("unique_id,commonname,itemcode,contsize,lotcode,priority,ptravailable,locationcode,requested_by,request_folder,photo_link")
-      .limit(400);
-    const firstToken = escapeLike(intent.tokens[0] || intent.itemPhrase || "");
-    if (firstToken) {
-      query = query.or([
-        `commonname.ilike.*${firstToken}*`,
-        `itemcode.ilike.*${firstToken}*`,
-        `requested_by.ilike.*${firstToken}*`,
-        `request_folder.ilike.*${firstToken}*`,
-      ].join(","));
-    }
-    if (intent.size) query = query.ilike("contsize", `%${intent.size}%`);
-    if (intent.priority) query = query.eq("priority", intent.priority);
-    const { data, error } = await query;
-    if (error) throw error;
-    return Array.isArray(data) ? data : [];
-  }
-
+  const config = DATASET_QUERY_CONFIG[table];
+  if (!config) throw new Error(`Unsupported assistant dataset: ${table}`);
   let query = supabase
-    .from("v2_sales_office")
-    .select("unique_id,commonname,itemcode,contsize,lotcode,priority,ptravailable,locationcode,order_customer,order_folder,photo_link")
-    .limit(400);
+    .from(table)
+    .select(config.select)
+    .limit(table === "v2_master_inventory" || table === "v2_reserves" ? 500 : 400);
   const firstToken = escapeLike(intent.tokens[0] || intent.itemPhrase || "");
   if (firstToken) {
-    query = query.or([
-      `commonname.ilike.*${firstToken}*`,
-      `itemcode.ilike.*${firstToken}*`,
-      `order_customer.ilike.*${firstToken}*`,
-      `order_folder.ilike.*${firstToken}*`,
-    ].join(","));
+    query = query.or(config.searchFields.map((field) => `${field}.ilike.*${firstToken}*`).join(","));
   }
   if (intent.size) query = query.ilike("contsize", `%${intent.size}%`);
   if (intent.priority) query = query.eq("priority", intent.priority);
+  if (intent.lot) query = query.ilike("lotcode", `%${intent.lot}%`);
   const { data, error } = await query;
-  if (error) throw error;
+  if (error) throw new Error(`${table} query failed: ${String(error.message || error || "").trim()}`);
   return Array.isArray(data) ? data : [];
 }
 
 function scoreAndNormalizeRows(rows: Record<string, unknown>[], intent: Intent, datasetLabel: string) {
   const tokens = intent.tokens.map((token) => normalizeText(token)).filter(Boolean);
   return rows.map((row) => {
-    const commonName = compactText(String(row.commonname || row.COMMONNAME || row.plant_name || row.PLANT_NAME || ""));
+    const datasetConfig = DATASET_QUERY_CONFIG[String(row.__leaf_table || "")] || null;
+    const commonName = compactText(String(row.commonname || row.COMMONNAME || ""));
     const itemCode = compactText(String(row.itemcode || row.ITEMCODE || ""));
     const contSize = compactText(String(row.contsize || row.CONTSIZE || "")).toUpperCase().replace(/\s+/g, "");
     const location = compactText(String(row.locationcode || row.LOCATIONCODE || ""));
     const lot = compactText(String(row.lotcode || row.LOTCODE || "")).toUpperCase();
     const priority = compactText(String(row.priority || row.PRIORITY || ""));
-    const haystack = normalizeText([commonName, row.plant_name, row.description, itemCode].filter(Boolean).join(" "));
+    const optionalSearchFields = datasetConfig
+      ? datasetConfig.searchFields.map((field) => row[field] ?? row[field.toUpperCase()])
+      : [];
+    const haystack = normalizeText([commonName, itemCode, ...optionalSearchFields].filter(Boolean).join(" "));
     let score = 0;
     if (!tokens.length && intent.itemPhrase) {
       if (haystack.includes(normalizeText(intent.itemPhrase))) score += 18;
@@ -325,7 +299,7 @@ function scoreAndNormalizeRows(rows: Record<string, unknown>[], intent: Intent, 
       priority,
       qty: Number.isFinite(qtyNumber) ? qtyNumber : 0,
       rawQty: compactText(String(qtySource ?? "")),
-      photoLink: compactText(String(row.photo_link || row.PHOTO_LINK || "")),
+      photoLink: getFirstRowValue(row, datasetConfig?.photoFields || ["photo_link", "PHOTO_LINK"]),
       score,
     } as MatchRow;
   }).filter((row) => row.score > 0);
@@ -423,7 +397,7 @@ serve(async (req) => {
       return errorResponse("You do not have access to inventory answers.", 403);
     }
 
-    let rows = await fetchRows(datasetConfig.table, intent);
+    let rows = (await fetchRows(datasetConfig.table, intent)).map((row) => ({ ...row, __leaf_table: datasetConfig.table }));
     if (access.isRep && datasetConfig.table === "v2_reserves") {
       const userKeys = buildUserMatchKeys(session);
       rows = rows.filter((row) => matchesScopedUser(row.salesrepname || row.SALESREPNAME, userKeys));
@@ -444,7 +418,9 @@ serve(async (req) => {
 
     return jsonResponse(answerPayload, 200);
   } catch (error) {
-    console.error("inventory-assistant failed", error);
+    console.error("inventory-assistant failed", {
+      error: String(error && (error as Error).message || error || "").trim(),
+    });
     return errorResponse("Leaf could not answer that question right now.", 500, {
       details: String(error && (error as Error).message || error || "").trim(),
     });
