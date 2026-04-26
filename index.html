@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.04.26.01';
+window.__APP_SHELL_VERSION__ = 'V2026.04.26.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -250,6 +250,8 @@ body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .
         .nav-header-meta{display:flex;flex-direction:column;align-items:flex-end;gap:.35rem;max-width:48%}
         .nav-header-meta-row{display:flex;align-items:center;justify-content:flex-end;gap:.4rem;flex-wrap:wrap}
         .nav-version-pill{display:inline-flex;align-items:center;min-height:26px;padding:.32rem .7rem;border-radius:999px;background:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.28);color:#007a4d;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 6px 14px rgba(7,94,63,.18)}
+        .leaf-launch-btn{display:inline-flex;align-items:center;gap:.34rem;min-height:26px;padding:.32rem .68rem;border-radius:999px;background:#111827;border:1px solid rgba(255,255,255,.22);color:#ecfdf5;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 6px 14px rgba(15,23,42,.2)}
+        .leaf-launch-btn:active{transform:scale(.98)}
         #sync-diagnostics-badge{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;box-shadow:0 4px 10px rgba(15,23,42,.12)}
         #sync-diagnostics-detail{font-size:9px;font-weight:800;line-height:1.2;color:rgba(236,253,245,.88);text-align:right;max-width:200px}
         @media (pointer: coarse){
@@ -359,8 +361,42 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
         html,body,#app-wrapper,#main-scroll-area{-webkit-overflow-scrolling:touch}
 #main-scroll-area{scroll-behavior:auto}
 a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}
-@media (pointer: coarse){.sticky-search,.freeze-panel,#global-header-search-row,.nav-header{box-shadow:none !important}.sticky-search{transform:none !important;-webkit-transform:none !important;backface-visibility:visible !important}#bottom-nav{backdrop-filter:none !important;-webkit-backdrop-filter:none !important;box-shadow:0 -8px 18px rgba(15,23,42,.10)!important}}
+        @media (pointer: coarse){.sticky-search,.freeze-panel,#global-header-search-row,.nav-header{box-shadow:none !important}.sticky-search{transform:none !important;-webkit-transform:none !important;backface-visibility:visible !important}#bottom-nav{backdrop-filter:none !important;-webkit-backdrop-filter:none !important;box-shadow:0 -8px 18px rgba(15,23,42,.10)!important}}
         input,textarea,select{-webkit-user-select:text;user-select:text}
+        #leaf-assistant-modal{position:fixed;inset:0;z-index:16000;display:flex;align-items:flex-end;justify-content:center;background:rgba(15,23,42,.42);padding:clamp(12px,3vw,24px)}
+        #leaf-assistant-modal.hidden{display:none}
+        .leaf-assistant-sheet{width:min(760px,100%);max-height:min(88vh,900px);display:flex;flex-direction:column;overflow:hidden;border-radius:26px;background:linear-gradient(180deg,#f0fdf4 0%,#ffffff 22%);border:1px solid rgba(16,185,129,.18);box-shadow:0 32px 70px rgba(15,23,42,.26)}
+        .leaf-assistant-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:1rem 1rem .85rem;border-bottom:1px solid #d1fae5;background:linear-gradient(135deg,#007a4d 0%,#0f9f6d 100%);color:#fff}
+        .leaf-assistant-title{font-size:1rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase}
+        .leaf-assistant-subtitle{font-size:11px;font-weight:700;line-height:1.35;color:rgba(236,253,245,.88);margin-top:.18rem}
+        .leaf-assistant-close{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:14px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);color:#fff}
+        .leaf-assistant-body{display:flex;flex-direction:column;min-height:0;flex:1}
+        .leaf-assistant-history{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.8rem;background:linear-gradient(180deg,rgba(240,253,244,.72) 0%,rgba(255,255,255,.98) 100%)}
+        .leaf-assistant-empty{padding:1rem;border:1px dashed #a7f3d0;border-radius:18px;background:rgba(255,255,255,.84);color:#166534;font-size:13px;font-weight:700;line-height:1.45}
+        .leaf-msg{display:flex;flex-direction:column;gap:.35rem;max-width:min(88%,620px)}
+        .leaf-msg.user{align-self:flex-end}
+        .leaf-msg.assistant{align-self:flex-start}
+        .leaf-msg-role{font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#6b7280}
+        .leaf-msg-bubble{padding:.9rem 1rem;border-radius:18px;font-size:14px;line-height:1.5;box-shadow:0 10px 24px rgba(15,23,42,.08);white-space:pre-wrap;word-break:break-word}
+        .leaf-msg.user .leaf-msg-bubble{background:#007a4d;color:#fff;border-bottom-right-radius:8px}
+        .leaf-msg.assistant .leaf-msg-bubble{background:#fff;color:#111827;border:1px solid #d1fae5;border-bottom-left-radius:8px}
+        .leaf-match-list{display:grid;gap:.55rem}
+        .leaf-match-card{padding:.72rem .8rem;border:1px solid #dbe4dc;border-radius:14px;background:#f8fafc}
+        .leaf-match-title{font-size:12px;font-weight:900;color:#065f46}
+        .leaf-match-meta{margin-top:.18rem;font-size:11px;font-weight:700;color:#4b5563;line-height:1.45}
+        .leaf-assistant-footer{padding:.9rem 1rem 1rem;border-top:1px solid #d1fae5;background:#fff}
+        .leaf-assistant-input-row{display:flex;align-items:flex-end;gap:.7rem}
+        #leaf-question-input{min-height:58px;max-height:160px;resize:vertical;margin:0}
+        .leaf-assistant-send{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;min-height:58px;padding:0 1rem;border-radius:16px;background:#007a4d;color:#fff;font-size:13px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 12px 24px rgba(0,122,77,.18)}
+        .leaf-assistant-send[disabled]{opacity:.55;pointer-events:none}
+        .leaf-assistant-helper{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-top:.65rem;font-size:11px;font-weight:700;color:#6b7280}
+        .leaf-assistant-status{color:#007a4d}
+        @media (max-width: 767px){
+            #leaf-assistant-modal{padding:0}
+            .leaf-assistant-sheet{width:100%;max-height:100vh;height:100vh;border-radius:0}
+            .leaf-assistant-history{padding:.9rem}
+            .leaf-msg{max-width:94%}
+        }
     </style>
 </head>
 <body class="bg-gray-50 overflow-hidden">
@@ -382,6 +418,32 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <button id="photo-modal-copy-link" type="button" class="hidden pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-sm active:scale-95" onclick="return copyCurrentPhotoModalLink()"><i class="ph-bold ph-copy text-sm"></i>Copy Link</button>
         </div>
         <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe for more</div>
+    </div>
+    <div id="leaf-assistant-modal" class="hidden" onclick="if(event.target===this) closeLeafAssistant();">
+        <div class="leaf-assistant-sheet">
+            <div class="leaf-assistant-header">
+                <div>
+                    <div class="leaf-assistant-title">Leaf Assistant</div>
+                    <div class="leaf-assistant-subtitle">Ask inventory questions in plain language. Leaf answers from Greenleaf app data only.</div>
+                </div>
+                <button type="button" class="leaf-assistant-close" onclick="closeLeafAssistant()" aria-label="Close Leaf assistant"><i class="ph-bold ph-x text-xl"></i></button>
+            </div>
+            <div class="leaf-assistant-body">
+                <div id="leaf-assistant-history" class="leaf-assistant-history">
+                    <div class="leaf-assistant-empty">Try something like: "Hey Leaf, where is priority 1 on Incrediball Hydrangea 3DP and how many are there?"</div>
+                </div>
+                <div class="leaf-assistant-footer">
+                    <div class="leaf-assistant-input-row">
+                        <textarea id="leaf-question-input" class="input-field" placeholder="Ask Leaf about location, quantity, priority, lot, reserve, request, or sales office data..." onkeydown="handleLeafInputKeydown(event)"></textarea>
+                        <button id="leaf-send-btn" type="button" class="leaf-assistant-send" onclick="submitLeafQuestion()"><i class="ph-bold ph-paper-plane-tilt"></i><span>Ask</span></button>
+                    </div>
+                    <div class="leaf-assistant-helper">
+                        <span>Session-only chat history.</span>
+                        <span id="leaf-assistant-status" class="leaf-assistant-status">Ready</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     <div id="view-login">
         <div class="login-card">
@@ -724,7 +786,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.26.01').trim() || 'V2026.04.26.01';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.26.02').trim() || 'V2026.04.26.02';</script>
+                            <button type="button" class="leaf-launch-btn" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -754,6 +817,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         <div id="drawer-request-btn" class="drawer-item text-blue-600 font-bold role-access role-admin role-rep role-request-enabled hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
             <div id="drawer-reserves-btn" class="drawer-item text-indigo-600 font-bold role-access role-admin hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
             <div id="drawer-sales-office-btn" class="drawer-item text-purple-600 font-bold role-access role-admin role-rep hidden" onclick="openSalesOfficeView(); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
+            <div id="drawer-leaf-btn" class="drawer-item text-emerald-700 font-bold" onclick="openLeafAssistant(); toggleMenu();"><i class="ph-bold ph-leaf"></i> Leaf Assistant</div>
             <div id="drawer-reports-btn" class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('reports'); toggleMenu();"><i class="ph-bold ph-chart-bar"></i> Reports</div>
             <div id="drawer-hours-btn" class="drawer-item text-emerald-600 font-bold role-access role-admin hidden" onclick="switchView('hours'); toggleMenu();"><i class="ph-bold ph-clock"></i> Labor Hours</div>
             <div id="drawer-low-stock-btn" class="drawer-item text-red-600 font-bold role-access role-admin hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> NCR</div>
@@ -1200,6 +1264,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec";
         const PUSH_SUBSCRIPTIONS_TABLE = 'v2_push_subscriptions';
         const PUSH_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/send-push-alert`;
+        const APP_API_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/app-api`;
+        const LEAF_ASSISTANT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/inventory-assistant`;
         const PUSH_VAPID_PUBLIC_KEY = 'BAnr5wnptNgeqol-aJzw1eW_4CnuHpQNlvJ3vmo4VGVfuRsHNO5bRZdT-8NN8qUL5bTlUxYrx592fbG26EYjEN4';
         const PUSH_ALERT_NEW_REQUEST_USERS = new Set(['dylan_collyge','jd_jones']);
         const PHOTO_BUCKETS = {
@@ -1213,7 +1279,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.26.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.26.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6872,6 +6938,280 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             currentUserDisplay = '';
             currentRole = '';
             safeRole = '';
+            currentAppSessionToken = '';
+            currentAppSessionExpiresAt = 0;
+        }
+
+        const APP_SESSION_RECORD_STORAGE_KEY = 'gnc_app_session_v1';
+
+        function readPersistedAppSessionRecord() {
+            try {
+                const raw = sessionStorage.getItem(APP_SESSION_RECORD_STORAGE_KEY) || '';
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== 'object') return null;
+                const token = String(parsed.token || '').trim();
+                const expiresAt = Number(parsed.expiresAt || 0);
+                if (!token || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) return null;
+                return {
+                    token,
+                    expiresAt,
+                    username: String(parsed.username || '').trim(),
+                    displayName: String(parsed.displayName || '').trim(),
+                    role: String(parsed.role || '').trim()
+                };
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function persistAppSessionRecord(record = null) {
+            const safeRecord = (record && typeof record === 'object') ? record : null;
+            if (!safeRecord) {
+                currentAppSessionToken = '';
+                currentAppSessionExpiresAt = 0;
+                try { sessionStorage.removeItem(APP_SESSION_RECORD_STORAGE_KEY); } catch (error) {}
+                return false;
+            }
+            const token = String(safeRecord.token || '').trim();
+            const expiresAt = Number(safeRecord.expiresAt || 0);
+            if (!token || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+                try { sessionStorage.removeItem(APP_SESSION_RECORD_STORAGE_KEY); } catch (error) {}
+                currentAppSessionToken = '';
+                currentAppSessionExpiresAt = 0;
+                return false;
+            }
+            currentAppSessionToken = token;
+            currentAppSessionExpiresAt = expiresAt;
+            try {
+                sessionStorage.setItem(APP_SESSION_RECORD_STORAGE_KEY, JSON.stringify({
+                    token,
+                    expiresAt,
+                    username: String(safeRecord.username || currentUser || '').trim(),
+                    displayName: String(safeRecord.displayName || currentUserDisplay || '').trim(),
+                    role: String(safeRecord.role || currentRole || '').trim()
+                }));
+            } catch (error) {}
+            return true;
+        }
+
+        function getCurrentAppSessionToken() {
+            if (currentAppSessionToken && Number(currentAppSessionExpiresAt || 0) > (Date.now() + 15000)) return currentAppSessionToken;
+            const restored = readPersistedAppSessionRecord();
+            if (restored) {
+                currentAppSessionToken = restored.token;
+                currentAppSessionExpiresAt = restored.expiresAt;
+                return restored.token;
+            }
+            currentAppSessionToken = '';
+            currentAppSessionExpiresAt = 0;
+            return '';
+        }
+
+        async function postAppFunctionJson(url, body, options = {}) {
+            const safeOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const headers = {
+                'apikey': SUPABASE_KEY,
+                'Content-Type': 'application/json'
+            };
+            const sessionToken = getCurrentAppSessionToken();
+            if (safeOptions.includeSession !== false && sessionToken) headers['x-gnc-session'] = sessionToken;
+            const response = await fetchWithTimeout(url, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(body || {})
+            }, Number(safeOptions.timeoutMs || 18000), String(safeOptions.label || 'App Function'));
+            const text = await response.text();
+            let payload = null;
+            try { payload = text ? JSON.parse(text) : null; } catch (error) { payload = text || null; }
+            if (!response.ok) {
+                const message = payload && typeof payload === 'object' ? String(payload.error || payload.message || `Request failed (${response.status})`).trim() : `Request failed (${response.status})`;
+                const err = new Error(message || `Request failed (${response.status})`);
+                err.status = response.status;
+                err.payload = payload;
+                throw err;
+            }
+            return payload;
+        }
+
+        async function ensureLeafAssistantSession(forceRefresh = false) {
+            if (!forceRefresh) {
+                const existingToken = getCurrentAppSessionToken();
+                if (existingToken) return existingToken;
+            }
+            if (navigator.onLine === false) return '';
+            const username = String(currentUser || normalizeSessionIdentity(localStorage.getItem('gnc_user_v3')) || '').trim();
+            const password = String(localStorage.getItem('gnc_pin_v3') || '').trim();
+            if (!username || !password) return '';
+            try {
+                const payload = await postAppFunctionJson(APP_API_FUNCTION_URL, {
+                    action: 'login',
+                    username,
+                    password
+                }, {
+                    includeSession: false,
+                    timeoutMs: 14000,
+                    label: 'Leaf session login'
+                });
+                if (payload && payload.ok && payload.session && payload.session.token) {
+                    persistAppSessionRecord({
+                        token: payload.session.token,
+                        expiresAt: Number(payload.session.expiresAt || 0),
+                        username: String(firstNonEmptyValue(payload.session.username, username) || '').trim(),
+                        displayName: String(firstNonEmptyValue(payload.session.displayName, currentUserDisplay, username) || '').trim(),
+                        role: String(firstNonEmptyValue(payload.session.role, currentRole) || '').trim()
+                    });
+                    return getCurrentAppSessionToken();
+                }
+            } catch (error) {}
+            return '';
+        }
+
+        function escapeLeafHtml(value = '') {
+            return String(value || '').replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char] || char));
+        }
+
+        function setLeafAssistantBusyState(isBusy = false, statusText = '') {
+            leafAssistantBusy = !!isBusy;
+            const sendBtn = document.getElementById('leaf-send-btn');
+            const statusEl = document.getElementById('leaf-assistant-status');
+            if (sendBtn) sendBtn.disabled = leafAssistantBusy;
+            if (statusEl) statusEl.innerText = String(statusText || (leafAssistantBusy ? 'Searching inventory...' : 'Ready')).trim() || 'Ready';
+        }
+
+        function buildLeafMatchMeta(match = {}) {
+            const parts = [];
+            if (match.dataset) parts.push(`Source: ${match.dataset}`);
+            if (match.location) parts.push(`Loc: ${match.location}`);
+            if (match.lot) parts.push(`Lot: ${match.lot}`);
+            if (match.priority !== undefined && match.priority !== null && String(match.priority).trim() !== '') parts.push(`Priority: ${match.priority}`);
+            if (match.qty !== undefined && match.qty !== null && String(match.qty).trim() !== '') parts.push(`Qty: ${match.qty}`);
+            return parts.join(' • ');
+        }
+
+        function renderLeafAssistantMessages() {
+            const historyEl = document.getElementById('leaf-assistant-history');
+            if (!historyEl) return;
+            if (!Array.isArray(leafAssistantMessages) || !leafAssistantMessages.length) {
+                historyEl.innerHTML = `<div class="leaf-assistant-empty">Try something like: "Hey Leaf, where is priority 1 on Incrediball Hydrangea 3DP and how many are there?"</div>`;
+                return;
+            }
+            historyEl.innerHTML = leafAssistantMessages.map((message) => {
+                const role = String(message.role || 'assistant').trim() === 'user' ? 'user' : 'assistant';
+                const matches = Array.isArray(message.matches) ? message.matches : [];
+                const sourceLabel = String(message.sourceLabel || '').trim();
+                const clarification = !!message.needsClarification;
+                const matchHtml = matches.length ? `<div class="leaf-match-list">${matches.map((match) => `<div class="leaf-match-card"><div class="leaf-match-title">${escapeLeafHtml(firstNonEmptyValue(match.commonName, match.itemCode, match.location, 'Match'))}</div><div class="leaf-match-meta">${escapeLeafHtml(buildLeafMatchMeta(match))}</div></div>`).join('')}</div>` : '';
+                const footerHtml = sourceLabel ? `<div class="leaf-match-meta">${escapeLeafHtml(sourceLabel)}${clarification ? ' • Clarification needed' : ''}</div>` : (clarification ? `<div class="leaf-match-meta">Clarification needed</div>` : '');
+                return `<div class="leaf-msg ${role}"><div class="leaf-msg-role">${role === 'user' ? 'You' : 'Leaf'}</div><div class="leaf-msg-bubble">${escapeLeafHtml(message.text || '')}</div>${matchHtml}${footerHtml}</div>`;
+            }).join('');
+            requestAnimationFrame(() => {
+                historyEl.scrollTop = historyEl.scrollHeight;
+            });
+        }
+
+        function openLeafAssistant(prefill = '') {
+            const modal = document.getElementById('leaf-assistant-modal');
+            const input = document.getElementById('leaf-question-input');
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            renderLeafAssistantMessages();
+            if (input) {
+                if (prefill) input.value = String(prefill || '').trim();
+                setTimeout(() => {
+                    try { input.focus(); } catch (error) {}
+                }, 40);
+            }
+        }
+
+        function closeLeafAssistant() {
+            const modal = document.getElementById('leaf-assistant-modal');
+            if (modal) modal.classList.add('hidden');
+            setLeafAssistantBusyState(false, 'Ready');
+        }
+
+        function handleLeafInputKeydown(event) {
+            if (!event) return true;
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                submitLeafQuestion();
+                return false;
+            }
+            return true;
+        }
+
+        async function askLeafAssistantQuestion(question = '') {
+            const trimmedQuestion = String(question || '').trim();
+            if (!trimmedQuestion) throw new Error('Enter a question for Leaf.');
+            let token = await ensureLeafAssistantSession(false);
+            if (!token) throw new Error(navigator.onLine === false ? 'Leaf is unavailable offline right now.' : 'Leaf could not verify your session. Please sign in again.');
+            const payload = {
+                question: trimmedQuestion,
+                user: currentUserDisplay || currentUser || '',
+                role: currentRole || '',
+                viewContext: getCurrentVisibleViewId()
+            };
+            try {
+                return await postAppFunctionJson(LEAF_ASSISTANT_FUNCTION_URL, payload, {
+                    includeSession: true,
+                    timeoutMs: 22000,
+                    label: 'Leaf assistant'
+                });
+            } catch (error) {
+                if (Number(error && error.status || 0) === 401) {
+                    token = await ensureLeafAssistantSession(true);
+                    if (!token) throw error;
+                    return await postAppFunctionJson(LEAF_ASSISTANT_FUNCTION_URL, payload, {
+                        includeSession: true,
+                        timeoutMs: 22000,
+                        label: 'Leaf assistant'
+                    });
+                }
+                throw error;
+            }
+        }
+
+        async function submitLeafQuestion() {
+            if (leafAssistantBusy) return;
+            const input = document.getElementById('leaf-question-input');
+            const question = String(input && input.value || '').trim();
+            if (!question) {
+                showToast('Leaf', 'Enter a question for Leaf.', true);
+                return;
+            }
+            leafLastRequestId += 1;
+            const requestId = leafLastRequestId;
+            leafAssistantMessages.push({ role: 'user', text: question });
+            renderLeafAssistantMessages();
+            if (input) input.value = '';
+            setLeafAssistantBusyState(true, 'Searching inventory...');
+            try {
+                const result = await askLeafAssistantQuestion(question);
+                if (requestId !== leafLastRequestId) return;
+                const answerText = String(firstNonEmptyValue(result && result.answer, result && result.clarificationPrompt, 'I could not find an answer for that question.') || '').trim() || 'I could not find an answer for that question.';
+                leafAssistantMessages.push({
+                    role: 'assistant',
+                    text: answerText,
+                    matches: Array.isArray(result && result.matches) ? result.matches.slice(0, 8) : [],
+                    needsClarification: !!(result && result.needsClarification),
+                    sourceLabel: String(result && result.sourceLabel || '').trim()
+                });
+                renderLeafAssistantMessages();
+            } catch (error) {
+                leafAssistantMessages.push({
+                    role: 'assistant',
+                    text: String(error && error.message || 'Leaf ran into a problem while checking inventory.').trim() || 'Leaf ran into a problem while checking inventory.'
+                });
+                renderLeafAssistantMessages();
+            } finally {
+                setLeafAssistantBusyState(false, 'Ready');
+            }
         }
 
         function recoverRestoredSessionAfterBootFailure(sessionRecord = null, bootError = null) {
@@ -7462,7 +7802,7 @@ let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let t
         let lastBackgroundRefreshAt=0;
         let cacheWarmPromise=null;
         let cachePersistTimer=null; let cachePersistIdleHandle=null; let lastCachePersistAt=0; let pendingCachePersist=false;
-        let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0;
+        let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0;
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
@@ -7772,7 +8112,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.26.01').trim() || 'V2026.04.26.01';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.26.02').trim() || 'V2026.04.26.02';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -12599,6 +12939,7 @@ function toggleDriveQuickRequestItem(domId) {
                 initializeCartUi();
                 updateGlobalActionBar();
                 setRepPermutations(currentUser);
+                ensureLeafAssistantSession(false).catch(() => {});
             }, deferHeavyLoginWarm ? 700 : 0);
 
             if (!deferHeavyLoginWarm) {
