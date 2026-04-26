@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.04.25.07';
+        window.__APP_SHELL_VERSION__ = 'V2026.04.25.08';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -724,7 +724,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.25.07').trim() || 'V2026.04.25.07';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.25.08').trim() || 'V2026.04.25.08';</script>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -980,7 +980,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div id="task-shared-filters" class="hidden mb-3 space-y-3">
 
                         <div id="task-colorwalk-filters" class="hidden"></div>
-                        <div id="task-reserves-customer-filters" class="hidden"></div>
+                    <div id="task-reserves-customer-filters" class="hidden"></div>
+                    <div id="task-reserves-mode-filters" class="hidden"></div>
                     </div>
                     <div id="task-content"></div>
                 </div>
@@ -1210,7 +1211,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.25.07';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.25.08';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7690,7 +7691,7 @@ let activeHomeTab='dashboard'; let selectedProductivityUser=''; let productivity
 let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
 let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveSeason=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let drivePlantFilterItemsCache=[]; let drivePlantFilterGenusOptions=[]; let drivePlantFilterContSizeOptions=[]; let driveGenusSelectionMode='all'; let driveContSizeSelectionMode='all'; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS); let driveResolvedCardStateKey=''; let driveResolvedCardStateCache=null; let driveSearchRequiresManualSelection=false; let driveSearchDebounceTimer=null; let driveSearchRequestToken=0;
 
-let activeTaskView="hot-price"; let activeTaskFilter="all"; let activeTaskCustomerFilter="all"; let activeTaskReserveRepFilter="all"; let activeTaskReserveCustomerFilter="all"; let activeTaskTab=activeTaskView; let activeTaskSubview=activeTaskFilter; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let selectedTaskContSizes=new Set(); let taskContSizeSearchTerm=""; let taskContSizeDropdownOpen=false; let taskContSizeFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
+let activeTaskView="hot-price"; let activeTaskFilter="all"; let activeTaskCustomerFilter="all"; let activeTaskReserveRepFilter="all"; let activeTaskReserveCustomerFilter="all"; let activeTaskReserveRowStatusMode="all"; let activeTaskReservePhotoMode="all"; let activeTaskTab=activeTaskView; let activeTaskSubview=activeTaskFilter; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let selectedTaskContSizes=new Set(); let taskContSizeSearchTerm=""; let taskContSizeDropdownOpen=false; let taskContSizeFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         let detailReturnState = { viewId: '', scrollTop: 0 };
         let viewHistoryStack = [];
         let pendingFieldSaveCount = 0;
@@ -7763,7 +7764,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.25.07').trim() || 'V2026.04.25.07';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.25.08').trim() || 'V2026.04.25.08';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -16039,6 +16040,8 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (normalizedView === 'reserves') {
                 activeTaskReserveRepFilter = allowedFilters.includes(activeTaskReserveRepFilter) ? activeTaskReserveRepFilter : 'all';
                 activeTaskReserveCustomerFilter = 'all';
+                activeTaskReserveRowStatusMode = 'all';
+                activeTaskReservePhotoMode = 'all';
                 activeTaskSubview = activeTaskReserveRepFilter;
             } else {
                 activeTaskFilter = allowedFilters.includes(activeTaskFilter) ? activeTaskFilter : 'all';
@@ -16083,6 +16086,8 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (normalizeTaskViewValue(activeTaskView) === 'reserves') {
                 activeTaskReserveRepFilter = nextFilter;
                 activeTaskReserveCustomerFilter = 'all';
+                activeTaskReserveRowStatusMode = 'all';
+                activeTaskReservePhotoMode = 'all';
                 activeTaskSubview = activeTaskReserveRepFilter;
             } else {
                 activeTaskFilter = normalizeTaskFilterValue(nextFilter);
@@ -16109,6 +16114,22 @@ function toggleDriveQuickRequestItem(domId) {
             taskSubviewDropdownOpen = false;
             scheduleTasksRender();
             scheduleTaskHotCacheWarmup('task-reserve-customer', 60);
+            return false;
+        }
+
+        function setTaskReserveRowStatusMode(value = '') {
+            beginDirectNavigationActivity();
+            activeTaskReserveRowStatusMode = normalizeTaskReserveRowStatusMode(value);
+            scheduleTasksRender();
+            scheduleTaskHotCacheWarmup('task-reserve-row-status', 30);
+            return false;
+        }
+
+        function setTaskReservePhotoMode(value = '') {
+            beginDirectNavigationActivity();
+            activeTaskReservePhotoMode = normalizeTaskReservePhotoMode(value);
+            scheduleTasksRender();
+            scheduleTaskHotCacheWarmup('task-reserve-photo-mode', 30);
             return false;
         }
 
@@ -27314,6 +27335,16 @@ ${folderNote ? `Folder Note: ${folderNote}
             return normalized || 'all';
         }
 
+        function normalizeTaskReserveRowStatusMode(value = activeTaskReserveRowStatusMode) {
+            const normalized = String(firstNonEmptyValue(value, activeTaskReserveRowStatusMode, 'all') || '').trim().toLowerCase();
+            return normalized === 'matching' ? 'matching' : 'all';
+        }
+
+        function normalizeTaskReservePhotoMode(value = activeTaskReservePhotoMode) {
+            const normalized = String(firstNonEmptyValue(value, activeTaskReservePhotoMode, 'all') || '').trim().toLowerCase();
+            return normalized === 'photos' ? 'photos' : 'all';
+        }
+
         function getTaskViewTargetUser(tab = activeTaskView) {
             const safeView = normalizeTaskViewValue(tab);
             const useSharedTaskQueue = shouldUseSharedTaskQueue(safeView);
@@ -27329,6 +27360,42 @@ ${folderNote ? `Folder Note: ${folderNote}
             const consigneeName = String(firstNonEmptyValue(item && item.CONSIGNEENAME, item && item.consigneename, item && item.CONSIGNEE, item && item.consignee, '') || '').trim();
             if (customerName && consigneeName && normalizeRepMatchToken(customerName) !== normalizeRepMatchToken(consigneeName)) return `${customerName}-${consigneeName}`;
             return customerName || consigneeName || 'Unknown Customer';
+        }
+
+        function getTaskReserveOrderedQty(row = null) {
+            const qty = parseAppNumber(firstNonEmptyValue(row && row.QUANTITYORDERED, row && row.quantityordered, row && row.QTY_ORDERED, row && row.qty_ordered, ''));
+            return Number.isFinite(qty) ? Math.max(0, qty) : 0;
+        }
+
+        function taskReserveRowHasPhotos(item = null) {
+            return getPhotoUrlList(getRowPhotoLink(item, 'tasks')).length > 0;
+        }
+
+        function getTaskReserveComparisonInfo(item = null) {
+            const locMatchQty = parseAppNumber(getDisplayLocMatchQtyValue(item, 'tasks'));
+            const ptrAvailableQty = parseAppNumber(firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.ptravailable, item && item.LOC_AVAIL, '0'));
+            const hasPhotos = taskReserveRowHasPhotos(item);
+            if (hasPhotos && Number.isFinite(locMatchQty)) {
+                return { qty: Math.max(0, locMatchQty), source: 'loc_match_qty', hasPhotos: true };
+            }
+            return {
+                qty: Number.isFinite(ptrAvailableQty) ? Math.max(0, ptrAvailableQty) : 0,
+                source: 'ptravailable',
+                hasPhotos
+            };
+        }
+
+        function applyTaskReserveJoinedRowModes(rows = [], rowStatusMode = activeTaskReserveRowStatusMode, photoMode = activeTaskReservePhotoMode) {
+            const safeRowStatusMode = normalizeTaskReserveRowStatusMode(rowStatusMode);
+            const safePhotoMode = normalizeTaskReservePhotoMode(photoMode);
+            let items = Array.isArray(rows) ? rows.slice() : [];
+            if (safeRowStatusMode === 'matching') {
+                items = items.filter((item) => Number(firstNonEmptyValue(item && item.TASK_RESERVE_MATCHING_ROW_COUNT, 0)) > 0);
+            }
+            if (safePhotoMode === 'photos') {
+                items = items.filter((item) => !!item && !!item.TASK_RESERVE_HAS_PHOTOS);
+            }
+            return items;
         }
 
         function getTaskReserveBaseRows(items = reservesInventory) {
@@ -27483,20 +27550,34 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const uniqueKey = String(firstNonEmptyValue(driveRow && driveRow.UNIQUE_ID, driveRow && driveRow.DOM_ID, `${itemCode}|${firstNonEmptyValue(driveRow && driveRow.LOCATIONCODE, '')}|${lotCode}`)).trim();
                     if (!uniqueKey) return;
                     if (!driveRowsByUniqueKey.has(uniqueKey)) {
+                        const comparisonInfo = getTaskReserveComparisonInfo(driveRow);
                         driveRowsByUniqueKey.set(uniqueKey, {
                             row: Object.assign({}, driveRow),
                             reserveRows: [],
-                            customerKeys: new Set()
+                            customerKeys: new Set(),
+                            matchingRowCount: 0,
+                            maxOrderedQty: 0,
+                            comparisonQty: comparisonInfo.qty,
+                            comparisonSource: comparisonInfo.source,
+                            hasPhotos: comparisonInfo.hasPhotos
                         });
                     }
                     const entry = driveRowsByUniqueKey.get(uniqueKey);
                     entry.reserveRows.push(row);
                     entry.customerKeys.add(normalizeTaskReserveCustomerFilterValue(getTaskReserveCustomerConsigneeLabel(row)));
+                    const orderedQty = getTaskReserveOrderedQty(row);
+                    entry.maxOrderedQty = Math.max(entry.maxOrderedQty, orderedQty);
+                    if (Number.isFinite(entry.comparisonQty) && entry.comparisonQty >= orderedQty) entry.matchingRowCount += 1;
                 });
             });
             return sortDriveCardItems(Array.from(driveRowsByUniqueKey.values()).map((entry) => {
                 entry.row.TASK_RESERVE_ROW_COUNT = entry.reserveRows.length;
                 entry.row.TASK_RESERVE_CUSTOMER_COUNT = entry.customerKeys.size;
+                entry.row.TASK_RESERVE_MATCHING_ROW_COUNT = entry.matchingRowCount;
+                entry.row.TASK_RESERVE_MAX_ORDER_QTY = entry.maxOrderedQty;
+                entry.row.TASK_RESERVE_COMPARISON_QTY = entry.comparisonQty;
+                entry.row.TASK_RESERVE_COMPARISON_SOURCE = entry.comparisonSource;
+                entry.row.TASK_RESERVE_HAS_PHOTOS = entry.hasPhotos ? '1' : '';
                 return entry.row;
             }));
         }
@@ -27526,6 +27607,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const safeReserveRepFilter = normalizeTaskReserveFilterValue(activeTaskReserveRepFilter);
                 activeTaskReserveRepFilter = reserveRepOptions.includes(safeReserveRepFilter) ? safeReserveRepFilter : 'all';
                 activeTaskReserveCustomerFilter = getNormalizedTaskReserveCustomerValueForRep(activeTaskReserveCustomerFilter, activeTaskReserveRepFilter);
+                activeTaskReserveRowStatusMode = normalizeTaskReserveRowStatusMode(activeTaskReserveRowStatusMode);
+                activeTaskReservePhotoMode = normalizeTaskReservePhotoMode(activeTaskReservePhotoMode);
                 activeTaskSubview = activeTaskReserveRepFilter;
                 return;
             }
@@ -27702,7 +27785,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (safeView === 'reserves') {
                 const safeRepFilter = getNormalizedTaskSubviewValue(safeView, subview, scopedItems);
                 const safeCustomerFilter = getNormalizedTaskReserveCustomerValueForRep(activeTaskReserveCustomerFilter, safeRepFilter, scopedItems);
-                return getTaskReserveJoinedDriveRows(safeRepFilter, safeCustomerFilter, scopedItems);
+                const joinedRows = getTaskReserveJoinedDriveRows(safeRepFilter, safeCustomerFilter, scopedItems);
+                return applyTaskReserveJoinedRowModes(joinedRows, activeTaskReserveRowStatusMode, activeTaskReservePhotoMode);
             }
             const safeFilter = normalizeTaskFilterValue(subview);
             if (safeView === 'hot-price') return getTaskHotPriceRows(scopedItems, safeFilter === 'all' ? '' : safeFilter);
@@ -28021,7 +28105,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function syncTaskSharedFilterArea() {
             const container = document.getElementById('task-shared-filters');
             if (!container) return;
-            const childIds = ['task-colorwalk-filters', 'task-reserves-customer-filters'];
+            const childIds = ['task-colorwalk-filters', 'task-reserves-customer-filters', 'task-reserves-mode-filters'];
             const hasVisible = childIds.some((id) => {
                 const el = document.getElementById(id);
                 return !!(el && !el.classList.contains('hidden') && String(el.innerHTML || '').trim());
@@ -28042,6 +28126,29 @@ ${folderNote ? `Folder Note: ${folderNote}
             const optionsHtml = options.map((option) => `<option value="${esc(option.value)}" ${option.value === activeTaskReserveCustomerFilter ? 'selected' : ''}>${esc(option.label)}</option>`).join('');
             container.classList.remove('hidden');
             container.innerHTML = `<div class="rounded-[1.05rem] border border-emerald-100 bg-white/95 px-3 py-3 shadow-sm"><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Customer-Consignee<select class="input-field !mb-0 mt-2 border-green-200 bg-green-50/40" onchange="return setTaskReserveCustomerFilter(this.value)">${optionsHtml}</select></label></div>`;
+        }
+
+        function renderTaskReserveModeFilters() {
+            const container = document.getElementById('task-reserves-mode-filters');
+            if (!container) return;
+            if (activeTaskTab !== 'reserves' || activeTaskReserveRepFilter === 'all' || activeTaskReserveCustomerFilter === 'all') {
+                container.classList.add('hidden');
+                container.innerHTML = '';
+                return;
+            }
+            activeTaskReserveRowStatusMode = normalizeTaskReserveRowStatusMode(activeTaskReserveRowStatusMode);
+            activeTaskReservePhotoMode = normalizeTaskReservePhotoMode(activeTaskReservePhotoMode);
+            const buildToggleButton = (isSelected, label, handlerCall) => `<button type="button" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] transition ${isSelected ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm' : 'border-emerald-200 bg-white text-emerald-700'}" onclick="${handlerCall}">${esc(label)}</button>`;
+            const rowStatusHtml = [
+                buildToggleButton(activeTaskReserveRowStatusMode === 'all', 'All Rows', `return setTaskReserveRowStatusMode('all')`),
+                buildToggleButton(activeTaskReserveRowStatusMode === 'matching', 'Matching', `return setTaskReserveRowStatusMode('matching')`)
+            ].join('');
+            const photoModeHtml = [
+                buildToggleButton(activeTaskReservePhotoMode === 'all', 'All Rows', `return setTaskReservePhotoMode('all')`),
+                buildToggleButton(activeTaskReservePhotoMode === 'photos', 'Photos', `return setTaskReservePhotoMode('photos')`)
+            ].join('');
+            container.classList.remove('hidden');
+            container.innerHTML = `<div class="grid grid-cols-1 gap-3"><div class="rounded-[1.05rem] border border-emerald-100 bg-white/95 px-3 py-3 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Row Status</div><div class="mt-2 flex flex-wrap gap-2">${rowStatusHtml}</div></div><div class="rounded-[1.05rem] border border-emerald-100 bg-white/95 px-3 py-3 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Photo View</div><div class="mt-2 flex flex-wrap gap-2">${photoModeHtml}</div></div></div>`;
         }
 
         function setColorWalkSearchTerm(value = '') {
@@ -28716,6 +28823,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 safeTab,
                 safeSubview,
                 safeTab === 'reserves' ? safeReserveCustomerFilter : 'reserve-customer:na',
+                safeTab === 'reserves' ? normalizeTaskReserveRowStatusMode(activeTaskReserveRowStatusMode) : 'reserve-row-status:na',
+                safeTab === 'reserves' ? normalizeTaskReservePhotoMode(activeTaskReservePhotoMode) : 'reserve-photo-mode:na',
                 useSharedTaskQueue ? '1' : '0',
                 safeTab === 'flyer' ? getFlyerFolderTabValue(activeFlyerFolderTab) : 'flyer-tab:na',
                 colorWalkSearchTerm
@@ -29089,6 +29198,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 selectedFlyerFolder || '',
                 selectedEndCapFolder || '',
                 activeTaskReserveCustomerFilter || '',
+                activeTaskReserveRowStatusMode || '',
+                activeTaskReservePhotoMode || '',
                 genusSelectionKey,
                 contSizeSelectionKey
             ].join('::');
@@ -29287,6 +29398,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 activeTaskTab,
                 activeTaskSubview,
                 activeTaskReserveCustomerFilter,
+                activeTaskReserveRowStatusMode,
+                activeTaskReservePhotoMode,
                 taskViewLevel,
                 taskGenusScopeKey,
                 taskContSizeScopeKey,
@@ -29307,6 +29420,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const filterStartedAt = beginInternalPerfMeasure();
                 if (taskFilterSyncSignature === lastTaskFilterRenderSignature) {
                     renderTaskReserveCustomerFilters();
+                    renderTaskReserveModeFilters();
                     syncTaskSharedFilterArea();
                     syncTaskLocationDetailFilterUi();
                     recordInternalPerfDuration('taskFilterRenderDurations', filterStartedAt, `${taskPerfKey}:reuse`);
@@ -29319,6 +29433,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     renderColorWalkFilters();
                 }
                 renderTaskReserveCustomerFilters();
+                renderTaskReserveModeFilters();
                 renderTaskGenusFilter(taskGenusBaseItems, taskGenusScopeKey);
                 renderTaskContSizeFilter(taskContSizeBaseItems, taskContSizeScopeKey);
                 if (shouldRenderTaskLocationDetailFilters && selectedTaskLoc) {
