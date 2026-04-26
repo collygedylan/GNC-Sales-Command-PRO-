@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.04.25.08';
+        window.__APP_SHELL_VERSION__ = 'V2026.04.25.09';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -724,7 +724,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.25.08').trim() || 'V2026.04.25.08';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.25.09').trim() || 'V2026.04.25.09';</script>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1211,7 +1211,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.25.08';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.25.09';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1395,6 +1395,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         let passiveChromeSyncUntil = 0;
         let lastTaskHeaderSearchVisible = null;
         let lastTaskFilterRenderSignature = '';
+        let lastTaskGenusRenderSignature = '';
+        let lastTaskContSizeRenderSignature = '';
         let swipeCloseOnScrollFrame = null;
         let swipeCloseOnScrollTimer = null;
         let lifecycleResumeTimer = null;
@@ -1427,6 +1429,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         let taskResolvedStateKey = '';
         let taskResolvedStateCache = null;
         let taskHotStateCache = new Map();
+        let taskFilteredItemsCache = new Map();
         let taskHotPriceSubsetCacheKey = '';
         let taskHotPriceSubsetCache = null;
         let taskGenusOptionsCache = new Map();
@@ -1532,6 +1535,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             taskResolvedStateKey = '';
             taskResolvedStateCache = null;
             taskHotStateCache.clear();
+            taskFilteredItemsCache.clear();
             taskHotPriceSubsetCacheKey = '';
             taskHotPriceSubsetCache = null;
             taskGenusOptionsCache.clear();
@@ -1540,6 +1544,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             taskGenusFilterScopeKey = '';
             taskContSizeFilterScopeKey = '';
             taskLocationDetailFilterScopeKey = '';
+            lastTaskGenusRenderSignature = '';
+            lastTaskContSizeRenderSignature = '';
             if (taskHotCacheWarmTimer) {
                 clearTimeout(taskHotCacheWarmTimer);
                 taskHotCacheWarmTimer = null;
@@ -5602,7 +5608,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return scheduleTrackedViewRender('drive', 'drive:render', { delay, typingDelay, forceRender, userAction: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 32, interactionDelayMs: 32, scrollDelayMs: 120 });
         }
 
-        function scheduleTasksRender(delay = 0, typingDelay = 160, forceRender = false) {
+        function scheduleTasksRender(delay = 0, typingDelay = 72, forceRender = false) {
             return scheduleTrackedViewRender('tasks', 'tasks:render', { delay, typingDelay, forceRender, userAction: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 32, interactionDelayMs: 32, scrollDelayMs: 120 });
         }
 
@@ -5638,7 +5644,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return scheduleTrackedViewRender('av', 'av:render', { delay, typingDelay: 160, userAction: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 32, interactionDelayMs: 32, scrollDelayMs: 120 });
         }
 
-        function scheduleTasksRenderWithOptions(options = {}, delay = 0, typingDelay = 160, forceRender = false, renderKey = 'tasks:render:options') {
+        function scheduleTasksRenderWithOptions(options = {}, delay = 0, typingDelay = 72, forceRender = false, renderKey = 'tasks:render:options') {
             pendingTasksRenderOptions = { ...(pendingTasksRenderOptions || {}), ...((options && typeof options === 'object') ? options : {}) };
             markViewDirty('tasks');
             const touchRenderStartedAt = beginInternalPerfMeasure();
@@ -7764,7 +7770,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.25.08').trim() || 'V2026.04.25.08';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.25.09').trim() || 'V2026.04.25.09';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -24493,10 +24499,8 @@ function toggleDriveQuickRequestItem(domId) {
                 const salesNoteHtml = buildSalesNoteHtml();
                 if(holdHtml) noteHtml += holdHtml;
                 if(salesNoteHtml) noteHtml += salesNoteHtml;
-                if(item.END_CAP_FOLDER&&String(item.END_CAP_FOLDER).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-yellow-800 bg-yellow-100 p-2 rounded border border-yellow-200 shadow-sm whitespace-pre-wrap"><span class="font-black">END CAP:</span> ${item.END_CAP_FOLDER} | QTY: ${item.END_CAP_QTY||'0'} | Lvl: ${item.END_CAP_LEVEL||'-'}</div>`}
                 if(displayLocMatchQty&&String(displayLocMatchQty).trim()!==''&&Number(displayLocMatchQty)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">LOC PHOTO MATCH:</span> ${displayLocMatchQty}</div>`}
                 if(displayAvNote&&String(displayAvNote).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${displayAvNote}</div>`}
-                if(item.FLYER_TITLE&&String(item.FLYER_TITLE).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-indigo-800 bg-indigo-100 p-2 rounded border border-indigo-200 shadow-sm whitespace-pre-wrap"><span class="font-black">FOLDER:</span> ${getFlyerFolderName(item)}${isFlyerFolderArchived(item) ? ' <span class="font-black uppercase tracking-wide">(Archived)</span>' : ''}</div>`}
                 let extraData='';extraData=`<div class="mt-2 flex flex-wrap gap-2 text-[10px] font-bold text-gray-500 uppercase">${displaySpec?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${displaySpec}</span>`:''}${displayCaliper?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${displayCaliper}</span>`:''}${displayMatch?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">LOC MATCH %: ${displayMatch}%</span>`:''}</div>`;
                 let quickRequestBtn='';
                 if(canUseDriveQuickRequest()){
@@ -24516,10 +24520,8 @@ function toggleDriveQuickRequestItem(domId) {
                 const holdHtml = buildHoldReasonHtml();
                 if(holdHtml) noteHtml += holdHtml;
                 if(isTaskHotPriceSubview(activeTaskTab, activeTaskSubview) && displayHotPrice){noteHtml+=`<div class="mt-2 text-[12px] text-rose-800 bg-rose-50 p-2 rounded border border-rose-200 shadow-sm whitespace-pre-wrap"><span class="font-black">HOT PRICE:</span> ${displayHotPrice}</div>`}
-                if(item.END_CAP_FOLDER&&String(item.END_CAP_FOLDER).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-yellow-800 bg-yellow-100 p-2 rounded border border-yellow-200 shadow-sm whitespace-pre-wrap"><span class="font-black">END CAP:</span> ${item.END_CAP_FOLDER} | QTY: ${item.END_CAP_QTY||'0'} | Lvl: ${item.END_CAP_LEVEL||'-'}</div>`}
                 if(displayLocMatchQty&&String(displayLocMatchQty).trim()!==''&&Number(displayLocMatchQty)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">LOC PHOTO MATCH:</span> ${displayLocMatchQty}</div>`}
                 if(displayAvNote&&String(displayAvNote).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${displayAvNote}</div>`}
-                if(item.FLYER_TITLE&&String(item.FLYER_TITLE).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-indigo-800 bg-indigo-100 p-2 rounded border border-indigo-200 shadow-sm whitespace-pre-wrap"><span class="font-black">FOLDER:</span> ${getFlyerFolderName(item)}${isFlyerFolderArchived(item) ? ' <span class="font-black uppercase tracking-wide">(Archived)</span>' : ''}</div>`}
                 let extraData='';extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${displaySpec?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${displaySpec}</span>`:''}${displayCaliper?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${displayCaliper}</span>`:''}${displayMatch?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">LOC MATCH %: ${displayMatch}%</span>`:''}</div>`;
         return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory ${seasonCardShellClass} relative ${inventoryCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open item details')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(item.LOCATIONCODE || 'No Loc', firstNonEmptyValue(item.SOURCE, item.source, ''))}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">LOC AVA <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">LOC <span class="text-blue-900">${item.LOCATIONCODE||'No Loc'}</span></span><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">LOT <span class="text-slate-900">${item.LOTCODE||'-'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-orange-700">PRI <span class="text-orange-900">${item.PRIORITY||'-'}</span></span></div>${extraData}${noteHtml}</div>${inlineThumbHtml}</div></div>`;
             }
@@ -28382,6 +28384,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                 container.innerHTML = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskGenusDropdown()"><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus Filter</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-genus-summary>All Genus</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div data-genus-chips></div><div class="task-top-control-panel mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ${taskGenusFilterOpen ? '' : 'hidden '}" data-genus-panel><div class="p-2 border-b border-emerald-100"><input id="task-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white" placeholder="Search genus..." value="${esc(taskGenusSearchTerm)}" oninput="setTaskGenusSearchTerm(this.value)" onkeydown="handleTaskGenusSearchKeydown(event)"></div><div class="max-h-60 overflow-y-auto" data-genus-options></div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-genus-clear onclick="return clearTaskGenusFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskGenusDropdown()">Done</button></div></div></div>`;
             }
             const state = buildTaskGenusFilterState(taskGenusFilterItemsCache, taskGenusFilterScopeKey);
+            const renderSignature = [
+                taskGenusFilterScopeKey,
+                buildSelectionStateKey(selectedTaskGenusNames),
+                String(taskGenusSearchTerm || '').trim(),
+                taskGenusFilterOpen ? 'open' : 'closed'
+            ].join('|');
+            if (renderSignature === lastTaskGenusRenderSignature) return;
+            lastTaskGenusRenderSignature = renderSignature;
             updateTaskGenusFilterUi(state, container);
         }
 
@@ -28550,6 +28560,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                 container.dataset.contsizeReady = '1';
                 container.innerHTML = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-green-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">CONTSIZE</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-contsize-summary>All Sizes</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ${taskContSizeDropdownOpen ? '' : 'hidden '}" data-contsize-panel><div class="p-2 border-b border-emerald-100"><input id="task-contsize-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white" placeholder="Search cont size..." value="${esc(taskContSizeSearchTerm)}" oninput="setTaskContSizeSearchTerm(this.value)" onkeydown="handleTaskContSizeSearchKeydown(event)"></div><div class="max-h-60 overflow-y-auto" data-contsize-options></div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-contsize-clear onclick="return clearTaskContSizeFilter()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskContSizeDropdown()">Done</button></div></div></div>`;
             }
+            const renderSignature = [
+                taskContSizeFilterScopeKey,
+                buildSelectionStateKey(selectedTaskContSizes),
+                String(taskContSizeSearchTerm || '').trim(),
+                taskContSizeDropdownOpen ? 'open' : 'closed'
+            ].join('|');
+            if (renderSignature === lastTaskContSizeRenderSignature) return;
+            lastTaskContSizeRenderSignature = renderSignature;
             updateTaskContSizeFilterUi(state, container);
         }
 
@@ -29117,6 +29135,24 @@ ${folderNote ? `Folder Note: ${folderNote}
 
             const buildStartedAt = beginInternalPerfMeasure();
             const computeFilteredTaskState = () => {
+                const filteredStateKey = [
+                    hotState.key,
+                    taskViewLevel,
+                    selectedTaskBlock || '',
+                    selectedTaskLoc || '',
+                    selectedFlyerFolder || '',
+                    selectedEndCapFolder || '',
+                    buildSelectionStateKey(selectedTaskGenusNames),
+                    buildSelectionStateKey(selectedTaskContSizes),
+                    String(taskLocationDetailSearchTerm || '').trim().toLowerCase()
+                ].join('::');
+                if (taskFilteredItemsCache.has(filteredStateKey)) {
+                    const cachedState = taskFilteredItemsCache.get(filteredStateKey);
+                    taskFilteredItemsCache.delete(filteredStateKey);
+                    taskFilteredItemsCache.set(filteredStateKey, cachedState);
+                    incrementInternalPerfCounter('taskFilteredStateCacheHits');
+                    return cachedState;
+                }
                 const drilldownBaseItems = getTaskDrilldownBaseItems(hotState);
                 const nextTaskGenusBaseItems = Array.isArray(drilldownBaseItems) ? drilldownBaseItems : [];
                 const nextTaskContSizeBaseItems = selectedTaskGenusNames.size
@@ -29128,11 +29164,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (activeTaskTab === 'reserves' && String(taskLocationDetailSearchTerm || '').trim()) {
                     nextTabItems = filterBySearch(nextTabItems, taskLocationDetailSearchTerm, 'tasks');
                 }
-                return {
+                const nextState = {
                     taskGenusBaseItems: nextTaskGenusBaseItems,
                     taskContSizeBaseItems: nextTaskContSizeBaseItems,
                     tabItems: nextTabItems
                 };
+                taskFilteredItemsCache.set(filteredStateKey, nextState);
+                trimInternalCacheMap(taskFilteredItemsCache, 24);
+                return nextState;
             };
             let {
                 taskGenusBaseItems,
@@ -29190,6 +29229,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
             const genusSelectionKey = buildSelectionStateKey(selectedTaskGenusNames);
             const contSizeSelectionKey = buildSelectionStateKey(selectedTaskContSizes);
+            const taskSearchStateKey = String(taskLocationDetailSearchTerm || '').trim().toLowerCase();
             const resolvedStateKey = [
                 hotState.key,
                 taskViewLevel,
@@ -29201,7 +29241,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 activeTaskReserveRowStatusMode || '',
                 activeTaskReservePhotoMode || '',
                 genusSelectionKey,
-                contSizeSelectionKey
+                contSizeSelectionKey,
+                taskSearchStateKey
             ].join('::');
             if (taskResolvedStateKey === resolvedStateKey && taskResolvedStateCache) {
                 incrementInternalPerfCounter('viewStateCacheHits');
