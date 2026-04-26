@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.25.04';
+window.__APP_SHELL_VERSION__ = 'V2026.04.25.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -724,7 +724,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.25.04').trim() || 'V2026.04.25.04';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.25.05').trim() || 'V2026.04.25.05';</script>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1210,7 +1210,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-            const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.25.04';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.25.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7405,8 +7405,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             };
         }
 
-        let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let salesOfficeInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
-        let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let managerReviewInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
+let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let salesOfficeInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
+let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let managerReviewInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
+let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map();
         let reviewSearchTerm=''; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set();
         let ncrCompletionSchemaReady=null; let ncrCompletionSchemaPromise=null; let ncrCompletionSchemaWarningShown=false; let ncrCompletionLoadPromise=null; let ncrCompletionsLoaded=false;
         let ncrEmailPromptResolver=null;
@@ -7728,7 +7729,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.25.04').trim() || 'V2026.04.25.04';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.25.05').trim() || 'V2026.04.25.05';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -27297,7 +27298,108 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function getTaskReserveBaseRows(items = reservesInventory) {
-            return Array.isArray(getScopedReservesItems(items)) ? getScopedReservesItems(items) : [];
+            const scopedItems = getScopedReservesItems(items);
+            return Array.isArray(scopedItems) ? scopedItems : [];
+        }
+
+        function buildTaskReserveScopedData(items = reservesInventory) {
+            const baseRows = getTaskReserveBaseRows(items);
+            const useCache = items === reservesInventory;
+            const cacheKey = useCache ? [
+                resolvedViewStateEpoch,
+                getDatasetLoadSignature('reserves'),
+                safeRole,
+                currentUser || '',
+                currentUserDisplay || ''
+            ].join('|') : '';
+            if (useCache && taskReserveScopedDataCacheKey === cacheKey && taskReserveScopedDataCache) {
+                incrementInternalPerfCounter('taskReserveScopedDataCacheHits');
+                return taskReserveScopedDataCache;
+            }
+            const repLabelByValue = new Map();
+            const repRowsByValue = new Map();
+            const customerLabelsByRep = new Map();
+            const allCustomerLabels = new Map();
+            baseRows.forEach((item) => {
+                const repLabel = String(getReserveSalesRepLabel(item) || '').trim();
+                const repValue = normalizeTaskReserveFilterValue(repLabel);
+                if (!repLabel || !repValue || repValue === 'all') return;
+                if (!repLabelByValue.has(repValue)) repLabelByValue.set(repValue, repLabel);
+                if (!repRowsByValue.has(repValue)) repRowsByValue.set(repValue, []);
+                repRowsByValue.get(repValue).push(item);
+                const customerLabel = getTaskReserveCustomerConsigneeLabel(item);
+                const customerValue = normalizeTaskReserveCustomerFilterValue(customerLabel);
+                if (!customerLabel || !customerValue || customerValue === 'all') return;
+                allCustomerLabels.set(customerValue, customerLabel);
+                if (!customerLabelsByRep.has(repValue)) customerLabelsByRep.set(repValue, new Map());
+                const repCustomerMap = customerLabelsByRep.get(repValue);
+                if (!repCustomerMap.has(customerValue)) repCustomerMap.set(customerValue, customerLabel);
+            });
+            const sortLabelEntries = (entries = []) => Array.from(entries)
+                .sort((left, right) => String(left[1]).localeCompare(String(right[1]), undefined, { numeric: true, sensitivity: 'base' }))
+                .map(([value, label]) => ({ value, label }));
+            const repOptions = [{ value: 'all', label: 'ALL' }].concat(sortLabelEntries(repLabelByValue.entries()));
+            const customerOptionsByRep = new Map();
+            customerLabelsByRep.forEach((labelMap, repValue) => {
+                customerOptionsByRep.set(repValue, [{ value: 'all', label: 'ALL' }].concat(sortLabelEntries(labelMap.entries())));
+            });
+            const nextState = {
+                baseRows,
+                repLabelByValue,
+                repRowsByValue,
+                repOptions,
+                allCustomerOptions: [{ value: 'all', label: 'ALL' }].concat(sortLabelEntries(allCustomerLabels.entries())),
+                customerOptionsByRep
+            };
+            if (useCache) {
+                taskReserveScopedDataCacheKey = cacheKey;
+                taskReserveScopedDataCache = nextState;
+            }
+            return nextState;
+        }
+
+        function buildTaskReserveDriveJoinIndexes() {
+            const cacheKey = [
+                resolvedViewStateEpoch,
+                getDatasetLoadSignature('master'),
+                Array.isArray(fullInventory) ? fullInventory.length : 0
+            ].join('|');
+            if (taskReserveDriveJoinCacheKey === cacheKey) return;
+            taskReserveDriveJoinCacheKey = cacheKey;
+            taskReserveDriveRowsByExactKey = new Map();
+            taskReserveDriveRowsByItemCode = new Map();
+            (Array.isArray(fullInventory) ? fullInventory : []).forEach((row) => {
+                const itemCode = getNormalizedAvReserveItemCode(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, ''));
+                if (!itemCode) return;
+                if (!taskReserveDriveRowsByItemCode.has(itemCode)) taskReserveDriveRowsByItemCode.set(itemCode, []);
+                taskReserveDriveRowsByItemCode.get(itemCode).push(row);
+                const lotCode = getNormalizedAvReserveLotCode(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, ''));
+                if (!lotCode) return;
+                const exactKey = buildAvReserveItemLotKey(itemCode, lotCode);
+                if (!exactKey) return;
+                if (!taskReserveDriveRowsByExactKey.has(exactKey)) taskReserveDriveRowsByExactKey.set(exactKey, []);
+                taskReserveDriveRowsByExactKey.get(exactKey).push(row);
+            });
+        }
+
+        function getNormalizedTaskReserveCustomerValueForRep(customerFilter = activeTaskReserveCustomerFilter, repFilter = activeTaskReserveRepFilter, items = null) {
+            const safeRepFilter = normalizeTaskReserveFilterValue(repFilter);
+            const safeCustomerFilter = normalizeTaskReserveCustomerFilterValue(customerFilter);
+            const options = getTaskReserveCustomerFilterOptions(safeRepFilter, items).map((option) => option.value);
+            return options.includes(safeCustomerFilter) ? safeCustomerFilter : 'all';
+        }
+
+        function getTaskReserveFilteredRows(repFilter = activeTaskReserveRepFilter, customerFilter = activeTaskReserveCustomerFilter, items = null) {
+            const scopedState = buildTaskReserveScopedData(items == null ? reservesInventory : items);
+            const safeRepFilter = normalizeTaskReserveFilterValue(repFilter);
+            const safeCustomerFilter = getNormalizedTaskReserveCustomerValueForRep(customerFilter, safeRepFilter, items);
+            let reserveRows = safeRepFilter === 'all'
+                ? scopedState.baseRows.slice()
+                : (scopedState.repRowsByValue.get(safeRepFilter) || []).slice();
+            if (safeCustomerFilter !== 'all') {
+                reserveRows = reserveRows.filter((row) => normalizeTaskReserveCustomerFilterValue(getTaskReserveCustomerConsigneeLabel(row)) === safeCustomerFilter);
+            }
+            return reserveRows;
         }
 
         function getTaskCustomerFilterOptions(items = null, tab = activeTaskView) {
@@ -27317,88 +27419,52 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function getTaskReserveRepFilterOptions(items = null) {
-            const sourceItems = Array.isArray(items) ? items : getTaskReserveBaseRows();
-            const repMap = new Map();
-            sourceItems.forEach((item) => {
-                const label = String(getReserveSalesRepLabel(item) || '').trim();
-                const value = normalizeTaskReserveFilterValue(label);
-                if (!label || !value || value === 'all') return;
-                if (!repMap.has(value)) repMap.set(value, label);
-            });
-            return [{ value: 'all', label: 'ALL' }].concat(
-                Array.from(repMap.entries())
-                    .sort((left, right) => String(left[1]).localeCompare(String(right[1]), undefined, { numeric: true, sensitivity: 'base' }))
-                    .map(([value, label]) => ({ value, label }))
-            );
+            return buildTaskReserveScopedData(items == null ? reservesInventory : items).repOptions.slice();
         }
 
         function getTaskReserveCustomerFilterOptions(repFilter = activeTaskReserveRepFilter, items = null) {
-            const sourceItems = Array.isArray(items) ? items : getTaskReserveBaseRows();
+            const scopedState = buildTaskReserveScopedData(items == null ? reservesInventory : items);
             const safeRepFilter = normalizeTaskReserveFilterValue(repFilter);
-            const customerMap = new Map();
-            sourceItems.forEach((item) => {
-                const repLabel = String(getReserveSalesRepLabel(item) || '').trim();
-                if (safeRepFilter !== 'all' && normalizeTaskReserveFilterValue(repLabel) !== safeRepFilter) return;
-                const label = getTaskReserveCustomerConsigneeLabel(item);
-                const value = normalizeTaskReserveCustomerFilterValue(label);
-                if (!label || !value || value === 'all') return;
-                if (!customerMap.has(value)) customerMap.set(value, label);
-            });
-            return [{ value: 'all', label: 'ALL' }].concat(
-                Array.from(customerMap.entries())
-                    .sort((left, right) => String(left[1]).localeCompare(String(right[1]), undefined, { numeric: true, sensitivity: 'base' }))
-                    .map(([value, label]) => ({ value, label }))
-            );
+            if (safeRepFilter === 'all') return scopedState.allCustomerOptions.slice();
+            return (scopedState.customerOptionsByRep.get(safeRepFilter) || [{ value: 'all', label: 'ALL' }]).slice();
         }
 
-        function getTaskReserveJoinedDriveRows(repFilter = activeTaskReserveRepFilter, customerFilter = activeTaskReserveCustomerFilter) {
-            const reserveRows = getTaskReserveBaseRows();
-            if (!reserveRows.length) return [];
-            const safeRepFilter = normalizeTaskReserveFilterValue(repFilter);
-            const safeCustomerFilter = normalizeTaskReserveCustomerFilterValue(customerFilter);
-            const filteredReserveRows = reserveRows.filter((row) => {
-                const repLabel = String(getReserveSalesRepLabel(row) || '').trim();
-                const customerLabel = getTaskReserveCustomerConsigneeLabel(row);
-                if (safeRepFilter !== 'all' && normalizeTaskReserveFilterValue(repLabel) !== safeRepFilter) return false;
-                if (safeCustomerFilter !== 'all' && normalizeTaskReserveCustomerFilterValue(customerLabel) !== safeCustomerFilter) return false;
-                return true;
-            });
+        function getTaskReserveJoinedDriveRows(repFilter = activeTaskReserveRepFilter, customerFilter = activeTaskReserveCustomerFilter, items = null) {
+            const filteredReserveRows = getTaskReserveFilteredRows(repFilter, customerFilter, items);
             if (!filteredReserveRows.length) return [];
-            const reserveRowsByExactKey = new Map();
-            const reserveRowsByItemCode = new Map();
-            const itemCodeOnlyMatches = new Set();
+            buildTaskReserveDriveJoinIndexes();
+            const driveRowsByUniqueKey = new Map();
             filteredReserveRows.forEach((row) => {
                 const itemCode = getNormalizedAvReserveItemCode(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, ''));
                 if (!itemCode) return;
-                if (!reserveRowsByItemCode.has(itemCode)) reserveRowsByItemCode.set(itemCode, []);
-                reserveRowsByItemCode.get(itemCode).push(row);
                 const lotCode = getNormalizedAvReserveLotCode(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, ''));
-                if (!lotCode) {
-                    itemCodeOnlyMatches.add(itemCode);
-                    return;
+                const exactKey = buildAvReserveItemLotKey(itemCode, lotCode);
+                const matchedDriveRows = exactKey
+                    ? (taskReserveDriveRowsByExactKey.get(exactKey) || [])
+                    : (taskReserveDriveRowsByItemCode.get(itemCode) || []);
+                if (!matchedDriveRows.length && !lotCode) {
+                    (taskReserveDriveRowsByItemCode.get(itemCode) || []).forEach((driveRow) => matchedDriveRows.push(driveRow));
                 }
-                const exactKey = buildAvReserveItemLotKey(itemCode, lotCode);
-                if (!reserveRowsByExactKey.has(exactKey)) reserveRowsByExactKey.set(exactKey, []);
-                reserveRowsByExactKey.get(exactKey).push(row);
+                matchedDriveRows.forEach((driveRow) => {
+                    const uniqueKey = String(firstNonEmptyValue(driveRow && driveRow.UNIQUE_ID, driveRow && driveRow.DOM_ID, `${itemCode}|${firstNonEmptyValue(driveRow && driveRow.LOCATIONCODE, '')}|${lotCode}`)).trim();
+                    if (!uniqueKey) return;
+                    if (!driveRowsByUniqueKey.has(uniqueKey)) {
+                        driveRowsByUniqueKey.set(uniqueKey, {
+                            row: Object.assign({}, driveRow),
+                            reserveRows: [],
+                            customerKeys: new Set()
+                        });
+                    }
+                    const entry = driveRowsByUniqueKey.get(uniqueKey);
+                    entry.reserveRows.push(row);
+                    entry.customerKeys.add(normalizeTaskReserveCustomerFilterValue(getTaskReserveCustomerConsigneeLabel(row)));
+                });
             });
-            const seen = new Set();
-            const driveRows = [];
-            (Array.isArray(fullInventory) ? fullInventory : []).forEach((row) => {
-                const itemCode = getNormalizedAvReserveItemCode(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, ''));
-                if (!itemCode) return;
-                const lotCode = getNormalizedAvReserveLotCode(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, ''));
-                const exactKey = buildAvReserveItemLotKey(itemCode, lotCode);
-                let matchedReserveRows = exactKey ? reserveRowsByExactKey.get(exactKey) || [] : [];
-                if (!matchedReserveRows.length && itemCodeOnlyMatches.has(itemCode)) matchedReserveRows = reserveRowsByItemCode.get(itemCode) || [];
-                if (!matchedReserveRows.length) return;
-                const uniqueKey = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.DOM_ID, `${itemCode}|${firstNonEmptyValue(row && row.LOCATIONCODE, '')}|${lotCode}`)).trim();
-                if (!uniqueKey || seen.has(uniqueKey)) return;
-                seen.add(uniqueKey);
-                row.TASK_RESERVE_ROW_COUNT = matchedReserveRows.length;
-                row.TASK_RESERVE_CUSTOMER_COUNT = new Set(matchedReserveRows.map((reserveRow) => normalizeTaskReserveCustomerFilterValue(getTaskReserveCustomerConsigneeLabel(reserveRow)))).size;
-                driveRows.push(row);
-            });
-            return sortDriveCardItems(driveRows);
+            return sortDriveCardItems(Array.from(driveRowsByUniqueKey.values()).map((entry) => {
+                entry.row.TASK_RESERVE_ROW_COUNT = entry.reserveRows.length;
+                entry.row.TASK_RESERVE_CUSTOMER_COUNT = entry.customerKeys.size;
+                return entry.row;
+            }));
         }
 
         function getNormalizedTaskSubviewValue(tab = activeTaskView, value = activeTaskSubview, items = null) {
@@ -27421,7 +27487,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             activeTaskFilter = normalizeTaskFilterValue(activeTaskFilter);
             activeTaskCustomerFilter = normalizeTaskCustomerFilterValue(activeTaskCustomerFilter);
             activeTaskReserveRepFilter = normalizeTaskReserveFilterValue(activeTaskReserveRepFilter);
-            activeTaskReserveCustomerFilter = normalizeTaskReserveCustomerFilterValue(activeTaskReserveCustomerFilter);
+            activeTaskReserveCustomerFilter = getNormalizedTaskReserveCustomerValueForRep(activeTaskReserveCustomerFilter, activeTaskReserveRepFilter);
             activeTaskTab = activeTaskView;
             activeTaskSubview = getNormalizedTaskSubviewValue(activeTaskView, activeTaskView === 'cust' ? activeTaskCustomerFilter : (activeTaskView === 'reserves' ? activeTaskReserveRepFilter : activeTaskFilter));
             if (activeTaskView === 'cust') activeTaskCustomerFilter = activeTaskSubview;
@@ -27595,7 +27661,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                     });
             }
             if (safeView === 'reserves') {
-                return getTaskReserveJoinedDriveRows(subview, activeTaskReserveCustomerFilter);
+                const safeRepFilter = getNormalizedTaskSubviewValue(safeView, subview, scopedItems);
+                const safeCustomerFilter = getNormalizedTaskReserveCustomerValueForRep(activeTaskReserveCustomerFilter, safeRepFilter, scopedItems);
+                return getTaskReserveJoinedDriveRows(safeRepFilter, safeCustomerFilter, scopedItems);
             }
             const safeFilter = normalizeTaskFilterValue(subview);
             if (safeView === 'hot-price') return getTaskHotPriceRows(scopedItems, safeFilter === 'all' ? '' : safeFilter);
@@ -27931,7 +27999,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return;
             }
             const options = getTaskReserveCustomerFilterOptions(activeTaskReserveRepFilter);
-            if (!options.some((option) => option.value === activeTaskReserveCustomerFilter)) activeTaskReserveCustomerFilter = 'all';
+            activeTaskReserveCustomerFilter = getNormalizedTaskReserveCustomerValueForRep(activeTaskReserveCustomerFilter, activeTaskReserveRepFilter);
             const optionsHtml = options.map((option) => `<option value="${esc(option.value)}" ${option.value === activeTaskReserveCustomerFilter ? 'selected' : ''}>${esc(option.label)}</option>`).join('');
             container.classList.remove('hidden');
             container.innerHTML = `<div class="rounded-[1.05rem] border border-emerald-100 bg-white/95 px-3 py-3 shadow-sm"><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Customer-Consignee<select class="input-field !mb-0 mt-2 border-green-200 bg-green-50/40" onchange="return setTaskReserveCustomerFilter(this.value)">${optionsHtml}</select></label></div>`;
@@ -28583,8 +28651,13 @@ ${folderNote ? `Folder Note: ${folderNote}
         function buildTaskHotState(options = {}) {
             const safeTab = normalizeTaskViewValue(firstNonEmptyValue(options && options.tab, activeTaskView, activeTaskTab, ''));
             const safeTargetUser = String(firstNonEmptyValue(options && options.targetUser, currentUser, '') || '').trim();
-            const scopedTaskItems = getScopedTaskQueueItems(safeTab, safeTargetUser);
+            const scopedTaskItems = safeTab === 'reserves'
+                ? getTaskReserveBaseRows()
+                : getScopedTaskQueueItems(safeTab, safeTargetUser);
             const safeSubview = getNormalizedTaskSubviewValue(safeTab, firstNonEmptyValue(options && options.subview, activeTaskSubview, 'all'), scopedTaskItems);
+            const safeReserveCustomerFilter = safeTab === 'reserves'
+                ? getNormalizedTaskReserveCustomerValueForRep(firstNonEmptyValue(options && options.reserveCustomerFilter, activeTaskReserveCustomerFilter, 'all'), safeSubview, scopedTaskItems)
+                : 'all';
             const useSharedTaskQueue = options && typeof options.useSharedTaskQueue === 'boolean'
                 ? options.useSharedTaskQueue
                 : shouldUseSharedTaskQueue(safeTab);
@@ -28603,7 +28676,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 safeTargetUser,
                 safeTab,
                 safeSubview,
-                safeTab === 'reserves' ? normalizeTaskReserveCustomerFilterValue(activeTaskReserveCustomerFilter) : 'reserve-customer:na',
+                safeTab === 'reserves' ? safeReserveCustomerFilter : 'reserve-customer:na',
                 useSharedTaskQueue ? '1' : '0',
                 safeTab === 'flyer' ? getFlyerFolderTabValue(activeFlyerFolderTab) : 'flyer-tab:na',
                 colorWalkSearchTerm
@@ -28619,8 +28692,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             const perfKey = `${safeTab}:${safeSubview || 'all'}`;
             const taskBuildStartedAt = beginInternalPerfMeasure();
             let scopedItems = scopedTaskItems;
-            const seasonTaskItems = getTaskAssignmentBucketItems(scopedItems, 'season');
-            const seasonSubviewItems = safeSubview === 'location' ? [] : getTaskTabItems(scopedItems, 'av-blanks', 'season');
+            const seasonTaskItems = safeTab === 'reserves' ? [] : getTaskAssignmentBucketItems(scopedItems, 'season');
+            const seasonSubviewItems = safeTab === 'reserves' ? [] : (safeSubview === 'location' ? [] : getTaskTabItems(scopedItems, 'av-blanks', 'season'));
             let tabItems = getResolvedTaskSubviewItems(scopedItems, safeTab, safeSubview, { targetUser: safeTargetUser, useSharedTaskQueue });
             if (safeTab === 'colorwalk' && colorWalkSearchTerm) {
                 tabItems = filterBySearch(tabItems, colorWalkSearchTerm, 'colorwalk');
@@ -28851,13 +28924,14 @@ ${folderNote ? `Folder Note: ${folderNote}
             const hotState = buildTaskHotState({
                 tab: activeTaskTab,
                 subview: activeTaskSubview,
+                reserveCustomerFilter: activeTaskReserveCustomerFilter,
                 targetUser,
                 useSharedTaskQueue,
                 colorWalkSearchTerm: selectedColorWalkSearchTerm
             });
             let notesTitle = `${baseNotesTitle} > ${getTaskSubviewLabel(activeTaskSubview, activeTaskTab, hotState.scopedItems)}`;
             if (activeTaskTab === 'reserves') {
-                const customerOption = getTaskReserveCustomerFilterOptions(activeTaskReserveRepFilter).find((option) => option.value === activeTaskReserveCustomerFilter);
+                const customerOption = getTaskReserveCustomerFilterOptions(activeTaskReserveRepFilter, hotState.scopedItems).find((option) => option.value === activeTaskReserveCustomerFilter);
                 if (customerOption && activeTaskReserveCustomerFilter !== 'all') notesTitle += ` > ${customerOption.label}`;
             }
 
