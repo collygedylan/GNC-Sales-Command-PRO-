@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.25.05';
+window.__APP_SHELL_VERSION__ = 'V2026.04.25.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -724,7 +724,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.25.05').trim() || 'V2026.04.25.05';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.25.06').trim() || 'V2026.04.25.06';</script>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1210,7 +1210,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.25.05';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.25.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2124,11 +2124,18 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         }
 
         function buildStickyRailOffsetSignature() {
+            const globalSearchRow = document.getElementById('global-header-search-row');
             const targets = [
-                { rail: document.querySelector('#view-av .av-primary-tabs-sticky'), source: document.getElementById('av-search-container'), key: 'av' },
-                { rail: document.querySelector('#view-drive .drive-controls-sticky'), source: document.getElementById('drive-search-container'), key: 'drive' },
-                { rail: document.querySelector('#view-tasks .task-controls-sticky'), source: document.getElementById('tasks-search-container'), key: 'tasks' },
-                { rail: document.querySelector('#view-detail .freeze-panel'), source: document.getElementById('global-header-search-row'), key: 'detail' }
+                { rail: document.querySelector('#view-av .av-primary-tabs-sticky'), source: globalSearchRow, key: 'av' },
+                { rail: document.querySelector('#view-drive .drive-controls-sticky'), source: globalSearchRow, key: 'drive' },
+                { rail: document.querySelector('#view-tasks .task-controls-sticky'), source: globalSearchRow, key: 'tasks' },
+                { rail: document.querySelector('#view-request .freeze-panel'), source: globalSearchRow, key: 'request' },
+                { rail: document.querySelector('#view-reserves .freeze-panel'), source: globalSearchRow, key: 'reserves' },
+                { rail: document.querySelector('#view-docks .freeze-panel'), source: globalSearchRow, key: 'docks' },
+                { rail: document.querySelector('#view-low-stock .freeze-panel'), source: globalSearchRow, key: 'low-stock' },
+                { rail: document.querySelector('#view-sales-office .freeze-panel'), source: globalSearchRow, key: 'sales-office' },
+                { rail: document.querySelector('#view-review .freeze-panel'), source: globalSearchRow, key: 'review' },
+                { rail: document.querySelector('#view-detail .freeze-panel'), source: globalSearchRow, key: 'detail' }
             ];
             return [
                 getCurrentVisibleViewId(),
@@ -2147,10 +2154,17 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         }
 
         function syncStickyRailOffsets() {
-            applyStickyRailOffset(document.querySelector('#view-av .av-primary-tabs-sticky'), document.getElementById('av-search-container'));
-            applyStickyRailOffset(document.querySelector('#view-drive .drive-controls-sticky'), document.getElementById('drive-search-container'));
-            applyStickyRailOffset(document.querySelector('#view-tasks .task-controls-sticky'), document.getElementById('tasks-search-container'));
-            applyStickyRailOffset(document.querySelector('#view-detail .freeze-panel'), document.getElementById('global-header-search-row'));
+            const globalSearchRow = document.getElementById('global-header-search-row');
+            applyStickyRailOffset(document.querySelector('#view-av .av-primary-tabs-sticky'), globalSearchRow);
+            applyStickyRailOffset(document.querySelector('#view-drive .drive-controls-sticky'), globalSearchRow);
+            applyStickyRailOffset(document.querySelector('#view-tasks .task-controls-sticky'), globalSearchRow);
+            applyStickyRailOffset(document.querySelector('#view-request .freeze-panel'), globalSearchRow);
+            applyStickyRailOffset(document.querySelector('#view-reserves .freeze-panel'), globalSearchRow);
+            applyStickyRailOffset(document.querySelector('#view-docks .freeze-panel'), globalSearchRow);
+            applyStickyRailOffset(document.querySelector('#view-low-stock .freeze-panel'), globalSearchRow);
+            applyStickyRailOffset(document.querySelector('#view-sales-office .freeze-panel'), globalSearchRow);
+            applyStickyRailOffset(document.querySelector('#view-review .freeze-panel'), globalSearchRow);
+            applyStickyRailOffset(document.querySelector('#view-detail .freeze-panel'), globalSearchRow);
         }
 
         function scheduleStickyRailOffsetSync(reason = 'default', force = false) {
@@ -3665,6 +3679,26 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const snapshot = normalizeHoldStopSnapshotValue(value);
             if (!snapshot) return false;
             return snapshot.includes('S');
+        }
+
+        function isSeasonSalesNotesAssignmentValue(value = '') {
+            return String(value || '').trim().toLowerCase() === 'season';
+        }
+
+        function isHeldSeasonSalesNotesRow(item = null, assignmentOverride = '') {
+            if (!item) return false;
+            const assignmentValue = String(firstNonEmptyValue(
+                assignmentOverride,
+                item && item.APP_TAB_ASSIGNMENT,
+                item && item.app_tab_assignment,
+                item && item.PRODUCTIVITY_ORIGIN_ASSIGNMENT,
+                item && item.productivity_origin_assignment,
+                ''
+            ) || '').trim().toLowerCase();
+            if (!isSeasonSalesNotesAssignmentValue(assignmentValue)) return false;
+            const holdSnapshot = getHoldStopSnapshotFromItem(item);
+            if (!holdSnapshot) return false;
+            return holdSnapshot.includes('H') || holdSnapshot.includes('S');
         }
 
         function getPrioritySnapshotFromItem(item) {
@@ -7729,7 +7763,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.25.05').trim() || 'V2026.04.25.05';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.25.06').trim() || 'V2026.04.25.06';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -29953,7 +29987,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                         : (prefix === 'flyer-'
                             ? firstNonEmptyValue(itemToSave.FLYER_PHOTO_NAME, itemToSave.SAVED_PHOTO_NAME)
                             : firstNonEmptyValue(itemToSave.SAVED_PHOTO_NAME));
-                    const shouldCreateSalesOfficeRow = ['ssn-','lsn-','na-','req-','flyer-'].includes(prefix) && salesRuleAssignment === 'season' && salesRuleId !== '';
+                    const seasonHoldStopBlocked = isHeldSeasonSalesNotesRow(itemToSave, salesRuleAssignment)
+                        || isHeldSeasonSalesNotesRow(salesRuleItem, salesRuleAssignment)
+                        || isHeldSeasonSalesNotesRow(linkedMasterItem, salesRuleAssignment);
+                    const shouldCreateSalesOfficeRow = ['ssn-','lsn-','na-','req-','flyer-'].includes(prefix) && salesRuleAssignment === 'season' && salesRuleId !== '' && !seasonHoldStopBlocked;
                     if (shouldCreateSalesOfficeRow) {
                         const salesOfficeAvNote = itemToSave.AV_NOTE || salesRuleItem.AV_NOTE || '';
                         const salesOfficeSalesNote = itemToSave.SALES_NOTE || itemToSave.REQ_COMMENTS || salesRuleItem.SALES_NOTE || salesRuleItem.SALESNOTE || '';
@@ -30003,7 +30040,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                             || (String(firstNonEmptyValue(itemToSave.SOURCE_TABLE, itemToSave.source_table, 'v2_master_inventory')).toLowerCase() === 'v2_master_inventory' ? itemToSave : null);
                         if (artifacts.masterSyncId) {
                             const syncValues = buildCompletionMasterSyncValues(prefix, itemToSave, artifacts.masterSyncItem || linkedMasterItem || salesRuleItem || null, payload);
-                            const shouldPublishToMaster = shouldSyncRequestToMaster || shouldPublishCompletionToAvOpen(artifacts.masterSyncItem || linkedMasterItem || salesRuleItem || null, syncValues);
+                            const shouldPublishToMaster = shouldSyncRequestToMaster || (!seasonHoldStopBlocked && shouldPublishCompletionToAvOpen(artifacts.masterSyncItem || linkedMasterItem || salesRuleItem || null, syncValues));
                             if (shouldPublishToMaster) {
                                 artifacts.masterSyncPayload = buildCompletionMasterSyncPayload(artifacts.masterSyncItem || linkedMasterItem || salesRuleItem || itemToSave, syncValues);
                                 artifacts.applyAvSync = true;
