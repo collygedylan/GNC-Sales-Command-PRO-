@@ -38,6 +38,7 @@ type IntentMode =
 type Intent = {
   question: string;
   normalizedQuestion: string;
+  itemSearchText: string;
   itemPhrase: string;
   questionTokens: string[];
   itemTokens: string[];
@@ -180,6 +181,10 @@ function compactText(value = "") {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
 
+function escapeRegExp(value = "") {
+  return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function normalizeQuestionText(value = "") {
   let text = compactText(String(value || "").toLowerCase());
   Object.entries(NUMBER_WORDS).forEach(([word, digit]) => {
@@ -187,6 +192,9 @@ function normalizeQuestionText(value = "") {
     text = text.replace(new RegExp(`\\b${word}\\s+dp\\b`, "g"), `${digit}dp`);
   });
   text = text
+    .replace(/\bwhere'?s\b/g, "where is")
+    .replace(/\bwhat'?s\b/g, "what is")
+    .replace(/\bwho'?s\b/g, "who is")
     .replace(/\b3\s*d\s*p\b/g, "3dp")
     .replace(/\bthree\s+d\s+p\b/g, "3dp")
     .replace(/\b2\s*d\s*p\b/g, "2dp")
@@ -283,11 +291,61 @@ function extractFieldPhrase(question: string, markers: string[]) {
     const slice = normalized.slice(idx + marker.length).trim();
     if (!slice) continue;
     const value = slice
-      .split(/\b(?:customer|consignee|salesrep|rep|item|with|that|using|use|and|if)\b/i)[0]
+      .split(/\b(?:customer|consignee|salesrep|rep|item|with|that|using|use|and|if|on|from|at)\b/i)[0]
+      .replace(/\bfor\b\s*$/i, "")
       .trim();
     if (value) return compactText(value);
   }
   return "";
+}
+
+function buildItemSearchText(
+  normalizedQuestion: string,
+  details: { salesRep?: string; customer?: string; consignee?: string; markerToken?: string },
+) {
+  let text = ` ${compactText(normalizedQuestion)} `;
+  [
+    /\bwho\s+has\b/g,
+    /\bwho\s+is(?:\s+the)?\s+salesrep\b/g,
+    /\bwhere\s+is\b/g,
+    /\bwhere\b/g,
+    /\blocation\b/g,
+    /\bhow\s+many\b/g,
+    /\bhow\s+much\b/g,
+    /\bgive\s+me\b/g,
+    /\bshow\s+me\b/g,
+    /\blist\b/g,
+    /\bon\s+reserves?\b/g,
+    /\bon\s+hold\b/g,
+    /\bin\s+docks?\b/g,
+    /\bwho\s+is\b/g,
+    /\bsalesrep\b/g,
+    /\bcustomername\b/g,
+    /\bconsigneename\b/g,
+  ].forEach((pattern) => {
+    text = text.replace(pattern, " ");
+  });
+  const removeMarkerPhrase = (label: string, value: string) => {
+    const safeValue = compactText(value);
+    if (!safeValue) return;
+    text = text.replace(new RegExp(`\\b${escapeRegExp(label)}\\s+${escapeRegExp(safeValue)}\\b`, "g"), " ");
+  };
+  removeMarkerPhrase("salesrep", details.salesRep || "");
+  removeMarkerPhrase("rep", details.salesRep || "");
+  removeMarkerPhrase("customer", details.customer || "");
+  removeMarkerPhrase("for customer", details.customer || "");
+  removeMarkerPhrase("consignee", details.consignee || "");
+  if (details.markerToken) {
+    text = text.replace(new RegExp(`\\b(?:dock|docks)\\s+(?:has|have|with)\\s+${escapeRegExp(details.markerToken)}\\b`, "g"), " ");
+  }
+  text = text
+    .replace(/\breserve(?:d|s)?\b/g, " ")
+    .replace(/\bdock(?:s)?\b/g, " ")
+    .replace(/\bavailable\b/g, " ")
+    .replace(/\bqty\b/g, " ")
+    .replace(/\bquantity\b/g, " ")
+    .replace(/\s+/g, " ");
+  return compactText(text);
 }
 
 function extractSize(normalizedQuestion: string) {
@@ -334,12 +392,13 @@ function buildIntent(question: string): Intent {
   const size = extractSize(normalizedQuestion);
   const priority = extractPriority(normalizedQuestion);
   const lot = extractLot(normalizedQuestion);
-  const salesRep = extractFieldPhrase(normalizedQuestion, ["salesrep ", "rep "]);
+  let salesRep = extractFieldPhrase(normalizedQuestion, ["salesrep ", "rep "]);
   const customer = extractFieldPhrase(normalizedQuestion, ["customer ", "for customer ", "customername "]);
   const consignee = extractFieldPhrase(normalizedQuestion, ["consignee ", "consigneename "]);
   const markerToken = compactText((normalizedQuestion.match(/\b(?:dock|docks)\s+(?:has|have|with)\s+([a-z0-9_-]+)/i)?.[1] || "").toUpperCase());
   const questionTokens = buildQuestionTokens(normalizedQuestion);
-  const itemTokens = questionTokens.filter((token) =>
+  const itemSearchText = buildItemSearchText(normalizedQuestion, { salesRep, customer, consignee, markerToken });
+  const itemTokens = buildQuestionTokens(itemSearchText).filter((token) =>
     token.length > 1
     && !STOP_WORDS.has(token)
     && token !== size.toLowerCase()
@@ -356,6 +415,7 @@ function buildIntent(question: string): Intent {
     mode = "request-draft";
     domains.add("requests");
     domains.add("future");
+    if (!salesRep) salesRep = extractFieldPhrase(normalizedQuestion, ["request for ", "for rep ", "for salesrep "]);
   } else if (/\bwho\b.*\breserve/.test(normalizedQuestion) || /\bwho has\b.*\bon\b.*\breserve/.test(normalizedQuestion)) {
     mode = "reserve-owners";
     domains.add("reserves");
@@ -383,6 +443,7 @@ function buildIntent(question: string): Intent {
   return {
     question: safeQuestion,
     normalizedQuestion,
+    itemSearchText,
     itemPhrase,
     questionTokens,
     itemTokens: expandedItemTokens,
@@ -437,7 +498,9 @@ function mapTableToDataset(tableName: string): DatasetKey {
 
 async function fetchRows(tableName: string, intent: Intent) {
   let query = supabase.from(tableName).select("*").limit(tableName === "v2_master_inventory" ? 650 : 500);
-  const searchTokens = expandAliasTokens((intent.itemTokens || []).slice(0, 3)).filter(Boolean);
+  const searchTokens = Array.from(new Set(expandAliasTokens(intent.itemTokens || []).filter(Boolean)))
+    .sort((left, right) => right.length - left.length || left.localeCompare(right))
+    .slice(0, 5);
   if (searchTokens.length && tableName !== "v2_dock_team_status") {
     const fieldOptions: Record<string, string[]> = {
       v2_master_inventory: ["commonname", "itemcode", "locationcode"],
@@ -456,6 +519,23 @@ async function fetchRows(tableName: string, intent: Intent) {
     if (clauses.length) {
       query = query.or(clauses.join(","));
     }
+  }
+  const salesRepFieldMap: Record<string, string> = {
+    v2_reserves: "salesrepname",
+    v2_active_request: "requested_by",
+    v2_soc_master: "salesrepname",
+  };
+  const customerFieldMap: Record<string, string> = {
+    v2_reserves: "customername",
+    v2_active_request: "req_customer",
+    v2_sales_office: "order_customer",
+    v2_soc_master: "customername",
+  };
+  if (intent.salesRep && salesRepFieldMap[tableName]) {
+    query = query.ilike(salesRepFieldMap[tableName], `%${intent.salesRep}%`);
+  }
+  if (intent.customer && customerFieldMap[tableName]) {
+    query = query.ilike(customerFieldMap[tableName], `%${intent.customer}%`);
   }
   if (intent.size && tableName !== "v2_dock_team_status") query = query.ilike("contsize", `%${intent.size}%`);
   if (intent.priority && tableName !== "v2_dock_team_status") query = query.eq("priority", intent.priority);
@@ -525,11 +605,13 @@ function scoreMatchRow(match: MatchRow, intent: Intent, rawRow: Record<string, u
     firstNonEmpty(rawRow.status, rawRow.STATUS, rawRow.mistake, rawRow.MISTAKE, rawRow.checker, rawRow.CHECKER, rawRow.inspector, rawRow.INSPECTOR)
   ].join(" "));
   const haystack = rowTokens.join(" ");
+  const primaryName = normalizeText([match.commonName, match.itemCode, match.contSize].join(" "));
   let score = 0;
   intent.itemTokens.forEach((token) => {
     if (rowTokens.some((candidate) => isCloseTokenMatch(token, candidate))) score += 8;
   });
   if (intent.itemPhrase && normalizeText([match.commonName, match.itemCode].join(" ")).includes(normalizeText(intent.itemPhrase))) score += 14;
+  if (intent.itemSearchText && primaryName.includes(normalizeText(intent.itemSearchText))) score += 10;
   if (intent.itemTokens.length && intent.itemTokens.every((token) => rowTokens.some((candidate) => isCloseTokenMatch(token, candidate)))) score += 18;
   if (intent.size && match.contSize === intent.size) score += 10;
   if (intent.priority && match.priority === intent.priority) score += 10;
@@ -801,7 +883,7 @@ function buildDockLookupResponse(intent: Intent, matches: MatchRow[]): LeafRespo
 }
 
 function buildDockHoldResponse(matches: MatchRow[]): LeafResponse {
-  if (!matches.length) return buildNoMatchResponse({ question: "dock hold", itemPhrase: "dock hold", normalizedQuestion: "", questionTokens: [], itemTokens: [], size: "", priority: "", lot: "", salesRep: "", customer: "", consignee: "", wantsLocation: false, wantsQuantity: false, wantsPriorityRows: false, wantsHoldRows: true, markerToken: "", domains: ["docks"], mode: "dock-hold-list" }, TABLE_LABELS.docks);
+  if (!matches.length) return buildNoMatchResponse({ question: "dock hold", normalizedQuestion: "", itemSearchText: "dock hold", itemPhrase: "dock hold", questionTokens: [], itemTokens: [], size: "", priority: "", lot: "", salesRep: "", customer: "", consignee: "", wantsLocation: false, wantsQuantity: false, wantsPriorityRows: false, wantsHoldRows: true, markerToken: "", domains: ["docks"], mode: "dock-hold-list" }, TABLE_LABELS.docks);
   const top = matches.slice(0, 6).map((match) => `${match.commonName || match.itemCode} in dock ${firstNonEmpty(match.dockNum, match.location, "Unknown")} (${match.hold || "Hold"})`);
   return {
     answer: `I found ${matches.length} dock row${matches.length === 1 ? "" : "s"} on hold. ${top.length ? top.join("; ") + "." : ""}`.trim(),
