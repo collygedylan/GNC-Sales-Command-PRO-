@@ -150,6 +150,14 @@ const STOP_WORDS = new Set([
 ]);
 
 const FUTURE_LOT_SUFFIXES = ["F1", "U1", "U2", "U3"];
+const SPOKEN_ALIAS_MAP: Record<string, string[]> = {
+  incredible: ["incrediball"],
+  incredable: ["incrediball"],
+  hydrangea: ["hydrangea"],
+  hydragea: ["hydrangea"],
+  hydrengea: ["hydrangea"],
+  bugloss: ["bugloss"],
+};
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -176,10 +184,13 @@ function normalizeQuestionText(value = "") {
   let text = compactText(String(value || "").toLowerCase());
   Object.entries(NUMBER_WORDS).forEach(([word, digit]) => {
     text = text.replace(new RegExp(`\\bpriority\\s+${word}\\b`, "g"), `priority ${digit}`);
+    text = text.replace(new RegExp(`\\b${word}\\s+dp\\b`, "g"), `${digit}dp`);
   });
   text = text
     .replace(/\b3\s*d\s*p\b/g, "3dp")
+    .replace(/\bthree\s+d\s+p\b/g, "3dp")
     .replace(/\b2\s*d\s*p\b/g, "2dp")
+    .replace(/\btwo\s+d\s+p\b/g, "2dp")
     .replace(/\bsales\s+rep\b/g, "salesrep")
     .replace(/\bnew\s+crop\b/g, "newcrop")
     .replace(/\bfuture\s+crop(?:s)?\b/g, "futurecrop")
@@ -298,6 +309,21 @@ function buildQuestionTokens(normalizedQuestion: string) {
   return tokenize(normalizedQuestion).filter((token) => token.length > 1);
 }
 
+function expandAliasTokens(tokens: string[] = []) {
+  const expanded = new Set<string>();
+  (tokens || []).forEach((token) => {
+    const safeToken = String(token || "").trim().toLowerCase();
+    if (!safeToken) return;
+    expanded.add(safeToken);
+    const aliases = SPOKEN_ALIAS_MAP[safeToken] || [];
+    aliases.forEach((alias) => {
+      const safeAlias = String(alias || "").trim().toLowerCase();
+      if (safeAlias) expanded.add(safeAlias);
+    });
+  });
+  return Array.from(expanded);
+}
+
 function buildIntent(question: string): Intent {
   const safeQuestion = compactText(question);
   const normalizedQuestion = normalizeQuestionText(safeQuestion);
@@ -321,7 +347,8 @@ function buildIntent(question: string): Intent {
     && token !== lot.toLowerCase()
     && token !== markerToken.toLowerCase()
   );
-  const itemPhrase = compactText(itemTokens.join(" "));
+  const expandedItemTokens = expandAliasTokens(itemTokens);
+  const itemPhrase = compactText(expandedItemTokens.join(" "));
   const domains = new Set<DatasetKey>();
   let mode: IntentMode = "lookup";
 
@@ -358,7 +385,7 @@ function buildIntent(question: string): Intent {
     normalizedQuestion,
     itemPhrase,
     questionTokens,
-    itemTokens,
+    itemTokens: expandedItemTokens,
     size,
     priority,
     lot,
@@ -410,21 +437,24 @@ function mapTableToDataset(tableName: string): DatasetKey {
 
 async function fetchRows(tableName: string, intent: Intent) {
   let query = supabase.from(tableName).select("*").limit(tableName === "v2_master_inventory" ? 650 : 500);
-  const firstToken = intent.itemTokens[0] || intent.markerToken.toLowerCase() || "";
-  if (firstToken && tableName !== "v2_dock_team_status") {
-    const token = firstToken.replace(/[^a-z0-9_-]+/gi, "").trim();
-    if (token) {
-      const fieldOptions: Record<string, string[]> = {
-        v2_master_inventory: ["commonname", "itemcode", "locationcode"],
-        v2_reserves: ["commonname", "itemcode", "customername", "consigneename", "salesrepname"],
-        v2_active_request: ["commonname", "itemcode", "requested_by", "req_customer", "request_folder"],
-        v2_sales_office: ["commonname", "itemcode", "order_customer", "order_folder"],
-        v2_soc_master: ["commonname", "itemcode", "locationcode", "dock_note", "dock_num", "customername", "salesrepname"],
-      };
-      const orFields = fieldOptions[tableName] || [];
-      if (orFields.length) {
-        query = query.or(orFields.map((field) => `${field}.ilike.*${token}*`).join(","));
-      }
+  const searchTokens = expandAliasTokens((intent.itemTokens || []).slice(0, 3)).filter(Boolean);
+  if (searchTokens.length && tableName !== "v2_dock_team_status") {
+    const fieldOptions: Record<string, string[]> = {
+      v2_master_inventory: ["commonname", "itemcode", "locationcode"],
+      v2_reserves: ["commonname", "itemcode", "customername", "consigneename", "salesrepname"],
+      v2_active_request: ["commonname", "itemcode", "requested_by", "req_customer", "request_folder"],
+      v2_sales_office: ["commonname", "itemcode", "order_customer", "order_folder"],
+      v2_soc_master: ["commonname", "itemcode", "locationcode", "dock_note", "dock_num", "customername", "salesrepname"],
+    };
+    const orFields = fieldOptions[tableName] || [];
+    const clauses: string[] = [];
+    searchTokens.forEach((rawToken) => {
+      const token = String(rawToken || "").replace(/[^a-z0-9_-]+/gi, "").trim();
+      if (!token) return;
+      orFields.forEach((field) => clauses.push(`${field}.ilike.*${token}*`));
+    });
+    if (clauses.length) {
+      query = query.or(clauses.join(","));
     }
   }
   if (intent.size && tableName !== "v2_dock_team_status") query = query.ilike("contsize", `%${intent.size}%`);
@@ -512,8 +542,17 @@ function scoreMatchRow(match: MatchRow, intent: Intent, rawRow: Record<string, u
   }
   if (intent.wantsHoldRows && match.hold) score += 6;
   if (intent.mode === "dock-lookup" && match.dockNum) score += 5;
+  if (intent.itemTokens.length === 1 && intent.itemTokens[0] && !rowTokens.some((candidate) => candidate === intent.itemTokens[0])) score -= 4;
   if (!match.commonName && !match.itemCode && !match.dockNum) score -= 6;
   return score;
+}
+
+function isStrongMatch(match: MatchRow, intent: Intent) {
+  const itemTokenCount = (intent.itemTokens || []).length;
+  if (!itemTokenCount) return match.score >= 10;
+  if (itemTokenCount >= 3) return match.score >= 24;
+  if (itemTokenCount === 2) return match.score >= 16;
+  return match.score >= 12;
 }
 
 function scoreRows(rows: Record<string, unknown>[], datasetKey: DatasetKey, intent: Intent) {
@@ -640,6 +679,17 @@ function buildNoMatchResponse(intent: Intent, sourceLabel: string): LeafResponse
 
 function buildInventoryResponse(intent: Intent, matches: MatchRow[], sourceLabel: string): LeafResponse {
   if (!matches.length) return buildNoMatchResponse(intent, sourceLabel);
+  const strongest = matches[0];
+  if (!isStrongMatch(strongest, intent)) {
+    const heardItem = intent.itemPhrase || intent.question;
+    const candidateLabel = [strongest.commonName, strongest.contSize].filter(Boolean).join(" ").trim() || strongest.itemCode || "that item";
+    return buildClarificationResponse(
+      `I think I heard "${heardItem}", but my closest ${sourceLabel.toLowerCase()} match is ${candidateLabel}.`,
+      `Did you mean ${candidateLabel}? You can also say the full item name and size again.`,
+      matches,
+      `Source: ${sourceLabel}`,
+    );
+  }
   const sizeSet = new Set(matches.map((match) => match.contSize).filter(Boolean));
   if (!intent.size && sizeSet.size > 1 && matches.length > 1 && intent.mode === "lookup") {
     return buildClarificationResponse(
@@ -680,6 +730,15 @@ function buildInventoryResponse(intent: Intent, matches: MatchRow[], sourceLabel
 
 function buildReserveOwnerResponse(intent: Intent, matches: MatchRow[]): LeafResponse {
   if (!matches.length) return buildNoMatchResponse(intent, TABLE_LABELS.reserves);
+  if (!isStrongMatch(matches[0], intent)) {
+    const candidateLabel = [matches[0].commonName, matches[0].contSize].filter(Boolean).join(" ").trim() || matches[0].itemCode || "that reserve item";
+    return buildClarificationResponse(
+      `I found reserve results, but I am not fully sure the item phrase matches.`,
+      `Did you mean ${candidateLabel}? If not, say the full item name and size again.`,
+      matches,
+      "Source: Reserves",
+    );
+  }
   const grouped = new Map<string, { customer: string; salesRep: string; qty: number; rows: MatchRow[] }>();
   matches.forEach((match) => {
     const customerLabel = firstNonEmpty(match.customer, match.consignee, "Unknown Customer");
@@ -768,6 +827,15 @@ function buildRequestDraftResponse(intent: Intent, matches: MatchRow[], session:
     );
   }
   if (!matches.length) return buildNoMatchResponse(intent, TABLE_LABELS.master);
+  if (!isStrongMatch(matches[0], intent)) {
+    const candidateLabel = [matches[0].commonName, matches[0].contSize].filter(Boolean).join(" ").trim() || matches[0].itemCode || "that item";
+    return buildClarificationResponse(
+      `I can draft that request, but I want to confirm the item first.`,
+      `Did you mean ${candidateLabel}? Say the item name and size again if not.`,
+      matches,
+      "Source: Drive inventory",
+    );
+  }
   const positiveRows = matches.filter((match) => Number.isFinite(match.sLts) && match.sLts > 0);
   const futureRows = matches.filter((match) => isFutureCropLot(match) || (Number.isFinite(match.sLts) && match.sLts > 0));
   const recommended = (positiveRows.length ? positiveRows : futureRows).slice().sort((a, b) => {
