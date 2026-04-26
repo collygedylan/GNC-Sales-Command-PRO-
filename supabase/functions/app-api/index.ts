@@ -161,15 +161,25 @@ async function handleLogin(payload: Record<string, unknown>) {
   if (!username || !password) return errorResponse("Username and password are required.", 400);
 
   const selectCols = "username,role,password";
-  const response = await restRequest(
+  const normalizedInput = normalizeUsername(username);
+  const exactResponse = await restRequest(
     "v2_app_users",
     "GET",
-    `select=${selectCols}&limit=200`,
+    `select=${selectCols}&username=eq.${encodeURIComponent(normalizedInput)}&limit=1`,
   );
-  if (!response.ok) return errorResponse("Login lookup failed.", response.status, { details: await readResponsePayload(response) });
-  const payloadRows = await readResponsePayload(response);
-  const rows = Array.isArray(payloadRows) ? payloadRows as Record<string, unknown>[] : [];
-  const normalizedInput = normalizeUsername(username);
+  if (!exactResponse.ok) return errorResponse("Login lookup failed.", exactResponse.status, { details: await readResponsePayload(exactResponse) });
+  let payloadRows = await readResponsePayload(exactResponse);
+  let rows = Array.isArray(payloadRows) ? payloadRows as Record<string, unknown>[] : [];
+  if (!rows.length && normalizedInput) {
+    const fallbackResponse = await restRequest(
+      "v2_app_users",
+      "GET",
+      `select=${selectCols}&username=ilike.${encodeURIComponent(normalizedInput)}&limit=3`,
+    );
+    if (!fallbackResponse.ok) return errorResponse("Login lookup failed.", fallbackResponse.status, { details: await readResponsePayload(fallbackResponse) });
+    payloadRows = await readResponsePayload(fallbackResponse);
+    rows = Array.isArray(payloadRows) ? payloadRows as Record<string, unknown>[] : [];
+  }
   const matchedUser = rows.find((row) => {
     const dbUsername = String(row.username || row.USERNAME || "").trim();
     const dbPassword = String(row.password || row.PASSWORD || "").trim();
