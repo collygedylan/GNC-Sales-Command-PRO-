@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.26.09';
+window.__APP_SHELL_VERSION__ = 'V2026.04.26.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -45,6 +45,8 @@ window.__APP_SHELL_VERSION__ = 'V2026.04.26.09';
         .app-card-actions{display:flex;gap:.55rem;margin-top:.9rem;padding-top:.85rem;border-top:1px solid #e5e7eb}
         .app-card-shell img,.inv-card img{display:block}
 .app-smart-card{border-radius:22px !important;box-shadow:0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important;border-color:#d7e4db !important;background:linear-gradient(180deg,#ffffff 0%,#fbfdfc 100%);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;contain:layout paint}
+body.performance-scroll-active .app-smart-card,body.performance-scroll-active .request-swipe-surface{transition:none !important}
+@supports (content-visibility:auto){.performance-windowed-list>.app-smart-card,.performance-windowed-list>.item-row,.performance-windowed-list>.request-swipe-row{content-visibility:auto;contain-intrinsic-size:1px 280px}.performance-windowed-list>.drill-item{content-visibility:auto;contain-intrinsic-size:1px 92px}body.ios-device .performance-windowed-list>.app-smart-card,body.ios-device .performance-windowed-list>.item-row,body.ios-device .performance-windowed-list>.request-swipe-row{content-visibility:visible}}
 .app-smart-card--season{background:linear-gradient(180deg,#ecfdf5 0%,#dcfce7 100%) !important;border-color:#007a4d !important;box-shadow:0 16px 36px rgba(0,122,77,.14),0 3px 10px rgba(15,23,42,.04) !important}
         .app-smart-card .app-card-eyebrow{font-size:.62rem !important;letter-spacing:.18em !important;text-transform:uppercase;font-weight:900}
         .app-smart-card .app-card-title{font-size:1.08rem !important;line-height:1.08 !important;letter-spacing:-.025em}
@@ -815,7 +817,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.26.09').trim() || 'V2026.04.26.09';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.26.10').trim() || 'V2026.04.26.10';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1314,7 +1316,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.26.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.26.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1445,7 +1447,10 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             detailHydrationDurations: Object.create(null),
             taskStateBuildDurations: Object.create(null),
             taskDrilldownDurations: Object.create(null),
-            taskFilterRenderDurations: Object.create(null)
+            taskFilterRenderDurations: Object.create(null),
+            staleViewRenderSkips: 0,
+            cancelledChunkRenders: 0,
+            longTaskDurations: Object.create(null)
         });
         let recentLocalRealtimeWrites = new Map();
         let pendingPhotoUploads = new Map();
@@ -1466,6 +1471,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         let lastPhotoPersistAt = 0;
         let activeSaveSurfaceId = '';
         let scrollFramePending = false;
+        let scrollPerformanceClassTimer = null;
         let viewportHeightSyncInitialized = false;
         let standaloneShellBaseHeight = 0;
         let detailFieldFocusResetTimer = null;
@@ -1506,6 +1512,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         let lifecycleResumeCooldownUntil = 0;
         let lifecycleResumePendingReasons = new Set();
         let passiveViewActivationByView = Object.create(null);
+        let latestViewRenderTokensByView = Object.create(null);
         let foregroundRefreshQueuedAt = 0;
         let staticFastPressBindingsInitialized = false;
         const ACTIVE_TYPING_GRACE_MS = 450;
@@ -1601,6 +1608,22 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             internalPerfStats[safeCounterName] = (Number(internalPerfStats[safeCounterName]) || 0) + safeAmount;
             return internalPerfStats[safeCounterName];
         }
+
+        function installInternalLongTaskObserver() {
+            if (window.__gncLongTaskObserverInstalled) return;
+            window.__gncLongTaskObserverInstalled = true;
+            if (typeof PerformanceObserver !== 'function') return;
+            try {
+                const observer = new PerformanceObserver((list) => {
+                    (list.getEntries() || []).forEach((entry) => {
+                        const duration = Number(entry && entry.duration) || 0;
+                        if (duration >= 50) pushInternalPerfSample('longTaskDurations', duration, getCurrentVisibleViewId ? getCurrentVisibleViewId() : 'unknown');
+                    });
+                });
+                observer.observe({ type: 'longtask', buffered: true });
+            } catch (error) {}
+        }
+        installInternalLongTaskObserver();
 
         function trimInternalCacheMap(map = null, maxEntries = MAX_SEARCH_FILTER_CACHE_ENTRIES) {
             if (!(map instanceof Map)) return;
@@ -1856,6 +1879,14 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
 
         function markScrollActivity() {
             lastScrollAt = Date.now();
+            if (document && document.body) {
+                document.body.classList.add('performance-scroll-active');
+                if (scrollPerformanceClassTimer) clearTimeout(scrollPerformanceClassTimer);
+                scrollPerformanceClassTimer = setTimeout(() => {
+                    scrollPerformanceClassTimer = null;
+                    if (document && document.body) document.body.classList.remove('performance-scroll-active');
+                }, 180);
+            }
         }
 
         function isUserActivelyScrolling() {
@@ -5509,12 +5540,19 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
 
         function queueViewRender(viewId, forceReset = false, forceRender = false) {
-            const state = ensureViewRenderState(viewId);
+            const safeViewId = String(viewId || '').trim();
+            if (!safeViewId) return;
+            const state = ensureViewRenderState(safeViewId);
             if (!forceReset && !forceRender && state.initialized && !state.dirty) return;
-            scheduleUiRender(`view:${viewId}`, () => {
-                const targetView = document.getElementById('view-' + viewId);
+            const renderToken = prepareLatestViewRender(safeViewId);
+            scheduleUiRender(`view:${safeViewId}`, () => {
+                if (!isLatestViewRenderToken(safeViewId, renderToken)) {
+                    incrementInternalPerfCounter('staleViewRenderSkips');
+                    return;
+                }
+                const targetView = document.getElementById('view-' + safeViewId);
                 if (!targetView || targetView.classList.contains('hidden')) return;
-                renderViewContent(viewId, forceReset, forceRender);
+                renderViewContent(safeViewId, forceReset, forceRender);
             });
         }
 
@@ -5523,7 +5561,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (!safeViewId) return;
             const state = ensureViewRenderState(safeViewId);
             if (!forceReset && !forceRender && state.initialized && !state.dirty) return;
+            const renderToken = prepareLatestViewRender(safeViewId);
             scheduleTypingAwareUiRender(`view-interactive:${safeViewId}`, () => {
+                if (!isLatestViewRenderToken(safeViewId, renderToken)) {
+                    incrementInternalPerfCounter('staleViewRenderSkips');
+                    return;
+                }
                 const targetView = document.getElementById('view-' + safeViewId);
                 if (!targetView || targetView.classList.contains('hidden')) return;
                 renderViewContent(safeViewId, forceReset, forceRender);
@@ -5591,9 +5634,13 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return true;
         }
 
-        function runImmediateTrackedViewRender(viewId = '', nextOptions = {}, touchRenderStartedAt = 0) {
+        function runImmediateTrackedViewRender(viewId = '', nextOptions = {}, touchRenderStartedAt = 0, renderToken = 0) {
             const safeViewId = String(viewId || '').trim();
             if (!safeViewId) return false;
+            if (renderToken && !isLatestViewRenderToken(safeViewId, renderToken)) {
+                incrementInternalPerfCounter('staleViewRenderSkips');
+                return false;
+            }
             const targetView = document.getElementById('view-' + safeViewId);
             if (!targetView || targetView.classList.contains('hidden')) return false;
             renderViewContent(safeViewId, !!nextOptions.forceReset, !!nextOptions.forceRender);
@@ -5673,11 +5720,16 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const typingDelay = Math.max(28, Number(nextOptions.typingDelay) || 96);
             const touchRenderStartedAt = nextOptions.userAction ? beginInternalPerfMeasure() : 0;
             markViewDirty(safeViewId);
+            const renderToken = prepareLatestViewRender(safeViewId);
             if (nextOptions.preferImmediate && canRunImmediateTrackedViewRender(safeViewId, { ...nextOptions, delay })) {
-                runImmediateTrackedViewRender(safeViewId, nextOptions, touchRenderStartedAt);
+                runImmediateTrackedViewRender(safeViewId, nextOptions, touchRenderStartedAt, renderToken);
                 return false;
             }
             scheduleTypingAwareUiRender(`tracked-view:${safeViewId}:${String(renderKey || 'render')}`, () => {
+                if (!isLatestViewRenderToken(safeViewId, renderToken)) {
+                    incrementInternalPerfCounter('staleViewRenderSkips');
+                    return;
+                }
                 const targetView = document.getElementById('view-' + safeViewId);
                 if (!targetView || targetView.classList.contains('hidden')) return;
                 renderViewContent(safeViewId, !!nextOptions.forceReset, !!nextOptions.forceRender);
@@ -5701,7 +5753,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (!safeViewId) return false;
             cancelPendingNavigationScrollResets();
             markViewDirty(safeViewId);
+            const renderToken = prepareLatestViewRender(safeViewId);
             scheduleSearchRender(searchKey, () => {
+                if (!isLatestViewRenderToken(safeViewId, renderToken)) {
+                    incrementInternalPerfCounter('staleViewRenderSkips');
+                    return;
+                }
                 const targetView = document.getElementById('view-' + safeViewId);
                 if (!targetView || targetView.classList.contains('hidden')) return;
                 renderViewContent(safeViewId, false, false);
@@ -5753,7 +5810,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             pendingTasksRenderOptions = { ...(pendingTasksRenderOptions || {}), ...((options && typeof options === 'object') ? options : {}) };
             markViewDirty('tasks');
             const touchRenderStartedAt = beginInternalPerfMeasure();
+            const renderToken = prepareLatestViewRender('tasks');
             scheduleTypingAwareUiRender(`tracked-view:${renderKey}`, () => {
+                if (!isLatestViewRenderToken('tasks', renderToken)) {
+                    incrementInternalPerfCounter('staleViewRenderSkips');
+                    return;
+                }
                 const targetView = document.getElementById('view-tasks');
                 if (!targetView || targetView.classList.contains('hidden')) return;
                 renderViewContent('tasks', false, forceRender);
@@ -8487,7 +8549,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.26.09').trim() || 'V2026.04.26.09';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.26.10').trim() || 'V2026.04.26.10';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -9698,7 +9760,10 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
                     if (!isDatasetFrozenDuringManualSync(item.key)) queueDatasetLoad(item.key, item.mode);
                 });
                 markViewDirty(viewId);
-                if (isViewVisible(viewId)) renderViewContent(viewId, false, true);
+                if (isViewVisible(viewId)) {
+                    prepareLatestViewRender(viewId);
+                    renderViewContent(viewId, false, true);
+                }
             }).catch((error) => {
                 if (isViewVisible(viewId)) showViewErrorState(viewId, error && error.message ? error.message : 'Could not load data.');
             });
@@ -15837,6 +15902,42 @@ function toggleDriveQuickRequestItem(domId) {
             ensureViewRenderState(viewId).dirty = true;
         }
 
+        function normalizeViewRenderTokenKey(viewId = '') {
+            return String(viewId || '').trim();
+        }
+
+        function bumpLatestViewRenderToken(viewId = '') {
+            const safeViewId = normalizeViewRenderTokenKey(viewId);
+            if (!safeViewId) return 0;
+            const nextToken = (Number(latestViewRenderTokensByView[safeViewId] || 0) + 1);
+            latestViewRenderTokensByView[safeViewId] = nextToken;
+            return nextToken;
+        }
+
+        function isLatestViewRenderToken(viewId = '', token = 0) {
+            const safeViewId = normalizeViewRenderTokenKey(viewId);
+            const safeToken = Number(token) || 0;
+            return !!(safeViewId && safeToken && Number(latestViewRenderTokensByView[safeViewId] || 0) === safeToken);
+        }
+
+        function cancelScheduledViewRenderWork(viewId = '') {
+            const safeViewId = normalizeViewRenderTokenKey(viewId);
+            if (!safeViewId) return;
+            cancelScheduledUiRenderByPrefix(`tracked-view:${safeViewId}:`);
+            cancelScheduledUiRenderByPrefix(`view-interactive:${safeViewId}`);
+            cancelScheduledUiRenderByPrefix(`view:${safeViewId}`);
+        }
+
+        function prepareLatestViewRender(viewId = '', options = {}) {
+            const safeViewId = normalizeViewRenderTokenKey(viewId);
+            if (!safeViewId) return 0;
+            const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const token = bumpLatestViewRenderToken(safeViewId);
+            if (!nextOptions.keepScheduled) cancelScheduledViewRenderWork(safeViewId);
+            cancelChunkRenderWorkForView(safeViewId);
+            return token;
+        }
+
         function scheduleDeferredVisibleDirtyViewRefresh(reason = 'interactive-refresh', delay = 0, typingDelay = 240) {
             const safeReason = String(reason || 'interactive-refresh').trim() || 'interactive-refresh';
             scheduleTypingAwareUiRender(`visible-dirty-refresh:${safeReason}`, () => {
@@ -15845,6 +15946,11 @@ function toggleDriveQuickRequestItem(domId) {
                 if (!visibleDirtyViewIds.length) return;
                 visibleDirtyViewIds.forEach((viewId) => {
                     if (!isViewVisible(viewId)) return;
+                    const renderToken = prepareLatestViewRender(viewId);
+                    if (!isLatestViewRenderToken(viewId, renderToken)) {
+                        incrementInternalPerfCounter('staleViewRenderSkips');
+                        return;
+                    }
                     renderViewContent(viewId, false, false);
                 });
                 recordInternalPerfDuration('visibleRefreshDurations', refreshStartedAt, safeReason);
@@ -16520,6 +16626,7 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             const targetView = getViewElementById(nextViewId);
+            prepareLatestViewRender(nextViewId);
             if (targetView && (!nextState.initialized || nextState.dirty)) {
                 renderViewContent(nextViewId, false, false);
             }
@@ -19682,9 +19789,42 @@ function toggleDriveQuickRequestItem(domId) {
 
         function bumpChunkRenderTokenByKey(key = 'default') {
             const tokenKey = String(key || 'default');
+            const activeToken = Number(chunkRenderActivityByKey[tokenKey] || 0);
+            if (activeToken) {
+                delete chunkRenderActivityByKey[tokenKey];
+                activeChunkRenderCount = Math.max(0, activeChunkRenderCount - 1);
+                lastChunkRenderAt = Date.now();
+                incrementInternalPerfCounter('cancelledChunkRenders');
+            }
             const nextToken = (Number(chunkRenderTokensByKey[tokenKey] || 0) + 1);
             chunkRenderTokensByKey[tokenKey] = nextToken;
             return nextToken;
+        }
+
+        function cancelChunkRenderWorkByPrefix(prefix = '') {
+            const safePrefix = String(prefix || '').trim();
+            if (!safePrefix) return;
+            Object.keys(chunkRenderTokensByKey || {}).forEach((key) => {
+                if (String(key || '').startsWith(safePrefix)) bumpChunkRenderTokenByKey(key);
+            });
+        }
+
+        function cancelChunkRenderWorkForView(viewId = '') {
+            const safeViewId = String(viewId || '').trim();
+            if (!safeViewId) return;
+            const prefixMap = {
+                drive: ['drive-'],
+                tasks: ['tasks-'],
+                docks: ['dock-', 'docks-'],
+                request: ['request-'],
+                reserves: ['reserves-'],
+                review: ['review-'],
+                av: ['av-'],
+                'sales-office': ['sales-office-', 'low-stock-ncr'],
+                'low-stock': ['low-stock-'],
+                reports: ['report-']
+            };
+            (prefixMap[safeViewId] || [`${safeViewId}-`]).forEach((prefix) => cancelChunkRenderWorkByPrefix(prefix));
         }
 
         function shouldUseChunkedCardRender(total = 0, mobileThreshold = 120, desktopThreshold = 220) {
@@ -19746,15 +19886,20 @@ function toggleDriveQuickRequestItem(domId) {
             const chunkSize = touchOptimized
                 ? (total > 1800 ? 10 : (total > 900 ? 12 : 16))
                 : (total > 1400 ? 20 : (total > 700 ? 24 : 32));
-            const initialScreens = touchOptimized ? 0.56 : 2.4;
+            const configuredInitialScreens = Number(options.initialScreens);
+            const initialScreens = Number.isFinite(configuredInitialScreens) && configuredInitialScreens > 0
+                ? configuredInitialScreens
+                : (touchOptimized ? 0.92 : 1.55);
             const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(8, chunkSize - 2) : chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
             const perFrameLimit = touchOptimized ? Math.max(chunkSize, 12) : Math.max(chunkSize, 28);
-            const frameBudgetMs = touchOptimized ? 1.9 : 3.0;
+            const frameBudgetMs = touchOptimized ? 1.65 : 2.55;
             const hasFollowupChunks = total > initialTarget;
             const reserveHeightCap = touchOptimized
                 ? Math.max(viewportHeight * 1.18, approxCardHeight * Math.max(5, initialTarget + Math.ceil(chunkSize * 0.25)))
-                : Number.POSITIVE_INFINITY;
+                : Math.max(viewportHeight * 2.8, approxCardHeight * Math.max(12, initialTarget + chunkSize));
             let index = 0;
+
+            container.classList.add('performance-windowed-list');
 
             if (crumb && typeof crumbText === 'string') crumb.innerText = crumbText;
 
@@ -19826,12 +19971,17 @@ function toggleDriveQuickRequestItem(domId) {
 
             const queueNextChunkFrame = () => {
                 const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: 8 });
+                const scheduleFrame = () => requestAnimationFrame(renderNextChunk);
                 if (pacing.frameDelayMs > 0) {
                     if (pacing.liveGestureActive) incrementInternalPerfCounter('scrollBlockedChunkFrames');
-                    setTimeout(() => requestAnimationFrame(renderNextChunk), pacing.frameDelayMs);
+                    setTimeout(scheduleFrame, pacing.frameDelayMs);
                     return;
                 }
-                requestAnimationFrame(renderNextChunk);
+                if (typeof requestIdleCallback === 'function' && index > initialTarget && !isUserInLiveTouchScrollGesture()) {
+                    requestIdleCallback(scheduleFrame, { timeout: touchOptimized ? 120 : 80 });
+                    return;
+                }
+                scheduleFrame();
             };
 
             const renderNextChunk = () => {
@@ -19870,11 +20020,12 @@ function toggleDriveQuickRequestItem(domId) {
             const chunkSize = touchOptimized
                 ? (total > 1600 ? 10 : (total > 800 ? 12 : 16))
                 : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = touchOptimized ? 0.58 : 3.4;
+            const initialScreens = touchOptimized ? 0.92 : 1.65;
             const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(8, chunkSize - 2) : chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
             const perFrameLimit = touchOptimized ? Math.max(chunkSize, 12) : Math.max(chunkSize, 44);
-            const frameBudgetMs = touchOptimized ? 2.0 : 4.0;
+            const frameBudgetMs = touchOptimized ? 1.75 : 2.85;
             let index = 0;
+            container.classList.add('performance-windowed-list');
             crumb.innerText = crumbText;
             if (renderSignature && getContainerRenderSignature(container) === renderSignature) {
                 incrementInternalPerfCounter('chunkRenderSkips');
@@ -19908,12 +20059,17 @@ function toggleDriveQuickRequestItem(domId) {
             setContainerHtml(container, renderBatch(initialTarget, false));
             const queueNextChunkFrame = () => {
                 const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: 10 });
+                const scheduleFrame = () => requestAnimationFrame(renderNextChunk);
                 if (pacing.frameDelayMs > 0) {
                     if (pacing.liveGestureActive) incrementInternalPerfCounter('scrollBlockedChunkFrames');
-                    setTimeout(() => requestAnimationFrame(renderNextChunk), pacing.frameDelayMs);
+                    setTimeout(scheduleFrame, pacing.frameDelayMs);
                     return;
                 }
-                requestAnimationFrame(renderNextChunk);
+                if (typeof requestIdleCallback === 'function' && index > initialTarget && !isUserInLiveTouchScrollGesture()) {
+                    requestIdleCallback(scheduleFrame, { timeout: touchOptimized ? 120 : 80 });
+                    return;
+                }
+                scheduleFrame();
             };
             const renderNextChunk = () => {
                 if (token !== avRenderChunkToken) return;
@@ -19948,11 +20104,12 @@ function toggleDriveQuickRequestItem(domId) {
             const chunkSize = touchOptimized
                 ? (total > 1600 ? 10 : (total > 800 ? 12 : 16))
                 : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = touchOptimized ? 0.56 : 3.4;
+            const initialScreens = touchOptimized ? 0.92 : 1.65;
             const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(8, chunkSize - 2) : chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
             const perFrameLimit = touchOptimized ? Math.max(chunkSize, 12) : Math.max(chunkSize, 44);
-            const frameBudgetMs = touchOptimized ? 2.0 : 4.0;
+            const frameBudgetMs = touchOptimized ? 1.75 : 2.85;
             let index = 0;
+            container.classList.add('performance-windowed-list');
             crumb.innerText = crumbText;
             if (renderSignature && getContainerRenderSignature(container) === renderSignature) {
                 incrementInternalPerfCounter('chunkRenderSkips');
@@ -19986,12 +20143,17 @@ function toggleDriveQuickRequestItem(domId) {
             setContainerHtml(container, renderBatch(initialTarget, false));
             const queueNextChunkFrame = () => {
                 const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: 10 });
+                const scheduleFrame = () => requestAnimationFrame(renderNextChunk);
                 if (pacing.frameDelayMs > 0) {
                     if (pacing.liveGestureActive) incrementInternalPerfCounter('scrollBlockedChunkFrames');
-                    setTimeout(() => requestAnimationFrame(renderNextChunk), pacing.frameDelayMs);
+                    setTimeout(scheduleFrame, pacing.frameDelayMs);
                     return;
                 }
-                requestAnimationFrame(renderNextChunk);
+                if (typeof requestIdleCallback === 'function' && index > initialTarget && !isUserInLiveTouchScrollGesture()) {
+                    requestIdleCallback(scheduleFrame, { timeout: touchOptimized ? 120 : 80 });
+                    return;
+                }
+                scheduleFrame();
             };
             const renderNextChunk = () => {
                 if (token !== avRenderChunkToken) return;
@@ -22342,6 +22504,7 @@ function toggleDriveQuickRequestItem(domId) {
             const hasWarmRestoreView = !!(restoreView && restoreViewState.initialized);
             const hasWarmCleanRestoreView = !!(hasWarmRestoreView && !restoreViewState.dirty);
             if (restoreView && !hasWarmRestoreView && (!restoreViewState.initialized || restoreViewState.dirty)) {
+                prepareLatestViewRender(safeRestoreViewId);
                 renderViewContent(safeRestoreViewId, false, false);
             }
             const visibleRestoreViewId = restoreView ? safeRestoreViewId : 'home';
@@ -26965,7 +27128,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             cancelPendingNavigationScrollResets();
             invalidateDriveResolvedCardState();
             markViewDirty('drive');
+            const renderToken = prepareLatestViewRender('drive');
             scheduleSearchRender('drive-search', () => {
+                if (!isLatestViewRenderToken('drive', renderToken)) {
+                    incrementInternalPerfCounter('staleViewRenderSkips');
+                    return;
+                }
                 if (Number(nextOptions.requestToken || 0) && Number(nextOptions.requestToken || 0) !== driveSearchRequestToken) return;
                 if (String(nextOptions.drillStateKey || '').trim() && String(nextOptions.drillStateKey || '').trim() !== getDriveDrillSelectionStateKey()) return;
                 const targetView = document.getElementById('view-drive');
@@ -30511,6 +30679,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!useSharedTaskQueue && !targetUser) return;
 
             const taskPerfKey = `${activeTaskTab}:${activeTaskSubview || 'all'}:level${taskViewLevel}`;
+            const taskRenderToken = Number(latestViewRenderTokensByView.tasks || 0);
             const finishTaskPerf = () => recordInternalPerfDuration('taskDrilldownDurations', taskRenderStartedAt, taskPerfKey);
             const container = document.getElementById('task-content');
             const crumb = document.getElementById('task-crumb');
@@ -30571,6 +30740,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             ].join('|');
 
             const syncTaskFilters = () => {
+                if (taskRenderToken && !isLatestViewRenderToken('tasks', taskRenderToken)) {
+                    incrementInternalPerfCounter('staleViewRenderSkips');
+                    return;
+                }
                 const filterStartedAt = beginInternalPerfMeasure();
                 if (taskFilterSyncSignature === lastTaskFilterRenderSignature) {
                     renderTaskReserveCustomerFilters();
