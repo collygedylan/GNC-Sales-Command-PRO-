@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.04.25.09';
+        window.__APP_SHELL_VERSION__ = 'V2026.04.26.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -724,7 +724,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.25.09').trim() || 'V2026.04.25.09';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.26.01').trim() || 'V2026.04.26.01';</script>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -1061,6 +1061,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div id="det-season-content" class="hidden py-4">
                         <div id="ssn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="ssn-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-ssn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'ssn-')"></label></div>
+                        <div id="task-season-review-panel-season" class="hidden"></div>
                         <div id="ssn-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)"></div>
                             <div id="ssn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="ssn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'ssn-', true)"></div>
@@ -1074,6 +1075,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div id="det-location-content" class="hidden py-4">
                         <div id="lsn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="lsn-photo-list-container" class="space-y-2"></div></div>
                         <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-lsn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'lsn-')"></label></div>
+                        <div id="task-season-review-panel-location" class="hidden"></div>
                         <div id="lsn-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)"></div>
                             <div id="lsn-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="lsn-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'lsn-', true)"></div>
@@ -1211,7 +1213,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.25.09';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.26.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7697,7 +7699,7 @@ let activeHomeTab='dashboard'; let selectedProductivityUser=''; let productivity
 let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
 let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveSeason=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let drivePlantFilterItemsCache=[]; let drivePlantFilterGenusOptions=[]; let drivePlantFilterContSizeOptions=[]; let driveGenusSelectionMode='all'; let driveContSizeSelectionMode='all'; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS); let driveResolvedCardStateKey=''; let driveResolvedCardStateCache=null; let driveSearchRequiresManualSelection=false; let driveSearchDebounceTimer=null; let driveSearchRequestToken=0;
 
-let activeTaskView="hot-price"; let activeTaskFilter="all"; let activeTaskCustomerFilter="all"; let activeTaskReserveRepFilter="all"; let activeTaskReserveCustomerFilter="all"; let activeTaskReserveRowStatusMode="all"; let activeTaskReservePhotoMode="all"; let activeTaskTab=activeTaskView; let activeTaskSubview=activeTaskFilter; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let selectedTaskContSizes=new Set(); let taskContSizeSearchTerm=""; let taskContSizeDropdownOpen=false; let taskContSizeFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
+let activeTaskView="hot-price"; let activeTaskFilter="all"; let activeTaskCustomerFilter="all"; let activeTaskReserveRepFilter="all"; let activeTaskReserveCustomerFilter="all"; let activeTaskReserveRowStatusMode="all"; let activeTaskReservePhotoMode="all"; let activeTaskSeasonReviewMode="winner"; let activeTaskTab=activeTaskView; let activeTaskSubview=activeTaskFilter; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let selectedTaskContSizes=new Set(); let taskContSizeSearchTerm=""; let taskContSizeDropdownOpen=false; let taskContSizeFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees="";
         let detailReturnState = { viewId: '', scrollTop: 0 };
         let viewHistoryStack = [];
         let pendingFieldSaveCount = 0;
@@ -7770,7 +7772,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.25.09').trim() || 'V2026.04.25.09';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.26.01').trim() || 'V2026.04.26.01';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -12769,6 +12771,15 @@ function toggleDriveQuickRequestItem(domId) {
             if (preferredCandidates.length) return preferredCandidates[0];
             return candidateRows.slice().sort(compareSeasonWinnerCandidates)[0] || null;
         }
+        function getPersistedSeasonWinnerCandidate(rows = []) {
+            const explicitWinners = (Array.isArray(rows) ? rows : []).filter((row) => {
+                if (!row) return false;
+                if (hasUsableEndCapFolderValue(firstNonEmptyValue(row.END_CAP_FOLDER, row.end_cap_folder, ''))) return false;
+                if (hasCompletionDateValue(row) || isOptimisticallyCompletedRow(row)) return false;
+                return String(firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, row.app_tab_assignment, '') || '').trim().toLowerCase() === 'season';
+            });
+            return explicitWinners.length === 1 ? explicitWinners[0] : null;
+        }
         function assignSeasonWinnersForItemGroups(items = [], allowedItemCodes = null) {
             const allowedCodes = allowedItemCodes instanceof Set ? allowedItemCodes : null;
             const itemGroups = new Map();
@@ -12785,7 +12796,7 @@ function toggleDriveQuickRequestItem(domId) {
                 itemGroups.get(itemCode).push(item);
             });
             itemGroups.forEach((rows) => {
-                const winner = pickSeasonWinnerCandidate(rows);
+                const winner = getPersistedSeasonWinnerCandidate(rows) || pickSeasonWinnerCandidate(rows);
                 rows.forEach((row) => {
                     row.APP_TAB_ASSIGNMENT = winner && row.UNIQUE_ID === winner.UNIQUE_ID ? 'season' : 'location';
                 });
@@ -20813,8 +20824,224 @@ function toggleDriveQuickRequestItem(domId) {
                 renderAvReserveDetailCustomerPanel(item);
                 return;
             }
+            if (safeTab === 'season' || safeTab === 'location') {
+                renderTaskSeasonReviewPanel(item);
+            }
             const prefix = getDetailTabPrefix(safeTab);
             if (prefix) populateDetailInputsForPrefix(prefix, item);
+        }
+
+        function getTaskSeasonReviewMasterRow(item = activeItem) {
+            if (!item) return null;
+            const linkedMaster = findLinkedMasterRow(item);
+            if (linkedMaster) return linkedMaster;
+            const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, 'v2_master_inventory')).trim().toLowerCase();
+            return sourceTable === 'v2_master_inventory' ? item : null;
+        }
+
+        function getTaskSeasonReviewFamilyRows(item = activeItem) {
+            const masterRow = getTaskSeasonReviewMasterRow(item);
+            const itemCode = getMasterItemCodeKey(masterRow || item);
+            if (!itemCode) return [];
+            const familyRows = fullInventory.filter((row) => {
+                if (!row) return false;
+                const sourceTable = String(firstNonEmptyValue(row.SOURCE_TABLE, row.source_table, 'v2_master_inventory')).trim().toLowerCase();
+                if (sourceTable !== 'v2_master_inventory') return false;
+                if (hasUsableEndCapFolderValue(firstNonEmptyValue(row.END_CAP_FOLDER, row.end_cap_folder, ''))) return false;
+                return getMasterItemCodeKey(row) === itemCode;
+            });
+            familyRows.sort(compareSeasonWinnerCandidates);
+            return familyRows;
+        }
+
+        function getTaskSeasonReviewWinnerRow(item = activeItem, familyRows = null) {
+            const rows = Array.isArray(familyRows) ? familyRows : getTaskSeasonReviewFamilyRows(item);
+            return rows.find((row) => String(firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, row.app_tab_assignment, '') || '').trim().toLowerCase() === 'season')
+                || getPersistedSeasonWinnerCandidate(rows)
+                || pickSeasonWinnerCandidate(rows)
+                || null;
+        }
+
+        function setTaskSeasonReviewMode(mode = 'winner') {
+            activeTaskSeasonReviewMode = String(mode || '').trim().toLowerCase() === 'all' ? 'all' : 'winner';
+            renderTaskSeasonReviewPanel(activeItem);
+            return false;
+        }
+
+        function buildTaskSeasonReviewRows(item = activeItem, familyRows = null, winnerRow = null) {
+            const rows = Array.isArray(familyRows) ? familyRows : getTaskSeasonReviewFamilyRows(item);
+            const winner = winnerRow || getTaskSeasonReviewWinnerRow(item, rows);
+            if (!rows.length) return [];
+            const activeMaster = getTaskSeasonReviewMasterRow(item);
+            const activeUid = String(firstNonEmptyValue(activeMaster && activeMaster.UNIQUE_ID, item && item.UNIQUE_ID, '')).trim();
+            const winnerUid = String(firstNonEmptyValue(winner && winner.UNIQUE_ID, '')).trim();
+            const winnerPtr = getSeasonWinnerPtrAvailable(winner);
+            const includeAllPriority = activeTaskSeasonReviewMode === 'all';
+            const result = [];
+            const seen = new Set();
+            rows.forEach((row) => {
+                const rowUid = String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim();
+                if (!rowUid || seen.has(rowUid)) return;
+                const includeRow = includeAllPriority
+                    ? (rowUid === winnerUid || rowUid === activeUid || getSingleDigitSeasonPriority(row) != null)
+                    : rowUid === winnerUid;
+                if (!includeRow) return;
+                seen.add(rowUid);
+                const ptrValue = getSeasonWinnerPtrAvailable(row);
+                const hasPriority = getSingleDigitSeasonPriority(row) != null;
+                const strongerThanWinner = rowUid !== winnerUid && hasPriority && Number.isFinite(ptrValue) && Number.isFinite(winnerPtr) && ptrValue > winnerPtr;
+                result.push({
+                    row,
+                    rowUid,
+                    isWinner: rowUid === winnerUid,
+                    isActiveRow: rowUid === activeUid,
+                    strongerThanWinner,
+                    priorityText: String(firstNonEmptyValue(row.PRIORITY, row.priority, '-') || '-').trim() || '-',
+                    ptrText: String(firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, '0') || '0').trim() || '0'
+                });
+            });
+            return result;
+        }
+
+        function renderTaskSeasonReviewPanel(item = activeItem) {
+            const panelIds = ['task-season-review-panel-season', 'task-season-review-panel-location'];
+            const panels = panelIds.map((id) => document.getElementById(id)).filter(Boolean);
+            if (!panels.length) return;
+            const hidePanels = () => {
+                panels.forEach((panel) => {
+                    panel.classList.add('hidden');
+                    panel.innerHTML = '';
+                });
+            };
+            const detailSourceView = String(activeDetailSourceView || lastView || '').trim().toLowerCase();
+            if (detailSourceView !== 'tasks' || !item) {
+                hidePanels();
+                return;
+            }
+            const familyRows = getTaskSeasonReviewFamilyRows(item);
+            const winnerRow = getTaskSeasonReviewWinnerRow(item, familyRows);
+            const masterRow = getTaskSeasonReviewMasterRow(item);
+            const activeUid = String(firstNonEmptyValue(masterRow && masterRow.UNIQUE_ID, item && item.UNIQUE_ID, '')).trim();
+            const winnerUid = String(firstNonEmptyValue(winnerRow && winnerRow.UNIQUE_ID, '')).trim();
+            if (!familyRows.length || !winnerUid) {
+                hidePanels();
+                return;
+            }
+            const reviewRows = buildTaskSeasonReviewRows(item, familyRows, winnerRow);
+            const canForce = activeUid && activeUid !== winnerUid;
+            const currentTaskDetailTab = getTaskDetailTabForItem(item, activeTaskTab);
+            const prefix = currentTaskDetailTab === 'season' ? 'ssn-' : 'lsn-';
+            const canEdit = canEditRowDetails(prefix);
+            const modeAllActive = activeTaskSeasonReviewMode === 'all';
+            const currentWinnerPtrText = String(firstNonEmptyValue(winnerRow && winnerRow.PTRAVAILABLE, winnerRow && winnerRow.ptravailable, '0') || '0').trim() || '0';
+            const strongerCount = reviewRows.filter((entry) => entry.strongerThanWinner).length;
+            const rowsHtml = reviewRows.map((entry) => {
+                const toneClass = entry.isWinner
+                    ? 'border-emerald-200 bg-emerald-50'
+                    : (entry.isActiveRow ? 'border-sky-200 bg-sky-50' : 'border-slate-200 bg-slate-50');
+                const ptrToneClass = entry.strongerThanWinner
+                    ? 'border-red-200 bg-red-50 text-red-700'
+                    : 'border-slate-200 bg-white text-slate-700';
+                const badgeHtml = entry.isWinner
+                    ? '<span class="rounded-full border border-emerald-200 bg-white px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700">Current Season</span>'
+                    : (entry.isActiveRow ? '<span class="rounded-full border border-sky-200 bg-white px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-sky-700">Opened Row</span>' : '');
+                return `<div class="rounded-2xl border ${toneClass} p-3 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-2">${badgeHtml}<span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">${esc(entry.row.LOCATIONCODE || '-')} | ${esc(entry.row.LOTCODE || '-')}</span></div><div class="mt-2 text-sm font-black text-slate-900 break-words">${esc(entry.row.COMMONNAME || 'Unknown')}</div><div class="mt-1 text-[11px] font-bold text-[#007a4d]">${esc(entry.row.CONTSIZE || '-')}</div><div class="mt-2 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-orange-700">Priority <span class="text-orange-900">${esc(entry.priorityText)}</span></span><span class="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-slate-700">Item <span class="text-slate-900">${esc(entry.row.ITEMCODE || '-')}</span></span></div></div><div class="shrink-0 rounded-xl border ${ptrToneClass} px-3 py-2 text-right shadow-sm"><div class="text-[9px] font-black uppercase tracking-[0.14em] ${entry.strongerThanWinner ? 'text-red-500' : 'text-slate-400'}">PTRAVAILABLE</div><div class="mt-1 text-base font-black ${entry.strongerThanWinner ? 'text-red-700' : 'text-slate-900'}">${esc(entry.ptrText)}</div></div></div></div>`;
+            }).join('');
+            const html = `<div class="rounded-[1.35rem] border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-wrap items-center justify-between gap-3"><div><div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700"><i class="ph-bold ph-list-checks text-sm"></i><span>Season Sales Note Review</span></div><div class="mt-2 text-[11px] font-semibold text-slate-500">Current winner PTRAVAILABLE: <span class="font-black text-slate-700">${esc(currentWinnerPtrText)}</span>${strongerCount ? ` <span class="ml-1 font-black text-red-600">${strongerCount} stronger row${strongerCount === 1 ? '' : 's'} found</span>` : ''}</div></div><div class="inline-flex rounded-full border border-emerald-200 bg-emerald-50 p-1 text-[10px] font-black uppercase tracking-[0.12em]"><button type="button" class="rounded-full px-3 py-2 ${modeAllActive ? 'text-emerald-700' : 'bg-[#007a4d] text-white shadow-sm'}" onclick="return setTaskSeasonReviewMode('winner')">Season Winner Only</button><button type="button" class="rounded-full px-3 py-2 ${modeAllActive ? 'bg-[#007a4d] text-white shadow-sm' : 'text-emerald-700'}" onclick="return setTaskSeasonReviewMode('all')">All Priority Rows</button></div></div>${canForce ? `<div class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"><div class="text-[11px] font-semibold text-amber-800">The opened row is not the current Season Sales Note row. Use this to override the current winner.</div><button type="button" class="rounded-xl bg-amber-500 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95 ${canEdit ? '' : 'opacity-50 pointer-events-none'}" onclick="return forceTaskSeasonSalesNoteOverride('${esc(activeUid)}')">Make Season Sales Note</button></div>` : ''}<div class="mt-4 space-y-3">${rowsHtml || '<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-[11px] font-semibold text-slate-400">No season review rows found.</div>'}</div></div>`;
+            panels.forEach((panel) => {
+                panel.classList.remove('hidden');
+                panel.innerHTML = html;
+            });
+        }
+
+        async function forceTaskSeasonSalesNoteOverride(uniqueId = '') {
+            const targetUid = String(uniqueId || '').trim();
+            if (!targetUid || !activeItem || String(activeDetailSourceView || lastView || '').trim().toLowerCase() !== 'tasks') return false;
+            const currentTaskDetailTab = getTaskDetailTabForItem(activeItem, activeTaskTab);
+            const prefix = currentTaskDetailTab === 'season' ? 'ssn-' : 'lsn-';
+            if (!canEditRowDetails(prefix)) {
+                showRowEditRestrictedToast(prefix);
+                return false;
+            }
+            const targetMasterRow = findItemByUniqueId(targetUid) || getTaskSeasonReviewMasterRow(activeItem);
+            if (!targetMasterRow) {
+                showToast('Not Found', 'The row could not be resolved for Season override.', true);
+                return false;
+            }
+            const familyRows = getTaskSeasonReviewFamilyRows(targetMasterRow);
+            const itemCode = getMasterItemCodeKey(targetMasterRow);
+            if (!familyRows.length || !itemCode) {
+                showToast('Not Found', 'No related Season rows were found for this item.', true);
+                return false;
+            }
+            if (!window.confirm(`Make ${firstNonEmptyValue(targetMasterRow.LOCATIONCODE, 'this row')} the Season Sales Note row? This will replace the current Season Sales Note row for item ${itemCode}.`)) {
+                return false;
+            }
+            const saveRequestOptions = {
+                timeoutMs: getDetailRowWriteTimeoutMs(),
+                retries: DETAIL_ROW_WRITE_RETRY_COUNT,
+                retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
+            };
+            const previousAssignments = new Map();
+            familyRows.forEach((row) => {
+                previousAssignments.set(String(firstNonEmptyValue(row.UNIQUE_ID, '')).trim(), String(firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, row.app_tab_assignment, '')).trim().toLowerCase());
+                row.APP_TAB_ASSIGNMENT = String(firstNonEmptyValue(row.UNIQUE_ID, '')).trim() === targetUid ? 'season' : 'location';
+                backupLocalItem(row);
+                buildSearchIndex(row);
+                syncRowDataAcrossViews(row);
+            });
+            syncSeasonSalesOfficeStateForItemCodes([itemCode], {
+                skipRemote: true,
+                reason: 'task-season-force-local'
+            });
+            invalidateResolvedViewStateCaches();
+            persistCurrentCache(true, 'task-season-force-local');
+            ['drive', 'tasks', 'av', 'sales-office', 'low-stock'].forEach((viewId) => markViewDirty(viewId));
+            if (getCurrentVisibleViewId() === 'detail') {
+                activeItem = resolveDetailItemBySource(targetUid, 'tasks') || findItemByUniqueId(targetUid) || targetMasterRow;
+                renderDetailView({ preferredTab: 'season', suppressScroll: true });
+            }
+            queueInteractiveViewRender('tasks', false, true, 0, 120);
+            queueInteractiveViewRender('drive', false, false, 0, 140);
+            queueInteractiveViewRender('sales-office', false, false, 0, 140);
+            showToast('Updated', 'Season Sales Note row updated.');
+            const masterOps = familyRows.map((row) => {
+                const rowUid = String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim();
+                if (!rowUid) return Promise.resolve(false);
+                return runDetailWriteWithRetry('v2_master_inventory', 'PATCH', {
+                    app_tab_assignment: rowUid === targetUid ? 'season' : 'location'
+                }, `unique_id=eq.${encodeURIComponent(rowUid)}`, saveRequestOptions).catch(() => false);
+            });
+            const salesOfficeOps = syncSeasonSalesOfficeStateForItemCodes([itemCode], {
+                skipRemote: false,
+                reason: 'task-season-force-remote'
+            });
+            const results = await Promise.allSettled(masterOps.concat(salesOfficeOps));
+            const hadFailure = results.some((result) => result.status === 'rejected' || result.value === false);
+            if (hadFailure) {
+                familyRows.forEach((row) => {
+                    const rowUid = String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim();
+                    if (!rowUid || !previousAssignments.has(rowUid)) return;
+                    row.APP_TAB_ASSIGNMENT = previousAssignments.get(rowUid) || '';
+                    buildSearchIndex(row);
+                    syncRowDataAcrossViews(row);
+                });
+                syncSeasonSalesOfficeStateForItemCodes([itemCode], {
+                    skipRemote: true,
+                    reason: 'task-season-force-rollback'
+                });
+                invalidateResolvedViewStateCaches();
+                persistCurrentCache(true, 'task-season-force-rollback');
+                if (getCurrentVisibleViewId() === 'detail') {
+                    activeItem = resolveDetailItemBySource(targetUid, 'tasks') || activeItem;
+                    renderDetailView({ preferredTab: currentTaskDetailTab || 'location', suppressScroll: true });
+                }
+                queueVisibleDatasetCatchup(0);
+                showToast('Network Error', 'Season Sales Note override could not be saved. The row was restored.', true);
+                return false;
+            }
+            queueVisibleDatasetCatchup(120);
+            return false;
         }
 
         function renderDetailShellView() {
@@ -20920,6 +21147,7 @@ function toggleDriveQuickRequestItem(domId) {
             lastView = resolvedSourceView;
             activeDetailSourceView = resolvedSourceView;
             activeItem = nextItem;
+            if (resolvedSourceView === 'tasks') activeTaskSeasonReviewMode = 'winner';
             selectedAvReserveDetailCustomerKey = null;
             resetDetailOverviewFieldSearch();
             lastViewSwitchAt = Date.now();
