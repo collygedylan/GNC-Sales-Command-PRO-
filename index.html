@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.26.06';
+window.__APP_SHELL_VERSION__ = 'V2026.04.26.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -250,8 +250,26 @@ body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .
         .nav-header-meta{display:flex;flex-direction:column;align-items:flex-end;gap:.35rem;max-width:48%}
         .nav-header-meta-row{display:flex;align-items:center;justify-content:flex-end;gap:.4rem;flex-wrap:wrap}
         .nav-version-pill{display:inline-flex;align-items:center;min-height:26px;padding:.32rem .7rem;border-radius:999px;background:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.28);color:#007a4d;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 6px 14px rgba(7,94,63,.18)}
-        .leaf-launch-btn{display:inline-flex;align-items:center;gap:.34rem;min-height:26px;padding:.32rem .68rem;border-radius:999px;background:#111827;border:1px solid rgba(255,255,255,.22);color:#ecfdf5;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 6px 14px rgba(15,23,42,.2)}
-        .leaf-launch-btn:active{transform:scale(.98)}
+.leaf-launch-btn{display:inline-flex;align-items:center;gap:.34rem;min-height:26px;padding:.32rem .68rem;border-radius:999px;background:#111827;border:1px solid rgba(255,255,255,.22);color:#ecfdf5;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 6px 14px rgba(15,23,42,.2)}
+.leaf-launch-btn:active{transform:scale(.98)}
+.leaf-launch-btn--home{min-height:44px;padding:.8rem 1rem;border-radius:18px;background:linear-gradient(135deg,#0f172a,#111827);border-color:rgba(15,23,42,.12);font-size:11px;letter-spacing:.12em;justify-content:center;box-shadow:0 14px 28px rgba(15,23,42,.16)}
+.leaf-launch-btn--home span:last-child{white-space:nowrap}
+.leaf-launch-btn--home .leaf-launch-copy{display:flex;flex-direction:column;align-items:flex-start;line-height:1.05}
+.leaf-launch-btn--home .leaf-launch-copy strong{font-size:11px}
+.leaf-launch-btn--home .leaf-launch-copy small{font-size:9px;letter-spacing:.12em;text-transform:none;color:rgba(236,253,245,.82)}
+.leaf-home-launch-row{display:none}
+.leaf-action-card{margin-top:.65rem;border:1px solid #bbf7d0;background:linear-gradient(180deg,#f6fffb,#ecfdf5);border-radius:18px;padding:.85rem .9rem;box-shadow:0 8px 20px rgba(16,185,129,.08)}
+.leaf-action-eyebrow{font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#047857}
+.leaf-action-title{margin-top:.2rem;font-size:14px;font-weight:900;color:#0f172a}
+.leaf-action-meta{margin-top:.45rem;display:flex;flex-wrap:wrap;gap:.4rem}
+.leaf-action-pill{border:1px solid #d1fae5;background:#fff;border-radius:999px;padding:.22rem .6rem;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#065f46}
+.leaf-action-copy{margin-top:.55rem;font-size:12px;font-weight:700;color:#475569;line-height:1.45}
+.leaf-action-btn{margin-top:.75rem;display:inline-flex;align-items:center;gap:.4rem;border:1px solid #86efac;background:#007a4d;color:#fff;border-radius:999px;padding:.55rem .9rem;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;box-shadow:0 10px 24px rgba(0,122,77,.18)}
+.leaf-action-btn:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
+@media (max-width: 767px){
+  .leaf-launch-btn--header{display:none}
+  .leaf-home-launch-row{display:block}
+}
         #sync-diagnostics-badge{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;box-shadow:0 4px 10px rgba(15,23,42,.12)}
         #sync-diagnostics-detail{font-size:9px;font-weight:800;line-height:1.2;color:rgba(236,253,245,.88);text-align:right;max-width:200px}
         @media (pointer: coarse){
@@ -797,8 +815,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.26.06').trim() || 'V2026.04.26.06';</script>
-                            <button type="button" class="leaf-launch-btn" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.26.07').trim() || 'V2026.04.26.07';</script>
+                            <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
                         <div id="sync-diagnostics-detail" class="hidden text-[9px] font-bold text-white/80 leading-tight text-right max-w-[180px]"></div>
@@ -854,6 +872,12 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         </div>
                     </div>
                     <div id="home-dynamic-content" class="space-y-6"></div>
+                    <div class="leaf-home-launch-row mb-4">
+                        <button type="button" class="leaf-launch-btn leaf-launch-btn--home w-full" onclick="openLeafAssistant()" aria-label="Open Leaf assistant from home">
+                            <i class="ph-bold ph-leaf text-lg"></i>
+                            <span class="leaf-launch-copy"><strong>Leaf Assistant</strong><small>Ask questions or draft a request</small></span>
+                        </button>
+                    </div>
                     <div id="home-dashboard-content">
                         <details id="dashboard-sync-accordion" class="hidden group bg-white rounded-2xl border border-emerald-100 shadow-sm mb-6 overflow-hidden">
                             <summary class="list-none cursor-pointer p-4 flex items-start justify-between gap-3">
@@ -1290,7 +1314,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.26.06';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.26.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7336,6 +7360,79 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return parts.join(' • ');
         }
 
+        function buildLeafRichMatchMeta(match = {}) {
+            const parts = [buildLeafMatchMeta(match)].filter(Boolean);
+            if (match.dockNum) parts.push(`Dock: ${match.dockNum}`);
+            if (match.salesRep) parts.push(`Rep: ${match.salesRep}`);
+            if (match.customer) parts.push(`Customer: ${match.customer}`);
+            if (match.hold) parts.push(`Hold: ${match.hold}`);
+            return parts.filter(Boolean).join(' • ');
+        }
+
+        function buildLeafActionSummary(action = {}) {
+            if (!action || typeof action !== 'object') return '';
+            const type = String(action.type || '').trim().toLowerCase();
+            if (type !== 'request-draft') return '';
+            const parts = [];
+            const rep = String(firstNonEmptyValue(action.salesRep, action.requestedBy, '') || '').trim();
+            const customer = String(firstNonEmptyValue(action.customerDisplay, action.customer, '') || '').trim();
+            const source = action.recommendedSource || {};
+            if (rep) parts.push(`<span class="leaf-action-pill">Rep ${escapeLeafHtml(rep)}</span>`);
+            if (customer) parts.push(`<span class="leaf-action-pill">Customer ${escapeLeafHtml(customer)}</span>`);
+            if (source.location) parts.push(`<span class="leaf-action-pill">Loc ${escapeLeafHtml(source.location)}</span>`);
+            if (source.qty !== undefined && source.qty !== null && String(source.qty).trim() !== '') parts.push(`<span class="leaf-action-pill">S_LTS ${escapeLeafHtml(String(source.qty))}</span>`);
+            const fallback = Array.isArray(action.fallbackSources) ? action.fallbackSources : [];
+            const fallbackHtml = fallback.length ? `<div class="leaf-action-copy">Future crop fallback: ${escapeLeafHtml(fallback.slice(0, 3).map((row) => [row.location, row.lot, row.qty ? `s_LTS ${row.qty}` : ''].filter(Boolean).join(' ')).join(' | '))}</div>` : '';
+            return `<div class="leaf-action-card"><div class="leaf-action-eyebrow">Draft Request Ready</div><div class="leaf-action-title">${escapeLeafHtml(action.itemLabel || 'Request Draft')}</div><div class="leaf-action-meta">${parts.join('')}</div><div class="leaf-action-copy">${escapeLeafHtml(String(action.summary || 'Leaf found a source row and can open the normal request flow for confirmation.').trim())}</div>${fallbackHtml}<button type="button" class="leaf-action-btn" onclick="startLeafDraftRequest(${Number(action.messageIndex || 0)})"><i class="ph-bold ph-arrow-square-out"></i><span>Open Request Draft</span></button></div>`;
+        }
+
+        function getLeafMessageAction(messageIndex = -1) {
+            const safeIndex = Number(messageIndex);
+            if (!Number.isFinite(safeIndex) || safeIndex < 0) return null;
+            const message = Array.isArray(leafAssistantMessages) ? leafAssistantMessages[safeIndex] : null;
+            return message && typeof message === 'object' ? (message.action || null) : null;
+        }
+
+        function startLeafDraftRequest(messageIndex = -1) {
+            const action = getLeafMessageAction(messageIndex);
+            if (!action || String(action.type || '').trim().toLowerCase() !== 'request-draft') {
+                showToast('Leaf', 'That draft request is no longer available.', true);
+                return false;
+            }
+            const source = action.recommendedSource || {};
+            const sourceUid = String(firstNonEmptyValue(source.uniqueId, source.masterId, '') || '').trim();
+            let sourceItem = sourceUid ? findItemByUniqueId(sourceUid) : null;
+            if (!sourceItem && source.itemCode) {
+                sourceItem = (Array.isArray(fullInventory) ? fullInventory : []).find((row) => {
+                    if (!row) return false;
+                    const itemCodeMatch = String(firstNonEmptyValue(row.ITEMCODE, row.itemcode, '') || '').trim().toUpperCase() === String(source.itemCode || '').trim().toUpperCase();
+                    if (!itemCodeMatch) return false;
+                    const sizeMatch = !source.contSize || String(firstNonEmptyValue(row.CONTSIZE, row.contsize, '') || '').trim().toUpperCase() === String(source.contSize || '').trim().toUpperCase();
+                    return sizeMatch;
+                }) || null;
+            }
+            if (!sourceItem || !sourceItem.DOM_ID) {
+                showToast('Leaf', 'Leaf could not reopen that source row in the current app data.', true);
+                return false;
+            }
+            closeLeafAssistant();
+            detailRequestSourceDomIds = [String(sourceItem.DOM_ID || '').trim()];
+            tempReqFolder = null;
+            tempReqAppendToExistingFolder = false;
+            previousReqStep = 'step-2-cust';
+            driveQuickRequestFlow = false;
+            showRequestModalBase();
+            tempSelectedReqRep = resolveCanonicalRequestRepName(firstNonEmptyValue(action.salesRep, action.requestedBy, ''));
+            tempReqCust = buildRequestCustomerValue(firstNonEmptyValue(action.customer, action.customerName, action.customerDisplay, ''), firstNonEmptyValue(action.consignee, action.consigneeName, ''));
+            if (!tempSelectedReqRep || !tempReqCust) {
+                showToast('Leaf', 'Leaf needs both the sales rep and customer before it can open the draft request.', true);
+                return false;
+            }
+            goToQtyStep(null, tempReqCust, 'step-2-cust', false);
+            showToast('Leaf', 'Request draft is ready. Review qty and submit when you are ready.');
+            return true;
+        }
+
         function renderLeafAssistantMessages() {
             const historyEl = document.getElementById('leaf-assistant-history');
             if (!historyEl) return;
@@ -7343,14 +7440,15 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 historyEl.innerHTML = `<div class="leaf-assistant-empty">Try something like: "Hey Leaf, where is priority 1 on Incrediball Hydrangea 3DP and how many are there?"</div>`;
                 return;
             }
-            historyEl.innerHTML = leafAssistantMessages.map((message) => {
+            historyEl.innerHTML = leafAssistantMessages.map((message, messageIndex) => {
                 const role = String(message.role || 'assistant').trim() === 'user' ? 'user' : 'assistant';
                 const matches = Array.isArray(message.matches) ? message.matches : [];
                 const sourceLabel = String(message.sourceLabel || '').trim();
                 const clarification = !!message.needsClarification;
-                const matchHtml = matches.length ? `<div class="leaf-match-list">${matches.map((match) => `<div class="leaf-match-card"><div class="leaf-match-title">${escapeLeafHtml(firstNonEmptyValue(match.commonName, match.itemCode, match.location, 'Match'))}</div><div class="leaf-match-meta">${escapeLeafHtml(buildLeafMatchMeta(match))}</div></div>`).join('')}</div>` : '';
+                const actionHtml = role === 'assistant' ? buildLeafActionSummary({ ...(message.action || {}), messageIndex }) : '';
+                const matchHtml = matches.length ? `<div class="leaf-match-list">${matches.map((match) => `<div class="leaf-match-card"><div class="leaf-match-title">${escapeLeafHtml(firstNonEmptyValue(match.commonName, match.itemCode, match.location, 'Match'))}</div><div class="leaf-match-meta">${escapeLeafHtml(buildLeafRichMatchMeta(match))}</div></div>`).join('')}</div>` : '';
                 const footerHtml = sourceLabel ? `<div class="leaf-match-meta">${escapeLeafHtml(sourceLabel)}${clarification ? ' • Clarification needed' : ''}</div>` : (clarification ? `<div class="leaf-match-meta">Clarification needed</div>` : '');
-                return `<div class="leaf-msg ${role}"><div class="leaf-msg-role">${role === 'user' ? 'You' : 'Leaf'}</div><div class="leaf-msg-bubble">${escapeLeafHtml(message.text || '')}</div>${matchHtml}${footerHtml}</div>`;
+                return `<div class="leaf-msg ${role}"><div class="leaf-msg-role">${role === 'user' ? 'You' : 'Leaf'}</div><div class="leaf-msg-bubble">${escapeLeafHtml(message.text || '')}</div>${actionHtml}${matchHtml}${footerHtml}</div>`;
             }).join('');
             requestAnimationFrame(() => {
                 historyEl.scrollTop = historyEl.scrollHeight;
@@ -7453,7 +7551,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     text: answerText,
                     matches: Array.isArray(result && result.matches) ? result.matches.slice(0, 8) : [],
                     needsClarification: !!(result && result.needsClarification),
-                    sourceLabel: String(result && result.sourceLabel || '').trim()
+                    sourceLabel: String(result && result.sourceLabel || '').trim(),
+                    action: result && result.action ? result.action : null
                 });
                 renderLeafAssistantMessages();
                 if (!fromVoice || leafVoiceOutputSupported()) {
@@ -8370,7 +8469,7 @@ let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.26.06').trim() || 'V2026.04.26.06';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.26.07').trim() || 'V2026.04.26.07';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
