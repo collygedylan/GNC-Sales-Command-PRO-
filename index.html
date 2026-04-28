@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.28.09';
+window.__APP_SHELL_VERSION__ = 'V2026.04.28.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -874,7 +874,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.09').trim() || 'V2026.04.28.09';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.10').trim() || 'V2026.04.28.10';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1373,7 +1373,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.09';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8818,7 +8818,7 @@ let selectedAvSeasons=new Set(DRIVE_SEASON_OPTIONS); let avSeasonDropdownOpen=fa
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.09').trim() || 'V2026.04.28.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.10').trim() || 'V2026.04.28.10';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -13863,32 +13863,26 @@ function toggleDriveQuickRequestItem(domId) {
         }
         function getSingleDigitSeasonPriority(item = null) {
             const priorityText = String(firstNonEmptyValue(item && item.PRIORITY, item && item.priority, '') || '').trim();
-            return /^[1-9]$/.test(priorityText) ? parseInt(priorityText, 10) : null;
+            return /^[1-4]$/.test(priorityText) ? parseInt(priorityText, 10) : null;
         }
         function getSeasonWinnerPtrAvailable(item = null) {
-            return parseAppNumber(firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.ptravailable, '0'));
+            return parseAppNumber(firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.ptravailable, item && item.PRTAVAILABLE, item && item.prtavailable, '0'));
         }
-        const SEASON_WINNER_MIN_PTRAVAILABLE = 100;
         function isOpenMasterSeasonCandidate(item = null) {
             if (!item) return false;
             if (hasUsableEndCapFolderValue(firstNonEmptyValue(item.END_CAP_FOLDER, item.end_cap_folder, ''))) return false;
             if (hasCompletionDateValue(item) || isOptimisticallyCompletedRow(item)) return false;
             return getSingleDigitSeasonPriority(item) != null;
         }
-        function isPreferredSeasonWinnerCandidate(item = null) {
-            if (!isOpenMasterSeasonCandidate(item)) return false;
-            const ptrAvailable = getSeasonWinnerPtrAvailable(item);
-            return Number.isFinite(ptrAvailable) && ptrAvailable >= SEASON_WINNER_MIN_PTRAVAILABLE;
-        }
         function compareSeasonWinnerCandidates(a, b) {
+            const ptrA = Number.isFinite(getSeasonWinnerPtrAvailable(a)) ? getSeasonWinnerPtrAvailable(a) : -1;
+            const ptrB = Number.isFinite(getSeasonWinnerPtrAvailable(b)) ? getSeasonWinnerPtrAvailable(b) : -1;
+            if (ptrA !== ptrB) return ptrB - ptrA;
             const priorityA = getSingleDigitSeasonPriority(a);
             const priorityB = getSingleDigitSeasonPriority(b);
             const safePriorityA = Number.isFinite(priorityA) ? priorityA : 999;
             const safePriorityB = Number.isFinite(priorityB) ? priorityB : 999;
             if (safePriorityA !== safePriorityB) return safePriorityA - safePriorityB;
-            const ptrA = Number.isFinite(getSeasonWinnerPtrAvailable(a)) ? getSeasonWinnerPtrAvailable(a) : -1;
-            const ptrB = Number.isFinite(getSeasonWinnerPtrAvailable(b)) ? getSeasonWinnerPtrAvailable(b) : -1;
-            if (ptrA !== ptrB) return ptrB - ptrA;
             const locationCompare = compareLocationCodeValues(
                 firstNonEmptyValue(a && a.LOCATIONCODE, a && a.locationcode, ''),
                 firstNonEmptyValue(b && b.LOCATIONCODE, b && b.locationcode, '')
@@ -13899,18 +13893,7 @@ function toggleDriveQuickRequestItem(domId) {
         function pickSeasonWinnerCandidate(rows = []) {
             const candidateRows = (Array.isArray(rows) ? rows : []).filter((row) => isOpenMasterSeasonCandidate(row));
             if (!candidateRows.length) return null;
-            const preferredCandidates = candidateRows.filter((row) => isPreferredSeasonWinnerCandidate(row)).sort(compareSeasonWinnerCandidates);
-            if (preferredCandidates.length) return preferredCandidates[0];
             return candidateRows.slice().sort(compareSeasonWinnerCandidates)[0] || null;
-        }
-        function getPersistedSeasonWinnerCandidate(rows = []) {
-            const explicitWinners = (Array.isArray(rows) ? rows : []).filter((row) => {
-                if (!row) return false;
-                if (hasUsableEndCapFolderValue(firstNonEmptyValue(row.END_CAP_FOLDER, row.end_cap_folder, ''))) return false;
-                if (hasCompletionDateValue(row) || isOptimisticallyCompletedRow(row)) return false;
-                return String(firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, row.app_tab_assignment, '') || '').trim().toLowerCase() === 'season';
-            });
-            return explicitWinners.length === 1 ? explicitWinners[0] : null;
         }
         function assignSeasonWinnersForItemGroups(items = [], allowedItemCodes = null) {
             const allowedCodes = allowedItemCodes instanceof Set ? allowedItemCodes : null;
@@ -13928,7 +13911,7 @@ function toggleDriveQuickRequestItem(domId) {
                 itemGroups.get(itemCode).push(item);
             });
             itemGroups.forEach((rows) => {
-                const winner = getPersistedSeasonWinnerCandidate(rows) || pickSeasonWinnerCandidate(rows);
+                const winner = pickSeasonWinnerCandidate(rows);
                 rows.forEach((row) => {
                     row.APP_TAB_ASSIGNMENT = winner && row.UNIQUE_ID === winner.UNIQUE_ID ? 'season' : 'location';
                 });
@@ -22346,10 +22329,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getTaskSeasonReviewWinnerRow(item = activeItem, familyRows = null) {
             const rows = Array.isArray(familyRows) ? familyRows : getTaskSeasonReviewFamilyRows(item);
-            return rows.find((row) => String(firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, row.app_tab_assignment, '') || '').trim().toLowerCase() === 'season')
-                || getPersistedSeasonWinnerCandidate(rows)
-                || pickSeasonWinnerCandidate(rows)
-                || null;
+            return pickSeasonWinnerCandidate(rows) || null;
         }
 
         function setTaskSeasonReviewMode(mode = 'winner') {
