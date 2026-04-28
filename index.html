@@ -9437,8 +9437,13 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             persistCurrentCache(true, reason);
             markViewDirty('request');
             markViewDirty('reports');
+            const requestVisible = isViewVisible('request');
+            const shouldRenderHiddenRequest = safeOptions.renderHiddenRequest === true && !requestVisible && !!document.getElementById('view-request');
+            if (shouldRenderHiddenRequest) {
+                renderViewContent('request', false, true);
+            }
             if (!renderVisible) return;
-            if (isViewVisible('request')) {
+            if (requestVisible) {
                 scheduleTrackedViewRender('request', `request:local:${String(reason || 'refresh').trim() || 'refresh'}`, {
                     delay: 0,
                     typingDelay: Math.max(32, Number(safeOptions.typingDelay) || 64),
@@ -31844,6 +31849,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 let nextTaskId = null;
                 let didOptimisticClose = false;
                 let didOptimisticRender = false;
+                let didPreRenderRequestReturn = false;
                 const trackedStateBeforeSave = captureTrackedAvState(itemToSave);
                 const queueVisibleSaveRefresh = (delay = 0) => {
                     const currentViewId = getCurrentVisibleViewId();
@@ -31861,13 +31867,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                         queueInteractiveViewRender(viewId, false, false, delay, 220);
                     });
                 };
-                const queueRequestAwareSaveRefresh = (delay = 0, reason = 'request-local-save') => {
+                const queueRequestAwareSaveRefresh = (delay = 0, reason = 'request-local-save', requestOptions = {}) => {
                     if (prefix === 'req-' && isComplete) {
                         refreshLocalRequestViewState(reason, {
                             forceRender: true,
                             preferImmediate: true,
                             userAction: true,
-                            typingDelay: 44
+                            typingDelay: 44,
+                            renderHiddenRequest: !!(requestOptions && requestOptions.renderHiddenRequest)
                         });
                         return;
                     }
@@ -32078,6 +32085,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (isComplete) {
                         payload.req_status = 'Complete';
                         itemToSave.REQ_STATUS = 'Complete';
+                        itemToSave.req_status = 'Complete';
                     }
                 } else if (prefix === 'dock-') {
                     payload.dock_spec = setVal(itemToSave.DOCK_SPEC);
@@ -32323,7 +32331,9 @@ ${folderNote ? `Folder Note: ${folderNote}
 
                 const restoreFromFailedSave = (message) => {
                     itemToSave.DATE_COMPLETED = previousDateCompleted;
+                    itemToSave.date_completed = previousDateCompleted;
                     itemToSave.REQ_STATUS = previousReqStatus;
+                    itemToSave.req_status = previousReqStatus;
                     if (completionArtifacts && completionArtifacts.soPayload) rollbackOptimisticSalesOfficeArtifacts(completionArtifacts);
                     if (completionArtifacts && completionArtifacts.masterSyncPayload) rollbackOptimisticMasterSyncArtifacts(completionArtifacts, prefix);
                     if (canOptimisticallyCompleteQueueRow) clearOptimisticCompletedRows([itemToSave.UNIQUE_ID]);
@@ -32440,6 +32450,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (!isSilentAutoSave && isCurrentView && isComplete && !didImmediateCleanup) showToast('Success', 'Task Completed!');
                     if (isComplete && !didOptimisticClose && !didOptimisticRender && !didImmediateCleanup) {
                         itemToSave.DATE_COMPLETED = payload.date_completed;
+                        itemToSave.date_completed = payload.date_completed;
                         if (isCurrentView && detailWasVisible) goBackFromDetail();
                         queueRequestAwareSaveRefresh(16, 'request-complete-finalize');
                     }
@@ -32488,18 +32499,27 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (isComplete) {
                     completionArtifacts = buildCompletionArtifacts();
                     itemToSave.DATE_COMPLETED = payload.date_completed;
+                    itemToSave.date_completed = payload.date_completed;
                     if (canOptimisticallyCompleteQueueRow) {
                         trackOptimisticCompletedRows([itemToSave.UNIQUE_ID]);
-                        if (prefix === 'req-') itemToSave.REQ_STATUS = 'Complete';
+                        if (prefix === 'req-') {
+                            itemToSave.REQ_STATUS = 'Complete';
+                            itemToSave.req_status = 'Complete';
+                        }
                     }
                     if (completionArtifacts && completionArtifacts.soPayload) applyOptimisticSalesOfficeArtifacts(completionArtifacts);
                     if (completionArtifacts && completionArtifacts.masterSyncPayload) applyOptimisticMasterSyncArtifacts(completionArtifacts, prefix);
-                    if (prefix === 'req-' && isCurrentView && detailWasVisible && lastView === 'request') nextRequestId = getNextRequestDetailId(itemToSave.UNIQUE_ID);
+                    const returningToRequestView = prefix === 'req-' && isCurrentView && detailWasVisible && lastView === 'request';
+                    if (returningToRequestView) nextRequestId = getNextRequestDetailId(itemToSave.UNIQUE_ID);
                     if (canOptimisticallyCompleteQueueRow && isCurrentView && detailWasVisible && lastView === 'tasks') nextTaskId = getNextTaskDetailId(itemToSave.UNIQUE_ID);
+                    if (returningToRequestView) {
+                        didPreRenderRequestReturn = true;
+                        queueRequestAwareSaveRefresh(0, 'request-complete-before-return', { renderHiddenRequest: true });
+                    }
                     if (isCurrentView && detailWasVisible) {
                         didOptimisticClose = true;
                         goBackFromDetail();
-                        queueRequestAwareSaveRefresh(0, 'request-complete-return');
+                        if (!didPreRenderRequestReturn) queueRequestAwareSaveRefresh(0, 'request-complete-return');
                     }
                     if (!didOptimisticClose && isLagSensitiveDetailPrefix(prefix)) {
                         didOptimisticRender = true;
