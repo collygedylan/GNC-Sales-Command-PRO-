@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.28.12';
+window.__APP_SHELL_VERSION__ = 'V2026.04.28.13';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -874,7 +874,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.12').trim() || 'V2026.04.28.12';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.13').trim() || 'V2026.04.28.13';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1373,7 +1373,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.12';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.13';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8818,7 +8818,7 @@ let selectedAvSeasons=new Set(DRIVE_SEASON_OPTIONS); let avSeasonDropdownOpen=fa
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.12').trim() || 'V2026.04.28.12';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.13').trim() || 'V2026.04.28.13';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -10009,7 +10009,7 @@ let selectedAvSeasons=new Set(DRIVE_SEASON_OPTIONS); let avSeasonDropdownOpen=fa
         }
 
         function getViewLoadingConfig(viewId) {
-            if (viewId === 'drive') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading Drive rows...' };
+            if (viewId === 'drive') return { required: [{ key: 'master', mode: 'full' }], background: [], label: 'Loading all Drive rows...' };
             if (viewId === 'av') {
                 if (activeAVTab === 'hotprice') {
                     return { required: [{ key: 'master', mode: 'full' }, { key: 'avHotPriceKeys', mode: 'full' }], background: [], label: 'Loading hot price rows...' };
@@ -12752,9 +12752,9 @@ function toggleDriveQuickRequestItem(domId) {
             return normalizeSearchValue(value).split(/[^a-z0-9]+/).filter(Boolean);
         }
         const SEARCH_PROFILES = {
-            drive_name: (item) => [item.COMMONNAME],
-            drive_card: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
-            drive_loc: (item) => [item.LOCATIONCODE, item.COMMONNAME, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
+            drive_name: (item) => [item.COMMONNAME, item.DESIGCUST, item.DESIGITEM, item.DESIGLOC],
+            drive_card: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE, item.DESIGCUST, item.DESIGITEM, item.DESIGLOC],
+            drive_loc: (item) => [item.LOCATIONCODE, item.COMMONNAME, item.ITEMCODE, item.CONTSIZE, item.LOTCODE, item.DESIGCUST, item.DESIGITEM, item.DESIGLOC],
             av_open: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
             av_hotprice: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE, item.SEASON, item.HOT_PRICE, item.HOTPRICE],
             av_reserves: (item) => [item.COMMONNAME, item.CUSTOMERNAME, item.CONSIGNEENAME, item.SALESREPNAME || item.SALESREPID, item.ITEMCODE, item.CONTSIZE, item.LOCATIONCODE],
