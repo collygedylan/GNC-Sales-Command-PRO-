@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.28.07';
+window.__APP_SHELL_VERSION__ = 'V2026.04.28.08';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -874,7 +874,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.07').trim() || 'V2026.04.28.07';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.08').trim() || 'V2026.04.28.08';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1373,7 +1373,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.07';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.08';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8804,7 +8804,7 @@ let selectedAvSeasons=new Set(DRIVE_SEASON_OPTIONS); let avSeasonDropdownOpen=fa
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.07').trim() || 'V2026.04.28.07';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.08').trim() || 'V2026.04.28.08';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -26888,6 +26888,7 @@ function toggleDriveQuickRequestItem(domId) {
             const quickMode = isQuickDriveRequestMode();
             const requestedBy = resolveCanonicalRequestRepName(String(tempSelectedReqRep || getDefaultRequestRepName() || '').trim());
             const sourceDomIds=getRequestSourceDomIds();
+            const singleRowRequest = sourceDomIds.length === 1;
             if(!sourceDomIds.length){showToast("Required","Please select a row first.",true);return}
             if(!requestedBy){showToast("Required","Please choose a sales rep for this request.",true);return}
             if(!appendingToExistingFolder){
@@ -26923,7 +26924,7 @@ function toggleDriveQuickRequestItem(domId) {
                         plantGroupCode: firstNonEmptyValue(item.PLANTGROUPCODE, item.plantgroupcode, ''),
                         contSize: firstNonEmptyValue(item.CONTSIZE, item.contsize, '')
                     });
-                    const autoCompleteOnCreate = autoCompleteEligible && !isKnownSalesRepRequestName(requestedBy);
+                    const autoCompleteOnCreate = autoCompleteEligible && (singleRowRequest || !isKnownSalesRepRequestName(requestedBy));
                     const autoCompletedAt = autoCompleteOnCreate ? new Date().toISOString() : '';
                     let newReqId='REQ-'+uuidGen();
                     let newReq={
@@ -27026,7 +27027,19 @@ function toggleDriveQuickRequestItem(domId) {
             if (quickMode) clearDriveQuickRequestItems(true);
             showToast("Processing...",`Creating Clone Tickets...`,false);
             if (!quickMode) clearSelection();
-            forcePendingRequestRoot();
+            const autoCompleteOnlySubmission = optimisticIds.length > 0 && optimisticIds.every(id => autoCompleteRequestIds.has(id));
+            if (autoCompleteOnlySubmission) {
+                activeReqTab = 'reps';
+                selectedReqStatus = 'Complete';
+                requestViewLevel = 3;
+                selectedReqFolder = null;
+                selectedReqRepView = requestedBy;
+                selectedReqCustView = null;
+                selectedReqFolderView = folderId || 'Unassigned';
+                syncRequestTabButtons();
+            } else {
+                forcePendingRequestRoot();
+            }
             refreshLocalRequestViewState('request-submit', { renderVisible: false });
             switchView('request');
             (async () => {
@@ -27091,7 +27104,7 @@ function toggleDriveQuickRequestItem(domId) {
                     folderNote: getRequestFolderNote(folderId, 'Complete', requestedBy)
                 } : null;
                 if (!missingIds.length && savedCount > 0) {
-                    showToast("Success","Request tickets cloned!",false);
+                    showToast("Success", shouldQueueDelayedCompletionReply ? "Request completed from existing data." : "Request tickets cloned!", false);
                     await sendRequestSubmissionNotifications(folderId, requestedBy, cust, savedCount, requestNotificationDetails, completionNotificationDetails, {
                         queueDelayedCompletionReply: shouldQueueDelayedCompletionReply
                     });
