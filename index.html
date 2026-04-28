@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.28.10';
+window.__APP_SHELL_VERSION__ = 'V2026.04.28.11';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -874,7 +874,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.10').trim() || 'V2026.04.28.10';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.11').trim() || 'V2026.04.28.11';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1373,7 +1373,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.10';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.11';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -3581,7 +3581,7 @@ function syncSharedFlyerPhotoFields(item, prefix = '') {
             return normalizeRowPhotoFields(item);
         }
 
-        const LINKED_ROW_SYNC_KEYS = ['COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PTRAVAILABLE','SEASONSUPPLY','PRIORITY','QUALITYCODE','FIELDTAGCOLOR','PLANTGROUPCODE','BLOCKALPHA','SEASON','S_LTS','AV_NOTE','SALES_NOTE','MATCH','SPEC','CALIPER','PICK','LOC_MATCH_QTY','INITIAL_PTR'];
+        const LINKED_ROW_SYNC_KEYS = ['COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PTRAVAILABLE','SEASONSUPPLY','PRIORITY','QUALITYCODE','FIELDTAGCOLOR','PLANTGROUPCODE','BLOCKALPHA','SEASON','S_LTS','LOCATIONNOTE','LOCATIONNOTEDATE','AV_NOTE','SALES_NOTE','MATCH','SPEC','CALIPER','PICK','LOC_MATCH_QTY','INITIAL_PTR'];
         const EXACT_ROW_SYNC_KEYS = LINKED_ROW_SYNC_KEYS.concat(getFlyerShadowKeys(), ['APP_TAB_ASSIGNMENT','PRODUCTIVITY_ORIGIN_ASSIGNMENT','DATE_COMPLETED','FLYER_CAT','FLYER_TITLE','FLYER_INST','FLYER_ASSIGNED','FLYER_NOTES','FLYER_COMPLETED','ASSIGNEDTO']);
         const ROW_SYNC_SNAPSHOT_EXTRA_KEYS = ['SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME','REQ_STATUS','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','REQ_RESERVE'];
         const ROW_SYNC_STORAGE_KEY = 'gnc_row_state_sync_v1';
@@ -8818,7 +8818,7 @@ let selectedAvSeasons=new Set(DRIVE_SEASON_OPTIONS); let avSeasonDropdownOpen=fa
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.10').trim() || 'V2026.04.28.10';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.11').trim() || 'V2026.04.28.11';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -20304,7 +20304,7 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
         const chunkRenderTokensByKey = Object.create(null);
-        const DEFAULT_RENDER_SIGNATURE_FIELDS = ['UNIQUE_ID','DOM_ID','COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PRIORITY','PTRAVAILABLE','S_LTS','SEASON','AV_NOTE','HOLDSTOPREASON','LISTPRICE','HOT_PRICE','HOTPRICE','REQ_STATUS','REQ_QTY','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','DOCK_NUM','STOPNUMBER','CUSTOMERNAME','SALESREPNAME','FOLDERNAME','COUNT','LABEL','NAME','LOCATIONBUCKET','BLOCKALPHA','STATUS','LINECOUNT','TOTALQTY','ROW_PHOTO_LINK','REQ_PHOTO_LINK','DOCK_PHOTO_LINK','FLYER_PHOTO_LINK','DOCK_NOTE','DOCK_ISSUE_NOTE','DOCK_ISSUE_STATE','DOCK_ISSUE_SOURCE_UID','DOCK_ISSUE_SOURCE_MATCH_KEY','issueSourceUniqueId','issueState','issueNote','sourceQty','remainingQty','sourceMatchKey','currentSourceUniqueId'];
+        const DEFAULT_RENDER_SIGNATURE_FIELDS = ['UNIQUE_ID','DOM_ID','COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PRIORITY','PTRAVAILABLE','S_LTS','LOCATIONNOTE','LOCATIONNOTEDATE','SEASON','AV_NOTE','HOLDSTOPREASON','LISTPRICE','HOT_PRICE','HOTPRICE','REQ_STATUS','REQ_QTY','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','DOCK_NUM','STOPNUMBER','CUSTOMERNAME','SALESREPNAME','FOLDERNAME','COUNT','LABEL','NAME','LOCATIONBUCKET','BLOCKALPHA','STATUS','LINECOUNT','TOTALQTY','ROW_PHOTO_LINK','REQ_PHOTO_LINK','DOCK_PHOTO_LINK','FLYER_PHOTO_LINK','DOCK_NOTE','DOCK_ISSUE_NOTE','DOCK_ISSUE_STATE','DOCK_ISSUE_SOURCE_UID','DOCK_ISSUE_SOURCE_MATCH_KEY','issueSourceUniqueId','issueState','issueNote','sourceQty','remainingQty','sourceMatchKey','currentSourceUniqueId'];
 
         function normalizeRenderSignature(value = '') {
             return String(value || '').trim();
@@ -22204,6 +22204,24 @@ function toggleDriveQuickRequestItem(domId) {
             return primaryDetailTab;
         }
 
+        function getLocationNoteDisplayValue(item = null, fallbackItem = null) {
+            return String(firstNonEmptyValue(
+                item && item.LOCATIONNOTE,
+                item && item.locationnote,
+                item && item.LOCATION_NOTE,
+                item && item.location_note,
+                item && item.LOCNOTE,
+                item && item.locnote,
+                fallbackItem && fallbackItem.LOCATIONNOTE,
+                fallbackItem && fallbackItem.locationnote,
+                fallbackItem && fallbackItem.LOCATION_NOTE,
+                fallbackItem && fallbackItem.location_note,
+                fallbackItem && fallbackItem.LOCNOTE,
+                fallbackItem && fallbackItem.locnote,
+                ''
+            ) || '').trim();
+        }
+
         function populateDetailSummaryValues(item = activeItem, detailSourceView = '') {
             if (!item) return;
             const safeDetailSourceView = String(detailSourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
@@ -22212,7 +22230,15 @@ function toggleDriveQuickRequestItem(domId) {
             const detLocation = document.getElementById('det-location');
             if (detLocation) detLocation.innerText = item.LOCATIONCODE || '--';
             const detailSalesNote = String(firstNonEmptyValue(getItemDisplayValue(item, 'SALES_NOTE', safeDetailSourceView), item.SALES_DESC, item.SALESDESC, '') || '').trim();
-            document.getElementById('det-extra-info').innerHTML = `<div class="detail-meta-line">PRIORITY: ${item.PRIORITY||'--'} &bull; PTRAVAILABLE: ${item.PTRAVAILABLE||0} &bull; s_LTS: ${item.S_LTS||0}</div>${detailSalesNote ? `<div class="detail-sales-note"><span class="detail-sales-note-label">Sales Note</span>${esc(detailSalesNote)}</div>` : ''}`;
+            const linkedMasterItem = findLinkedMasterRow(item) || null;
+            const detailLocationNote = getLocationNoteDisplayValue(item, linkedMasterItem);
+            const detailMetaParts = [
+                `PRIORITY: ${firstNonEmptyValue(item.PRIORITY, item.priority, '--') || '--'}`,
+                `PTRAVAILABLE: ${firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, 0) || 0}`,
+                `s_LTS: ${firstNonEmptyValue(item.S_LTS, item.s_lts, 0) || 0}`
+            ];
+            if (detailLocationNote) detailMetaParts.push(`LOCATIONNOTE: ${detailLocationNote}`);
+            document.getElementById('det-extra-info').innerHTML = `<div class="detail-meta-line">${detailMetaParts.map((part) => escapeShareHtml(part)).join(' &bull; ')}</div>${detailSalesNote ? `<div class="detail-sales-note"><span class="detail-sales-note-label">Sales Note</span>${escapeShareHtml(detailSalesNote)}</div>` : ''}`;
 
             document.getElementById('ov-loc').innerText = item.LOCATIONCODE || '--';
             document.getElementById('ov-avail').innerText = item.PTRAVAILABLE || '0';
