@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.28.03';
+window.__APP_SHELL_VERSION__ = 'V2026.04.28.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -874,7 +874,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.03').trim() || 'V2026.04.28.03';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.04').trim() || 'V2026.04.28.04';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1373,7 +1373,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.03';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8670,7 +8670,7 @@ let selectedAvSeasons=new Set(DRIVE_SEASON_OPTIONS); let avSeasonDropdownOpen=fa
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.03').trim() || 'V2026.04.28.03';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.04').trim() || 'V2026.04.28.04';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -9371,18 +9371,88 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             if (safeOptions.clearSelection) clearSelection();
         }
 
+        function captureRequestViewState() {
+            return {
+                activeReqTab: activeReqTab === 'reps' ? 'reps' : 'pending',
+                selectedReqStatus: selectedReqStatus === 'Complete' ? 'Complete' : 'Pending',
+                requestViewLevel: Math.max(0, Number(requestViewLevel) || 0),
+                selectedReqFolder: String(selectedReqFolder || '').trim(),
+                selectedReqRepView: String(selectedReqRepView || '').trim(),
+                selectedReqCustView: String(selectedReqCustView || '').trim(),
+                selectedReqFolderView: String(selectedReqFolderView || '').trim()
+            };
+        }
+
+        function restoreRequestViewState(snapshot = null) {
+            if (!snapshot || typeof snapshot !== 'object') return false;
+            activeReqTab = snapshot.activeReqTab === 'reps' ? 'reps' : 'pending';
+            selectedReqStatus = snapshot.selectedReqStatus === 'Complete' ? 'Complete' : 'Pending';
+            requestViewLevel = Math.max(0, Number(snapshot.requestViewLevel) || 0);
+            selectedReqFolder = String(snapshot.selectedReqFolder || '').trim() || null;
+            selectedReqRepView = String(snapshot.selectedReqRepView || '').trim() || null;
+            selectedReqCustView = String(snapshot.selectedReqCustView || '').trim() || null;
+            selectedReqFolderView = String(snapshot.selectedReqFolderView || '').trim() || null;
+            syncRequestTabButtons();
+            return true;
+        }
+
+        function reconcileRequestDrillState(items = requestsInventory) {
+            const scopedItems = getScopedRequestItems(items);
+            let changed = false;
+            if (activeReqTab !== 'reps') {
+                return { items: scopedItems, changed };
+            }
+            const selectedRepName = String(selectedReqRepView || '').trim();
+            const repItems = selectedRepName
+                ? scopedItems.filter((item) => getRequestAssignedRep(item) === selectedRepName && !item.REQ_ARCHIVED)
+                : [];
+            if (requestViewLevel > 0 && (!selectedRepName || !repItems.length)) {
+                requestViewLevel = 0;
+                selectedReqRepView = null;
+                selectedReqFolderView = null;
+                selectedReqStatus = 'Pending';
+                changed = true;
+                return { items: scopedItems, changed };
+            }
+            if (requestViewLevel >= 3 && selectedReqFolderView) {
+                const folderName = String(selectedReqFolderView || '').trim() || 'Unassigned';
+                const statusItems = repItems.filter((item) => selectedReqStatus === 'Complete' ? isRequestComplete(item) : !isRequestComplete(item));
+                const folderItems = statusItems.filter((item) => String(item.REQUEST_FOLDER || 'Unassigned').trim() === folderName);
+                if (!folderItems.length) {
+                    requestViewLevel = 2;
+                    selectedReqFolderView = null;
+                    changed = true;
+                }
+            }
+            return { items: scopedItems, changed };
+        }
+
         function refreshLocalRequestViewState(reason = 'request-local', options = {}) {
             const safeOptions = options && typeof options === 'object' ? options : {};
             const renderVisible = safeOptions.renderVisible !== false;
             invalidateResolvedViewStateCaches();
+            const reconciledState = reconcileRequestDrillState(requestsInventory);
             updateFooterRequestBadge();
             requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
             persistCurrentCache(true, reason);
             markViewDirty('request');
             markViewDirty('reports');
             if (!renderVisible) return;
-            if (isViewVisible('request')) queueInteractiveViewRender('request', false, false, 0, 140);
-            if (isViewVisible('reports')) queueInteractiveViewRender('reports', false, false, 0, 140);
+            if (isViewVisible('request')) {
+                scheduleTrackedViewRender('request', `request:local:${String(reason || 'refresh').trim() || 'refresh'}`, {
+                    delay: 0,
+                    typingDelay: Math.max(32, Number(safeOptions.typingDelay) || 64),
+                    forceRender: safeOptions.forceRender === true || !!(reconciledState && reconciledState.changed),
+                    preferImmediate: safeOptions.preferImmediate !== false,
+                    userAction: safeOptions.userAction !== false,
+                    allowWhileTouching: true,
+                    allowDuringRecentInteraction: true,
+                    touchDelayMs: 16,
+                    interactionDelayMs: 16,
+                    scrollDelayMs: 72
+                });
+            }
+            if (isViewVisible('reports')) queueInteractiveViewRender('reports', false, !!safeOptions.forceReportsRender, 0, 140);
         }
         function formatFetchedRows(items, sourceTable) {
             if (!Array.isArray(items)) return [];
@@ -23788,7 +23858,7 @@ function toggleDriveQuickRequestItem(domId) {
             const crumb = document.getElementById('request-crumb');
             bumpChunkRenderTokenByKey('request-main');
 
-            let items = getScopedRequestItems(requestsInventory);
+            let items = reconcileRequestDrillState(requestsInventory).items;
 
             if (activeReqTab === 'pending') {
                 const crumbText = 'All Pending Requests';
@@ -31767,6 +31837,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 let wasAlreadyComplete = isRequestComplete(itemToSave);
                 const previousDateCompleted = itemToSave.DATE_COMPLETED || '';
                 const previousReqStatus = itemToSave.REQ_STATUS;
+                const previousRequestViewState = prefix === 'req-' ? captureRequestViewState() : null;
                 const detailWasVisible = !!(document.getElementById('view-detail') && !document.getElementById('view-detail').classList.contains('hidden'));
                 const canOptimisticallyCompleteQueueRow = isComplete && ['req-', 'ssn-', 'lsn-', 'na-'].includes(prefix);
                 let nextRequestId = null;
@@ -31792,7 +31863,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 };
                 const queueRequestAwareSaveRefresh = (delay = 0, reason = 'request-local-save') => {
                     if (prefix === 'req-' && isComplete) {
-                        refreshLocalRequestViewState(reason);
+                        refreshLocalRequestViewState(reason, {
+                            forceRender: true,
+                            preferImmediate: true,
+                            userAction: true,
+                            typingDelay: 44
+                        });
                         return;
                     }
                     queueVisibleSaveRefresh(delay);
@@ -32252,7 +32328,17 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (completionArtifacts && completionArtifacts.masterSyncPayload) rollbackOptimisticMasterSyncArtifacts(completionArtifacts, prefix);
                     if (canOptimisticallyCompleteQueueRow) clearOptimisticCompletedRows([itemToSave.UNIQUE_ID]);
                     if (isComplete && btnComp) btnComp.innerText = 'MARK DONE';
-                    if (didOptimisticClose || didOptimisticRender) queueVisibleSaveRefresh(16);
+                    if (prefix === 'req-' && isComplete) {
+                        restoreRequestViewState(previousRequestViewState);
+                        refreshLocalRequestViewState('request-complete-rollback', {
+                            forceRender: true,
+                            preferImmediate: true,
+                            userAction: true,
+                            typingDelay: 44
+                        });
+                    } else if (didOptimisticClose || didOptimisticRender) {
+                        queueVisibleSaveRefresh(16);
+                    }
                     recordInternalPerfDuration('saveDurations', savePerfStartedAt, `${prefix}${isComplete ? ':complete-error' : (isSilentAutoSave ? ':autosave-error' : ':save-error')}`);
                     if (!isSilentAutoSave) showToast('Network Error', message || 'Could not reach database.', true);
                 };
