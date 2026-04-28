@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.28.14';
+window.__APP_SHELL_VERSION__ = 'V2026.04.28.15';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -874,7 +874,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.14').trim() || 'V2026.04.28.14';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.15').trim() || 'V2026.04.28.15';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1373,7 +1373,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.14';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.15';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8818,7 +8818,7 @@ let selectedAvSeasons=new Set(DRIVE_SEASON_OPTIONS); let avSeasonDropdownOpen=fa
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.14').trim() || 'V2026.04.28.14';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.15').trim() || 'V2026.04.28.15';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -13903,11 +13903,25 @@ function toggleDriveQuickRequestItem(domId) {
             if (aUpdatedAt !== bUpdatedAt) return bUpdatedAt - aUpdatedAt;
             return compareSeasonWinnerCandidates(a, b);
         }
-        function isStableSeasonWinnerCandidate(item = null) {
+        function hasValidSeasonWinnerPayload(item = null) {
             if (!isMasterSeasonWinnerBaseCandidate(item)) return false;
-            if (!hasTrackedAvPayload(item)) return false;
             if (getMasterAvInvalidationReasons(item).length) return false;
-            return String(firstNonEmptyValue(item && item.APP_TAB_ASSIGNMENT, item && item.app_tab_assignment, '') || '').trim().toLowerCase() === 'season';
+            const effectiveAvNote = String(firstNonEmptyValue(item && item.AV_NOTE, '') || '').trim();
+            const effectiveMatch = parseAppNumber(item && item.MATCH);
+            const effectiveSpec = String(firstNonEmptyValue(item && item.SPEC, '') || '').trim();
+            const effectiveCaliper = String(firstNonEmptyValue(item && item.CALIPER, '') || '').trim();
+            const plantGroup = String(firstNonEmptyValue(item && item.PLANTGROUPCODE, '') || '').trim().toUpperCase();
+            const contSize = String(firstNonEmptyValue(item && item.CONTSIZE, '') || '').trim().toUpperCase();
+            const needsCaliper = plantGroup.includes('330_TREES') && ['#7', '#10', '#15', '#25', '#45'].includes(contSize);
+            const photoLink = String(getSharedAppPhotoLinkCsvRaw(item, { includePending: false }) || '').trim();
+            if (effectiveMatch == null) return false;
+            if (!effectiveAvNote) return false;
+            if (!effectiveSpec) return false;
+            if (needsCaliper && !effectiveCaliper) return false;
+            return getPhotoUrlList(photoLink).length > 0;
+        }
+        function isStableSeasonWinnerCandidate(item = null) {
+            return hasValidSeasonWinnerPayload(item);
         }
         function pickStableSeasonWinnerCandidate(rows = []) {
             const stableRows = (Array.isArray(rows) ? rows : []).filter((row) => isStableSeasonWinnerCandidate(row));
@@ -13960,19 +13974,7 @@ function toggleDriveQuickRequestItem(domId) {
         function isSeasonSalesOfficeAutoPublishable(item = null) {
             if (!item) return false;
             if (String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '') || '').trim().toLowerCase() !== 'season') return false;
-            if (getMasterAvInvalidationReasons(item).length) return false;
-            const effectiveAvNote = String(firstNonEmptyValue(item.AV_NOTE, '') || '').trim();
-            const effectiveMatch = parseAppNumber(item.MATCH);
-            const effectiveSpec = String(firstNonEmptyValue(item.SPEC, '') || '').trim();
-            const effectiveCaliper = String(firstNonEmptyValue(item.CALIPER, '') || '').trim();
-            const plantGroup = String(firstNonEmptyValue(item.PLANTGROUPCODE, '') || '').trim().toUpperCase();
-            const contSize = String(firstNonEmptyValue(item.CONTSIZE, '') || '').trim().toUpperCase();
-            const needsCaliper = plantGroup.includes('330_TREES') && ['#7', '#10', '#15', '#25', '#45'].includes(contSize);
-            if (effectiveMatch == null) return false;
-            if (!effectiveAvNote) return false;
-            if (!effectiveSpec) return false;
-            if (needsCaliper && !effectiveCaliper) return false;
-            return true;
+            return hasValidSeasonWinnerPayload(item);
         }
 
         function buildSeasonSalesOfficeArtifactsFromMasterItem(masterItem = null) {
