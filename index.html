@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.28.06';
+window.__APP_SHELL_VERSION__ = 'V2026.04.28.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -874,7 +874,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.06').trim() || 'V2026.04.28.06';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.07').trim() || 'V2026.04.28.07';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1373,7 +1373,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.06';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -3529,7 +3529,11 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         function getDockOwnedPhotoLinkCsv(item, options = {}) {
             if (!item) return '';
             const includePending = options.includePending !== false;
-            const dockBase = mergePhotoCsvList([item.DOCK_PHOTO_LINK, item.DOCKPHOTO_LINK]);
+            const dockBase = mergePhotoCsvList([
+                item.DOCK_PHOTO_LINK,
+                item.DOCKPHOTO_LINK,
+                getSharedAppPhotoLinkCsvRaw(item, { includePending: false })
+            ]);
             return includePending ? getDisplayPhotoLinkCsv(dockBase, item, 'dock') : dockBase;
         }
 
@@ -4396,7 +4400,21 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             };
 
             fullInventory.forEach((row) => { if (sameMasterRow(row)) applyExactRowData(row); });
-            avOpenInventory.forEach((row) => { if (sameMasterRow(row)) applyExactRowData(row); });
+            const avOpenIndex = avOpenInventory.findIndex((row) => sameMasterRow(row));
+            const canonicalSourceTable = String(firstNonEmptyValue(canonicalMaster.SOURCE_TABLE, canonicalMaster.source_table, 'v2_master_inventory')).trim().toLowerCase();
+            if (canonicalSourceTable === 'v2_master_inventory') {
+                if (shouldIncludeMasterItemInAvOpen(canonicalMaster)) {
+                    if (avOpenIndex >= 0) {
+                        applyExactRowData(avOpenInventory[avOpenIndex]);
+                    } else {
+                        const avOpenRow = { ...canonicalMaster, DOM_ID: 'avo_' + masterId };
+                        avOpenInventory.push(buildSearchIndex(normalizeRowPhotoFields(avOpenRow)));
+                    }
+                } else if (avOpenIndex >= 0) {
+                    avOpenInventory.splice(avOpenIndex, 1);
+                }
+                avOpenInventoryById = rebuildInventoryByIdMap(avOpenInventory);
+            }
             lowStockInventory.forEach((row) => { if (sameMasterRow(row)) applyExactRowData(row); });
             lowStockInventoryDirty = true;
             managerReviewInventory.forEach((row) => { if (sameMasterRow(row)) applyExactRowData(row); });
@@ -6537,6 +6555,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return merged.join(',');
         }
 
+        function appendPhotoCsvValue(currentValue = '', nextValue = '') {
+            return mergePhotoCsvList([currentValue, nextValue]);
+        }
+
         function getPendingPhotoUploadKey(item, prefix = '') {
             if (!item) return '';
             const uniqueId = String(item.UNIQUE_ID || '').trim();
@@ -6723,6 +6745,118 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 markViewDirty(visibleViewId);
                 queueInteractiveViewRender(visibleViewId, false, false, 0, 140);
             }, 16);
+        }
+
+        function applySharedPhotoFieldsToItem(item, publicUrl = '', fileName = '') {
+            if (!item || !String(publicUrl || '').trim()) return item;
+            const cleanUrl = String(publicUrl || '').trim();
+            const cleanName = String(fileName || '').trim();
+            item.SAVED_PHOTO_LINK = appendPhotoCsvValue(item.SAVED_PHOTO_LINK, cleanUrl);
+            item.PHOTO_LINK = item.SAVED_PHOTO_LINK;
+            item.PHOTOLINK = item.SAVED_PHOTO_LINK;
+            item['PHOTO LINK'] = item.SAVED_PHOTO_LINK;
+            if (cleanName) {
+                item.SAVED_PHOTO_NAME = appendPhotoCsvValue(item.SAVED_PHOTO_NAME, cleanName);
+                item.PHOTO_NAME = item.SAVED_PHOTO_NAME;
+                item.PHOTONAME = item.SAVED_PHOTO_NAME;
+                item['PHOTO NAME'] = item.SAVED_PHOTO_NAME;
+            }
+            return normalizeRowPhotoFields(item);
+        }
+
+        function applyUploadedPhotoFieldsToItem(item, prefix = '', publicUrl = '', fileName = '') {
+            if (!item || !String(publicUrl || '').trim()) return item;
+            const safePrefix = String(prefix || '').trim().toLowerCase();
+            const cleanUrl = String(publicUrl || '').trim();
+            const cleanName = String(fileName || '').trim();
+            if (safePrefix === 'req-') {
+                item.REQ_PHOTO_LINK = appendPhotoCsvValue(item.REQ_PHOTO_LINK, cleanUrl);
+                if (cleanName) item.REQ_PHOTO_NAME = appendPhotoCsvValue(item.REQ_PHOTO_NAME, cleanName);
+            } else if (safePrefix === 'dock-') {
+                item.DOCK_PHOTO_LINK = appendPhotoCsvValue(item.DOCK_PHOTO_LINK, cleanUrl);
+                if (cleanName) item.DOCK_PHOTO_NAME = appendPhotoCsvValue(item.DOCK_PHOTO_NAME, cleanName);
+            } else if (safePrefix === 'flyer-') {
+                item.FLYER_PHOTO_LINK = appendPhotoCsvValue(item.FLYER_PHOTO_LINK, cleanUrl);
+                if (cleanName) item.FLYER_PHOTO_NAME = appendPhotoCsvValue(item.FLYER_PHOTO_NAME, cleanName);
+            }
+            applySharedPhotoFieldsToItem(item, cleanUrl, cleanName);
+            syncSharedFlyerPhotoFields(item, safePrefix);
+            buildSearchIndex(normalizeRowPhotoFields(item));
+            return item;
+        }
+
+        function getMasterPhotoSyncItem(item = null) {
+            if (!item) return null;
+            const linkedMaster = findLinkedMasterRow(item);
+            if (linkedMaster) return linkedMaster;
+            const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, 'v2_master_inventory')).trim().toLowerCase();
+            return sourceTable === 'v2_master_inventory' ? item : null;
+        }
+
+        function buildSharedPhotoMasterPayload(masterItem = null, touchedAt = new Date().toISOString()) {
+            if (!masterItem) return null;
+            applyAvRuleTouchState(masterItem, { photo: true }, touchedAt);
+            const payload = {
+                photo_link: parsePhotoCsvValues(masterItem.SAVED_PHOTO_LINK).filter((entry) => /^https?:\/\//i.test(entry)).join(',') || null,
+                photo_name: parsePhotoCsvValues(masterItem.SAVED_PHOTO_NAME).join(',') || null
+            };
+            if (avRuleColumnsReady === true) {
+                payload.av_rule_priority_snapshot = masterItem.AV_RULE_PRIORITY_SNAPSHOT || null;
+                payload.av_rule_holdstop_snapshot = masterItem.AV_RULE_HOLDSTOP_SNAPSHOT || null;
+                payload.av_rule_photo_updated_at = touchedAt;
+                payload.av_rule_bundle_updated_at = touchedAt;
+            }
+            return payload;
+        }
+
+        function persistSharedPhotoMasterFields(masterItem = null, touchedAt = new Date().toISOString()) {
+            if (!masterItem) return;
+            const masterId = String(firstNonEmptyValue(masterItem.UNIQUE_ID, '') || '').trim();
+            if (!masterId) return;
+            const runPersist = () => {
+                const payload = buildSharedPhotoMasterPayload(masterItem, touchedAt);
+                if (!payload) return Promise.resolve(false);
+                return runDetailWriteWithRetry('v2_master_inventory', 'PATCH', payload, `unique_id=eq.${encodeURIComponent(masterId)}`, {
+                    timeoutMs: getDetailRowWriteTimeoutMs(),
+                    retries: DETAIL_ROW_WRITE_RETRY_COUNT,
+                    retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
+                }).catch((error) => {
+                    logRowSyncIssue('shared photo master persist failed', error);
+                    return false;
+                });
+            };
+            if (avRuleColumnsReady == null) {
+                ensureAvRuleColumnsReady().catch(() => false).then(() => runPersist());
+            } else {
+                runPersist();
+            }
+        }
+
+        function refreshPhotoAcrossViews(item = null, prefix = '') {
+            const sourceItem = getMasterPhotoSyncItem(item) || item;
+            if (!sourceItem) return;
+            invalidateResolvedViewStateCaches();
+            syncRowDataAcrossViews(sourceItem);
+            broadcastRowSyncSnapshot(sourceItem, prefix);
+            ['drive','tasks','review','sales-office','low-stock','docks','request','reserves','av'].forEach((viewId) => markViewDirty(viewId));
+            getVisibleTrackedViewIds().forEach((viewId) => {
+                if (viewId !== 'detail') queueInteractiveViewRender(viewId, false, false, 0, 120);
+            });
+        }
+
+        function applyUploadedPhotoEverywhere(item = null, prefix = '', publicUrl = '', fileName = '') {
+            if (!item || !String(publicUrl || '').trim()) return null;
+            const touchedAt = new Date().toISOString();
+            applyUploadedPhotoFieldsToItem(item, prefix, publicUrl, fileName);
+            const masterItem = getMasterPhotoSyncItem(item);
+            if (masterItem) {
+                applySharedPhotoFieldsToItem(masterItem, publicUrl, fileName);
+                applyAvRuleTouchState(masterItem, { photo: true }, touchedAt);
+                buildSearchIndex(normalizeRowPhotoFields(masterItem));
+                persistSharedPhotoMasterFields(masterItem, touchedAt);
+            }
+            refreshPhotoAcrossViews(masterItem || item, prefix);
+            return masterItem || item;
         }
 
         function getPendingPhotoPersistKey(item, prefix = '') {
@@ -8670,7 +8804,7 @@ let selectedAvSeasons=new Set(DRIVE_SEASON_OPTIONS); let avSeasonDropdownOpen=fa
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.06').trim() || 'V2026.04.28.06';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.07').trim() || 'V2026.04.28.07';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -32756,12 +32890,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return;
             }
 
-            const appendCsvValue = (currentValue, nextValue) => {
-                const existing = parsePhotoCsvValues(currentValue);
-                if (String(nextValue || '').trim()) existing.push(String(nextValue).trim());
-                return existing.join(',');
-            };
-
             const previewUrl = URL.createObjectURL(file);
             const previewEntry = createPendingPhotoPreview(itemToUpload, prefix, previewUrl, file.name || '');
             refreshPendingPhotoUiForItem(itemToUpload, prefix);
@@ -32840,22 +32968,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 if (uploadError) throw uploadError;
                                 const { data: publicUrlData } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
                                 const publicUrl = publicUrlData.publicUrl;
-                                if (prefix === 'req-') {
-                                    itemToUpload.REQ_PHOTO_LINK = appendCsvValue(itemToUpload.REQ_PHOTO_LINK, publicUrl);
-                                    itemToUpload.REQ_PHOTO_NAME = appendCsvValue(itemToUpload.REQ_PHOTO_NAME, fileName);
-                                } else if (prefix === 'dock-') {
-                                    itemToUpload.DOCK_PHOTO_LINK = appendCsvValue(itemToUpload.DOCK_PHOTO_LINK, publicUrl);
-                                    itemToUpload.DOCK_PHOTO_NAME = appendCsvValue(itemToUpload.DOCK_PHOTO_NAME, fileName);
-                                } else if (prefix === 'flyer-') {
-                                    itemToUpload.FLYER_PHOTO_LINK = appendCsvValue(itemToUpload.FLYER_PHOTO_LINK, publicUrl);
-                                    itemToUpload.FLYER_PHOTO_NAME = appendCsvValue(itemToUpload.FLYER_PHOTO_NAME, fileName);
-                                } else {
-                                    itemToUpload.SAVED_PHOTO_LINK = appendCsvValue(itemToUpload.SAVED_PHOTO_LINK, publicUrl);
-                                    itemToUpload.SAVED_PHOTO_NAME = appendCsvValue(itemToUpload.SAVED_PHOTO_NAME, fileName);
-                                }
-                                syncSharedFlyerPhotoFields(itemToUpload, prefix);
-                                normalizeRowPhotoFields(itemToUpload);
-                                broadcastRowSyncSnapshot(itemToUpload, prefix);
+                                applyUploadedPhotoEverywhere(itemToUpload, prefix, publicUrl, fileName);
                                 markPhotoPersistActivity();
                                 cleanupUploadResources();
                                 finishPreview(true);
