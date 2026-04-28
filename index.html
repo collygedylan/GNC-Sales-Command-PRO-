@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.28.08';
+window.__APP_SHELL_VERSION__ = 'V2026.04.28.09';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -874,7 +874,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.08').trim() || 'V2026.04.28.08';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.09').trim() || 'V2026.04.28.09';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1218,7 +1218,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div id="det-season-content" class="hidden py-4">
                         <div id="ssn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="ssn-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-ssn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'ssn-')"></label></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-ssn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" multiple class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'ssn-')"></label></div>
                         <div id="task-season-review-panel-season" class="hidden"></div>
                         <div id="ssn-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ssn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'ssn-', true)"></div>
@@ -1232,7 +1232,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div id="det-location-content" class="hidden py-4">
                         <div id="lsn-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="lsn-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-lsn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'lsn-')"></label></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-lsn" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" multiple class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'lsn-')"></label></div>
                         <div id="task-season-review-panel-location" class="hidden"></div>
                         <div id="lsn-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="lsn-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'lsn-', true)"></div>
@@ -1246,7 +1246,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div id="det-notes-content" class="hidden py-4">
                         <div id="na-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-blue-600 mb-2 uppercase">Photos on file</p><div id="na-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-na" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'na-')"></label></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-na" class="bg-green-50 border-2 border-dashed border-green-500 text-green-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" multiple class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'na-')"></label></div>
                         <div id="na-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="na-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'na-', true)"></div>
                             <div id="na-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="na-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'na-', true)"></div>
@@ -1265,7 +1265,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div id="det-request-content" class="hidden py-4">
                         <div id="req-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-purple-600 mb-2 uppercase">Request Photos</p><div id="req-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-req" class="bg-purple-50 border-2 border-dashed border-purple-500 text-purple-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'req-')"></label></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-req" class="bg-purple-50 border-2 border-dashed border-purple-500 text-purple-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" multiple class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'req-')"></label></div>
                         <div id="req-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="req-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'req-', true)"></div>
                             <div id="req-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)"></div>
@@ -1285,7 +1285,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div id="det-ncr-content" class="hidden py-4">
                         <div id="ncr-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-amber-600 mb-2 uppercase">NCR Draft Photos</p><div id="ncr-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-ncr" class="bg-amber-50 border-2 border-dashed border-amber-400 text-amber-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handleNcrPhotoSelect(this)"></label></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-ncr" class="bg-amber-50 border-2 border-dashed border-amber-400 text-amber-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" multiple class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handleNcrPhotoSelect(this)"></label></div>
                         <div id="ncr-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="ncr-spec" class="input-field" placeholder="e.g. 24-30 inch" oninput="handleNcrDraftInput('spec', this.value)"></div>
                             <div id="ncr-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="ncr-caliper" class="input-field" placeholder="e.g. 2 inch" oninput="handleNcrDraftInput('caliper', this.value)"></div>
@@ -1301,7 +1301,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div id="det-docks-content" class="hidden py-4">
                         <div id="dock-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-orange-600 mb-2 uppercase">Photos on file</p><div id="dock-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-dock" class="bg-orange-50 border-2 border-dashed border-orange-500 text-orange-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'dock-')"></label></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-dock" class="bg-orange-50 border-2 border-dashed border-orange-500 text-orange-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" multiple class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'dock-')"></label></div>
                         <div id="dock-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="dock-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'dock-', true)"></div>
                             <div id="dock-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="dock-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'dock-', true)"></div>
@@ -1310,7 +1310,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div id="det-flyer-content" class="hidden py-4">
                         <div id="flyer-photo-preview" class="mb-4 hidden"><p class="text-[10px] font-bold text-indigo-600 mb-2 uppercase">Photos on file</p><div id="flyer-photo-list-container" class="space-y-2"></div></div>
-                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-flyer" class="bg-indigo-50 border-2 border-dashed border-indigo-500 text-indigo-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'flyer-')"></label></div>
+                        <div class="grid grid-cols-1 gap-2 mb-4"><label id="camera-btn-flyer" class="bg-indigo-50 border-2 border-dashed border-indigo-500 text-indigo-700 flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer relative overflow-hidden"><i class="ph-fill ph-camera text-3xl mb-1"></i><span class="text-[10px] font-bold">CAMERA</span><input type="file" accept="image/*" capture="environment" multiple class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="handlePhotoUpload(this, 'flyer-')"></label></div>
                         <div id="flyer-input-container">
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Spec (Size/Dims)</label><input type="text" id="flyer-spec" class="input-field" placeholder="e.g. 24-30 inch" onchange="saveData(false, 'flyer-', true)"></div>
                             <div id="flyer-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="flyer-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'flyer-', true)"></div>
@@ -1373,7 +1373,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.08';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.09';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1458,9 +1458,10 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         const CACHE_PERSIST_REALTIME_VISIBLE_MIN_INTERVAL_MS = 180000;
         const CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS = 12000;
         const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
-        const PHOTO_MAX_WIDTH = 2048;
-        const PHOTO_JPEG_QUALITY = 0.98;
-        const PHOTO_FIELD_PERSIST_DEBOUNCE_MS = 100;
+        const PHOTO_MAX_WIDTH = 1600;
+        const PHOTO_JPEG_QUALITY = 0.86;
+        const PHOTO_FIELD_PERSIST_DEBOUNCE_MS = 350;
+        const PHOTO_MASTER_PERSIST_DEBOUNCE_MS = 450;
         const INTERACTION_REFRESH_DEFER_MS = 1400;
         const DETAIL_TRANSITION_GRACE_MS = 650;
         const DETAIL_HYDRATION_DELAY_MS = 24;
@@ -1513,6 +1514,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         let pendingPhotoUploads = new Map();
         let pendingPhotoPreviews = new Map();
         let pendingPhotoPersistTimers = Object.create(null);
+        let pendingSharedPhotoMasterPersistTimers = Object.create(null);
         let latestShellManifestInfoCache = null;
         let latestShellManifestInfoPromise = null;
         let latestShellManifestInfoAt = 0;
@@ -6584,7 +6586,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             pendingPhotoUploads.set(key, promise);
             promise.finally(() => {
                 pendingPhotoUploads.delete(key);
-            });
+            }).catch(() => {});
             return promise;
         }
 
@@ -6813,23 +6815,30 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (!masterItem) return;
             const masterId = String(firstNonEmptyValue(masterItem.UNIQUE_ID, '') || '').trim();
             if (!masterId) return;
-            const runPersist = () => {
-                const payload = buildSharedPhotoMasterPayload(masterItem, touchedAt);
-                if (!payload) return Promise.resolve(false);
-                return runDetailWriteWithRetry('v2_master_inventory', 'PATCH', payload, `unique_id=eq.${encodeURIComponent(masterId)}`, {
-                    timeoutMs: getDetailRowWriteTimeoutMs(),
-                    retries: DETAIL_ROW_WRITE_RETRY_COUNT,
-                    retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
-                }).catch((error) => {
-                    logRowSyncIssue('shared photo master persist failed', error);
-                    return false;
-                });
-            };
-            if (avRuleColumnsReady == null) {
-                ensureAvRuleColumnsReady().catch(() => false).then(() => runPersist());
-            } else {
-                runPersist();
+            const persistKey = `master-photo:${masterId}`;
+            if (pendingSharedPhotoMasterPersistTimers[persistKey]) {
+                clearTimeout(pendingSharedPhotoMasterPersistTimers[persistKey]);
             }
+            pendingSharedPhotoMasterPersistTimers[persistKey] = setTimeout(() => {
+                delete pendingSharedPhotoMasterPersistTimers[persistKey];
+                const runPersist = () => {
+                    const payload = buildSharedPhotoMasterPayload(masterItem, touchedAt);
+                    if (!payload) return Promise.resolve(false);
+                    return runDetailWriteWithRetry('v2_master_inventory', 'PATCH', payload, `unique_id=eq.${encodeURIComponent(masterId)}`, {
+                        timeoutMs: getDetailRowWriteTimeoutMs(),
+                        retries: DETAIL_ROW_WRITE_RETRY_COUNT,
+                        retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
+                    }).catch((error) => {
+                        logRowSyncIssue('shared photo master persist failed', error);
+                        return false;
+                    });
+                };
+                if (avRuleColumnsReady == null) {
+                    ensureAvRuleColumnsReady().catch(() => false).then(() => runPersist());
+                } else {
+                    runPersist();
+                }
+            }, PHOTO_MASTER_PERSIST_DEBOUNCE_MS);
         }
 
         function refreshPhotoAcrossViews(item = null, prefix = '') {
@@ -6877,6 +6886,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             markPhotoPersistActivity();
             pendingPhotoPersistTimers[persistKey] = setTimeout(() => {
                 delete pendingPhotoPersistTimers[persistKey];
+                const pendingUploads = getPendingPhotoUploadsForItem(item, prefix);
+                if (pendingUploads.length > 0) {
+                    Promise.allSettled(pendingUploads).then(() => schedulePhotoFieldPersist(item, prefix));
+                    return;
+                }
                 markPhotoPersistActivity();
                 saveData(false, prefix, true, item, { photoChanged: true, backgroundPhotoSync: true });
             }, PHOTO_FIELD_PERSIST_DEBOUNCE_MS);
@@ -8804,7 +8818,7 @@ let selectedAvSeasons=new Set(DRIVE_SEASON_OPTIONS); let avSeasonDropdownOpen=fa
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.08').trim() || 'V2026.04.28.08';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.09').trim() || 'V2026.04.28.09';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -16480,18 +16494,19 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (!activeItem || !input || !input.files || !input.files.length) return;
             markCameraActivity();
-            const file = input.files[0];
-            const previewUrl = URL.createObjectURL(file);
             const draft = getNcrDraft(activeItem);
             if (!draft) return;
-            draft.photos.push({
-                id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-                file,
-                previewUrl,
-                fileName: String(file && file.name || `ncr-photo-${draft.photos.length + 1}.jpg`).trim(),
-                mimeType: String(file && file.type || 'image/jpeg').trim(),
-                uploadedUrl: '',
-                uploadedName: ''
+            Array.from(input.files || []).filter((file) => file && String(file.type || '').startsWith('image/')).forEach((file) => {
+                const previewUrl = URL.createObjectURL(file);
+                draft.photos.push({
+                    id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                    file,
+                    previewUrl,
+                    fileName: String(file && file.name || `ncr-photo-${draft.photos.length + 1}.jpg`).trim(),
+                    mimeType: String(file && file.type || 'image/jpeg').trim(),
+                    uploadedUrl: '',
+                    uploadedName: ''
+                });
             });
             renderNcrDraftPhotos(activeItem);
             renderPhotoGallery();
@@ -32873,35 +32888,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             runAfterShellInteractive(runTask, isTouchConstrainedDevice() ? 28 : 0);
         }
 
-        async function handlePhotoUpload(input, prefix) {
-            if (!input.files || input.files.length === 0 || !activeItem) return;
-            markCameraActivity();
-            if (String(activeDetailSourceView || lastView || '').trim().toLowerCase() === 'av') {
-                showToast('View Only', 'AV detail is read-only. Photos can be viewed but not updated here.', true);
-                input.value = '';
-                return;
-            }
-            if (!canEditRowDetails(prefix)) {
-                showRowEditRestrictedToast(prefix);
-                input.value = '';
-                return;
-            }
-            const itemToUpload = activeItem;
-            if ((isIOSDevice() || isStandaloneApp()) && document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
-                document.activeElement.blur();
-            }
-            if (navigator.onLine === false) {
-                showToast('Offline', 'No service. Photo could not upload.', true);
-                input.value = '';
-                return;
-            }
-            const file = input.files[0];
-            input.value = '';
-
-            if (!file || !file.type.startsWith('image/')) {
-                showToast('Error', 'Please select an image file.', true);
-                return;
-            }
+        function queueRowPhotoUpload(itemToUpload, prefix, file) {
+            if (!itemToUpload || !file || !String(file.type || '').startsWith('image/')) return false;
 
             const previewUrl = URL.createObjectURL(file);
             const previewEntry = createPendingPhotoPreview(itemToUpload, prefix, previewUrl, file.name || '');
@@ -32949,15 +32937,16 @@ ${folderNote ? `Folder Note: ${folderNote}
                         const sourceHeight = Number(sourceImage.height || sourceImage.naturalHeight || 0);
                         if (!sourceWidth || !sourceHeight) throw new Error('Could not process the selected image.');
                         canvas = document.createElement('canvas');
-                        const targetMaxWidth = PHOTO_MAX_WIDTH;
+                        const targetMaxDimension = PHOTO_MAX_WIDTH;
                         const targetJpegQuality = PHOTO_JPEG_QUALITY;
-                        const scaleSize = sourceWidth > targetMaxWidth ? targetMaxWidth / sourceWidth : 1;
+                        const sourceMaxDimension = Math.max(sourceWidth, sourceHeight);
+                        const scaleSize = sourceMaxDimension > targetMaxDimension ? targetMaxDimension / sourceMaxDimension : 1;
                         canvas.width = Math.max(1, Math.round(sourceWidth * scaleSize));
                         canvas.height = Math.max(1, Math.round(sourceHeight * scaleSize));
                         const ctx = canvas.getContext('2d', { alpha: false });
                         if (!ctx) throw new Error('Could not prepare the selected image.');
                         ctx.imageSmoothingEnabled = true;
-                        ctx.imageSmoothingQuality = 'high';
+                        ctx.imageSmoothingQuality = 'medium';
                         ctx.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
                         canvas.toBlob(async (blob) => {
                             if (!blob) {
@@ -32967,7 +32956,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                             try {
                                 const bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
                                 const clean = (t) => String(t || 'NA').replace(/[^a-zA-Z0-9_-]/g, '');
-                                const fileName = clean(itemToUpload.COMMONNAME) + '-' + clean(itemToUpload.CONTSIZE) + '-' + Date.now() + '.jpg';
+                                const uploadToken = createPendingPhotoToken().replace(/[^a-zA-Z0-9_-]/g, '');
+                                const fileName = clean(itemToUpload.COMMONNAME) + '-' + clean(itemToUpload.CONTSIZE) + '-' + uploadToken + '.jpg';
                                 const filePath = new Date().toISOString().split('T')[0] + '/' + fileName;
                                 const uploadResult = await withTimeout(
                                     supabaseClient.storage.from(bucketName).upload(filePath, blob, {
@@ -33018,6 +33008,42 @@ ${folderNote ? `Folder Note: ${folderNote}
             };
 
             scheduleDeferredPhotoUploadStart(startUpload);
+            return true;
+        }
+
+        async function handlePhotoUpload(input, prefix) {
+            if (!input.files || input.files.length === 0 || !activeItem) return;
+            markCameraActivity();
+            if (String(activeDetailSourceView || lastView || '').trim().toLowerCase() === 'av') {
+                showToast('View Only', 'AV detail is read-only. Photos can be viewed but not updated here.', true);
+                input.value = '';
+                return;
+            }
+            if (!canEditRowDetails(prefix)) {
+                showRowEditRestrictedToast(prefix);
+                input.value = '';
+                return;
+            }
+            const itemToUpload = activeItem;
+            if ((isIOSDevice() || isStandaloneApp()) && document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
+                document.activeElement.blur();
+            }
+            if (navigator.onLine === false) {
+                showToast('Offline', 'No service. Photo could not upload.', true);
+                input.value = '';
+                return;
+            }
+            const selectedFiles = Array.from(input.files || []);
+            input.value = '';
+            const imageFiles = selectedFiles.filter((file) => file && String(file.type || '').startsWith('image/'));
+            if (!imageFiles.length) {
+                showToast('Error', 'Please select an image file.', true);
+                return;
+            }
+            if (imageFiles.length > 1) {
+                showToast('Uploading', `Uploading ${imageFiles.length} photos...`, false);
+            }
+            imageFiles.forEach((file) => queueRowPhotoUpload(itemToUpload, prefix, file));
         }
     </script>
     <script>
