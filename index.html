@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.29.04';
+  window.__APP_SHELL_VERSION__ = 'V2026.04.29.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -901,7 +901,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.04').trim() || 'V2026.04.29.04';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.05').trim() || 'V2026.04.29.05';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1401,7 +1401,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.04';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1423,7 +1423,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             home: { realtimeTables: [], pollMs: 0 },
             drive: { realtimeTables: [], pollMs: 'visible-default' },
             tasks: { realtimeTables: [], pollMs: 'visible-default' },
-            request: { realtimeTables: ['v2_active_request'], pollMs: 0 },
+            request: { realtimeTables: ['v2_active_request'], pollMs: 'visible-default' },
             'sales-office': { realtimeTables: ['v2_sales_office'], pollMs: 'visible-default' },
             av: { realtimeTables: [], pollMs: 'visible-default' },
             reserves: { realtimeTables: [], pollMs: 'visible-default' },
@@ -4975,7 +4975,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 return false;
             }
             trackRealtimeDirtyRowId(tableName, uniqueId);
-            if (tableName === 'v2_active_request') triggerRequestRealtimeUiRefresh(REQUEST_REALTIME_UI_DELAY_MS);
+            if (tableName === 'v2_active_request') {
+                invalidateResolvedViewStateCaches();
+                requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+                triggerRequestRealtimeUiRefresh(0);
+            }
             if (!deferVisualSync) flushRealtimeDatasetUpdates([tableName]);
             recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'unknown');
             return true;
@@ -8834,7 +8838,7 @@ let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.04').trim() || 'V2026.04.29.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.05').trim() || 'V2026.04.29.05';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -11056,7 +11060,7 @@ let searchRenderToken = {};
         }
         function getPendingRequestCount() {
             let items = getScopedRequestItems(requestsInventory);
-            items = items.filter(i => i && !i.REQ_ARCHIVED && String(i.REQ_STATUS || '').toUpperCase() !== 'COMPLETE');
+            items = items.filter(i => i && !i.REQ_ARCHIVED && !isRequestComplete(i));
             return items.length;
         }
 
@@ -16283,6 +16287,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (safeSourceTable) rememberLocalRealtimeWrite(safeSourceTable, changedRow);
             }
             if (safeSourceTable === 'v2_active_request') {
+                if (!changedRow) invalidateResolvedViewStateCaches();
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
                 triggerRequestRealtimeUiRefresh(Math.max(REQUEST_REALTIME_UI_DELAY_MS, Number(options.requestUiDelay) || 0));
             }
