@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.28.18';
+window.__APP_SHELL_VERSION__ = 'V2026.04.28.19';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -901,7 +901,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.18').trim() || 'V2026.04.28.18';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.19').trim() || 'V2026.04.28.19';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1401,7 +1401,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.18';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.19';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8784,7 +8784,7 @@ const FIELD_SAVE_GRACE_MS = 1400;
 
 let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='all'; let activeAvReserveDetailTab='customer'; let selectedAvReserveDetailCustomerKey=null;
 let selectedAvSeasons=new Set(DRIVE_SEASON_OPTIONS); let avSeasonDropdownOpen=false; let avSeasonSearchTerm=''; let selectedAvGenusNames=new Set(); let avGenusSearchTerm=''; let avGenusFilterOpen=false; let avGenusSelectionMode='all'; let selectedAvContSizes=new Set(); let avContSizeSearchTerm=''; let avContSizeFilterOpen=false; let avContSizeSelectionMode='all'; let avHoldStopOnly=false; let avFilterItemsCache=[]; let avFilterGenusOptions=[]; let avFilterContSizeOptions=[];
-let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKeys=new Set(); let driveCustomerOutreachSelectedSourceRowIds=new Set(); let driveCustomerOutreachStateKey=''; let driveCustomerOutreachSendBusy=false;
+let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKeys=new Set(); let driveCustomerOutreachSelectedSourceRowIds=new Set(); let driveCustomerOutreachStateKey=''; let driveCustomerOutreachSendBusy=false; let driveCustomerOutreachReserveRows=[]; let driveCustomerOutreachReserveRowsKey=''; let driveCustomerOutreachReserveRowsLoadedKey=''; let driveCustomerOutreachReserveRowsLoading=false; let driveCustomerOutreachReserveRowsError=''; let driveCustomerOutreachReserveFetchToken=0;
         let taskTeamSelectorCacheKey=''; let taskTeamSelectorCacheHtml=''; let taskTeamSelectorEmptyHtml='';
 
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
@@ -8848,7 +8848,7 @@ let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.18').trim() || 'V2026.04.28.18';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.19').trim() || 'V2026.04.28.19';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -22071,6 +22071,9 @@ function toggleDriveQuickRequestItem(domId) {
             const desiredOrder = [];
             const primaryId = primaryTab ? `dtab-${primaryTab}` : '';
             if (primaryId && baseOrder.includes(primaryId)) desiredOrder.push(primaryId);
+            if (String(activeDetailSourceView || lastView || '').trim() === 'drive' && primaryTab === 'overview' && !desiredOrder.includes('dtab-customer')) {
+                desiredOrder.push('dtab-customer');
+            }
             ['dtab-overview', 'dtab-gallery'].forEach((id) => {
                 if (!desiredOrder.includes(id)) desiredOrder.push(id);
             });
@@ -22166,7 +22169,7 @@ function toggleDriveQuickRequestItem(domId) {
                     emptyEl.classList.add('hidden');
                     emptyEl.innerText = 'No matching item detail fields.';
                 }
-                renderDriveCustomerOutreachPanel(null);
+                clearDriveCustomerOutreachPanels();
                 return;
             }
 
@@ -22187,7 +22190,7 @@ function toggleDriveQuickRequestItem(domId) {
             `).join('');
             emptyEl.classList.toggle('hidden', rows.length !== 0);
             emptyEl.innerText = rows.length ? '' : 'No matching item detail fields.';
-            renderDriveCustomerOutreachPanel(activeItem);
+            clearDriveCustomerOutreachPanels();
         }
 
         function resetDriveCustomerOutreachState() {
@@ -22196,6 +22199,24 @@ function toggleDriveQuickRequestItem(domId) {
             driveCustomerOutreachSelectedSourceRowIds = new Set();
             driveCustomerOutreachStateKey = '';
             driveCustomerOutreachSendBusy = false;
+            driveCustomerOutreachReserveRows = [];
+            driveCustomerOutreachReserveRowsKey = '';
+            driveCustomerOutreachReserveRowsLoadedKey = '';
+            driveCustomerOutreachReserveRowsLoading = false;
+            driveCustomerOutreachReserveRowsError = '';
+            driveCustomerOutreachReserveFetchToken += 1;
+        }
+
+        function clearDriveCustomerOutreachPanels() {
+            const legacyPanel = document.getElementById('drive-detail-customer-outreach-panel');
+            if (legacyPanel) {
+                legacyPanel.classList.add('hidden');
+                legacyPanel.innerHTML = '';
+            }
+            const customerPanel = document.getElementById('det-customer-panel');
+            if (customerPanel && String(activeDetailSourceView || '').trim() === 'drive' && activeDetailTab !== 'customer') {
+                customerPanel.innerHTML = '';
+            }
         }
 
         function getDriveCustomerOutreachItemCode(item = activeItem) {
@@ -22211,6 +22232,93 @@ function toggleDriveQuickRequestItem(domId) {
             if (!row || !itemCode || getDriveCustomerOutreachItemCode(row) !== itemCode) return false;
             const targetSeason = getDriveCustomerOutreachSeason(item);
             return !targetSeason || getDriveCustomerOutreachSeason(row) === targetSeason;
+        }
+
+        function getDriveCustomerOutreachReserveRowsKey(item = activeItem) {
+            const itemCode = getDriveCustomerOutreachItemCode(item);
+            const season = getDriveCustomerOutreachSeason(item);
+            return itemCode ? `${itemCode}||${season}` : '';
+        }
+
+        function getLocalDriveCustomerOutreachReserveRows(item = activeItem) {
+            if (!item || !Array.isArray(reservesInventory)) return [];
+            return reservesInventory.filter((row) => isDriveCustomerOutreachSameItemSeason(row, item));
+        }
+
+        function getDriveCustomerOutreachReserveRows(item = activeItem) {
+            const key = getDriveCustomerOutreachReserveRowsKey(item);
+            if (!key) return [];
+            if (driveCustomerOutreachReserveRowsKey !== key) {
+                driveCustomerOutreachReserveRowsKey = key;
+                driveCustomerOutreachReserveRowsLoadedKey = '';
+                driveCustomerOutreachReserveRowsError = '';
+                driveCustomerOutreachReserveRows = getLocalDriveCustomerOutreachReserveRows(item);
+            }
+            return Array.isArray(driveCustomerOutreachReserveRows) ? driveCustomerOutreachReserveRows : [];
+        }
+
+        function hydrateDriveCustomerOutreachReserveRows(rows = [], key = '') {
+            const safeKey = String(key || '').replace(/[^a-z0-9_-]+/gi, '_') || 'drive_res';
+            return formatFetchedRows(Array.isArray(rows) ? rows : [], 'v2_reserves')
+                .map((row, idx) => {
+                    const nextRow = hydrateReserveInventoryRow(row, `${safeKey}_${idx}`);
+                    nextRow.DOM_ID = `drive_res_${safeKey}_${idx}`;
+                    return nextRow;
+                })
+                .filter(Boolean);
+        }
+
+        function buildDriveCustomerOutreachReserveQuery(item = activeItem) {
+            const itemCode = getDriveCustomerOutreachItemCode(item);
+            const season = getDriveCustomerOutreachSeason(item);
+            if (!itemCode) return '';
+            const parts = [`select=*`, `itemcode=eq.${encodeURIComponent(itemCode)}`];
+            if (season) parts.push(`season=eq.${encodeURIComponent(season)}`);
+            return parts.join('&');
+        }
+
+        async function loadDriveCustomerOutreachReserveRows(item = activeItem, force = false) {
+            const key = getDriveCustomerOutreachReserveRowsKey(item);
+            const query = buildDriveCustomerOutreachReserveQuery(item);
+            if (!key || !query) return [];
+            if (!force && driveCustomerOutreachReserveRowsLoadedKey === key && Array.isArray(driveCustomerOutreachReserveRows)) {
+                return driveCustomerOutreachReserveRows;
+            }
+            const token = ++driveCustomerOutreachReserveFetchToken;
+            driveCustomerOutreachReserveRowsKey = key;
+            driveCustomerOutreachReserveRowsLoading = true;
+            driveCustomerOutreachReserveRowsError = '';
+            if (!driveCustomerOutreachReserveRows.length) driveCustomerOutreachReserveRows = getLocalDriveCustomerOutreachReserveRows(item);
+            renderDriveCustomerOutreachPanel(item, { skipEnsure: true });
+            try {
+                const rows = await supabaseFetch('v2_reserves', 'GET', null, query);
+                if (token !== driveCustomerOutreachReserveFetchToken || driveCustomerOutreachReserveRowsKey !== key) return driveCustomerOutreachReserveRows;
+                driveCustomerOutreachReserveRows = hydrateDriveCustomerOutreachReserveRows(rows, key);
+                driveCustomerOutreachReserveRowsLoadedKey = key;
+                driveCustomerOutreachReserveRowsError = '';
+            } catch (error) {
+                if (token === driveCustomerOutreachReserveFetchToken) {
+                    driveCustomerOutreachReserveRowsError = error && error.message ? error.message : 'Could not load v2_reserves rows.';
+                }
+            } finally {
+                if (token === driveCustomerOutreachReserveFetchToken) {
+                    driveCustomerOutreachReserveRowsLoading = false;
+                    if (String(activeDetailSourceView || '').trim() === 'drive' && activeDetailTab === 'customer') {
+                        renderDriveCustomerOutreachPanel(activeItem, { skipEnsure: true });
+                    }
+                }
+            }
+            return driveCustomerOutreachReserveRows;
+        }
+
+        function ensureDriveCustomerOutreachReserveRows(item = activeItem) {
+            const key = getDriveCustomerOutreachReserveRowsKey(item);
+            if (!key) return [];
+            const rows = getDriveCustomerOutreachReserveRows(item);
+            if (driveCustomerOutreachReserveRowsLoadedKey !== key && !driveCustomerOutreachReserveRowsLoading) {
+                loadDriveCustomerOutreachReserveRows(item).catch(() => {});
+            }
+            return rows;
         }
 
         function getDriveCustomerOutreachRowId(row = null) {
@@ -22241,9 +22349,9 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getDriveCustomerOutreachCustomerCards(item = activeItem) {
-            if (!item || !Array.isArray(reservesInventory)) return [];
+            if (!item) return [];
             const cards = new Map();
-            reservesInventory.forEach((row) => {
+            getDriveCustomerOutreachReserveRows(item).forEach((row) => {
                 if (!isDriveCustomerOutreachSameItemSeason(row, item)) return;
                 const customerName = String(firstNonEmptyValue(row && row.CUSTOMERNAME, row && row.CUSTOMER, '') || '').trim();
                 const consigneeName = String(firstNonEmptyValue(row && row.CONSIGNEENAME, row && row.CONSIGNEE, '') || '').trim();
@@ -22298,15 +22406,25 @@ function toggleDriveQuickRequestItem(domId) {
             );
         }
 
-        function renderDriveCustomerOutreachPanel(item = activeItem) {
-            const panel = document.getElementById('drive-detail-customer-outreach-panel');
-            if (!panel) return;
+        function renderDriveCustomerOutreachPanel(item = activeItem, options = {}) {
+            const legacyPanel = document.getElementById('drive-detail-customer-outreach-panel');
+            if (legacyPanel) {
+                legacyPanel.classList.add('hidden');
+                legacyPanel.innerHTML = '';
+            }
+            const panel = document.getElementById('det-customer-panel');
             const isDriveDetail = String(activeDetailSourceView || '').trim().toLowerCase() === 'drive';
-            if (!isDriveDetail || !item) {
-                panel.classList.add('hidden');
+            if (!isDriveDetail || !panel) return;
+            if (activeDetailTab !== 'customer') {
                 panel.innerHTML = '';
                 return;
             }
+            if (!item) {
+                panel.innerHTML = '<div class="rounded-[22px] border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-[12px] font-semibold text-slate-400">No Drive item is open.</div>';
+                return;
+            }
+            const renderOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const reserveRows = renderOptions.skipEnsure ? getDriveCustomerOutreachReserveRows(item) : ensureDriveCustomerOutreachReserveRows(item);
             const cards = getDriveCustomerOutreachCustomerCards(item);
             const sourceRows = getDriveCustomerOutreachSourceRows(item);
             syncDriveCustomerOutreachDefaultSelections(item, cards, sourceRows);
@@ -22315,11 +22433,17 @@ function toggleDriveQuickRequestItem(domId) {
             const commonName = String(firstNonEmptyValue(item && item.COMMONNAME, item && item.DESCRIPTION, 'Item') || 'Item').trim();
             const itemCode = getDriveCustomerOutreachItemCode(item) || '--';
             const season = getDriveCustomerOutreachSeason(item) || 'All Seasons';
+            const loadingHtml = driveCustomerOutreachReserveRowsLoading
+                ? '<div class="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-sky-700">Loading v2_reserves...</div>'
+                : '';
+            const errorHtml = driveCustomerOutreachReserveRowsError
+                ? `<div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] font-bold text-amber-700">${esc(driveCustomerOutreachReserveRowsError)}</div>`
+                : '';
             const customerHtml = cards.length ? cards.map((card) => {
                 const checked = driveCustomerOutreachSelectedCustomerKeys.has(card.key) ? 'checked' : '';
                 const qtyLabel = card.qty ? `Qty ${card.qty}` : `${card.rows.length} row${card.rows.length === 1 ? '' : 's'}`;
                 return `<label class="flex items-start gap-3 rounded-xl border border-emerald-100 bg-white px-3 py-3 shadow-sm"><input type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-emerald-600" ${checked} onclick='event.stopPropagation(); return toggleDriveCustomerOutreachCustomer(${JSON.stringify(card.key)})'><span class="min-w-0 flex-1"><span class="block break-words text-[12px] font-black text-slate-800">${esc(card.label)}</span><span class="mt-1 block text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${esc(card.repName)} &bull; ${esc(qtyLabel)}</span></span></label>`;
-            }).join('') : '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[11px] font-bold text-slate-400">No customer / consignee reserve rows found for this item and season.</div>';
+            }).join('') : '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[11px] font-bold text-slate-400">No customer / consignee rows found in v2_reserves for this itemcode and season.</div>';
             const sourceHtml = sourceRows.length ? sourceRows.map((row) => {
                 const rowId = getDriveCustomerOutreachRowId(row);
                 const checked = driveCustomerOutreachSelectedSourceRowIds.has(rowId) ? 'checked' : '';
@@ -22329,8 +22453,8 @@ function toggleDriveQuickRequestItem(domId) {
                 return `<label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm"><input type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-emerald-600" ${checked} onclick='event.stopPropagation(); return toggleDriveCustomerOutreachSourceRow(${JSON.stringify(rowId)})'>${photoThumb}<span class="min-w-0 flex-1"><span class="block text-[12px] font-black text-[#007a4d]">${esc(firstNonEmptyValue(row && row.LOCATIONCODE, 'No Loc'))} ${esc(firstNonEmptyValue(row && row.LOTCODE, ''))}</span><span class="mt-1 block break-words text-[11px] font-bold text-slate-700">Spec: ${esc(spec)}</span><span class="mt-1 block text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">PRI ${esc(firstNonEmptyValue(row && row.PRIORITY, '-'))} &bull; PTR ${esc(firstNonEmptyValue(row && row.PTRAVAILABLE, 0))} &bull; ${photos.length} photo${photos.length === 1 ? '' : 's'}</span></span></label>`;
             }).join('') : '<div class="rounded-xl border border-dashed border-amber-200 bg-amber-50 px-4 py-5 text-center text-[11px] font-bold text-amber-700">No rows with both photos and specs were found for this item and season.</div>';
             const sendDisabled = !selectedCustomerCount || !selectedSourceCount || driveCustomerOutreachSendBusy;
-            panel.classList.remove('hidden');
-            panel.innerHTML = `<div class="rounded-[1.35rem] border border-emerald-100 bg-white p-4 shadow-sm"><button type="button" class="flex w-full items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-left active:scale-[0.99]" onclick="return toggleDriveCustomerOutreachPanel()"><span class="min-w-0"><span class="block text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Customer / Consignee Send</span><span class="mt-1 block truncate text-[12px] font-bold text-slate-600">${esc(commonName)} &bull; ${esc(itemCode)} &bull; ${esc(season)}</span><span class="mt-1 block text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${selectedCustomerCount}/${cards.length} customers &bull; ${selectedSourceCount}/${sourceRows.length} photo/spec rows</span></span><i class="ph-bold ph-caret-down shrink-0 text-sm text-emerald-700 transition-transform ${driveCustomerOutreachOpen ? 'rotate-180' : ''}"></i></button>${driveCustomerOutreachOpen ? `<div class="mt-4 space-y-4"><div><div class="mb-2 flex items-center justify-between gap-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Customer-Consignee</div><div class="flex gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachCustomersSelected(true)">All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachCustomersSelected(false)">None</button></div></div><div class="grid grid-cols-1 gap-2">${customerHtml}</div></div><div><div class="mb-2 flex items-center justify-between gap-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Photo / Spec Rows To Send</div><div class="flex gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachSourceRowsSelected(true)">All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachSourceRowsSelected(false)">None</button></div></div><div class="grid grid-cols-1 gap-2">${sourceHtml}</div></div><button type="button" class="w-full rounded-2xl px-4 py-3 text-[12px] font-black uppercase tracking-[0.14em] shadow-sm ${sendDisabled ? 'pointer-events-none bg-slate-200 text-slate-400' : 'bg-emerald-700 text-white active:scale-[0.99]'}" onclick="return sendDriveCustomerOutreachEmails()">${driveCustomerOutreachSendBusy ? 'Sending...' : 'Send To Selected Reps'}</button></div>` : ''}</div>`;
+            driveCustomerOutreachOpen = true;
+            panel.innerHTML = `<div class="space-y-4"><div class="rounded-[22px] border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm"><div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Customer / Consignee Send</div><div class="mt-2 text-[18px] font-black leading-tight text-slate-900 break-words">${esc(commonName)}</div><div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">v2_reserves &bull; ITEMCODE ${esc(itemCode)} &bull; SEASON ${esc(season)}</div><div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700">${reserveRows.length} reserve rows matched &bull; ${selectedCustomerCount}/${cards.length} customers selected &bull; ${selectedSourceCount}/${sourceRows.length} photo/spec rows selected</div></div><button type="button" class="shrink-0 rounded-full border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[0.98]" onclick="loadDriveCustomerOutreachReserveRows(activeItem, true); return false;">Refresh</button></div></div>${loadingHtml}${errorHtml}<div><div class="mb-2 flex items-center justify-between gap-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Customername / Consigneename</div><div class="flex gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachCustomersSelected(true)">All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachCustomersSelected(false)">None</button></div></div><div class="grid grid-cols-1 gap-2">${customerHtml}</div></div><div><div class="mb-2 flex items-center justify-between gap-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Photo / Spec Rows To Send</div><div class="flex gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachSourceRowsSelected(true)">All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachSourceRowsSelected(false)">None</button></div></div><div class="grid grid-cols-1 gap-2">${sourceHtml}</div></div><button type="button" class="w-full rounded-2xl px-4 py-3 text-[12px] font-black uppercase tracking-[0.14em] shadow-sm ${sendDisabled ? 'pointer-events-none bg-slate-200 text-slate-400' : 'bg-emerald-700 text-white active:scale-[0.99]'}" onclick="return sendDriveCustomerOutreachEmails()">${driveCustomerOutreachSendBusy ? 'Sending...' : 'Send To Selected Reps'}</button></div>`;
         }
 
         function toggleDriveCustomerOutreachPanel() {
@@ -22629,10 +22753,16 @@ function toggleDriveQuickRequestItem(domId) {
                 detTabsContainer.classList.remove('hidden');
                 detTabsContainer.querySelectorAll('.detail-tab').forEach(el => el.classList.add('hidden'));
             }
+            const customerTab = document.getElementById('dtab-customer');
+            if (customerTab) customerTab.innerText = 'Customer';
 
             const assignment = String(firstNonEmptyValue(item && item.APP_TAB_ASSIGNMENT, item && item.app_tab_assignment, '')).toLowerCase();
             if (safeSourceView === 'drive') {
                 document.getElementById('dtab-overview').classList.remove('hidden');
+                if (customerTab) {
+                    customerTab.innerText = 'Customer / Consignee';
+                    customerTab.classList.remove('hidden');
+                }
                 if (assignment === 'season') document.getElementById('dtab-season').classList.remove('hidden');
                 if (assignment === 'location') document.getElementById('dtab-location').classList.remove('hidden');
                 document.getElementById('dtab-notes').classList.remove('hidden');
@@ -23564,7 +23694,10 @@ function toggleDriveQuickRequestItem(domId) {
                 }
                 if (safeTab === 'overview') renderDriveDetailOverviewFields();
                 else if (safeTab === 'gallery') renderPhotoGallery();
-                else if (safeTab === 'customer') renderAvReserveDetailCustomerPanel();
+                else if (safeTab === 'customer') {
+                    if (String(activeDetailSourceView || lastView || '').trim() === 'drive') renderDriveCustomerOutreachPanel(activeItem);
+                    else renderAvReserveDetailCustomerPanel();
+                }
                 else if (safeTab === 'ncr') syncNcrDraftInputs(activeItem);
                 else populatePrimaryDetailTabShell(safeTab, activeDetailSourceView || lastView || '', activeItem);
             }
