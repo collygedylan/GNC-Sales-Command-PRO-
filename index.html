@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.28.16';
+window.__APP_SHELL_VERSION__ = 'V2026.04.28.17';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -874,7 +874,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.16').trim() || 'V2026.04.28.16';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.17').trim() || 'V2026.04.28.17';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1373,7 +1373,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.16';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.17';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1414,6 +1414,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         let activeVisibleViewPollMs = 0;
         const VIEW_ENTER_REFRESH_MIN_INTERVAL_MS = 12000;
         const VIEW_ENTER_REFRESH_REALTIME_HEALTHY_MS = 60000;
+        const REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS = 2500;
         const viewEnterRefreshAt = new Map();
         const REALTIME_STARTUP_GRACE_MS = 12000;
         const REALTIME_RECOVERY_GRACE_MS = 3200;
@@ -8818,7 +8819,7 @@ let selectedAvSeasons=new Set(DRIVE_SEASON_OPTIONS); let avSeasonDropdownOpen=fa
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.16').trim() || 'V2026.04.28.16';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.17').trim() || 'V2026.04.28.17';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -9315,7 +9316,7 @@ let selectedAvSeasons=new Set(DRIVE_SEASON_OPTIONS); let avSeasonDropdownOpen=fa
         const DATASET_DEFINITIONS = {
             master: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: 'select=*', fullQuery: 'select=*' },
             avOpen: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: 'select=*&s_lts=gt.0', fullQuery: 'select=*&s_lts=gt.0' },
-            requests: { table: 'v2_active_request', sourceTable: 'v2_active_request', initialQuery: 'select=*', fullQuery: 'select=*' },
+            requests: { table: 'v2_active_request', sourceTable: 'v2_active_request', initialQuery: 'select=*&order=unique_id.desc', fullQuery: 'select=*&order=unique_id.desc' },
             reserves: { table: 'v2_reserves', sourceTable: 'v2_reserves', initialQuery: buildReserveDatasetQuery, fullQuery: buildReserveDatasetQuery, initialLimit: getReserveDatasetInitialLimit },
             soc: { table: 'v2_soc_master', sourceTable: 'v2_soc_master', initialQuery: 'select=*', fullQuery: 'select=*' },
             salesOffice: { table: 'v2_sales_office', sourceTable: 'v2_sales_office', initialQuery: 'select=*', fullQuery: 'select=*' },
@@ -10180,6 +10181,12 @@ let selectedAvSeasons=new Set(DRIVE_SEASON_OPTIONS); let avSeasonDropdownOpen=fa
                 incrementInternalPerfCounter('interactionBlockedRefreshes');
                 queueVisibleDatasetCatchup(Math.max(INTERACTION_REFRESH_DEFER_MS, Number(options.backgroundDelay) || 90));
                 return;
+            }
+            if (targetView === 'request') {
+                forceRefreshRequestsForView('request-view-enter', {
+                    force: !!options.force,
+                    minIntervalMs: options.force ? 0 : REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS
+                }).catch(() => {});
             }
             const realtimeHealthy = !options.force && hasHealthyCoreRealtimeSubscriptions(targetView);
             const defaultInterval = realtimeHealthy ? VIEW_ENTER_REFRESH_REALTIME_HEALTHY_MS : VIEW_ENTER_REFRESH_MIN_INTERVAL_MS;
@@ -16984,6 +16991,9 @@ function toggleDriveQuickRequestItem(domId) {
             lastViewSwitchAt = Date.now();
             if (currentViewId === nextViewId && nextState.initialized && !nextState.dirty) {
                 incrementInternalPerfCounter('warmViewReuseHits');
+                if (nextViewId === 'request') {
+                    refreshViewDatasetsOnEnter('request', { force: true, minInterval: 0, backgroundDelay: 0 });
+                }
                 if (targetScrollTop != null) scheduleUiRender(`view-restore:${nextViewId}:${targetScrollTop}`, () => setMainAreaScrollTop(targetScrollTop));
                 schedulePrimaryViewChromeRefresh(nextViewId, {
                     delay: 0,
@@ -17698,6 +17708,7 @@ function toggleDriveQuickRequestItem(domId) {
             activeReqTab = tab === 'reps' ? 'reps' : 'pending';
             syncRequestTabButtons();
             requestViewLevel = 0; selectedReqFolder = null; selectedReqRepView = null; selectedReqCustView = null; selectedReqFolderView = null; clearSelection(); scheduleRequestRender();
+            forceRefreshRequestsForView('request-tab', { force: true, minIntervalMs: 0 }).catch(() => {});
         }
 
         function resolveRequestRecipientEmail(repName = '') {
@@ -24160,6 +24171,8 @@ function toggleDriveQuickRequestItem(domId) {
         let requestViewLiveSyncInFlight = false;
         let requestViewLiveSyncSignature = '';
         let requestViewLiveSyncPausedUntil = 0;
+        let requestViewForceRefreshInFlight = false;
+        let lastRequestViewForceRefreshAt = 0;
 
         function pauseRequestViewLiveSync(delayMs = 4500) {
             requestViewLiveSyncPausedUntil = Math.max(requestViewLiveSyncPausedUntil, Date.now() + Math.max(0, Number(delayMs) || 0));
@@ -24204,10 +24217,10 @@ function toggleDriveQuickRequestItem(domId) {
             }
             requestViewLiveSyncInFlight = true;
             try {
-                const signatureRows = await supabaseFetch('v2_active_request', 'GET', null, 'select=unique_id,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,date_completed');
+                const signatureRows = await fetchAllSupabaseRows('v2_active_request', 'select=unique_id,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,date_completed&order=unique_id.desc');
                 const nextSignature = buildRequestLiveSyncSignature(signatureRows);
                 if (nextSignature === requestViewLiveSyncSignature) return;
-                const rows = await supabaseFetch('v2_active_request', 'GET', null, 'select=*');
+                const rows = await fetchAllSupabaseRows('v2_active_request', 'select=*&order=unique_id.desc');
                 const formattedRows = formatFetchedRows(rows, 'v2_active_request');
                 processAndLoadData({ requestsData: formattedRows });
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(formattedRows);
@@ -24215,6 +24228,37 @@ function toggleDriveQuickRequestItem(domId) {
             } finally {
                 requestViewLiveSyncInFlight = false;
                 if (shouldRunRequestViewLiveSync()) syncRequestViewLiveSync(getRequestViewLiveSyncInterval());
+            }
+        }
+
+        async function forceRefreshRequestsForView(reason = 'request-view', options = {}) {
+            const safeOptions = options && typeof options === 'object' ? options : {};
+            if (!currentUser || navigator.onLine === false || shouldPauseManualSyncViewRefresh('request')) return false;
+            if (requestViewForceRefreshInFlight) return false;
+            const now = Date.now();
+            const minInterval = Math.max(0, Number(safeOptions.minIntervalMs ?? REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS) || 0);
+            if (!safeOptions.force && lastRequestViewForceRefreshAt && (now - lastRequestViewForceRefreshAt) < minInterval) return false;
+            requestViewForceRefreshInFlight = true;
+            lastRequestViewForceRefreshAt = now;
+            try {
+                const rows = await fetchAllSupabaseRows('v2_active_request', 'select=*&order=unique_id.desc');
+                const formattedRows = formatFetchedRows(rows, 'v2_active_request');
+                processAndLoadData({ requestsData: formattedRows });
+                const state = getDatasetState('requests');
+                state.initialLoaded = true;
+                state.fullLoaded = true;
+                state.lastLoadedAt = new Date().toISOString();
+                requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+                markViewDirty('request');
+                markViewDirty('reports');
+                if (isViewVisible('request')) queueInteractiveViewRender('request', false, true, 0, 160);
+                if (isViewVisible('reports')) queueInteractiveViewRender('reports', false, true, 0, 180);
+                persistCurrentCache(false, reason);
+                return true;
+            } catch (error) {
+                return false;
+            } finally {
+                requestViewForceRefreshInFlight = false;
             }
         }
 
@@ -26985,7 +27029,6 @@ function toggleDriveQuickRequestItem(domId) {
                         contSize: firstNonEmptyValue(item.CONTSIZE, item.contsize, '')
                     });
                     const autoCompleteOnCreate = autoCompleteEligible && (singleRowRequest || !isKnownSalesRepRequestName(requestedBy));
-                    const autoCompletedAt = autoCompleteOnCreate ? new Date().toISOString() : '';
                     let newReqId='REQ-'+uuidGen();
                     let newReq={
                         unique_id:newReqId,
@@ -27017,8 +27060,8 @@ function toggleDriveQuickRequestItem(domId) {
                         req_photo_link:requestPhotoLink||'',
                         req_photo_name:requestPhotoName||'',
                         req_archived:false,
-                        date_completed:autoCompletedAt||null,
-                        req_status:autoCompleteOnCreate ? 'Complete' : 'Pending'
+                        date_completed:null,
+                        req_status:'Pending'
                     };
                     insertPayloads.push(newReq);
                     optimisticIds.push(newReqId);
@@ -27042,8 +27085,8 @@ function toggleDriveQuickRequestItem(domId) {
                     clone.REQ_EST_SHIP=dataObj.estShip||"";
                     clone.REQ_RESERVE=dataObj.reserve||"NO";
                     clone.REQ_ARCHIVED=false;
-                    clone.REQ_STATUS=autoCompleteOnCreate ? 'Complete' : 'Pending';
-                    clone.DATE_COMPLETED=autoCompletedAt;
+                    clone.REQ_STATUS='Pending';
+                    clone.DATE_COMPLETED='';
                     clone.REQ_PHOTO_LINK=newReq.req_photo_link;
                     clone.REQ_PHOTO_NAME=newReq.req_photo_name;
                     if (useExistingData) {
@@ -27087,19 +27130,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (quickMode) clearDriveQuickRequestItems(true);
             showToast("Processing...",`Creating Clone Tickets...`,false);
             if (!quickMode) clearSelection();
-            const autoCompleteOnlySubmission = optimisticIds.length > 0 && optimisticIds.every(id => autoCompleteRequestIds.has(id));
-            if (autoCompleteOnlySubmission) {
-                activeReqTab = 'reps';
-                selectedReqStatus = 'Complete';
-                requestViewLevel = 3;
-                selectedReqFolder = null;
-                selectedReqRepView = requestedBy;
-                selectedReqCustView = null;
-                selectedReqFolderView = folderId || 'Unassigned';
-                syncRequestTabButtons();
-            } else {
-                forcePendingRequestRoot();
-            }
+            forcePendingRequestRoot();
             refreshLocalRequestViewState('request-submit', { renderVisible: false });
             switchView('request');
             (async () => {
