@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.28.17';
+window.__APP_SHELL_VERSION__ = 'V2026.04.28.18';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -197,6 +197,33 @@ body.viewport-compact .app-av-card-thumb-action{font-size:.48rem;padding:.24rem 
         .task-top-control-button{position:relative}
         .task-top-control-title{display:block}
         .task-top-control-summary{display:block}
+        .excel-filter-panel{display:flex;flex-direction:column;max-height:min(64vh,28rem);overflow:hidden}
+        .excel-filter-panel.hidden{display:none !important}
+        .excel-filter-search-wrap{border-bottom:1px solid rgba(16,185,129,.18);padding:.5rem}
+        .excel-filter-search{width:100%;min-height:2.65rem;border:1px solid rgba(16,185,129,.28);border-radius:.9rem;background:#fff;padding:.65rem 2.25rem .65rem .85rem;font-size:16px;font-weight:800;color:#0f172a;outline:none}
+        .excel-filter-search:focus{border-color:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.12)}
+        .excel-filter-options{max-height:min(46vh,20rem);overflow-y:auto;overscroll-behavior:contain}
+        .excel-filter-option{min-height:2.5rem}
+        .excel-filter-footer{border-top:1px solid rgba(16,185,129,.18);background:rgba(255,255,255,.94);padding:.5rem}
+        @media (max-width:720px),(pointer:coarse){
+            #task-tabs-container.task-top-inline .task-top-control-panel.excel-filter-panel,
+            #drive-season-filters.drive-top-inline .task-top-control-panel.excel-filter-panel,
+            #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel,
+            #drive-plant-filters.drive-top-inline .task-top-control-panel.excel-filter-panel{
+                position:fixed !important;
+                left:max(10px,env(safe-area-inset-left)) !important;
+                right:max(10px,env(safe-area-inset-right)) !important;
+                top:auto !important;
+                bottom:calc(var(--footer-nav-reserve,74px) + env(safe-area-inset-bottom) + 10px) !important;
+                width:auto !important;
+                max-width:none !important;
+                z-index:16000 !important;
+                max-height:min(70vh,34rem);
+                border-radius:1.2rem !important;
+                box-shadow:0 22px 46px rgba(15,23,42,.24) !important;
+            }
+            .excel-filter-options{max-height:min(48vh,22rem)}
+        }
         body.viewport-compact #task-tabs-container.task-top-inline{gap:.35rem !important}
         body.viewport-compact #task-tabs-container.task-top-inline .task-top-control-shell{padding:.32rem .38rem !important;border-radius:.92rem !important}
         body.viewport-compact #task-tabs-container.task-top-inline .task-top-control-button{min-height:42px !important;padding:.38rem .42rem !important;gap:.35rem !important;border-radius:999px !important}
@@ -874,7 +901,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.17').trim() || 'V2026.04.28.17';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.28.18').trim() || 'V2026.04.28.18';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1211,6 +1238,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div id="detail-overview-fields-empty" class="hidden mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-[11px] font-semibold text-slate-400">No matching item detail fields.</div>
                             <div id="detail-overview-fields-list" class="mt-3 grid grid-cols-1 gap-2"></div>
                         </div>
+                        <div id="drive-detail-customer-outreach-panel" class="hidden mt-6"></div>
                         <div id="expand-section" class="mt-6">
                             <div class="expand-trigger" onclick="toggleExpand()"><span>All Data</span><i class="ph-bold ph-caret-down"></i></div>
                             <div id="expand-content" class="expand-content"></div>
@@ -1373,7 +1401,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.17';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.28.18';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8742,10 +8770,10 @@ let activeHomeTab='dashboard'; let selectedProductivityUser=''; let productivity
         }
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
 let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
-let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveSeason=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let drivePlantFilterItemsCache=[]; let drivePlantFilterGenusOptions=[]; let drivePlantFilterContSizeOptions=[]; let driveGenusSelectionMode='all'; let driveContSizeSelectionMode='all'; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); const DRIVE_DRILL_ALL_VALUE='__ALL__'; const DRIVE_DRILL_ALL_LABEL='ALL'; let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS); let driveResolvedCardStateKey=''; let driveResolvedCardStateCache=null; let driveSearchRequiresManualSelection=false; let driveSearchDebounceTimer=null; let driveSearchRequestToken=0;
+let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveSeason=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let drivePlantFilterItemsCache=[]; let drivePlantFilterGenusOptions=[]; let drivePlantFilterContSizeOptions=[]; let driveGenusSelectionMode='all'; let driveContSizeSelectionMode='all'; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; let driveSeasonSearchTerm=''; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); const DRIVE_DRILL_ALL_VALUE='__ALL__'; const DRIVE_DRILL_ALL_LABEL='ALL'; let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS); let driveResolvedCardStateKey=''; let driveResolvedCardStateCache=null; let driveSearchRequiresManualSelection=false; let driveSearchDebounceTimer=null; let driveSearchRequestToken=0;
         let drivePlantFilterStateCacheKey=''; let drivePlantFilterStateCache=null;
 
-let activeTaskView="hot-price"; let activeTaskFilter="all"; let activeTaskCustomerFilter="all"; let activeTaskReserveRepFilter="all"; let activeTaskReserveCustomerFilter="all"; let activeTaskReserveCustomerFilters=new Set(); let activeTaskReserveRowStatusMode="all"; let activeTaskReservePhotoMode="all"; let activeTaskSeasonReviewMode="winner"; let activeTaskTab=activeTaskView; let activeTaskSubview=activeTaskFilter; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let selectedTaskContSizes=new Set(); let taskContSizeSearchTerm=""; let taskContSizeDropdownOpen=false; let taskContSizeFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees=""; let taskReserveCustomerSearchTerm=''; let taskReserveCustomerDropdownOpen=false; let taskReserveCustomerDraftFilters=new Set(); let lastTaskReserveCustomerRenderSignature='';
+let activeTaskView="hot-price"; let activeTaskFilter="all"; let activeTaskCustomerFilter="all"; let activeTaskReserveRepFilter="all"; let activeTaskReserveCustomerFilter="all"; let activeTaskReserveCustomerFilters=new Set(); let activeTaskReserveRowStatusMode="all"; let activeTaskReservePhotoMode="all"; let activeTaskSeasonReviewMode="winner"; let activeTaskTab=activeTaskView; let activeTaskSubview=activeTaskFilter; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let selectedTaskContSizes=new Set(); let taskContSizeSearchTerm=""; let taskContSizeDropdownOpen=false; let taskContSizeFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let taskModeSearchTerm=""; let taskSubviewSearchTerm=""; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees=""; let taskReserveCustomerSearchTerm=''; let taskReserveCustomerDropdownOpen=false; let taskReserveCustomerDraftFilters=new Set(); let lastTaskReserveCustomerRenderSignature='';
         let detailReturnState = { viewId: '', scrollTop: 0 };
         let viewHistoryStack = [];
         let pendingFieldSaveCount = 0;
@@ -8755,7 +8783,8 @@ const FIELD_SAVE_GRACE_MS = 1400;
         const VIEW_SWITCH_GRACE_MS = 480;
 
 let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='all'; let activeAvReserveDetailTab='customer'; let selectedAvReserveDetailCustomerKey=null;
-let selectedAvSeasons=new Set(DRIVE_SEASON_OPTIONS); let avSeasonDropdownOpen=false; let selectedAvGenusNames=new Set(); let avGenusSearchTerm=''; let avGenusFilterOpen=false; let avGenusSelectionMode='all'; let selectedAvContSizes=new Set(); let avContSizeSearchTerm=''; let avContSizeFilterOpen=false; let avContSizeSelectionMode='all'; let avHoldStopOnly=false; let avFilterItemsCache=[]; let avFilterGenusOptions=[]; let avFilterContSizeOptions=[];
+let selectedAvSeasons=new Set(DRIVE_SEASON_OPTIONS); let avSeasonDropdownOpen=false; let avSeasonSearchTerm=''; let selectedAvGenusNames=new Set(); let avGenusSearchTerm=''; let avGenusFilterOpen=false; let avGenusSelectionMode='all'; let selectedAvContSizes=new Set(); let avContSizeSearchTerm=''; let avContSizeFilterOpen=false; let avContSizeSelectionMode='all'; let avHoldStopOnly=false; let avFilterItemsCache=[]; let avFilterGenusOptions=[]; let avFilterContSizeOptions=[];
+let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKeys=new Set(); let driveCustomerOutreachSelectedSourceRowIds=new Set(); let driveCustomerOutreachStateKey=''; let driveCustomerOutreachSendBusy=false;
         let taskTeamSelectorCacheKey=''; let taskTeamSelectorCacheHtml=''; let taskTeamSelectorEmptyHtml='';
 
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
@@ -8819,7 +8848,7 @@ let selectedAvSeasons=new Set(DRIVE_SEASON_OPTIONS); let avSeasonDropdownOpen=fa
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.17').trim() || 'V2026.04.28.17';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.28.18').trim() || 'V2026.04.28.18';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -17252,6 +17281,8 @@ function toggleDriveQuickRequestItem(domId) {
             activeTaskTab = normalizedView;
             taskTabDropdownOpen = false;
             taskSubviewDropdownOpen = false;
+            taskModeSearchTerm = '';
+            taskSubviewSearchTerm = '';
             const allowedFilters = getTaskFilterValues(normalizedView);
             if (normalizedView === 'cust') {
                 activeTaskCustomerFilter = allowedFilters.includes(activeTaskCustomerFilter) ? activeTaskCustomerFilter : 'all';
@@ -17297,6 +17328,7 @@ function toggleDriveQuickRequestItem(domId) {
             beginDirectNavigationActivity();
             taskTabDropdownOpen = false;
             taskSubviewDropdownOpen = false;
+            taskSubviewSearchTerm = '';
             const allowedFilters = getTaskFilterDropdownOptions(activeTaskView).map((option) => option.value);
             const nextFilter = allowedFilters.includes(filter) ? filter : 'all';
             if (normalizeTaskViewValue(activeTaskView) === 'cust') {
@@ -17536,6 +17568,42 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
+        function setDriveSeasonSearchTerm(value = '') {
+            driveSeasonSearchTerm = String(value || '');
+            const input = document.getElementById('drive-season-search');
+            const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
+            scheduleUiRender('drive-season-search-ui', () => {
+                renderDriveTopControls(drivePlantFilterItemsCache);
+                requestAnimationFrame(() => {
+                    const current = document.getElementById('drive-season-search');
+                    if (!current) return;
+                    if (document.activeElement !== current) current.focus();
+                    if (cursorPos !== null && typeof current.setSelectionRange === 'function') {
+                        current.setSelectionRange(cursorPos, cursorPos);
+                    }
+                });
+            });
+            return false;
+        }
+
+        function applyVisibleDriveSeasonResults() {
+            const filtered = filterExcelOptionValues(DRIVE_SEASON_OPTIONS, driveSeasonSearchTerm);
+            if (!filtered.length) return false;
+            beginDirectNavigationActivity();
+            driveSelectedSeasons = new Set(filtered);
+            driveSeasonSearchTerm = '';
+            driveSeasonDropdownOpen = false;
+            setDriveSearchManualSelectionLock(activeDriveTab !== 'card' && hasActiveDriveSearchTerm());
+            invalidateDriveResolvedCardState();
+            scheduleDriveRender();
+            return true;
+        }
+
+        function handleDriveSeasonSearchKeydown(event) {
+            if (!isEnterKeypress(event)) return;
+            handleSearchEnterApply(event, applyVisibleDriveSeasonResults);
+        }
+
         function setDriveMode(mode) {
             closeDriveQuickFiltersModal();
             lastViewSwitchAt = Date.now();
@@ -17561,6 +17629,7 @@ function toggleDriveQuickRequestItem(domId) {
             drivePlantFilterContSizeOptions = [];
             driveViewDropdownOpen = false;
             driveSeasonDropdownOpen = false;
+            driveSeasonSearchTerm = '';
             driveSelectedSeasons = new Set(DRIVE_SEASON_OPTIONS);
             setDriveSearchManualSelectionLock(hasActiveDriveSearchTerm());
             invalidateDriveResolvedCardState();
@@ -17621,7 +17690,7 @@ function toggleDriveQuickRequestItem(domId) {
             activeDriveTab = 'name';
             resetDriveDrillSelectionState();
             selectedDriveCommonNames = new Set(); driveCommonNameSearchTerm = ''; driveCommonNameFilterOpen = false; selectedDriveGenusNames = new Set(); driveGenusSelectionMode = 'all'; driveGenusSearchTerm = ''; driveGenusFilterOpen = false; selectedDriveContSizes = new Set(); driveContSizeSelectionMode = 'all'; driveContSizeSearchTerm = ''; driveContSizeFilterOpen = false; drivePlantFilterItemsCache = []; drivePlantFilterGenusOptions = []; drivePlantFilterContSizeOptions = [];
-            driveViewDropdownOpen = false; driveSeasonDropdownOpen = false;
+            driveViewDropdownOpen = false; driveSeasonDropdownOpen = false; driveSeasonSearchTerm = '';
             document.getElementById('drive-search').value = ""; document.getElementById('drive-search-clear').classList.add('hidden');
             setDriveSearchManualSelectionLock(false);
             driveSelectedSeasons = new Set(DRIVE_SEASON_OPTIONS);
@@ -17675,7 +17744,7 @@ function toggleDriveQuickRequestItem(domId) {
             activeAVTab='open'; activeAvOpenTab='name'; activeAvHotPriceTab='all';
             avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; activeAvReserveMode='all'; activeAvReserveDetailTab='customer'; selectedAvReserveDetailCustomerKey=null;
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
-            selectedAvSeasons = new Set(DRIVE_SEASON_OPTIONS); avSeasonDropdownOpen = false; selectedAvGenusNames = new Set(); avGenusSearchTerm = ''; avGenusFilterOpen = false; avGenusSelectionMode = 'all'; selectedAvContSizes = new Set(); avContSizeSearchTerm = ''; avContSizeFilterOpen = false; avContSizeSelectionMode = 'all'; avHoldStopOnly = false; avFilterItemsCache = []; avFilterGenusOptions = []; avFilterContSizeOptions = []; avResolvedBaseStateKey = ''; avResolvedBaseStateCache = null;
+            selectedAvSeasons = new Set(DRIVE_SEASON_OPTIONS); avSeasonDropdownOpen = false; avSeasonSearchTerm = ''; selectedAvGenusNames = new Set(); avGenusSearchTerm = ''; avGenusFilterOpen = false; avGenusSelectionMode = 'all'; selectedAvContSizes = new Set(); avContSizeSearchTerm = ''; avContSizeFilterOpen = false; avContSizeSelectionMode = 'all'; avHoldStopOnly = false; avFilterItemsCache = []; avFilterGenusOptions = []; avFilterContSizeOptions = []; avResolvedBaseStateKey = ''; avResolvedBaseStateCache = null;
             document.getElementById('tab-av-open').classList.add('active'); document.getElementById('tab-av-hotprice').classList.remove('active'); document.getElementById('tab-av-reserves').classList.remove('active');
             syncAvSecondaryTabs();
             document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden');
@@ -19445,6 +19514,7 @@ function toggleDriveQuickRequestItem(domId) {
                 avContSizeFilterOpen ? '1' : '0',
                 avHoldStopOnly ? '1' : '0',
                 [...selectedAvSeasons].sort().join('|'),
+                String(avSeasonSearchTerm || '').trim().toLowerCase(),
                 [...selectedAvGenusNames].sort().join('|'),
                 [...selectedAvContSizes].sort().join('|'),
                 String(avGenusSearchTerm || '').trim().toLowerCase(),
@@ -19488,7 +19558,7 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             container.dataset.avTopControlsShell = shellSignature;
-            setContainerHtml(container, `<div class="av-top-controls-row"><div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-av-filter-shell="season"><button type="button" data-role="button" onclick="return toggleAvSeasonDropdown()"><i class="ph-bold ph-calendar-blank text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Season</span><span class="task-top-control-summary truncate" data-role="summary">All Seasons</span></span><i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i></button><div class="task-top-control-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div></div><div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-av-filter-shell="genus"><button type="button" data-role="button" onclick="return toggleAvGenusDropdown()"><i class="ph-bold ph-leaf text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus</span><span class="task-top-control-summary truncate" data-role="summary">All Genus</span></span><i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i></button><div class="task-top-control-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div></div><div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-av-filter-shell="contsize"><button type="button" data-role="button" onclick="return toggleAvContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Cont Size</span><span class="task-top-control-summary truncate" data-role="summary">All Sizes</span></span><i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i></button><div class="task-top-control-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div></div><div class="task-top-control-shell av-filter-shell av-filter-shell--toggle rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-av-filter-shell="hold"><button type="button" data-role="button" onclick="return toggleAvHoldStopOnly()"><i class="ph-bold ph-warning-circle text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">H/S</span><span class="task-top-control-summary truncate" data-role="summary">All Rows</span></span></button></div></div>`);
+            setContainerHtml(container, `<div class="av-top-controls-row"><div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-av-filter-shell="season"><button type="button" data-role="button" onclick="return toggleAvSeasonDropdown()"><i class="ph-bold ph-calendar-blank text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Season</span><span class="task-top-control-summary truncate" data-role="summary">All Seasons</span></span><i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div></div><div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-av-filter-shell="genus"><button type="button" data-role="button" onclick="return toggleAvGenusDropdown()"><i class="ph-bold ph-leaf text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus</span><span class="task-top-control-summary truncate" data-role="summary">All Genus</span></span><i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div></div><div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-av-filter-shell="contsize"><button type="button" data-role="button" onclick="return toggleAvContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Cont Size</span><span class="task-top-control-summary truncate" data-role="summary">All Sizes</span></span><i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div></div><div class="task-top-control-shell av-filter-shell av-filter-shell--toggle rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-av-filter-shell="hold"><button type="button" data-role="button" onclick="return toggleAvHoldStopOnly()"><i class="ph-bold ph-warning-circle text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">H/S</span><span class="task-top-control-summary truncate" data-role="summary">All Rows</span></span></button></div></div>`);
             container.classList.add('av-top-inline');
             container.classList.remove('hidden');
             return true;
@@ -19524,10 +19594,11 @@ function toggleDriveQuickRequestItem(domId) {
             const holdSummary = avHoldStopOnly ? 'Hold Only' : 'All Rows';
             const controlButtonClass = (isActive = false) => `task-top-control-button inline-flex w-full items-center gap-2 rounded-full border px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.11em] sm:px-3.5 sm:text-[10px] ${isActive ? 'bg-emerald-600 border-emerald-600 text-white shadow-md' : 'bg-white border-emerald-200 text-emerald-700 shadow-sm'}`;
             const holdButtonClass = `task-top-control-button inline-flex w-full items-center gap-2 rounded-full border px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.11em] sm:px-3.5 sm:text-[10px] ${avHoldStopOnly ? 'bg-amber-400 border-amber-500 text-amber-950 shadow-md' : 'bg-white border-amber-300 text-amber-700 shadow-sm'}`;
-            const seasonOptionsHtml = DRIVE_SEASON_OPTIONS.map((season) => {
+            const filteredSeasonOptions = filterExcelOptionValues(DRIVE_SEASON_OPTIONS, avSeasonSearchTerm);
+            const seasonOptionsHtml = filteredSeasonOptions.map((season) => {
                 const checked = selectedAvSeasons.has(season) ? 'checked' : '';
-                return `<label class="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-emerald-50"><span class="min-w-0 break-words text-[12px] font-bold text-slate-700">${esc(season)}</span><input type="checkbox" class="h-4 w-4 shrink-0 accent-emerald-600" data-season="${esc(season)}" ${checked} onclick="event.stopPropagation(); return toggleAvSeason(this.dataset.season)"></label>`;
-            }).join('');
+                return `<label class="excel-filter-option flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-emerald-50"><span class="min-w-0 break-words text-[12px] font-bold text-slate-700">${esc(season)}</span><input type="checkbox" class="h-4 w-4 shrink-0 accent-emerald-600" data-season="${esc(season)}" ${checked} onclick="event.stopPropagation(); return toggleAvSeason(this.dataset.season)"></label>`;
+            }).join('') || '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No matching seasons.</div>';
             const genusOptionHtml = state.genusOptions.length
                 ? buildDrivePlantMultiSelectOptionsHtml(state.filteredGenusOptions, selectedAvGenusNames, 'avgenus', 'toggleAvGenusSelection', 'No matching genus names.')
                 : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No GENUSNAME data available.</div>';
@@ -19542,21 +19613,21 @@ function toggleDriveQuickRequestItem(domId) {
                 buttonClass: controlButtonClass(avSeasonDropdownOpen),
                 summary: seasonSummary,
                 open: avSeasonDropdownOpen,
-                bodyHtml: avSeasonDropdownOpen ? `<div class="max-h-72 overflow-y-auto">${seasonOptionsHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return selectAllAvSeasons()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeAvSeasonDropdown()">Done</button></div>` : '',
-                bodySignature: `av-season:${[...selectedAvSeasons].sort().join('|')}:${avSeasonDropdownOpen ? 'open' : 'closed'}`
+                bodyHtml: avSeasonDropdownOpen ? `${buildExcelFilterSearchHtml('av-season-search', avSeasonSearchTerm, 'Search season...', 'setAvSeasonSearchTerm', 'handleAvSeasonSearchKeydown')}<div class="excel-filter-options">${seasonOptionsHtml}</div><div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return selectAllAvSeasons()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeAvSeasonDropdown()">Done</button></div>` : '',
+                bodySignature: `av-season:${[...selectedAvSeasons].sort().join('|')}:${String(avSeasonSearchTerm || '').trim().toLowerCase()}:${avSeasonDropdownOpen ? 'open' : 'closed'}`
             });
             syncAvTopControlShell(container, 'genus', {
                 buttonClass: controlButtonClass(avGenusFilterOpen),
                 summary: genusSummary,
                 open: avGenusFilterOpen,
-                bodyHtml: avGenusFilterOpen ? `<div class="border-b border-emerald-100 p-2"><input id="av-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search genus..." value="${esc(avGenusSearchTerm)}" oninput="setAvGenusSearchTerm(this.value)" onkeydown="handleAvGenusSearchKeydown(event)"></div><div class="max-h-56 overflow-y-auto">${genusOptionHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.genusAllSelected ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return selectAllAvGenus()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeAvGenusDropdown()">Done</button></div>` : '',
+                bodyHtml: avGenusFilterOpen ? `${buildExcelFilterSearchHtml('av-genus-search', avGenusSearchTerm, 'Search genus...', 'setAvGenusSearchTerm', 'handleAvGenusSearchKeydown')}<div class="excel-filter-options">${genusOptionHtml}</div><div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.genusAllSelected ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return selectAllAvGenus()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeAvGenusDropdown()">Done</button></div>` : '',
                 bodySignature: `av-genus:${state.genusOptions.join('|')}:${state.filteredGenusOptions.join('|')}:${buildSelectionStateKey(selectedAvGenusNames)}:${String(avGenusSearchTerm || '').trim().toLowerCase()}:${avGenusFilterOpen ? 'open' : 'closed'}`
             });
             syncAvTopControlShell(container, 'contsize', {
                 buttonClass: controlButtonClass(avContSizeFilterOpen),
                 summary: contSizeSummary,
                 open: avContSizeFilterOpen,
-                bodyHtml: avContSizeFilterOpen ? `<div class="border-b border-emerald-100 p-2"><input id="av-contsize-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search cont size..." value="${esc(avContSizeSearchTerm)}" oninput="setAvContSizeSearchTerm(this.value)" onkeydown="handleAvContSizeSearchKeydown(event)"></div><div class="max-h-56 overflow-y-auto">${contSizeOptionHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.contSizeAllSelected ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return selectAllAvContSizes()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeAvContSizeDropdown()">Done</button></div>` : '',
+                bodyHtml: avContSizeFilterOpen ? `${buildExcelFilterSearchHtml('av-contsize-search', avContSizeSearchTerm, 'Search cont size...', 'setAvContSizeSearchTerm', 'handleAvContSizeSearchKeydown')}<div class="excel-filter-options">${contSizeOptionHtml}</div><div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.contSizeAllSelected ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return selectAllAvContSizes()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeAvContSizeDropdown()">Done</button></div>` : '',
                 bodySignature: `av-contsize:${state.sizeOptions.join('|')}:${state.filteredSizeOptions.join('|')}:${buildSelectionStateKey(selectedAvContSizes)}:${String(avContSizeSearchTerm || '').trim().toLowerCase()}:${avContSizeFilterOpen ? 'open' : 'closed'}`
             });
             syncAvTopControlShell(container, 'hold', {
@@ -19648,6 +19719,40 @@ function toggleDriveQuickRequestItem(domId) {
             avResolvedBaseStateCache = null;
             scheduleAVRender(0);
             return false;
+        }
+
+        function setAvSeasonSearchTerm(value = '') {
+            avSeasonSearchTerm = String(value || '');
+            const input = document.getElementById('av-season-search');
+            const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
+            scheduleUiRender('av-season-search-ui', () => {
+                renderAvTopControls(avFilterItemsCache);
+                requestAnimationFrame(() => {
+                    const current = document.getElementById('av-season-search');
+                    if (!current) return;
+                    if (document.activeElement !== current) current.focus();
+                    if (cursorPos !== null && typeof current.setSelectionRange === 'function') current.setSelectionRange(cursorPos, cursorPos);
+                });
+            });
+            return false;
+        }
+
+        function applyVisibleAvSeasonResults() {
+            const filtered = filterExcelOptionValues(DRIVE_SEASON_OPTIONS, avSeasonSearchTerm);
+            if (!filtered.length) return false;
+            beginDirectNavigationActivity();
+            selectedAvSeasons = new Set(filtered);
+            avSeasonSearchTerm = '';
+            avSeasonDropdownOpen = false;
+            avResolvedBaseStateKey = '';
+            avResolvedBaseStateCache = null;
+            scheduleAVRender(0);
+            return true;
+        }
+
+        function handleAvSeasonSearchKeydown(event) {
+            if (!isEnterKeypress(event)) return;
+            handleSearchEnterApply(event, applyVisibleAvSeasonResults);
         }
 
         function setAvGenusSearchTerm(value = '') {
@@ -22061,6 +22166,7 @@ function toggleDriveQuickRequestItem(domId) {
                     emptyEl.classList.add('hidden');
                     emptyEl.innerText = 'No matching item detail fields.';
                 }
+                renderDriveCustomerOutreachPanel(null);
                 return;
             }
 
@@ -22081,6 +22187,328 @@ function toggleDriveQuickRequestItem(domId) {
             `).join('');
             emptyEl.classList.toggle('hidden', rows.length !== 0);
             emptyEl.innerText = rows.length ? '' : 'No matching item detail fields.';
+            renderDriveCustomerOutreachPanel(activeItem);
+        }
+
+        function resetDriveCustomerOutreachState() {
+            driveCustomerOutreachOpen = false;
+            driveCustomerOutreachSelectedCustomerKeys = new Set();
+            driveCustomerOutreachSelectedSourceRowIds = new Set();
+            driveCustomerOutreachStateKey = '';
+            driveCustomerOutreachSendBusy = false;
+        }
+
+        function getDriveCustomerOutreachItemCode(item = activeItem) {
+            return String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '') || '').trim().toUpperCase();
+        }
+
+        function getDriveCustomerOutreachSeason(item = activeItem) {
+            return String(firstNonEmptyValue(item && item.SEASON, item && item.season, '') || '').trim().toUpperCase();
+        }
+
+        function isDriveCustomerOutreachSameItemSeason(row = null, item = activeItem) {
+            const itemCode = getDriveCustomerOutreachItemCode(item);
+            if (!row || !itemCode || getDriveCustomerOutreachItemCode(row) !== itemCode) return false;
+            const targetSeason = getDriveCustomerOutreachSeason(item);
+            return !targetSeason || getDriveCustomerOutreachSeason(row) === targetSeason;
+        }
+
+        function getDriveCustomerOutreachRowId(row = null) {
+            return String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, row && row.DOM_ID, row && row.dom_id, '') || '').trim();
+        }
+
+        function getDriveCustomerOutreachPhotoCsv(row = null) {
+            return String(firstNonEmptyValue(
+                getSharedAppPhotoLinkCsv(row, { includePending: false }),
+                row && row.SAVED_PHOTO_LINK,
+                row && row.PHOTO_LINK,
+                row && row.PHOTOLINK,
+                ''
+            ) || '').trim();
+        }
+
+        function getDriveCustomerOutreachSpec(row = null) {
+            return String(firstNonEmptyValue(
+                getItemDisplayValue(row, 'SPEC', 'drive'),
+                row && row.SPEC,
+                row && row.spec,
+                ''
+            ) || '').trim();
+        }
+
+        function hasDriveCustomerOutreachPhotoSpec(row = null) {
+            return !!(getDriveCustomerOutreachPhotoCsv(row) && getDriveCustomerOutreachSpec(row));
+        }
+
+        function getDriveCustomerOutreachCustomerCards(item = activeItem) {
+            if (!item || !Array.isArray(reservesInventory)) return [];
+            const cards = new Map();
+            reservesInventory.forEach((row) => {
+                if (!isDriveCustomerOutreachSameItemSeason(row, item)) return;
+                const customerName = String(firstNonEmptyValue(row && row.CUSTOMERNAME, row && row.CUSTOMER, '') || '').trim();
+                const consigneeName = String(firstNonEmptyValue(row && row.CONSIGNEENAME, row && row.CONSIGNEE, '') || '').trim();
+                const label = buildRequestCustomerValue(customerName, consigneeName) || customerName || consigneeName;
+                if (!label) return;
+                const repName = resolveCanonicalRequestRepName(firstNonEmptyValue(row && row.SALESREPNAME, row && row.SALESREP, row && row.SALES_REP, row && row.SALESREPID, 'Unknown Rep')) || 'Unknown Rep';
+                const key = [repName, customerName, consigneeName, label].map((value) => normalizeRepMatchToken(value)).join('||');
+                const entry = cards.get(key) || {
+                    key,
+                    repName,
+                    customerName,
+                    consigneeName,
+                    label,
+                    rows: [],
+                    qty: 0
+                };
+                entry.rows.push(row);
+                entry.qty += Number(firstNonEmptyValue(row && row.QTY, row && row.QUANTITY, row && row.quantity, 0)) || 0;
+                cards.set(key, entry);
+            });
+            return Array.from(cards.values()).sort((a, b) => {
+                const repCompare = String(a.repName || '').localeCompare(String(b.repName || ''));
+                if (repCompare) return repCompare;
+                return String(a.label || '').localeCompare(String(b.label || ''));
+            });
+        }
+
+        function getDriveCustomerOutreachSourceRows(item = activeItem) {
+            if (!item || !Array.isArray(fullInventory)) return [];
+            return fullInventory
+                .filter((row) => isDriveCustomerOutreachSameItemSeason(row, item) && hasDriveCustomerOutreachPhotoSpec(row))
+                .sort((a, b) => String(firstNonEmptyValue(a && a.LOCATIONCODE, '') || '').localeCompare(String(firstNonEmptyValue(b && b.LOCATIONCODE, '') || ''), undefined, { numeric: true }));
+        }
+
+        function syncDriveCustomerOutreachDefaultSelections(item = activeItem, cards = [], sourceRows = []) {
+            const stateKey = [
+                getDriveCustomerOutreachRowId(item),
+                getDriveCustomerOutreachItemCode(item),
+                getDriveCustomerOutreachSeason(item),
+                cards.map((card) => card.key).join('|'),
+                sourceRows.map(getDriveCustomerOutreachRowId).join('|')
+            ].join('::');
+            if (driveCustomerOutreachStateKey === stateKey) return;
+            driveCustomerOutreachStateKey = stateKey;
+            driveCustomerOutreachSelectedCustomerKeys = new Set(cards.map((card) => card.key));
+            const activeRowId = getDriveCustomerOutreachRowId(item);
+            const activeRowIsUsable = activeRowId && sourceRows.some((row) => getDriveCustomerOutreachRowId(row) === activeRowId);
+            driveCustomerOutreachSelectedSourceRowIds = new Set(
+                activeRowIsUsable
+                    ? [activeRowId]
+                    : (sourceRows[0] ? [getDriveCustomerOutreachRowId(sourceRows[0])] : [])
+            );
+        }
+
+        function renderDriveCustomerOutreachPanel(item = activeItem) {
+            const panel = document.getElementById('drive-detail-customer-outreach-panel');
+            if (!panel) return;
+            const isDriveDetail = String(activeDetailSourceView || '').trim().toLowerCase() === 'drive';
+            if (!isDriveDetail || !item) {
+                panel.classList.add('hidden');
+                panel.innerHTML = '';
+                return;
+            }
+            const cards = getDriveCustomerOutreachCustomerCards(item);
+            const sourceRows = getDriveCustomerOutreachSourceRows(item);
+            syncDriveCustomerOutreachDefaultSelections(item, cards, sourceRows);
+            const selectedCustomerCount = cards.filter((card) => driveCustomerOutreachSelectedCustomerKeys.has(card.key)).length;
+            const selectedSourceCount = sourceRows.filter((row) => driveCustomerOutreachSelectedSourceRowIds.has(getDriveCustomerOutreachRowId(row))).length;
+            const commonName = String(firstNonEmptyValue(item && item.COMMONNAME, item && item.DESCRIPTION, 'Item') || 'Item').trim();
+            const itemCode = getDriveCustomerOutreachItemCode(item) || '--';
+            const season = getDriveCustomerOutreachSeason(item) || 'All Seasons';
+            const customerHtml = cards.length ? cards.map((card) => {
+                const checked = driveCustomerOutreachSelectedCustomerKeys.has(card.key) ? 'checked' : '';
+                const qtyLabel = card.qty ? `Qty ${card.qty}` : `${card.rows.length} row${card.rows.length === 1 ? '' : 's'}`;
+                return `<label class="flex items-start gap-3 rounded-xl border border-emerald-100 bg-white px-3 py-3 shadow-sm"><input type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-emerald-600" ${checked} onclick='event.stopPropagation(); return toggleDriveCustomerOutreachCustomer(${JSON.stringify(card.key)})'><span class="min-w-0 flex-1"><span class="block break-words text-[12px] font-black text-slate-800">${esc(card.label)}</span><span class="mt-1 block text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${esc(card.repName)} &bull; ${esc(qtyLabel)}</span></span></label>`;
+            }).join('') : '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[11px] font-bold text-slate-400">No customer / consignee reserve rows found for this item and season.</div>';
+            const sourceHtml = sourceRows.length ? sourceRows.map((row) => {
+                const rowId = getDriveCustomerOutreachRowId(row);
+                const checked = driveCustomerOutreachSelectedSourceRowIds.has(rowId) ? 'checked' : '';
+                const photos = extractSharePhotoUrls(getDriveCustomerOutreachPhotoCsv(row), row);
+                const photoThumb = photos[0] ? `<img src="${esc(getDirectImageUrl(photos[0].url, 'gallery-tile'))}" class="h-12 w-12 shrink-0 rounded-xl border border-slate-200 object-cover" loading="lazy" decoding="async">` : '<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-[9px] font-black uppercase text-slate-400">Photo</div>';
+                const spec = getDriveCustomerOutreachSpec(row);
+                return `<label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm"><input type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-emerald-600" ${checked} onclick='event.stopPropagation(); return toggleDriveCustomerOutreachSourceRow(${JSON.stringify(rowId)})'>${photoThumb}<span class="min-w-0 flex-1"><span class="block text-[12px] font-black text-[#007a4d]">${esc(firstNonEmptyValue(row && row.LOCATIONCODE, 'No Loc'))} ${esc(firstNonEmptyValue(row && row.LOTCODE, ''))}</span><span class="mt-1 block break-words text-[11px] font-bold text-slate-700">Spec: ${esc(spec)}</span><span class="mt-1 block text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">PRI ${esc(firstNonEmptyValue(row && row.PRIORITY, '-'))} &bull; PTR ${esc(firstNonEmptyValue(row && row.PTRAVAILABLE, 0))} &bull; ${photos.length} photo${photos.length === 1 ? '' : 's'}</span></span></label>`;
+            }).join('') : '<div class="rounded-xl border border-dashed border-amber-200 bg-amber-50 px-4 py-5 text-center text-[11px] font-bold text-amber-700">No rows with both photos and specs were found for this item and season.</div>';
+            const sendDisabled = !selectedCustomerCount || !selectedSourceCount || driveCustomerOutreachSendBusy;
+            panel.classList.remove('hidden');
+            panel.innerHTML = `<div class="rounded-[1.35rem] border border-emerald-100 bg-white p-4 shadow-sm"><button type="button" class="flex w-full items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-left active:scale-[0.99]" onclick="return toggleDriveCustomerOutreachPanel()"><span class="min-w-0"><span class="block text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Customer / Consignee Send</span><span class="mt-1 block truncate text-[12px] font-bold text-slate-600">${esc(commonName)} &bull; ${esc(itemCode)} &bull; ${esc(season)}</span><span class="mt-1 block text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${selectedCustomerCount}/${cards.length} customers &bull; ${selectedSourceCount}/${sourceRows.length} photo/spec rows</span></span><i class="ph-bold ph-caret-down shrink-0 text-sm text-emerald-700 transition-transform ${driveCustomerOutreachOpen ? 'rotate-180' : ''}"></i></button>${driveCustomerOutreachOpen ? `<div class="mt-4 space-y-4"><div><div class="mb-2 flex items-center justify-between gap-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Customer-Consignee</div><div class="flex gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachCustomersSelected(true)">All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachCustomersSelected(false)">None</button></div></div><div class="grid grid-cols-1 gap-2">${customerHtml}</div></div><div><div class="mb-2 flex items-center justify-between gap-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Photo / Spec Rows To Send</div><div class="flex gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachSourceRowsSelected(true)">All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachSourceRowsSelected(false)">None</button></div></div><div class="grid grid-cols-1 gap-2">${sourceHtml}</div></div><button type="button" class="w-full rounded-2xl px-4 py-3 text-[12px] font-black uppercase tracking-[0.14em] shadow-sm ${sendDisabled ? 'pointer-events-none bg-slate-200 text-slate-400' : 'bg-emerald-700 text-white active:scale-[0.99]'}" onclick="return sendDriveCustomerOutreachEmails()">${driveCustomerOutreachSendBusy ? 'Sending...' : 'Send To Selected Reps'}</button></div>` : ''}</div>`;
+        }
+
+        function toggleDriveCustomerOutreachPanel() {
+            driveCustomerOutreachOpen = !driveCustomerOutreachOpen;
+            renderDriveCustomerOutreachPanel(activeItem);
+            return false;
+        }
+
+        function toggleDriveCustomerOutreachCustomer(key = '') {
+            const safeKey = String(key || '').trim();
+            if (!safeKey) return false;
+            if (driveCustomerOutreachSelectedCustomerKeys.has(safeKey)) driveCustomerOutreachSelectedCustomerKeys.delete(safeKey);
+            else driveCustomerOutreachSelectedCustomerKeys.add(safeKey);
+            driveCustomerOutreachOpen = true;
+            renderDriveCustomerOutreachPanel(activeItem);
+            return false;
+        }
+
+        function toggleDriveCustomerOutreachSourceRow(rowId = '') {
+            const safeId = String(rowId || '').trim();
+            if (!safeId) return false;
+            if (driveCustomerOutreachSelectedSourceRowIds.has(safeId)) driveCustomerOutreachSelectedSourceRowIds.delete(safeId);
+            else driveCustomerOutreachSelectedSourceRowIds.add(safeId);
+            driveCustomerOutreachOpen = true;
+            renderDriveCustomerOutreachPanel(activeItem);
+            return false;
+        }
+
+        function setDriveCustomerOutreachCustomersSelected(selected = true) {
+            const cards = getDriveCustomerOutreachCustomerCards(activeItem);
+            driveCustomerOutreachSelectedCustomerKeys = selected ? new Set(cards.map((card) => card.key)) : new Set();
+            driveCustomerOutreachOpen = true;
+            renderDriveCustomerOutreachPanel(activeItem);
+            return false;
+        }
+
+        function setDriveCustomerOutreachSourceRowsSelected(selected = true) {
+            const rows = getDriveCustomerOutreachSourceRows(activeItem);
+            driveCustomerOutreachSelectedSourceRowIds = selected ? new Set(rows.map(getDriveCustomerOutreachRowId).filter(Boolean)) : new Set();
+            driveCustomerOutreachOpen = true;
+            renderDriveCustomerOutreachPanel(activeItem);
+            return false;
+        }
+
+        function getDriveCustomerOutreachSelectedState(item = activeItem) {
+            const cards = getDriveCustomerOutreachCustomerCards(item);
+            const sourceRows = getDriveCustomerOutreachSourceRows(item);
+            syncDriveCustomerOutreachDefaultSelections(item, cards, sourceRows);
+            return {
+                cards: cards.filter((card) => driveCustomerOutreachSelectedCustomerKeys.has(card.key)),
+                sourceRows: sourceRows.filter((row) => driveCustomerOutreachSelectedSourceRowIds.has(getDriveCustomerOutreachRowId(row)))
+            };
+        }
+
+        function buildDriveCustomerOutreachItemsPayload(rows = []) {
+            return (Array.isArray(rows) ? rows : []).map((row) => {
+                const photoEntries = extractSharePhotoUrls(getDriveCustomerOutreachPhotoCsv(row), row);
+                return {
+                    unique_id: getDriveCustomerOutreachRowId(row),
+                    commonname: firstNonEmptyValue(row && row.COMMONNAME, ''),
+                    contsize: firstNonEmptyValue(row && row.CONTSIZE, ''),
+                    itemcode: firstNonEmptyValue(row && row.ITEMCODE, ''),
+                    season: firstNonEmptyValue(row && row.SEASON, ''),
+                    locationcode: firstNonEmptyValue(row && row.LOCATIONCODE, ''),
+                    lotcode: firstNonEmptyValue(row && row.LOTCODE, ''),
+                    priority: firstNonEmptyValue(row && row.PRIORITY, ''),
+                    ptravailable: firstNonEmptyValue(row && row.PTRAVAILABLE, ''),
+                    s_lts: firstNonEmptyValue(row && row.S_LTS, row && row.s_lts, ''),
+                    spec: getDriveCustomerOutreachSpec(row),
+                    caliper: firstNonEmptyValue(getItemDisplayValue(row, 'CALIPER', 'drive'), row && row.CALIPER, ''),
+                    av_note: firstNonEmptyValue(getItemDisplayValue(row, 'AV_NOTE', 'drive'), row && row.AV_NOTE, ''),
+                    match: firstNonEmptyValue(getItemDisplayValue(row, 'MATCH', 'drive'), row && row.MATCH, ''),
+                    loc_match_qty: firstNonEmptyValue(getDisplayLocMatchQtyValue(row, 'drive'), row && row.LOC_MATCH_QTY, ''),
+                    photo: getDriveCustomerOutreachPhotoCsv(row),
+                    photos: photoEntries.map((entry) => entry.url)
+                };
+            });
+        }
+
+        function buildDriveCustomerOutreachEmailText(customers = [], sourceRows = [], item = activeItem) {
+            const customerLines = customers.map((card) => `- ${card.label} (${card.repName})`).join('\n');
+            const itemHeader = [
+                firstNonEmptyValue(item && item.COMMONNAME, 'Item'),
+                firstNonEmptyValue(item && item.CONTSIZE, ''),
+                getDriveCustomerOutreachItemCode(item),
+                getDriveCustomerOutreachSeason(item)
+            ].map((value) => String(value || '').trim()).filter(Boolean).join(' ');
+            return `${itemHeader}\n\nCustomer / Consignee:\n${customerLines}\n\nPhoto / Spec Rows:\n${formatInventoryItemsText(sourceRows, '', { includePhotoUrls: true })}`.trim();
+        }
+
+        function buildDriveCustomerOutreachEmailHtml(customers = [], sourceRows = [], item = activeItem) {
+            const customerHtml = customers.map((card) => `<li>${escapeShareHtml(card.label)} <span style="color:#64748b;">(${escapeShareHtml(card.repName)})</span></li>`).join('');
+            const itemHeader = [
+                firstNonEmptyValue(item && item.COMMONNAME, 'Item'),
+                firstNonEmptyValue(item && item.CONTSIZE, ''),
+                getDriveCustomerOutreachItemCode(item),
+                getDriveCustomerOutreachSeason(item)
+            ].map((value) => String(value || '').trim()).filter(Boolean).join(' ');
+            return `<div><div style="font-weight:700;margin:0 0 12px 0;">${escapeShareHtml(itemHeader)}</div><div style="font-weight:700;margin:0 0 6px 0;">Customer / Consignee</div><ul style="margin:0 0 16px 18px;padding:0;">${customerHtml}</ul>${formatInventoryItemsHtml(sourceRows, 'Photo / Spec Rows')}</div>`;
+        }
+
+        async function sendDriveCustomerOutreachEmails() {
+            if (driveCustomerOutreachSendBusy) return false;
+            const state = getDriveCustomerOutreachSelectedState(activeItem);
+            if (!state.cards.length) {
+                showToast('Select Customers', 'Pick at least one customer / consignee card.', true);
+                return false;
+            }
+            if (!state.sourceRows.length) {
+                showToast('Select Rows', 'Pick at least one row with photos and specs.', true);
+                return false;
+            }
+            const groupedByRep = new Map();
+            state.cards.forEach((card) => {
+                const repName = card.repName || 'Unknown Rep';
+                if (!groupedByRep.has(repName)) groupedByRep.set(repName, []);
+                groupedByRep.get(repName).push(card);
+            });
+            driveCustomerOutreachSendBusy = true;
+            driveCustomerOutreachOpen = true;
+            renderDriveCustomerOutreachPanel(activeItem);
+            try {
+                const itemCode = getDriveCustomerOutreachItemCode(activeItem);
+                const season = getDriveCustomerOutreachSeason(activeItem);
+                const commonName = String(firstNonEmptyValue(activeItem && activeItem.COMMONNAME, 'Item') || 'Item').trim();
+                let sentCount = 0;
+                for (const [repName, customers] of groupedByRep.entries()) {
+                    const repEmail = resolveRequestRecipientEmail(repName);
+                    const recipientEmails = dedupeRequestEmailRecipients([repEmail, ...REQUEST_EMAIL_INTERNAL_RECIPIENTS]);
+                    const subject = `Customer Photos/Specs - ${[commonName, itemCode, season].filter(Boolean).join(' ')}`;
+                    const customerPayload = customers.map((card) => ({
+                        customername: card.customerName,
+                        consigneename: card.consigneeName,
+                        label: card.label,
+                        rows: card.rows.length,
+                        qty: card.qty
+                    }));
+                    const itemPayload = buildDriveCustomerOutreachItemsPayload(state.sourceRows);
+                    const payload = {
+                        type: 'email',
+                        emailType: 'drive_customer_outreach',
+                        subject,
+                        repName,
+                        salesRepName: repName,
+                        repEmail,
+                        salesRepEmail: repEmail,
+                        dylanEmail: REQUEST_EMAIL_INTERNAL_RECIPIENTS[0],
+                        jdEmail: REQUEST_EMAIL_INTERNAL_RECIPIENTS[1],
+                        internalRecipients: REQUEST_EMAIL_INTERNAL_RECIPIENTS.slice(),
+                        recipientEmails,
+                        recipients: recipientEmails.map((email) => ({ email, role: email === repEmail ? 'sales-rep' : 'internal' })),
+                        commonname: commonName,
+                        itemcode: itemCode,
+                        season,
+                        customers: customerPayload,
+                        customerConsigneeRows: customerPayload,
+                        sourceRows: itemPayload,
+                        items: itemPayload,
+                        formattedItemsText: buildDriveCustomerOutreachEmailText(customers, state.sourceRows, activeItem),
+                        formattedItemsHtml: buildDriveCustomerOutreachEmailHtml(customers, state.sourceRows, activeItem)
+                    };
+                    const responseData = await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Drive Customer Outreach Email');
+                    if (responseData && responseData.ok === false) {
+                        const error = new Error(`Email failed (${responseData.status || 0})`);
+                        error.responseData = responseData;
+                        throw error;
+                    }
+                    sentCount += 1;
+                }
+                showToast('Sent', `Sent ${sentCount} rep email${sentCount === 1 ? '' : 's'} with Dylan and JD copied.`);
+            } catch (error) {
+                console.error('Drive customer outreach email failed', error);
+                showToast('Email Error', 'Customer photo/spec email could not be sent.', true);
+            } finally {
+                driveCustomerOutreachSendBusy = false;
+                renderDriveCustomerOutreachPanel(activeItem);
+            }
+            return false;
         }
 
         function resolveDetailItemBySource(uid, sourceView = '') {
@@ -22114,7 +22542,12 @@ function toggleDriveQuickRequestItem(domId) {
             const emptyEl = document.getElementById('detail-overview-fields-empty');
             const expandSection = document.getElementById('expand-section');
             const expandContent = document.getElementById('expand-content');
+            const outreachPanel = document.getElementById('drive-detail-customer-outreach-panel');
             if (overviewWrap) overviewWrap.classList.add('hidden');
+            if (outreachPanel) {
+                outreachPanel.classList.add('hidden');
+                outreachPanel.innerHTML = '';
+            }
             if (countEl) countEl.innerText = '0 Fields';
             if (listEl) listEl.innerHTML = '';
             if (emptyEl) {
@@ -22688,6 +23121,7 @@ function toggleDriveQuickRequestItem(domId) {
             lastView = resolvedSourceView;
             activeDetailSourceView = resolvedSourceView;
             activeItem = nextItem;
+            resetDriveCustomerOutreachState();
             if (resolvedSourceView === 'tasks') activeTaskSeasonReviewMode = 'winner';
             selectedAvReserveDetailCustomerKey = null;
             resetDetailOverviewFieldSearch();
@@ -28014,7 +28448,37 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             return options.map((value) => {
                 const checked = selectedSet.has(value) ? 'checked' : '';
-                return `<label class="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-emerald-50"><span class="min-w-0 break-words text-[12px] font-bold text-slate-700">${esc(value)}</span><input type="checkbox" class="h-4 w-4 shrink-0 accent-emerald-600" data-${dataAttr}="${esc(value)}" ${checked} onclick="event.stopPropagation(); return ${toggleHandler}(this.dataset.${dataAttr})"></label>`;
+                return `<label class="excel-filter-option flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-emerald-50"><span class="min-w-0 break-words text-[12px] font-bold text-slate-700">${esc(value)}</span><input type="checkbox" class="h-4 w-4 shrink-0 accent-emerald-600" data-${dataAttr}="${esc(value)}" ${checked} onclick="event.stopPropagation(); return ${toggleHandler}(this.dataset.${dataAttr})"></label>`;
+            }).join('');
+        }
+
+        function normalizeExcelFilterSearchTerm(value = '') {
+            return String(value || '').trim().toLowerCase();
+        }
+
+        function filterExcelOptionValues(options = [], searchTerm = '') {
+            const term = normalizeExcelFilterSearchTerm(searchTerm);
+            const safeOptions = Array.isArray(options) ? options : [];
+            if (!term) return safeOptions;
+            return safeOptions.filter((option) => String(option && option.label ? option.label : option || '').toLowerCase().includes(term));
+        }
+
+        function buildExcelFilterSearchHtml(inputId = '', value = '', placeholder = 'Search...', inputHandler = '', keydownHandler = '') {
+            const onInput = inputHandler ? ` oninput="${inputHandler}(this.value)"` : '';
+            const onKeydown = keydownHandler ? ` onkeydown="${keydownHandler}(event)"` : ' onkeydown="dismissSearchKeyboard(event)"';
+            return `<div class="excel-filter-search-wrap"><div class="relative"><input id="${esc(inputId)}" type="text" class="excel-filter-search" placeholder="${esc(placeholder)}" value="${esc(value)}"${onInput}${onKeydown}><i class="ph-bold ph-magnifying-glass pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-emerald-500"></i></div></div>`;
+        }
+
+        function buildExcelFilterOptionButtonsHtml(options = [], selectedValue = '', clickHandler = '', emptyText = 'No matches') {
+            if (!Array.isArray(options) || !options.length) {
+                return `<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">${esc(emptyText)}</div>`;
+            }
+            const current = String(selectedValue || '').trim();
+            return options.map((option) => {
+                const value = String(option && option.value != null ? option.value : '').trim();
+                const label = String(option && option.label != null ? option.label : value).trim();
+                const isSelected = value === current;
+                return `<button type="button" class="excel-filter-option flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" data-excel-value="${esc(encodeURIComponent(value))}" onclick="return ${clickHandler}(decodeURIComponent(this.dataset.excelValue || ''))"><span class="min-w-0 break-words text-[12px] font-bold">${esc(label)}</span>${isSelected ? '<i class="ph-bold ph-check text-sm"></i>' : ''}</button>`;
             }).join('');
         }
 
@@ -28111,6 +28575,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 driveContSizeFilterOpen ? '1' : '0',
                 driveQuickHoldStopOnly ? '1' : '0',
                 [...driveSelectedSeasons].sort().join('|'),
+                String(driveSeasonSearchTerm || '').trim().toLowerCase(),
                 [...selectedDriveGenusNames].sort().join('|'),
                 String(driveGenusSearchTerm || '').trim().toLowerCase(),
                 Array.isArray(state.genusOptions) ? state.genusOptions.join('|') : '',
@@ -28142,7 +28607,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return false;
             }
             container.dataset.driveTopControlsShell = shellSignature;
-            setContainerHtml(container, `<div class="drive-top-controls-row"><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-drive-filter-shell="season"><button type="button" data-role="button" onclick="return toggleDriveSeasonDropdown()"><i class="ph-bold ph-calendar-blank text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Season</span><span class="task-top-control-summary truncate" data-role="summary">All Seasons</span></span><i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i></button><div class="task-top-control-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div></div><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-drive-filter-shell="genus"><button type="button" data-role="button" onclick="return toggleDriveGenusDropdown()"><i class="ph-bold ph-leaf text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus</span><span class="task-top-control-summary truncate" data-role="summary">All Genus</span></span><i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i></button><div class="task-top-control-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div></div><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-drive-filter-shell="contsize"><button type="button" data-role="button" onclick="return toggleDriveContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Cont Size</span><span class="task-top-control-summary truncate" data-role="summary">All Sizes</span></span><i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i></button><div class="task-top-control-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div></div><div class="task-top-control-shell drive-filter-shell drive-filter-shell--toggle rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-drive-filter-shell="hold"><button type="button" data-role="button" onclick="return toggleDriveHoldStopOnly()"><i class="ph-bold ph-warning-circle text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">H/S Hold</span><span class="task-top-control-summary truncate" data-role="summary">All Rows</span></span></button></div></div>`);
+            setContainerHtml(container, `<div class="drive-top-controls-row"><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-drive-filter-shell="season"><button type="button" data-role="button" onclick="return toggleDriveSeasonDropdown()"><i class="ph-bold ph-calendar-blank text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Season</span><span class="task-top-control-summary truncate" data-role="summary">All Seasons</span></span><i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div></div><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-drive-filter-shell="genus"><button type="button" data-role="button" onclick="return toggleDriveGenusDropdown()"><i class="ph-bold ph-leaf text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus</span><span class="task-top-control-summary truncate" data-role="summary">All Genus</span></span><i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div></div><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-drive-filter-shell="contsize"><button type="button" data-role="button" onclick="return toggleDriveContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Cont Size</span><span class="task-top-control-summary truncate" data-role="summary">All Sizes</span></span><i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div></div><div class="task-top-control-shell drive-filter-shell drive-filter-shell--toggle rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-drive-filter-shell="hold"><button type="button" data-role="button" onclick="return toggleDriveHoldStopOnly()"><i class="ph-bold ph-warning-circle text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">H/S Hold</span><span class="task-top-control-summary truncate" data-role="summary">All Rows</span></span></button></div></div>`);
             container.classList.add('drive-top-inline');
             container.classList.remove('hidden');
             return true;
@@ -28182,10 +28647,11 @@ ${folderNote ? `Folder Note: ${folderNote}
             const holdSummary = driveQuickHoldStopOnly ? 'Hold Only' : 'All Rows';
             const controlButtonClass = (isActive = false) => `task-top-control-button inline-flex w-full items-center gap-2 rounded-full border px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.11em] sm:px-3.5 sm:text-[10px] ${isActive ? 'bg-emerald-600 border-emerald-600 text-white shadow-md' : 'bg-white border-emerald-200 text-emerald-700 shadow-sm'}`;
             const holdButtonClass = `task-top-control-button inline-flex w-full items-center gap-2 rounded-full border px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.11em] sm:px-3.5 sm:text-[10px] ${driveQuickHoldStopOnly ? 'bg-amber-400 border-amber-500 text-amber-950 shadow-md' : 'bg-white border-amber-300 text-amber-700 shadow-sm'}`;
-            const seasonOptionsHtml = DRIVE_SEASON_OPTIONS.map((season) => {
+            const filteredSeasonOptions = filterExcelOptionValues(DRIVE_SEASON_OPTIONS, driveSeasonSearchTerm);
+            const seasonOptionsHtml = filteredSeasonOptions.map((season) => {
                 const checked = driveSelectedSeasons.has(season) ? 'checked' : '';
-                return `<label class="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-emerald-50"><span class="min-w-0 break-words text-[12px] font-bold text-slate-700">${esc(season)}</span><input type="checkbox" class="h-4 w-4 shrink-0 accent-emerald-600" data-season="${esc(season)}" ${checked} onclick="event.stopPropagation(); return toggleDriveSeason(this.dataset.season)"></label>`;
-            }).join('');
+                return `<label class="excel-filter-option flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-emerald-50"><span class="min-w-0 break-words text-[12px] font-bold text-slate-700">${esc(season)}</span><input type="checkbox" class="h-4 w-4 shrink-0 accent-emerald-600" data-season="${esc(season)}" ${checked} onclick="event.stopPropagation(); return toggleDriveSeason(this.dataset.season)"></label>`;
+            }).join('') || '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No matching seasons.</div>';
             const genusOptionHtml = state.genusOptions.length
                 ? buildDrivePlantMultiSelectOptionsHtml(state.filteredGenusOptions, selectedDriveGenusNames, 'genus', 'toggleDriveGenusSelection', 'No matching genus names.')
                 : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No GENUSNAME data available.</div>';
@@ -28201,14 +28667,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                 buttonClass: controlButtonClass(driveSeasonDropdownOpen),
                 summary: driveSeasonSummary,
                 open: !isCommonNameTab && driveSeasonDropdownOpen,
-                bodyHtml: !isCommonNameTab && driveSeasonDropdownOpen ? `<div class="max-h-72 overflow-y-auto">${seasonOptionsHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return selectAllDriveSeasons()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveSeasonDropdown()">Done</button></div>` : '',
-                bodySignature: `drive-season:${[...driveSelectedSeasons].sort().join('|')}:${driveSeasonDropdownOpen ? 'open' : 'closed'}:${isCommonNameTab ? 'hidden' : 'visible'}`
+                bodyHtml: !isCommonNameTab && driveSeasonDropdownOpen ? `${buildExcelFilterSearchHtml('drive-season-search', driveSeasonSearchTerm, 'Search season...', 'setDriveSeasonSearchTerm', 'handleDriveSeasonSearchKeydown')}<div class="excel-filter-options">${seasonOptionsHtml}</div><div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" onclick="return selectAllDriveSeasons()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveSeasonDropdown()">Done</button></div>` : '',
+                bodySignature: `drive-season:${[...driveSelectedSeasons].sort().join('|')}:${String(driveSeasonSearchTerm || '').trim().toLowerCase()}:${driveSeasonDropdownOpen ? 'open' : 'closed'}:${isCommonNameTab ? 'hidden' : 'visible'}`
             });
             syncDriveTopControlShell(container, 'genus', {
                 buttonClass: controlButtonClass(driveGenusFilterOpen),
                 summary: genusSummary,
                 open: driveGenusFilterOpen,
-                bodyHtml: driveGenusFilterOpen ? `<div class="border-b border-emerald-100 p-2"><input id="drive-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search genus..." value="${esc(driveGenusSearchTerm)}" oninput="setDriveGenusSearchTerm(this.value)" onkeydown="handleDriveGenusSearchKeydown(event)"></div><div class="max-h-56 overflow-y-auto">${genusOptionHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.genusAllSelected ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return selectAllDriveGenus()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveGenusDropdown()">Done</button></div>` : '',
+                bodyHtml: driveGenusFilterOpen ? `${buildExcelFilterSearchHtml('drive-genus-search', driveGenusSearchTerm, 'Search genus...', 'setDriveGenusSearchTerm', 'handleDriveGenusSearchKeydown')}<div class="excel-filter-options">${genusOptionHtml}</div><div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.genusAllSelected ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return selectAllDriveGenus()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveGenusDropdown()">Done</button></div>` : '',
                 bodySignature: `drive-genus:${state.genusOptions.join('|')}:${state.filteredGenusOptions.join('|')}:${buildSelectionStateKey(selectedDriveGenusNames)}:${String(driveGenusSearchTerm || '').trim().toLowerCase()}:${driveGenusFilterOpen ? 'open' : 'closed'}`
             });
             syncDriveTopControlShell(container, 'contsize', {
@@ -28216,7 +28682,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 buttonClass: controlButtonClass(driveContSizeFilterOpen),
                 summary: contSizeSummary,
                 open: !isCommonNameTab && driveContSizeFilterOpen,
-                bodyHtml: !isCommonNameTab && driveContSizeFilterOpen ? `<div class="border-b border-emerald-100 p-2"><input id="drive-contsize-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white !py-2.5" placeholder="Search cont size..." value="${esc(driveContSizeSearchTerm)}" oninput="setDriveContSizeSearchTerm(this.value)" onkeydown="handleDriveContSizeSearchKeydown(event)"></div><div class="max-h-56 overflow-y-auto">${contSizeOptionHtml}</div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.contSizeAllSelected ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return selectAllDriveContSizes()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveContSizeDropdown()">Done</button></div>` : '',
+                bodyHtml: !isCommonNameTab && driveContSizeFilterOpen ? `${buildExcelFilterSearchHtml('drive-contsize-search', driveContSizeSearchTerm, 'Search cont size...', 'setDriveContSizeSearchTerm', 'handleDriveContSizeSearchKeydown')}<div class="excel-filter-options">${contSizeOptionHtml}</div><div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.contSizeAllSelected ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return selectAllDriveContSizes()">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDriveContSizeDropdown()">Done</button></div>` : '',
                 bodySignature: `drive-contsize:${state.sizeOptions.join('|')}:${state.filteredSizeOptions.join('|')}:${buildSelectionStateKey(selectedDriveContSizes)}:${String(driveContSizeSearchTerm || '').trim().toLowerCase()}:${driveContSizeFilterOpen ? 'open' : 'closed'}:${isCommonNameTab ? 'hidden' : 'visible'}`
             });
             syncDriveTopControlShell(container, 'hold', {
@@ -30165,6 +30631,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             const hadOpen = hadModeOpen || hadSubviewOpen || hadReserveCustomerOpen;
             taskTabDropdownOpen = false;
             taskSubviewDropdownOpen = false;
+            taskModeSearchTerm = '';
+            taskSubviewSearchTerm = '';
             taskReserveCustomerDropdownOpen = false;
             taskReserveCustomerSearchTerm = '';
             taskReserveCustomerDraftFilters = new Set(getNormalizedTaskReserveCustomerValuesForRep(activeTaskReserveCustomerFilters, activeTaskReserveRepFilter));
@@ -30199,6 +30667,34 @@ ${folderNote ? `Folder Note: ${folderNote}
             return false;
         }
 
+        function setTaskModeSearchTerm(value = '') {
+            taskModeSearchTerm = String(value || '');
+            const input = document.getElementById('task-mode-search');
+            const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
+            scheduleUiRender('task-mode-search-ui', () => {
+                syncTaskModeControls(activeTaskTab);
+                requestAnimationFrame(() => {
+                    const current = document.getElementById('task-mode-search');
+                    if (!current) return;
+                    if (document.activeElement !== current) current.focus();
+                    if (cursorPos !== null && typeof current.setSelectionRange === 'function') current.setSelectionRange(cursorPos, cursorPos);
+                });
+            });
+            return false;
+        }
+
+        function applyVisibleTaskModeResult() {
+            const options = filterExcelOptionValues(getTaskModeDropdownOptions(), taskModeSearchTerm);
+            if (!options.length) return false;
+            taskModeSearchTerm = '';
+            return setTaskTab(options[0].value);
+        }
+
+        function handleTaskModeSearchKeydown(event) {
+            if (!isEnterKeypress(event)) return;
+            handleSearchEnterApply(event, applyVisibleTaskModeResult);
+        }
+
         function toggleTaskSubviewDropdown() {
             const container = document.getElementById('task-subtabs-container');
             if (!container || container.classList.contains('hidden')) return false;
@@ -30221,18 +30717,44 @@ ${folderNote ? `Folder Note: ${folderNote}
             return false;
         }
 
+        function setTaskSubviewSearchTerm(value = '') {
+            taskSubviewSearchTerm = String(value || '');
+            const input = document.getElementById('task-subview-search');
+            const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
+            scheduleUiRender('task-subview-search-ui', () => {
+                syncTaskSubviewControls(activeTaskTab);
+                requestAnimationFrame(() => {
+                    const current = document.getElementById('task-subview-search');
+                    if (!current) return;
+                    if (document.activeElement !== current) current.focus();
+                    if (cursorPos !== null && typeof current.setSelectionRange === 'function') current.setSelectionRange(cursorPos, cursorPos);
+                });
+            });
+            return false;
+        }
+
+        function applyVisibleTaskSubviewResult() {
+            const options = filterExcelOptionValues(getTaskSubviewDropdownOptions(activeTaskTab), taskSubviewSearchTerm);
+            if (!options.length) return false;
+            taskSubviewSearchTerm = '';
+            return setTaskSubview(options[0].value);
+        }
+
+        function handleTaskSubviewSearchKeydown(event) {
+            if (!isEnterKeypress(event)) return;
+            handleSearchEnterApply(event, applyVisibleTaskSubviewResult);
+        }
+
         function syncTaskModeControls(tab = activeTaskTab) {
             const host = document.getElementById('task-tab-dropdown-host');
             if (!host) return;
             const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
             syncTaskSelectorRowLayout(safeTab);
             const currentLabel = getTaskTabLabel(safeTab);
-            const optionsHtml = getTaskModeDropdownOptions().map((option) => {
-                const isSelected = option.value === safeTab;
-                return `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" onclick='return setTaskTab(${JSON.stringify(option.value)})'><span class="text-[12px] font-bold">${esc(option.label)}</span>${isSelected ? '<i class="ph-bold ph-check text-sm"></i>' : ''}</button>`;
-            }).join('');
-            const html = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskModeDropdown()"><i class="ph-bold ph-squares-four text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Task View</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${taskTabDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${optionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskModeDropdown()">Done</button></div></div></div>`;
-            setContainerHtmlWithSignature(host, html, `task-mode:${safeTab}:${taskTabDropdownOpen ? 'open' : 'closed'}`);
+            const filteredOptions = filterExcelOptionValues(getTaskModeDropdownOptions(), taskModeSearchTerm);
+            const optionsHtml = buildExcelFilterOptionButtonsHtml(filteredOptions, safeTab, 'setTaskTab', 'No task views match.');
+            const html = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskModeDropdown()"><i class="ph-bold ph-squares-four text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Task View</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 ${taskTabDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">${buildExcelFilterSearchHtml('task-mode-search', taskModeSearchTerm, 'Search task view...', 'setTaskModeSearchTerm', 'handleTaskModeSearchKeydown')}<div class="excel-filter-options">${optionsHtml}</div><div class="excel-filter-footer"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskModeDropdown()">Done</button></div></div></div>`;
+            setContainerHtmlWithSignature(host, html, `task-mode:${safeTab}:${String(taskModeSearchTerm || '').trim().toLowerCase()}:${taskTabDropdownOpen ? 'open' : 'closed'}`);
             scheduleCompactTaskTopControlPanelSync('task-mode');
         }
 
@@ -30244,14 +30766,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             const currentValue = options.some((option) => option.value === activeTaskSubview) ? activeTaskSubview : 'all';
             const currentOption = options.find((option) => option.value === currentValue) || options[0] || { label: 'ALL' };
             const currentLabel = currentOption.label;
-            const optionsHtml = options.map((option) => {
-                const isSelected = option.value === activeTaskSubview;
-                return `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" onclick='return setTaskSubview(${JSON.stringify(option.value)})'><span class="text-[12px] font-bold">${esc(option.label)}</span>${isSelected ? '<i class="ph-bold ph-check text-sm"></i>' : ''}</button>`;
-            }).join('');
+            const filteredOptions = filterExcelOptionValues(options, taskSubviewSearchTerm);
+            const optionsHtml = buildExcelFilterOptionButtonsHtml(filteredOptions, activeTaskSubview, 'setTaskSubview', 'No filters match.');
             container.classList.remove('hidden');
             const filterTitle = normalizeTaskViewValue(tab) === 'reserves' ? 'Sales Rep' : 'Task Filter';
-            const html = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskSubviewDropdown()"><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">${esc(filterTitle)}</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 ${taskSubviewDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm"><div class="max-h-72 overflow-y-auto">${optionsHtml}</div><div class="border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskSubviewDropdown()">Done</button></div></div></div>`;
-            setContainerHtmlWithSignature(container, html, `task-subview:${String(tab || activeTaskTab || '').trim().toLowerCase()}:${activeTaskSubview}:${taskSubviewDropdownOpen ? 'open' : 'closed'}`);
+            const html = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskSubviewDropdown()"><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">${esc(filterTitle)}</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate">${esc(currentLabel)}</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 ${taskSubviewDropdownOpen ? '' : 'hidden '}overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">${buildExcelFilterSearchHtml('task-subview-search', taskSubviewSearchTerm, 'Search filter...', 'setTaskSubviewSearchTerm', 'handleTaskSubviewSearchKeydown')}<div class="excel-filter-options">${optionsHtml}</div><div class="excel-filter-footer"><button type="button" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskSubviewDropdown()">Done</button></div></div></div>`;
+            setContainerHtmlWithSignature(container, html, `task-subview:${String(tab || activeTaskTab || '').trim().toLowerCase()}:${activeTaskSubview}:${String(taskSubviewSearchTerm || '').trim().toLowerCase()}:${taskSubviewDropdownOpen ? 'open' : 'closed'}`);
             scheduleCompactTaskTopControlPanelSync('task-subview');
         }
 
@@ -30543,7 +31063,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const optionHtml = state.filteredOptions.length
                 ? state.filteredOptions.map(name => {
                     const checked = selectedTaskGenusNames.has(name) ? 'checked' : '';
-                    return `<label class="flex items-center justify-between gap-3 px-3 py-2 hover:bg-emerald-50">
+                    return `<label class="excel-filter-option flex items-center justify-between gap-3 px-3 py-2 hover:bg-emerald-50">
                         <span class="text-[12px] font-bold text-slate-700">${esc(name)}</span>
                         <input type="checkbox" class="h-4 w-4 accent-emerald-600" data-genus="${esc(name)}" ${checked} onclick="event.stopPropagation(); return toggleTaskGenusSelection(this.dataset.genus)">
                     </label>`;
@@ -30668,7 +31188,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             taskGenusFilterScopeKey = String(firstNonEmptyValue(scopeKey, taskGenusFilterScopeKey, '') || '').trim() || `task-genus:${resolvedViewStateEpoch}:${taskGenusFilterItemsCache.length}`;
             if (!container.dataset.genusReady) {
                 container.dataset.genusReady = '1';
-                container.innerHTML = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskGenusDropdown()"><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus Filter</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-genus-summary>All Genus</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div data-genus-chips></div><div class="task-top-control-panel mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ${taskGenusFilterOpen ? '' : 'hidden '}" data-genus-panel><div class="p-2 border-b border-emerald-100"><input id="task-genus-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white" placeholder="Search genus..." value="${esc(taskGenusSearchTerm)}" oninput="setTaskGenusSearchTerm(this.value)" onkeydown="handleTaskGenusSearchKeydown(event)"></div><div class="max-h-60 overflow-y-auto" data-genus-options></div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-genus-clear onclick="return clearTaskGenusFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskGenusDropdown()">Done</button></div></div></div>`;
+                container.innerHTML = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskGenusDropdown()"><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus Filter</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-genus-summary>All Genus</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div data-genus-chips></div><div class="task-top-control-panel excel-filter-panel mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ${taskGenusFilterOpen ? '' : 'hidden '}" data-genus-panel>${buildExcelFilterSearchHtml('task-genus-search', taskGenusSearchTerm, 'Search genus...', 'setTaskGenusSearchTerm', 'handleTaskGenusSearchKeydown')}<div class="excel-filter-options" data-genus-options></div><div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-genus-clear onclick="return clearTaskGenusFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskGenusDropdown()">Done</button></div></div></div>`;
             }
             const state = buildTaskGenusFilterState(taskGenusFilterItemsCache, taskGenusFilterScopeKey);
             const renderSignature = [
@@ -30821,7 +31341,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     optionsEl.innerHTML = state.filteredOptions.length
                         ? state.filteredOptions.map((value) => {
                             const checked = selectedTaskContSizes.has(value) ? 'checked' : '';
-                            return `<label class="flex items-center justify-between gap-3 px-3 py-2 hover:bg-emerald-50"><span class="text-[12px] font-bold text-slate-700">${esc(value)}</span><input type="checkbox" class="h-4 w-4 accent-emerald-600" data-contsize="${esc(value)}" ${checked} onclick="event.stopPropagation(); return toggleTaskContSizeSelection(this.dataset.contsize)"></label>`;
+                            return `<label class="excel-filter-option flex items-center justify-between gap-3 px-3 py-2 hover:bg-emerald-50"><span class="text-[12px] font-bold text-slate-700">${esc(value)}</span><input type="checkbox" class="h-4 w-4 accent-emerald-600" data-contsize="${esc(value)}" ${checked} onclick="event.stopPropagation(); return toggleTaskContSizeSelection(this.dataset.contsize)"></label>`;
                         }).join('')
                         : `<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No matches</div>`;
                 }
@@ -30849,7 +31369,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const state = buildTaskContSizeFilterState(taskContSizeFilterItemsCache, taskContSizeFilterScopeKey);
             if (!container.dataset.contsizeReady) {
                 container.dataset.contsizeReady = '1';
-                container.innerHTML = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-green-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">CONTSIZE</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-contsize-summary>All Sizes</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ${taskContSizeDropdownOpen ? '' : 'hidden '}" data-contsize-panel><div class="p-2 border-b border-emerald-100"><input id="task-contsize-search" type="text" class="input-field !mb-0 border-emerald-200 bg-white" placeholder="Search cont size..." value="${esc(taskContSizeSearchTerm)}" oninput="setTaskContSizeSearchTerm(this.value)" onkeydown="handleTaskContSizeSearchKeydown(event)"></div><div class="max-h-60 overflow-y-auto" data-contsize-options></div><div class="grid grid-cols-2 gap-2 border-t border-emerald-100 bg-white/90 p-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-contsize-clear onclick="return clearTaskContSizeFilter()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskContSizeDropdown()">Done</button></div></div></div>`;
+                container.innerHTML = `<div class="task-top-control-shell h-full rounded-[1.05rem] border border-green-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleTaskContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">CONTSIZE</span><span class="task-top-control-summary mt-1 text-[9px] font-bold normal-case tracking-normal text-slate-500 truncate" data-contsize-summary>All Sizes</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm ${taskContSizeDropdownOpen ? '' : 'hidden '}" data-contsize-panel>${buildExcelFilterSearchHtml('task-contsize-search', taskContSizeSearchTerm, 'Search cont size...', 'setTaskContSizeSearchTerm', 'handleTaskContSizeSearchKeydown')}<div class="excel-filter-options" data-contsize-options></div><div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-contsize-clear onclick="return clearTaskContSizeFilter()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeTaskContSizeDropdown()">Done</button></div></div></div>`;
             }
             const renderSignature = [
                 taskContSizeFilterScopeKey,
