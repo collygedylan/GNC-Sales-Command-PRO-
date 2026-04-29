@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.29.03';
+window.__APP_SHELL_VERSION__ = 'V2026.04.29.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -901,7 +901,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.03').trim() || 'V2026.04.29.03';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.04').trim() || 'V2026.04.29.04';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1401,7 +1401,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.03';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -3458,25 +3458,11 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
 
         const INVALID_SHARED_AV_DISPLAY_KEYS = new Set(['AV_NOTE', 'SALES_NOTE', 'SALESNOTE', 'MATCH', 'SPEC', 'CALIPER', 'PICK', 'LOC_MATCH_QTY', 'INITIAL_PTR']);
 
-        function getAvRuleRetentionReferenceItem(item, linkedMasterItem = null) {
-            if (!item) return null;
-            if (linkedMasterItem) return linkedMasterItem;
+        function shouldHideSharedAppPayloadForInvalidAvRules(item) {
+            if (!item) return false;
             const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, 'v2_master_inventory')).toLowerCase();
-            if (sourceTable === 'v2_master_inventory') return item;
-            const hasMasterLink = String(firstNonEmptyValue(item.MASTER_ID, item.MASTER_UNIQUE_ID, item.master_id, '') || '').trim();
-            if (!hasMasterLink) return item;
-            try {
-                if (typeof findLinkedMasterRow === 'function') return findLinkedMasterRow(item) || item;
-            } catch (error) {}
-            return item;
-        }
-
-        function shouldHideSharedAppPayloadForInvalidAvRules(item, linkedMasterItem = null) {
-            const ruleItem = getAvRuleRetentionReferenceItem(item, linkedMasterItem);
-            if (!ruleItem) return false;
-            const sourceTable = String(firstNonEmptyValue(ruleItem.SOURCE_TABLE, ruleItem.source_table, 'v2_master_inventory')).toLowerCase();
             if (sourceTable !== 'v2_master_inventory') return false;
-            return getMasterAvInvalidationReasons(ruleItem).length > 0;
+            return getMasterAvInvalidationReasons(item).length > 0;
         }
 
         function getItemDisplayValue(item, key, sourceView = '') {
@@ -3522,24 +3508,16 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             item.DOCK_PHOTO_NAME = firstNonEmptyValue(item.DOCK_PHOTO_NAME, item.DOCKPHOTO_NAME);
             item.FLYER_PHOTO_LINK = firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.FLYERPHOTO_LINK);
             item.FLYER_PHOTO_NAME = firstNonEmptyValue(item.FLYER_PHOTO_NAME, item.FLYERPHOTONAME);
-            const safeSharedPhotoLink = getSharedAppPhotoLinkCsv(item, { includePending: false });
-            const safeSharedPhotoName = getSharedAppPhotoName(item);
             const sharedFlyerAssignment = String(firstNonEmptyValue(item.PRODUCTIVITY_ORIGIN_ASSIGNMENT, item.productivity_origin_assignment, item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).toLowerCase();
             const sharesFlyerBaseData = sharedFlyerAssignment === 'season' || sharedFlyerAssignment === 'location';
-            const sharedPhotoHidden = shouldHideSharedAppPhotoForExpiredAvRules(item);
             if (sharesFlyerBaseData) {
-                if (sharedPhotoHidden) {
-                    const rawSharedPhotoLink = getSharedAppPhotoLinkCsvRaw(item, { includePending: false });
-                    if (rawSharedPhotoLink && mergePhotoCsvList([item.FLYER_PHOTO_LINK, item.FLYERPHOTO_LINK]) === rawSharedPhotoLink) item.FLYER_PHOTO_LINK = '';
-                    if (String(item.FLYER_PHOTO_NAME || '').trim() && String(item.FLYER_PHOTO_NAME || '').trim() === String(item.SAVED_PHOTO_NAME || '').trim()) item.FLYER_PHOTO_NAME = '';
-                }
-                if (!String(item.FLYER_PHOTO_LINK || '').trim() && safeSharedPhotoLink) item.FLYER_PHOTO_LINK = safeSharedPhotoLink;
-                if (!String(item.FLYER_PHOTO_NAME || '').trim() && safeSharedPhotoName) item.FLYER_PHOTO_NAME = safeSharedPhotoName;
+                if (!String(item.FLYER_PHOTO_LINK || '').trim() && String(item.SAVED_PHOTO_LINK || '').trim()) item.FLYER_PHOTO_LINK = item.SAVED_PHOTO_LINK;
+                if (!String(item.FLYER_PHOTO_NAME || '').trim() && String(item.SAVED_PHOTO_NAME || '').trim()) item.FLYER_PHOTO_NAME = item.SAVED_PHOTO_NAME;
             }
-            item.FLYER_VISIBLE_PHOTO_LINK = mergePhotoCsvList([item.FLYER_PHOTO_LINK, safeSharedPhotoLink]);
-            item.FLYER_VISIBLE_PHOTO_NAME = firstNonEmptyValue(item.FLYER_PHOTO_NAME, safeSharedPhotoName, item.ROW_PHOTO_NAME, '');
-            item.ROW_PHOTO_LINK = mergePhotoCsvList([item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, safeSharedPhotoLink, item.FLYER_PHOTO_LINK]);
-            item.ROW_PHOTO_NAME = safeSharedPhotoName;
+            item.FLYER_VISIBLE_PHOTO_LINK = mergePhotoCsvList([item.FLYER_PHOTO_LINK, item.SAVED_PHOTO_LINK]);
+            item.FLYER_VISIBLE_PHOTO_NAME = firstNonEmptyValue(item.FLYER_PHOTO_NAME, item.SAVED_PHOTO_NAME, item.ROW_PHOTO_NAME, item.PHOTO_NAME, item.PHOTONAME, item['PHOTO NAME']);
+            item.ROW_PHOTO_LINK = mergePhotoCsvList([item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.FLYER_PHOTO_LINK]);
+            item.ROW_PHOTO_NAME = getSharedAppPhotoName(item);
             const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, 'v2_master_inventory')).toLowerCase();
             if (sourceTable === 'v2_master_inventory') {
                 const derivedQty = calculateLocMatchQtyValue(item);
@@ -3548,10 +3526,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             return item;
         }
 
-        function getSharedAppPhotoName(item, options = {}) {
+        function getSharedAppPhotoName(item) {
             if (!item) return '';
-            const respectRetention = options.respectRetention !== false;
-            if (respectRetention && shouldHideSharedAppPhotoForExpiredAvRules(item, options.ruleItem || null)) return '';
             return firstNonEmptyValue(
                 item.SAVED_PHOTO_NAME,
                 item.PHOTO_NAME,
@@ -3568,8 +3544,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             return includePending ? getDisplayPhotoLinkCsv(savedBase, item, 'saved') : savedBase;
         }
 
-        function shouldHideSharedAppPhotoForExpiredAvRules(item, linkedMasterItem = null) {
-            return shouldHideSharedAppPayloadForInvalidAvRules(item, linkedMasterItem);
+        function shouldHideSharedAppPhotoForExpiredAvRules(item) {
+            return shouldHideSharedAppPayloadForInvalidAvRules(item);
         }
 
         function getSharedAppPhotoLinkCsv(item, options = {}) {
@@ -3577,7 +3553,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             const rawCsv = getSharedAppPhotoLinkCsvRaw(item, options);
             if (!rawCsv) return '';
             const respectRetention = options.respectRetention !== false;
-            if (respectRetention && shouldHideSharedAppPhotoForExpiredAvRules(item, options.ruleItem || null)) return '';
+            if (respectRetention && shouldHideSharedAppPhotoForExpiredAvRules(item)) return '';
             return rawCsv;
         }
 
@@ -3587,7 +3563,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             const dockBase = mergePhotoCsvList([
                 item.DOCK_PHOTO_LINK,
                 item.DOCKPHOTO_LINK,
-                getSharedAppPhotoLinkCsv(item, { includePending: false })
+                getSharedAppPhotoLinkCsvRaw(item, { includePending: false })
             ]);
             return includePending ? getDisplayPhotoLinkCsv(dockBase, item, 'dock') : dockBase;
         }
@@ -3601,15 +3577,11 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
 
         function getFlyerVisiblePhotoLinkCsvRaw(item) {
             if (!item) return '';
-            const sharedHidden = shouldHideSharedAppPhotoForExpiredAvRules(item);
-            const rawSharedPhotoLink = sharedHidden ? getSharedAppPhotoLinkCsvRaw(item, { includePending: false }) : '';
-            const flyerPhotoLink = rawSharedPhotoLink && mergePhotoCsvList([item.FLYER_PHOTO_LINK, item.FLYERPHOTO_LINK]) === rawSharedPhotoLink ? '' : item.FLYER_PHOTO_LINK;
-            const flyerPhotoLinkAlt = rawSharedPhotoLink && mergePhotoCsvList([item.FLYER_PHOTO_LINK, item.FLYERPHOTO_LINK]) === rawSharedPhotoLink ? '' : item.FLYERPHOTO_LINK;
             return mergePhotoCsvList([
-                sharedHidden ? '' : item.FLYER_VISIBLE_PHOTO_LINK,
-                flyerPhotoLink,
-                flyerPhotoLinkAlt,
-                getSharedAppPhotoLinkCsv(item, { includePending: false })
+                item.FLYER_VISIBLE_PHOTO_LINK,
+                item.FLYER_PHOTO_LINK,
+                item.FLYERPHOTO_LINK,
+                getSharedAppPhotoLinkCsvRaw(item, { includePending: false })
             ]);
         }
 
@@ -3633,15 +3605,8 @@ function syncSharedFlyerPhotoFields(item, prefix = '') {
             if (!item) return item;
             const sharedFlyerAssignment = String(firstNonEmptyValue(item.PRODUCTIVITY_ORIGIN_ASSIGNMENT, item.productivity_origin_assignment, item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).toLowerCase();
             if (sharedFlyerAssignment !== 'season' && sharedFlyerAssignment !== 'location') return normalizeRowPhotoFields(item);
-            const safeSharedPhotoLink = getSharedAppPhotoLinkCsv(item, { includePending: false });
-            const safeSharedPhotoName = getSharedAppPhotoName(item);
-            if (shouldHideSharedAppPhotoForExpiredAvRules(item)) {
-                const rawSharedPhotoLink = getSharedAppPhotoLinkCsvRaw(item, { includePending: false });
-                if (rawSharedPhotoLink && mergePhotoCsvList([item.FLYER_PHOTO_LINK, item.FLYERPHOTO_LINK]) === rawSharedPhotoLink) item.FLYER_PHOTO_LINK = '';
-                if (String(item.FLYER_PHOTO_NAME || '').trim() && String(item.FLYER_PHOTO_NAME || '').trim() === String(item.SAVED_PHOTO_NAME || '').trim()) item.FLYER_PHOTO_NAME = '';
-            }
-            if (!String(item.FLYER_PHOTO_LINK || '').trim() && safeSharedPhotoLink) item.FLYER_PHOTO_LINK = safeSharedPhotoLink;
-            if (!String(item.FLYER_PHOTO_NAME || '').trim() && safeSharedPhotoName) item.FLYER_PHOTO_NAME = safeSharedPhotoName;
+            if (!String(item.FLYER_PHOTO_LINK || '').trim() && String(item.SAVED_PHOTO_LINK || '').trim()) item.FLYER_PHOTO_LINK = item.SAVED_PHOTO_LINK;
+            if (!String(item.FLYER_PHOTO_NAME || '').trim() && String(item.SAVED_PHOTO_NAME || '').trim()) item.FLYER_PHOTO_NAME = item.SAVED_PHOTO_NAME;
             return normalizeRowPhotoFields(item);
         }
 
@@ -6725,7 +6690,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function getRequestPhotoLinkCsv(item, options = {}) {
             if (!item) return '';
             const includePending = options.includePending !== false;
-            const sharedHidden = shouldHideSharedAppPhotoForExpiredAvRules(item, options.ruleItem || null);
+            const ruleItem = options.ruleItem || null;
+            const sharedHidden = ruleItem ? shouldHideSharedAppPhotoForExpiredAvRules(ruleItem) : shouldHideSharedAppPhotoForExpiredAvRules(item);
             const requestCsv = mergePhotoCsvList([
                 item.REQ_PHOTO_LINK,
                 item.REQUEST_PHOTO_LINK,
@@ -6734,7 +6700,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const rowCsv = mergePhotoCsvList([
                 item.ROW_PHOTO_LINK
             ]);
-            const savedCsv = getSharedAppPhotoLinkCsv(item, { includePending: false, ruleItem: options.ruleItem || null });
+            const savedCsv = sharedHidden ? '' : getSharedAppPhotoLinkCsv(item, { includePending: false });
             const mergedBase = mergePhotoCsvList([requestCsv, sharedHidden ? '' : rowCsv, savedCsv]);
             return includePending ? getDisplayPhotoLinkCsv(mergedBase, item, 'req') : mergedBase;
         }
@@ -8868,7 +8834,7 @@ let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.03').trim() || 'V2026.04.29.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.04').trim() || 'V2026.04.29.04';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -27912,6 +27878,14 @@ function toggleDriveQuickRequestItem(domId) {
                         clone.SPEC=requestSpec||'';
                         clone.CALIPER=requestCaliper||'';
                         clone.PICK=requestPick||'';
+                        if (!requestPhotoLink) {
+                            clone.SAVED_PHOTO_LINK='';
+                            clone.SAVED_PHOTO_NAME='';
+                            clone.PHOTO_LINK='';
+                            clone.PHOTO_NAME='';
+                            clone.PHOTOLINK='';
+                            clone.PHOTONAME='';
+                        }
                     } else {
                         clone.AV_NOTE='';
                         clone.MATCH='';
