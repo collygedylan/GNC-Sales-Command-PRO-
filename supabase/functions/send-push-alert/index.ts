@@ -20,6 +20,12 @@ const REQUEST_ALERT_USERNAMES = new Set(
     .map((value) => normalizeUsername(value))
     .filter(Boolean)
 );
+const FLYER_ALERT_USERNAMES = new Set(
+  String(Deno.env.get("FLYER_ALERT_USERNAMES") || "morgan_anderson,kayla_knepp,dylan_collyge,jd_jones")
+    .split(",")
+    .map((value) => normalizeUsername(value))
+    .filter(Boolean)
+);
 const PUSH_TABLE = "v2_push_subscriptions";
 
 if (WEB_PUSH_VAPID_PUBLIC_KEY && WEB_PUSH_VAPID_PRIVATE_KEY) {
@@ -39,6 +45,7 @@ function jsonResponse(body: unknown, status = 200) {
 
 function buildTargetUsers(eventType: string, payload: Record<string, unknown>) {
   if (eventType === "new_request") return [...REQUEST_ALERT_USERNAMES];
+  if (eventType === "flyer_created" || eventType === "flyer_complete") return [...FLYER_ALERT_USERNAMES];
   if (eventType === "request_complete") {
     const direct = normalizeUsername(String(payload.requestedByUsername || payload.requestedBy || payload.repName || ""));
     return [...new Set([direct, ...REQUEST_ALERT_USERNAMES].filter(Boolean))];
@@ -50,7 +57,28 @@ function buildNotification(eventType: string, payload: Record<string, unknown>) 
   const customer = String(payload.customer || "Unknown Customer").trim();
   const repName = String(payload.repName || payload.requestedBy || "Unknown Rep").trim();
   const folderId = String(payload.folderId || "").trim();
+  const folderName = String(payload.folderName || folderId || "Flyer Folder").trim();
+  const assignedTo = String(payload.assignedTo || repName || "Unassigned").trim();
+  const createdBy = String(payload.createdBy || payload.sentBy || "Someone").trim();
   const itemsCount = Math.max(0, Number(payload.itemsCount) || 0);
+  if (eventType === "flyer_created") {
+    return {
+      title: "Flyer Created",
+      body: `${createdBy} created ${folderName}. ${itemsCount} row${itemsCount === 1 ? "" : "s"} assigned to ${assignedTo}.`,
+      tag: `flyer-created-${folderName || "folder"}`,
+      viewId: "tasks",
+      url: "./"
+    };
+  }
+  if (eventType === "flyer_complete") {
+    return {
+      title: "Flyer Complete",
+      body: `${folderName} is complete. ${itemsCount} row${itemsCount === 1 ? "" : "s"} have photos and specs.`,
+      tag: `flyer-complete-${folderName || "folder"}`,
+      viewId: "tasks",
+      url: "./"
+    };
+  }
   if (eventType === "request_complete") {
     return {
       title: "Request Complete",
@@ -105,7 +133,7 @@ serve(async (req) => {
 
   const payload = await req.json().catch(() => ({})) as Record<string, unknown>;
   const eventType = String(payload.eventType || payload.type || "").trim().toLowerCase();
-  if (eventType !== "new_request" && eventType !== "request_complete") {
+  if (eventType !== "new_request" && eventType !== "request_complete" && eventType !== "flyer_created" && eventType !== "flyer_complete") {
     return jsonResponse({ error: "Unsupported event type." }, 400);
   }
 
@@ -120,9 +148,8 @@ serve(async (req) => {
     .in("username", targetUsers)
     .eq("notifications_enabled", true);
 
-  query = eventType === "new_request"
-    ? query.eq("wants_new_request", true)
-    : query.eq("wants_request_complete", true);
+  if (eventType === "new_request") query = query.eq("wants_new_request", true);
+  else if (eventType === "request_complete") query = query.eq("wants_request_complete", true);
 
   const { data, error } = await query;
   if (error) {

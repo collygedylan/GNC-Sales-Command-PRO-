@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-  window.__APP_SHELL_VERSION__ = 'V2026.04.29.07';
+  window.__APP_SHELL_VERSION__ = 'V2026.04.29.08';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -901,7 +901,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.07').trim() || 'V2026.04.29.07';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.08').trim() || 'V2026.04.29.08';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1390,6 +1390,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const LEAF_ASSISTANT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/inventory-assistant`;
         const PUSH_VAPID_PUBLIC_KEY = 'BAnr5wnptNgeqol-aJzw1eW_4CnuHpQNlvJ3vmo4VGVfuRsHNO5bRZdT-8NN8qUL5bTlUxYrx592fbG26EYjEN4';
         const PUSH_ALERT_NEW_REQUEST_USERS = new Set(['dylan_collyge','jd_jones']);
+        const PUSH_ALERT_FLYER_USERS = new Set(['morgan_anderson','kayla_knepp','dylan_collyge','jd_jones']);
         const PHOTO_BUCKETS = {
             'ssn-': 'season_sales_notes_photos',
             'lsn-': 'location_sales_notes_photos',
@@ -1401,7 +1402,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.07';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.08';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8847,7 +8848,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.07').trim() || 'V2026.04.29.07';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.08').trim() || 'V2026.04.29.08';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -11674,6 +11675,68 @@ function toggleDriveQuickRequestItem(domId) {
             return Array.from(names);
         }
 
+        const FLYER_COMPLETE_PUSH_STORAGE_KEY = 'gnc_flyer_complete_push_sent_v1';
+
+        function getFlyerFolderItemsForPush(folderName = '') {
+            const normalizedFolder = getFlyerFolderName(folderName);
+            if (!normalizedFolder) return [];
+            return (fullInventory || []).filter((item) => item && isFlyerTaskItem(item) && getFlyerFolderName(item) === normalizedFolder && !isFlyerFolderArchived(item));
+        }
+
+        function hasFlyerRowPhotoAndSpec(item = null) {
+            if (!item) return false;
+            const spec = String(firstNonEmptyValue(item.FLYER_SPEC, item.SPEC, item.flyer_spec, item.spec, '')).trim();
+            const photoCsv = getFlyerVisiblePhotoLinkCsv(item, { includePending: false });
+            const photoUrls = parsePhotoCsvValues(photoCsv).filter((entry) => /^https?:\/\//i.test(entry));
+            return !!(spec && photoUrls.length);
+        }
+
+        function getFlyerCompletePushMap() {
+            try {
+                return JSON.parse(localStorage.getItem(FLYER_COMPLETE_PUSH_STORAGE_KEY) || '{}') || {};
+            } catch (error) {
+                return {};
+            }
+        }
+
+        function setFlyerCompletePushMap(map = {}) {
+            try {
+                localStorage.setItem(FLYER_COMPLETE_PUSH_STORAGE_KEY, JSON.stringify(map || {}));
+            } catch (error) {}
+        }
+
+        function buildFlyerCompleteSignature(folderName = '', rows = []) {
+            const normalizedFolder = getFlyerFolderName(folderName);
+            const rowParts = (Array.isArray(rows) ? rows : [])
+                .map((item) => [
+                    String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '')).trim(),
+                    String(firstNonEmptyValue(item && item.FLYER_SPEC, item && item.SPEC, '')).trim(),
+                    parsePhotoCsvValues(getFlyerVisiblePhotoLinkCsv(item, { includePending: false })).join(',')
+                ].join(':'))
+                .sort();
+            return `${normalizeRepMatchToken(normalizedFolder)}::${rowParts.length}::${rowParts.join('|')}`;
+        }
+
+        function maybeSendFlyerFolderCompletePush(folderName = '') {
+            const normalizedFolder = getFlyerFolderName(folderName);
+            if (!normalizedFolder) return false;
+            const rows = getFlyerFolderItemsForPush(normalizedFolder);
+            if (!rows.length || !rows.every(hasFlyerRowPhotoAndSpec)) return false;
+            const signature = buildFlyerCompleteSignature(normalizedFolder, rows);
+            const map = getFlyerCompletePushMap();
+            const mapKey = normalizeRepMatchToken(normalizedFolder) || normalizedFolder.toLowerCase();
+            if (map[mapKey] === signature) return false;
+            map[mapKey] = signature;
+            setFlyerCompletePushMap(map);
+            const assignedTo = getFlyerFolderAssignedNames(normalizedFolder, rows, 'active').join(', ') || 'Unassigned';
+            sendPushNotification('flyer_complete', normalizedFolder, assignedTo, normalizedFolder, rows.length, {
+                folderName: normalizedFolder,
+                assignedTo,
+                completedBy: String(currentUserDisplay || currentUser || '').trim()
+            });
+            return true;
+        }
+
         function clearPendingFlyerFolderTarget(silent = false) {
             const previousFolder = String(pendingFlyerFolderTarget || '').trim();
             pendingFlyerFolderTarget = null;
@@ -13512,6 +13575,7 @@ function toggleDriveQuickRequestItem(domId) {
             const inputUser=rawUser.toLowerCase();
             const inputPass=document.getElementById('pin-code').value.trim();
             if(!rawUser||!inputPass){ showToast("Error","Please enter username and password",true); return; }
+            const loginPushPermissionPromise = primePushPermissionFromLoginGesture({ allowBeforeUserScope: true });
             if(fullInventory.length===0){
                 let skeletonHtml=`<div class="p-4 space-y-4 w-full max-w-md mx-auto"><div class="skeleton h-8 w-1/3 mb-6"></div>`;
                 for(let i=0;i<5;i++){ skeletonHtml+=`<div class="skeleton h-24 w-full rounded-xl mb-3"></div>`; }
@@ -13537,11 +13601,7 @@ function toggleDriveQuickRequestItem(domId) {
                     }
                     else{
                         const finishLogin = () => finalizeLogin(currentUser,inputPass,isBiometricLogin);
-                        if (isTouchConstrainedDevice()) {
-                            finishLogin();
-                        } else {
-                            primePushPermissionFromLoginGesture().finally(finishLogin);
-                        }
+                        loginPushPermissionPromise.finally(() => primePushPermissionFromLoginGesture().finally(finishLogin));
                     }
                 } else if (result && result.reason === 'mismatch') {
                     finishInitialAppLoad();
@@ -13846,7 +13906,7 @@ function toggleDriveQuickRequestItem(domId) {
                     queueDatasetLoad(item.key, item.mode, item.delay);
                 });
                 scheduleTaskHotCacheWarmup('login-warm', openedFromCache ? 220 : 140);
-                if (canAccessView('request')) {
+                if (getPushPromptUserScope()) {
                     setTimeout(() => {
                         subscribeCurrentDeviceForPush({ prompt: false }).catch(() => {});
                     }, openedFromCache ? 450 : 1200);
@@ -16019,9 +16079,14 @@ function toggleDriveQuickRequestItem(domId) {
             return typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
         }
 
+        function isCurrentUserFlyerPushTarget() {
+            const normalizedUser = normalizePushUsername(currentUser || currentUserDisplay || '');
+            return !!(normalizedUser && PUSH_ALERT_FLYER_USERS.has(normalizedUser));
+        }
+
         function getPushPromptUserScope() {
             const access = getRoleAccessState();
-            return !!(currentUser && (canAccessView('request') || (access.allowedViews && access.allowedViews.has('request'))));
+            return !!(currentUser && (canAccessView('request') || (access.allowedViews && access.allowedViews.has('request')) || isCurrentUserFlyerPushTarget()));
         }
 
         function maybeWarnPushSchemaMissing() {
@@ -16187,13 +16252,15 @@ function toggleDriveQuickRequestItem(domId) {
             return await persistPushSubscription(subscription);
         }
 
-        function primePushPermissionFromLoginGesture() {
-            if (!isPushSupported() || !currentUser || !getPushPromptUserScope()) return Promise.resolve(false);
+        function primePushPermissionFromLoginGesture(options = {}) {
+            const opts = options && typeof options === 'object' ? options : {};
+            if (!isPushSupported()) return Promise.resolve(false);
+            if (!opts.allowBeforeUserScope && (!currentUser || !getPushPromptUserScope())) return Promise.resolve(false);
             if (Notification.permission !== 'default') return Promise.resolve(Notification.permission === 'granted');
             return Notification.requestPermission().then((permission) => permission === 'granted').catch(() => false);
         }
 
-        function sendPushNotification(type, folderId, repName, customer, itemsCount) {
+        function sendPushNotification(type, folderId, repName, customer, itemsCount, extraPayload = {}) {
             if (!currentUser || !PUSH_FUNCTION_URL) return;
             const payload = {
                 eventType: type,
@@ -16205,7 +16272,8 @@ function toggleDriveQuickRequestItem(domId) {
                 requestedByUsername: normalizePushUsername(repName || ''),
                 sentBy: String(currentUserDisplay || currentUser || '').trim(),
                 sentByUsername: normalizePushUsername(currentUser || currentUserDisplay || ''),
-                appBuild: APP_SHELL_BUILD
+                appBuild: APP_SHELL_BUILD,
+                ...(extraPayload && typeof extraPayload === 'object' ? extraPayload : {})
             };
             fetch(PUSH_FUNCTION_URL, {
                 method: 'POST',
@@ -18216,6 +18284,11 @@ function toggleDriveQuickRequestItem(domId) {
                 items: safeItems
             };
             fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) }).catch((e) => console.log(e));
+            sendPushNotification('flyer_created', folderName, assignedTo, folderName, safeItems.length, {
+                folderName: String(folderName || '').trim(),
+                assignedTo: String(assignedTo || '').trim(),
+                createdBy: String(createdBy || currentUserDisplay || currentUser || '').trim()
+            });
         }
 
         function getDefaultRequestRepName() {
@@ -33940,6 +34013,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 notifyRequestEvent('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length, { items: folderItems, folderNote: folderNote });
                             }
                         }, 72);
+                    }
+                    if (prefix === 'flyer-') {
+                        deferNonCriticalWork('flyer-complete-push', () => {
+                            maybeSendFlyerFolderCompletePush(getFlyerFolderName(itemToSave));
+                        }, 120);
                     }
                 };
 
