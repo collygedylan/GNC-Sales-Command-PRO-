@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.29.01';
+window.__APP_SHELL_VERSION__ = 'V2026.04.29.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -901,7 +901,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.01').trim() || 'V2026.04.29.01';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.02').trim() || 'V2026.04.29.02';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1401,7 +1401,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.01';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8848,7 +8848,7 @@ let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.01').trim() || 'V2026.04.29.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.02').trim() || 'V2026.04.29.02';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -28829,7 +28829,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const value = String(option && option.value != null ? option.value : '').trim();
                 const label = String(option && option.label != null ? option.label : value).trim();
                 const isSelected = value === current;
-                return `<button type="button" class="excel-filter-option flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" data-excel-value="${esc(encodeURIComponent(value))}" onclick="return ${clickHandler}(decodeURIComponent(this.dataset.excelValue || ''))"><span class="min-w-0 break-words text-[12px] font-bold">${esc(label)}</span>${isSelected ? '<i class="ph-bold ph-check text-sm"></i>' : ''}</button>`;
+                return `<div role="button" tabindex="0" class="excel-filter-option flex w-full cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-left ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" data-excel-value="${esc(encodeURIComponent(value))}" onclick="return ${clickHandler}(decodeURIComponent(this.dataset.excelValue || ''))" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();return ${clickHandler}(decodeURIComponent(this.dataset.excelValue || ''))}"><span class="min-w-0 break-words text-[12px] font-bold">${esc(label)}</span><input type="checkbox" class="pointer-events-none h-4 w-4 shrink-0 accent-emerald-600" tabindex="-1" aria-hidden="true" ${isSelected ? 'checked' : ''}></div>`;
             }).join('');
         }
 
@@ -31167,7 +31167,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 } else {
                     optionsEl.innerHTML = safeState.filteredOptions.map((option) => {
                         const isSelected = safeState.draftSet.has(option.value);
-                        return `<button type="button" class="flex w-full items-center gap-3 px-3 py-2 text-left transition ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" onclick='return toggleTaskReserveCustomerDraftValue(${JSON.stringify(option.value)})'><span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${isSelected ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 bg-white text-transparent'}"><i class="ph-bold ph-check text-[11px]"></i></span><span class="min-w-0 flex-1 truncate text-[12px] font-bold">${esc(option.label)}</span></button>`;
+                        return `<button type="button" class="flex w-full items-center gap-3 px-3 py-2 text-left transition ${isSelected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" onclick='return toggleTaskReserveCustomerDraftValue(${JSON.stringify(option.value)})'><input type="checkbox" class="pointer-events-none h-4 w-4 shrink-0 accent-emerald-600" tabindex="-1" aria-hidden="true" ${isSelected ? 'checked' : ''}><span class="min-w-0 flex-1 truncate text-[12px] font-bold">${esc(option.label)}</span></button>`;
                     }).join('');
                 }
             }
