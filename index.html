@@ -11015,6 +11015,11 @@ let searchRenderToken = {};
             return tokens.has('dylan') || tokens.has('jd');
         }
 
+        function canUseCustomerConsigneeOutreach() {
+            const tokens = getProtectedUserTokens();
+            return tokens.has('dylan') || tokens.has('dylan_collyge') || tokens.has('jd') || tokens.has('jd_jones') || tokens.has('jdjones');
+        }
+
         function canViewDashboardSyncStatus() {
             const tokens = getProtectedUserTokens();
             return tokens.has('dylan') || tokens.has('dylan_collyge') || tokens.has('jd') || tokens.has('jd_jones');
@@ -20979,13 +20984,14 @@ function toggleDriveQuickRequestItem(domId) {
             const crumbText = activeAvReserveMode === 'photos'
                 ? (term.length > 0 ? `Search Results (${reserveRows.length})` : `Reserve Location Photos (${reserveRows.length} items)`)
                 : (term.length > 0 ? `Search Results (${reserveRows.length})` : `All Reserve Locations (${reserveRows.length} items)`);
-            const renderSignature = buildRowsRenderSignature(`av-reserves|${activeAvReserveMode}|${term}|${crumbText}`, reserveRows, ['ITEMCODE','LOTCODE','LOCATIONCODE']);
+            const reserveSourceView = activeAvReserveMode === 'photos' ? 'av-photo' : 'av';
+            const renderSignature = buildRowsRenderSignature(`av-reserves|${reserveSourceView}|${activeAvReserveMode}|${term}|${crumbText}`, reserveRows, ['ITEMCODE','LOTCODE','LOCATIONCODE']);
             if (shouldUseChunkedAVOpenRender(reserveRows)) {
-                renderAVOpenCardsChunked(container, crumb, reserveRows, 'av', crumbText);
+                renderAVOpenCardsChunked(container, crumb, reserveRows, reserveSourceView, crumbText);
                 return;
             }
             crumb.innerText = crumbText;
-            setContainerHtmlWithSignature(container, reserveRows.map((item) => generateCard(item, 'av', 'status-teal')).join(''), renderSignature);
+            setContainerHtmlWithSignature(container, reserveRows.map((item) => generateCard(item, reserveSourceView, 'status-teal')).join(''), renderSignature);
             return;
         }
         const debouncedDocksSearch=debounce((term='')=>{ scheduleTrackedSearchViewRender('docks', 'docks', term, { skipDebounce: true }); },80);
@@ -22071,7 +22077,8 @@ function toggleDriveQuickRequestItem(domId) {
             const desiredOrder = [];
             const primaryId = primaryTab ? `dtab-${primaryTab}` : '';
             if (primaryId && baseOrder.includes(primaryId)) desiredOrder.push(primaryId);
-            if (String(activeDetailSourceView || lastView || '').trim() === 'drive' && primaryTab === 'overview' && !desiredOrder.includes('dtab-customer')) {
+            const detailSourceView = String(activeDetailSourceView || lastView || '').trim();
+            if ((detailSourceView === 'drive' || detailSourceView === 'av') && primaryTab === 'overview' && canUseCustomerConsigneeOutreach() && !desiredOrder.includes('dtab-customer')) {
                 desiredOrder.push('dtab-customer');
             }
             ['dtab-overview', 'dtab-gallery'].forEach((id) => {
@@ -22214,7 +22221,7 @@ function toggleDriveQuickRequestItem(domId) {
                 legacyPanel.innerHTML = '';
             }
             const customerPanel = document.getElementById('det-customer-panel');
-            if (customerPanel && String(activeDetailSourceView || '').trim() === 'drive' && activeDetailTab !== 'customer') {
+            if (customerPanel && ['drive', 'av'].includes(String(activeDetailSourceView || '').trim()) && activeDetailTab !== 'customer') {
                 customerPanel.innerHTML = '';
             }
         }
@@ -22225,6 +22232,71 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getDriveCustomerOutreachSeason(item = activeItem) {
             return String(firstNonEmptyValue(item && item.SEASON, item && item.season, '') || '').trim().toUpperCase();
+        }
+
+        function normalizeCustomerConsigneeOutreachSourceView(sourceView = '') {
+            const safeSource = String(sourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
+            if (safeSource === 'av-photo' || safeSource === 'reserves_drill') return 'av';
+            if (safeSource === 'drive' || safeSource === 'av') return safeSource;
+            return safeSource;
+        }
+
+        function isCustomerConsigneeOutreachSource(sourceView = '', item = activeItem) {
+            if (!item) return false;
+            const safeSource = normalizeCustomerConsigneeOutreachSourceView(sourceView);
+            return safeSource === 'drive' || safeSource === 'av';
+        }
+
+        function getCustomerConsigneeOutreachSourceLabel(sourceView = '', item = activeItem) {
+            const safeSource = normalizeCustomerConsigneeOutreachSourceView(sourceView);
+            if (safeSource === 'av') {
+                if (activeAVTab === 'hotprice') return 'Hot Price';
+                if (activeAVTab === 'reserves') return 'My Reserves';
+                return 'Open Stock';
+            }
+            if (safeSource === 'drive') return DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode';
+            return String(firstNonEmptyValue(item && item.SOURCE, item && item.source, '') || '').trim() || 'Open Stock';
+        }
+
+        function isCustomerConsigneeOutreachAvAllView() {
+            if (activeAVTab === 'hotprice') return activeAvHotPriceTab !== 'photos';
+            if (activeAVTab === 'reserves') return activeAvReserveMode !== 'photos';
+            return activeAvOpenTab !== 'photos';
+        }
+
+        function canSendCustomerConsigneeOutreachToAllSalesReps(item = activeItem, sourceView = activeDetailSourceView || lastView || '') {
+            if (!canUseCustomerConsigneeOutreach() || !isCustomerConsigneeOutreachSource(sourceView, item)) return false;
+            const safeSource = normalizeCustomerConsigneeOutreachSourceView(sourceView);
+            const rawSource = String(sourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
+            if (safeSource === 'av') return rawSource !== 'av-photo' && ['open', 'hotprice', 'reserves'].includes(String(activeAVTab || '').trim()) && isCustomerConsigneeOutreachAvAllView();
+            if (safeSource === 'drive') return true;
+            return false;
+        }
+
+        function getAllSalesRepOutreachRecipientEmails() {
+            return dedupeRequestEmailRecipients((salesRepList || []).map((repName) => resolveRequestRecipientEmail(repName)).filter(Boolean));
+        }
+
+        function buildCustomerConsigneeOutreachCardAction(item = null, sourceView = '') {
+            if (!canUseCustomerConsigneeOutreach() || !isCustomerConsigneeOutreachSource(sourceView, item)) return '';
+            const rawSource = String(sourceView || '').trim().toLowerCase();
+            if (rawSource === 'av-photo') return '';
+            const safeUid = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim();
+            if (!safeUid) return '';
+            const safeSource = normalizeCustomerConsigneeOutreachSourceView(sourceView);
+            return `<div class="mt-3 flex flex-wrap gap-2" onclick="event.stopPropagation();"><button type="button" class="inline-flex min-h-[2.35rem] items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[0.98]" onclick="event.stopPropagation(); return openCustomerConsigneeOutreachDetail('${esc(safeUid)}', '${esc(safeSource)}')"><i class="ph-bold ph-users-three text-base"></i><span>Customers</span></button></div>`;
+        }
+
+        function openCustomerConsigneeOutreachDetail(uid = '', sourceView = '') {
+            if (!canUseCustomerConsigneeOutreach()) {
+                showToast('Restricted', 'Only Dylan and JD can view Customer / Consignee Send.', true);
+                return false;
+            }
+            const safeUid = String(uid || '').trim();
+            if (!safeUid) return false;
+            const safeSource = normalizeCustomerConsigneeOutreachSourceView(sourceView);
+            if (!isCustomerConsigneeOutreachSource(safeSource, { UNIQUE_ID: safeUid })) return false;
+            return openDetail(safeUid, safeSource, { preferredTab: 'customer' });
         }
 
         function normalizeDriveCustomerOutreachItemCodeValue(value = '') {
@@ -22275,7 +22347,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getLocalDriveCustomerOutreachReserveRows(item = activeItem) {
             if (!item || !Array.isArray(reservesInventory)) return [];
-            return reservesInventory.filter((row) => isDriveCustomerOutreachSameItemCode(row, item));
+            return reservesInventory.filter((row) => isDriveCustomerOutreachSameItemSeason(row, item));
         }
 
         function preferDriveCustomerOutreachSeasonRows(rows = [], item = activeItem) {
@@ -22283,7 +22355,7 @@ function toggleDriveQuickRequestItem(domId) {
             const targetSeason = getDriveCustomerOutreachNormalizedSeason(item);
             if (!targetSeason) return itemRows;
             const seasonRows = itemRows.filter((row) => isDriveCustomerOutreachSameSeason(row, item));
-            return seasonRows.length ? seasonRows : itemRows;
+            return seasonRows;
         }
 
         function isDriveCustomerOutreachSeasonFallback(rows = [], item = activeItem) {
@@ -22320,9 +22392,12 @@ function toggleDriveQuickRequestItem(domId) {
             const itemCodes = getDriveCustomerOutreachItemCodeVariants(item);
             if (!itemCodes.length) return '';
             const conditions = itemCodes.map((itemCode) => `itemcode.eq.${encodeURIComponent(itemCode)}`);
-            return conditions.length === 1
+            const season = getDriveCustomerOutreachNormalizedSeason(item);
+            const seasonParam = season ? `&season=ilike.${encodeURIComponent(season)}` : '';
+            const itemCodeQuery = conditions.length === 1
                 ? `select=*&itemcode=eq.${encodeURIComponent(itemCodes[0])}`
                 : `select=*&or=(${conditions.join(',')})`;
+            return `${itemCodeQuery}${seasonParam}`;
         }
 
         async function loadDriveCustomerOutreachReserveRows(item = activeItem, force = false) {
@@ -22351,7 +22426,7 @@ function toggleDriveQuickRequestItem(domId) {
             } finally {
                 if (token === driveCustomerOutreachReserveFetchToken) {
                     driveCustomerOutreachReserveRowsLoading = false;
-                    if (String(activeDetailSourceView || '').trim() === 'drive' && activeDetailTab === 'customer') {
+                    if (['drive', 'av'].includes(String(activeDetailSourceView || '').trim()) && activeDetailTab === 'customer') {
                         renderDriveCustomerOutreachPanel(activeItem, { skipEnsure: true });
                     }
                 }
@@ -22428,7 +22503,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getDriveCustomerOutreachSourceRows(item = activeItem) {
             if (!item || !Array.isArray(fullInventory)) return [];
-            return preferDriveCustomerOutreachSeasonRows(fullInventory.filter((row) => hasDriveCustomerOutreachPhotoSpec(row)), item)
+            return fullInventory.filter((row) => hasDriveCustomerOutreachPhotoSpec(row) && isDriveCustomerOutreachSameItemSeason(row, item))
                 .sort((a, b) => String(firstNonEmptyValue(a && a.LOCATIONCODE, '') || '').localeCompare(String(firstNonEmptyValue(b && b.LOCATIONCODE, '') || ''), undefined, { numeric: true }));
         }
 
@@ -22460,7 +22535,12 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const panel = document.getElementById('det-customer-panel');
             const isDriveDetail = String(activeDetailSourceView || '').trim().toLowerCase() === 'drive';
-            if (!isDriveDetail || !panel) return;
+            const isAvDetail = String(activeDetailSourceView || '').trim().toLowerCase() === 'av';
+            if (!panel) return;
+            if (!canUseCustomerConsigneeOutreach() || (!isDriveDetail && !isAvDetail)) {
+                panel.innerHTML = '';
+                return;
+            }
             if (activeDetailTab !== 'customer') {
                 panel.innerHTML = '';
                 return;
@@ -22472,7 +22552,6 @@ function toggleDriveQuickRequestItem(domId) {
             const renderOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const loadedReserveRows = renderOptions.skipEnsure ? getDriveCustomerOutreachReserveRows(item) : ensureDriveCustomerOutreachReserveRows(item);
             const reserveRows = preferDriveCustomerOutreachSeasonRows(loadedReserveRows, item);
-            const reserveSeasonFallback = isDriveCustomerOutreachSeasonFallback(loadedReserveRows, item);
             const sourceSeasonFallback = isDriveCustomerOutreachSeasonFallback(fullInventory.filter((row) => hasDriveCustomerOutreachPhotoSpec(row)), item);
             const cards = getDriveCustomerOutreachCustomerCards(item);
             const sourceRows = getDriveCustomerOutreachSourceRows(item);
@@ -22482,8 +22561,11 @@ function toggleDriveQuickRequestItem(domId) {
             const commonName = String(firstNonEmptyValue(item && item.COMMONNAME, item && item.DESCRIPTION, 'Item') || 'Item').trim();
             const itemCode = getDriveCustomerOutreachItemCode(item) || '--';
             const season = getDriveCustomerOutreachSeason(item) || 'All Seasons';
-            const scopeNote = reserveSeasonFallback ? 'No exact season match found in v2_reserves; showing all itemcode rows.' : 'Matched by itemcode and season.';
-            const sourceScopeNote = sourceSeasonFallback ? '<div class="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-bold text-amber-700">No exact season photo/spec rows found; showing all itemcode photo/spec rows.</div>' : '';
+            const sourceLabel = getCustomerConsigneeOutreachSourceLabel(activeDetailSourceView || lastView || '', item);
+            const canSendAllSalesReps = canSendCustomerConsigneeOutreachToAllSalesReps(item, activeDetailSourceView || lastView || '');
+            const allSalesRepCount = canSendAllSalesReps ? getAllSalesRepOutreachRecipientEmails().length : 0;
+            const scopeNote = 'Matched by itemcode and season.';
+            const sourceScopeNote = sourceSeasonFallback ? '<div class="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-bold text-amber-700">Rows exist for this itemcode, but no exact season photo/spec rows matched.</div>' : '';
             const loadingHtml = driveCustomerOutreachReserveRowsLoading
                 ? '<div class="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-sky-700">Loading v2_reserves...</div>'
                 : '';
@@ -22504,8 +22586,12 @@ function toggleDriveQuickRequestItem(domId) {
                 return `<label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm"><input type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-emerald-600" ${checked} onclick='event.stopPropagation(); return toggleDriveCustomerOutreachSourceRow(${JSON.stringify(rowId)})'>${photoThumb}<span class="min-w-0 flex-1"><span class="block text-[12px] font-black text-[#007a4d]">${esc(firstNonEmptyValue(row && row.LOCATIONCODE, 'No Loc'))} ${esc(firstNonEmptyValue(row && row.LOTCODE, ''))}</span><span class="mt-1 block break-words text-[11px] font-bold text-slate-700">Spec: ${esc(spec)}</span><span class="mt-1 block text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">PRI ${esc(firstNonEmptyValue(row && row.PRIORITY, '-'))} &bull; PTR ${esc(firstNonEmptyValue(row && row.PTRAVAILABLE, 0))} &bull; ${photos.length} photo${photos.length === 1 ? '' : 's'}</span></span></label>`;
             }).join('') : '<div class="rounded-xl border border-dashed border-amber-200 bg-amber-50 px-4 py-5 text-center text-[11px] font-bold text-amber-700">No rows with both photos and specs were found for this item and season.</div>';
             const sendDisabled = !selectedCustomerCount || !selectedSourceCount || driveCustomerOutreachSendBusy;
+            const sendAllDisabled = !selectedSourceCount || !allSalesRepCount || driveCustomerOutreachSendBusy;
+            const sendAllHtml = canSendAllSalesReps
+                ? `<button type="button" class="w-full rounded-2xl px-4 py-3 text-[12px] font-black uppercase tracking-[0.14em] shadow-sm ${sendAllDisabled ? 'pointer-events-none bg-slate-200 text-slate-400' : 'bg-sky-700 text-white active:scale-[0.99]'}" onclick="return sendDriveCustomerOutreachEmails({ sendToAllSalesReps: true })">${driveCustomerOutreachSendBusy ? 'Sending...' : `Send To All Sales Reps${allSalesRepCount ? ` (${allSalesRepCount})` : ''}`}</button>`
+                : '';
             driveCustomerOutreachOpen = true;
-            panel.innerHTML = `<div class="space-y-4"><div class="rounded-[22px] border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm"><div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Customer / Consignee Send</div><div class="mt-2 text-[18px] font-black leading-tight text-slate-900 break-words">${esc(commonName)}</div><div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">v2_reserves &bull; ITEMCODE ${esc(itemCode)} &bull; SEASON ${esc(season)}</div><div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700">${reserveRows.length} reserve rows matched &bull; ${selectedCustomerCount}/${cards.length} customers selected &bull; ${selectedSourceCount}/${sourceRows.length} photo/spec rows selected</div><div class="mt-1 text-[10px] font-bold text-slate-500">${esc(scopeNote)}</div></div><button type="button" class="shrink-0 rounded-full border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[0.98]" onclick="loadDriveCustomerOutreachReserveRows(activeItem, true); return false;">Refresh</button></div></div>${loadingHtml}${errorHtml}<div><div class="mb-2 flex items-center justify-between gap-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Customername / Consigneename</div><div class="flex gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachCustomersSelected(true)">All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachCustomersSelected(false)">None</button></div></div><div class="grid grid-cols-1 gap-2">${customerHtml}</div></div><div><div class="mb-2 flex items-center justify-between gap-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Photo / Spec Rows To Send</div><div class="flex gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachSourceRowsSelected(true)">All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachSourceRowsSelected(false)">None</button></div></div>${sourceScopeNote}<div class="grid grid-cols-1 gap-2">${sourceHtml}</div></div><button type="button" class="w-full rounded-2xl px-4 py-3 text-[12px] font-black uppercase tracking-[0.14em] shadow-sm ${sendDisabled ? 'pointer-events-none bg-slate-200 text-slate-400' : 'bg-emerald-700 text-white active:scale-[0.99]'}" onclick="return sendDriveCustomerOutreachEmails()">${driveCustomerOutreachSendBusy ? 'Sending...' : 'Send To Selected Reps'}</button></div>`;
+            panel.innerHTML = `<div class="space-y-4"><div class="rounded-[22px] border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm"><div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Customer / Consignee Send</div><div class="mt-2 text-[18px] font-black leading-tight text-slate-900 break-words">${esc(commonName)}</div><div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">${esc(sourceLabel)} &bull; v2_reserves &bull; ITEMCODE ${esc(itemCode)} &bull; SEASON ${esc(season)}</div><div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700">${reserveRows.length} reserve rows matched &bull; ${selectedCustomerCount}/${cards.length} customers selected &bull; ${selectedSourceCount}/${sourceRows.length} photo/spec rows selected</div><div class="mt-1 text-[10px] font-bold text-slate-500">${esc(scopeNote)}</div></div><button type="button" class="shrink-0 rounded-full border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[0.98]" onclick="loadDriveCustomerOutreachReserveRows(activeItem, true); return false;">Refresh</button></div></div>${loadingHtml}${errorHtml}<div><div class="mb-2 flex items-center justify-between gap-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Customername / Consigneename</div><div class="flex gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachCustomersSelected(true)">All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachCustomersSelected(false)">None</button></div></div><div class="grid grid-cols-1 gap-2">${customerHtml}</div></div><div><div class="mb-2 flex items-center justify-between gap-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Photo / Spec Rows To Send</div><div class="flex gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachSourceRowsSelected(true)">All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachSourceRowsSelected(false)">None</button></div></div>${sourceScopeNote}<div class="grid grid-cols-1 gap-2">${sourceHtml}</div></div><div class="grid grid-cols-1 gap-2 sm:grid-cols-${sendAllHtml ? '2' : '1'}"><button type="button" class="w-full rounded-2xl px-4 py-3 text-[12px] font-black uppercase tracking-[0.14em] shadow-sm ${sendDisabled ? 'pointer-events-none bg-slate-200 text-slate-400' : 'bg-emerald-700 text-white active:scale-[0.99]'}" onclick="return sendDriveCustomerOutreachEmails()">${driveCustomerOutreachSendBusy ? 'Sending...' : 'Send To Selected Reps'}</button>${sendAllHtml}</div></div>`;
         }
 
         function toggleDriveCustomerOutreachPanel() {
@@ -22585,8 +22671,11 @@ function toggleDriveQuickRequestItem(domId) {
             });
         }
 
-        function buildDriveCustomerOutreachEmailText(customers = [], sourceRows = [], item = activeItem) {
-            const customerLines = customers.map((card) => `- ${card.label} (${card.repName})`).join('\n');
+        function buildDriveCustomerOutreachEmailText(customers = [], sourceRows = [], item = activeItem, options = {}) {
+            const audienceLabel = String(options && options.audienceLabel || '').trim();
+            const customerLines = customers.length
+                ? customers.map((card) => `- ${card.label} (${card.repName})`).join('\n')
+                : (audienceLabel ? `- ${audienceLabel}` : '- No customer / consignee rows selected');
             const itemHeader = [
                 firstNonEmptyValue(item && item.COMMONNAME, 'Item'),
                 firstNonEmptyValue(item && item.CONTSIZE, ''),
@@ -22596,8 +22685,11 @@ function toggleDriveQuickRequestItem(domId) {
             return `${itemHeader}\n\nCustomer / Consignee:\n${customerLines}\n\nPhoto / Spec Rows:\n${formatInventoryItemsText(sourceRows, '', { includePhotoUrls: true })}`.trim();
         }
 
-        function buildDriveCustomerOutreachEmailHtml(customers = [], sourceRows = [], item = activeItem) {
-            const customerHtml = customers.map((card) => `<li>${escapeShareHtml(card.label)} <span style="color:#64748b;">(${escapeShareHtml(card.repName)})</span></li>`).join('');
+        function buildDriveCustomerOutreachEmailHtml(customers = [], sourceRows = [], item = activeItem, options = {}) {
+            const audienceLabel = String(options && options.audienceLabel || '').trim();
+            const customerHtml = customers.length
+                ? customers.map((card) => `<li>${escapeShareHtml(card.label)} <span style="color:#64748b;">(${escapeShareHtml(card.repName)})</span></li>`).join('')
+                : `<li>${escapeShareHtml(audienceLabel || 'No customer / consignee rows selected')}</li>`;
             const itemHeader = [
                 firstNonEmptyValue(item && item.COMMONNAME, 'Item'),
                 firstNonEmptyValue(item && item.CONTSIZE, ''),
@@ -22607,15 +22699,24 @@ function toggleDriveQuickRequestItem(domId) {
             return `<div><div style="font-weight:700;margin:0 0 12px 0;">${escapeShareHtml(itemHeader)}</div><div style="font-weight:700;margin:0 0 6px 0;">Customer / Consignee</div><ul style="margin:0 0 16px 18px;padding:0;">${customerHtml}</ul>${formatInventoryItemsHtml(sourceRows, 'Photo / Spec Rows')}</div>`;
         }
 
-        async function sendDriveCustomerOutreachEmails() {
+        async function sendDriveCustomerOutreachEmails(options = {}) {
+            if (!canUseCustomerConsigneeOutreach()) {
+                showToast('Restricted', 'Only Dylan and JD can send Customer / Consignee emails.', true);
+                return false;
+            }
             if (driveCustomerOutreachSendBusy) return false;
+            const sendToAllSalesReps = !!(options && options.sendToAllSalesReps);
             const state = getDriveCustomerOutreachSelectedState(activeItem);
-            if (!state.cards.length) {
+            if (!sendToAllSalesReps && !state.cards.length) {
                 showToast('Select Customers', 'Pick at least one customer / consignee card.', true);
                 return false;
             }
             if (!state.sourceRows.length) {
                 showToast('Select Rows', 'Pick at least one row with photos and specs.', true);
+                return false;
+            }
+            if (sendToAllSalesReps && !canSendCustomerConsigneeOutreachToAllSalesReps(activeItem, activeDetailSourceView || lastView || '')) {
+                showToast('Not Available', 'All-sales-rep send is only available from Drive Mode and AV rows.', true);
                 return false;
             }
             const groupedByRep = new Map();
@@ -22631,6 +22732,58 @@ function toggleDriveQuickRequestItem(domId) {
                 const itemCode = getDriveCustomerOutreachItemCode(activeItem);
                 const season = getDriveCustomerOutreachSeason(activeItem);
                 const commonName = String(firstNonEmptyValue(activeItem && activeItem.COMMONNAME, 'Item') || 'Item').trim();
+                const sourceLabel = getCustomerConsigneeOutreachSourceLabel(activeDetailSourceView || lastView || '', activeItem);
+                if (sendToAllSalesReps) {
+                    const salesRepEmails = getAllSalesRepOutreachRecipientEmails();
+                    if (!salesRepEmails.length) {
+                        showToast('No Emails', 'No sales rep email addresses were resolved.', true);
+                        return false;
+                    }
+                    const recipientEmails = dedupeRequestEmailRecipients([...salesRepEmails, ...REQUEST_EMAIL_INTERNAL_RECIPIENTS]);
+                    const customerPayload = state.cards.map((card) => ({
+                        customername: card.customerName,
+                        consigneename: card.consigneeName,
+                        label: card.label,
+                        rows: card.rows.length,
+                        qty: card.qty
+                    }));
+                    const itemPayload = buildDriveCustomerOutreachItemsPayload(state.sourceRows);
+                    const subject = `Customer Photos/Specs - ${[commonName, itemCode, season, sourceLabel].filter(Boolean).join(' ')}`;
+                    const payload = {
+                        type: 'email',
+                        emailType: 'drive_customer_outreach',
+                        sendToAllSalesReps: true,
+                        audienceLabel: 'All Sales Reps',
+                        subject,
+                        repName: '',
+                        salesRepName: '',
+                        repEmail: '',
+                        salesRepEmail: '',
+                        dylanEmail: REQUEST_EMAIL_INTERNAL_RECIPIENTS[0],
+                        jdEmail: REQUEST_EMAIL_INTERNAL_RECIPIENTS[1],
+                        internalRecipients: REQUEST_EMAIL_INTERNAL_RECIPIENTS.slice(),
+                        recipientEmails,
+                        recipients: recipientEmails.map((email) => ({ email, role: salesRepEmails.includes(email) ? 'sales-rep' : 'internal' })),
+                        commonname: commonName,
+                        itemcode: itemCode,
+                        season,
+                        sourceLabel,
+                        customers: customerPayload,
+                        customerConsigneeRows: customerPayload,
+                        sourceRows: itemPayload,
+                        items: itemPayload,
+                        formattedItemsText: buildDriveCustomerOutreachEmailText(state.cards, state.sourceRows, activeItem, { audienceLabel: 'All Sales Reps' }),
+                        formattedItemsHtml: buildDriveCustomerOutreachEmailHtml(state.cards, state.sourceRows, activeItem, { audienceLabel: 'All Sales Reps' })
+                    };
+                    const responseData = await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Drive Customer Outreach Email');
+                    if (responseData && responseData.ok === false) {
+                        const error = new Error(`Email failed (${responseData.status || 0})`);
+                        error.responseData = responseData;
+                        throw error;
+                    }
+                    showToast('Sent', `Sent to ${salesRepEmails.length} sales rep${salesRepEmails.length === 1 ? '' : 's'} with Dylan and JD copied.`);
+                    return false;
+                }
                 let sentCount = 0;
                 for (const [repName, customers] of groupedByRep.entries()) {
                     const repEmail = resolveRequestRecipientEmail(repName);
@@ -22664,6 +22817,7 @@ function toggleDriveQuickRequestItem(domId) {
                         customerConsigneeRows: customerPayload,
                         sourceRows: itemPayload,
                         items: itemPayload,
+                        sourceLabel,
                         formattedItemsText: buildDriveCustomerOutreachEmailText(customers, state.sourceRows, activeItem),
                         formattedItemsHtml: buildDriveCustomerOutreachEmailHtml(customers, state.sourceRows, activeItem)
                     };
@@ -22810,7 +22964,7 @@ function toggleDriveQuickRequestItem(domId) {
             const assignment = String(firstNonEmptyValue(item && item.APP_TAB_ASSIGNMENT, item && item.app_tab_assignment, '')).toLowerCase();
             if (safeSourceView === 'drive') {
                 document.getElementById('dtab-overview').classList.remove('hidden');
-                if (customerTab) {
+                if (customerTab && canUseCustomerConsigneeOutreach()) {
                     customerTab.innerText = 'Customer / Consignee';
                     customerTab.classList.remove('hidden');
                 }
@@ -22820,6 +22974,11 @@ function toggleDriveQuickRequestItem(domId) {
                 document.getElementById('dtab-gallery').classList.remove('hidden');
             } else if (safeSourceView === 'av') {
                 document.getElementById('dtab-overview').classList.remove('hidden');
+                if (customerTab && canUseCustomerConsigneeOutreach()) {
+                    customerTab.innerText = 'Customer / Consignee';
+                    customerTab.classList.remove('hidden');
+                    document.getElementById('dtab-gallery').classList.remove('hidden');
+                }
                 if (activeAVTab === 'reserves') {
                     document.getElementById('dtab-request').classList.remove('hidden');
                     document.getElementById('dtab-customer').classList.remove('hidden');
@@ -22979,7 +23138,9 @@ function toggleDriveQuickRequestItem(domId) {
                 return;
             }
             if (safeTab === 'customer') {
-                renderAvReserveDetailCustomerPanel(item);
+                const sourceView = String(detailSourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
+                if ((sourceView === 'drive' || sourceView === 'av') && canUseCustomerConsigneeOutreach()) renderDriveCustomerOutreachPanel(item);
+                else renderAvReserveDetailCustomerPanel(item);
                 return;
             }
             if (safeTab === 'season' || safeTab === 'location') {
@@ -23275,7 +23436,8 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
 
-        function openDetail(uid, sourceView) {
+        function openDetail(uid, sourceView, options = {}) {
+            const openOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const detailOpenStartedAt = beginInternalPerfMeasure();
             beginDirectNavigationActivity();
             const currentViewBeforeOpen = getCurrentVisibleViewId();
@@ -23308,6 +23470,8 @@ function toggleDriveQuickRequestItem(domId) {
             resetDetailOverviewFieldSearch();
             lastViewSwitchAt = Date.now();
             renderDetailShellView();
+            const preferredTab = String(firstNonEmptyValue(openOptions.preferredTab, '') || '').trim();
+            if (preferredTab && isDetailTabVisible(preferredTab)) switchDetailTab(preferredTab, { suppressScroll: true });
             if (detailTapStartedAt) recordInternalPerfDuration('detailTapToShellDurations', detailTapStartedAt, resolvedSourceView || 'detail');
             showPrimaryViewWithScrollPolicy('detail', { scrollPolicy: 'reset', scrollTop: 0 });
             schedulePrimaryViewChromeRefresh('detail', {
@@ -23746,7 +23910,8 @@ function toggleDriveQuickRequestItem(domId) {
                 if (safeTab === 'overview') renderDriveDetailOverviewFields();
                 else if (safeTab === 'gallery') renderPhotoGallery();
                 else if (safeTab === 'customer') {
-                    if (String(activeDetailSourceView || lastView || '').trim() === 'drive') renderDriveCustomerOutreachPanel(activeItem);
+                    const sourceView = String(activeDetailSourceView || lastView || '').trim().toLowerCase();
+                    if ((sourceView === 'drive' || sourceView === 'av') && canUseCustomerConsigneeOutreach()) renderDriveCustomerOutreachPanel(activeItem);
                     else renderAvReserveDetailCustomerPanel();
                 }
                 else if (safeTab === 'ncr') syncNcrDraftInputs(activeItem);
@@ -26859,8 +27024,9 @@ function toggleDriveQuickRequestItem(domId) {
                         }
                     }
                 }
+                const customerOutreachHtml = buildCustomerConsigneeOutreachCardAction(item, sourceView);
                 const bottomRailHtml = getInventoryCardBottomRailHtml(item.DOM_ID);
-        return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass} ${bottomRailHtml ? 'app-card-with-bottom-rail' : ''}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView === 'reserves_drill' ? 'av' : sourceView, 'Open item details')}><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="app-av-card-layout flex justify-between items-start w-full"><div class="app-card-main app-av-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(item.LOCATIONCODE || '-', firstNonEmptyValue(item.SOURCE, item.source, ''))}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[13px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[13px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[13px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">LOC AVA <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">OPEN STOCK <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-green-200 bg-green-50 px-3 py-1 text-green-700">LOC PHOTO MATCH <span class="text-green-900">${locPhotoMatchText}</span></span></div>${rowFourHtml}${rowFiveHtml}</div>${thumbColumnHtml}</div>${bottomRailHtml}</div></div>`;
+        return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass} ${bottomRailHtml ? 'app-card-with-bottom-rail' : ''}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView === 'reserves_drill' ? 'av' : sourceView, 'Open item details')}><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="app-av-card-layout flex justify-between items-start w-full"><div class="app-card-main app-av-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(item.LOCATIONCODE || '-', firstNonEmptyValue(item.SOURCE, item.source, ''))}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[13px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[13px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[13px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">LOC AVA <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">OPEN STOCK <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-green-200 bg-green-50 px-3 py-1 text-green-700">LOC PHOTO MATCH <span class="text-green-900">${locPhotoMatchText}</span></span></div>${rowFourHtml}${rowFiveHtml}${customerOutreachHtml}</div>${thumbColumnHtml}</div>${bottomRailHtml}</div></div>`;
             };
 
             if(sourceView === 'av-photo' || sourceView === 'av') {
@@ -26981,7 +27147,8 @@ function toggleDriveQuickRequestItem(domId) {
                 if(canUseDriveQuickRequest()){
                     quickRequestBtn=getInventoryCardBottomRailHtml(item.DOM_ID);
                 }
-        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory ${seasonCardShellClass} ${quickRequestBtn ? 'app-card-with-bottom-rail' : ''} relative ${inventoryCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open drive row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow min-w-0 flex-col"><div class="flex items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(item.LOCATIONCODE || 'No Loc', displaySource)}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">PTRAVAILABLE <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-700">HOLDSTOPCODE <span class="text-amber-900">${displayHoldStopCode}</span></span></div>${extraData}${noteHtml}</div>${inlineThumbHtml}</div>${quickRequestBtn}</div></div>`;
+                const customerOutreachHtml = buildCustomerConsigneeOutreachCardAction(item, sourceView);
+        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory ${seasonCardShellClass} ${quickRequestBtn ? 'app-card-with-bottom-rail' : ''} relative ${inventoryCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open drive row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow min-w-0 flex-col"><div class="flex items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(item.LOCATIONCODE || 'No Loc', displaySource)}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">PTRAVAILABLE <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-700">HOLDSTOPCODE <span class="text-amber-900">${displayHoldStopCode}</span></span></div>${extraData}${noteHtml}${customerOutreachHtml}</div>${inlineThumbHtml}</div>${quickRequestBtn}</div></div>`;
             }
             if(sourceView==='tasks'){
                 const displaySourceView = sourceView;
