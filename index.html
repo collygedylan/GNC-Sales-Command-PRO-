@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-  window.__APP_SHELL_VERSION__ = 'V2026.04.29.06';
+  window.__APP_SHELL_VERSION__ = 'V2026.04.29.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -901,7 +901,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.06').trim() || 'V2026.04.29.06';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.07').trim() || 'V2026.04.29.07';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1401,7 +1401,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.06';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8788,7 +8788,7 @@ let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKe
 
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
         let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let tempReqAppendToExistingFolder=false; let previousReqStep=""; let driveQuickRequestItems=new Set(); let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
-        let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending';
+let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending'; let requestFolderSearchTerm='';
         let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let lastSyncTime=new Date().toISOString();
         let lastSuccessfulSyncTime = "";
         let syncDiagnosticsOverride = "";
@@ -8847,7 +8847,7 @@ let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.06').trim() || 'V2026.04.29.06';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.07').trim() || 'V2026.04.29.07';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -9544,6 +9544,7 @@ let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKe
             selectedReqRepView = null;
             selectedReqCustView = null;
             selectedReqFolderView = null;
+            requestFolderSearchTerm = '';
             syncRequestTabButtons();
             if (safeOptions.clearSelection) clearSelection();
         }
@@ -9556,7 +9557,8 @@ let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKe
                 selectedReqFolder: String(selectedReqFolder || '').trim(),
                 selectedReqRepView: String(selectedReqRepView || '').trim(),
                 selectedReqCustView: String(selectedReqCustView || '').trim(),
-                selectedReqFolderView: String(selectedReqFolderView || '').trim()
+                selectedReqFolderView: String(selectedReqFolderView || '').trim(),
+                requestFolderSearchTerm: String(requestFolderSearchTerm || '').trim()
             };
         }
 
@@ -9569,6 +9571,7 @@ let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKe
             selectedReqRepView = String(snapshot.selectedReqRepView || '').trim() || null;
             selectedReqCustView = String(snapshot.selectedReqCustView || '').trim() || null;
             selectedReqFolderView = String(snapshot.selectedReqFolderView || '').trim() || null;
+            requestFolderSearchTerm = String(snapshot.requestFolderSearchTerm || '').trim();
             syncRequestTabButtons();
             return true;
         }
@@ -9586,15 +9589,28 @@ let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKe
             if (requestViewLevel > 0 && (!selectedRepName || !repItems.length)) {
                 requestViewLevel = 0;
                 selectedReqRepView = null;
+                selectedReqCustView = null;
                 selectedReqFolderView = null;
+                requestFolderSearchTerm = '';
                 selectedReqStatus = 'Pending';
+                changed = true;
+                return { items: scopedItems, changed };
+            }
+            const selectedCustomerName = String(selectedReqCustView || '').trim();
+            const customerItems = selectedCustomerName
+                ? repItems.filter((item) => getRequestCustomerFolderName(item) === selectedCustomerName)
+                : [];
+            if (requestViewLevel >= 2 && (!selectedCustomerName || !customerItems.length)) {
+                requestViewLevel = 1;
+                selectedReqCustView = null;
+                selectedReqFolderView = null;
+                requestFolderSearchTerm = '';
                 changed = true;
                 return { items: scopedItems, changed };
             }
             if (requestViewLevel >= 3 && selectedReqFolderView) {
                 const folderName = String(selectedReqFolderView || '').trim() || 'Unassigned';
-                const statusItems = repItems.filter((item) => selectedReqStatus === 'Complete' ? isRequestComplete(item) : !isRequestComplete(item));
-                const folderItems = statusItems.filter((item) => String(item.REQUEST_FOLDER || 'Unassigned').trim() === folderName);
+                const folderItems = customerItems.filter((item) => String(item.REQUEST_FOLDER || 'Unassigned').trim() === folderName);
                 if (!folderItems.length) {
                     requestViewLevel = 2;
                     selectedReqFolderView = null;
@@ -11945,13 +11961,13 @@ function toggleDriveQuickRequestItem(domId) {
         function buildRequestModalCustomerSearchOption(customer = '', consignee = '') {
             const customerName = String(customer || '').trim();
             const consigneeName = String(consignee || '').trim();
-            const label = String(buildRequestCustomerValue(customerName, consigneeName) || customerName || consigneeName || '').trim();
+            const label = String(customerName || consigneeName || '').trim();
             if (!label) return null;
             return {
                 label,
                 customerName,
                 consigneeName,
-                searchToken: normalizeRepMatchToken(`${customerName} ${consigneeName} ${label}`)
+                searchToken: normalizeRepMatchToken(`${customerName} ${consigneeName} ${buildRequestCustomerValue(customerName, consigneeName)} ${label}`)
             };
         }
 
@@ -12024,6 +12040,21 @@ function toggleDriveQuickRequestItem(domId) {
             const canonicalRepName = resolveCanonicalRequestRepName(repName);
             const repKey = normalizeRepMatchToken(canonicalRepName);
             if (!repKey) return [];
+            const optionMap = new Map();
+            (reservesInventory || []).forEach((item) => {
+                const repValue = firstNonEmptyValue(item && item.SALESREPNAME, item && item.SALESREP, item && item.SALES_REP, item && item.SALESREPID, '');
+                if (!doesRequestRepMatchValue(repValue, canonicalRepName)) return;
+                const option = buildRequestModalCustomerSearchOption(
+                    firstNonEmptyValue(item && item.CUSTOMERNAME, item && item.CUSTOMER, ''),
+                    firstNonEmptyValue(item && item.CONSIGNEENAME, item && item.CONSIGNEE, '')
+                );
+                if (!option || !option.customerName) return;
+                const optionKey = normalizeRepMatchToken(option.customerName || option.label);
+                if (optionKey && !optionMap.has(optionKey)) optionMap.set(optionKey, option);
+            });
+            if (optionMap.size) {
+                return Array.from(optionMap.values()).sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+            }
             const cache = buildRequestModalCustomerOptionsCache();
             return Array.isArray(cache.get(repKey)) ? cache.get(repKey).slice() : [];
         }
@@ -16219,6 +16250,9 @@ function toggleDriveQuickRequestItem(domId) {
                     suppressFailureToast: !!safeOptions.suppressDelayedReplyFailureToast,
                     delayMs: Math.max(REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS, Number(safeOptions.delayMs) || 0)
                 });
+                if (!delayedReplyResult || delayedReplyResult.ok !== false) {
+                    sendPushNotification('request_complete', folderId, repName, customer, itemsCount);
+                }
             }
             return { summaryEmailResult, delayedReplyResult };
         }
@@ -16795,6 +16829,7 @@ function toggleDriveQuickRequestItem(domId) {
             selectedReqRepView = null;
             selectedReqCustView = null;
             selectedReqFolderView = null;
+            requestFolderSearchTerm = '';
             clearSelection();
             if (shouldRender) scheduleRequestRender();
         }
@@ -17795,7 +17830,7 @@ function toggleDriveQuickRequestItem(domId) {
             beginDirectNavigationActivity();
             activeReqTab = tab === 'reps' ? 'reps' : 'pending';
             syncRequestTabButtons();
-            requestViewLevel = 0; selectedReqFolder = null; selectedReqRepView = null; selectedReqCustView = null; selectedReqFolderView = null; clearSelection(); scheduleRequestRender();
+            requestViewLevel = 0; selectedReqFolder = null; selectedReqRepView = null; selectedReqCustView = null; selectedReqFolderView = null; requestFolderSearchTerm = ''; clearSelection(); scheduleRequestRender();
             forceRefreshRequestsForView('request-tab', { force: true, minIntervalMs: 0 }).catch(() => {});
         }
 
@@ -24642,6 +24677,146 @@ function toggleDriveQuickRequestItem(domId) {
             return consignee && consignee !== customer ? `${customer}-${consignee}` : customer;
         }
 
+        const REQUEST_COMPLETED_FOLDER_READ_STORAGE_KEY = 'gnc_completed_request_folders_opened_v1';
+
+        function getRequestCustomerFolderName(item) {
+            const clean = (value) => String(value || '').trim();
+            const reqCustomer = clean(firstNonEmptyValue(item && item.REQ_CUSTOMER, item && item.req_customer, ''));
+            if (reqCustomer) {
+                const customerPart = reqCustomer.split('|').map((part) => clean(part)).filter(Boolean)[0];
+                return customerPart || reqCustomer || 'Unknown Customer';
+            }
+            return clean(firstNonEmptyValue(item && item.CUSTOMERNAME, item && item.CUSTOMER, item && item.customername, item && item.customer, '')) || 'Unknown Customer';
+        }
+
+        function getRequestFolderName(item) {
+            return String(firstNonEmptyValue(item && item.REQUEST_FOLDER, item && item.request_folder, 'Unassigned') || 'Unassigned').trim() || 'Unassigned';
+        }
+
+        function parseRequestFolderTimestamp(folderName = '') {
+            const folder = String(folderName || '').trim();
+            const dateMatch = folder.match(/(\d{4})-(\d{2})-(\d{2})/);
+            if (!dateMatch) return 0;
+            const afterDate = folder.slice(folder.indexOf(dateMatch[0]) + dateMatch[0].length);
+            const timeMatch = afterDate.match(/(\d{6})(\d{3})?/);
+            const year = Number(dateMatch[1]);
+            const month = Number(dateMatch[2]) - 1;
+            const day = Number(dateMatch[3]);
+            if (timeMatch) {
+                const time = timeMatch[1];
+                const millis = Number(timeMatch[2] || '0');
+                return new Date(year, month, day, Number(time.slice(0, 2)), Number(time.slice(2, 4)), Number(time.slice(4, 6)), millis).getTime();
+            }
+            return new Date(year, month, day).getTime();
+        }
+
+        function parseRequestUniqueIdTimestamp(value = '') {
+            const raw = String(value || '').trim().replace(/^REQ-/i, '');
+            for (let len = 8; len <= Math.min(raw.length, 10); len++) {
+                const parsed = parseInt(raw.slice(0, len), 36);
+                if (parsed > 1577836800000 && parsed < 2524608000000) return parsed;
+            }
+            return 0;
+        }
+
+        function getRequestRowSortMs(item = null) {
+            if (!item) return 0;
+            const dateValue = firstNonEmptyValue(
+                item.CREATED_AT,
+                item.created_at,
+                item.DATE_REQUESTED,
+                item.date_requested,
+                item.REQUEST_DATE,
+                item.request_date,
+                item.DATE_CREATED,
+                item.date_created,
+                item.ORDER_SUBMITTED_AT,
+                item.DATE_COMPLETED,
+                item.date_completed,
+                ''
+            );
+            const parsedDate = Date.parse(String(dateValue || '').trim());
+            if (Number.isFinite(parsedDate)) return parsedDate;
+            const folderMs = parseRequestFolderTimestamp(getRequestFolderName(item));
+            if (folderMs) return folderMs;
+            return parseRequestUniqueIdTimestamp(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, ''));
+        }
+
+        function getRequestFolderStatusInfo(rows = []) {
+            const safeRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
+            const pendingCount = safeRows.filter((item) => !isRequestComplete(item)).length;
+            const completeCount = safeRows.filter((item) => isRequestComplete(item)).length;
+            const latestMs = safeRows.reduce((latest, item) => Math.max(latest, getRequestRowSortMs(item)), 0);
+            return {
+                itemCount: safeRows.length,
+                pendingCount,
+                completeCount,
+                latestMs,
+                allComplete: !!safeRows.length && pendingCount === 0 && completeCount > 0
+            };
+        }
+
+        function formatRequestFolderLatestLabel(ms = 0) {
+            const stamp = Number(ms) || 0;
+            if (!stamp) return '';
+            try {
+                return new Date(stamp).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' });
+            } catch (error) {
+                return '';
+            }
+        }
+
+        function getCompletedRequestFolderReadMap() {
+            try {
+                return JSON.parse(localStorage.getItem(REQUEST_COMPLETED_FOLDER_READ_STORAGE_KEY) || '{}') || {};
+            } catch (error) {
+                return {};
+            }
+        }
+
+        function setCompletedRequestFolderReadMap(map = {}) {
+            try {
+                localStorage.setItem(REQUEST_COMPLETED_FOLDER_READ_STORAGE_KEY, JSON.stringify(map || {}));
+            } catch (error) {}
+        }
+
+        function getCompletedRequestFolderReadKey(repName = '', customerName = '', folderName = '') {
+            const userKey = normalizePushUsername(currentUser || currentUserDisplay || 'viewer') || 'viewer';
+            return [userKey, repName, customerName, folderName].map((value) => normalizeRepMatchToken(value) || String(value || '').trim().toLowerCase()).join('|||');
+        }
+
+        function isCompletedRequestFolderUnread(repName = '', customerName = '', folderName = '', rows = []) {
+            const info = getRequestFolderStatusInfo(rows);
+            if (!info.allComplete) return false;
+            const readMap = getCompletedRequestFolderReadMap();
+            return !readMap[getCompletedRequestFolderReadKey(repName, customerName, folderName)];
+        }
+
+        function markCompletedRequestFolderOpened(repName = '', customerName = '', folderName = '') {
+            const key = getCompletedRequestFolderReadKey(repName, customerName, folderName);
+            if (!key) return false;
+            const readMap = getCompletedRequestFolderReadMap();
+            if (readMap[key]) return false;
+            readMap[key] = Date.now();
+            setCompletedRequestFolderReadMap(readMap);
+            return true;
+        }
+
+        function setRequestFolderSearchTerm(value = '') {
+            requestFolderSearchTerm = String(value || '').trim();
+            const filterToken = normalizeRepMatchToken(requestFolderSearchTerm);
+            let visibleCount = 0;
+            document.querySelectorAll('[data-request-folder-card="true"]').forEach((card) => {
+                const haystack = normalizeRepMatchToken(card.getAttribute('data-request-folder-search') || '');
+                const isVisible = !filterToken || haystack.includes(filterToken);
+                card.classList.toggle('hidden', !isVisible);
+                if (isVisible) visibleCount += 1;
+            });
+            const empty = document.getElementById('request-folder-empty-filter');
+            if (empty) empty.classList.toggle('hidden', visibleCount > 0);
+            return false;
+        }
+
         function getRequestResponseFolderName(item) {
             const repName = String(getRequestAssignedRep(item) || '').trim() || 'Unknown Rep';
             return repName.replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim() || 'Unknown Rep';
@@ -24652,11 +24827,26 @@ function toggleDriveQuickRequestItem(domId) {
             return runDirectTrackedNavigation('request', 'request:rep', () => {
                 selectedReqRepView = safeRepName;
                 selectedReqStatus = 'Pending';
+                selectedReqCustView = null;
                 selectedReqFolderView = null;
+                requestFolderSearchTerm = '';
                 requestViewLevel = 1;
             }, {
                 resetScrollTopAfterRender: true,
                 scrollResetKey: `request-rep:${safeRepName}`
+            });
+        }
+
+        function openRequestCustomerView(customerName) {
+            const safeCustomerName = String(customerName || '').trim() || 'Unknown Customer';
+            return runDirectTrackedNavigation('request', 'request:customer', () => {
+                selectedReqCustView = safeCustomerName;
+                selectedReqFolderView = null;
+                requestFolderSearchTerm = '';
+                requestViewLevel = 2;
+            }, {
+                resetScrollTopAfterRender: true,
+                scrollResetKey: `request-customer:${selectedReqRepView || ''}:${safeCustomerName}`
             });
         }
 
@@ -24665,6 +24855,7 @@ function toggleDriveQuickRequestItem(domId) {
             return runDirectTrackedNavigation('request', 'request:status', () => {
                 selectedReqStatus = safeStatus;
                 selectedReqFolderView = null;
+                requestFolderSearchTerm = '';
                 requestViewLevel = 2;
             }, {
                 resetScrollTopAfterRender: true,
@@ -24677,6 +24868,14 @@ function toggleDriveQuickRequestItem(domId) {
             return runDirectTrackedNavigation('request', 'request:folder', () => {
                 selectedReqFolderView = safeFolderName;
                 requestViewLevel = 3;
+                const folderItems = getScopedRequestItems(requestsInventory).filter((item) => {
+                    if (getRequestAssignedRep(item) !== selectedReqRepView || item.REQ_ARCHIVED) return false;
+                    if (getRequestCustomerFolderName(item) !== selectedReqCustView) return false;
+                    return getRequestFolderName(item) === safeFolderName;
+                });
+                if (getRequestFolderStatusInfo(folderItems).allComplete) {
+                    markCompletedRequestFolderOpened(selectedReqRepView, selectedReqCustView, safeFolderName);
+                }
             }, {
                 resetScrollTopAfterRender: true,
                 scrollResetKey: `request-folder:${safeFolderName}`
@@ -24687,7 +24886,9 @@ function toggleDriveQuickRequestItem(domId) {
             return runDirectTrackedNavigation('request', 'request:rep:list', () => {
                 requestViewLevel = 0;
                 selectedReqRepView = null;
+                selectedReqCustView = null;
                 selectedReqFolderView = null;
+                requestFolderSearchTerm = '';
             }, {
                 resetScrollTopAfterRender: true,
                 scrollResetKey: 'request-rep-list'
@@ -24697,7 +24898,9 @@ function toggleDriveQuickRequestItem(domId) {
         function backToRequestStatusList() {
             return runDirectTrackedNavigation('request', 'request:status:list', () => {
                 requestViewLevel = 1;
+                selectedReqCustView = null;
                 selectedReqFolderView = null;
+                requestFolderSearchTerm = '';
             }, {
                 resetScrollTopAfterRender: true,
                 scrollResetKey: `request-rep:${selectedReqRepView || ''}`
@@ -24706,6 +24909,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function backToRequestFolderList() {
             requestViewLevel = 2;
+            selectedReqFolderView = null;
             scheduleRequestRender(0);
             return false;
         }
@@ -24716,12 +24920,12 @@ function toggleDriveQuickRequestItem(domId) {
                 items = items.filter(i => !isRequestComplete(i) && !i.REQ_ARCHIVED);
             } else if (activeReqTab === 'reps') {
                 items = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
-                if (selectedReqStatus) {
-                    items = items.filter(i => selectedReqStatus === 'Pending' ? !isRequestComplete(i) : isRequestComplete(i));
+                if (requestViewLevel >= 2 && selectedReqCustView) {
+                    items = items.filter(i => getRequestCustomerFolderName(i) === selectedReqCustView);
                 }
                 if (requestViewLevel >= 3 && selectedReqFolderView) {
                     items = items.filter(i => {
-                        const groupKey = (i.REQUEST_FOLDER || 'Unassigned');
+                        const groupKey = getRequestFolderName(i);
                         return groupKey === selectedReqFolderView;
                     });
                 }
@@ -24878,65 +25082,95 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (activeReqTab === 'reps') {
                 if (requestViewLevel === 0) {
                     const crumbText = 'Sales Reps';
-                    let reps = [...new Set(items.map(i => getRequestAssignedRep(i)))].sort();
+                    let reps = [...new Set(items.filter(i => !i.REQ_ARCHIVED).map(i => getRequestAssignedRep(i)))].sort();
                     if (reps.length === 0) {
                         applyRequestRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No sales reps found.</div>`, 'request:reps:empty');
                         return;
                     }
-                    const html = reps.map(r => `<div class="drill-item" ${buildFastInvokeAttrs('openRequestRepView', [r], 'Open ' + r)}><span class="font-bold text-lg">${r}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
+                    const html = reps.map(r => `<div class="drill-item" ${buildFastInvokeAttrs('openRequestRepView', [r], 'Open ' + r)}><span class="font-bold text-lg">${escapeShareHtml(r)}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
                     applyRequestRenderMarkup(container, crumb, crumbText, html);
                     return;
                 } else if (requestViewLevel === 1) {
-                    const crumbText = `${selectedReqRepView} > Status`;
+                    const crumbText = `${selectedReqRepView} > Customers`;
                     let repItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
-                    let pendingCount = repItems.filter(i => !isRequestComplete(i)).length;
-                    let completeCount = repItems.filter(i => isRequestComplete(i)).length;
-                    const html = `
-                        <div class="back-btn" ${buildFastInvokeAttrs('backToRequestRepList', [], 'Back to Reps')}><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>
-                        <div class="bg-orange-50 border border-orange-200 rounded-xl shadow-sm mb-4 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('openRequestStatusView', ['Pending'], 'Open Pending Requests')}>
-                            <div class="flex items-center gap-3"><i class="ph-bold ph-clock text-2xl text-orange-500"></i><span class="font-bold text-lg text-orange-800">Pending Requests</span></div>
-                            <span class="text-xs font-bold text-white bg-orange-500 px-2 py-1 rounded-lg">${pendingCount}</span>
-                        </div>
-                        <div class="bg-green-50 border border-green-200 rounded-xl shadow-sm mb-4 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('openRequestStatusView', ['Complete'], 'Open Completed Requests')}>
-                            <div class="flex items-center gap-3"><i class="ph-bold ph-check-circle text-2xl text-green-500"></i><span class="font-bold text-lg text-green-800">Completed Requests</span></div>
-                            <span class="text-xs font-bold text-white bg-green-500 px-2 py-1 rounded-lg">${completeCount}</span>
-                        </div>
-                    `;
+                    const customerMap = new Map();
+                    repItems.forEach((item) => {
+                        const customerName = getRequestCustomerFolderName(item);
+                        if (!customerMap.has(customerName)) customerMap.set(customerName, []);
+                        customerMap.get(customerName).push(item);
+                    });
+                    const customerEntries = Array.from(customerMap.entries()).map(([customerName, rows]) => {
+                        const folderNames = [...new Set(rows.map((item) => getRequestFolderName(item)))];
+                        const unreadCount = folderNames.reduce((count, folderName) => {
+                            const folderRows = rows.filter((item) => getRequestFolderName(item) === folderName);
+                            return count + (isCompletedRequestFolderUnread(selectedReqRepView, customerName, folderName, folderRows) ? 1 : 0);
+                        }, 0);
+                        return { customerName, rows, info: getRequestFolderStatusInfo(rows), folderCount: folderNames.length, unreadCount };
+                    }).sort((a, b) => (b.info.latestMs - a.info.latestMs) || String(a.customerName).localeCompare(String(b.customerName)));
+                    if (!customerEntries.length) {
+                        const html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestRepList', [], 'Back to Reps')}><i class="ph-bold ph-arrow-left"></i> Back to Reps</div><div class="p-8 text-center text-gray-400">No customer request folders for this rep.</div>`;
+                        applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:customers:empty`);
+                        return;
+                    }
+                    let html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestRepList', [], 'Back to Reps')}><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>`;
+                    html += customerEntries.map((entry) => {
+                        const latestLabel = formatRequestFolderLatestLabel(entry.info.latestMs);
+                        const unreadDot = entry.unreadCount ? `<span class="inline-flex h-3 w-3 rounded-full bg-red-500 shadow-sm ring-2 ring-white" aria-label="Unread completed request"></span>` : '';
+                        const pendingBadge = entry.info.pendingCount ? `<span class="rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-orange-700">${entry.info.pendingCount} Pending</span>` : '';
+                        const completeBadge = entry.info.completeCount ? `<span class="rounded-full border border-green-200 bg-green-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-green-700">${entry.info.completeCount} Complete</span>` : '';
+                        return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('openRequestCustomerView', [entry.customerName], 'Open customer ' + entry.customerName)}><div class="flex justify-between items-center gap-3"><div class="flex items-center gap-3 min-w-0"><div class="bg-emerald-50 p-2 rounded-lg"><i class="ph-bold ph-users-three text-2xl text-[#007a4d]"></i></div><div class="min-w-0"><div class="flex items-center gap-2"><span class="font-bold text-sm text-emerald-900 break-words">${escapeShareHtml(entry.customerName)}</span>${unreadDot}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${entry.folderCount} request folder${entry.folderCount === 1 ? '' : 's'}${latestLabel ? ` &bull; Newest ${escapeShareHtml(latestLabel)}` : ''}</div></div></div><i class="ph-bold ph-caret-right text-gray-300"></i></div><div class="mt-3 flex flex-wrap gap-2">${pendingBadge}${completeBadge}</div></div>`;
+                    }).join('');
                     applyRequestRenderMarkup(container, crumb, crumbText, html);
                     return;
                 } else if (requestViewLevel === 2) {
-                    const crumbText = `${selectedReqRepView} > ${selectedReqStatus}`;
-                    let repItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
-                    let statusItems = repItems.filter(i => selectedReqStatus === 'Pending' ? !isRequestComplete(i) : isRequestComplete(i));
+                    const crumbText = `${selectedReqRepView} > ${selectedReqCustView}`;
+                    let customerItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED && getRequestCustomerFolderName(i) === selectedReqCustView);
 
-                    if (statusItems.length === 0) {
-                        const html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestStatusList', [], 'Back to Status')}><i class="ph-bold ph-arrow-left"></i> Back to Status</div><div class="p-8 text-center text-gray-400">No ${selectedReqStatus.toLowerCase()} requests.</div>`;
-                        applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:${selectedReqStatus}:empty`);
+                    if (customerItems.length === 0) {
+                        const html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestStatusList', [], 'Back to Customers')}><i class="ph-bold ph-arrow-left"></i> Back to Customers</div><div class="p-8 text-center text-gray-400">No request folders for this customer.</div>`;
+                        applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:${selectedReqCustView}:empty`);
                         return;
                     }
 
-                    let folders = [...new Set(statusItems.map(i => (i.REQUEST_FOLDER || 'Unassigned')))].sort();
-                    let html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestStatusList', [], 'Back to Status')}><i class="ph-bold ph-arrow-left"></i> Back to Status</div>`;
-                    html += folders.map(f => {
-                        let count = statusItems.filter(i => ((i.REQUEST_FOLDER || 'Unassigned')) === f).length;
-                        const folderNote = getRequestFolderNote(f, selectedReqStatus, selectedReqRepView);
+                    const folderMap = new Map();
+                    customerItems.forEach((item) => {
+                        const folderName = getRequestFolderName(item);
+                        if (!folderMap.has(folderName)) folderMap.set(folderName, []);
+                        folderMap.get(folderName).push(item);
+                    });
+                    const folderEntries = Array.from(folderMap.entries()).map(([folderName, rows]) => ({
+                        folderName,
+                        rows,
+                        info: getRequestFolderStatusInfo(rows),
+                        searchText: `${folderName} ${selectedReqCustView} ${rows.map((row) => [row.COMMONNAME, row.ITEMCODE, row.LOCATIONCODE, row.LOTCODE, row.CONTSIZE].join(' ')).join(' ')}`
+                    })).sort((a, b) => (b.info.latestMs - a.info.latestMs) || String(a.folderName).localeCompare(String(b.folderName)));
+                    const searchToken = normalizeRepMatchToken(requestFolderSearchTerm);
+                    const visibleFolderCount = folderEntries.filter((entry) => !searchToken || normalizeRepMatchToken(entry.searchText).includes(searchToken)).length;
+                    let html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestStatusList', [], 'Back to Customers')}><i class="ph-bold ph-arrow-left"></i> Back to Customers</div><div class="mb-3"><input id="request-folder-search-input" class="input-field !mb-0 border-emerald-200 focus:border-[#007a4d]" type="text" value="${esc(requestFolderSearchTerm)}" placeholder="Search requests..." oninput="return setRequestFolderSearchTerm(this.value)"></div><div id="request-folder-empty-filter" class="${visibleFolderCount ? 'hidden ' : ''}p-8 text-center text-gray-400">No matching request folders.</div>`;
+                    html += folderEntries.map((entry) => {
+                        const f = entry.folderName;
+                        const folderStatus = entry.info.allComplete ? 'Complete' : 'Pending';
+                        const folderNote = getRequestFolderNote(f, folderStatus, selectedReqRepView);
                         const noteHtml = folderNote ? `<div class="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-2 text-[11px] font-semibold text-amber-900 whitespace-pre-wrap"><span class="font-black uppercase text-[10px] tracking-wider text-amber-700">Folder Note</span><div class="mt-1">${esc(folderNote)}</div></div>` : '';
-                        const showResendAction = selectedReqStatus === 'Complete';
-                        const shareActions = canShareRequestFolders() ? `<div class="grid ${showResendAction ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'} gap-2 mt-3"><button class="bg-white border border-purple-200 text-purple-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('copy', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Copy</button><button class="bg-white border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('email', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Email</button><button class="bg-white border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('text', '${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Text</button>${showResendAction ? `<button class="bg-white border border-sky-200 text-sky-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); resendRequestCompletionEmail('${esc(f)}', '${esc(selectedReqRepView)}')">Resend</button>` : ''}<button class="bg-white border border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); setRequestFolderNote('${esc(f)}', '${selectedReqStatus}', '${esc(selectedReqRepView)}')">Note</button></div>` : '';
-                        return `<div class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('openRequestFolderView', [f], 'Open folder ' + f)}><div class="flex justify-between items-center"><div class="flex items-center gap-3 min-w-0"><div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div><span class="font-bold text-sm text-purple-800 break-all">${f}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg min-w-max ml-2">${count} Items</span></div>${noteHtml}${shareActions}</div>`;
+                        const showResendAction = entry.info.allComplete;
+                        const shareActions = canShareRequestFolders() ? `<div class="grid ${showResendAction ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'} gap-2 mt-3"><button class="bg-white border border-purple-200 text-purple-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('copy', '${esc(f)}', '${folderStatus}', '${esc(selectedReqRepView)}')">Copy</button><button class="bg-white border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('email', '${esc(f)}', '${folderStatus}', '${esc(selectedReqRepView)}')">Email</button><button class="bg-white border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('text', '${esc(f)}', '${folderStatus}', '${esc(selectedReqRepView)}')">Text</button>${showResendAction ? `<button class="bg-white border border-sky-200 text-sky-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); resendRequestCompletionEmail('${esc(f)}', '${esc(selectedReqRepView)}')">Resend</button>` : ''}<button class="bg-white border border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); setRequestFolderNote('${esc(f)}', '${folderStatus}', '${esc(selectedReqRepView)}')">Note</button></div>` : '';
+                        const latestLabel = formatRequestFolderLatestLabel(entry.info.latestMs);
+                        const unreadDot = isCompletedRequestFolderUnread(selectedReqRepView, selectedReqCustView, f, entry.rows) ? `<span class="inline-flex h-3 w-3 rounded-full bg-red-500 shadow-sm ring-2 ring-white" aria-label="Unread completed request"></span>` : '';
+                        const hiddenClass = searchToken && !normalizeRepMatchToken(entry.searchText).includes(searchToken) ? ' hidden' : '';
+                        const statusBadges = `<span class="rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-orange-700">${entry.info.pendingCount} Pending</span><span class="rounded-full border border-green-200 bg-green-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-green-700">${entry.info.completeCount} Complete</span>`;
+                        return `<div data-request-folder-card="true" data-request-folder-search="${escapeShareHtml(entry.searchText)}" class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform${hiddenClass}" ${buildFastInvokeAttrs('openRequestFolderView', [f], 'Open folder ' + f)}><div class="flex justify-between items-center gap-3"><div class="flex items-center gap-3 min-w-0"><div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div><div class="min-w-0"><div class="flex items-center gap-2"><span class="font-bold text-sm text-purple-800 break-all">${escapeShareHtml(f)}</span>${unreadDot}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${latestLabel ? `Newest ${escapeShareHtml(latestLabel)}` : 'Request Folder'}</div></div></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg min-w-max ml-2">${entry.info.itemCount} Items</span></div><div class="mt-3 flex flex-wrap gap-2">${statusBadges}</div>${noteHtml}${shareActions}</div>`;
                     }).join('');
                     applyRequestRenderMarkup(container, crumb, crumbText, html);
                     return;
                 } else if (requestViewLevel === 3) {
-                    const crumbText = selectedReqStatus === 'Complete' ? `${selectedReqRepView} > ${selectedReqFolderView}` : selectedReqFolderView;
+                    const crumbText = `${selectedReqRepView} > ${selectedReqCustView} > ${selectedReqFolderView}`;
                     let folderItems = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
-                    folderItems = folderItems.filter(i => ((i.REQUEST_FOLDER || 'Unassigned')) === selectedReqFolderView);
-                    folderItems = folderItems.filter(i => selectedReqStatus === 'Pending' ? !isRequestComplete(i) : isRequestComplete(i));
+                    folderItems = folderItems.filter(i => getRequestCustomerFolderName(i) === selectedReqCustView);
+                    folderItems = folderItems.filter(i => getRequestFolderName(i) === selectedReqFolderView);
                     folderItems.sort((a,b) => String(a.LOCATIONCODE||'').localeCompare(String(b.LOCATIONCODE||''), undefined, {numeric: true}));
                     const prefixHtml = `<div class="back-btn" onclick="return backToRequestFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>`;
-                    const cardTone = selectedReqStatus === 'Complete' ? 'status-green' : 'status-purple';
-                    const renderKey = buildRequestChunkRenderKey(`request-folder:${selectedReqStatus}:${selectedReqRepView}:${selectedReqFolderView}:${cardTone}`, crumbText, folderItems);
-                    renderMarkupChunkedByKey('request-main', container, crumb, folderItems, crumbText, (item) => generateCard(item, 'request', cardTone), {
+                    const renderKey = buildRequestChunkRenderKey(`request-folder:${selectedReqRepView}:${selectedReqCustView}:${selectedReqFolderView}`, crumbText, folderItems);
+                    renderMarkupChunkedByKey('request-main', container, crumb, folderItems, crumbText, (item) => generateCard(item, 'request', isRequestComplete(item) ? 'status-green' : 'status-purple'), {
                         prefixHtml,
                         approxCardHeight: 360,
                         renderSignature: renderKey,
@@ -27778,8 +28012,9 @@ function toggleDriveQuickRequestItem(domId) {
             const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/:/g, '');
             const millis = String(now.getMilliseconds()).padStart(3, '0');
             const uniqueSuffix = Math.random().toString(36).slice(2, 6).toUpperCase();
-            const safeCustName = String(customerName || 'CUSTOMER').replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-') || 'CUSTOMER';
-            return `REQ-${dateStr}-${timeStr}${millis}-${uniqueSuffix}-${safeCustName}`;
+            const customerOnly = String(customerName || 'CUSTOMER').split('|').map((part) => part.trim()).filter(Boolean)[0] || 'CUSTOMER';
+            const safeCustName = customerOnly.replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-') || 'CUSTOMER';
+            return `${safeCustName}-${dateStr}-REQ-${timeStr}${millis}-${uniqueSuffix}`;
         }
 
         function finalizeRequestAction(existingFolderId,existingCust,itemsDataObj) {

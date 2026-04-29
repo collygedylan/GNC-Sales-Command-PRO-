@@ -41,7 +41,7 @@ function buildTargetUsers(eventType: string, payload: Record<string, unknown>) {
   if (eventType === "new_request") return [...REQUEST_ALERT_USERNAMES];
   if (eventType === "request_complete") {
     const direct = normalizeUsername(String(payload.requestedByUsername || payload.requestedBy || payload.repName || ""));
-    return direct ? [direct] : [];
+    return [...new Set([direct, ...REQUEST_ALERT_USERNAMES].filter(Boolean))];
   }
   return [];
 }
