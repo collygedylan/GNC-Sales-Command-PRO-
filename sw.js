@@ -130,7 +130,7 @@ self.addEventListener('push', (event) => {
     body: data.body || 'You have a new message.',
     icon: iconUrl,
     badge: iconUrl,
-    data: { url: targetUrl, viewId: data.viewId || 'request', conversationId: data.conversationId || '', messageId: data.messageId || '' },
+    data: { url: targetUrl, viewId: data.viewId || 'request', conversationId: data.conversationId || '', messageId: data.messageId || '', channelId: data.channelId || '', callId: data.callId || '' },
     vibrate: [200, 100, 200],
     silent: false,
     requireInteraction: true,
@@ -151,14 +151,14 @@ self.addEventListener('notificationclick', (event) => {
       for (const client of clientList) {
         if ('focus' in client) {
           await client.focus();
-          try { client.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, conversationId: payload.conversationId || '', messageId: payload.messageId || '' }); } catch (error) {}
+          try { client.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '' }); } catch (error) {}
           return client;
         }
       }
       if (clients.openWindow) {
         const opened = await clients.openWindow(targetUrl);
         if (opened) {
-          try { opened.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, conversationId: payload.conversationId || '', messageId: payload.messageId || '' }); } catch (error) {}
+          try { opened.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '' }); } catch (error) {}
         }
         return opened;
       }

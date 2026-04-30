@@ -71,6 +71,9 @@ function buildTargetUsers(eventType: string, payload: Record<string, unknown>) {
   if (eventType === "chat_message") {
     return normalizePayloadUserList(payload.recipients || payload.targetUsers || payload.to);
   }
+  if (eventType === "walkie_alert") {
+    return normalizePayloadUserList(payload.recipients || payload.targetUsers || payload.to);
+  }
   if (eventType === "request_complete") {
     const direct = normalizeUsername(String(payload.requestedByUsername || payload.requestedBy || payload.repName || ""));
     return [...new Set([direct, ...REQUEST_ALERT_USERNAMES].filter(Boolean))];
@@ -99,6 +102,25 @@ function buildNotification(eventType: string, payload: Record<string, unknown>) 
       viewId: "chat",
       conversationId,
       messageId,
+      url: "./"
+    };
+  }
+  if (eventType === "walkie_alert") {
+    const starter = String(payload.sentBy || payload.createdBy || payload.senderDisplayName || "Walkie").trim();
+    const channelTitle = String(payload.title || payload.channelTitle || payload.customer || "Walkie").trim();
+    const callId = String(payload.callId || payload.folderId || "").trim();
+    const channelId = String(payload.channelId || "").trim();
+    const alertKind = String(payload.alertKind || "live").trim().toLowerCase();
+    const body = alertKind === "invite"
+      ? `${starter} invited you to ${channelTitle}.`
+      : `${starter} started live audio in ${channelTitle}.`;
+    return {
+      title: "Walkie Alert",
+      body,
+      tag: `walkie-${channelId || "channel"}-${callId || Date.now()}`,
+      viewId: "walkie",
+      channelId,
+      callId,
       url: "./"
     };
   }
@@ -197,7 +219,7 @@ serve(async (req) => {
 
   const payload = await req.json().catch(() => ({})) as Record<string, unknown>;
   const eventType = String(payload.eventType || payload.type || "").trim().toLowerCase();
-  if (eventType !== "new_request" && eventType !== "request_complete" && eventType !== "flyer_created" && eventType !== "flyer_complete" && eventType !== "chat_message") {
+  if (eventType !== "new_request" && eventType !== "request_complete" && eventType !== "flyer_created" && eventType !== "flyer_complete" && eventType !== "chat_message" && eventType !== "walkie_alert") {
     return jsonResponse({ error: "Unsupported event type." }, 400);
   }
 

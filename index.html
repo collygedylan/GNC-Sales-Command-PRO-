@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-  window.__APP_SHELL_VERSION__ = 'V2026.04.29.16';
+window.__APP_SHELL_VERSION__ = 'V2026.04.30.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -906,7 +906,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.16').trim() || 'V2026.04.29.16';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.30.01').trim() || 'V2026.04.30.01';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -929,6 +929,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <div id="drawer-home-btn" class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div>
             <div id="drawer-force-sync-btn" class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData('force'); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div>
             <div id="drawer-chat-btn" class="drawer-item text-sky-600 font-bold" onclick="switchView('chat'); toggleMenu();"><i class="ph-bold ph-chats-circle"></i> Chat</div>
+            <div id="drawer-walkie-btn" class="drawer-item text-emerald-700 font-bold" onclick="switchView('walkie'); toggleMenu();"><i class="ph-bold ph-radio"></i> Walkie</div>
             <hr class="my-2">
             <div id="drawer-drive-btn" class="drawer-item role-access role-admin role-qc-supervisor hidden" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
             <div id="drawer-tasks-btn" class="drawer-item role-access role-admin hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
@@ -998,6 +999,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div id="home-tile-av" onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
                                 <div id="home-tile-request" onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-request-enabled hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
                                 <div id="home-tile-chat" onclick="switchView('chat')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-chats-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Chat</span></div>
+                                <div id="home-tile-walkie" onclick="switchView('walkie')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-radio text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Walkie</span></div>
                                 <div id="home-tile-reserves" onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
                                 <div id="home-tile-sales-office" onclick="openSalesOfficeView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
                                 <div id="home-tile-reports" onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
@@ -1096,6 +1098,19 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         </div>
                     </div>
                     <div id="chat-content"></div>
+                </div>
+
+                <div id="view-walkie" class="hidden">
+                    <div class="freeze-panel">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <div>
+                                <div id="walkie-crumb" class="text-xs font-bold text-[#007a4d] uppercase tracking-[0.16em]">Push to talk</div>
+                                <div id="walkie-title" class="text-xl font-black text-slate-900">Walkie</div>
+                            </div>
+                            <button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="openNewWalkieComposer()"><i class="ph-bold ph-plus text-base align-middle"></i><span class="align-middle ml-1">New</span></button>
+                        </div>
+                    </div>
+                    <div id="walkie-content"></div>
                 </div>
 
                 <div id="view-reserves" class="hidden">
@@ -1398,6 +1413,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 <button type="button" data-footer-view="docks" class="footer-nav-btn" onclick="switchView('docks')" aria-label="Docks"><i class="ph-bold ph-truck"></i><span>Docks</span></button>
                 <button type="button" id="footer-request-btn" data-footer-view="request" class="footer-nav-btn hidden" onclick="switchView('request')" aria-label="Requests"><i class="ph-bold ph-chat-circle-text"></i><span>Reqs</span><span id="footer-request-badge" class="footer-nav-badge hidden">0</span></button>
                 <button type="button" id="footer-chat-btn" data-footer-view="chat" class="footer-nav-btn" onclick="switchView('chat')" aria-label="Chat"><i class="ph-bold ph-chats-circle"></i><span>Chat</span><span id="footer-chat-badge" class="footer-nav-badge hidden">0</span></button>
+                <button type="button" id="footer-walkie-btn" data-footer-view="walkie" class="footer-nav-btn" onclick="switchView('walkie')" aria-label="Walkie"><i class="ph-bold ph-radio"></i><span>Walkie</span><span id="footer-walkie-badge" class="footer-nav-badge hidden">0</span></button>
                 <button type="button" id="footer-cart-btn" class="footer-nav-btn hidden" onclick="toggleCartPanel()" aria-label="Bloom Picker"><i class="ph-bold ph-handbag"></i><span>Bloom</span><span id="footer-cart-badge" class="footer-nav-badge hidden">0</span></button>
             </nav>
         </div>
@@ -1409,6 +1425,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const CHAT_CONVERSATIONS_TABLE = 'v2_chat_conversations';
         const CHAT_PARTICIPANTS_TABLE = 'v2_chat_participants';
         const CHAT_MESSAGES_TABLE = 'v2_chat_messages';
+        const WALKIE_CHANNELS_TABLE = 'v2_walkie_channels';
+        const WALKIE_CHANNEL_MEMBERS_TABLE = 'v2_walkie_channel_members';
+        const WALKIE_CALLS_TABLE = 'v2_walkie_calls';
+        const WALKIE_CALL_MEMBERS_TABLE = 'v2_walkie_call_members';
+        const WALKIE_SIGNAL_TABLE = 'v2_walkie_signal_events';
         const PUSH_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/send-push-alert`;
         const APP_API_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/app-api`;
         const LEAF_ASSISTANT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/inventory-assistant`;
@@ -1418,8 +1439,14 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const PUSH_DELIVERY_RETRY_DELAYS_MS = [0, 1500, 6000, 15000];
         const PUSH_MOBILE_REFRESH_STORAGE_KEY = 'gnc_mobile_push_refresh_v1';
         const CHAT_REALTIME_TABLES = [CHAT_CONVERSATIONS_TABLE, CHAT_PARTICIPANTS_TABLE, CHAT_MESSAGES_TABLE];
+        const WALKIE_REALTIME_TABLES = [WALKIE_CHANNELS_TABLE, WALKIE_CHANNEL_MEMBERS_TABLE, WALKIE_CALLS_TABLE, WALKIE_CALL_MEMBERS_TABLE, WALKIE_SIGNAL_TABLE];
         const CHAT_BACKGROUND_POLL_MS = 3000;
         const CHAT_BACKGROUND_HEALTHY_POLL_MS = 30000;
+        const WALKIE_LISTENER_CAP = 6;
+        const WALKIE_MEMBERSHIP_STALE_MS = 45000;
+        const WALKIE_HEARTBEAT_MS = 12000;
+        const WALKIE_SPEAKER_HEARTBEAT_MS = 2500;
+        const WALKIE_DEVICE_STORAGE_KEY = 'gnc_walkie_device_id_v1';
         const PHOTO_BUCKETS = {
             'ssn-': 'season_sales_notes_photos',
             'lsn-': 'location_sales_notes_photos',
@@ -1437,7 +1464,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.16';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.30.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1458,6 +1485,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         const LIVE_SYNC_VIEW_POLICY = Object.freeze({
             home: { realtimeTables: [], pollMs: 0 },
             chat: { realtimeTables: ['v2_chat_conversations', 'v2_chat_participants', 'v2_chat_messages'], pollMs: 2000 },
+            walkie: { realtimeTables: ['v2_walkie_channels', 'v2_walkie_channel_members', 'v2_walkie_calls', 'v2_walkie_call_members', 'v2_walkie_signal_events'], pollMs: 2000 },
             drive: { realtimeTables: [], pollMs: 'visible-default' },
             tasks: { realtimeTables: [], pollMs: 'visible-default' },
             request: { realtimeTables: ['v2_active_request'], pollMs: 'visible-default' },
@@ -4975,6 +5003,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 return true;
             }
 
+            if (tableName === WALKIE_CHANNELS_TABLE || tableName === WALKIE_CHANNEL_MEMBERS_TABLE || tableName === WALKIE_CALLS_TABLE || tableName === WALKIE_CALL_MEMBERS_TABLE || tableName === WALKIE_SIGNAL_TABLE) {
+                handleWalkieRealtimeChange(tableName, payload);
+                recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'walkie');
+                return true;
+            }
+
             const oldRow = payload.old || {};
             const nextRow = payload.new ? formatFetchedRows([payload.new], tableName)[0] : null;
             const uniqueId = String((nextRow && nextRow.UNIQUE_ID) || oldRow.unique_id || oldRow.UNIQUE_ID || '');
@@ -6437,6 +6471,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 bindFastInvokeById('drawer-home-btn', 'openDrawerView', ['home'], 'Home');
 bindFastInvokeById('drawer-force-sync-btn', 'forceSyncAndCloseMenu', [], 'Force Data Sync');
 bindFastInvokeById('drawer-chat-btn', 'openDrawerView', ['chat'], 'Chat');
+bindFastInvokeById('drawer-walkie-btn', 'openDrawerView', ['walkie'], 'Walkie');
 bindFastInvokeById('drawer-drive-btn', 'openDrawerView', ['drive'], 'Drive Mode');
             bindFastInvokeById('drawer-tasks-btn', 'openDrawerView', ['tasks'], 'My Tasks');
             bindFastInvokeById('drawer-docks-btn', 'openDrawerView', ['docks'], 'Docks');
@@ -6455,6 +6490,7 @@ bindFastInvokeById('drawer-drive-btn', 'openDrawerView', ['drive'], 'Drive Mode'
             bindFastInvokeById('home-tile-av', 'switchView', ['av'], 'AV');
 bindFastInvokeById('home-tile-request', 'switchView', ['request'], 'Requests');
 bindFastInvokeById('home-tile-chat', 'switchView', ['chat'], 'Chat');
+bindFastInvokeById('home-tile-walkie', 'switchView', ['walkie'], 'Walkie');
 bindFastInvokeById('home-tile-reserves', 'switchView', ['reserves'], 'Reserves');
             bindFastInvokeById('home-tile-sales-office', 'openSalesOfficeView', [], 'Sales Office');
             bindFastInvokeById('home-tile-reports', 'switchView', ['reports'], 'Reports');
@@ -6463,6 +6499,7 @@ bindFastInvokeById('home-tile-reserves', 'switchView', ['reserves'], 'Reserves')
 bindFastInvokeById('footer-menu-btn', 'toggleMenu', [], 'Menu');
 bindFastInvokeById('footer-request-btn', 'switchView', ['request'], 'Requests');
 bindFastInvokeById('footer-chat-btn', 'switchView', ['chat'], 'Chat');
+bindFastInvokeById('footer-walkie-btn', 'switchView', ['walkie'], 'Walkie');
 bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             bindFastInvokeById('custom-rep-btn', 'selectCustomRequestRepFromInput', [], 'Assign custom sales rep');
             bindFastInvokeById('request-customer-next-btn', 'processCustStep', [], 'Next: Item Details');
@@ -8584,6 +8621,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
 
 let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let salesOfficeInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
 let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set();
+let walkieChannels=[]; let walkieChannelMembers=[]; let walkieCalls=[]; let walkieCallMembers=[]; let walkieUsers=[]; let walkieSignalsSeen=new Set(); let walkieDataLoaded=false; let walkieLoadPromise=null; let walkieSchemaReady=null; let walkieSchemaProbePromise=null; let walkieSchemaWarningShown=false; let activeWalkieChannelId=''; let pendingWalkieOpenChannelId=''; let pendingWalkieOpenCallId=''; let walkieComposeOpen=false; let walkieUserSearchTerm=''; let walkieComposeTitle=''; let walkieSelectedUsers=new Set(); let walkieLastRenderSignature=''; let walkieDeviceId=''; let activeWalkieCallId=''; let walkieJoinedCallId=''; let walkieActiveMembershipId=''; let walkiePeerConnections=new Map(); let walkieRemoteAudioElements=new Map(); let walkieLocalStream=null; let walkieHeartbeatTimer=null; let walkieSpeakerHeartbeatTimer=null; let walkieReconnectTimer=null; let walkieActiveSpeakerIntent=false; let walkiePressedPointerId=''; let walkieForegroundNoticeShown=false;
 let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let managerReviewInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
         let reviewSearchTerm=''; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set();
@@ -8910,7 +8948,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.16').trim() || 'V2026.04.29.16';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.30.01').trim() || 'V2026.04.30.01';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -9421,6 +9459,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
             av: { container: 'av-content', crumb: 'av-crumb' },
             docks: { container: 'docks-content', crumb: 'docks-crumb' },
             request: { container: 'request-content', crumb: 'request-crumb' },
+            walkie: { container: 'walkie-content', crumb: 'walkie-crumb' },
             reserves: { container: 'reserves-content', crumb: 'reserves-crumb' },
             'sales-office': { container: 'sales-office-content' },
             tasks: { container: 'task-content', crumb: 'task-crumb' },
@@ -10133,6 +10172,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
             if (viewId === 'docks') return { required: [{ key: 'soc', mode: 'initial' }], background: [{ key: 'soc', mode: 'full' }], label: 'Loading dock rows...' };
             if (viewId === 'request') return { required: [{ key: 'requests', mode: 'initial' }], background: [{ key: 'requests', mode: 'full' }], label: 'Loading requests...' };
             if (viewId === 'chat') return { required: [], background: [], label: 'Loading chat...' };
+            if (viewId === 'walkie') return { required: [], background: [], label: 'Loading walkie...' };
             if (viewId === 'reserves') {
                 if (getRoleAccessState().isRep) {
                     return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading your reserve rows...' };
@@ -15993,7 +16033,7 @@ function toggleDriveQuickRequestItem(domId) {
             const isCsr = normalizedRole === 'CSR' || normalizedRole.includes('CSR');
             const isRequestRepScopedUser = canUseRequestRepScopedAccess();
             const isAdmin = normalizedRole.includes('ADMIN') || normalizedRole.includes('MANAGER') || isCsr || (!isRep && !isQcSupervisor && !isQc);
-            const allowedViews = new Set(['home','chat']);
+            const allowedViews = new Set(['home','chat','walkie']);
             if (isAdmin) {
                 ROLE_ACCESS_VIEWS.forEach(viewId => allowedViews.add(viewId));
             } else if (isRep) {
@@ -16009,7 +16049,7 @@ function toggleDriveQuickRequestItem(domId) {
         function canAccessView(viewId) {
             const targetView = String(viewId || '').trim();
             if (!targetView || targetView === 'home' || targetView === 'detail') return true;
-            if (targetView === 'chat') return true;
+            if (targetView === 'chat' || targetView === 'walkie') return true;
             if (targetView === 'request' && canUseRequestRepScopedAccess()) return true;
             return getRoleAccessState().allowedViews.has(targetView);
         }
@@ -17067,6 +17107,1188 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
 
+        function getWalkieDeviceId() {
+            if (walkieDeviceId) return walkieDeviceId;
+            try {
+                const saved = String(localStorage.getItem(WALKIE_DEVICE_STORAGE_KEY) || '').trim();
+                if (saved) {
+                    walkieDeviceId = saved;
+                    return walkieDeviceId;
+                }
+            } catch (error) {}
+            walkieDeviceId = generateChatUuid();
+            try { localStorage.setItem(WALKIE_DEVICE_STORAGE_KEY, walkieDeviceId); } catch (error) {}
+            return walkieDeviceId;
+        }
+
+        function maybeWarnWalkieSchemaMissing() {
+            if (walkieSchemaWarningShown || !currentUser) return;
+            walkieSchemaWarningShown = true;
+            showToast('Walkie Setup Required', 'Run walkie_talkie_migration.sql in Supabase to enable Walkie.', true);
+        }
+
+        async function ensureWalkieSchemaReady(force = false) {
+            if (walkieSchemaReady === true && !force) return true;
+            if (walkieSchemaReady === false && !force) return false;
+            if (walkieSchemaProbePromise && !force) return walkieSchemaProbePromise;
+            walkieSchemaProbePromise = (async () => {
+                if (navigator.onLine === false) return false;
+                try {
+                    await Promise.all([
+                        chatApiGet(WALKIE_CHANNELS_TABLE, 'select=id&limit=1', 'Walkie channels'),
+                        chatApiGet(WALKIE_CHANNEL_MEMBERS_TABLE, 'select=id&limit=1', 'Walkie members'),
+                        chatApiGet(WALKIE_CALLS_TABLE, 'select=id&limit=1', 'Walkie calls'),
+                        chatApiGet(WALKIE_CALL_MEMBERS_TABLE, 'select=id&limit=1', 'Walkie listeners'),
+                        chatApiGet(WALKIE_SIGNAL_TABLE, 'select=id&limit=1', 'Walkie signals')
+                    ]);
+                    walkieSchemaReady = true;
+                    return true;
+                } catch (error) {
+                    walkieSchemaReady = false;
+                    maybeWarnWalkieSchemaMissing();
+                    return false;
+                } finally {
+                    walkieSchemaProbePromise = null;
+                }
+            })();
+            return walkieSchemaProbePromise;
+        }
+
+        function normalizeWalkieChannel(row = null) {
+            const id = String(chatField(row, 'id', 'ID') || '').trim();
+            if (!id) return null;
+            return {
+                id,
+                title: String(chatField(row, 'title', 'TITLE') || '').trim(),
+                isGroup: chatField(row, 'is_group', 'isGroup') === true || chatField(row, 'is_group', 'isGroup') === 1 || String(chatField(row, 'is_group', 'isGroup') || '').toLowerCase() === 'true',
+                createdBy: normalizePushUsername(chatField(row, 'created_by', 'createdBy')),
+                createdByDisplay: String(chatField(row, 'created_by_display', 'createdByDisplay') || '').trim(),
+                activeCallId: String(chatField(row, 'active_call_id', 'activeCallId') || '').trim(),
+                lastActivityAt: String(chatField(row, 'last_activity_at', 'lastActivityAt') || '').trim(),
+                createdAt: String(chatField(row, 'created_at', 'createdAt') || '').trim(),
+                updatedAt: String(chatField(row, 'updated_at', 'updatedAt') || '').trim()
+            };
+        }
+
+        function normalizeWalkieChannelMember(row = null) {
+            const channelId = String(chatField(row, 'channel_id', 'channelId') || '').trim();
+            const username = normalizePushUsername(chatField(row, 'username', 'USERNAME'));
+            if (!channelId || !username) return null;
+            return {
+                id: String(chatField(row, 'id', 'ID') || '').trim(),
+                channelId,
+                username,
+                displayName: String(firstNonEmptyValue(chatField(row, 'display_name', 'displayName'), getFallbackChatDisplayName(username)) || '').trim() || getFallbackChatDisplayName(username),
+                joinedAt: String(chatField(row, 'joined_at', 'joinedAt') || '').trim(),
+                isArchived: chatField(row, 'is_archived', 'isArchived') === true || chatField(row, 'is_archived', 'isArchived') === 1 || String(chatField(row, 'is_archived', 'isArchived') || '').toLowerCase() === 'true'
+            };
+        }
+
+        function normalizeWalkieCall(row = null) {
+            const id = String(chatField(row, 'id', 'ID') || '').trim();
+            const channelId = String(chatField(row, 'channel_id', 'channelId') || '').trim();
+            if (!id || !channelId) return null;
+            return {
+                id,
+                channelId,
+                startedBy: normalizePushUsername(chatField(row, 'started_by', 'startedBy')),
+                startedByDisplay: String(chatField(row, 'started_by_display', 'startedByDisplay') || '').trim(),
+                status: String(chatField(row, 'status', 'STATUS') || 'live').trim().toLowerCase(),
+                listenerCap: Math.max(1, Number(chatField(row, 'listener_cap', 'listenerCap')) || WALKIE_LISTENER_CAP),
+                activeSpeakerUsername: normalizePushUsername(chatField(row, 'active_speaker_username', 'activeSpeakerUsername')),
+                activeSpeakerDeviceId: String(chatField(row, 'active_speaker_device_id', 'activeSpeakerDeviceId') || '').trim(),
+                activeSpeakerAt: String(chatField(row, 'active_speaker_at', 'activeSpeakerAt') || '').trim(),
+                endedAt: String(chatField(row, 'ended_at', 'endedAt') || '').trim(),
+                createdAt: String(chatField(row, 'created_at', 'createdAt') || '').trim(),
+                updatedAt: String(chatField(row, 'updated_at', 'updatedAt') || '').trim()
+            };
+        }
+
+        function normalizeWalkieCallMember(row = null) {
+            const id = String(chatField(row, 'id', 'ID') || '').trim();
+            const callId = String(chatField(row, 'call_id', 'callId') || '').trim();
+            const channelId = String(chatField(row, 'channel_id', 'channelId') || '').trim();
+            const username = normalizePushUsername(chatField(row, 'username', 'USERNAME'));
+            const deviceId = String(chatField(row, 'device_id', 'deviceId') || '').trim();
+            if (!id || !callId || !channelId || !username || !deviceId) return null;
+            return {
+                id,
+                callId,
+                channelId,
+                username,
+                displayName: String(firstNonEmptyValue(chatField(row, 'display_name', 'displayName'), getFallbackChatDisplayName(username)) || '').trim() || getFallbackChatDisplayName(username),
+                deviceId,
+                joinedAt: String(chatField(row, 'joined_at', 'joinedAt') || '').trim(),
+                lastSeenAt: String(chatField(row, 'last_seen_at', 'lastSeenAt') || '').trim(),
+                leftAt: String(chatField(row, 'left_at', 'leftAt') || '').trim(),
+                isActive: !(chatField(row, 'is_active', 'isActive') === false || chatField(row, 'is_active', 'isActive') === 0 || String(chatField(row, 'is_active', 'isActive') || '').toLowerCase() === 'false')
+            };
+        }
+
+        function normalizeWalkieSignal(row = null) {
+            const id = String(chatField(row, 'id', 'ID') || '').trim();
+            const callId = String(chatField(row, 'call_id', 'callId') || '').trim();
+            const channelId = String(chatField(row, 'channel_id', 'channelId') || '').trim();
+            const senderUsername = normalizePushUsername(chatField(row, 'sender_username', 'senderUsername'));
+            const senderDeviceId = String(chatField(row, 'sender_device_id', 'senderDeviceId') || '').trim();
+            const kind = String(chatField(row, 'kind', 'KIND') || '').trim().toLowerCase();
+            if (!id || !callId || !channelId || !senderUsername || !senderDeviceId || !kind) return null;
+            const payload = chatField(row, 'payload', 'PAYLOAD');
+            let normalizedPayload = payload;
+            if (typeof normalizedPayload === 'string') {
+                try { normalizedPayload = JSON.parse(normalizedPayload); } catch (error) { normalizedPayload = {}; }
+            }
+            if (!normalizedPayload || typeof normalizedPayload !== 'object') normalizedPayload = {};
+            return {
+                id,
+                callId,
+                channelId,
+                senderUsername,
+                senderDeviceId,
+                recipientUsername: normalizePushUsername(chatField(row, 'recipient_username', 'recipientUsername')),
+                recipientDeviceId: String(chatField(row, 'recipient_device_id', 'recipientDeviceId') || '').trim(),
+                kind,
+                payload: normalizedPayload,
+                createdAt: String(chatField(row, 'created_at', 'createdAt') || '').trim()
+            };
+        }
+
+        function getWalkieCurrentUsername() {
+            return getCurrentChatUsername();
+        }
+
+        function getWalkieCurrentDisplayName() {
+            return getCurrentChatDisplayName();
+        }
+
+        function getWalkieUserDisplayName(username = '') {
+            const normalized = normalizePushUsername(username);
+            if (!normalized) return 'Unknown User';
+            const user = walkieUsers.find((item) => item.username === normalized);
+            if (user && user.displayName) return user.displayName;
+            const channelMember = walkieChannelMembers.find((item) => item.username === normalized && item.displayName);
+            return channelMember ? channelMember.displayName : getFallbackChatDisplayName(normalized);
+        }
+
+        function getWalkieChannelMembers(channelId = '') {
+            const safeId = String(channelId || '').trim();
+            if (!safeId) return [];
+            return walkieChannelMembers.filter((member) => member.channelId === safeId && !member.isArchived);
+        }
+
+        function getWalkieLiveCall(channelId = '') {
+            const safeId = String(channelId || '').trim();
+            if (!safeId) return null;
+            return walkieCalls
+                .filter((call) => call.channelId === safeId && call.status === 'live')
+                .sort((a, b) => (Date.parse(b.createdAt || '') || 0) - (Date.parse(a.createdAt || '') || 0))[0] || null;
+        }
+
+        function isWalkieMemberFresh(member = null) {
+            if (!member || !member.isActive || member.leftAt) return false;
+            const lastSeenAt = Date.parse(member.lastSeenAt || member.joinedAt || '') || 0;
+            if (!lastSeenAt) return false;
+            return (Date.now() - lastSeenAt) <= WALKIE_MEMBERSHIP_STALE_MS;
+        }
+
+        function getWalkieCallMembers(callId = '') {
+            const safeId = String(callId || '').trim();
+            if (!safeId) return [];
+            return walkieCallMembers.filter((member) => member.callId === safeId && isWalkieMemberFresh(member));
+        }
+
+        function getWalkieCurrentMembership(callId = '') {
+            const safeCallId = String(callId || '').trim();
+            const currentUsername = getWalkieCurrentUsername();
+            const deviceId = getWalkieDeviceId();
+            return getWalkieCallMembers(safeCallId).find((member) => member.username === currentUsername && member.deviceId === deviceId) || null;
+        }
+
+        function getWalkieChannelTitle(channel = null) {
+            if (!channel) return 'Walkie';
+            if (channel.isGroup && channel.title) return channel.title;
+            if (channel.isGroup) return 'Group Channel';
+            const currentUsername = getWalkieCurrentUsername();
+            const other = getWalkieChannelMembers(channel.id).find((member) => member.username !== currentUsername);
+            return other ? (other.displayName || getWalkieUserDisplayName(other.username)) : (channel.title || 'Private Walkie');
+        }
+
+        function getSortedWalkieChannels() {
+            return (walkieChannels || []).slice().sort((a, b) => {
+                const aLive = getWalkieLiveCall(a.id) ? 1 : 0;
+                const bLive = getWalkieLiveCall(b.id) ? 1 : 0;
+                if (aLive !== bLive) return bLive - aLive;
+                const aTime = Date.parse(a.lastActivityAt || a.updatedAt || a.createdAt || '') || 0;
+                const bTime = Date.parse(b.lastActivityAt || b.updatedAt || b.createdAt || '') || 0;
+                return bTime - aTime;
+            });
+        }
+
+        function updateFooterWalkieBadge() {
+            const badge = document.getElementById('footer-walkie-badge');
+            if (!badge) return;
+            const liveCount = walkieChannels.reduce((count, channel) => count + (getWalkieLiveCall(channel.id) ? 1 : 0), 0);
+            badge.classList.toggle('hidden', !liveCount);
+            if (liveCount) badge.textContent = String(Math.min(99, liveCount));
+        }
+
+        async function fetchWalkieData(force = false) {
+            if (!currentUser) return false;
+            if (!force && walkieDataLoaded) return true;
+            if (walkieLoadPromise && !force) return walkieLoadPromise;
+            walkieLoadPromise = (async () => {
+                const schemaReady = await ensureWalkieSchemaReady();
+                if (!schemaReady) return false;
+                const currentUsername = getWalkieCurrentUsername();
+                if (!currentUsername) return false;
+                const [membershipRows, userRows] = await Promise.all([
+                    chatApiGet(WALKIE_CHANNEL_MEMBERS_TABLE, `select=*&username=eq.${encodeURIComponent(currentUsername)}&is_archived=eq.false&order=joined_at.desc`, 'Walkie memberships'),
+                    chatApiGet('v2_app_users', 'select=username,role&order=username.asc&limit=500', 'Walkie users').catch(() => [])
+                ]);
+                const joinedChannels = (Array.isArray(membershipRows) ? membershipRows : []).map(normalizeWalkieChannelMember).filter(Boolean);
+                const channelIds = [...new Set(joinedChannels.map((member) => member.channelId).filter(Boolean))];
+                walkieUsers = (Array.isArray(userRows) ? userRows : []).map(normalizeChatUser).filter(Boolean);
+                const selfEntry = { username: currentUsername, displayName: getWalkieCurrentDisplayName(), role: currentRole || '' };
+                if (!walkieUsers.some((user) => user.username === currentUsername)) walkieUsers.push(selfEntry);
+                if (!channelIds.length) {
+                    walkieChannels = [];
+                    walkieChannelMembers = [];
+                    walkieCalls = [];
+                    walkieCallMembers = [];
+                    activeWalkieChannelId = '';
+                    activeWalkieCallId = '';
+                    walkieJoinedCallId = '';
+                    walkieActiveMembershipId = '';
+                    walkieDataLoaded = true;
+                    updateFooterWalkieBadge();
+                    return true;
+                }
+                const idList = channelIds.join(',');
+                const [channelRows, allMemberRows, liveCallRows] = await Promise.all([
+                    chatApiGet(WALKIE_CHANNELS_TABLE, `select=*&id=in.(${idList})&order=last_activity_at.desc`, 'Walkie channels'),
+                    chatApiGet(WALKIE_CHANNEL_MEMBERS_TABLE, `select=*&channel_id=in.(${idList})&order=display_name.asc`, 'Walkie channel members'),
+                    chatApiGet(WALKIE_CALLS_TABLE, `select=*&channel_id=in.(${idList})&status=eq.live&order=created_at.desc`, 'Walkie calls')
+                ]);
+                walkieChannels = (Array.isArray(channelRows) ? channelRows : []).map(normalizeWalkieChannel).filter(Boolean);
+                walkieChannelMembers = (Array.isArray(allMemberRows) ? allMemberRows : []).map(normalizeWalkieChannelMember).filter(Boolean);
+                walkieCalls = (Array.isArray(liveCallRows) ? liveCallRows : []).map(normalizeWalkieCall).filter(Boolean);
+                const callIds = [...new Set(walkieCalls.map((call) => call.id).filter(Boolean))];
+                if (callIds.length) {
+                    const callMemberRows = await chatApiGet(WALKIE_CALL_MEMBERS_TABLE, `select=*&call_id=in.(${callIds.join(',')})&order=joined_at.asc`, 'Walkie listeners').catch(() => []);
+                    walkieCallMembers = (Array.isArray(callMemberRows) ? callMemberRows : []).map(normalizeWalkieCallMember).filter(Boolean);
+                } else {
+                    walkieCallMembers = [];
+                }
+                if (pendingWalkieOpenChannelId && channelIds.includes(pendingWalkieOpenChannelId)) {
+                    activeWalkieChannelId = pendingWalkieOpenChannelId;
+                    pendingWalkieOpenChannelId = '';
+                }
+                if (!activeWalkieChannelId || !channelIds.includes(activeWalkieChannelId)) {
+                    activeWalkieChannelId = channelIds[0] || '';
+                }
+                if (pendingWalkieOpenCallId) {
+                    const pendingCall = walkieCalls.find((call) => call.id === pendingWalkieOpenCallId);
+                    if (pendingCall) {
+                        activeWalkieCallId = pendingCall.id;
+                        activeWalkieChannelId = pendingCall.channelId || activeWalkieChannelId;
+                    }
+                }
+                const currentMembership = walkieJoinedCallId ? getWalkieCurrentMembership(walkieJoinedCallId) : null;
+                if (!currentMembership) {
+                    walkieJoinedCallId = '';
+                    walkieActiveMembershipId = '';
+                    walkieActiveSpeakerIntent = false;
+                } else {
+                    walkieActiveMembershipId = currentMembership.id;
+                }
+                if (pendingWalkieOpenCallId && !walkieCalls.some((call) => call.id === pendingWalkieOpenCallId)) pendingWalkieOpenCallId = '';
+                walkieDataLoaded = true;
+                updateFooterWalkieBadge();
+                return true;
+            })();
+            try {
+                return await walkieLoadPromise;
+            } finally {
+                walkieLoadPromise = null;
+            }
+        }
+
+        function buildWalkieUserOptions() {
+            const currentUsername = getWalkieCurrentUsername();
+            const byUsername = new Map();
+            (walkieUsers || []).forEach((user) => {
+                if (user && user.username && user.username !== currentUsername) byUsername.set(user.username, user);
+            });
+            (walkieChannelMembers || []).forEach((member) => {
+                if (!member || !member.username || member.username === currentUsername || byUsername.has(member.username)) return;
+                byUsername.set(member.username, {
+                    username: member.username,
+                    displayName: member.displayName || getFallbackChatDisplayName(member.username),
+                    role: ''
+                });
+            });
+            const search = String(walkieUserSearchTerm || '').trim().toLowerCase();
+            return Array.from(byUsername.values())
+                .filter((user) => {
+                    if (!search) return true;
+                    return String(user.displayName || '').toLowerCase().includes(search) || String(user.username || '').toLowerCase().includes(search) || String(user.role || '').toLowerCase().includes(search);
+                })
+                .sort((a, b) => String(a.displayName || a.username).localeCompare(String(b.displayName || b.username)));
+        }
+
+        function findExistingDirectWalkie(otherUsername = '') {
+            const currentUsername = getWalkieCurrentUsername();
+            const other = normalizePushUsername(otherUsername);
+            if (!currentUsername || !other) return null;
+            return walkieChannels.find((channel) => {
+                if (!channel || channel.isGroup) return false;
+                const members = getWalkieChannelMembers(channel.id).map((member) => member.username).sort();
+                return members.length === 2 && members[0] === [currentUsername, other].sort()[0] && members[1] === [currentUsername, other].sort()[1];
+            }) || null;
+        }
+
+        function normalizeSelectedWalkieRecipients(source = null) {
+            const raw = Array.isArray(source) ? source : Array.from(walkieSelectedUsers);
+            const currentUsername = getWalkieCurrentUsername();
+            return [...new Set(raw.map(normalizePushUsername).filter(Boolean).filter((username) => username !== currentUsername))];
+        }
+
+        async function createWalkieChannelForRecipients(rawSelected = null) {
+            const selected = normalizeSelectedWalkieRecipients(rawSelected);
+            if (!selected.length) throw new Error('Choose at least one user.');
+            if (selected.length === 1) {
+                const existing = findExistingDirectWalkie(selected[0]);
+                if (existing) return existing;
+            }
+            const currentUsername = getWalkieCurrentUsername();
+            const channelId = generateChatUuid();
+            const now = new Date().toISOString();
+            const isGroup = selected.length > 1;
+            const fallbackTitle = selected.map(getWalkieUserDisplayName).join(', ');
+            const title = isGroup ? (String(walkieComposeTitle || '').trim() || fallbackTitle || 'Group Walkie') : '';
+            const channelPayload = {
+                id: channelId,
+                title,
+                is_group: isGroup,
+                created_by: currentUsername,
+                created_by_display: getWalkieCurrentDisplayName(),
+                active_call_id: null,
+                last_activity_at: now,
+                created_at: now,
+                updated_at: now
+            };
+            const memberPayload = [currentUsername, ...selected].map((username) => ({
+                id: generateChatUuid(),
+                channel_id: channelId,
+                username,
+                display_name: username === currentUsername ? getWalkieCurrentDisplayName() : getWalkieUserDisplayName(username),
+                joined_at: now,
+                is_archived: false
+            }));
+            await supabaseFetch(WALKIE_CHANNELS_TABLE, 'POST', channelPayload, 'on_conflict=id');
+            await supabaseFetch(WALKIE_CHANNEL_MEMBERS_TABLE, 'POST', memberPayload, 'on_conflict=channel_id,username');
+            const normalizedChannel = normalizeWalkieChannel(channelPayload) || { id: channelId, title, isGroup, createdBy: currentUsername, createdAt: now, updatedAt: now, lastActivityAt: now };
+            if (!walkieChannels.some((item) => item.id === normalizedChannel.id)) walkieChannels.push(normalizedChannel);
+            memberPayload.map(normalizeWalkieChannelMember).filter(Boolean).forEach((member) => {
+                if (!walkieChannelMembers.some((item) => item.channelId === member.channelId && item.username === member.username)) walkieChannelMembers.push(member);
+            });
+            if (selected.length) {
+                sendPushNotification('walkie_alert', channelId, '', getWalkieChannelTitle(normalizedChannel), selected.length, {
+                    channelId,
+                    title: getWalkieChannelTitle(normalizedChannel),
+                    recipients: selected,
+                    alertKind: 'invite'
+                });
+            }
+            return normalizedChannel;
+        }
+
+        function openNewWalkieComposer() {
+            walkieComposeOpen = true;
+            activeWalkieChannelId = '';
+            walkieUserSearchTerm = '';
+            walkieComposeTitle = '';
+            walkieSelectedUsers = new Set();
+            walkieLastRenderSignature = '';
+            renderWalkie();
+        }
+
+        function closeNewWalkieComposer() {
+            walkieComposeOpen = false;
+            walkieUserSearchTerm = '';
+            walkieComposeTitle = '';
+            walkieSelectedUsers = new Set();
+            walkieLastRenderSignature = '';
+            renderWalkie();
+        }
+
+        function setWalkieUserSearch(value = '') {
+            walkieUserSearchTerm = String(value || '');
+            walkieLastRenderSignature = '';
+            renderWalkie();
+        }
+
+        function setWalkieComposeTitle(value = '') {
+            walkieComposeTitle = String(value || '').slice(0, 120);
+        }
+
+        function focusWalkieRecipientInput(delay = 0) {
+            setTimeout(() => {
+                const input = document.getElementById('walkie-recipient-input');
+                if (!input) return;
+                input.focus();
+                try { input.setSelectionRange(input.value.length, input.value.length); } catch (error) {}
+            }, Math.max(0, Number(delay) || 0));
+        }
+
+        function addWalkieRecipient(username = '') {
+            const normalized = normalizePushUsername(username);
+            if (!normalized || normalized === getWalkieCurrentUsername()) return;
+            walkieSelectedUsers.add(normalized);
+            walkieUserSearchTerm = '';
+            walkieLastRenderSignature = '';
+            renderWalkie();
+            focusWalkieRecipientInput(30);
+        }
+
+        function removeWalkieRecipient(username = '') {
+            const normalized = normalizePushUsername(username);
+            if (!normalized) return;
+            walkieSelectedUsers.delete(normalized);
+            walkieLastRenderSignature = '';
+            renderWalkie();
+            focusWalkieRecipientInput(30);
+        }
+
+        function handleWalkieRecipientKeydown(event) {
+            if (!event) return;
+            const key = String(event.key || '');
+            const term = String(walkieUserSearchTerm || '').trim();
+            if ((key === 'Enter' || key === ',' || key === 'Tab') && term) {
+                const firstMatch = buildWalkieUserOptions().filter((user) => user && !walkieSelectedUsers.has(user.username))[0];
+                if (firstMatch) {
+                    event.preventDefault();
+                    addWalkieRecipient(firstMatch.username);
+                }
+                return;
+            }
+            if (key === 'Backspace' && !term && walkieSelectedUsers.size) {
+                const last = Array.from(walkieSelectedUsers).pop();
+                if (last) {
+                    event.preventDefault();
+                    removeWalkieRecipient(last);
+                }
+            }
+        }
+
+        async function createWalkieChannel() {
+            const selected = normalizeSelectedWalkieRecipients();
+            if (!selected.length) {
+                showToast('Select User', 'Choose at least one user to start a walkie channel.', true);
+                return;
+            }
+            try {
+                const channel = await createWalkieChannelForRecipients(selected);
+                walkieComposeOpen = false;
+                activeWalkieChannelId = channel.id;
+                walkieSelectedUsers = new Set();
+                walkieUserSearchTerm = '';
+                walkieComposeTitle = '';
+                walkieDataLoaded = false;
+                walkieLastRenderSignature = '';
+                await fetchWalkieData(true);
+                renderWalkie();
+            } catch (error) {
+                showToast('Walkie Error', error && error.message ? error.message : 'Could not create walkie channel.', true);
+            }
+        }
+
+        function openWalkieChannel(channelId = '') {
+            const safeId = String(channelId || '').trim();
+            if (!safeId) return;
+            activeWalkieChannelId = safeId;
+            walkieComposeOpen = false;
+            walkieLastRenderSignature = '';
+            renderWalkie();
+        }
+
+        function backToWalkieList() {
+            activeWalkieChannelId = '';
+            walkieComposeOpen = false;
+            walkieLastRenderSignature = '';
+            renderWalkie();
+        }
+
+        function isWalkieForegroundAllowed(showMessage = true) {
+            const blocked = document.hidden || navigator.onLine === false;
+            if (blocked && showMessage) {
+                showToast('Reopen Walkie', navigator.onLine === false ? 'Walkie needs a live connection.' : 'Walkie audio is foreground-only on mobile. Reopen the app and join again.', true);
+            }
+            return !blocked;
+        }
+
+        async function ensureWalkieLocalStream() {
+            if (walkieLocalStream && walkieLocalStream.getTracks().some((track) => track.readyState === 'live')) return walkieLocalStream;
+            if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+                throw new Error('This device cannot open microphone audio.');
+            }
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                },
+                video: false
+            });
+            stream.getAudioTracks().forEach((track) => { track.enabled = false; });
+            walkieLocalStream = stream;
+            return stream;
+        }
+
+        function setWalkieTrackEnabled(enabled = false) {
+            if (!walkieLocalStream) return;
+            walkieLocalStream.getAudioTracks().forEach((track) => { track.enabled = !!enabled; });
+        }
+
+        function attachWalkieRemoteAudio(deviceId = '', stream = null) {
+            const safeDeviceId = String(deviceId || '').trim();
+            if (!safeDeviceId || !stream) return;
+            let audio = walkieRemoteAudioElements.get(safeDeviceId);
+            if (!audio) {
+                audio = document.createElement('audio');
+                audio.autoplay = true;
+                audio.playsInline = true;
+                audio.dataset.walkieDeviceId = safeDeviceId;
+                audio.className = 'hidden';
+                document.body.appendChild(audio);
+                walkieRemoteAudioElements.set(safeDeviceId, audio);
+            }
+            audio.srcObject = stream;
+            const playPromise = audio.play();
+            if (playPromise && typeof playPromise.catch === 'function') playPromise.catch(() => {});
+        }
+
+        function removeWalkieRemoteAudio(deviceId = '') {
+            const safeDeviceId = String(deviceId || '').trim();
+            const audio = walkieRemoteAudioElements.get(safeDeviceId);
+            if (!audio) return;
+            try { audio.pause(); } catch (error) {}
+            try { audio.srcObject = null; } catch (error) {}
+            try { audio.remove(); } catch (error) {}
+            walkieRemoteAudioElements.delete(safeDeviceId);
+        }
+
+        async function sendWalkieSignal(callId = '', channelId = '', kind = '', payload = {}, recipient = null) {
+            const safeCallId = String(callId || '').trim();
+            const safeChannelId = String(channelId || '').trim();
+            const safeKind = String(kind || '').trim().toLowerCase();
+            const currentUsername = getWalkieCurrentUsername();
+            const deviceId = getWalkieDeviceId();
+            if (!safeCallId || !safeChannelId || !safeKind || !currentUsername || !deviceId) return false;
+            const recipientEntry = recipient && typeof recipient === 'object' ? recipient : {};
+            await supabaseFetch(WALKIE_SIGNAL_TABLE, 'POST', {
+                id: generateChatUuid(),
+                call_id: safeCallId,
+                channel_id: safeChannelId,
+                sender_username: currentUsername,
+                sender_device_id: deviceId,
+                recipient_username: normalizePushUsername(recipientEntry.username || ''),
+                recipient_device_id: String(recipientEntry.deviceId || '').trim(),
+                kind: safeKind,
+                payload: payload && typeof payload === 'object' ? payload : {},
+                created_at: new Date().toISOString()
+            }, 'on_conflict=id');
+            return true;
+        }
+
+        function closeWalkiePeerConnection(deviceId = '') {
+            const safeDeviceId = String(deviceId || '').trim();
+            const existing = walkiePeerConnections.get(safeDeviceId);
+            if (existing && existing.pc) {
+                try { existing.pc.ontrack = null; } catch (error) {}
+                try { existing.pc.onicecandidate = null; } catch (error) {}
+                try { existing.pc.onconnectionstatechange = null; } catch (error) {}
+                try { existing.pc.close(); } catch (error) {}
+            }
+            walkiePeerConnections.delete(safeDeviceId);
+            removeWalkieRemoteAudio(safeDeviceId);
+        }
+
+        async function createWalkiePeerConnection(remoteMember) {
+            const safeRemote = remoteMember && typeof remoteMember === 'object' ? remoteMember : null;
+            if (!safeRemote || !safeRemote.deviceId || safeRemote.deviceId === getWalkieDeviceId()) return null;
+            const existing = walkiePeerConnections.get(safeRemote.deviceId);
+            if (existing && existing.pc) return existing;
+            await ensureWalkieLocalStream();
+            const callId = walkieJoinedCallId || activeWalkieCallId;
+            const channelId = activeWalkieChannelId || (safeRemote.channelId || '');
+            const pc = new RTCPeerConnection({
+                iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }]
+            });
+            const localStream = walkieLocalStream;
+            if (localStream) {
+                localStream.getTracks().forEach((track) => {
+                    try { pc.addTrack(track, localStream); } catch (error) {}
+                });
+            }
+            pc.ontrack = (event) => {
+                const [remoteStream] = event.streams || [];
+                if (remoteStream) attachWalkieRemoteAudio(safeRemote.deviceId, remoteStream);
+            };
+            pc.onicecandidate = (event) => {
+                if (!event || !event.candidate) return;
+                sendWalkieSignal(callId, channelId, 'ice', { candidate: event.candidate.toJSON ? event.candidate.toJSON() : event.candidate }, safeRemote).catch(() => {});
+            };
+            pc.onconnectionstatechange = () => {
+                const state = String(pc.connectionState || '').toLowerCase();
+                if (state === 'failed' || state === 'closed' || state === 'disconnected') {
+                    closeWalkiePeerConnection(safeRemote.deviceId);
+                }
+            };
+            const entry = { pc, remoteMember: safeRemote };
+            walkiePeerConnections.set(safeRemote.deviceId, entry);
+            return entry;
+        }
+
+        async function initiateWalkieOffer(remoteMember) {
+            const peer = await createWalkiePeerConnection(remoteMember);
+            if (!peer || !peer.pc) return false;
+            const offer = await peer.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: false });
+            await peer.pc.setLocalDescription(offer);
+            await sendWalkieSignal(walkieJoinedCallId || activeWalkieCallId, activeWalkieChannelId, 'offer', { sdp: peer.pc.localDescription }, remoteMember);
+            return true;
+        }
+
+        async function ensureWalkiePeerConnectionsForCall(callId = '') {
+            const safeCallId = String(callId || '').trim();
+            if (!safeCallId || !walkieJoinedCallId || walkieJoinedCallId !== safeCallId) return false;
+            const localDeviceId = getWalkieDeviceId();
+            const members = getWalkieCallMembers(safeCallId).filter((member) => member.deviceId !== localDeviceId);
+            const activeDeviceSet = new Set(members.map((member) => member.deviceId));
+            Array.from(walkiePeerConnections.keys()).forEach((deviceId) => {
+                if (!activeDeviceSet.has(deviceId)) closeWalkiePeerConnection(deviceId);
+            });
+            for (const member of members) {
+                const shouldInitiate = localDeviceId < member.deviceId;
+                if (!walkiePeerConnections.has(member.deviceId)) {
+                    await createWalkiePeerConnection(member);
+                    if (shouldInitiate) await initiateWalkieOffer(member).catch(() => {});
+                }
+            }
+            return true;
+        }
+
+        async function handleWalkieSignal(signal = null) {
+            const safeSignal = signal && typeof signal === 'object' ? signal : null;
+            if (!safeSignal || !safeSignal.id || walkieSignalsSeen.has(safeSignal.id)) return false;
+            walkieSignalsSeen.add(safeSignal.id);
+            if (safeSignal.senderDeviceId === getWalkieDeviceId()) return false;
+            if (safeSignal.recipientDeviceId && safeSignal.recipientDeviceId !== getWalkieDeviceId()) return false;
+            if (!walkieJoinedCallId || safeSignal.callId !== walkieJoinedCallId) return false;
+            const remoteMember = getWalkieCallMembers(safeSignal.callId).find((member) => member.deviceId === safeSignal.senderDeviceId)
+                || { deviceId: safeSignal.senderDeviceId, username: safeSignal.senderUsername, displayName: getWalkieUserDisplayName(safeSignal.senderUsername), channelId: safeSignal.channelId };
+            const peer = await createWalkiePeerConnection(remoteMember);
+            if (!peer || !peer.pc) return false;
+            if (safeSignal.kind === 'offer' && safeSignal.payload && safeSignal.payload.sdp) {
+                await peer.pc.setRemoteDescription(new RTCSessionDescription(safeSignal.payload.sdp));
+                const answer = await peer.pc.createAnswer();
+                await peer.pc.setLocalDescription(answer);
+                await sendWalkieSignal(safeSignal.callId, safeSignal.channelId, 'answer', { sdp: peer.pc.localDescription }, remoteMember);
+                return true;
+            }
+            if (safeSignal.kind === 'answer' && safeSignal.payload && safeSignal.payload.sdp) {
+                await peer.pc.setRemoteDescription(new RTCSessionDescription(safeSignal.payload.sdp));
+                return true;
+            }
+            if (safeSignal.kind === 'ice' && safeSignal.payload && safeSignal.payload.candidate) {
+                try { await peer.pc.addIceCandidate(new RTCIceCandidate(safeSignal.payload.candidate)); } catch (error) {}
+                return true;
+            }
+            return false;
+        }
+
+        function startWalkieHeartbeat() {
+            if (walkieHeartbeatTimer) clearInterval(walkieHeartbeatTimer);
+            if (!walkieJoinedCallId || !walkieActiveMembershipId) return;
+            walkieHeartbeatTimer = setInterval(() => {
+                if (!walkieJoinedCallId || !walkieActiveMembershipId || document.hidden || navigator.onLine === false) return;
+                supabaseFetch(WALKIE_CALL_MEMBERS_TABLE, 'PATCH', {
+                    last_seen_at: new Date().toISOString(),
+                    is_active: true,
+                    left_at: null
+                }, `id=eq.${encodeURIComponent(walkieActiveMembershipId)}`).catch(() => {});
+            }, WALKIE_HEARTBEAT_MS);
+        }
+
+        function startWalkieSpeakerHeartbeat() {
+            if (walkieSpeakerHeartbeatTimer) clearInterval(walkieSpeakerHeartbeatTimer);
+            if (!walkieJoinedCallId || !walkieActiveSpeakerIntent) return;
+            walkieSpeakerHeartbeatTimer = setInterval(() => {
+                if (!walkieJoinedCallId || !walkieActiveSpeakerIntent) return;
+                supabaseFetch(WALKIE_CALLS_TABLE, 'PATCH', {
+                    active_speaker_at: new Date().toISOString(),
+                    active_speaker_username: getWalkieCurrentUsername(),
+                    active_speaker_device_id: getWalkieDeviceId()
+                }, `id=eq.${encodeURIComponent(walkieJoinedCallId)}&active_speaker_device_id=eq.${encodeURIComponent(getWalkieDeviceId())}`).catch(() => {});
+            }, WALKIE_SPEAKER_HEARTBEAT_MS);
+        }
+
+        async function maybeClearStaleWalkieSpeaker(call = null) {
+            const safeCall = call && typeof call === 'object' ? call : null;
+            if (!safeCall || !safeCall.activeSpeakerUsername || !safeCall.activeSpeakerAt) return false;
+            const activeSpeakerAt = Date.parse(safeCall.activeSpeakerAt || '') || 0;
+            if (activeSpeakerAt && (Date.now() - activeSpeakerAt) < (WALKIE_SPEAKER_HEARTBEAT_MS * 4)) return false;
+            await supabaseFetch(WALKIE_CALLS_TABLE, 'PATCH', {
+                active_speaker_username: null,
+                active_speaker_device_id: null,
+                active_speaker_at: null
+            }, `id=eq.${encodeURIComponent(safeCall.id)}`).catch(() => {});
+            safeCall.activeSpeakerUsername = '';
+            safeCall.activeSpeakerDeviceId = '';
+            safeCall.activeSpeakerAt = '';
+            return true;
+        }
+
+        async function joinWalkieCall(callId = '', channelId = '') {
+            const safeCallId = String(callId || '').trim();
+            const safeChannelId = String(channelId || '').trim();
+            if (!safeCallId || !safeChannelId) return false;
+            if (!isWalkieForegroundAllowed(true)) return false;
+            await ensureWalkieLocalStream();
+            const now = new Date().toISOString();
+            const currentUsername = getWalkieCurrentUsername();
+            const membershipPayload = {
+                id: generateChatUuid(),
+                call_id: safeCallId,
+                channel_id: safeChannelId,
+                username: currentUsername,
+                display_name: getWalkieCurrentDisplayName(),
+                device_id: getWalkieDeviceId(),
+                joined_at: now,
+                last_seen_at: now,
+                left_at: null,
+                is_active: true
+            };
+            await supabaseFetch(WALKIE_CALL_MEMBERS_TABLE, 'POST', membershipPayload, 'on_conflict=call_id,device_id');
+            const normalizedMember = normalizeWalkieCallMember(membershipPayload);
+            walkieCallMembers = walkieCallMembers.filter((member) => !(member.callId === safeCallId && member.deviceId === normalizedMember.deviceId));
+            if (normalizedMember) walkieCallMembers.push(normalizedMember);
+            walkieJoinedCallId = safeCallId;
+            walkieActiveMembershipId = normalizedMember ? normalizedMember.id : '';
+            activeWalkieCallId = safeCallId;
+            activeWalkieChannelId = safeChannelId;
+            walkieDataLoaded = false;
+            await fetchWalkieData(true);
+            await ensureWalkiePeerConnectionsForCall(safeCallId);
+            startWalkieHeartbeat();
+            walkieLastRenderSignature = '';
+            renderWalkie();
+            return true;
+        }
+
+        async function endWalkieCall(callId = '', channelId = '') {
+            const safeCallId = String(callId || '').trim();
+            const safeChannelId = String(channelId || '').trim();
+            if (!safeCallId) return false;
+            await supabaseFetch(WALKIE_CALLS_TABLE, 'PATCH', {
+                status: 'ended',
+                ended_at: new Date().toISOString(),
+                active_speaker_username: null,
+                active_speaker_device_id: null,
+                active_speaker_at: null
+            }, `id=eq.${encodeURIComponent(safeCallId)}`).catch(() => {});
+            if (safeChannelId) {
+                await supabaseFetch(WALKIE_CHANNELS_TABLE, 'PATCH', {
+                    active_call_id: null,
+                    last_activity_at: new Date().toISOString()
+                }, `id=eq.${encodeURIComponent(safeChannelId)}`).catch(() => {});
+            }
+            walkieCalls = walkieCalls.filter((call) => call.id !== safeCallId);
+            if (walkieJoinedCallId === safeCallId) {
+                walkieJoinedCallId = '';
+                activeWalkieCallId = '';
+                walkieActiveMembershipId = '';
+            }
+            return true;
+        }
+
+        async function leaveWalkieCall(options = {}) {
+            const leaveOptions = options && typeof options === 'object' ? options : {};
+            const safeCallId = String(leaveOptions.callId || walkieJoinedCallId || '').trim();
+            const safeChannelId = String(leaveOptions.channelId || activeWalkieChannelId || '').trim();
+            if (!safeCallId) return false;
+            await stopWalkiePushToTalk({ silent: true }).catch(() => {});
+            if (walkieHeartbeatTimer) {
+                clearInterval(walkieHeartbeatTimer);
+                walkieHeartbeatTimer = null;
+            }
+            if (walkieSpeakerHeartbeatTimer) {
+                clearInterval(walkieSpeakerHeartbeatTimer);
+                walkieSpeakerHeartbeatTimer = null;
+            }
+            if (walkieActiveMembershipId) {
+                await supabaseFetch(WALKIE_CALL_MEMBERS_TABLE, 'PATCH', {
+                    is_active: false,
+                    left_at: new Date().toISOString(),
+                    last_seen_at: new Date().toISOString()
+                }, `id=eq.${encodeURIComponent(walkieActiveMembershipId)}`).catch(() => {});
+            }
+            Array.from(walkiePeerConnections.keys()).forEach((deviceId) => closeWalkiePeerConnection(deviceId));
+            walkieJoinedCallId = '';
+            walkieActiveMembershipId = '';
+            walkieActiveSpeakerIntent = false;
+            setWalkieTrackEnabled(false);
+            if (leaveOptions.releaseStream && walkieLocalStream) {
+                walkieLocalStream.getTracks().forEach((track) => {
+                    try { track.stop(); } catch (error) {}
+                });
+                walkieLocalStream = null;
+            }
+            walkieDataLoaded = false;
+            await fetchWalkieData(true);
+            const remaining = getWalkieCallMembers(safeCallId).filter((member) => member.deviceId !== getWalkieDeviceId());
+            if (!remaining.length) await endWalkieCall(safeCallId, safeChannelId).catch(() => {});
+            walkieLastRenderSignature = '';
+            if (!leaveOptions.silent) showToast('Walkie Left', 'You left the live session.', false);
+            renderWalkie();
+            return true;
+        }
+
+        async function startWalkieCall(channelId = '') {
+            const safeChannelId = String(channelId || '').trim();
+            if (!safeChannelId) return false;
+            if (!isWalkieForegroundAllowed(true)) return false;
+            const existing = getWalkieLiveCall(safeChannelId);
+            if (existing) return joinWalkieCall(existing.id, safeChannelId);
+            const now = new Date().toISOString();
+            const callId = generateChatUuid();
+            const callPayload = {
+                id: callId,
+                channel_id: safeChannelId,
+                started_by: getWalkieCurrentUsername(),
+                started_by_display: getWalkieCurrentDisplayName(),
+                status: 'live',
+                listener_cap: WALKIE_LISTENER_CAP,
+                active_speaker_username: null,
+                active_speaker_device_id: null,
+                active_speaker_at: null,
+                ended_at: null,
+                created_at: now,
+                updated_at: now
+            };
+            await supabaseFetch(WALKIE_CALLS_TABLE, 'POST', callPayload, 'on_conflict=id');
+            await supabaseFetch(WALKIE_CHANNELS_TABLE, 'PATCH', {
+                active_call_id: callId,
+                last_activity_at: now
+            }, `id=eq.${encodeURIComponent(safeChannelId)}`);
+            const normalizedCall = normalizeWalkieCall(callPayload);
+            if (normalizedCall && !walkieCalls.some((call) => call.id === normalizedCall.id)) walkieCalls.push(normalizedCall);
+            const channel = walkieChannels.find((item) => item.id === safeChannelId);
+            if (channel) {
+                channel.activeCallId = callId;
+                channel.lastActivityAt = now;
+            }
+            const recipients = getWalkieChannelMembers(safeChannelId).map((member) => member.username).filter((username) => username && username !== getWalkieCurrentUsername());
+            if (recipients.length) {
+                sendPushNotification('walkie_alert', safeChannelId, '', getWalkieChannelTitle(channel), recipients.length, {
+                    channelId: safeChannelId,
+                    callId,
+                    title: getWalkieChannelTitle(channel),
+                    recipients,
+                    alertKind: 'live'
+                });
+            }
+            return joinWalkieCall(callId, safeChannelId);
+        }
+
+        function getWalkieDisplaySpeaker(call = null) {
+            const safeCall = call && typeof call === 'object' ? call : null;
+            if (!safeCall || !safeCall.activeSpeakerUsername) return '';
+            const activeSpeakerAt = Date.parse(safeCall.activeSpeakerAt || '') || 0;
+            if (activeSpeakerAt && (Date.now() - activeSpeakerAt) > (WALKIE_SPEAKER_HEARTBEAT_MS * 4)) return '';
+            return getWalkieUserDisplayName(safeCall.activeSpeakerUsername);
+        }
+
+        async function startWalkiePushToTalk() {
+            if (!walkieJoinedCallId || !activeWalkieChannelId) return false;
+            if (!isWalkieForegroundAllowed(true)) return false;
+            const liveCall = getWalkieLiveCall(activeWalkieChannelId);
+            if (!liveCall || liveCall.id !== walkieJoinedCallId) {
+                showToast('Walkie Ended', 'That live session has ended. Join again if it comes back.', true);
+                return false;
+            }
+            await maybeClearStaleWalkieSpeaker(liveCall).catch(() => {});
+            const currentSpeaker = getWalkieDisplaySpeaker(liveCall);
+            if (currentSpeaker && liveCall.activeSpeakerUsername && liveCall.activeSpeakerUsername !== getWalkieCurrentUsername()) {
+                showToast('Walkie Busy', `${currentSpeaker} is talking right now.`, true);
+                return false;
+            }
+            await ensureWalkieLocalStream();
+            const now = new Date().toISOString();
+            await supabaseFetch(WALKIE_CALLS_TABLE, 'PATCH', {
+                active_speaker_username: getWalkieCurrentUsername(),
+                active_speaker_device_id: getWalkieDeviceId(),
+                active_speaker_at: now
+            }, `id=eq.${encodeURIComponent(walkieJoinedCallId)}&or=(active_speaker_username.is.null,active_speaker_username.eq.${encodeURIComponent(getWalkieCurrentUsername())})`);
+            setWalkieTrackEnabled(true);
+            walkieActiveSpeakerIntent = true;
+            startWalkieSpeakerHeartbeat();
+            const liveEntry = walkieCalls.find((call) => call.id === walkieJoinedCallId);
+            if (liveEntry) {
+                liveEntry.activeSpeakerUsername = getWalkieCurrentUsername();
+                liveEntry.activeSpeakerDeviceId = getWalkieDeviceId();
+                liveEntry.activeSpeakerAt = now;
+            }
+            walkieLastRenderSignature = '';
+            renderWalkie();
+            return true;
+        }
+
+        async function stopWalkiePushToTalk(options = {}) {
+            const stopOptions = options && typeof options === 'object' ? options : {};
+            if (walkieSpeakerHeartbeatTimer) {
+                clearInterval(walkieSpeakerHeartbeatTimer);
+                walkieSpeakerHeartbeatTimer = null;
+            }
+            walkieActiveSpeakerIntent = false;
+            setWalkieTrackEnabled(false);
+            if (walkieJoinedCallId) {
+                await supabaseFetch(WALKIE_CALLS_TABLE, 'PATCH', {
+                    active_speaker_username: null,
+                    active_speaker_device_id: null,
+                    active_speaker_at: null
+                }, `id=eq.${encodeURIComponent(walkieJoinedCallId)}&active_speaker_device_id=eq.${encodeURIComponent(getWalkieDeviceId())}`).catch(() => {});
+            }
+            const liveEntry = walkieCalls.find((call) => call.id === walkieJoinedCallId);
+            if (liveEntry && liveEntry.activeSpeakerDeviceId === getWalkieDeviceId()) {
+                liveEntry.activeSpeakerUsername = '';
+                liveEntry.activeSpeakerDeviceId = '';
+                liveEntry.activeSpeakerAt = '';
+            }
+            if (!stopOptions.silent) {
+                walkieLastRenderSignature = '';
+                renderWalkie();
+            }
+            return true;
+        }
+
+        async function handleWalkiePttPress(event) {
+            if (event) {
+                try { event.preventDefault(); } catch (error) {}
+                try { event.stopPropagation(); } catch (error) {}
+            }
+            if (walkieActiveSpeakerIntent) return;
+            await startWalkiePushToTalk().catch((error) => {
+                showToast('Walkie Error', error && error.message ? error.message : 'Could not open push-to-talk.', true);
+            });
+        }
+
+        async function handleWalkiePttRelease(event) {
+            if (event) {
+                try { event.preventDefault(); } catch (error) {}
+                try { event.stopPropagation(); } catch (error) {}
+            }
+            if (!walkieActiveSpeakerIntent) return;
+            await stopWalkiePushToTalk().catch(() => {});
+        }
+
+        function renderWalkieList() {
+            const channels = getSortedWalkieChannels();
+            if (!channels.length) {
+                return `<div class="rounded-2xl border border-dashed border-green-200 bg-white p-8 text-center shadow-sm">
+                    <div class="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-radio text-3xl"></i></div>
+                    <div class="text-lg font-black text-slate-900">No walkie channels yet</div>
+                    <div class="mt-2 text-sm font-semibold text-slate-500">Start a private channel or build a small group for live push-to-talk.</div>
+                    <button type="button" class="mt-5 rounded-xl bg-[#007a4d] px-5 py-3 text-xs font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="openNewWalkieComposer()">Create Channel</button>
+                </div>`;
+            }
+            return `<div class="space-y-3">${channels.map((channel) => {
+                const liveCall = getWalkieLiveCall(channel.id);
+                const liveMembers = liveCall ? getWalkieCallMembers(liveCall.id) : [];
+                const memberCount = getWalkieChannelMembers(channel.id).length;
+                const lastWhen = formatChatTime((liveCall && liveCall.createdAt) || channel.lastActivityAt || channel.updatedAt || channel.createdAt);
+                return `<button type="button" class="w-full rounded-2xl border ${liveCall ? 'border-[#007a4d] bg-emerald-50' : 'border-green-100 bg-white'} p-4 text-left shadow-sm active:scale-[.99]" onclick="openWalkieChannel('${esc(channel.id)}')">
+                    <div class="flex items-start gap-3">
+                        <div class="relative mt-0.5 flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl ${liveCall ? 'bg-[#007a4d] text-white' : 'bg-slate-100 text-slate-500'}"><i class="ph-bold ${channel.isGroup ? 'ph-users-three' : 'ph-user'} text-2xl"></i>${liveCall ? '<span class="absolute -right-1 -top-1 h-4 w-4 rounded-full border-2 border-white bg-red-500"></span>' : ''}</div>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="truncate text-base font-black text-slate-900">${escapeHtml(getWalkieChannelTitle(channel))}</div>
+                                <div class="flex-shrink-0 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(lastWhen)}</div>
+                            </div>
+                            <div class="mt-1 line-clamp-2 text-sm font-semibold text-slate-500">${liveCall ? `${escapeHtml(getWalkieDisplaySpeaker(liveCall) || 'No one')} on mic` : 'Ready for live audio'}</div>
+                            <div class="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]">
+                                <span>${memberCount} member${memberCount === 1 ? '' : 's'}</span>
+                                ${liveCall ? `<span class="rounded-full bg-red-500 px-2 py-0.5 text-white">Live ${liveMembers.length}</span>` : '<span class="rounded-full bg-slate-100 px-2 py-0.5 text-slate-500">Idle</span>'}
+                            </div>
+                        </div>
+                    </div>
+                </button>`;
+            }).join('')}</div>`;
+        }
+
+        function renderWalkieComposer() {
+            const selectedUsers = Array.from(walkieSelectedUsers).map((username) => ({
+                username,
+                displayName: getWalkieUserDisplayName(username)
+            })).sort((a, b) => String(a.displayName || a.username).localeCompare(String(b.displayName || b.username)));
+            const users = buildWalkieUserOptions().filter((user) => !walkieSelectedUsers.has(user.username)).slice(0, 14);
+            const selectedCount = walkieSelectedUsers.size;
+            const chipsHtml = selectedUsers.map((user) => `<button type="button" class="inline-flex max-w-full items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black text-[#007a4d] ring-1 ring-emerald-200" onclick="removeWalkieRecipient('${esc(user.username)}')" aria-label="Remove ${escapeHtml(user.displayName)}"><span class="truncate">${escapeHtml(user.displayName)}</span><i class="ph-bold ph-x text-[11px]"></i></button>`).join('');
+            return `<div class="space-y-4">
+                <div class="rounded-2xl border border-green-100 bg-white p-4 shadow-sm">
+                    <div class="mb-3 flex items-center justify-between gap-3">
+                        <button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="closeNewWalkieComposer()">Cancel</button>
+                        <div class="text-sm font-black uppercase tracking-[0.12em] text-slate-900">New Walkie</div>
+                        <button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="createWalkieChannel()" ${selectedCount ? '' : 'disabled'}>Open</button>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 mb-3">
+                        <div class="flex items-start gap-2">
+                            <div class="pt-2 text-sm font-black text-slate-500">To:</div>
+                            <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+                                ${chipsHtml}
+                                <input id="walkie-recipient-input" type="text" class="min-h-[34px] min-w-[130px] flex-1 bg-transparent text-base font-bold text-slate-900 outline-none placeholder:text-slate-400" placeholder="${selectedCount ? '' : 'Name or username'}" value="${escapeHtml(walkieUserSearchTerm)}" oninput="setWalkieUserSearch(this.value)" onkeydown="handleWalkieRecipientKeydown(event)">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="${selectedCount > 1 ? '' : 'hidden'}">
+                        <label class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Group Name</label>
+                        <input type="text" class="input-field !mb-0" maxlength="120" value="${escapeHtml(walkieComposeTitle)}" oninput="setWalkieComposeTitle(this.value)" placeholder="Delivery team, West coast reps, etc.">
+                    </div>
+                </div>
+                <div class="space-y-2">${users.length ? users.map((user) => `<button type="button" class="w-full rounded-2xl border border-green-100 bg-white p-4 text-left shadow-sm active:scale-[.99]" onclick="addWalkieRecipient('${esc(user.username)}')">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-500"><i class="ph-bold ph-user-plus text-xl"></i></div>
+                        <div class="min-w-0 flex-1">
+                            <div class="truncate text-sm font-black text-slate-900">${escapeHtml(user.displayName || getFallbackChatDisplayName(user.username))}</div>
+                            <div class="truncate text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(user.username)}${user.role ? ' / ' + escapeHtml(user.role) : ''}</div>
+                        </div>
+                    </div>
+                </button>`).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No matching users.</div>'}</div>
+            </div>`;
+        }
+
+        function renderActiveWalkieChannel() {
+            const channel = walkieChannels.find((item) => item.id === activeWalkieChannelId);
+            if (!channel) {
+                activeWalkieChannelId = '';
+                return renderWalkieList();
+            }
+            const members = getWalkieChannelMembers(channel.id);
+            const liveCall = getWalkieLiveCall(channel.id);
+            const liveMembers = liveCall ? getWalkieCallMembers(liveCall.id) : [];
+            const joined = !!(liveCall && walkieJoinedCallId === liveCall.id && getWalkieCurrentMembership(liveCall.id));
+            const currentSpeaker = liveCall ? getWalkieDisplaySpeaker(liveCall) : '';
+            const overCap = !!(liveCall && liveMembers.length > Math.max(WALKIE_LISTENER_CAP, liveCall.listenerCap || WALKIE_LISTENER_CAP));
+            return `<div class="space-y-4">
+                <div class="rounded-2xl border border-green-100 bg-white p-4 shadow-sm">
+                    <div class="flex items-center justify-between gap-3">
+                        <button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="backToWalkieList()">Back</button>
+                        <div class="min-w-0 text-center">
+                            <div class="truncate text-lg font-black text-slate-900">${escapeHtml(getWalkieChannelTitle(channel))}</div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${members.length} member${members.length === 1 ? '' : 's'}</div>
+                        </div>
+                        <div class="rounded-xl ${liveCall ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-slate-50 text-slate-400 border border-slate-200'} px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em]">${liveCall ? 'Live' : 'Idle'}</div>
+                    </div>
+                    <div class="mt-4 flex flex-wrap gap-2">${members.map((member) => `<div class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-700"><i class="ph-bold ${member.username === getWalkieCurrentUsername() ? 'ph-user-circle-check text-[#007a4d]' : 'ph-user text-slate-400'}"></i><span>${escapeHtml(member.displayName || getWalkieUserDisplayName(member.username))}</span></div>`).join('')}</div>
+                </div>
+                <div class="rounded-2xl border ${liveCall ? 'border-[#007a4d] bg-emerald-50' : 'border-green-100 bg-white'} p-4 shadow-sm">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <div class="text-xs font-black uppercase tracking-[0.16em] text-[#007a4d]">${liveCall ? 'Live session' : 'Ready to talk'}</div>
+                            <div class="mt-1 text-lg font-black text-slate-900">${liveCall ? `${escapeHtml(currentSpeaker || 'Nobody')} ${currentSpeaker ? 'has the mic' : 'is on standby'}` : 'Start a live walkie session'}</div>
+                            <div class="mt-2 text-sm font-semibold text-slate-500">${liveCall ? `${liveMembers.length} connected listener${liveMembers.length === 1 ? '' : 's'}. Hold to talk while the app stays open in front.` : 'Mobile audio is foreground-only. If someone backgrounds the app, they will need to reopen and rejoin.'}</div>
+                        </div>
+                        <div class="rounded-2xl bg-white px-3 py-2 text-center shadow-sm">
+                            <div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Connected</div>
+                            <div class="text-2xl font-black text-[#007a4d]">${liveCall ? liveMembers.length : 0}</div>
+                        </div>
+                    </div>
+                    ${overCap ? '<div class="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-700">This session is over the recommended live limit of 6 listeners. It may still work, but small groups will sound better.</div>' : ''}
+                    <div class="mt-4 flex flex-col gap-3">
+                        ${!liveCall ? `<button type="button" class="w-full rounded-2xl bg-[#007a4d] px-4 py-4 text-sm font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99]" onclick="startWalkieCall('${esc(channel.id)}')"><i class="ph-bold ph-play text-lg align-middle"></i><span class="ml-2 align-middle">Start Live Walkie</span></button>` : joined ? `<button type="button" class="w-full rounded-[28px] ${walkieActiveSpeakerIntent ? 'bg-red-600' : 'bg-[#007a4d]'} px-4 py-5 text-sm font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99]" onpointerdown="handleWalkiePttPress(event)" onpointerup="handleWalkiePttRelease(event)" onpointercancel="handleWalkiePttRelease(event)" onpointerleave="handleWalkiePttRelease(event)"><i class="ph-bold ph-microphone-stage text-lg align-middle"></i><span class="ml-2 align-middle">${walkieActiveSpeakerIntent ? 'Release To Stop' : 'Hold To Talk'}</span></button>
+                            <button type="button" class="w-full rounded-2xl border border-red-200 bg-white px-4 py-4 text-sm font-black uppercase tracking-[0.16em] text-red-600 shadow-sm active:scale-[.99]" onclick="leaveWalkieCall({ releaseStream: true })"><i class="ph-bold ph-sign-out text-lg align-middle"></i><span class="ml-2 align-middle">Leave Live Session</span></button>` : `<button type="button" class="w-full rounded-2xl bg-[#007a4d] px-4 py-4 text-sm font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99]" onclick="joinWalkieCall('${esc(liveCall.id)}','${esc(channel.id)}')"><i class="ph-bold ph-headphones text-lg align-middle"></i><span class="ml-2 align-middle">Join Live Session</span></button>`}
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function renderWalkie() {
+            const container = document.getElementById('walkie-content');
+            if (!container) return;
+            const titleEl = document.getElementById('walkie-title');
+            const crumbEl = document.getElementById('walkie-crumb');
+            const activeChannel = walkieChannels.find((item) => item.id === activeWalkieChannelId);
+            if (titleEl) titleEl.textContent = activeChannel ? getWalkieChannelTitle(activeChannel) : (walkieComposeOpen ? 'New Walkie' : 'Walkie');
+            if (crumbEl) crumbEl.textContent = walkieComposeOpen ? 'Create channel' : (activeChannel ? 'Walkie channel' : 'Push to talk');
+            if (!currentUser) {
+                setContainerHtml(container, '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">Sign in to use Walkie.</div>');
+                return;
+            }
+            if (!walkieDataLoaded) {
+                setContainerHtml(container, '<div class="p-4 space-y-3"><div class="skeleton h-20 w-full rounded-2xl"></div><div class="skeleton h-20 w-full rounded-2xl"></div><div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">Loading walkie...</div></div>');
+                fetchWalkieData().then(() => renderWalkie()).catch(() => {
+                    setContainerHtml(container, '<div class="rounded-2xl border border-red-100 bg-white p-8 text-center"><div class="font-black text-red-600">Walkie could not load</div><button type="button" class="mt-4 rounded-xl bg-[#007a4d] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-white" onclick="reloadWalkieData()">Retry</button></div>');
+                });
+                return;
+            }
+            const signature = JSON.stringify({
+                channels: walkieChannels.map((item) => [item.id, item.updatedAt, item.lastActivityAt, item.activeCallId]),
+                members: walkieChannelMembers.length,
+                calls: walkieCalls.map((item) => [item.id, item.channelId, item.activeSpeakerUsername, item.activeSpeakerAt]),
+                callMembers: walkieCallMembers.map((item) => [item.callId, item.deviceId, item.lastSeenAt]).slice(-60),
+                active: activeWalkieChannelId,
+                joined: walkieJoinedCallId,
+                compose: walkieComposeOpen,
+                search: walkieUserSearchTerm,
+                selected: Array.from(walkieSelectedUsers).sort(),
+                title: walkieComposeTitle,
+                speaking: walkieActiveSpeakerIntent
+            });
+            const html = walkieComposeOpen ? renderWalkieComposer() : (activeWalkieChannelId ? renderActiveWalkieChannel() : renderWalkieList());
+            if (walkieLastRenderSignature !== signature || container.dataset.renderUiState !== 'content') {
+                walkieLastRenderSignature = signature;
+                setContainerHtml(container, html);
+                if (walkieComposeOpen) requestAnimationFrame(() => {
+                    const recipientInput = document.getElementById('walkie-recipient-input');
+                    if (recipientInput) recipientInput.focus();
+                });
+            }
+            updateFooterWalkieBadge();
+        }
+
+        function reloadWalkieData() {
+            walkieDataLoaded = false;
+            walkieSchemaReady = null;
+            walkieLastRenderSignature = '';
+            renderWalkie();
+        }
+
+        function handleWalkieRealtimeChange(tableName = '', payload = null) {
+            const eventType = String(payload && payload.eventType ? payload.eventType : '').toUpperCase();
+            if (tableName === WALKIE_SIGNAL_TABLE && eventType !== 'DELETE') {
+                const signal = normalizeWalkieSignal(payload && payload.new ? payload.new : null);
+                if (signal) {
+                    handleWalkieSignal(signal).catch(() => {});
+                    return;
+                }
+            }
+            walkieDataLoaded = false;
+            markViewDirty('walkie');
+            fetchWalkieData(true).then(() => {
+                if (walkieJoinedCallId) ensureWalkiePeerConnectionsForCall(walkieJoinedCallId).catch(() => {});
+                updateFooterWalkieBadge();
+                if (isViewVisible('walkie')) renderWalkie();
+            }).catch(() => {
+                updateFooterWalkieBadge();
+                if (isViewVisible('walkie')) renderWalkie();
+            });
+        }
+
+        async function handleWalkieAppHidden() {
+            if (!walkieJoinedCallId) return;
+            await leaveWalkieCall({ silent: true, releaseStream: true }).catch(() => {});
+        }
+
         function isPushSupported() {
             return typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
         }
@@ -17189,17 +18411,21 @@ function toggleDriveQuickRequestItem(domId) {
             window.addEventListener('online', () => {
                 scheduleCellularPushEnrollment('online', 250);
                 ensureChatBackgroundSync('online', 450);
+                if (walkieJoinedCallId) fetchWalkieData(true).then(() => ensureWalkiePeerConnectionsForCall(walkieJoinedCallId)).catch(() => {});
             });
             window.addEventListener('focus', () => {
                 scheduleCellularPushEnrollment('focus', 650);
                 ensureChatBackgroundSync('focus', 900);
+                if (walkieJoinedCallId) fetchWalkieData(true).then(() => ensureWalkiePeerConnectionsForCall(walkieJoinedCallId)).catch(() => {});
             });
             document.addEventListener('visibilitychange', () => {
                 if (!document.hidden) {
                     scheduleCellularPushEnrollment('visible', 650);
                     ensureChatBackgroundSync('visible', 900);
+                    if (walkieJoinedCallId) fetchWalkieData(true).then(() => ensureWalkiePeerConnectionsForCall(walkieJoinedCallId)).catch(() => {});
                 } else {
                     clearChatBackgroundPoll();
+                    handleWalkieAppHidden().catch(() => {});
                 }
             });
         }
@@ -17524,10 +18750,23 @@ function toggleDriveQuickRequestItem(domId) {
                 const conversationId = String(safePayload.conversationId || safePayload.conversation_id || '').trim();
                 if (conversationId) pendingChatOpenConversationId = conversationId;
             }
+            if (target === 'walkie') {
+                const safePayload = payload && typeof payload === 'object' ? payload : {};
+                const channelId = String(safePayload.channelId || safePayload.channel_id || '').trim();
+                const callId = String(safePayload.callId || safePayload.call_id || '').trim();
+                if (channelId) {
+                    pendingWalkieOpenChannelId = channelId;
+                    if (walkieChannels.some((channel) => channel.id === channelId)) activeWalkieChannelId = channelId;
+                }
+                if (callId) {
+                    pendingWalkieOpenCallId = callId;
+                    if (walkieCalls.some((call) => call.id === callId)) activeWalkieCallId = callId;
+                }
+            }
             if (canAccessView(target)) switchView(target);
         }
 
-        const TRACKED_VIEW_IDS = ['drive','tasks','review','sales-office','reports','low-stock','docks','request','chat','reserves','av','hours'];
+        const TRACKED_VIEW_IDS = ['drive','tasks','review','sales-office','reports','low-stock','docks','request','chat','walkie','reserves','av','hours'];
 
         function getAffectedViewsForDatasets(changedKeys = []) {
             const changedSet = new Set((changedKeys || []).filter(Boolean));
@@ -18132,6 +19371,8 @@ function toggleDriveQuickRequestItem(domId) {
                 renderRequest();
             } else if (viewId === 'chat') {
                 renderChat();
+            } else if (viewId === 'walkie') {
+                renderWalkie();
             } else if (viewId === 'reserves') {
                 if (forceReset || !state.initialized) resetReservesView(false);
                 if (typeof renderReserves === 'function') renderReserves();
@@ -18514,6 +19755,17 @@ function toggleDriveQuickRequestItem(domId) {
                 if (activeChatConversationId || chatComposeOpen) {
                     chatComposeOpen = false;
                     backToChatList();
+                    updateGlobalBackButton();
+                    return false;
+                }
+                if (restorePreviousViewFromHistory()) return false;
+                switchView('home');
+                return false;
+            }
+            if (currentView === 'walkie') {
+                if (walkieComposeOpen || activeWalkieChannelId) {
+                    walkieComposeOpen = false;
+                    backToWalkieList();
                     updateGlobalBackButton();
                     return false;
                 }
@@ -35736,6 +36988,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 updateShellRegistration('focus').catch(() => {});
             }, { passive: true });
             window.addEventListener('pagehide', () => {
+                if (window.handleWalkieAppHidden) window.handleWalkieAppHidden().catch(() => {});
                 setTimeout(tryApplyShellUpdateSilently, 120);
             }, { passive: true });
         }
