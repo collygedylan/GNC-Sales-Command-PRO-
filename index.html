@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-  window.__APP_SHELL_VERSION__ = 'V2026.04.29.12';
+  window.__APP_SHELL_VERSION__ = 'V2026.04.29.13';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -906,7 +906,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.12').trim() || 'V2026.04.29.12';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.13').trim() || 'V2026.04.29.13';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1416,6 +1416,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const PUSH_ALERT_NEW_REQUEST_USERS = new Set(['dylan_collyge','jd_jones']);
         const PUSH_ALERT_FLYER_USERS = new Set(['morgan_anderson','kayla_knepp','dylan_collyge','jd_jones']);
         const PUSH_DELIVERY_RETRY_DELAYS_MS = [0, 1500, 6000, 15000];
+        const PUSH_MOBILE_REFRESH_STORAGE_KEY = 'gnc_mobile_push_refresh_v1';
         const PHOTO_BUCKETS = {
             'ssn-': 'season_sales_notes_photos',
             'lsn-': 'location_sales_notes_photos',
@@ -1433,7 +1434,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.12';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.13';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8903,7 +8904,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.12').trim() || 'V2026.04.29.12';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.13').trim() || 'V2026.04.29.13';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -13969,9 +13970,8 @@ function toggleDriveQuickRequestItem(domId) {
                 });
                 scheduleTaskHotCacheWarmup('login-warm', openedFromCache ? 220 : 140);
                 if (getPushPromptUserScope()) {
-                    setTimeout(() => {
-                        subscribeCurrentDeviceForPush({ prompt: false }).catch(() => {});
-                    }, openedFromCache ? 450 : 1200);
+                    installPushEnrollmentListeners();
+                    scheduleCellularPushEnrollment('login', openedFromCache ? 450 : 1200);
                 }
             }, queueWarmDelay);
 
@@ -16128,6 +16128,10 @@ function toggleDriveQuickRequestItem(domId) {
         let pushSchemaReady = null;
         let pushSchemaProbePromise = null;
         let pushSchemaWarningShown = false;
+        let mobilePushPromptDismissedThisSession = false;
+        let cellularPushEnrollmentTimer = null;
+        let pushBlockedNoticeShown = false;
+        let pushEnrollmentListenersInstalled = false;
         let requestEmailThreadCache = new Map();
         let requestFolderResendInFlight = new Set();
         let requestEmailThreadSchemaReady = null;
@@ -16975,6 +16979,126 @@ function toggleDriveQuickRequestItem(domId) {
             return typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
         }
 
+        function isCellularPushDevice() {
+            const ua = String(navigator.userAgent || '');
+            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection || {};
+            const connectionType = String(connection && connection.type ? connection.type : '').toLowerCase();
+            return /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || connectionType === 'cellular' || isStandaloneApp();
+        }
+
+        function getMobilePushRefreshMarker() {
+            const username = normalizePushUsername(currentUser || currentUserDisplay || '');
+            return username ? `${username}:${APP_SHELL_BUILD}` : '';
+        }
+
+        function hasCompletedMobilePushRefresh() {
+            const marker = getMobilePushRefreshMarker();
+            if (!marker) return false;
+            try { return localStorage.getItem(PUSH_MOBILE_REFRESH_STORAGE_KEY) === marker; } catch (error) { return false; }
+        }
+
+        function markMobilePushRefreshComplete() {
+            const marker = getMobilePushRefreshMarker();
+            if (!marker) return;
+            try { localStorage.setItem(PUSH_MOBILE_REFRESH_STORAGE_KEY, marker); } catch (error) {}
+        }
+
+        function hideMobilePushEnablePrompt() {
+            const prompt = document.getElementById('mobile-push-enable-prompt');
+            if (prompt) prompt.remove();
+        }
+
+        function dismissMobilePushEnablePrompt() {
+            mobilePushPromptDismissedThisSession = true;
+            hideMobilePushEnablePrompt();
+        }
+
+        async function enablePushNotificationsFromPrompt() {
+            const button = document.getElementById('mobile-push-enable-button');
+            if (button) {
+                button.disabled = true;
+                button.textContent = 'Turning on...';
+            }
+            try {
+                const ok = await subscribeCurrentDeviceForPush({ prompt: true, force: isCellularPushDevice() });
+                if (ok) {
+                    mobilePushPromptDismissedThisSession = false;
+                    hideMobilePushEnablePrompt();
+                    showToast('Notifications On', 'This device is ready for Greenleaf alerts.');
+                } else if (Notification.permission === 'denied') {
+                    maybeWarnPushPermissionBlocked(true);
+                } else {
+                    showToast('Notifications Off', 'Notifications were not enabled on this device.', true);
+                }
+            } catch (error) {
+                showToast('Push Error', error && error.message ? error.message : 'Could not enable notifications.', true);
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = 'Enable';
+                }
+            }
+        }
+
+        function showMobilePushEnablePrompt(reason = '') {
+            if (!isPushSupported() || !currentUser || Notification.permission !== 'default' || !isCellularPushDevice() || mobilePushPromptDismissedThisSession) return false;
+            if (document.getElementById('mobile-push-enable-prompt')) return true;
+            const prompt = document.createElement('div');
+            prompt.id = 'mobile-push-enable-prompt';
+            prompt.className = 'fixed left-3 right-3 z-[12000] rounded-2xl border border-green-200 bg-white p-4 shadow-2xl';
+            prompt.style.bottom = 'calc(var(--footer-nav-reserve) + env(safe-area-inset-bottom) + .85rem)';
+            prompt.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-green-50 text-[#007a4d]"><i class="ph-bold ph-bell-ringing text-xl"></i></div>
+                    <div class="min-w-0 flex-1">
+                        <div class="text-sm font-black text-slate-900">Turn on push notifications</div>
+                        <div class="mt-1 text-xs font-bold leading-snug text-slate-500">This phone needs permission before chat, request, and flyer alerts can show.</div>
+                        <div class="mt-3 flex gap-2">
+                            <button id="mobile-push-enable-button" type="button" class="flex-1 rounded-xl bg-[#007a4d] px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-white active:scale-[.99]" onclick="enablePushNotificationsFromPrompt()">Enable</button>
+                            <button type="button" class="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 active:scale-95" onclick="dismissMobilePushEnablePrompt()" aria-label="Dismiss"><i class="ph-bold ph-x text-lg"></i></button>
+                        </div>
+                    </div>
+                </div>`;
+            document.body.appendChild(prompt);
+            return true;
+        }
+
+        function maybeWarnPushPermissionBlocked(force = false) {
+            if (!isPushSupported() || !currentUser || Notification.permission !== 'denied' || (!force && pushBlockedNoticeShown)) return false;
+            pushBlockedNoticeShown = true;
+            showToast('Notifications Blocked', 'Allow notifications for this site in Chrome settings, then reopen the app.', true);
+            return true;
+        }
+
+        function scheduleCellularPushEnrollment(reason = '', delayMs = 500) {
+            if (cellularPushEnrollmentTimer) clearTimeout(cellularPushEnrollmentTimer);
+            cellularPushEnrollmentTimer = setTimeout(async () => {
+                cellularPushEnrollmentTimer = null;
+                if (!isPushSupported() || !currentUser || !getPushPromptUserScope()) return;
+                if (Notification.permission === 'default') {
+                    showMobilePushEnablePrompt(reason);
+                    return;
+                }
+                if (Notification.permission === 'denied') {
+                    maybeWarnPushPermissionBlocked();
+                    return;
+                }
+                const shouldForceMobileRefresh = isCellularPushDevice() && !hasCompletedMobilePushRefresh();
+                const ok = await subscribeCurrentDeviceForPush({ prompt: false, force: shouldForceMobileRefresh }).catch(() => false);
+                if (ok && isCellularPushDevice()) markMobilePushRefreshComplete();
+            }, Math.max(0, Number(delayMs) || 0));
+        }
+
+        function installPushEnrollmentListeners() {
+            if (pushEnrollmentListenersInstalled || typeof window === 'undefined') return;
+            pushEnrollmentListenersInstalled = true;
+            window.addEventListener('online', () => scheduleCellularPushEnrollment('online', 250));
+            window.addEventListener('focus', () => scheduleCellularPushEnrollment('focus', 650));
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) scheduleCellularPushEnrollment('visible', 650);
+            });
+        }
+
         function isCurrentUserFlyerPushTarget() {
             const normalizedUser = normalizePushUsername(currentUser || currentUserDisplay || '');
             return !!(normalizedUser && PUSH_ALERT_FLYER_USERS.has(normalizedUser));
@@ -17072,10 +17196,9 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function buildPushPreferenceFlags() {
-            const normalizedUser = normalizePushUsername(currentUser || currentUserDisplay || '');
             return {
-                wants_new_request: PUSH_ALERT_NEW_REQUEST_USERS.has(normalizedUser),
-                wants_request_complete: getPushPromptUserScope()
+                wants_new_request: true,
+                wants_request_complete: true
             };
         }
 
@@ -17134,6 +17257,7 @@ function toggleDriveQuickRequestItem(domId) {
                 permission = await Notification.requestPermission();
             }
             if (permission !== 'granted') return false;
+            hideMobilePushEnablePrompt();
             let subscription = await reg.pushManager.getSubscription();
             if (!subscription || opts.force) {
                 if (subscription && opts.force) {
@@ -17144,7 +17268,9 @@ function toggleDriveQuickRequestItem(domId) {
                     applicationServerKey: pushPublicKeyToUint8Array(PUSH_VAPID_PUBLIC_KEY)
                 });
             }
-            return await persistPushSubscription(subscription);
+            const persisted = await persistPushSubscription(subscription);
+            if (persisted && isCellularPushDevice()) markMobilePushRefreshComplete();
+            return persisted;
         }
 
         function primePushPermissionFromLoginGesture(options = {}) {
@@ -35432,6 +35558,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     });
                 });
                 window.__swReg = reg;
+                if (typeof window.scheduleCellularPushEnrollment === 'function') window.scheduleCellularPushEnrollment('sw-register', 500);
                 window.__swUpdateIntervalId = setInterval(() => {
                     updateShellRegistration('interval').catch(() => {});
                 }, 1000 * 60 * 30);
@@ -35442,7 +35569,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (data.type === 'GNC_OPEN_VIEW') {
                     try { if (typeof window.openViewFromPushMessage === 'function') window.openViewFromPushMessage(data.viewId || 'request', data); } catch (e) {}
                 } else if (data.type === 'GNC_RESUBSCRIBE_PUSH') {
-                    if (typeof window.subscribeCurrentDeviceForPush === 'function') window.subscribeCurrentDeviceForPush({ prompt: false, force: true }).catch(() => {});
+                    if (typeof window.scheduleCellularPushEnrollment === 'function') window.scheduleCellularPushEnrollment('subscriptionchange', 0);
+                    else if (typeof window.subscribeCurrentDeviceForPush === 'function') window.subscribeCurrentDeviceForPush({ prompt: false, force: true }).catch(() => {});
                 }
             });
             navigator.serviceWorker.addEventListener('controllerchange', () => {

@@ -154,7 +154,7 @@ serve(async (req) => {
   const session = await readAppSessionFromRequest(req);
   const sessionAccess = session ? getRoleAccessState(session.role) : null;
   const hasServiceRole = authHeader === SUPABASE_SERVICE_ROLE_KEY || apiKey === SUPABASE_SERVICE_ROLE_KEY;
-  const hasAppSession = !!(session && !session.mustChangePassword && sessionAccess && (sessionAccess.allowedViews.has("request") || sessionAccess.allowedViews.has("chat")));
+  const hasAppSession = !!(session && !session.mustChangePassword && sessionAccess);
 
   if (!hasServiceRole && !hasAppSession) {
     return jsonResponse({ error: "Unauthorized" }, 401);
@@ -171,21 +171,20 @@ serve(async (req) => {
     return jsonResponse({ delivered: 0, targets: [] });
   }
 
-  let query = supabase
+  const query = supabase
     .from(PUSH_TABLE)
     .select("id,username,endpoint,p256dh,auth,subscription_json")
-    .in("username", targetUsers)
     .eq("notifications_enabled", true);
-
-  if (eventType === "new_request") query = query.eq("wants_new_request", true);
-  else if (eventType === "request_complete") query = query.eq("wants_request_complete", true);
 
   const { data, error } = await query;
   if (error) {
     return jsonResponse({ error: error.message }, 500);
   }
 
-  const subscriptions = Array.isArray(data) ? data : [];
+  const targetSet = new Set(targetUsers.map((value) => normalizeUsername(value)).filter(Boolean));
+  const subscriptions = Array.isArray(data)
+    ? data.filter((row) => targetSet.has(normalizeUsername(String(row.username || ""))))
+    : [];
   if (!subscriptions.length) {
     return jsonResponse({ delivered: 0, targets: targetUsers, subscriptions: 0 });
   }

@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.04.29.12';
+const APP_SHELL_BUILD = 'V2026.04.29.13';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const CACHE_NAME = 'greenleaf-v4.2-rebuild-' + APP_SHELL_BUILD;
@@ -130,6 +130,8 @@ self.addEventListener('push', (event) => {
     badge: data.badge || './Greenleaf Logo.png',
     data: { url: data.url || APP_SHELL_URL, viewId: data.viewId || 'request', conversationId: data.conversationId || '', messageId: data.messageId || '' },
     vibrate: [200, 100, 200],
+    silent: false,
+    timestamp: Date.now(),
     tag: data.tag || 'greenleaf-alert',
     renotify: true
   };
