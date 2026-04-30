@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.30.01';
+window.__APP_SHELL_VERSION__ = 'V2026.04.30.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -906,7 +906,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.30.01').trim() || 'V2026.04.30.01';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.30.02').trim() || 'V2026.04.30.02';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -929,7 +929,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <div id="drawer-home-btn" class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div>
             <div id="drawer-force-sync-btn" class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData('force'); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div>
             <div id="drawer-chat-btn" class="drawer-item text-sky-600 font-bold" onclick="switchView('chat'); toggleMenu();"><i class="ph-bold ph-chats-circle"></i> Chat</div>
-            <div id="drawer-walkie-btn" class="drawer-item text-emerald-700 font-bold" onclick="switchView('walkie'); toggleMenu();"><i class="ph-bold ph-radio"></i> Walkie</div>
+            <div id="drawer-walkie-btn" class="drawer-item text-emerald-700 font-bold hidden" onclick="switchView('walkie'); toggleMenu();"><i class="ph-bold ph-radio"></i> Walkie</div>
             <hr class="my-2">
             <div id="drawer-drive-btn" class="drawer-item role-access role-admin role-qc-supervisor hidden" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
             <div id="drawer-tasks-btn" class="drawer-item role-access role-admin hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
@@ -999,7 +999,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div id="home-tile-av" onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
                                 <div id="home-tile-request" onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-request-enabled hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
                                 <div id="home-tile-chat" onclick="switchView('chat')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-chats-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Chat</span></div>
-                                <div id="home-tile-walkie" onclick="switchView('walkie')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-radio text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Walkie</span></div>
+                                <div id="home-tile-walkie" onclick="switchView('walkie')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer hidden"><i class="ph-bold ph-radio text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Walkie</span></div>
                                 <div id="home-tile-reserves" onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
                                 <div id="home-tile-sales-office" onclick="openSalesOfficeView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
                                 <div id="home-tile-reports" onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
@@ -1413,7 +1413,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 <button type="button" data-footer-view="docks" class="footer-nav-btn" onclick="switchView('docks')" aria-label="Docks"><i class="ph-bold ph-truck"></i><span>Docks</span></button>
                 <button type="button" id="footer-request-btn" data-footer-view="request" class="footer-nav-btn hidden" onclick="switchView('request')" aria-label="Requests"><i class="ph-bold ph-chat-circle-text"></i><span>Reqs</span><span id="footer-request-badge" class="footer-nav-badge hidden">0</span></button>
                 <button type="button" id="footer-chat-btn" data-footer-view="chat" class="footer-nav-btn" onclick="switchView('chat')" aria-label="Chat"><i class="ph-bold ph-chats-circle"></i><span>Chat</span><span id="footer-chat-badge" class="footer-nav-badge hidden">0</span></button>
-                <button type="button" id="footer-walkie-btn" data-footer-view="walkie" class="footer-nav-btn" onclick="switchView('walkie')" aria-label="Walkie"><i class="ph-bold ph-radio"></i><span>Walkie</span><span id="footer-walkie-badge" class="footer-nav-badge hidden">0</span></button>
+                <button type="button" id="footer-walkie-btn" data-footer-view="walkie" class="footer-nav-btn hidden" onclick="switchView('walkie')" aria-label="Walkie"><i class="ph-bold ph-radio"></i><span>Walkie</span><span id="footer-walkie-badge" class="footer-nav-badge hidden">0</span></button>
                 <button type="button" id="footer-cart-btn" class="footer-nav-btn hidden" onclick="toggleCartPanel()" aria-label="Bloom Picker"><i class="ph-bold ph-handbag"></i><span>Bloom</span><span id="footer-cart-badge" class="footer-nav-badge hidden">0</span></button>
             </nav>
         </div>
@@ -1425,6 +1425,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const CHAT_CONVERSATIONS_TABLE = 'v2_chat_conversations';
         const CHAT_PARTICIPANTS_TABLE = 'v2_chat_participants';
         const CHAT_MESSAGES_TABLE = 'v2_chat_messages';
+        const CHAT_VOICE_BUCKET = 'chat_voice_notes';
         const WALKIE_CHANNELS_TABLE = 'v2_walkie_channels';
         const WALKIE_CHANNEL_MEMBERS_TABLE = 'v2_walkie_channel_members';
         const WALKIE_CALLS_TABLE = 'v2_walkie_calls';
@@ -1464,7 +1465,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.30.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.30.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8620,7 +8621,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
         }
 
 let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let salesOfficeInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
-let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set();
+let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null;
 let walkieChannels=[]; let walkieChannelMembers=[]; let walkieCalls=[]; let walkieCallMembers=[]; let walkieUsers=[]; let walkieSignalsSeen=new Set(); let walkieDataLoaded=false; let walkieLoadPromise=null; let walkieSchemaReady=null; let walkieSchemaProbePromise=null; let walkieSchemaWarningShown=false; let activeWalkieChannelId=''; let pendingWalkieOpenChannelId=''; let pendingWalkieOpenCallId=''; let walkieComposeOpen=false; let walkieUserSearchTerm=''; let walkieComposeTitle=''; let walkieSelectedUsers=new Set(); let walkieLastRenderSignature=''; let walkieDeviceId=''; let activeWalkieCallId=''; let walkieJoinedCallId=''; let walkieActiveMembershipId=''; let walkiePeerConnections=new Map(); let walkieRemoteAudioElements=new Map(); let walkieLocalStream=null; let walkieHeartbeatTimer=null; let walkieSpeakerHeartbeatTimer=null; let walkieReconnectTimer=null; let walkieActiveSpeakerIntent=false; let walkiePressedPointerId=''; let walkieForegroundNoticeShown=false;
 let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let managerReviewInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
@@ -8948,7 +8949,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.30.01').trim() || 'V2026.04.30.01';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.30.02').trim() || 'V2026.04.30.02';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -16266,12 +16267,18 @@ function toggleDriveQuickRequestItem(domId) {
             const conversationId = String(chatField(row, 'conversation_id', 'conversationId') || '').trim();
             if (!id || !conversationId) return null;
             const senderUsername = normalizePushUsername(chatField(row, 'sender_username', 'senderUsername'));
+            const messageType = String(chatField(row, 'message_type', 'messageType') || '').trim().toLowerCase() || (chatField(row, 'audio_url', 'audioUrl') ? 'voice' : 'text');
             return {
                 id,
                 conversationId,
                 senderUsername,
                 senderDisplayName: String(firstNonEmptyValue(chatField(row, 'sender_display_name', 'senderDisplayName'), getFallbackChatDisplayName(senderUsername)) || '').trim(),
                 body: String(chatField(row, 'body', 'BODY') || '').trim(),
+                messageType,
+                audioUrl: String(chatField(row, 'audio_url', 'audioUrl') || '').trim(),
+                audioStoragePath: String(chatField(row, 'audio_storage_path', 'audioStoragePath') || '').trim(),
+                audioMimeType: String(chatField(row, 'audio_mime_type', 'audioMimeType') || '').trim(),
+                audioDurationSeconds: Math.max(0, Number(chatField(row, 'audio_duration_seconds', 'audioDurationSeconds')) || 0),
                 createdAt: String(chatField(row, 'created_at', 'createdAt') || '').trim(),
                 clientId: String(chatField(row, 'client_id', 'clientId') || '').trim()
             };
@@ -16370,6 +16377,234 @@ function toggleDriveQuickRequestItem(domId) {
             return sameDay
                 ? date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
                 : date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+        }
+
+        function formatChatVoiceDuration(seconds = 0) {
+            const safeSeconds = Math.max(0, Number(seconds) || 0);
+            const minutes = Math.floor(safeSeconds / 60);
+            const remainingSeconds = safeSeconds % 60;
+            return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+        }
+
+        function getChatMessagePreview(message = null) {
+            const safeMessage = message && typeof message === 'object' ? message : null;
+            if (!safeMessage) return 'No messages yet.';
+            if (safeMessage.messageType === 'voice') {
+                const duration = safeMessage.audioDurationSeconds ? ` (${formatChatVoiceDuration(safeMessage.audioDurationSeconds)})` : '';
+                return `Voice message${duration}`;
+            }
+            return safeMessage.body || 'No messages yet.';
+        }
+
+        function getSupportedChatVoiceMimeType() {
+            if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') return '';
+            const candidates = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/ogg'];
+            return candidates.find((value) => MediaRecorder.isTypeSupported(value)) || '';
+        }
+
+        function isChatVoiceSupported() {
+            return typeof window !== 'undefined'
+                && !!(navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function')
+                && typeof MediaRecorder !== 'undefined';
+        }
+
+        function getChatVoiceRecordingDurationSeconds() {
+            if (!chatVoiceRecordingStartAt) return 0;
+            return Math.max(0, Math.round((Date.now() - chatVoiceRecordingStartAt) / 1000));
+        }
+
+        function clearChatVoiceRecordTimer() {
+            if (chatVoiceRecordTimer) {
+                clearInterval(chatVoiceRecordTimer);
+                chatVoiceRecordTimer = null;
+            }
+        }
+
+        function updateChatVoiceRecordingUi() {
+            const duration = formatChatVoiceDuration(getChatVoiceRecordingDurationSeconds());
+            ['chat-voice-status', 'chat-new-voice-status'].forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = chatVoiceRecordingActive ? `Recording ${duration}` : '';
+            });
+        }
+
+        function getChatVoiceMimeExtension(mimeType = '') {
+            const safeType = String(mimeType || '').toLowerCase();
+            if (safeType.includes('mp4')) return 'm4a';
+            if (safeType.includes('mpeg')) return 'mp3';
+            if (safeType.includes('ogg')) return 'ogg';
+            return 'webm';
+        }
+
+        async function stopChatVoiceRecorderStream() {
+            if (chatVoiceRecorderStream) {
+                chatVoiceRecorderStream.getTracks().forEach((track) => {
+                    try { track.stop(); } catch (error) {}
+                });
+            }
+            chatVoiceRecorderStream = null;
+        }
+
+        async function resetChatVoiceRecording(options = {}) {
+            const safeOptions = options && typeof options === 'object' ? options : {};
+            clearChatVoiceRecordTimer();
+            chatVoiceRecordingActive = false;
+            chatVoiceRecordingStartAt = 0;
+            chatVoiceChunks = [];
+            chatVoiceRecordMimeType = '';
+            if (!safeOptions.preserveRecorder) chatVoiceRecorder = null;
+            await stopChatVoiceRecorderStream();
+            chatLastRenderSignature = '';
+            renderChat();
+        }
+
+        async function uploadChatVoiceBlob(blob, conversationId = '') {
+            const safeConversationId = String(conversationId || '').trim();
+            if (!blob || !safeConversationId) throw new Error('Voice message is missing data.');
+            const conversation = chatConversations.find((item) => item.id === safeConversationId);
+            const title = getChatConversationTitle(conversation);
+            const fileDate = new Date().toISOString().split('T')[0];
+            const safeTitle = String(title || 'chat').replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'chat';
+            const safeUser = String(getCurrentChatUsername() || 'user').replace(/[^a-zA-Z0-9_-]+/g, '-');
+            const extension = getChatVoiceMimeExtension(blob.type || chatVoiceRecordMimeType || '');
+            const fileName = `${safeUser}-${Date.now()}-${generateChatUuid().slice(0, 8)}.${extension}`;
+            const filePath = `${fileDate}/${safeConversationId}/${safeTitle}/${fileName}`;
+            const uploadResult = await withTimeout(
+                supabaseClient.storage.from(CHAT_VOICE_BUCKET).upload(filePath, blob, {
+                    contentType: blob.type || 'audio/webm',
+                    upsert: false
+                }),
+                SUPABASE_UPLOAD_TIMEOUT_MS,
+                'Voice upload'
+            );
+            const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
+            if (uploadError) throw uploadError;
+            const { data: publicUrlData } = supabaseClient.storage.from(CHAT_VOICE_BUCKET).getPublicUrl(filePath);
+            return {
+                audioUrl: String(publicUrlData && publicUrlData.publicUrl || '').trim(),
+                storagePath: filePath
+            };
+        }
+
+        async function beginChatVoiceRecording(forComposer = false) {
+            if (chatVoiceUploadInFlight) {
+                showToast('Upload In Progress', 'Wait for the current voice note to finish uploading.', true);
+                return false;
+            }
+            if (!isChatVoiceSupported()) {
+                showToast('Voice Notes Unavailable', 'This device does not support in-app voice recording here.', true);
+                return false;
+            }
+            if (navigator.onLine === false) {
+                showToast('Offline', 'Reconnect before recording a voice note.', true);
+                return false;
+            }
+            if (!forComposer && !activeChatConversationId) {
+                showToast('Open Chat', 'Choose a conversation first.', true);
+                return false;
+            }
+            const mimeType = getSupportedChatVoiceMimeType();
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+                chatVoiceRecorderStream = stream;
+                chatVoiceRecorder = recorder;
+                chatVoiceChunks = [];
+                chatVoiceRecordingForComposer = !!forComposer;
+                chatVoiceRecordingActive = true;
+                chatVoiceRecordingStartAt = Date.now();
+                chatVoiceRecordMimeType = mimeType || recorder.mimeType || 'audio/webm';
+                recorder.ondataavailable = (event) => {
+                    if (event && event.data && event.data.size > 0) chatVoiceChunks.push(event.data);
+                };
+                recorder.onerror = () => {
+                    showToast('Voice Note Error', 'Recording stopped unexpectedly.', true);
+                    resetChatVoiceRecording({ preserveRecorder: false }).catch(() => {});
+                };
+                recorder.start();
+                clearChatVoiceRecordTimer();
+                updateChatVoiceRecordingUi();
+                chatVoiceRecordTimer = setInterval(() => {
+                    updateChatVoiceRecordingUi();
+                }, 250);
+                chatLastRenderSignature = '';
+                renderChat();
+                return true;
+            } catch (error) {
+                showToast('Microphone Blocked', 'Allow microphone access to send voice notes.', true);
+                await resetChatVoiceRecording({ preserveRecorder: false });
+                return false;
+            }
+        }
+
+        async function cancelChatVoiceRecording() {
+            if (!chatVoiceRecorder) return false;
+            try {
+                if (chatVoiceRecorder.state !== 'inactive') chatVoiceRecorder.stop();
+            } catch (error) {}
+            await resetChatVoiceRecording({ preserveRecorder: false });
+            return true;
+        }
+
+        async function finalizeChatVoiceRecording() {
+            if (!chatVoiceRecorder || !chatVoiceRecordingActive) return false;
+            const targetConversationId = chatVoiceRecordingForComposer ? '' : activeChatConversationId;
+            chatVoiceUploadInFlight = true;
+            const durationSeconds = getChatVoiceRecordingDurationSeconds();
+            const recorder = chatVoiceRecorder;
+            return new Promise((resolve) => {
+                recorder.onstop = async () => {
+                    try {
+                        const blob = new Blob(chatVoiceChunks, { type: chatVoiceRecordMimeType || recorder.mimeType || 'audio/webm' });
+                        if (!blob || !blob.size) throw new Error('Voice note was empty.');
+                        if (chatVoiceRecordingForComposer) {
+                            const selected = normalizeSelectedChatRecipients();
+                            if (!selected.length) throw new Error('Choose at least one user before sending a voice note.');
+                            const conversation = await createChatConversationForRecipients(selected);
+                            activeChatConversationId = conversation.id;
+                            chatComposeOpen = false;
+                            chatSelectedUsers = new Set();
+                            chatUserSearchTerm = '';
+                            chatComposeTitle = '';
+                            const uploaded = await uploadChatVoiceBlob(blob, conversation.id);
+                            await sendChatVoiceMessageToConversation(conversation.id, {
+                                audioUrl: uploaded.audioUrl,
+                                audioStoragePath: uploaded.storagePath,
+                                audioDurationSeconds: durationSeconds,
+                                audioMimeType: blob.type || chatVoiceRecordMimeType || 'audio/webm'
+                            });
+                            await markChatConversationRead(conversation.id);
+                            await fetchChatData(true);
+                        } else {
+                            const safeConversationId = String(targetConversationId || '').trim();
+                            if (!safeConversationId) throw new Error('Open a conversation before sending a voice note.');
+                            const uploaded = await uploadChatVoiceBlob(blob, safeConversationId);
+                            await sendChatVoiceMessageToConversation(safeConversationId, {
+                                audioUrl: uploaded.audioUrl,
+                                audioStoragePath: uploaded.storagePath,
+                                audioDurationSeconds: durationSeconds,
+                                audioMimeType: blob.type || chatVoiceRecordMimeType || 'audio/webm'
+                            });
+                        }
+                        resolve(true);
+                    } catch (error) {
+                        showToast('Voice Note Failed', error && error.message ? error.message : 'Could not send the voice note.', true);
+                        resolve(false);
+                    } finally {
+                        chatVoiceUploadInFlight = false;
+                        await resetChatVoiceRecording({ preserveRecorder: false });
+                    }
+                };
+                try {
+                    if (recorder.state !== 'inactive') recorder.stop();
+                    else recorder.onstop && recorder.onstop(new Event('stop'));
+                } catch (error) {
+                    chatVoiceUploadInFlight = false;
+                    resetChatVoiceRecording({ preserveRecorder: false }).catch(() => {});
+                    showToast('Voice Note Failed', 'Could not finish this recording.', true);
+                    resolve(false);
+                }
+            });
         }
 
         function getChatUnreadCount(conversationId = '') {
@@ -16620,7 +16855,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const latest = getLatestChatMessage(conversation.id);
                 const unread = getChatUnreadCount(conversation.id);
                 const title = getChatConversationTitle(conversation);
-                const preview = latest ? latest.body : (conversation.lastMessagePreview || 'No messages yet.');
+                const preview = latest ? getChatMessagePreview(latest) : (conversation.lastMessagePreview || 'No messages yet.');
                 const when = formatChatTime((latest && latest.createdAt) || conversation.lastMessageAt || conversation.updatedAt || conversation.createdAt);
                 const participantCount = getChatParticipants(conversation.id).length;
                 return `<button type="button" class="w-full rounded-2xl border ${unread ? 'border-[#007a4d] bg-emerald-50' : 'border-green-100 bg-white'} p-4 text-left shadow-sm active:scale-[.99]" onclick="openChatConversation('${esc(conversation.id)}')">
@@ -16651,6 +16886,8 @@ function toggleDriveQuickRequestItem(domId) {
                 .filter((user) => !chatSelectedUsers.has(user.username))
                 .slice(0, 14);
             const selectedCount = chatSelectedUsers.size;
+            const voiceSupported = isChatVoiceSupported();
+            const isRecordingHere = !!(chatVoiceRecordingActive && chatVoiceRecordingForComposer);
             const chipsHtml = selectedUsers.map((user) => `<button type="button" class="inline-flex max-w-full items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black text-[#007a4d] ring-1 ring-emerald-200" onclick="removeChatRecipient('${esc(user.username)}')" aria-label="Remove ${escapeHtml(user.displayName)}"><span class="truncate">${escapeHtml(user.displayName)}</span><i class="ph-bold ph-x text-[11px]"></i></button>`).join('');
             return `<div class="space-y-4">
                 <div class="rounded-2xl border border-green-100 bg-white p-4 shadow-sm">
@@ -16682,7 +16919,17 @@ function toggleDriveQuickRequestItem(domId) {
                 }).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No matching users.</div>'}</div>
                 <form class="sticky bottom-[calc(var(--footer-nav-reserve)+.55rem)] z-20 rounded-2xl border border-green-100 bg-white p-3 shadow-lg" onsubmit="event.preventDefault(); sendNewChatMessage();">
                     <textarea id="chat-new-message-input" class="input-field min-h-[74px] resize-none !mb-2" placeholder="Message..." oninput="chatMessageDraft=this.value">${escapeHtml(chatMessageDraft)}</textarea>
-                    <button type="submit" class="w-full rounded-xl bg-[#007a4d] px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99] disabled:opacity-40" ${selectedCount ? '' : 'disabled'}><i class="ph-bold ph-paper-plane-tilt align-middle text-base"></i><span class="ml-2 align-middle">Send</span></button>
+                    ${voiceSupported ? `<div class="${isRecordingHere ? '' : 'hidden'} mb-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-3">
+                        <div id="chat-new-voice-status" class="text-sm font-black text-red-600">${isRecordingHere ? `Recording ${formatChatVoiceDuration(getChatVoiceRecordingDurationSeconds())}` : ''}</div>
+                        <div class="mt-2 flex gap-2">
+                            <button type="button" class="flex-1 rounded-xl border border-red-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-red-600 shadow-sm active:scale-[.99]" onclick="cancelChatVoiceRecording()">Cancel</button>
+                            <button type="button" class="flex-1 rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99]" onclick="finalizeChatVoiceRecording()">Send Voice</button>
+                        </div>
+                    </div>` : ''}
+                    <div class="flex items-stretch gap-2">
+                        ${voiceSupported ? `<button type="button" class="flex h-[52px] w-[52px] flex-shrink-0 items-center justify-center rounded-xl border ${isRecordingHere ? 'border-red-300 bg-red-500 text-white' : 'border-green-200 bg-white text-[#007a4d]'} shadow-sm active:scale-[.99]" onclick="${isRecordingHere ? 'finalizeChatVoiceRecording()' : 'beginChatVoiceRecording(true)'}" aria-label="Voice note"><i class="ph-bold ${isRecordingHere ? 'ph-stop-circle' : 'ph-microphone'} text-xl"></i></button>` : ''}
+                        <button type="submit" class="flex-1 rounded-xl bg-[#007a4d] px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99] disabled:opacity-40" ${selectedCount ? '' : 'disabled'}><i class="ph-bold ph-paper-plane-tilt align-middle text-base"></i><span class="ml-2 align-middle">Send</span></button>
+                    </div>
                 </form>
             </div>`;
         }
@@ -16716,13 +16963,21 @@ function toggleDriveQuickRequestItem(domId) {
             const participants = getChatParticipants(conversation.id);
             const messages = getChatConversationMessages(conversation.id);
             const currentUsername = getCurrentChatUsername();
+            const voiceSupported = isChatVoiceSupported();
+            const isRecordingHere = !!(chatVoiceRecordingActive && !chatVoiceRecordingForComposer);
             const participantLine = participants.map((participant) => participant.displayName || getChatUserDisplayName(participant.username)).join(', ');
             const messageHtml = messages.length ? messages.map((message) => {
                 const mine = message.senderUsername === currentUsername;
                 return `<div class="flex ${mine ? 'justify-end' : 'justify-start'}">
                     <div class="max-w-[82%] rounded-2xl ${mine ? 'bg-[#007a4d] text-white' : 'bg-white text-slate-900 border border-green-100'} px-4 py-3 shadow-sm">
                         ${mine ? '' : `<div class="mb-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]">${escapeHtml(message.senderDisplayName || getChatUserDisplayName(message.senderUsername))}</div>`}
-                        <div class="whitespace-pre-wrap break-words text-sm font-semibold leading-relaxed">${escapeHtml(message.body)}</div>
+                        ${message.messageType === 'voice' && message.audioUrl ? `<button type="button" class="flex w-full items-center gap-3 rounded-2xl ${mine ? 'bg-white/10' : 'bg-emerald-50'} px-3 py-3 text-left" onclick="playChatVoiceMessage('${esc(message.audioUrl)}', this)">
+                            <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${mine ? 'bg-white text-[#007a4d]' : 'bg-[#007a4d] text-white'}"><i class="ph-bold ph-play text-lg"></i></span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-black ${mine ? 'text-white' : 'text-slate-900'}">Voice Message</span>
+                                <span class="block text-[11px] font-black uppercase tracking-[0.12em] ${mine ? 'text-white/70' : 'text-slate-500'}">${escapeHtml(formatChatVoiceDuration(message.audioDurationSeconds || 0))}</span>
+                            </span>
+                        </button>` : `<div class="whitespace-pre-wrap break-words text-sm font-semibold leading-relaxed">${escapeHtml(message.body)}</div>`}
                         <div class="mt-1 text-right text-[9px] font-black uppercase tracking-[0.12em] ${mine ? 'text-white/65' : 'text-slate-400'}">${escapeHtml(formatChatTime(message.createdAt))}</div>
                     </div>
                 </div>`;
@@ -16741,7 +16996,17 @@ function toggleDriveQuickRequestItem(domId) {
                     <div id="chat-message-list" class="chat-message-scroll">${messageHtml}</div>
                     <form class="chat-thread-composer" onsubmit="event.preventDefault(); sendChatMessage();">
                         <textarea id="chat-message-input" class="input-field min-h-[70px] resize-none !mb-2" placeholder="Message..." oninput="chatMessageDraft=this.value">${escapeHtml(chatMessageDraft)}</textarea>
-                        <button type="submit" class="w-full rounded-xl bg-[#007a4d] px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99]"><i class="ph-bold ph-paper-plane-tilt align-middle text-base"></i><span class="ml-2 align-middle">Send</span></button>
+                        ${voiceSupported ? `<div class="${isRecordingHere ? '' : 'hidden'} mb-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-3">
+                            <div id="chat-voice-status" class="text-sm font-black text-red-600">${isRecordingHere ? `Recording ${formatChatVoiceDuration(getChatVoiceRecordingDurationSeconds())}` : ''}</div>
+                            <div class="mt-2 flex gap-2">
+                                <button type="button" class="flex-1 rounded-xl border border-red-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-red-600 shadow-sm active:scale-[.99]" onclick="cancelChatVoiceRecording()">Cancel</button>
+                                <button type="button" class="flex-1 rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99]" onclick="finalizeChatVoiceRecording()">Send Voice</button>
+                            </div>
+                        </div>` : ''}
+                        <div class="flex items-stretch gap-2">
+                            ${voiceSupported ? `<button type="button" class="flex h-[52px] w-[52px] flex-shrink-0 items-center justify-center rounded-xl border ${isRecordingHere ? 'border-red-300 bg-red-500 text-white' : 'border-green-200 bg-white text-[#007a4d]'} shadow-sm active:scale-[.99]" onclick="${isRecordingHere ? 'finalizeChatVoiceRecording()' : 'beginChatVoiceRecording(false)'}" aria-label="Voice note"><i class="ph-bold ${isRecordingHere ? 'ph-stop-circle' : 'ph-microphone'} text-xl"></i></button>` : ''}
+                            <button type="submit" class="flex-1 rounded-xl bg-[#007a4d] px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99]"><i class="ph-bold ph-paper-plane-tilt align-middle text-base"></i><span class="ml-2 align-middle">Send</span></button>
+                        </div>
                     </form>
                 </div>
             </div>`;
@@ -16768,7 +17033,7 @@ function toggleDriveQuickRequestItem(domId) {
             const signature = JSON.stringify({
                 conversations: chatConversations.map((item) => [item.id, item.updatedAt, item.lastMessageAt, item.lastMessagePreview]),
                 participants: chatParticipants.length,
-                messages: chatMessages.map((item) => [item.id, item.createdAt, item.body]).slice(-80),
+                messages: chatMessages.map((item) => [item.id, item.createdAt, item.body, item.messageType, item.audioUrl, item.audioDurationSeconds]).slice(-80),
                 active: activeChatConversationId,
                 compose: chatComposeOpen,
                 search: chatUserSearchTerm,
@@ -16805,6 +17070,9 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function openNewChatComposer() {
+            if (chatVoiceRecordingActive) {
+                cancelChatVoiceRecording().catch(() => {});
+            }
             chatComposeOpen = true;
             activeChatConversationId = '';
             chatUserSearchTerm = '';
@@ -16816,6 +17084,9 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function closeNewChatComposer() {
+            if (chatVoiceRecordingActive) {
+                cancelChatVoiceRecording().catch(() => {});
+            }
             chatComposeOpen = false;
             chatUserSearchTerm = '';
             chatComposeTitle = '';
@@ -16984,6 +17255,7 @@ function toggleDriveQuickRequestItem(domId) {
         async function openChatConversation(conversationId = '') {
             const safeId = String(conversationId || '').trim();
             if (!safeId) return;
+            if (chatVoiceRecordingActive) await cancelChatVoiceRecording().catch(() => {});
             activeChatConversationId = safeId;
             chatComposeOpen = false;
             chatMessageDraft = '';
@@ -16994,6 +17266,9 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function backToChatList() {
+            if (chatVoiceRecordingActive) {
+                cancelChatVoiceRecording().catch(() => {});
+            }
             activeChatConversationId = '';
             chatMessageDraft = '';
             chatLastRenderSignature = '';
@@ -17018,6 +17293,7 @@ function toggleDriveQuickRequestItem(domId) {
                 sender_username: currentUsername,
                 sender_display_name: getCurrentChatDisplayName(),
                 sender_name: getCurrentChatDisplayName(),
+                message_type: 'text',
                 body: body.slice(0, 4000),
                 message_text: body.slice(0, 4000),
                 created_at: now,
@@ -17062,7 +17338,90 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
 
+        async function sendChatVoiceMessageToConversation(conversationId = '', voiceData = null) {
+            const safeConversationId = String(conversationId || '').trim();
+            const safeVoiceData = voiceData && typeof voiceData === 'object' ? voiceData : {};
+            if (!safeConversationId || !safeVoiceData.audioUrl) return false;
+            const conversation = chatConversations.find((item) => item.id === safeConversationId);
+            if (!conversation) return false;
+            const currentUsername = getCurrentChatUsername();
+            const recipients = [...new Set(getChatParticipants(safeConversationId)
+                .map((participant) => participant.username)
+                .filter(Boolean))];
+            const now = new Date().toISOString();
+            const messageId = generateChatUuid();
+            const durationSeconds = Math.max(0, Number(safeVoiceData.audioDurationSeconds) || 0);
+            const preview = durationSeconds ? `Voice message (${formatChatVoiceDuration(durationSeconds)})` : 'Voice message';
+            const messagePayload = {
+                id: messageId,
+                conversation_id: safeConversationId,
+                sender_username: currentUsername,
+                sender_display_name: getCurrentChatDisplayName(),
+                sender_name: getCurrentChatDisplayName(),
+                message_type: 'voice',
+                body: preview,
+                message_text: preview,
+                audio_url: String(safeVoiceData.audioUrl || '').trim(),
+                audio_storage_path: String(safeVoiceData.audioStoragePath || '').trim(),
+                audio_duration_seconds: durationSeconds,
+                audio_mime_type: String(safeVoiceData.audioMimeType || '').trim(),
+                created_at: now,
+                client_id: `${currentUsername}-${Date.now()}`
+            };
+            try {
+                await supabaseFetch(CHAT_MESSAGES_TABLE, 'POST', messagePayload, 'on_conflict=id');
+                await supabaseFetch(CHAT_CONVERSATIONS_TABLE, 'PATCH', {
+                    updated_at: now,
+                    last_message_at: now,
+                    last_message_preview: preview,
+                    last_message_sender: getCurrentChatDisplayName()
+                }, `id=eq.${encodeURIComponent(safeConversationId)}`);
+                const normalizedMessage = normalizeChatMessage(messagePayload);
+                if (normalizedMessage && !chatMessages.some((message) => message.id === normalizedMessage.id)) chatMessages.push(normalizedMessage);
+                conversation.updatedAt = now;
+                conversation.lastMessageAt = now;
+                conversation.lastMessagePreview = preview;
+                conversation.lastMessageSender = getCurrentChatDisplayName();
+                const participant = getCurrentChatParticipant(safeConversationId);
+                if (participant) participant.lastReadAt = now;
+                chatLastRenderSignature = '';
+                renderChat();
+                if (recipients.length) {
+                    const senderEndpoint = await getCurrentPushSubscriptionEndpoint();
+                    sendPushNotification('chat_message', safeConversationId, '', getChatConversationTitle(conversation), 1, {
+                        conversationId: safeConversationId,
+                        messageId,
+                        title: getChatConversationTitle(conversation),
+                        senderUsername: currentUsername,
+                        senderDisplayName: getCurrentChatDisplayName(),
+                        bodyPreview: preview,
+                        recipients,
+                        excludeEndpoints: senderEndpoint ? [senderEndpoint] : []
+                    });
+                }
+                return true;
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        function playChatVoiceMessage(audioUrl = '', button = null) {
+            const safeUrl = String(audioUrl || '').trim();
+            if (!safeUrl) return false;
+            const audio = new Audio(safeUrl);
+            if (button) button.disabled = true;
+            audio.play().catch(() => {
+                showToast('Playback Failed', 'Could not play this voice note on this device.', true);
+            }).finally(() => {
+                setTimeout(() => {
+                    if (button) button.disabled = false;
+                }, 300);
+            });
+            return true;
+        }
+
         async function sendChatMessage() {
+            if (chatVoiceUploadInFlight) return;
             const input = document.getElementById('chat-message-input');
             const body = String(input ? input.value : chatMessageDraft || '').trim();
             if (!body || !activeChatConversationId) return;
@@ -17074,6 +17433,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function sendNewChatMessage() {
+            if (chatVoiceUploadInFlight) return;
             const input = document.getElementById('chat-new-message-input');
             const body = String(input ? input.value : chatMessageDraft || '').trim();
             const selected = normalizeSelectedChatRecipients();
