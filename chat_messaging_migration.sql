@@ -43,6 +43,10 @@ alter table public.v2_chat_messages add column if not exists thread_id uuid;
 alter table public.v2_chat_messages add column if not exists sender_name text;
 alter table public.v2_chat_messages add column if not exists message_text text;
 
+drop trigger if exists trigger_new_chat on public.v2_chat_messages;
+drop trigger if exists chat_push_trigger on public.v2_chat_messages;
+drop function if exists public.notify_new_chat();
+
 update public.v2_chat_messages
 set
     conversation_id = coalesce(conversation_id, thread_id),
