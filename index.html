@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.30.04';
+window.__APP_SHELL_VERSION__ = 'V2026.04.30.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -930,7 +930,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.30.04').trim() || 'V2026.04.30.04';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.30.05').trim() || 'V2026.04.30.05';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1490,7 +1490,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.30.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.30.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8975,7 +8975,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.30.04').trim() || 'V2026.04.30.04';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.30.05').trim() || 'V2026.04.30.05';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -16202,7 +16202,6 @@ function toggleDriveQuickRequestItem(domId) {
         let pushSchemaReady = null;
         let pushSchemaProbePromise = null;
         let pushSchemaWarningShown = false;
-        let mobilePushPromptDismissedThisSession = false;
         let cellularPushEnrollmentTimer = null;
         let pushBlockedNoticeShown = false;
         let pushEnrollmentListenersInstalled = false;
@@ -18719,7 +18718,6 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function dismissMobilePushEnablePrompt() {
-            mobilePushPromptDismissedThisSession = true;
             hideMobilePushEnablePrompt();
         }
 
@@ -18732,11 +18730,11 @@ function toggleDriveQuickRequestItem(domId) {
             try {
                 const ok = await subscribeCurrentDeviceForPush({ prompt: true, force: isCellularPushDevice() });
                 if (ok) {
-                    mobilePushPromptDismissedThisSession = false;
                     hideMobilePushEnablePrompt();
                     showToast('Notifications On', 'This device is ready for Greenleaf alerts.');
                 } else if (Notification.permission === 'denied') {
                     maybeWarnPushPermissionBlocked(true);
+                    showPushPermissionHelp();
                 } else {
                     showToast('Notifications Off', 'Notifications were not enabled on this device.', true);
                 }
@@ -18751,7 +18749,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function showMobilePushEnablePrompt(reason = '') {
-            if (!isPushSupported() || !currentUser || Notification.permission !== 'default' || !isCellularPushDevice() || mobilePushPromptDismissedThisSession) return false;
+            if (!isPushSupported() || !currentUser || Notification.permission !== 'default' || document.hidden) return false;
             if (document.getElementById('mobile-push-enable-prompt')) return true;
             const prompt = document.createElement('div');
             prompt.id = 'mobile-push-enable-prompt';
@@ -18762,7 +18760,7 @@ function toggleDriveQuickRequestItem(domId) {
                     <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-green-50 text-[#007a4d]"><i class="ph-bold ph-bell-ringing text-xl"></i></div>
                     <div class="min-w-0 flex-1">
                         <div class="text-sm font-black text-slate-900">Turn on push notifications</div>
-                        <div class="mt-1 text-xs font-bold leading-snug text-slate-500">This phone needs permission before chat, request, and flyer alerts can show.</div>
+                        <div class="mt-1 text-xs font-bold leading-snug text-slate-500">This device needs permission before chat, request, and flyer alerts can show.</div>
                         <div class="mt-3 flex gap-2">
                             <button id="mobile-push-enable-button" type="button" class="flex-1 rounded-xl bg-[#007a4d] px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-white active:scale-[.99]" onclick="enablePushNotificationsFromPrompt()">Enable</button>
                             <button type="button" class="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 active:scale-95" onclick="dismissMobilePushEnablePrompt()" aria-label="Dismiss"><i class="ph-bold ph-x text-lg"></i></button>
@@ -18824,7 +18822,6 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             try {
-                mobilePushPromptDismissedThisSession = false;
                 const ok = await subscribeCurrentDeviceForPush({
                     prompt: Notification.permission === 'default',
                     force: true
@@ -18857,7 +18854,11 @@ function toggleDriveQuickRequestItem(domId) {
                     return;
                 }
                 if (Notification.permission === 'denied') {
-                    maybeWarnPushPermissionBlocked();
+                    if (!document.hidden) {
+                        pushBlockedNoticeShown = false;
+                        maybeWarnPushPermissionBlocked(true);
+                        showPushPermissionHelp();
+                    }
                     return;
                 }
                 const isAndroidPushDevice = /Android/i.test(String(navigator.userAgent || ''));
