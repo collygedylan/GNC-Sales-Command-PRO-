@@ -38,12 +38,24 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false }
 });
 
+function normalizeEndpoint(value: unknown) {
+  return String(value || "").trim();
+}
+
 function normalizePayloadUserList(value: unknown) {
   const values = Array.isArray(value)
     ? value
     : String(value || "")
       .split(",");
   return [...new Set(values.map((entry) => normalizeUsername(String(entry || ""))).filter(Boolean))];
+}
+
+function normalizePayloadEndpointList(value: unknown) {
+  const values = Array.isArray(value)
+    ? value
+    : String(value || "")
+      .split(",");
+  return [...new Set(values.map((entry) => normalizeEndpoint(entry)).filter(Boolean))];
 }
 
 function jsonResponse(body: unknown, status = 200) {
@@ -205,8 +217,9 @@ serve(async (req) => {
   }
 
   const targetSet = new Set(targetUsers.map((value) => normalizeUsername(value)).filter(Boolean));
+  const excludedEndpoints = new Set(normalizePayloadEndpointList(payload.excludeEndpoints || payload.excludeEndpoint));
   const subscriptions = Array.isArray(data)
-    ? data.filter((row) => targetSet.has(normalizeUsername(String(row.username || ""))))
+    ? data.filter((row) => targetSet.has(normalizeUsername(String(row.username || ""))) && !excludedEndpoints.has(normalizeEndpoint(row.endpoint)))
     : [];
   if (!subscriptions.length) {
     return jsonResponse({ delivered: 0, targets: targetUsers, subscriptions: 0 });

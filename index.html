@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-  window.__APP_SHELL_VERSION__ = 'V2026.04.29.15';
+  window.__APP_SHELL_VERSION__ = 'V2026.04.29.16';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -906,7 +906,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.15').trim() || 'V2026.04.29.15';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.16').trim() || 'V2026.04.29.16';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1437,7 +1437,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.15';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.16';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8910,7 +8910,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.15').trim() || 'V2026.04.29.15';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.16').trim() || 'V2026.04.29.16';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -16140,6 +16140,7 @@ function toggleDriveQuickRequestItem(domId) {
         let pushBlockedNoticeShown = false;
         let pushEnrollmentListenersInstalled = false;
         let androidPushForceRefreshedThisSession = false;
+        let currentPushSubscriptionEndpoint = '';
         let requestEmailThreadCache = new Map();
         let requestFolderResendInFlight = new Set();
         let requestEmailThreadSchemaReady = null;
@@ -16966,9 +16967,9 @@ function toggleDriveQuickRequestItem(domId) {
             const conversation = chatConversations.find((item) => item.id === safeConversationId);
             if (!conversation) return false;
             const currentUsername = getCurrentChatUsername();
-            const recipients = getChatParticipants(safeConversationId)
+            const recipients = [...new Set(getChatParticipants(safeConversationId)
                 .map((participant) => participant.username)
-                .filter((username) => username && username !== currentUsername);
+                .filter(Boolean))];
             const now = new Date().toISOString();
             const messageId = generateChatUuid();
             const messagePayload = {
@@ -17003,6 +17004,7 @@ function toggleDriveQuickRequestItem(domId) {
                 chatLastRenderSignature = '';
                 renderChat();
                 if (recipients.length) {
+                    const senderEndpoint = await getCurrentPushSubscriptionEndpoint();
                     sendPushNotification('chat_message', safeConversationId, '', getChatConversationTitle(conversation), 1, {
                         conversationId: safeConversationId,
                         messageId,
@@ -17010,7 +17012,8 @@ function toggleDriveQuickRequestItem(domId) {
                         senderUsername: currentUsername,
                         senderDisplayName: getCurrentChatDisplayName(),
                         bodyPreview: preview,
-                        recipients
+                        recipients,
+                        excludeEndpoints: senderEndpoint ? [senderEndpoint] : []
                     });
                 }
                 return true;
@@ -17331,12 +17334,32 @@ function toggleDriveQuickRequestItem(domId) {
             };
         }
 
+        function getCurrentPushEndpoint() {
+            return String(currentPushSubscriptionEndpoint || '').trim();
+        }
+
+        async function getCurrentPushSubscriptionEndpoint() {
+            if (!isPushSupported()) return '';
+            const existing = getCurrentPushEndpoint();
+            if (existing) return existing;
+            try {
+                const reg = await navigator.serviceWorker.ready;
+                const subscription = await reg.pushManager.getSubscription();
+                const endpoint = String(subscription && subscription.endpoint ? subscription.endpoint : '').trim();
+                if (endpoint) currentPushSubscriptionEndpoint = endpoint;
+                return endpoint;
+            } catch (error) {
+                return '';
+            }
+        }
+
         async function persistPushSubscription(subscription) {
             if (!subscription) return false;
             const canPersist = await ensurePushSubscriptionSchemaReady();
             if (!canPersist) return false;
             const payload = buildPushSubscriptionRecord(subscription);
             if (!payload.username || !payload.endpoint || !payload.p256dh || !payload.auth) return false;
+            currentPushSubscriptionEndpoint = payload.endpoint;
             try {
                 await supabaseFetch(PUSH_SUBSCRIPTIONS_TABLE, 'POST', payload, 'on_conflict=endpoint');
                 return true;
@@ -17370,6 +17393,7 @@ function toggleDriveQuickRequestItem(domId) {
                     applicationServerKey: pushPublicKeyToUint8Array(PUSH_VAPID_PUBLIC_KEY)
                 });
             }
+            if (subscription && subscription.endpoint) currentPushSubscriptionEndpoint = String(subscription.endpoint || '').trim();
             const persisted = await persistPushSubscription(subscription);
             if (persisted && isCellularPushDevice()) markMobilePushRefreshComplete();
             return persisted;
