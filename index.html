@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-  window.__APP_SHELL_VERSION__ = 'V2026.04.29.11';
+  window.__APP_SHELL_VERSION__ = 'V2026.04.29.12';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -37,6 +37,11 @@ body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-h
         .footer-nav-btn:active{transform:scale(.97)}
         .footer-nav-btn.active,.footer-nav-btn.menu-open{color:#007a4d;background:#ecfdf5;border-color:#a7f3d0;box-shadow:0 6px 16px rgba(7,94,63,.12)}
         .footer-nav-badge{position:absolute;top:3px;right:8px;min-width:18px;height:18px;padding:0 4px;background:#ef4444;color:#fff;font-size:10px;font-weight:900;border-radius:999px;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+        .chat-thread-shell{height:min(680px,calc(var(--app-height) - var(--footer-nav-reserve) - 14.25rem));min-height:340px;display:flex;flex-direction:column;overflow:hidden}
+        .chat-message-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-gutter:stable;padding:12px;display:flex;flex-direction:column;gap:12px;background:#f8fbf9}
+        .chat-thread-composer{flex:0 0 auto;border-top:1px solid #dcfce7;background:#fff;padding:10px}
+        @media (max-width:640px){.chat-thread-shell{height:calc(var(--app-height) - var(--footer-nav-reserve) - 12.5rem);min-height:300px}.chat-message-scroll{padding:10px}.chat-thread-composer{padding:9px}}
+        @media (max-height:650px){.chat-thread-shell{min-height:260px}}
         .app-card-shell{background:#fff;border:1px solid #dbe4dc;border-radius:18px !important;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}
         .app-card-ready{border-left:6px solid #22c55e !important}
         .app-card-hold{border-left:6px solid #facc15 !important}
@@ -901,7 +906,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.11').trim() || 'V2026.04.29.11';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.12').trim() || 'V2026.04.29.12';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1428,7 +1433,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.11';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.12';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8898,7 +8903,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.11').trim() || 'V2026.04.29.11';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.12').trim() || 'V2026.04.29.12';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -16548,6 +16553,25 @@ function toggleDriveQuickRequestItem(domId) {
             </div>`;
         }
 
+        function scrollChatThreadToBottom(behavior = 'auto') {
+            const list = document.getElementById('chat-message-list');
+            if (!list) return;
+            const scrollBehavior = behavior === 'smooth' ? 'smooth' : 'auto';
+            const applyScroll = () => {
+                try {
+                    if (typeof list.scrollTo === 'function') list.scrollTo({ top: list.scrollHeight, behavior: scrollBehavior });
+                    else list.scrollTop = list.scrollHeight;
+                } catch (error) {
+                    list.scrollTop = list.scrollHeight;
+                }
+            };
+            requestAnimationFrame(() => {
+                applyScroll();
+                requestAnimationFrame(applyScroll);
+                setTimeout(applyScroll, 80);
+            });
+        }
+
         function renderActiveChatConversation() {
             const conversation = chatConversations.find((item) => item.id === activeChatConversationId);
             if (!conversation) {
@@ -16579,11 +16603,13 @@ function toggleDriveQuickRequestItem(domId) {
                         </div>
                     </div>
                 </div>
-                <div id="chat-message-list" class="space-y-3 pb-1">${messageHtml}</div>
-                <form class="sticky bottom-[calc(var(--footer-nav-reserve)+.55rem)] z-20 rounded-2xl border border-green-100 bg-white p-3 shadow-lg" onsubmit="event.preventDefault(); sendChatMessage();">
-                    <textarea id="chat-message-input" class="input-field min-h-[70px] resize-none !mb-2" placeholder="Message..." oninput="chatMessageDraft=this.value">${escapeHtml(chatMessageDraft)}</textarea>
-                    <button type="submit" class="w-full rounded-xl bg-[#007a4d] px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99]"><i class="ph-bold ph-paper-plane-tilt align-middle text-base"></i><span class="ml-2 align-middle">Send</span></button>
-                </form>
+                <div id="chat-thread-shell" class="chat-thread-shell rounded-2xl border border-green-100 bg-white shadow-sm">
+                    <div id="chat-message-list" class="chat-message-scroll">${messageHtml}</div>
+                    <form class="chat-thread-composer" onsubmit="event.preventDefault(); sendChatMessage();">
+                        <textarea id="chat-message-input" class="input-field min-h-[70px] resize-none !mb-2" placeholder="Message..." oninput="chatMessageDraft=this.value">${escapeHtml(chatMessageDraft)}</textarea>
+                        <button type="submit" class="w-full rounded-xl bg-[#007a4d] px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99]"><i class="ph-bold ph-paper-plane-tilt align-middle text-base"></i><span class="ml-2 align-middle">Send</span></button>
+                    </form>
+                </div>
             </div>`;
         }
 
@@ -16620,8 +16646,7 @@ function toggleDriveQuickRequestItem(domId) {
                 chatLastRenderSignature = signature;
                 setContainerHtml(container, html);
                 if (activeChatConversationId) requestAnimationFrame(() => {
-                    const list = document.getElementById('chat-message-list');
-                    if (list) list.scrollIntoView({ block: 'end' });
+                    scrollChatThreadToBottom();
                     const input = document.getElementById('chat-message-input');
                     if (input && String(input.value || '') !== chatMessageDraft) input.value = chatMessageDraft;
                 });
