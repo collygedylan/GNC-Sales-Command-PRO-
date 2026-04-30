@@ -52,9 +52,9 @@ export function getRoleAccessState(role = "") {
   const isQc = !isQcSupervisor && (normalizedRole === "QC" || normalizedRole.startsWith("QC"));
   const isCsr = normalizedRole === "CSR" || normalizedRole.includes("CSR");
   const isAdmin = normalizedRole.includes("ADMIN") || normalizedRole.includes("MANAGER") || isCsr || (!isRep && !isQcSupervisor && !isQc);
-  const allowedViews = new Set<string>(["home"]);
+  const allowedViews = new Set<string>(["home", "chat"]);
   if (isAdmin) {
-    ["drive", "tasks", "docks", "av", "request", "reserves", "sales-office", "reports", "hours", "low-stock", "review"].forEach((viewId) => allowedViews.add(viewId));
+    ["drive", "tasks", "docks", "av", "request", "reserves", "sales-office", "reports", "hours", "low-stock", "review", "chat"].forEach((viewId) => allowedViews.add(viewId));
   } else if (isRep) {
     ["av", "docks", "request", "sales-office"].forEach((viewId) => allowedViews.add(viewId));
   } else if (isQcSupervisor) {

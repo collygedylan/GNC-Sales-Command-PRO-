@@ -36,6 +36,14 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false }
 });
 
+function normalizePayloadUserList(value: unknown) {
+  const values = Array.isArray(value)
+    ? value
+    : String(value || "")
+      .split(",");
+  return [...new Set(values.map((entry) => normalizeUsername(String(entry || ""))).filter(Boolean))];
+}
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -46,6 +54,9 @@ function jsonResponse(body: unknown, status = 200) {
 function buildTargetUsers(eventType: string, payload: Record<string, unknown>) {
   if (eventType === "new_request") return [...REQUEST_ALERT_USERNAMES];
   if (eventType === "flyer_created" || eventType === "flyer_complete") return [...FLYER_ALERT_USERNAMES];
+  if (eventType === "chat_message") {
+    return normalizePayloadUserList(payload.recipients || payload.targetUsers || payload.to);
+  }
   if (eventType === "request_complete") {
     const direct = normalizeUsername(String(payload.requestedByUsername || payload.requestedBy || payload.repName || ""));
     return [...new Set([direct, ...REQUEST_ALERT_USERNAMES].filter(Boolean))];
@@ -61,6 +72,22 @@ function buildNotification(eventType: string, payload: Record<string, unknown>) 
   const assignedTo = String(payload.assignedTo || repName || "Unassigned").trim();
   const createdBy = String(payload.createdBy || payload.sentBy || "Someone").trim();
   const itemsCount = Math.max(0, Number(payload.itemsCount) || 0);
+  if (eventType === "chat_message") {
+    const sender = String(payload.senderDisplayName || payload.sentBy || payload.senderUsername || "New message").trim();
+    const chatTitle = String(payload.title || payload.customer || "Chat").trim();
+    const bodyPreview = String(payload.bodyPreview || "New chat message").trim();
+    const conversationId = String(payload.conversationId || payload.folderId || "").trim();
+    const messageId = String(payload.messageId || "").trim();
+    return {
+      title: sender,
+      body: chatTitle && chatTitle !== sender ? `${chatTitle}: ${bodyPreview}` : bodyPreview,
+      tag: `chat-${conversationId || "message"}`,
+      viewId: "chat",
+      conversationId,
+      messageId,
+      url: "./"
+    };
+  }
   if (eventType === "flyer_created") {
     return {
       title: "Flyer Created",
@@ -125,7 +152,7 @@ serve(async (req) => {
   const session = await readAppSessionFromRequest(req);
   const sessionAccess = session ? getRoleAccessState(session.role) : null;
   const hasServiceRole = authHeader === SUPABASE_SERVICE_ROLE_KEY || apiKey === SUPABASE_SERVICE_ROLE_KEY;
-  const hasAppSession = !!(session && !session.mustChangePassword && sessionAccess && sessionAccess.allowedViews.has("request"));
+  const hasAppSession = !!(session && !session.mustChangePassword && sessionAccess && (sessionAccess.allowedViews.has("request") || sessionAccess.allowedViews.has("chat")));
 
   if (!hasServiceRole && !hasAppSession) {
     return jsonResponse({ error: "Unauthorized" }, 401);
@@ -133,7 +160,7 @@ serve(async (req) => {
 
   const payload = await req.json().catch(() => ({})) as Record<string, unknown>;
   const eventType = String(payload.eventType || payload.type || "").trim().toLowerCase();
-  if (eventType !== "new_request" && eventType !== "request_complete" && eventType !== "flyer_created" && eventType !== "flyer_complete") {
+  if (eventType !== "new_request" && eventType !== "request_complete" && eventType !== "flyer_created" && eventType !== "flyer_complete" && eventType !== "chat_message") {
     return jsonResponse({ error: "Unsupported event type." }, 400);
   }
 
