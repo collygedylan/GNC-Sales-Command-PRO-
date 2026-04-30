@@ -27,6 +27,8 @@ const FLYER_ALERT_USERNAMES = new Set(
     .filter(Boolean)
 );
 const PUSH_TABLE = "v2_push_subscriptions";
+const PUSH_SEND_CONCURRENCY = Math.max(1, Number(Deno.env.get("PUSH_SEND_CONCURRENCY") || "8") || 8);
+const WEB_PUSH_OPTIONS = { TTL: 120, urgency: "high", timeout: 8000 };
 
 if (WEB_PUSH_VAPID_PUBLIC_KEY && WEB_PUSH_VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(WEB_PUSH_VAPID_SUBJECT, WEB_PUSH_VAPID_PUBLIC_KEY, WEB_PUSH_VAPID_PRIVATE_KEY);
@@ -189,21 +191,25 @@ serve(async (req) => {
   }
 
   const notification = buildNotification(eventType, payload);
+  const notificationPayload = JSON.stringify(notification);
   const staleIds: number[] = [];
   let delivered = 0;
   const failures: Record<string, unknown>[] = [];
 
-  for (const row of subscriptions) {
-    try {
-      await webpush.sendNotification(buildSubscription(row), JSON.stringify(notification));
-      delivered += 1;
-    } catch (error) {
-      const statusCode = Number((error as { statusCode?: number }).statusCode || 0);
-      if (statusCode === 404 || statusCode === 410) {
-        staleIds.push(Number(row.id));
+  for (let start = 0; start < subscriptions.length; start += PUSH_SEND_CONCURRENCY) {
+    const chunk = subscriptions.slice(start, start + PUSH_SEND_CONCURRENCY);
+    await Promise.all(chunk.map(async (row) => {
+      try {
+        await webpush.sendNotification(buildSubscription(row), notificationPayload, WEB_PUSH_OPTIONS);
+        delivered += 1;
+      } catch (error) {
+        const statusCode = Number((error as { statusCode?: number }).statusCode || 0);
+        if (statusCode === 404 || statusCode === 410) {
+          staleIds.push(Number(row.id));
+        }
+        failures.push({ id: row.id, endpoint: row.endpoint, statusCode, message: String((error as Error).message || error) });
       }
-      failures.push({ id: row.id, endpoint: row.endpoint, statusCode, message: String((error as Error).message || error) });
-    }
+    }));
   }
 
   if (staleIds.length) {
