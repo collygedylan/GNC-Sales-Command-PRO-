@@ -16758,9 +16758,12 @@ function toggleDriveQuickRequestItem(domId) {
             const messagePayload = {
                 id: messageId,
                 conversation_id: activeChatConversationId,
+                thread_id: activeChatConversationId,
                 sender_username: currentUsername,
                 sender_display_name: getCurrentChatDisplayName(),
+                sender_name: getCurrentChatDisplayName(),
                 body: body.slice(0, 4000),
+                message_text: body.slice(0, 4000),
                 created_at: now,
                 client_id: `${currentUsername}-${Date.now()}`
             };
