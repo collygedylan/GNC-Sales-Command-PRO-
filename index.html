@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.30.06';
+window.__APP_SHELL_VERSION__ = 'V2026.04.30.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -37,9 +37,10 @@ body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-h
         .footer-nav-btn:active{transform:scale(.97)}
         .footer-nav-btn.active,.footer-nav-btn.menu-open{color:#007a4d;background:#ecfdf5;border-color:#a7f3d0;box-shadow:0 6px 16px rgba(7,94,63,.12)}
         .footer-nav-badge{position:absolute;top:3px;right:8px;min-width:18px;height:18px;padding:0 4px;background:#ef4444;color:#fff;font-size:10px;font-weight:900;border-radius:999px;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
-        .chat-thread-shell{height:min(720px,calc(var(--app-height) - var(--footer-nav-reserve) - 8.75rem));min-height:380px;display:flex;flex-direction:column;overflow:hidden;background:#fff}
+        #chat-content{max-width:100%;min-width:0;overflow:hidden}
+        .chat-thread-shell{height:clamp(260px,calc(var(--visual-height) - var(--footer-nav-reserve) - 11.5rem),720px);min-height:0;display:flex;flex-direction:column;overflow:hidden;background:#fff}
         .chat-message-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-gutter:stable;padding:14px 12px 10px;display:flex;flex-direction:column;gap:6px;background:#fff}
-        .chat-thread-composer{flex:0 0 auto;background:#fff;padding:8px 10px calc(10px + env(safe-area-inset-bottom));border-top:1px solid #eef2f7}
+        .chat-thread-composer{position:relative;z-index:2;flex:0 0 auto;background:#fff;padding:8px 10px calc(10px + env(safe-area-inset-bottom));border-top:1px solid #eef2f7}
         .android-chat-shell{border:1px solid #e5e7eb;border-radius:24px;box-shadow:0 8px 22px rgba(15,23,42,.06)}
         .android-chat-header{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #eef2f7;background:#fff}
         .android-chat-avatar{width:42px;height:42px;border-radius:999px;background:#dbeafe;color:#0b57d0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;letter-spacing:.02em;flex-shrink:0}
@@ -52,20 +53,25 @@ body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-h
         .android-message-meta{margin-top:3px;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;text-align:right}
         .android-message-bubble.mine .android-message-meta{color:rgba(255,255,255,.68)}
         .android-message-bubble.theirs .android-message-meta{color:#8a94a6}
-        .android-composer-row{display:flex;align-items:flex-end;gap:8px}
-        .android-composer-pill{min-height:46px;flex:1;display:flex;align-items:center;background:#f1f3f4;border-radius:24px;padding:6px 8px 6px 14px;border:1px solid transparent}
-        .android-chat-input{width:100%;min-height:30px;max-height:92px;background:transparent;border:0;outline:0;resize:none;margin:0;padding:5px 0;font-size:16px;line-height:20px;font-weight:600;color:#202124}
+        .android-composer-row{display:grid;grid-template-columns:minmax(0,1fr) 46px;align-items:flex-end;gap:8px;width:100%;min-width:0}
+        .android-composer-pill{min-height:46px;min-width:0;display:flex;align-items:center;background:#f1f3f4;border-radius:24px;padding:6px 8px 6px 14px;border:1px solid transparent}
+        .android-chat-input{width:100%;min-width:0;flex:1;min-height:30px;max-height:92px;background:transparent;border:0;outline:0;resize:none;margin:0;padding:5px 0;font-size:16px;line-height:20px;font-weight:600;color:#202124}
         .android-chat-input::placeholder{color:#7c8798;font-weight:600}
-        .android-icon-btn{width:42px;height:42px;border-radius:999px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .14s ease,background .14s ease,color .14s ease}
+        .android-icon-btn{width:44px;height:44px;border-radius:999px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .14s ease,background .14s ease,color .14s ease}
         .android-icon-btn:active{transform:scale(.94)}
         .android-icon-btn.mic{background:transparent;color:#5f6368}
-        .android-icon-btn.send{background:#0b57d0;color:#fff}
+        .android-icon-btn.send{background:#0b57d0;color:#fff;box-shadow:0 8px 18px rgba(11,87,208,.22)}
         .android-recording-bar{border-radius:20px;border:1px solid #fecaca;background:#fef2f2;padding:10px;margin-bottom:8px}
+        .android-record-send-btn{height:38px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#0b57d0;color:#fff;padding:0 12px;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;box-shadow:0 8px 18px rgba(11,87,208,.22)}
+        .chat-compose-form{position:sticky;bottom:calc(var(--footer-nav-reserve) + env(safe-area-inset-bottom) + .75rem);z-index:20;border-radius:18px;border:1px solid #dcfce7;background:#fff;padding:12px;box-shadow:0 14px 34px rgba(15,23,42,.14)}
+        .chat-compose-actions{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:stretch;gap:8px}
         .android-voice-wave{display:flex;align-items:center;gap:3px;height:18px}
         .android-voice-wave span{display:block;width:3px;border-radius:999px;background:currentColor;opacity:.72}
         .android-voice-wave span:nth-child(1){height:6px}.android-voice-wave span:nth-child(2){height:13px}.android-voice-wave span:nth-child(3){height:9px}.android-voice-wave span:nth-child(4){height:16px}.android-voice-wave span:nth-child(5){height:7px}.android-voice-wave span:nth-child(6){height:12px}
-        @media (max-width:640px){.chat-thread-shell{height:calc(var(--app-height) - var(--footer-nav-reserve) - 7.2rem);min-height:360px}.chat-message-scroll{padding:12px 8px 8px}.chat-thread-composer{padding:7px 8px calc(9px + env(safe-area-inset-bottom))}.android-message-bubble{max-width:84%}.android-chat-shell{border-radius:20px}}
-        @media (max-height:650px){.chat-thread-shell{min-height:260px}}
+        @media (max-width:640px){.chat-thread-shell{height:clamp(230px,calc(var(--visual-height) - var(--footer-nav-reserve) - 10.25rem),680px)}.chat-message-scroll{padding:12px 8px 8px}.chat-thread-composer{padding:7px 8px calc(9px + env(safe-area-inset-bottom))}.android-message-bubble{max-width:84%}.android-chat-shell{border-radius:20px}.chat-compose-form{bottom:calc(var(--footer-nav-reserve) + env(safe-area-inset-bottom) + .45rem);padding:10px}.chat-compose-actions{grid-template-columns:52px minmax(0,1fr)}}
+        @media (max-height:650px){.chat-thread-shell{height:clamp(200px,calc(var(--visual-height) - var(--footer-nav-reserve) - 8.5rem),560px)}}
+        body.keyboard-open .chat-thread-shell{height:clamp(180px,calc(var(--visual-height) - 6.4rem),520px)}
+        body.keyboard-open .chat-compose-form{bottom:calc(.75rem + env(safe-area-inset-bottom))}
         .app-card-shell{background:#fff;border:1px solid #dbe4dc;border-radius:18px !important;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}
         .app-card-ready{border-left:6px solid #22c55e !important}
         .app-card-hold{border-left:6px solid #facc15 !important}
@@ -930,7 +936,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.30.06').trim() || 'V2026.04.30.06';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.30.07').trim() || 'V2026.04.30.07';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1490,7 +1496,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.30.06';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.30.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8977,7 +8983,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.30.06').trim() || 'V2026.04.30.06';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.30.07').trim() || 'V2026.04.30.07';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -16972,7 +16978,7 @@ function toggleDriveQuickRequestItem(domId) {
                         </div>
                     </button>`;
                 }).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No matching users.</div>'}</div>
-                <form class="sticky bottom-[calc(var(--footer-nav-reserve)+.55rem)] z-20 rounded-2xl border border-green-100 bg-white p-3 shadow-lg" onsubmit="event.preventDefault(); sendNewChatMessage();">
+                <form class="chat-compose-form" onsubmit="event.preventDefault(); sendNewChatMessage();">
                     <textarea id="chat-new-message-input" class="input-field min-h-[74px] resize-none !mb-2" placeholder="Message..." oninput="chatMessageDraft=this.value">${escapeHtml(chatMessageDraft)}</textarea>
                     ${voiceSupported ? `<div class="${isRecordingHere ? '' : 'hidden'} mb-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-3">
                         <div id="chat-new-voice-status" class="text-sm font-black text-red-600">${isRecordingHere ? `Recording ${formatChatVoiceDuration(getChatVoiceRecordingDurationSeconds())}` : ''}</div>
@@ -16981,7 +16987,7 @@ function toggleDriveQuickRequestItem(domId) {
                             <button type="button" class="flex-1 rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99]" onclick="finalizeChatVoiceRecording()">Send Voice</button>
                         </div>
                     </div>` : ''}
-                    <div class="flex items-stretch gap-2">
+                    <div class="chat-compose-actions">
                         ${voiceSupported ? `<button type="button" class="flex h-[52px] w-[52px] flex-shrink-0 items-center justify-center rounded-xl border ${isRecordingHere ? 'border-red-300 bg-red-500 text-white' : 'border-green-200 bg-white text-[#007a4d]'} shadow-sm active:scale-[.99]" onclick="${isRecordingHere ? 'finalizeChatVoiceRecording()' : 'beginChatVoiceRecording(true)'}" aria-label="Voice note"><i class="ph-bold ${isRecordingHere ? 'ph-stop-circle' : 'ph-microphone'} text-xl"></i></button>` : ''}
                         <button type="submit" class="flex-1 rounded-xl bg-[#007a4d] px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99] disabled:opacity-40" ${selectedCount ? '' : 'disabled'}><i class="ph-bold ph-paper-plane-tilt align-middle text-base"></i><span class="ml-2 align-middle">Send</span></button>
                     </div>
@@ -17055,7 +17061,7 @@ function toggleDriveQuickRequestItem(domId) {
                             <div id="chat-voice-status" class="text-sm font-black text-red-600">${isRecordingHere ? `Recording ${formatChatVoiceDuration(getChatVoiceRecordingDurationSeconds())}` : ''}</div>
                             <div class="flex gap-2">
                                 <button type="button" class="android-icon-btn !h-9 !w-9 bg-white text-red-600" onclick="cancelChatVoiceRecording()" aria-label="Cancel voice note"><i class="ph-bold ph-x text-lg"></i></button>
-                                <button type="button" class="android-icon-btn !h-9 !w-9 bg-[#0b57d0] text-white" onclick="finalizeChatVoiceRecording()" aria-label="Send voice note"><i class="ph-bold ph-paper-plane-tilt text-lg"></i></button>
+                                <button type="button" class="android-record-send-btn" onclick="finalizeChatVoiceRecording()" aria-label="Send voice note"><i class="ph-bold ph-paper-plane-tilt text-base"></i><span>Send</span></button>
                             </div>
                         </div>
                     </div>` : ''}
@@ -17064,7 +17070,7 @@ function toggleDriveQuickRequestItem(domId) {
                             <textarea id="chat-message-input" class="android-chat-input" rows="1" placeholder="Text message" oninput="chatMessageDraft=this.value">${escapeHtml(chatMessageDraft)}</textarea>
                             ${voiceSupported ? `<button type="button" class="android-icon-btn mic" onclick="${isRecordingHere ? 'finalizeChatVoiceRecording()' : 'beginChatVoiceRecording(false)'}" aria-label="Voice note"><i class="ph-bold ${isRecordingHere ? 'ph-stop-circle text-red-500' : 'ph-microphone'} text-xl"></i></button>` : ''}
                         </div>
-                        <button type="submit" class="android-icon-btn send" aria-label="Send message"><i class="ph-bold ph-paper-plane-tilt text-xl"></i></button>
+                        <button type="submit" class="android-icon-btn send" aria-label="Send message" title="Send"><i class="ph-bold ph-paper-plane-tilt text-xl"></i></button>
                     </div>
                 </form>
             </div>`;
