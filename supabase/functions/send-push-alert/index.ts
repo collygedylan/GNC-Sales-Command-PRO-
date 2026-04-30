@@ -83,7 +83,7 @@ function buildNotification(eventType: string, payload: Record<string, unknown>) 
     return {
       title: sender,
       body: chatTitle && chatTitle !== sender ? `${chatTitle}: ${bodyPreview}` : bodyPreview,
-      tag: `chat-${conversationId || "message"}`,
+      tag: `chat-${conversationId || "message"}-${messageId || Date.now()}`,
       viewId: "chat",
       conversationId,
       messageId,

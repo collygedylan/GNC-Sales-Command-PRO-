@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-  window.__APP_SHELL_VERSION__ = 'V2026.04.29.13';
+  window.__APP_SHELL_VERSION__ = 'V2026.04.29.14';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -906,7 +906,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.13').trim() || 'V2026.04.29.13';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.14').trim() || 'V2026.04.29.14';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1417,6 +1417,9 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const PUSH_ALERT_FLYER_USERS = new Set(['morgan_anderson','kayla_knepp','dylan_collyge','jd_jones']);
         const PUSH_DELIVERY_RETRY_DELAYS_MS = [0, 1500, 6000, 15000];
         const PUSH_MOBILE_REFRESH_STORAGE_KEY = 'gnc_mobile_push_refresh_v1';
+        const CHAT_REALTIME_TABLES = [CHAT_CONVERSATIONS_TABLE, CHAT_PARTICIPANTS_TABLE, CHAT_MESSAGES_TABLE];
+        const CHAT_BACKGROUND_POLL_MS = 3000;
+        const CHAT_BACKGROUND_HEALTHY_POLL_MS = 30000;
         const PHOTO_BUCKETS = {
             'ssn-': 'season_sales_notes_photos',
             'lsn-': 'location_sales_notes_photos',
@@ -1434,7 +1437,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.13';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.14';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2250,6 +2253,11 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             };
         }
 
+        function getRealtimeSubscriptionTablesForView(viewId = '') {
+            const policy = getLiveSyncPolicy(viewId);
+            return normalizeRealtimeTableList([...(policy.realtimeTables || []), ...CHAT_REALTIME_TABLES]);
+        }
+
         function hasHealthyRealtimeSubscriptions(tables = null) {
             const tableList = normalizeRealtimeTableList((tables && tables.length) ? tables : (activeRealtimeTables && activeRealtimeTables.length ? activeRealtimeTables : []));
             if (!tableList.length) return false;
@@ -2260,6 +2268,10 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             const policy = getLiveSyncPolicy(viewId || activeRealtimeContextViewId || activeRealtimeViewId || 'home');
             if (!policy.realtimeTables.length) return false;
             return hasHealthyRealtimeSubscriptions(policy.realtimeTables);
+        }
+
+        function hasHealthyBackgroundChatRealtime() {
+            return hasHealthyRealtimeSubscriptions(CHAT_REALTIME_TABLES);
         }
 
         function isRealtimeStartupPending() {
@@ -5389,7 +5401,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 updateSyncDiagnostics('manual-sync');
                 return;
             }
-            const desiredTables = policy.realtimeTables;
+            const desiredTables = getRealtimeSubscriptionTablesForView(policy.viewId);
             const desiredPollMs = policy.pollMs;
             const sameTables = realtimeTableListsEqual(activeRealtimeTables, desiredTables);
             const samePoll = activeVisibleViewPollViewId === policy.viewId && Number(activeVisibleViewPollMs || 0) === Number(desiredPollMs || 0);
@@ -5399,15 +5411,6 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             activeRealtimeTables = desiredTables;
             if (document.hidden) {
                 cleanupRealtime();
-                return;
-            }
-            if (!desiredTables.length) {
-                cleanupRealtime();
-                if (desiredPollMs > 0) syncVisibleViewPoll(policy.viewId, { delay: Math.min(220, desiredPollMs) });
-                else {
-                    liveSyncMode = 'idle';
-                    updateSyncDiagnostics('idle');
-                }
                 return;
             }
             initializeRealtime(desiredTables);
@@ -5448,7 +5451,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                         setRealtimeTableStatus(tableName, channelStatus);
                         if (channelStatus === 'SUBSCRIBED') {
                             clearRealtimeReconnectTimer();
-                            if (hasHealthyCoreRealtimeSubscriptions(activeRealtimeContextViewId)) {
+                            const corePolicy = getLiveSyncPolicy(activeRealtimeContextViewId);
+                            const realtimeHealthy = corePolicy.realtimeTables.length ? hasHealthyCoreRealtimeSubscriptions(activeRealtimeContextViewId) : hasHealthyBackgroundChatRealtime();
+                            if (realtimeHealthy) {
                                 realtimeStartupUntil = 0;
                                 liveSyncMode = 'realtime';
                                 updateSyncDiagnostics('realtime');
@@ -5487,6 +5492,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
         function performLogout() {
             cleanupRealtime();
+            clearChatBackgroundPoll();
             clearManualSyncStatusPoll();
             manualSyncStatusState = null;
             setExplicitLogoutMarker();
@@ -8577,7 +8583,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
         }
 
 let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let salesOfficeInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
-let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatLastRenderSignature='';
+let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set();
 let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let managerReviewInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
         let reviewSearchTerm=''; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set();
@@ -8904,7 +8910,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.13').trim() || 'V2026.04.29.13';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.14').trim() || 'V2026.04.29.14';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -13973,6 +13979,7 @@ function toggleDriveQuickRequestItem(domId) {
                     installPushEnrollmentListeners();
                     scheduleCellularPushEnrollment('login', openedFromCache ? 450 : 1200);
                 }
+                ensureChatBackgroundSync('login', openedFromCache ? 900 : 1600);
             }, queueWarmDelay);
 
             if (loginOptions.restoredSession !== false) {
@@ -16347,6 +16354,76 @@ function toggleDriveQuickRequestItem(domId) {
             badge.classList.toggle('hidden', unread <= 0);
         }
 
+        function clearChatBackgroundPoll() {
+            if (chatBackgroundPollTimer) {
+                clearTimeout(chatBackgroundPollTimer);
+                chatBackgroundPollTimer = null;
+            }
+        }
+
+        function scheduleChatBackgroundPoll(delayMs = CHAT_BACKGROUND_POLL_MS) {
+            clearChatBackgroundPoll();
+            if (!currentUser || document.hidden) return;
+            chatBackgroundPollTimer = setTimeout(() => {
+                chatBackgroundPollTimer = null;
+                runChatBackgroundPoll().catch(() => scheduleChatBackgroundPoll(CHAT_BACKGROUND_POLL_MS));
+            }, Math.max(750, Number(delayMs) || CHAT_BACKGROUND_POLL_MS));
+        }
+
+        async function runChatBackgroundPoll() {
+            if (!currentUser || document.hidden) {
+                clearChatBackgroundPoll();
+                return false;
+            }
+            if (navigator.onLine === false) {
+                scheduleChatBackgroundPoll(CHAT_BACKGROUND_POLL_MS);
+                return false;
+            }
+            await fetchChatData(true).catch(() => false);
+            updateFooterChatBadge();
+            if (isViewVisible('chat')) renderChat();
+            scheduleChatBackgroundPoll(hasHealthyBackgroundChatRealtime() ? CHAT_BACKGROUND_HEALTHY_POLL_MS : CHAT_BACKGROUND_POLL_MS);
+            return true;
+        }
+
+        function ensureChatBackgroundSync(reason = '', delayMs = 1200) {
+            if (!currentUser) return;
+            fetchChatData(false).then(() => updateFooterChatBadge()).catch(() => {});
+            scheduleChatBackgroundPoll(delayMs);
+        }
+
+        function maybeShowForegroundChatNotification(message = null) {
+            if (!message || !message.id || !message.conversationId) return false;
+            if (!isPushSupported() || Notification.permission !== 'granted' || document.hidden) return false;
+            if (message.senderUsername === getCurrentChatUsername()) return false;
+            if (isViewVisible('chat') && activeChatConversationId === message.conversationId) return false;
+            if (foregroundChatNotificationIds.has(message.id)) return false;
+            foregroundChatNotificationIds.add(message.id);
+            if (foregroundChatNotificationIds.size > 80) foregroundChatNotificationIds = new Set(Array.from(foregroundChatNotificationIds).slice(-40));
+            const conversation = chatConversations.find((item) => item.id === message.conversationId);
+            if (!conversation) return false;
+            const sender = message.senderDisplayName || getChatUserDisplayName(message.senderUsername) || 'New message';
+            const title = getChatConversationTitle(conversation);
+            const preview = String(message.body || 'New chat message').slice(0, 160);
+            const body = title && title !== sender ? `${title}: ${preview}` : preview;
+            const options = {
+                body,
+                icon: './Greenleaf Logo.png',
+                badge: './Greenleaf Logo.png',
+                tag: `chat-foreground-${message.conversationId}-${message.id}`,
+                renotify: true,
+                silent: false,
+                vibrate: [200, 100, 200],
+                data: { url: './', viewId: 'chat', conversationId: message.conversationId, messageId: message.id }
+            };
+            navigator.serviceWorker.ready
+                .then((registration) => registration.showNotification(sender, options))
+                .catch(() => {
+                    try { new Notification(sender, options); } catch (error) {}
+                });
+            return true;
+        }
+
         function generateChatUuid() {
             if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
             const bytes = new Uint8Array(16);
@@ -16436,16 +16513,27 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function handleChatRealtimeChange(tableName = '', payload = null) {
+            const eventType = String(payload && payload.eventType ? payload.eventType : '').toUpperCase();
+            const incomingMessage = tableName === CHAT_MESSAGES_TABLE && eventType !== 'DELETE'
+                ? normalizeChatMessage(payload && payload.new ? payload.new : null)
+                : null;
+            if (incomingMessage && incomingMessage.id && !chatMessages.some((message) => message.id === incomingMessage.id)) {
+                chatMessages.push(incomingMessage);
+                chatMessages.sort((a, b) => (Date.parse(a.createdAt || '') || 0) - (Date.parse(b.createdAt || '') || 0));
+            }
             chatDataLoaded = false;
             markViewDirty('chat');
-            if (isViewVisible('chat')) {
-                fetchChatData(true).then(() => {
-                    markViewDirty('chat');
-                    renderChat();
-                }).catch(() => renderChat());
-            } else {
+            fetchChatData(true).then(() => {
+                markViewDirty('chat');
                 updateFooterChatBadge();
-            }
+                if (incomingMessage && incomingMessage.senderUsername !== getCurrentChatUsername()) maybeShowForegroundChatNotification(incomingMessage);
+                if (isViewVisible('chat')) renderChat();
+            }).catch(() => {
+                updateFooterChatBadge();
+                if (isViewVisible('chat')) renderChat();
+            }).finally(() => {
+                scheduleChatBackgroundPoll(hasHealthyBackgroundChatRealtime() ? CHAT_BACKGROUND_HEALTHY_POLL_MS : CHAT_BACKGROUND_POLL_MS);
+            });
         }
 
         async function markChatConversationRead(conversationId = '') {
@@ -17092,10 +17180,21 @@ function toggleDriveQuickRequestItem(domId) {
         function installPushEnrollmentListeners() {
             if (pushEnrollmentListenersInstalled || typeof window === 'undefined') return;
             pushEnrollmentListenersInstalled = true;
-            window.addEventListener('online', () => scheduleCellularPushEnrollment('online', 250));
-            window.addEventListener('focus', () => scheduleCellularPushEnrollment('focus', 650));
+            window.addEventListener('online', () => {
+                scheduleCellularPushEnrollment('online', 250);
+                ensureChatBackgroundSync('online', 450);
+            });
+            window.addEventListener('focus', () => {
+                scheduleCellularPushEnrollment('focus', 650);
+                ensureChatBackgroundSync('focus', 900);
+            });
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) scheduleCellularPushEnrollment('visible', 650);
+                if (!document.hidden) {
+                    scheduleCellularPushEnrollment('visible', 650);
+                    ensureChatBackgroundSync('visible', 900);
+                } else {
+                    clearChatBackgroundPoll();
+                }
             });
         }
 
