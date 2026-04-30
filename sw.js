@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.04.29.14';
+const APP_SHELL_BUILD = 'V2026.04.29.15';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const CACHE_NAME = 'greenleaf-v4.2-rebuild-' + APP_SHELL_BUILD;
@@ -124,13 +124,16 @@ self.addEventListener('push', (event) => {
     try { data = event.data.json(); } catch (error) { data = { title: 'Greenleaf Message', body: event.data.text() }; }
   }
   const title = data.title || 'Greenleaf Message';
+  const iconUrl = new URL(data.icon || './Greenleaf Logo.png', self.registration.scope).href;
+  const targetUrl = new URL(data.url || APP_SHELL_URL, self.registration.scope).href;
   const options = {
     body: data.body || 'You have a new message.',
-    icon: data.icon || './Greenleaf Logo.png',
-    badge: data.badge || './Greenleaf Logo.png',
-    data: { url: data.url || APP_SHELL_URL, viewId: data.viewId || 'request', conversationId: data.conversationId || '', messageId: data.messageId || '' },
+    icon: iconUrl,
+    badge: iconUrl,
+    data: { url: targetUrl, viewId: data.viewId || 'request', conversationId: data.conversationId || '', messageId: data.messageId || '' },
     vibrate: [200, 100, 200],
     silent: false,
+    requireInteraction: true,
     timestamp: Date.now(),
     tag: data.tag || 'greenleaf-alert',
     renotify: true

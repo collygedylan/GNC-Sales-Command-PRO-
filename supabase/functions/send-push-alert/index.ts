@@ -141,6 +141,29 @@ function buildSubscription(row: Record<string, unknown>) {
   };
 }
 
+function decodeBase64UrlText(value = "") {
+  const normalized = String(value || "").replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+  return atob(padded);
+}
+
+function getJwtPayload(token = "") {
+  const parts = String(token || "").trim().split(".");
+  if (parts.length < 2) return null;
+  try {
+    return JSON.parse(decodeBase64UrlText(parts[1])) as Record<string, unknown>;
+  } catch (_error) {
+    return null;
+  }
+}
+
+function isServiceRoleJwt(token = "") {
+  const payload = getJwtPayload(token);
+  const role = String(payload?.role || "").trim();
+  const issuer = String(payload?.iss || "").trim().toLowerCase();
+  return role === "service_role" && issuer === "supabase";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
@@ -153,7 +176,7 @@ serve(async (req) => {
   const apiKey = String(req.headers.get("apikey") || "").trim();
   const session = await readAppSessionFromRequest(req);
   const sessionAccess = session ? getRoleAccessState(session.role) : null;
-  const hasServiceRole = authHeader === SUPABASE_SERVICE_ROLE_KEY || apiKey === SUPABASE_SERVICE_ROLE_KEY;
+  const hasServiceRole = authHeader === SUPABASE_SERVICE_ROLE_KEY || apiKey === SUPABASE_SERVICE_ROLE_KEY || isServiceRoleJwt(authHeader) || isServiceRoleJwt(apiKey);
   const hasAppSession = !!(session && !session.mustChangePassword && sessionAccess);
 
   if (!hasServiceRole && !hasAppSession) {
