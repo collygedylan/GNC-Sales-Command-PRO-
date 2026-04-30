@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.30.03';
+window.__APP_SHELL_VERSION__ = 'V2026.04.30.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -930,7 +930,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.30.03').trim() || 'V2026.04.30.03';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.30.04').trim() || 'V2026.04.30.04';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -952,6 +952,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <div class="drawer-header">Menu</div>
             <div id="drawer-home-btn" class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div>
             <div id="drawer-force-sync-btn" class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData('force'); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div>
+            <div id="drawer-enable-push-btn" class="drawer-item text-blue-600 font-bold" onclick="manuallyEnablePushNotifications(); toggleMenu();"><i class="ph-bold ph-bell-ringing"></i> Enable Notifications</div>
             <div id="drawer-chat-btn" class="drawer-item text-sky-600 font-bold" onclick="switchView('chat'); toggleMenu();"><i class="ph-bold ph-chats-circle"></i> Chat</div>
             <div id="drawer-walkie-btn" class="drawer-item text-emerald-700 font-bold hidden" onclick="switchView('walkie'); toggleMenu();"><i class="ph-bold ph-radio"></i> Walkie</div>
             <hr class="my-2">
@@ -1489,7 +1490,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.30.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.30.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6495,6 +6496,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             bindFastInvokeById('drawer-overlay', 'toggleMenu', [], 'Close menu');
 bindFastInvokeById('drawer-home-btn', 'openDrawerView', ['home'], 'Home');
 bindFastInvokeById('drawer-force-sync-btn', 'forceSyncAndCloseMenu', [], 'Force Data Sync');
+bindFastInvokeById('drawer-enable-push-btn', 'manuallyEnablePushNotifications', [], 'Enable Notifications');
 bindFastInvokeById('drawer-chat-btn', 'openDrawerView', ['chat'], 'Chat');
 bindFastInvokeById('drawer-walkie-btn', 'openDrawerView', ['walkie'], 'Walkie');
 bindFastInvokeById('drawer-drive-btn', 'openDrawerView', ['drive'], 'Drive Mode');
@@ -8973,7 +8975,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.30.03').trim() || 'V2026.04.30.03';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.30.04').trim() || 'V2026.04.30.04';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -18776,6 +18778,73 @@ function toggleDriveQuickRequestItem(domId) {
             pushBlockedNoticeShown = true;
             showToast('Notifications Blocked', 'Allow notifications for this site in Chrome settings, then reopen the app.', true);
             return true;
+        }
+
+        function hidePushPermissionHelp() {
+            const existing = document.getElementById('push-permission-help-modal');
+            if (existing) existing.remove();
+        }
+
+        function showPushPermissionHelp() {
+            hidePushPermissionHelp();
+            const modal = document.createElement('div');
+            modal.id = 'push-permission-help-modal';
+            modal.className = 'fixed inset-0 z-[13000] flex items-end justify-center bg-black/45 p-3';
+            modal.innerHTML = `
+                <div class="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl">
+                    <div class="flex items-start gap-3">
+                        <div class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#0b57d0]"><i class="ph-bold ph-bell-slash text-xl"></i></div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-lg font-black text-slate-950">Notifications are blocked</div>
+                            <div class="mt-2 text-sm font-bold leading-snug text-slate-600">Open this app/site in Android or Chrome settings, set Notifications to Allow, then come back and tap Enable Notifications again.</div>
+                            <div class="mt-4 grid grid-cols-2 gap-2">
+                                <button type="button" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-slate-600 active:scale-[.99]" onclick="hidePushPermissionHelp()">Close</button>
+                                <button type="button" class="rounded-2xl bg-[#0b57d0] px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-white active:scale-[.99]" onclick="hidePushPermissionHelp(); manuallyEnablePushNotifications()">Try Again</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            document.body.appendChild(modal);
+            return true;
+        }
+
+        async function manuallyEnablePushNotifications() {
+            if (!isPushSupported()) {
+                showToast('Not Supported', 'This browser cannot receive push notifications.', true);
+                return false;
+            }
+            if (!currentUser || !getPushPromptUserScope()) {
+                showToast('Sign In First', 'Sign in before enabling notifications on this device.', true);
+                return false;
+            }
+            if (Notification.permission === 'denied') {
+                pushBlockedNoticeShown = false;
+                maybeWarnPushPermissionBlocked(true);
+                showPushPermissionHelp();
+                return false;
+            }
+            try {
+                mobilePushPromptDismissedThisSession = false;
+                const ok = await subscribeCurrentDeviceForPush({
+                    prompt: Notification.permission === 'default',
+                    force: true
+                });
+                if (ok) {
+                    androidPushForceRefreshedThisSession = /Android/i.test(String(navigator.userAgent || ''));
+                    if (isCellularPushDevice()) markMobilePushRefreshComplete();
+                    showToast('Notifications On', 'This device will receive Greenleaf alerts.');
+                    return true;
+                }
+                if (Notification.permission === 'denied') {
+                    showPushPermissionHelp();
+                    return false;
+                }
+                showToast('Notifications Off', 'Notifications were not enabled on this device.', true);
+                return false;
+            } catch (error) {
+                showToast('Push Error', error && error.message ? error.message : 'Could not enable notifications.', true);
+                return false;
+            }
         }
 
         function scheduleCellularPushEnrollment(reason = '', delayMs = 500) {
