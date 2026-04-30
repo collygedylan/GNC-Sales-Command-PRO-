@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.30.02';
+window.__APP_SHELL_VERSION__ = 'V2026.04.30.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -37,10 +37,34 @@ body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-h
         .footer-nav-btn:active{transform:scale(.97)}
         .footer-nav-btn.active,.footer-nav-btn.menu-open{color:#007a4d;background:#ecfdf5;border-color:#a7f3d0;box-shadow:0 6px 16px rgba(7,94,63,.12)}
         .footer-nav-badge{position:absolute;top:3px;right:8px;min-width:18px;height:18px;padding:0 4px;background:#ef4444;color:#fff;font-size:10px;font-weight:900;border-radius:999px;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
-        .chat-thread-shell{height:min(680px,calc(var(--app-height) - var(--footer-nav-reserve) - 14.25rem));min-height:340px;display:flex;flex-direction:column;overflow:hidden}
-        .chat-message-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-gutter:stable;padding:12px;display:flex;flex-direction:column;gap:12px;background:#f8fbf9}
-        .chat-thread-composer{flex:0 0 auto;border-top:1px solid #dcfce7;background:#fff;padding:10px}
-        @media (max-width:640px){.chat-thread-shell{height:calc(var(--app-height) - var(--footer-nav-reserve) - 12.5rem);min-height:300px}.chat-message-scroll{padding:10px}.chat-thread-composer{padding:9px}}
+        .chat-thread-shell{height:min(720px,calc(var(--app-height) - var(--footer-nav-reserve) - 8.75rem));min-height:380px;display:flex;flex-direction:column;overflow:hidden;background:#fff}
+        .chat-message-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-gutter:stable;padding:14px 12px 10px;display:flex;flex-direction:column;gap:6px;background:#fff}
+        .chat-thread-composer{flex:0 0 auto;background:#fff;padding:8px 10px calc(10px + env(safe-area-inset-bottom));border-top:1px solid #eef2f7}
+        .android-chat-shell{border:1px solid #e5e7eb;border-radius:24px;box-shadow:0 8px 22px rgba(15,23,42,.06)}
+        .android-chat-header{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #eef2f7;background:#fff}
+        .android-chat-avatar{width:42px;height:42px;border-radius:999px;background:#dbeafe;color:#0b57d0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;letter-spacing:.02em;flex-shrink:0}
+        .android-message-row{display:flex;width:100%;align-items:flex-end;gap:6px}
+        .android-message-row.mine{justify-content:flex-end}
+        .android-message-row.theirs{justify-content:flex-start}
+        .android-message-bubble{max-width:min(78%,620px);border-radius:20px;padding:9px 12px;box-shadow:none;word-break:break-word}
+        .android-message-bubble.mine{background:#0b57d0;color:#fff;border-bottom-right-radius:6px}
+        .android-message-bubble.theirs{background:#f1f3f4;color:#202124;border-bottom-left-radius:6px}
+        .android-message-meta{margin-top:3px;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;text-align:right}
+        .android-message-bubble.mine .android-message-meta{color:rgba(255,255,255,.68)}
+        .android-message-bubble.theirs .android-message-meta{color:#8a94a6}
+        .android-composer-row{display:flex;align-items:flex-end;gap:8px}
+        .android-composer-pill{min-height:46px;flex:1;display:flex;align-items:center;background:#f1f3f4;border-radius:24px;padding:6px 8px 6px 14px;border:1px solid transparent}
+        .android-chat-input{width:100%;min-height:30px;max-height:92px;background:transparent;border:0;outline:0;resize:none;margin:0;padding:5px 0;font-size:16px;line-height:20px;font-weight:600;color:#202124}
+        .android-chat-input::placeholder{color:#7c8798;font-weight:600}
+        .android-icon-btn{width:42px;height:42px;border-radius:999px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .14s ease,background .14s ease,color .14s ease}
+        .android-icon-btn:active{transform:scale(.94)}
+        .android-icon-btn.mic{background:transparent;color:#5f6368}
+        .android-icon-btn.send{background:#0b57d0;color:#fff}
+        .android-recording-bar{border-radius:20px;border:1px solid #fecaca;background:#fef2f2;padding:10px;margin-bottom:8px}
+        .android-voice-wave{display:flex;align-items:center;gap:3px;height:18px}
+        .android-voice-wave span{display:block;width:3px;border-radius:999px;background:currentColor;opacity:.72}
+        .android-voice-wave span:nth-child(1){height:6px}.android-voice-wave span:nth-child(2){height:13px}.android-voice-wave span:nth-child(3){height:9px}.android-voice-wave span:nth-child(4){height:16px}.android-voice-wave span:nth-child(5){height:7px}.android-voice-wave span:nth-child(6){height:12px}
+        @media (max-width:640px){.chat-thread-shell{height:calc(var(--app-height) - var(--footer-nav-reserve) - 7.2rem);min-height:360px}.chat-message-scroll{padding:12px 8px 8px}.chat-thread-composer{padding:7px 8px calc(9px + env(safe-area-inset-bottom))}.android-message-bubble{max-width:84%}.android-chat-shell{border-radius:20px}}
         @media (max-height:650px){.chat-thread-shell{min-height:260px}}
         .app-card-shell{background:#fff;border:1px solid #dbe4dc;border-radius:18px !important;box-shadow:0 10px 24px rgba(15,23,42,.06);overflow:hidden}
         .app-card-ready{border-left:6px solid #22c55e !important}
@@ -906,7 +930,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.30.02').trim() || 'V2026.04.30.02';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.30.03').trim() || 'V2026.04.30.03';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1465,7 +1489,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.30.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.30.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8949,7 +8973,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.30.02').trim() || 'V2026.04.30.02';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.30.03').trim() || 'V2026.04.30.03';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -16368,6 +16392,13 @@ function toggleDriveQuickRequestItem(domId) {
             return other ? (other.displayName || getChatUserDisplayName(other.username)) : 'Saved Chat';
         }
 
+        function getChatAvatarInitials(value = '') {
+            const words = String(value || '').trim().replace(/[_-]+/g, ' ').split(/\s+/).filter(Boolean);
+            if (!words.length) return 'G';
+            if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+            return `${words[0].charAt(0)}${words[1].charAt(0)}`.toUpperCase();
+        }
+
         function formatChatTime(value = '') {
             const parsed = Date.parse(value || '');
             if (!parsed) return '';
@@ -16845,32 +16876,32 @@ function toggleDriveQuickRequestItem(domId) {
         function renderChatList() {
             const conversations = getSortedChatConversations();
             if (!conversations.length) {
-                return `<div class="rounded-2xl border border-dashed border-green-200 bg-white p-8 text-center shadow-sm">
-                    <div class="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-chats-circle text-3xl"></i></div>
+                return `<div class="rounded-[24px] border border-slate-200 bg-white p-8 text-center shadow-sm">
+                    <div class="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-[#0b57d0]"><i class="ph-bold ph-chats-circle text-3xl"></i></div>
                     <div class="text-lg font-black text-slate-900">No chats yet</div>
-                    <button type="button" class="mt-5 rounded-xl bg-[#007a4d] px-5 py-3 text-xs font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="openNewChatComposer()">Start Chat</button>
+                    <button type="button" class="mt-5 rounded-full bg-[#0b57d0] px-5 py-3 text-xs font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="openNewChatComposer()">Start Chat</button>
                 </div>`;
             }
-            return `<div class="space-y-3">${conversations.map((conversation) => {
+            return `<div class="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">${conversations.map((conversation, index) => {
                 const latest = getLatestChatMessage(conversation.id);
                 const unread = getChatUnreadCount(conversation.id);
                 const title = getChatConversationTitle(conversation);
                 const preview = latest ? getChatMessagePreview(latest) : (conversation.lastMessagePreview || 'No messages yet.');
                 const when = formatChatTime((latest && latest.createdAt) || conversation.lastMessageAt || conversation.updatedAt || conversation.createdAt);
                 const participantCount = getChatParticipants(conversation.id).length;
-                return `<button type="button" class="w-full rounded-2xl border ${unread ? 'border-[#007a4d] bg-emerald-50' : 'border-green-100 bg-white'} p-4 text-left shadow-sm active:scale-[.99]" onclick="openChatConversation('${esc(conversation.id)}')">
-                    <div class="flex items-start gap-3">
-                        <div class="relative mt-0.5 flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-[#007a4d] text-white"><i class="ph-bold ${conversation.isGroup ? 'ph-users-three' : 'ph-user'} text-2xl"></i>${unread ? '<span class="absolute -right-1 -top-1 h-4 w-4 rounded-full border-2 border-white bg-red-500"></span>' : ''}</div>
+                return `<button type="button" class="w-full bg-white px-4 py-3 text-left active:bg-slate-50 ${index ? 'border-t border-slate-100' : ''}" onclick="openChatConversation('${esc(conversation.id)}')">
+                    <div class="flex items-center gap-3">
+                        <div class="relative flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-[#0b57d0] text-sm font-black">${escapeHtml(getChatAvatarInitials(title))}${unread ? '<span class="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-[#0b57d0]"></span>' : ''}</div>
                         <div class="min-w-0 flex-1">
-                            <div class="flex items-start justify-between gap-2">
-                                <div class="truncate text-base font-black text-slate-900">${escapeHtml(title)}</div>
-                                <div class="flex-shrink-0 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(when)}</div>
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="truncate text-base ${unread ? 'font-black text-slate-950' : 'font-bold text-slate-900'}">${escapeHtml(title)}</div>
+                                <div class="flex-shrink-0 text-[11px] font-bold text-slate-400">${escapeHtml(when)}</div>
                             </div>
-                            <div class="mt-1 line-clamp-2 text-sm font-semibold text-slate-500">${escapeHtml(preview)}</div>
-                            <div class="mt-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]">
-                                <span>${participantCount} member${participantCount === 1 ? '' : 's'}</span>
-                                ${unread ? `<span class="rounded-full bg-red-500 px-2 py-0.5 text-white">${unread} new</span>` : ''}
+                            <div class="mt-0.5 flex items-center gap-2">
+                                <div class="min-w-0 flex-1 truncate text-sm ${unread ? 'font-bold text-slate-700' : 'font-medium text-slate-500'}">${escapeHtml(preview)}</div>
+                                ${unread ? `<span class="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0b57d0] px-1.5 text-[10px] font-black text-white">${unread > 99 ? '99+' : unread}</span>` : ''}
                             </div>
+                            <div class="mt-1 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">${participantCount} member${participantCount === 1 ? '' : 's'}</div>
                         </div>
                     </div>
                 </button>`;
@@ -16966,49 +16997,52 @@ function toggleDriveQuickRequestItem(domId) {
             const voiceSupported = isChatVoiceSupported();
             const isRecordingHere = !!(chatVoiceRecordingActive && !chatVoiceRecordingForComposer);
             const participantLine = participants.map((participant) => participant.displayName || getChatUserDisplayName(participant.username)).join(', ');
+            const titleInitials = getChatAvatarInitials(title);
             const messageHtml = messages.length ? messages.map((message) => {
                 const mine = message.senderUsername === currentUsername;
-                return `<div class="flex ${mine ? 'justify-end' : 'justify-start'}">
-                    <div class="max-w-[82%] rounded-2xl ${mine ? 'bg-[#007a4d] text-white' : 'bg-white text-slate-900 border border-green-100'} px-4 py-3 shadow-sm">
-                        ${mine ? '' : `<div class="mb-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]">${escapeHtml(message.senderDisplayName || getChatUserDisplayName(message.senderUsername))}</div>`}
-                        ${message.messageType === 'voice' && message.audioUrl ? `<button type="button" class="flex w-full items-center gap-3 rounded-2xl ${mine ? 'bg-white/10' : 'bg-emerald-50'} px-3 py-3 text-left" onclick="playChatVoiceMessage('${esc(message.audioUrl)}', this)">
-                            <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${mine ? 'bg-white text-[#007a4d]' : 'bg-[#007a4d] text-white'}"><i class="ph-bold ph-play text-lg"></i></span>
+                return `<div class="android-message-row ${mine ? 'mine' : 'theirs'}">
+                    <div class="android-message-bubble ${mine ? 'mine' : 'theirs'}">
+                        ${mine ? '' : `<div class="mb-1 text-[10px] font-black uppercase tracking-[0.11em] text-[#0b57d0]">${escapeHtml(message.senderDisplayName || getChatUserDisplayName(message.senderUsername))}</div>`}
+                        ${message.messageType === 'voice' && message.audioUrl ? `<button type="button" class="flex w-full min-w-[170px] items-center gap-3 rounded-2xl ${mine ? 'bg-white/10' : 'bg-white'} px-2.5 py-2 text-left" onclick="playChatVoiceMessage('${esc(message.audioUrl)}', this)" aria-label="Play voice message">
+                            <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${mine ? 'bg-white text-[#0b57d0]' : 'bg-[#0b57d0] text-white'}"><i class="ph-bold ph-play text-base"></i></span>
                             <span class="min-w-0 flex-1">
-                                <span class="block text-sm font-black ${mine ? 'text-white' : 'text-slate-900'}">Voice Message</span>
-                                <span class="block text-[11px] font-black uppercase tracking-[0.12em] ${mine ? 'text-white/70' : 'text-slate-500'}">${escapeHtml(formatChatVoiceDuration(message.audioDurationSeconds || 0))}</span>
+                                <span class="android-voice-wave ${mine ? 'text-white' : 'text-[#0b57d0]'}"><span></span><span></span><span></span><span></span><span></span><span></span></span>
+                                <span class="mt-1 block text-[11px] font-black uppercase tracking-[0.1em] ${mine ? 'text-white/72' : 'text-slate-500'}">${escapeHtml(formatChatVoiceDuration(message.audioDurationSeconds || 0))}</span>
                             </span>
-                        </button>` : `<div class="whitespace-pre-wrap break-words text-sm font-semibold leading-relaxed">${escapeHtml(message.body)}</div>`}
-                        <div class="mt-1 text-right text-[9px] font-black uppercase tracking-[0.12em] ${mine ? 'text-white/65' : 'text-slate-400'}">${escapeHtml(formatChatTime(message.createdAt))}</div>
+                        </button>` : `<div class="whitespace-pre-wrap text-[15px] font-medium leading-snug">${escapeHtml(message.body)}</div>`}
+                        <div class="android-message-meta">${escapeHtml(formatChatTime(message.createdAt))}</div>
                     </div>
                 </div>`;
-            }).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No messages yet.</div>';
-            return `<div class="space-y-3">
-                <div class="rounded-2xl border border-green-100 bg-white p-4 shadow-sm">
-                    <div class="flex items-start gap-3">
-                        <button type="button" class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl border border-green-200 bg-white text-[#007a4d] active:scale-95" onclick="backToChatList()" aria-label="Back to chats"><i class="ph-bold ph-arrow-left text-xl"></i></button>
-                        <div class="min-w-0 flex-1">
-                            <div class="truncate text-lg font-black text-slate-900">${escapeHtml(title)}</div>
-                            <div class="mt-1 truncate text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(participantLine)}</div>
-                        </div>
+            }).join('') : '<div class="mt-auto mb-auto rounded-2xl bg-slate-50 px-5 py-4 text-center text-sm font-bold text-slate-400">No messages yet.</div>';
+            return `<div id="chat-thread-shell" class="chat-thread-shell android-chat-shell">
+                <div class="android-chat-header">
+                    <button type="button" class="android-icon-btn mic !h-10 !w-10" onclick="backToChatList()" aria-label="Back to chats"><i class="ph-bold ph-arrow-left text-xl"></i></button>
+                    <div class="android-chat-avatar">${escapeHtml(titleInitials)}</div>
+                    <div class="min-w-0 flex-1">
+                        <div class="truncate text-base font-black text-slate-950">${escapeHtml(title)}</div>
+                        <div class="truncate text-[11px] font-bold text-slate-500">${escapeHtml(participantLine)}</div>
                     </div>
+                    <div class="w-10 flex-shrink-0"></div>
                 </div>
-                <div id="chat-thread-shell" class="chat-thread-shell rounded-2xl border border-green-100 bg-white shadow-sm">
-                    <div id="chat-message-list" class="chat-message-scroll">${messageHtml}</div>
-                    <form class="chat-thread-composer" onsubmit="event.preventDefault(); sendChatMessage();">
-                        <textarea id="chat-message-input" class="input-field min-h-[70px] resize-none !mb-2" placeholder="Message..." oninput="chatMessageDraft=this.value">${escapeHtml(chatMessageDraft)}</textarea>
-                        ${voiceSupported ? `<div class="${isRecordingHere ? '' : 'hidden'} mb-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-3">
+                <div id="chat-message-list" class="chat-message-scroll">${messageHtml}</div>
+                <form class="chat-thread-composer" onsubmit="event.preventDefault(); sendChatMessage();">
+                    ${voiceSupported ? `<div class="android-recording-bar ${isRecordingHere ? '' : 'hidden'}">
+                        <div class="flex items-center justify-between gap-2">
                             <div id="chat-voice-status" class="text-sm font-black text-red-600">${isRecordingHere ? `Recording ${formatChatVoiceDuration(getChatVoiceRecordingDurationSeconds())}` : ''}</div>
-                            <div class="mt-2 flex gap-2">
-                                <button type="button" class="flex-1 rounded-xl border border-red-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-red-600 shadow-sm active:scale-[.99]" onclick="cancelChatVoiceRecording()">Cancel</button>
-                                <button type="button" class="flex-1 rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99]" onclick="finalizeChatVoiceRecording()">Send Voice</button>
+                            <div class="flex gap-2">
+                                <button type="button" class="android-icon-btn !h-9 !w-9 bg-white text-red-600" onclick="cancelChatVoiceRecording()" aria-label="Cancel voice note"><i class="ph-bold ph-x text-lg"></i></button>
+                                <button type="button" class="android-icon-btn !h-9 !w-9 bg-[#0b57d0] text-white" onclick="finalizeChatVoiceRecording()" aria-label="Send voice note"><i class="ph-bold ph-paper-plane-tilt text-lg"></i></button>
                             </div>
-                        </div>` : ''}
-                        <div class="flex items-stretch gap-2">
-                            ${voiceSupported ? `<button type="button" class="flex h-[52px] w-[52px] flex-shrink-0 items-center justify-center rounded-xl border ${isRecordingHere ? 'border-red-300 bg-red-500 text-white' : 'border-green-200 bg-white text-[#007a4d]'} shadow-sm active:scale-[.99]" onclick="${isRecordingHere ? 'finalizeChatVoiceRecording()' : 'beginChatVoiceRecording(false)'}" aria-label="Voice note"><i class="ph-bold ${isRecordingHere ? 'ph-stop-circle' : 'ph-microphone'} text-xl"></i></button>` : ''}
-                            <button type="submit" class="flex-1 rounded-xl bg-[#007a4d] px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99]"><i class="ph-bold ph-paper-plane-tilt align-middle text-base"></i><span class="ml-2 align-middle">Send</span></button>
                         </div>
-                    </form>
-                </div>
+                    </div>` : ''}
+                    <div class="android-composer-row">
+                        <div class="android-composer-pill">
+                            <textarea id="chat-message-input" class="android-chat-input" rows="1" placeholder="Text message" oninput="chatMessageDraft=this.value">${escapeHtml(chatMessageDraft)}</textarea>
+                            ${voiceSupported ? `<button type="button" class="android-icon-btn mic" onclick="${isRecordingHere ? 'finalizeChatVoiceRecording()' : 'beginChatVoiceRecording(false)'}" aria-label="Voice note"><i class="ph-bold ${isRecordingHere ? 'ph-stop-circle text-red-500' : 'ph-microphone'} text-xl"></i></button>` : ''}
+                        </div>
+                        <button type="submit" class="android-icon-btn send" aria-label="Send message"><i class="ph-bold ph-paper-plane-tilt text-xl"></i></button>
+                    </div>
+                </form>
             </div>`;
         }
 
