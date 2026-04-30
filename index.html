@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-  window.__APP_SHELL_VERSION__ = 'V2026.04.29.09';
+  window.__APP_SHELL_VERSION__ = 'V2026.04.29.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -901,7 +901,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.09').trim() || 'V2026.04.29.09';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.29.10').trim() || 'V2026.04.29.10';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1427,7 +1427,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.09';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.29.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8894,7 +8894,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.09').trim() || 'V2026.04.29.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.29.10').trim() || 'V2026.04.29.10';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -16500,29 +16500,47 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function renderChatComposer() {
-            const users = buildChatUserOptions();
+            const selectedUsers = Array.from(chatSelectedUsers).map((username) => ({
+                username,
+                displayName: getChatUserDisplayName(username)
+            })).sort((a, b) => String(a.displayName || a.username).localeCompare(String(b.displayName || b.username)));
+            const users = buildChatUserOptions()
+                .filter((user) => !chatSelectedUsers.has(user.username))
+                .slice(0, 14);
             const selectedCount = chatSelectedUsers.size;
+            const chipsHtml = selectedUsers.map((user) => `<button type="button" class="inline-flex max-w-full items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black text-[#007a4d] ring-1 ring-emerald-200" onclick="removeChatRecipient('${esc(user.username)}')" aria-label="Remove ${escapeHtml(user.displayName)}"><span class="truncate">${escapeHtml(user.displayName)}</span><i class="ph-bold ph-x text-[11px]"></i></button>`).join('');
             return `<div class="space-y-4">
                 <div class="rounded-2xl border border-green-100 bg-white p-4 shadow-sm">
                     <div class="mb-3 flex items-center justify-between gap-3">
-                        <button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="closeNewChatComposer()"><i class="ph-bold ph-arrow-left align-middle"></i><span class="ml-1 align-middle">Back</span></button>
-                        <button type="button" class="rounded-xl bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-white shadow-sm disabled:opacity-40" onclick="createChatConversation()" ${selectedCount ? '' : 'disabled'}>${selectedCount > 1 ? 'Create Group' : 'Start Chat'}</button>
+                        <button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="closeNewChatComposer()">Cancel</button>
+                        <div class="text-sm font-black uppercase tracking-[0.12em] text-slate-900">New Message</div>
+                        <button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="createChatConversation()" ${selectedCount ? '' : 'disabled'}>Open</button>
                     </div>
-                    <input type="text" class="input-field !mb-3" placeholder="Search users..." value="${escapeHtml(chatUserSearchTerm)}" oninput="setChatUserSearch(this.value)">
-                    <input type="text" class="input-field !mb-0 ${selectedCount > 1 ? '' : 'hidden'}" placeholder="Group name (optional)" value="${escapeHtml(chatComposeTitle)}" oninput="setChatComposeTitle(this.value)">
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                        <div class="flex items-start gap-2">
+                            <div class="pt-2 text-sm font-black text-slate-500">To:</div>
+                            <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+                                ${chipsHtml}
+                                <input id="chat-recipient-input" type="text" class="min-h-[34px] min-w-[130px] flex-1 bg-transparent text-base font-bold text-slate-900 outline-none placeholder:text-slate-400" placeholder="${selectedCount ? '' : 'Name or username'}" value="${escapeHtml(chatUserSearchTerm)}" oninput="setChatUserSearch(this.value)" onkeydown="handleChatRecipientKeydown(event)">
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="space-y-2">${users.length ? users.map((user) => {
-                    const selected = chatSelectedUsers.has(user.username);
-                    return `<button type="button" class="w-full rounded-2xl border ${selected ? 'border-[#007a4d] bg-emerald-50' : 'border-green-100 bg-white'} p-4 text-left shadow-sm active:scale-[.99]" onclick="toggleChatUserSelection('${esc(user.username)}')">
+                    return `<button type="button" class="w-full rounded-2xl border border-green-100 bg-white p-4 text-left shadow-sm active:scale-[.99]" onclick="addChatRecipient('${esc(user.username)}')">
                         <div class="flex items-center gap-3">
-                            <div class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl ${selected ? 'bg-[#007a4d] text-white' : 'bg-slate-100 text-slate-500'}"><i class="ph-bold ${selected ? 'ph-check' : 'ph-user'} text-xl"></i></div>
+                            <div class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-500"><i class="ph-bold ph-user-plus text-xl"></i></div>
                             <div class="min-w-0 flex-1">
                                 <div class="truncate text-sm font-black text-slate-900">${escapeHtml(user.displayName || getFallbackChatDisplayName(user.username))}</div>
                                 <div class="truncate text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(user.username)}${user.role ? ' / ' + escapeHtml(user.role) : ''}</div>
                             </div>
                         </div>
                     </button>`;
-                }).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No users found.</div>'}</div>
+                }).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No matching users.</div>'}</div>
+                <form class="sticky bottom-[calc(var(--footer-nav-reserve)+.55rem)] z-20 rounded-2xl border border-green-100 bg-white p-3 shadow-lg" onsubmit="event.preventDefault(); sendNewChatMessage();">
+                    <textarea id="chat-new-message-input" class="input-field min-h-[74px] resize-none !mb-2" placeholder="Message..." oninput="chatMessageDraft=this.value">${escapeHtml(chatMessageDraft)}</textarea>
+                    <button type="submit" class="w-full rounded-xl bg-[#007a4d] px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99] disabled:opacity-40" ${selectedCount ? '' : 'disabled'}><i class="ph-bold ph-paper-plane-tilt align-middle text-base"></i><span class="ml-2 align-middle">Send</span></button>
+                </form>
             </div>`;
         }
 
@@ -16603,6 +16621,15 @@ function toggleDriveQuickRequestItem(domId) {
                     const input = document.getElementById('chat-message-input');
                     if (input && String(input.value || '') !== chatMessageDraft) input.value = chatMessageDraft;
                 });
+                else if (chatComposeOpen) requestAnimationFrame(() => {
+                    const recipientInput = document.getElementById('chat-recipient-input');
+                    const messageInput = document.getElementById('chat-new-message-input');
+                    if (messageInput && String(messageInput.value || '') !== chatMessageDraft) messageInput.value = chatMessageDraft;
+                    if (recipientInput && document.activeElement !== messageInput) {
+                        recipientInput.focus();
+                        try { recipientInput.setSelectionRange(recipientInput.value.length, recipientInput.value.length); } catch (error) {}
+                    }
+                });
             }
             updateFooterChatBadge();
         }
@@ -16620,6 +16647,7 @@ function toggleDriveQuickRequestItem(domId) {
             chatUserSearchTerm = '';
             chatComposeTitle = '';
             chatSelectedUsers = new Set();
+            chatMessageDraft = '';
             chatLastRenderSignature = '';
             renderChat();
         }
@@ -16629,6 +16657,7 @@ function toggleDriveQuickRequestItem(domId) {
             chatUserSearchTerm = '';
             chatComposeTitle = '';
             chatSelectedUsers = new Set();
+            chatMessageDraft = '';
             chatLastRenderSignature = '';
             renderChat();
         }
@@ -16641,6 +16670,55 @@ function toggleDriveQuickRequestItem(domId) {
 
         function setChatComposeTitle(value = '') {
             chatComposeTitle = String(value || '').slice(0, 120);
+        }
+
+        function focusChatRecipientInput(delay = 0) {
+            setTimeout(() => {
+                const input = document.getElementById('chat-recipient-input');
+                if (!input) return;
+                input.focus();
+                try { input.setSelectionRange(input.value.length, input.value.length); } catch (error) {}
+            }, Math.max(0, Number(delay) || 0));
+        }
+
+        function addChatRecipient(username = '') {
+            const normalized = normalizePushUsername(username);
+            if (!normalized || normalized === getCurrentChatUsername()) return;
+            chatSelectedUsers.add(normalized);
+            chatUserSearchTerm = '';
+            chatLastRenderSignature = '';
+            renderChat();
+            focusChatRecipientInput(30);
+        }
+
+        function removeChatRecipient(username = '') {
+            const normalized = normalizePushUsername(username);
+            if (!normalized) return;
+            chatSelectedUsers.delete(normalized);
+            chatLastRenderSignature = '';
+            renderChat();
+            focusChatRecipientInput(30);
+        }
+
+        function handleChatRecipientKeydown(event) {
+            if (!event) return;
+            const key = String(event.key || '');
+            const term = String(chatUserSearchTerm || '').trim();
+            if ((key === 'Enter' || key === ',' || key === 'Tab') && term) {
+                const firstMatch = buildChatUserOptions().filter((user) => user && !chatSelectedUsers.has(user.username))[0];
+                if (firstMatch) {
+                    event.preventDefault();
+                    addChatRecipient(firstMatch.username);
+                }
+                return;
+            }
+            if (key === 'Backspace' && !term && chatSelectedUsers.size) {
+                const last = Array.from(chatSelectedUsers).pop();
+                if (last) {
+                    event.preventDefault();
+                    removeChatRecipient(last);
+                }
+            }
         }
 
         function toggleChatUserSelection(username = '') {
@@ -16663,22 +16741,18 @@ function toggleDriveQuickRequestItem(domId) {
             }) || null;
         }
 
-        async function createChatConversation() {
-            const selected = Array.from(chatSelectedUsers).map(normalizePushUsername).filter(Boolean).filter((username) => username !== getCurrentChatUsername());
-            if (!selected.length) {
-                showToast('Select User', 'Choose at least one user to start a chat.', true);
-                return;
-            }
+        function normalizeSelectedChatRecipients(source = null) {
+            const raw = Array.isArray(source) ? source : Array.from(chatSelectedUsers);
+            const currentUsername = getCurrentChatUsername();
+            return [...new Set(raw.map(normalizePushUsername).filter(Boolean).filter((username) => username !== currentUsername))];
+        }
+
+        async function createChatConversationForRecipients(rawSelected = null) {
+            const selected = normalizeSelectedChatRecipients(rawSelected);
+            if (!selected.length) throw new Error('Choose at least one user.');
             if (selected.length === 1) {
                 const existing = findExistingDirectChat(selected[0]);
-                if (existing) {
-                    chatComposeOpen = false;
-                    activeChatConversationId = existing.id;
-                    chatLastRenderSignature = '';
-                    await markChatConversationRead(existing.id);
-                    renderChat();
-                    return;
-                }
+                if (existing) return existing;
             }
             const currentUsername = getCurrentChatUsername();
             const conversationId = generateChatUuid();
@@ -16710,14 +16784,34 @@ function toggleDriveQuickRequestItem(domId) {
             try {
                 await supabaseFetch(CHAT_CONVERSATIONS_TABLE, 'POST', conversationPayload, 'on_conflict=id');
                 await supabaseFetch(CHAT_PARTICIPANTS_TABLE, 'POST', participantPayload, 'on_conflict=conversation_id,username');
+                const conversation = normalizeChatConversation(conversationPayload) || { id: conversationId, title, isGroup, createdBy: currentUsername, createdAt: now, updatedAt: now };
+                if (!chatConversations.some((item) => item.id === conversation.id)) chatConversations.push(conversation);
+                participantPayload.map(normalizeChatParticipant).filter(Boolean).forEach((participant) => {
+                    if (!chatParticipants.some((item) => item.conversationId === participant.conversationId && item.username === participant.username)) chatParticipants.push(participant);
+                });
+                return conversation;
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        async function createChatConversation() {
+            const selected = normalizeSelectedChatRecipients();
+            if (!selected.length) {
+                showToast('Select User', 'Choose at least one user to start a chat.', true);
+                return;
+            }
+            try {
+                const conversation = await createChatConversationForRecipients(selected);
                 chatComposeOpen = false;
-                activeChatConversationId = conversationId;
+                activeChatConversationId = conversation.id;
                 chatSelectedUsers = new Set();
                 chatUserSearchTerm = '';
                 chatComposeTitle = '';
                 chatDataLoaded = false;
                 chatLastRenderSignature = '';
                 await fetchChatData(true);
+                await markChatConversationRead(conversation.id);
                 renderChat();
             } catch (error) {
                 showToast('Chat Error', error && error.message ? error.message : 'Could not create chat.', true);
@@ -16743,21 +16837,21 @@ function toggleDriveQuickRequestItem(domId) {
             renderChat();
         }
 
-        async function sendChatMessage() {
-            const input = document.getElementById('chat-message-input');
-            const body = String(input ? input.value : chatMessageDraft || '').trim();
-            if (!body || !activeChatConversationId) return;
-            const conversation = chatConversations.find((item) => item.id === activeChatConversationId);
-            if (!conversation) return;
+        async function sendChatMessageToConversation(conversationId = '', rawBody = '') {
+            const safeConversationId = String(conversationId || '').trim();
+            const body = String(rawBody || '').trim();
+            if (!body || !safeConversationId) return false;
+            const conversation = chatConversations.find((item) => item.id === safeConversationId);
+            if (!conversation) return false;
             const currentUsername = getCurrentChatUsername();
-            const recipients = getChatParticipants(activeChatConversationId)
+            const recipients = getChatParticipants(safeConversationId)
                 .map((participant) => participant.username)
                 .filter((username) => username && username !== currentUsername);
             const now = new Date().toISOString();
             const messageId = generateChatUuid();
             const messagePayload = {
                 id: messageId,
-                conversation_id: activeChatConversationId,
+                conversation_id: safeConversationId,
                 sender_username: currentUsername,
                 sender_display_name: getCurrentChatDisplayName(),
                 sender_name: getCurrentChatDisplayName(),
@@ -16774,21 +16868,21 @@ function toggleDriveQuickRequestItem(domId) {
                     last_message_at: now,
                     last_message_preview: preview,
                     last_message_sender: getCurrentChatDisplayName()
-                }, `id=eq.${encodeURIComponent(activeChatConversationId)}`);
+                }, `id=eq.${encodeURIComponent(safeConversationId)}`);
                 const normalizedMessage = normalizeChatMessage(messagePayload);
                 if (normalizedMessage && !chatMessages.some((message) => message.id === normalizedMessage.id)) chatMessages.push(normalizedMessage);
                 conversation.updatedAt = now;
                 conversation.lastMessageAt = now;
                 conversation.lastMessagePreview = preview;
                 conversation.lastMessageSender = getCurrentChatDisplayName();
-                const participant = getCurrentChatParticipant(activeChatConversationId);
+                const participant = getCurrentChatParticipant(safeConversationId);
                 if (participant) participant.lastReadAt = now;
                 chatMessageDraft = '';
                 chatLastRenderSignature = '';
                 renderChat();
                 if (recipients.length) {
-                    sendPushNotification('chat_message', activeChatConversationId, '', getChatConversationTitle(conversation), 1, {
-                        conversationId: activeChatConversationId,
+                    sendPushNotification('chat_message', safeConversationId, '', getChatConversationTitle(conversation), 1, {
+                        conversationId: safeConversationId,
                         messageId,
                         title: getChatConversationTitle(conversation),
                         senderUsername: currentUsername,
@@ -16797,6 +16891,52 @@ function toggleDriveQuickRequestItem(domId) {
                         recipients
                     });
                 }
+                return true;
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chat-message-input');
+            const body = String(input ? input.value : chatMessageDraft || '').trim();
+            if (!body || !activeChatConversationId) return;
+            try {
+                await sendChatMessageToConversation(activeChatConversationId, body);
+            } catch (error) {
+                showToast('Send Failed', error && error.message ? error.message : 'Could not send this chat.', true);
+            }
+        }
+
+        async function sendNewChatMessage() {
+            const input = document.getElementById('chat-new-message-input');
+            const body = String(input ? input.value : chatMessageDraft || '').trim();
+            const selected = normalizeSelectedChatRecipients();
+            if (!selected.length) {
+                showToast('Select User', 'Choose at least one user to send this chat.', true);
+                focusChatRecipientInput(30);
+                return;
+            }
+            if (!body) {
+                showToast('Message Empty', 'Type a message before sending.', true);
+                const messageInput = document.getElementById('chat-new-message-input');
+                if (messageInput) messageInput.focus();
+                return;
+            }
+            try {
+                const conversation = await createChatConversationForRecipients(selected);
+                activeChatConversationId = conversation.id;
+                chatComposeOpen = false;
+                await sendChatMessageToConversation(conversation.id, body);
+                chatSelectedUsers = new Set();
+                chatUserSearchTerm = '';
+                chatComposeTitle = '';
+                chatMessageDraft = '';
+                await markChatConversationRead(conversation.id);
+                chatDataLoaded = false;
+                chatLastRenderSignature = '';
+                await fetchChatData(true);
+                renderChat();
             } catch (error) {
                 showToast('Send Failed', error && error.message ? error.message : 'Could not send this chat.', true);
             }
@@ -17001,14 +17141,24 @@ function toggleDriveQuickRequestItem(domId) {
                 appBuild: APP_SHELL_BUILD,
                 ...(extraPayload && typeof extraPayload === 'object' ? extraPayload : {})
             };
-            fetch(PUSH_FUNCTION_URL, {
-                method: 'POST',
-                headers: {
+            const sessionReady = getCurrentAppSessionToken()
+                ? Promise.resolve(true)
+                : (typeof ensureLeafAssistantSession === 'function' ? ensureLeafAssistantSession(false).then((result) => !!(result && result.ok)).catch(() => false) : Promise.resolve(false));
+            sessionReady.then(() => {
+                const sessionToken = getCurrentAppSessionToken();
+                const headers = {
                     'apikey': SUPABASE_KEY,
                     'Authorization': 'Bearer ' + SUPABASE_KEY,
                     'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
+                };
+                if (sessionToken) headers['x-gnc-session'] = sessionToken;
+                return fetch(PUSH_FUNCTION_URL, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(payload)
+                });
+            }).then((response) => {
+                if (response && !response.ok) console.warn('Push notification request failed', response.status);
             }).catch((error) => console.log(error));
         }
 
