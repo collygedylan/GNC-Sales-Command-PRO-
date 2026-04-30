@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.30.05';
+window.__APP_SHELL_VERSION__ = 'V2026.04.30.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -930,7 +930,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.30.05').trim() || 'V2026.04.30.05';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.30.06').trim() || 'V2026.04.30.06';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1490,7 +1490,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.30.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.30.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1541,6 +1541,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         const HEAVY_DATASET_KEYS = new Set(['master', 'avOpen', 'reserves', 'soc', 'salesOffice', 'cav', 'avHotPriceKeys', 'avNotes']);
         const MANUAL_SYNC_STATUS_POLL_MS = 2500;
         const MANUAL_SYNC_STATUS_STALE_MS = 12000;
+        const MANUAL_SYNC_COMPLETION_REFRESH_DELAY_MS = 300;
+        const MANUAL_SYNC_COMPLETION_CATCHUP_DELAY_MS = 1400;
         const MANUAL_SYNC_FROZEN_DATASET_KEYS = new Set(['master', 'avOpen', 'soc', 'reserves', 'cav', 'salesOffice', 'avHotPriceKeys']);
         let realtimeChannels = [];
         let realtimeChangeTimer = null;
@@ -8975,7 +8977,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.30.05').trim() || 'V2026.04.30.05';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.30.06').trim() || 'V2026.04.30.06';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -9135,8 +9137,12 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             return String(firstNonEmptyValue(state.message, state.currentStageLabel, state.currentStage, '')).trim();
         }
 
-        function isDatasetFrozenDuringManualSync(key = '') {
-            return hasActiveManualSync() && MANUAL_SYNC_FROZEN_DATASET_KEYS.has(String(key || '').trim());
+        function isDatasetFrozenDuringManualSync(key = '', mode = 'initial') {
+            const safeKey = String(key || '').trim();
+            if (!hasActiveManualSync() || !MANUAL_SYNC_FROZEN_DATASET_KEYS.has(safeKey)) return false;
+            const state = datasetLoadState && datasetLoadState[safeKey] ? datasetLoadState[safeKey] : null;
+            if (!state) return false;
+            return mode === 'full' ? !!state.fullLoaded : !!(state.initialLoaded || state.fullLoaded);
         }
 
         function getManualSyncViewRefreshTargets(viewId = '') {
@@ -9146,11 +9152,11 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
 
         function shouldPauseManualSyncViewRefresh(viewId = '') {
             if (!hasActiveManualSync()) return false;
-            return getManualSyncViewRefreshTargets(viewId).some((item) => isDatasetFrozenDuringManualSync(item && item.key));
+            return getManualSyncViewRefreshTargets(viewId).some((item) => isDatasetFrozenDuringManualSync(item && item.key, item && item.mode));
         }
 
         function filterManualSyncEligibleTargets(targets = []) {
-            return (Array.isArray(targets) ? targets : []).filter((item) => !isDatasetFrozenDuringManualSync(item && item.key));
+            return (Array.isArray(targets) ? targets : []).filter((item) => !isDatasetFrozenDuringManualSync(item && item.key, item && item.mode));
         }
 
         function clearManualSyncStatusPoll() {
@@ -9179,6 +9185,37 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             }, Math.max(500, Number(delayMs) || MANUAL_SYNC_STATUS_POLL_MS));
         }
 
+        function getManualSyncCompletionViewId() {
+            const visibleTracked = typeof getVisibleTrackedViewIds === 'function' ? getVisibleTrackedViewIds() : [];
+            const visibleView = visibleTracked[0] || (typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '');
+            return resolveRealtimeContextViewId(visibleView || activeRealtimeContextViewId || activeRealtimeViewId || 'home');
+        }
+
+        function scheduleManualSyncCompletionRefresh(delayMs = MANUAL_SYNC_COMPLETION_REFRESH_DELAY_MS) {
+            if (manualSyncPostRefreshInFlight) return;
+            manualSyncPostRefreshInFlight = true;
+            const runRefresh = () => {
+                if (!currentUser || navigator.onLine === false) {
+                    manualSyncPostRefreshInFlight = false;
+                    updateSyncDiagnostics(liveSyncMode === 'offline' ? 'offline' : (liveSyncMode || 'idle'));
+                    return;
+                }
+                const targetView = getManualSyncCompletionViewId();
+                const visibleRefresh = targetView
+                    ? forceRefreshViewDatasets(targetView, { includeBackground: false })
+                    : Promise.resolve(false);
+                Promise.resolve(visibleRefresh)
+                    .then((didRefresh) => didRefresh ? true : refreshLoadedDatasets(false))
+                    .catch(() => false)
+                    .finally(() => {
+                        manualSyncPostRefreshInFlight = false;
+                        queueVisibleDatasetCatchup(isTouchConstrainedDevice() ? 2200 : MANUAL_SYNC_COMPLETION_CATCHUP_DELAY_MS);
+                        updateSyncDiagnostics(liveSyncMode === 'offline' ? 'offline' : (liveSyncMode || 'idle'));
+                    });
+            };
+            setTimeout(runRefresh, Math.max(0, Number(delayMs) || 0));
+        }
+
         function applyManualSyncStatus(status = null, options = {}) {
             const opts = options || {};
             const previous = normalizeManualSyncStatusPayload(manualSyncStatusState);
@@ -9189,10 +9226,6 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             syncGoogleScriptButton();
 
             if (isActive) {
-                if (shouldPauseManualSyncViewRefresh()) {
-                    cleanupRealtime();
-                    clearVisibleViewPollSync();
-                }
                 updateSyncDiagnostics('manual-sync');
                 if (!opts.skipPollSchedule) scheduleManualSyncStatusPoll(opts.delayMs);
                 return next;
@@ -9201,17 +9234,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             clearManualSyncStatusPoll();
             if (wasActive) {
                 refreshRealtimeSubscriptionsForCurrentView(true);
-                if (!manualSyncPostRefreshInFlight) {
-                    manualSyncPostRefreshInFlight = true;
-                    fetchBackgroundData('force')
-                        .catch(() => {})
-                        .finally(() => {
-                            manualSyncPostRefreshInFlight = false;
-                            updateSyncDiagnostics(liveSyncMode === 'offline' ? 'offline' : (liveSyncMode || 'idle'));
-                        });
-                } else {
-                    updateSyncDiagnostics(liveSyncMode === 'offline' ? 'offline' : (liveSyncMode || 'idle'));
-                }
+                scheduleManualSyncCompletionRefresh();
                 if (!opts.suppressToast) {
                     if (next.error) showToast('Sync Error', next.message || next.error, true);
                     else showToast('Sync Complete', next.message || 'Manual sync complete.', false);
@@ -10035,7 +10058,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             if (!definition) return false;
             const wantsFull = mode === 'full';
             const state = getDatasetState(key);
-            if (isDatasetFrozenDuringManualSync(key)) {
+            if (isDatasetFrozenDuringManualSync(key, mode)) {
                 return wantsFull ? !!state.fullLoaded : !!(state.initialLoaded || state.fullLoaded);
             }
 
@@ -10097,7 +10120,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
         function queueDatasetLoad(key, mode = 'full', delayMs = 180) {
             const queueKey = `${key}:${mode}`;
             const state = getDatasetState(key);
-            if (isDatasetFrozenDuringManualSync(key)) return;
+            if (isDatasetFrozenDuringManualSync(key, mode)) return;
             const alreadyLoaded = mode === 'full'
                 ? (state.fullLoaded || !!state.fullPromise)
                 : (state.initialLoaded || state.fullLoaded || !!state.initialPromise || !!state.fullPromise);
@@ -10262,7 +10285,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
         function ensureViewDataForRender(viewId) {
             const config = getViewLoadingConfig(viewId);
             if (!config) return false;
-            const blockedByManualSync = hasActiveManualSync() && config.required.some((item) => isDatasetFrozenDuringManualSync(item.key) && !isDatasetLoaded(item.key, item.mode));
+            const blockedByManualSync = hasActiveManualSync() && config.required.some((item) => isDatasetFrozenDuringManualSync(item.key, item.mode) && !isDatasetLoaded(item.key, item.mode));
             if (blockedByManualSync) {
                 showViewLoadingState(viewId, 'Manual sync running...');
                 updateSyncDiagnostics('manual-sync');
@@ -10271,14 +10294,14 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             const pending = config.required.filter((item) => !isDatasetLoaded(item.key, item.mode));
             if (!pending.length) {
                 (config.background || []).forEach((item) => {
-                    if (!isDatasetFrozenDuringManualSync(item.key)) queueDatasetLoad(item.key, item.mode);
+                    if (!isDatasetFrozenDuringManualSync(item.key, item.mode)) queueDatasetLoad(item.key, item.mode);
                 });
                 return false;
             }
             showViewLoadingState(viewId, config.label);
             Promise.all(pending.map((item) => ensureDatasetLoaded(item.key, item.mode))).then(() => {
                 (config.background || []).forEach((item) => {
-                    if (!isDatasetFrozenDuringManualSync(item.key)) queueDatasetLoad(item.key, item.mode);
+                    if (!isDatasetFrozenDuringManualSync(item.key, item.mode)) queueDatasetLoad(item.key, item.mode);
                 });
                 markViewDirty(viewId);
                 if (isViewVisible(viewId)) {
