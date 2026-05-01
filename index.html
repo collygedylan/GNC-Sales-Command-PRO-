@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-    window.__APP_SHELL_VERSION__ = 'V2026.05.01.15';
+    window.__APP_SHELL_VERSION__ = 'V2026.05.01.16';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.15').trim() || 'V2026.05.01.15';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.16').trim() || 'V2026.05.01.16';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1557,7 +1557,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.15';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.16';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9194,7 +9194,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.15').trim() || 'V2026.05.01.15';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.16').trim() || 'V2026.05.01.16';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -20799,16 +20799,17 @@ function toggleDriveQuickRequestItem(domId) {
             scheduleUiRender(`view-activate:${targetViewId}`, () => {
                 if (getCurrentVisibleViewId() !== targetViewId) return;
                 setRealtimeSubscriptionsForView(targetViewId);
+                const viewEnterDelay = isTouchConstrainedDevice() ? 360 : 180;
                 scheduleTypingAwareUiRender(`view-enter:${targetViewId}`, () => {
                     if (getCurrentVisibleViewId() !== targetViewId) return;
                     refreshViewDatasetsOnEnter(targetViewId);
                     recordInternalPerfDuration('viewActivationDurations', activationStartedAt, targetViewId);
-                }, 12, 148, {
+                }, viewEnterDelay, 180, {
                     allowWhileTyping: false,
                     allowDuringRecentInteraction: true,
-                    touchDelayMs: 72,
-                    scrollDelayMs: 84,
-                    interactionDelayMs: 56
+                    touchDelayMs: 180,
+                    scrollDelayMs: 180,
+                    interactionDelayMs: 160
                 });
             });
         }
