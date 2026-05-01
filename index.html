@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-    window.__APP_SHELL_VERSION__ = 'V2026.05.01.09';
+    window.__APP_SHELL_VERSION__ = 'V2026.05.01.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -942,7 +942,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.09').trim() || 'V2026.05.01.09';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.10').trim() || 'V2026.05.01.10';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1168,8 +1168,16 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 <div id="view-docks" class="hidden">
                     <div class="freeze-panel">
                     <div id="docks-search-container" class="sticky-search relative mb-2">
-                        <input type="text" id="docks-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Docks or Items..." oninput="handleDocksSearch()" onkeydown="dismissSearchKeyboard(event)">
+                        <input type="text" id="docks-search" class="input-field w-full pr-10 !mb-0" placeholder="Search common name or location..." oninput="handleDocksSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="docks-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDocksSearch()"></i>
+                    </div>
+                    <div id="docks-filter-controls" class="mb-3 grid grid-cols-2 gap-2">
+                        <select id="docks-genus-filter" class="input-field !mb-0 bg-white text-[11px] font-black uppercase tracking-[0.12em]" onchange="setDockGenusFilter(this.value)">
+                            <option value="">All Genus</option>
+                        </select>
+                        <select id="docks-contsize-filter" class="input-field !mb-0 bg-white text-[11px] font-black uppercase tracking-[0.12em]" onchange="setDockContSizeFilter(this.value)">
+                            <option value="">All Sizes</option>
+                        </select>
                     </div>
                     <div id="docks-mode-toggle" class="mb-3 grid grid-cols-2 gap-2">
                         <button id="dock-mode-btn-docks" class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-95" onclick="setDockViewMode('docks')">Docks</button>
@@ -1500,13 +1508,22 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const NCR_PHOTO_BUCKET = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+        const escJsAttrValue = (value = '') => String(value == null ? '' : value)
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'")
+            .replace(/"/g, '\\x22')
+            .replace(/\r/g, '\\r')
+            .replace(/\n/g, '\\n')
+            .replace(/</g, '\\x3C')
+            .replace(/>/g, '\\x3E')
+            .replace(/&/g, '\\x26');
         const escapeHtml = (value = '') => String(value == null ? '' : value)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9041,9 +9058,12 @@ let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null
 let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveSeason=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let drivePlantFilterItemsCache=[]; let drivePlantFilterGenusOptions=[]; let drivePlantFilterContSizeOptions=[]; let driveGenusSelectionMode='all'; let driveContSizeSelectionMode='all'; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; let driveSeasonSearchTerm=''; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); const DRIVE_DRILL_ALL_VALUE='__ALL__'; const DRIVE_DRILL_ALL_LABEL='ALL'; let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS); let driveResolvedCardStateKey=''; let driveResolvedCardStateCache=null; let driveSearchRequiresManualSelection=false; let driveSearchDebounceTimer=null; let driveSearchRequestToken=0;
         let drivePlantFilterStateCacheKey=''; let drivePlantFilterStateCache=null;
 
-let activeTaskView="hot-price"; let activeTaskFilter="all"; let activeTaskCustomerFilter="all"; let activeTaskReserveRepFilter="all"; let activeTaskReserveCustomerFilter="all"; let activeTaskReserveCustomerFilters=new Set(); let activeTaskReserveRowStatusMode="all"; let activeTaskReservePhotoMode="all"; let activeTaskSeasonReviewMode="winner"; let activeTaskTab=activeTaskView; let activeTaskSubview=activeTaskFilter; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let selectedTaskContSizes=new Set(); let taskContSizeSearchTerm=""; let taskContSizeDropdownOpen=false; let taskContSizeFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let taskModeSearchTerm=""; let taskSubviewSearchTerm=""; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees=""; let taskReserveCustomerSearchTerm=''; let taskReserveCustomerDropdownOpen=false; let taskReserveCustomerDraftFilters=new Set(); let lastTaskReserveCustomerRenderSignature='';
+const DEFAULT_TASK_VIEW="av-blanks"; const DEFAULT_TASK_FILTER="season";
+let activeTaskView=DEFAULT_TASK_VIEW; let activeTaskFilter=DEFAULT_TASK_FILTER; let activeTaskCustomerFilter="all"; let activeTaskReserveRepFilter="all"; let activeTaskReserveCustomerFilter="all"; let activeTaskReserveCustomerFilters=new Set(); let activeTaskReserveRowStatusMode="all"; let activeTaskReservePhotoMode="all"; let activeTaskSeasonReviewMode="winner"; let activeTaskTab=activeTaskView; let activeTaskSubview=activeTaskFilter; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let selectedTaskContSizes=new Set(); let taskContSizeSearchTerm=""; let taskContSizeDropdownOpen=false; let taskContSizeFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let taskModeSearchTerm=""; let taskSubviewSearchTerm=""; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees=""; let taskReserveCustomerSearchTerm=''; let taskReserveCustomerDropdownOpen=false; let taskReserveCustomerDraftFilters=new Set(); let lastTaskReserveCustomerRenderSignature='';
 let detailReturnState = { viewId: '', scrollTop: 0 };
 let viewHistoryStack = [];
+let nativeBackNavigationInitialized = false;
+let nativeBackHandling = false;
 let navigationScrollMemory = new Map();
         let pendingFieldSaveCount = 0;
         let lastFieldSaveAt = 0;
@@ -9059,7 +9079,7 @@ let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKe
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
         let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let tempReqAppendToExistingFolder=false; let previousReqStep=""; let driveQuickRequestItems=new Set(); let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
 let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending'; let requestFolderSearchTerm=''; let requestRepSearchTerm=''; let requestCustomerSearchTerm=''; let requestFolderDateFilter=''; let lastRequestHeaderSearchMode='';
-        let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let lastSyncTime=new Date().toISOString();
+        let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let selectedDockGenusFilter=""; let selectedDockContSizeFilter=""; let lastSyncTime=new Date().toISOString();
         let lastSuccessfulSyncTime = "";
         let syncDiagnosticsOverride = "";
         let manualSyncStatusState = null;
@@ -9117,7 +9137,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.09').trim() || 'V2026.05.01.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.10').trim() || 'V2026.05.01.10';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -9583,6 +9603,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
 
         window.addEventListener('DOMContentLoaded', () => {
             if (document && document.body) document.body.classList.add('performance-lean-shell');
+            initializeNativeBackNavigation();
             ensureLoginInteractionHealth({ forceReset: true });
             if (localStorage.getItem('gnc_bio_enabled')==='true' && window.PublicKeyCredential) {
                 const bioBtn=document.getElementById('btn-fingerprint'); if (bioBtn) bioBtn.classList.remove('hidden');
@@ -13219,7 +13240,7 @@ function toggleDriveQuickRequestItem(domId) {
             av_open: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE],
             av_hotprice: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE, item.SEASON, item.HOT_PRICE, item.HOTPRICE],
             av_reserves: (item) => [item.COMMONNAME, item.CUSTOMERNAME, item.CONSIGNEENAME, item.SALESREPNAME || item.SALESREPID, item.ITEMCODE, item.CONTSIZE, item.LOCATIONCODE],
-            docks: (item) => [item.DOCK_NUM, item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.STOPNUMBER, item.TRIPNUMBER, item.CUSTOMERNAME, item.CONSIGNEENAME],
+            docks: (item) => [item.DOCK_NUM, item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.GENUSNAME, item.genusname, item.GENUS_NAME, item.genus_name, item.GENUS, item.genus, item.STOPNUMBER, item.TRIPNUMBER, item.CUSTOMERNAME, item.CONSIGNEENAME],
             reserves: (item) => [item.COMMONNAME, item.CUSTOMERNAME, item.CONSIGNEENAME, item.SALESREPNAME || item.SALESREPID, item.ITEMCODE, item.CONTSIZE, item.LOCATIONCODE],
             colorwalk: (item) => [item.COMMONNAME, item.LOCATIONCODE, item.ITEMCODE, item.CONTSIZE, item.LOTCODE, item.PRIORITY],
             task_location_detail: (item) => [
@@ -13249,6 +13270,12 @@ function toggleDriveQuickRequestItem(domId) {
                 item.LOCATIONCODE,
                 item.ITEMCODE,
                 item.CONTSIZE,
+                item.GENUSNAME,
+                item.genusname,
+                item.GENUS_NAME,
+                item.genus_name,
+                item.GENUS,
+                item.genus,
                 item.DOCK_NUM,
                 item.LOTCODE
             ].map(normalizeSearchValue).filter(Boolean);
@@ -15151,6 +15178,7 @@ function toggleDriveQuickRequestItem(domId) {
                 firstNonEmptyValue(item.CUSTOMERNAME, item.CUSTOMER, ''),
                 firstNonEmptyValue(item.CONSIGNEENAME, item.CONSIGNEE, ''),
                 firstNonEmptyValue(item.SALESREPNAME, item.SALESREP, item.SALES_REP, ''),
+                firstNonEmptyValue(item.GENUSNAME, item.genusname, item.GENUS_NAME, item.genus_name, item.GENUS, item.genus, ''),
                 firstNonEmptyValue(item.STOPNUMBER, ''),
                 firstNonEmptyValue(item.TRIPNUMBER, ''),
                 firstNonEmptyValue(item.DOCK_NUM, item.DOCK, ''),
@@ -15986,9 +16014,103 @@ function toggleDriveQuickRequestItem(domId) {
             return resolvedState.rowsById.get(normalizedUid) || null;
         }
 
+        function normalizeDockFilterValue(value = '') {
+            const text = String(value == null ? '' : value).trim();
+            if (!text || text.toUpperCase() === 'NULL' || text === '-') return '';
+            return text;
+        }
+
+        function getDockGenusName(item = null) {
+            if (!item) return '';
+            const directValue = normalizeDockFilterValue(firstNonEmptyValue(
+                item.GENUSNAME,
+                item.genusname,
+                item.GENUS_NAME,
+                item.genus_name,
+                item.GENUS,
+                item.genus,
+                ''
+            ));
+            if (directValue) return directValue;
+            const linkedMaster = typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null;
+            if (!linkedMaster || linkedMaster === item) return '';
+            return normalizeDockFilterValue(firstNonEmptyValue(
+                linkedMaster.GENUSNAME,
+                linkedMaster.genusname,
+                linkedMaster.GENUS_NAME,
+                linkedMaster.genus_name,
+                linkedMaster.GENUS,
+                linkedMaster.genus,
+                ''
+            ));
+        }
+
+        function getDockContSizeValue(item = null) {
+            return normalizeDockFilterValue(firstNonEmptyValue(item && item.CONTSIZE, item && item.contsize, item && item.ITEMSPEC, item && item.itemspec, ''));
+        }
+
+        function buildDockFilterOptions(items = [], getter = null) {
+            const getValue = typeof getter === 'function' ? getter : (() => '');
+            return Array.from(new Set((Array.isArray(items) ? items : [])
+                .map((item) => getValue(item))
+                .map((value) => normalizeDockFilterValue(value))
+                .filter(Boolean)))
+                .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
+        }
+
+        function setDockSelectOptions(selectEl, values = [], currentValue = '', allLabel = 'All') {
+            if (!selectEl) return;
+            const safeCurrent = normalizeDockFilterValue(currentValue);
+            const optionValues = Array.isArray(values) ? values.slice() : [];
+            if (safeCurrent && !optionValues.includes(safeCurrent)) optionValues.unshift(safeCurrent);
+            const nextHtml = [`<option value="">${allLabel}</option>`].concat(optionValues.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)).join('');
+            if (selectEl.innerHTML !== nextHtml) selectEl.innerHTML = nextHtml;
+            selectEl.value = safeCurrent;
+        }
+
+        function syncDockFilterControls(baseItems = []) {
+            const controls = document.getElementById('docks-filter-controls');
+            if (controls) controls.classList.toggle('hidden', dockViewMode !== 'docks');
+            if (dockViewMode !== 'docks') return;
+            setDockSelectOptions(document.getElementById('docks-genus-filter'), buildDockFilterOptions(baseItems, getDockGenusName), selectedDockGenusFilter, 'All Genus');
+            setDockSelectOptions(document.getElementById('docks-contsize-filter'), buildDockFilterOptions(baseItems, getDockContSizeValue), selectedDockContSizeFilter, 'All Sizes');
+        }
+
+        function applyDockStructuredFilters(items = []) {
+            let nextItems = Array.isArray(items) ? items : [];
+            const genusValue = normalizeDockFilterValue(selectedDockGenusFilter);
+            const contSizeValue = normalizeDockFilterValue(selectedDockContSizeFilter);
+            if (genusValue) nextItems = nextItems.filter((item) => getDockGenusName(item) === genusValue);
+            if (contSizeValue) nextItems = nextItems.filter((item) => getDockContSizeValue(item) === contSizeValue);
+            return nextItems;
+        }
+
+        function resetDockDrillForFilterChange() {
+            if (dockViewMode !== 'docks' || selectedDockIssueUid) return;
+            dockViewLevel = 0;
+            selectedDockNum = null;
+            selectedDockStop = null;
+        }
+
+        function setDockGenusFilter(value = '') {
+            selectedDockGenusFilter = normalizeDockFilterValue(value);
+            resetDockDrillForFilterChange();
+            scheduleDocksRender(0);
+            return false;
+        }
+
+        function setDockContSizeFilter(value = '') {
+            selectedDockContSizeFilter = normalizeDockFilterValue(value);
+            resetDockDrillForFilterChange();
+            scheduleDocksRender(0);
+            return false;
+        }
+
         function updateDockModeToggleUi() {
             const docksBtn = document.getElementById('dock-mode-btn-docks');
             const mistakeBtn = document.getElementById('dock-mode-btn-mistakes');
+            const filterControls = document.getElementById('docks-filter-controls');
+            if (filterControls) filterControls.classList.toggle('hidden', dockViewMode !== 'docks');
             if (docksBtn) {
                 const isActive = dockViewMode === 'docks';
                 docksBtn.className = `rounded-xl border px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] shadow-sm active:scale-95 ${isActive ? 'border-green-200 bg-[#007a4d] text-white' : 'border-green-200 bg-white text-[#007a4d]'}`;
@@ -20247,6 +20369,58 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
+        function hasInAppBackDestination() {
+            const currentView = getCurrentVisibleViewId();
+            if (!currentView) return false;
+            if (isDrawerOpen()) return true;
+            if (currentView === 'home') return shouldShowHomeProductivityBackButton();
+            if (currentView === 'detail') return true;
+            if (currentView === 'drive') return activeDriveTab !== 'name' || driveViewLevel > 0 || viewHistoryStack.length > 0;
+            if (currentView === 'tasks') return taskViewLevel > 0 || viewHistoryStack.length > 0;
+            if (currentView === 'docks') return dockViewMode === 'mistakes' || dockViewLevel > 0 || viewHistoryStack.length > 0;
+            if (currentView === 'request') return (activeReqTab === 'reps' && requestViewLevel > 0) || viewHistoryStack.length > 0;
+            if (currentView === 'chat') return !!(activeChatConversationId || chatComposeOpen || viewHistoryStack.length);
+            if (currentView === 'walkie') return !!(walkieComposeOpen || activeWalkieChannelId || viewHistoryStack.length);
+            if (currentView === 'av') return activeAVTab === 'reserves' ? (avResLevel > 0 || !!selectedAvResRep || viewHistoryStack.length > 0) : viewHistoryStack.length > 0;
+            if (currentView === 'review') return (typeof reviewViewLevel !== 'undefined' && reviewViewLevel > 0) || viewHistoryStack.length > 0;
+            return currentView !== 'home' || viewHistoryStack.length > 0;
+        }
+
+        function ensureNativeBackGuard() {
+            if (!window.history || typeof window.history.pushState !== 'function') return false;
+            try {
+                const rawState = window.history.state;
+                const state = (rawState && typeof rawState === 'object') ? rawState : {};
+                if (state && state.gncAppBackGuard === APP_SHELL_BUILD) return true;
+                window.history.pushState({ ...state, gncAppBackGuard: APP_SHELL_BUILD }, '', window.location.href);
+                return true;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function handleNativeAppBack(event) {
+            if (nativeBackHandling) return;
+            if (!hasInAppBackDestination()) return;
+            nativeBackHandling = true;
+            setTimeout(() => {
+                try {
+                    ensureNativeBackGuard();
+                    if (isDrawerOpen()) setMenuOpenState(false);
+                    else goBackUniversal();
+                } finally {
+                    nativeBackHandling = false;
+                }
+            }, 0);
+        }
+
+        function initializeNativeBackNavigation() {
+            if (nativeBackNavigationInitialized) return;
+            nativeBackNavigationInitialized = true;
+            ensureNativeBackGuard();
+            window.addEventListener('popstate', handleNativeAppBack);
+        }
+
         function updateGlobalBackButton() {
             const backBtn = document.getElementById('global-back-btn');
             if (!backBtn) return;
@@ -20368,6 +20542,7 @@ function toggleDriveQuickRequestItem(domId) {
                 pushViewHistoryEntry(currentViewId, getMainAreaScrollTop());
             }
             lastViewSwitchAt = Date.now();
+            if (nextViewId !== 'home') ensureNativeBackGuard();
             if (currentViewId === nextViewId && nextState.initialized && !nextState.dirty) {
                 incrementInternalPerfCounter('warmViewReuseHits');
                 if (nextViewId === 'request') {
@@ -24875,6 +25050,8 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             let items = getScopedDocksItems(resolvedState.rows, `dock-display:${resolvedState.cacheKey}`);
+            syncDockFilterControls(items);
+            items = applyDockStructuredFilters(items);
             if(term) items = filterBySearch(items, term, 'docks');
             if (items.length === 0) {
                 if (access.isQc && !access.isAdmin && !access.isQcSupervisor && (dockTeamSchemaReady === false || dockItemSchemaReady === false)) {
@@ -27421,6 +27598,10 @@ function toggleDriveQuickRequestItem(domId) {
         function openSalesOfficeView() {
             activeSalesOfficeTab = getRoleAccessState().isRep ? 'orders' : 'season';
             switchView('sales-office');
+            runAfterShellInteractive(() => {
+                const forceRefresh = isDatasetStale('salesOffice', isTouchConstrainedDevice() ? 9000 : 12000);
+                refreshViewDatasetsOnEnter('sales-office', { force: forceRefresh, minInterval: forceRefresh ? 0 : 6000, backgroundDelay: 80 });
+            }, 80);
             return false;
         }
 
@@ -30317,11 +30498,13 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function copyTextToClipboard(text,label) {
-            copyTextWithFallback(text).then(()=>{
+            const safeText = String(text == null ? '' : text);
+            copyTextWithFallback(safeText).then(()=>{
                 showToast("Copied!",`${label} copied to clipboard.`);
             }).catch(err=>{
                 showToast("Error","Could not copy text.",true);
             });
+            return false;
         }
 
         function openSalesOfficeAvNoteModal(uniqueId) {
@@ -30480,7 +30663,9 @@ function toggleDriveQuickRequestItem(domId) {
             refreshCartButtons();
             invalidateResolvedViewStateCaches();
             markViewDirty('sales-office');
-            if (isViewVisible('sales-office')) queueInteractiveViewRender('sales-office', false, true, 16, 180);
+            const renderDelay = Number.isFinite(Number(opts.renderDelay)) ? Math.max(0, Number(opts.renderDelay)) : 16;
+            const typingDelay = Number.isFinite(Number(opts.typingDelay)) ? Math.max(120, Number(opts.typingDelay)) : 180;
+            if (isViewVisible('sales-office') && !opts.skipRender) queueInteractiveViewRender('sales-office', false, true, renderDelay, typingDelay);
             if (!opts.silent) showToast("Complete", opts.message || "Removed from Sales Office.");
             if (opts.skipRemote) return;
             supabaseFetch('v2_sales_office','DELETE',null,`unique_id=eq.${encodeURIComponent(uid)}`).catch(() => {
@@ -30689,16 +30874,39 @@ function toggleDriveQuickRequestItem(domId) {
             return masterItem;
         }
 
-        function markSalesOfficeComplete(uniqueId,domId) {
+        function removeRenderedSalesOfficeRowByDomId(domId = '') {
+            const safeDomId = String(domId || '').trim();
+            if (!safeDomId) return false;
+            const container = document.getElementById('sales-office-content');
+            if (!container) return false;
+            const row = Array.from(container.querySelectorAll('[data-dom-id]')).find((node) => node && node.getAttribute('data-dom-id') === safeDomId);
+            if (!row) return false;
+            row.style.pointerEvents = 'none';
+            row.style.opacity = '0';
+            row.style.transform = 'translateX(18px)';
+            row.style.transition = 'opacity 120ms ease, transform 120ms ease';
+            setTimeout(() => {
+                if (row && row.parentNode) row.parentNode.removeChild(row);
+            }, 130);
+            return true;
+        }
+
+        function markSalesOfficeComplete(uniqueId,domId,buttonEl=null) {
             const uid = String(uniqueId || '').trim();
-            if (!uid) return;
+            if (!uid) return false;
             const existingRow = salesOfficeInventory.find((item) => String(item.UNIQUE_ID || '').trim() === uid);
             if (!existingRow) {
                 showToast('Not Found', 'That Sales Office row could not be found.', true);
-                return;
+                return false;
+            }
+            if (buttonEl) {
+                buttonEl.disabled = true;
+                buttonEl.classList.add('opacity-70', 'pointer-events-none');
             }
             if (domId) selectedItems.delete(domId);
-            removeSalesOfficeRowByUniqueId(uid, { message: 'Removed from Sales Office.' });
+            if (domId) removeRenderedSalesOfficeRowByDomId(domId);
+            removeSalesOfficeRowByUniqueId(uid, { message: 'Removed from Sales Office.', renderDelay: isTouchConstrainedDevice() ? 180 : 120, typingDelay: 260 });
+            return false;
         }
 
         function generateCard(item,sourceView,colorClass='status-green') {
@@ -30897,7 +31105,7 @@ function toggleDriveQuickRequestItem(domId) {
                     `<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Reserve: ${orderReserve}</span>`
                 ].filter(Boolean).join('');
                 const statusTone = String(orderStatus || '').toLowerCase().includes('done') ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-100';
-        return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-emerald-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open Bloom Picker row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="app-card-eyebrow text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d] mb-1">Bloom Picker</div><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">Qty ${orderQty}</span><span class="bg-white text-slate-600 px-2 py-1 rounded border border-slate-200">Order ${item.ORDER_NUMBER||'-'}</span><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">Loc ${item.LOCATIONCODE||'-'}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">Lot ${item.LOTCODE||'-'}</span><span class="px-2 py-1 rounded border ${statusTone}">${orderStatus}</span></div>${orderDetailBits ? `<div class="mt-2 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-600">${orderDetailBits}</div>` : ''}<div class="mt-2 text-[11px] font-semibold text-slate-500">Submitted ${submittedAt}</div>${holdHtml}${salesNoteHtml}${avNoteHtml}</div>${inlineThumbHtml}</div><div class="flex gap-2 mt-3"><button class="flex-1 bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-lg"></i>DONE</button></div></div></div>`;
+        return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-emerald-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open Bloom Picker row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="app-card-eyebrow text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d] mb-1">Bloom Picker</div><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${item.CONTSIZE||'-'}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">Qty ${orderQty}</span><span class="bg-white text-slate-600 px-2 py-1 rounded border border-slate-200">Order ${item.ORDER_NUMBER||'-'}</span><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">Loc ${item.LOCATIONCODE||'-'}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">Lot ${item.LOTCODE||'-'}</span><span class="px-2 py-1 rounded border ${statusTone}">${orderStatus}</span></div>${orderDetailBits ? `<div class="mt-2 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-600">${orderDetailBits}</div>` : ''}<div class="mt-2 text-[11px] font-semibold text-slate-500">Submitted ${submittedAt}</div>${holdHtml}${salesNoteHtml}${avNoteHtml}</div>${inlineThumbHtml}</div><div class="flex gap-2 mt-3"><button class="flex-1 bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); return markSalesOfficeComplete('${safeUidJs}', '${escJsAttrValue(item.DOM_ID)}', this)"><i class="ph-bold ph-check-circle text-lg"></i>DONE</button></div></div></div>`;
             }
             if(sourceView==='sales-office'){
                 let avNoteText = getSalesOfficeDisplayAvNote(item, 'No AV Note Provided');
@@ -30905,9 +31113,11 @@ function toggleDriveQuickRequestItem(domId) {
                 let itemCode = item.ITEMCODE || '-';
                 let locCode = item.LOCATIONCODE || '-';
                 let lotCode = item.LOTCODE || '-';
-                let safeAvNote = esc(avNoteText);
+                let safeAvNote = escJsAttrValue(avNoteText);
+                let safeItemCode = escJsAttrValue(itemCode);
+                let safeDomId = escJsAttrValue(item.DOM_ID);
 
-        return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open Sales Office row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="inv-card app-smart-card ${seasonCardShellClass} ${salesOfficeStatusClass} flex-grow !mb-0 ${salesOfficeCardToneClass} border transition-transform active:scale-[0.99]"><div class="flex justify-between items-start mb-3"><div class="app-card-main font-bold text-lg text-[#007a4d] leading-tight pr-2 select-text" style="-webkit-user-select: text; user-select: text;"><div class="mb-2 flex flex-wrap gap-2"><span class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"><i class="ph-bold ph-handbag text-sm"></i>Bloom Picker</span><span class="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${salesOfficeChipToneClass}">Season Sales Notes</span></div>${item.COMMONNAME||'Unknown'}<br><span class="text-sm text-gray-500 font-semibold">${item.CONTSIZE||'-'}</span></div>${inlineThumbHtml}</div><div class="bg-white p-3 rounded-lg border ${salesOfficePanelToneClass} shadow-sm mb-3 select-text cursor-text" style="-webkit-user-select: text; user-select: text;" onclick="event.stopPropagation();"><div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Code</span><span class="font-black ${salesOfficeAccentTextClass} font-mono tracking-wide text-sm">${itemCode}</span></div><div class="flex justify-between items-center mb-1 border-b border-gray-100 pb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Location / Lot</span><span class="font-bold text-gray-600 text-xs">${locCode} / ${lotCode}</span></div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5 mt-2">AV Note</div><div class="text-[14px] font-bold text-blue-800 leading-snug mb-2 whitespace-pre-wrap">${avNoteText}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Sales Note</div><div class="text-[14px] font-bold text-green-800 leading-snug whitespace-pre-wrap">${displaySalesNote}</div></div><div class="flex flex-wrap gap-2"><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-indigo-200" onclick="event.stopPropagation(); copyTextToClipboard('${itemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-lg"></i> COPY ITEMCODE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-blue-200" onclick="event.stopPropagation(); openSalesOfficeAvNoteModal('${safeUidJs}')"><i class="ph-bold ph-pencil-simple-line text-lg"></i> EDIT AV NOTE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-purple-200" onclick="event.stopPropagation(); copyTextToClipboard('${safeAvNote}', 'AV NOTE')"><i class="ph-bold ph-chat-text text-lg"></i> COPY AV NOTE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); markSalesOfficeComplete('${safeUidJs}', '${item.DOM_ID}')"><i class="ph-bold ph-check-circle text-lg"></i> DONE</button></div></div></div>`;
+        return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open Sales Office row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="inv-card app-smart-card ${seasonCardShellClass} ${salesOfficeStatusClass} flex-grow !mb-0 ${salesOfficeCardToneClass} border transition-transform active:scale-[0.99]"><div class="flex justify-between items-start mb-3"><div class="app-card-main font-bold text-lg text-[#007a4d] leading-tight pr-2 select-text" style="-webkit-user-select: text; user-select: text;"><div class="mb-2 flex flex-wrap gap-2"><span class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"><i class="ph-bold ph-handbag text-sm"></i>Bloom Picker</span><span class="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${salesOfficeChipToneClass}">Season Sales Notes</span></div>${item.COMMONNAME||'Unknown'}<br><span class="text-sm text-gray-500 font-semibold">${item.CONTSIZE||'-'}</span></div>${inlineThumbHtml}</div><div class="bg-white p-3 rounded-lg border ${salesOfficePanelToneClass} shadow-sm mb-3 select-text cursor-text" style="-webkit-user-select: text; user-select: text;" onclick="event.stopPropagation();"><div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Code</span><span class="font-black ${salesOfficeAccentTextClass} font-mono tracking-wide text-sm">${itemCode}</span></div><div class="flex justify-between items-center mb-1 border-b border-gray-100 pb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Location / Lot</span><span class="font-bold text-gray-600 text-xs">${locCode} / ${lotCode}</span></div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5 mt-2">AV Note</div><div class="text-[14px] font-bold text-blue-800 leading-snug mb-2 whitespace-pre-wrap">${avNoteText}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Sales Note</div><div class="text-[14px] font-bold text-green-800 leading-snug whitespace-pre-wrap">${displaySalesNote}</div></div><div class="flex flex-wrap gap-2"><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-indigo-200" onclick="event.stopPropagation(); return copyTextToClipboard('${safeItemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-lg"></i> COPY ITEMCODE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-blue-200" onclick="event.stopPropagation(); openSalesOfficeAvNoteModal('${safeUidJs}'); return false;"><i class="ph-bold ph-pencil-simple-line text-lg"></i> EDIT AV NOTE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-purple-200" onclick="event.stopPropagation(); return copyTextToClipboard('${safeAvNote}', 'AV NOTE')"><i class="ph-bold ph-chat-text text-lg"></i> COPY AV NOTE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); return markSalesOfficeComplete('${safeUidJs}', '${safeDomId}', this)"><i class="ph-bold ph-check-circle text-lg"></i> DONE</button></div></div></div>`;
             }
             if(sourceView==='reserves_drill'){
                 return buildAvInventoryCard();
@@ -33970,13 +34180,13 @@ ${folderNote ? `Folder Note: ${folderNote}
         const TASK_FILTER_VALUES = Object.freeze(['all', 'season', 'location']);
 
         function normalizeTaskViewValue(value = activeTaskView) {
-            const normalized = String(firstNonEmptyValue(value, activeTaskView, activeTaskTab, TASK_VIEW_VALUES[0]) || '').trim().toLowerCase();
-            return TASK_VIEW_VALUES.includes(normalized) ? normalized : TASK_VIEW_VALUES[0];
+            const normalized = String(firstNonEmptyValue(value, activeTaskView, activeTaskTab, DEFAULT_TASK_VIEW, TASK_VIEW_VALUES[0]) || '').trim().toLowerCase();
+            return TASK_VIEW_VALUES.includes(normalized) ? normalized : DEFAULT_TASK_VIEW;
         }
 
         function normalizeTaskFilterValue(value = activeTaskFilter) {
-            const normalized = String(firstNonEmptyValue(value, activeTaskFilter, activeTaskSubview, 'all') || '').trim().toLowerCase();
-            return TASK_FILTER_VALUES.includes(normalized) ? normalized : 'all';
+            const normalized = String(firstNonEmptyValue(value, activeTaskFilter, activeTaskSubview, DEFAULT_TASK_FILTER, 'all') || '').trim().toLowerCase();
+            return TASK_FILTER_VALUES.includes(normalized) ? normalized : DEFAULT_TASK_FILTER;
         }
 
         function normalizeTaskCustomerFilterValue(value = activeTaskCustomerFilter) {
@@ -35747,8 +35957,16 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function isSeasonBlockedFromTaskQueue(item) {
+            if (!item) return false;
             const seasonValue = String(firstNonEmptyValue(item && item.SEASON, item && item.season, '') || '').toUpperCase();
             if (seasonValue.includes('Y') || seasonValue.includes('Z')) return true;
+            if (hasCompletionDateValue(item) || isOptimisticallyCompletedRow(item)) return true;
+            if (hasValidSeasonWinnerPayload(item)) return true;
+            const linkedMaster = typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null;
+            if (linkedMaster && linkedMaster !== item) {
+                if (hasCompletionDateValue(linkedMaster) || isOptimisticallyCompletedRow(linkedMaster)) return true;
+                if (hasValidSeasonWinnerPayload(linkedMaster)) return true;
+            }
             const masterId = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.MASTER_ID, item && item.MASTER_UNIQUE_ID, item && item.master_id, '') || '').trim();
             if (masterId && getSeasonSalesOfficeRowsByMasterId(masterId).length) return true;
             return false;
