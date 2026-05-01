@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.01.03';
+window.__APP_SHELL_VERSION__ = 'V2026.05.01.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -942,7 +942,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.03').trim() || 'V2026.05.01.03';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.04').trim() || 'V2026.05.01.04';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1506,7 +1506,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9049,7 +9049,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.03').trim() || 'V2026.05.01.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.04').trim() || 'V2026.05.01.04';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -14427,7 +14427,7 @@ function toggleDriveQuickRequestItem(domId) {
             const normalizedCodes = new Set((Array.isArray(itemCodes) ? itemCodes : []).map((value) => String(value || '').trim().toUpperCase()).filter(Boolean));
             if (!normalizedCodes.size) return [];
             const opts = options || {};
-            applyMasterAppTabAssignmentsForItemCodes(fullInventory, Array.from(normalizedCodes));
+            if (!opts.preserveAssignments) applyMasterAppTabAssignmentsForItemCodes(fullInventory, Array.from(normalizedCodes));
             const affectedMasterRows = [];
             fullInventory.forEach((row) => {
                 if (!row) return;
@@ -26611,6 +26611,7 @@ function toggleDriveQuickRequestItem(domId) {
             });
             syncSeasonSalesOfficeStateForItemCodes([itemCode], {
                 skipRemote: true,
+                preserveAssignments: true,
                 reason: 'task-season-force-local'
             });
             invalidateResolvedViewStateCaches();
@@ -26623,7 +26624,6 @@ function toggleDriveQuickRequestItem(domId) {
             queueInteractiveViewRender('tasks', false, true, 0, 120);
             queueInteractiveViewRender('drive', false, false, 0, 140);
             queueInteractiveViewRender('sales-office', false, false, 0, 140);
-            showToast('Updated', 'Season Sales Note row updated.');
             const masterOps = familyRows.map((row) => {
                 const rowUid = String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim();
                 if (!rowUid) return Promise.resolve(false);
@@ -26631,13 +26631,9 @@ function toggleDriveQuickRequestItem(domId) {
                     app_tab_assignment: rowUid === targetUid ? 'season' : 'location'
                 }, `unique_id=eq.${encodeURIComponent(rowUid)}`, saveRequestOptions).catch(() => false);
             });
-            const salesOfficeOps = syncSeasonSalesOfficeStateForItemCodes([itemCode], {
-                skipRemote: false,
-                reason: 'task-season-force-remote'
-            });
-            const results = await Promise.allSettled(masterOps.concat(salesOfficeOps));
-            const hadFailure = results.some((result) => result.status === 'rejected' || result.value === false);
-            if (hadFailure) {
+            const masterResults = await Promise.allSettled(masterOps);
+            const masterHadFailure = masterResults.some((result) => result.status === 'rejected' || result.value === false);
+            if (masterHadFailure) {
                 familyRows.forEach((row) => {
                     const rowUid = String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim();
                     if (!rowUid || !previousAssignments.has(rowUid)) return;
@@ -26647,6 +26643,7 @@ function toggleDriveQuickRequestItem(domId) {
                 });
                 syncSeasonSalesOfficeStateForItemCodes([itemCode], {
                     skipRemote: true,
+                    preserveAssignments: true,
                     reason: 'task-season-force-rollback'
                 });
                 invalidateResolvedViewStateCaches();
@@ -26658,6 +26655,19 @@ function toggleDriveQuickRequestItem(domId) {
                 queueVisibleDatasetCatchup(0);
                 showToast('Network Error', 'Season Sales Note override could not be saved. The row was restored.', true);
                 return false;
+            }
+            const salesOfficeOps = syncSeasonSalesOfficeStateForItemCodes([itemCode], {
+                skipRemote: false,
+                preserveAssignments: true,
+                reason: 'task-season-force-remote'
+            });
+            const salesOfficeResults = await Promise.allSettled(salesOfficeOps);
+            const salesOfficeHadFailure = salesOfficeResults.some((result) => result.status === 'rejected' || result.value === false);
+            if (salesOfficeHadFailure) {
+                console.warn('Season Sales Note override saved, but Sales Office mirror sync had a non-blocking failure.', salesOfficeResults);
+                showToast('Updated', 'Season Sales Note override saved. Sales Office will catch up on refresh.');
+            } else {
+                showToast('Updated', 'Season Sales Note row updated.');
             }
             queueVisibleDatasetCatchup(120);
             return false;
