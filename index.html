@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-    window.__APP_SHELL_VERSION__ = 'V2026.05.01.10';
+    window.__APP_SHELL_VERSION__ = 'V2026.05.01.11';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -250,7 +250,8 @@ body.viewport-compact .app-av-card-thumb-action{font-size:.48rem;padding:.24rem 
             #task-tabs-container.task-top-inline .task-top-control-panel.excel-filter-panel,
             #drive-season-filters.drive-top-inline .task-top-control-panel.excel-filter-panel,
             #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel,
-            #drive-plant-filters.drive-top-inline .task-top-control-panel.excel-filter-panel{
+            #drive-plant-filters.drive-top-inline .task-top-control-panel.excel-filter-panel,
+            #docks-filter-controls.docks-top-inline .task-top-control-panel.excel-filter-panel{
                 position:fixed !important;
                 left:max(10px,env(safe-area-inset-left)) !important;
                 right:max(10px,env(safe-area-inset-right)) !important;
@@ -333,6 +334,19 @@ body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .
         #drive-plant-filters.drive-top-inline .drive-plant-filter-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem}
         #drive-plant-filters .task-top-control-shell{position:relative;height:100%}
         #drive-plant-filters .task-top-control-button{position:relative}
+        #docks-filter-controls.docks-top-inline{display:block;overflow:visible !important;padding:0 !important;margin-bottom:.55rem !important}
+        #docks-filter-controls.docks-top-inline .docks-filter-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem;align-items:start}
+        #docks-filter-controls.docks-top-inline .task-top-control-shell{position:relative;height:100%;min-width:0;padding:.38rem .4rem;border-radius:1rem}
+        #docks-filter-controls.docks-top-inline .task-top-control-button{position:relative;min-height:46px;padding:.42rem .48rem;gap:.38rem;border-radius:999px}
+        #docks-filter-controls.docks-top-inline .task-top-control-button i{font-size:.82rem}
+        #docks-filter-controls.docks-top-inline .task-top-control-title{font-size:.48rem;letter-spacing:.11em}
+        #docks-filter-controls.docks-top-inline .task-top-control-summary{margin-top:.14rem;font-size:.66rem;line-height:1.08}
+        #docks-filter-controls.docks-top-inline .task-top-control-panel{position:absolute;top:calc(100% + .28rem);left:0;z-index:80;width:min(16rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
+        #docks-filter-controls.docks-top-inline [data-dock-filter-shell=contsize] .task-top-control-panel,
+        #docks-filter-controls.docks-top-inline [data-dock-filter-shell=location] .task-top-control-panel{left:auto;right:0}
+        #docks-filter-controls.docks-top-inline [data-dock-filter-shell=genus] .task-top-control-panel{width:min(17rem,calc(100vw - (var(--shell-gutter) * 2)))}
+        #docks-filter-controls.docks-top-inline [data-dock-filter-shell=contsize] .task-top-control-panel{width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)))}
+        #docks-filter-controls.docks-top-inline [data-dock-filter-shell=location] .task-top-control-panel{width:min(16rem,calc(100vw - (var(--shell-gutter) * 2)))}
         body.viewport-compact #drive-plant-filters.drive-top-inline{margin-bottom:.35rem !important}
         body.viewport-compact #drive-plant-filters.drive-top-inline .drive-plant-filter-row{gap:.35rem !important}
         body.viewport-compact #drive-plant-filters.drive-top-inline .task-top-control-shell{padding:.32rem .38rem !important;border-radius:.92rem !important}
@@ -344,6 +358,17 @@ body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .
         body.viewport-compact #drive-plant-filters.drive-top-inline [data-drive-filter-shell=\"genus\"] .task-top-control-panel,
         body.viewport-compact #drive-plant-filters.drive-top-inline [data-drive-filter-shell=\"contsize\"] .task-top-control-panel{left:auto;right:0}
         body.viewport-compact #drive-plant-filters.drive-top-inline [data-drive-filter-shell=\"genus\"] .task-top-control-panel{width:min(17rem,calc(100vw - (var(--shell-gutter) * 2)))}
+        body.viewport-compact #docks-filter-controls.docks-top-inline{margin-bottom:.35rem !important}
+        body.viewport-compact #docks-filter-controls.docks-top-inline .docks-filter-row{gap:.35rem !important}
+        body.viewport-compact #docks-filter-controls.docks-top-inline .task-top-control-shell{padding:.32rem .38rem !important;border-radius:.92rem !important}
+        body.viewport-compact #docks-filter-controls.docks-top-inline .task-top-control-button{min-height:42px !important;padding:.38rem .42rem !important;gap:.35rem !important;border-radius:999px !important}
+        body.viewport-compact #docks-filter-controls.docks-top-inline .task-top-control-button i{font-size:.8rem !important}
+        body.viewport-compact #docks-filter-controls.docks-top-inline .task-top-control-title{font-size:.45rem !important;letter-spacing:.11em !important}
+        body.viewport-compact #docks-filter-controls.docks-top-inline .task-top-control-summary{margin-top:.14rem !important;font-size:.6rem !important;line-height:1.05 !important}
+        body.viewport-compact #docks-filter-controls.docks-top-inline .task-top-control-panel{position:absolute;top:calc(100% + .28rem);left:0;z-index:80;width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
+        body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-shell=contsize] .task-top-control-panel,
+        body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-shell=location] .task-top-control-panel{left:auto;right:0}
+        body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-shell=genus] .task-top-control-panel{width:min(17rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #view-wrapper{width:var(--shell-width);max-width:var(--shell-width);min-width:0;overflow-x:hidden;overflow-y:visible;margin:0 auto}#view-wrapper > div{width:100%;max-width:var(--content-width);margin:0 auto}
         .sticky-search{position:-webkit-sticky;position:sticky;top:0;z-index:35;background:var(--sticky-chrome-bg);padding-top:0;padding-bottom:.45rem;box-shadow:none;transform:none;-webkit-transform:none;backface-visibility:visible;margin-bottom:0 !important}
 .request-swipe-row{display:block !important;padding:0 !important;position:relative;overflow:hidden;background:#ffffff !important;touch-action:pan-y;overscroll-behavior-x:contain;-webkit-user-select:none;user-select:none}
@@ -942,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.10').trim() || 'V2026.05.01.10';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.11').trim() || 'V2026.05.01.11';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1171,14 +1196,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <input type="text" id="docks-search" class="input-field w-full pr-10 !mb-0" placeholder="Search common name or location..." oninput="handleDocksSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="docks-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearDocksSearch()"></i>
                     </div>
-                    <div id="docks-filter-controls" class="mb-3 grid grid-cols-2 gap-2">
-                        <select id="docks-genus-filter" class="input-field !mb-0 bg-white text-[11px] font-black uppercase tracking-[0.12em]" onchange="setDockGenusFilter(this.value)">
-                            <option value="">All Genus</option>
-                        </select>
-                        <select id="docks-contsize-filter" class="input-field !mb-0 bg-white text-[11px] font-black uppercase tracking-[0.12em]" onchange="setDockContSizeFilter(this.value)">
-                            <option value="">All Sizes</option>
-                        </select>
-                    </div>
+                    <div id="docks-filter-controls" class="docks-top-inline mb-3 hidden"></div>
                     <div id="docks-mode-toggle" class="mb-3 grid grid-cols-2 gap-2">
                         <button id="dock-mode-btn-docks" class="rounded-xl border border-green-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-95" onclick="setDockViewMode('docks')">Docks</button>
                         <button id="dock-mode-btn-mistakes" class="rounded-xl border border-red-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-red-600 shadow-sm active:scale-95" onclick="setDockViewMode('mistakes')">Mistake</button>
@@ -1523,7 +1541,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.10';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.11';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9079,7 +9097,7 @@ let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKe
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
         let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let tempReqAppendToExistingFolder=false; let previousReqStep=""; let driveQuickRequestItems=new Set(); let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
 let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending'; let requestFolderSearchTerm=''; let requestRepSearchTerm=''; let requestCustomerSearchTerm=''; let requestFolderDateFilter=''; let lastRequestHeaderSearchMode='';
-        let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let selectedDockGenusFilter=""; let selectedDockContSizeFilter=""; let lastSyncTime=new Date().toISOString();
+        let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let selectedDockGenusNames=new Set(); let dockGenusSearchTerm=""; let dockGenusFilterOpen=false; let selectedDockContSizes=new Set(); let dockContSizeSearchTerm=""; let dockContSizeFilterOpen=false; let selectedDockLocationCodes=new Set(); let dockLocationSearchTerm=""; let dockLocationFilterOpen=false; let dockFilterItemsCache=[]; let lastDockFilterRenderSignature=""; let lastSyncTime=new Date().toISOString();
         let lastSuccessfulSyncTime = "";
         let syncDiagnosticsOverride = "";
         let manualSyncStatusState = null;
@@ -9137,7 +9155,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.10').trim() || 'V2026.05.01.10';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.11').trim() || 'V2026.05.01.11';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -16049,6 +16067,16 @@ function toggleDriveQuickRequestItem(domId) {
             return normalizeDockFilterValue(firstNonEmptyValue(item && item.CONTSIZE, item && item.contsize, item && item.ITEMSPEC, item && item.itemspec, ''));
         }
 
+        function getDockLocationCodeValue(item = null) {
+            return normalizeDockFilterValue(firstNonEmptyValue(
+                item && item.LOCATIONCODE,
+                item && item.locationcode,
+                item && item.LOCATION_CODE,
+                item && item.location_code,
+                ''
+            ));
+        }
+
         function buildDockFilterOptions(items = [], getter = null) {
             const getValue = typeof getter === 'function' ? getter : (() => '');
             return Array.from(new Set((Array.isArray(items) ? items : [])
@@ -16058,30 +16086,172 @@ function toggleDriveQuickRequestItem(domId) {
                 .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
         }
 
-        function setDockSelectOptions(selectEl, values = [], currentValue = '', allLabel = 'All') {
-            if (!selectEl) return;
-            const safeCurrent = normalizeDockFilterValue(currentValue);
-            const optionValues = Array.isArray(values) ? values.slice() : [];
-            if (safeCurrent && !optionValues.includes(safeCurrent)) optionValues.unshift(safeCurrent);
-            const nextHtml = [`<option value="">${allLabel}</option>`].concat(optionValues.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)).join('');
-            if (selectEl.innerHTML !== nextHtml) selectEl.innerHTML = nextHtml;
-            selectEl.value = safeCurrent;
+        function pruneDockFilterSelection(selectionSet, options = []) {
+            const available = new Set(Array.isArray(options) ? options : []);
+            return new Set(Array.from(selectionSet instanceof Set ? selectionSet : []).filter((value) => available.has(value)));
+        }
+
+        function buildDockFilterState(items = []) {
+            const source = Array.isArray(items) ? items : [];
+            const genusOptions = buildDockFilterOptions(source, getDockGenusName);
+            const contSizeOptions = buildDockFilterOptions(source, getDockContSizeValue);
+            const locationOptions = buildDockFilterOptions(source, getDockLocationCodeValue);
+            selectedDockGenusNames = pruneDockFilterSelection(selectedDockGenusNames, genusOptions);
+            selectedDockContSizes = pruneDockFilterSelection(selectedDockContSizes, contSizeOptions);
+            selectedDockLocationCodes = pruneDockFilterSelection(selectedDockLocationCodes, locationOptions);
+            return {
+                genusOptions,
+                contSizeOptions,
+                locationOptions,
+                filteredGenusOptions: filterExcelOptionValues(genusOptions, dockGenusSearchTerm),
+                filteredContSizeOptions: filterExcelOptionValues(contSizeOptions, dockContSizeSearchTerm),
+                filteredLocationOptions: filterExcelOptionValues(locationOptions, dockLocationSearchTerm),
+                genusSearchTerm: normalizeExcelFilterSearchTerm(dockGenusSearchTerm),
+                contSizeSearchTerm: normalizeExcelFilterSearchTerm(dockContSizeSearchTerm),
+                locationSearchTerm: normalizeExcelFilterSearchTerm(dockLocationSearchTerm),
+                selectedGenusCount: selectedDockGenusNames.size,
+                selectedContSizeCount: selectedDockContSizes.size,
+                selectedLocationCount: selectedDockLocationCodes.size
+            };
+        }
+
+        function buildDockFilterOptionHtml(options = [], selectedSet = new Set(), toggleHandler = '', emptyText = 'No matches') {
+            if (!Array.isArray(options) || !options.length) {
+                return `<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">${escapeHtml(emptyText)}</div>`;
+            }
+            return options.map((value) => {
+                const safeValue = escapeHtml(value);
+                const checked = selectedSet.has(value) ? 'checked' : '';
+                return `<label class="excel-filter-option flex items-center justify-between gap-3 px-3 py-2 hover:bg-emerald-50"><span class="min-w-0 truncate text-[12px] font-bold text-slate-700">${safeValue}</span><input type="checkbox" class="h-4 w-4 accent-emerald-600" data-dock-option="${safeValue}" ${checked} onclick="event.stopPropagation(); return ${toggleHandler}(this.dataset.dockOption)"></label>`;
+            }).join('');
+        }
+
+        function ensureDockFilterControlsShell(controls) {
+            if (!controls || controls.dataset.docksFiltersReady === '1') return;
+            controls.dataset.docksFiltersReady = '1';
+            controls.innerHTML = `<div class="docks-filter-row">
+                <div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5" data-dock-filter-shell="genus"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleDockGenusDropdown()"><i class="ph-bold ph-funnel text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus</span><span class="task-top-control-summary mt-1 truncate text-[9px] font-bold normal-case tracking-normal text-slate-500" data-dock-genus-summary>All Genus</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm hidden" data-dock-genus-panel>${buildExcelFilterSearchHtml('dock-genus-search', dockGenusSearchTerm, 'Search genus...', 'setDockGenusSearchTerm', 'handleDockGenusSearchKeydown')}<div class="excel-filter-options" data-dock-genus-options></div><div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-dock-genus-clear onclick="return clearDockGenusFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDockGenusDropdown()">Done</button></div></div></div>
+                <div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5" data-dock-filter-shell="contsize"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleDockContSizeDropdown()"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">CONTSIZE</span><span class="task-top-control-summary mt-1 truncate text-[9px] font-bold normal-case tracking-normal text-slate-500" data-dock-contsize-summary>All Sizes</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm hidden" data-dock-contsize-panel>${buildExcelFilterSearchHtml('dock-contsize-search', dockContSizeSearchTerm, 'Search size...', 'setDockContSizeSearchTerm', 'handleDockContSizeSearchKeydown')}<div class="excel-filter-options" data-dock-contsize-options></div><div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-dock-contsize-clear onclick="return clearDockContSizeFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDockContSizeDropdown()">Done</button></div></div></div>
+                <div class="task-top-control-shell h-full rounded-[1.05rem] border border-emerald-100 bg-white/95 px-2.5 py-2 shadow-sm backdrop-blur-sm sm:px-3 sm:py-2.5" data-dock-filter-shell="location"><button type="button" class="task-top-control-button inline-flex min-h-[54px] w-full items-center gap-2 rounded-full border border-emerald-200 bg-white px-2.5 py-2 text-left text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm sm:px-3 sm:text-[10px]" onclick="return toggleDockLocationDropdown()"><i class="ph-bold ph-map-pin-line text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Location</span><span class="task-top-control-summary mt-1 truncate text-[9px] font-bold normal-case tracking-normal text-slate-500" data-dock-location-summary>All Locations</span></span><i class="ph-bold ph-caret-down text-xs opacity-70"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm hidden" data-dock-location-panel>${buildExcelFilterSearchHtml('dock-location-search', dockLocationSearchTerm, 'Search location...', 'setDockLocationSearchTerm', 'handleDockLocationSearchKeydown')}<div class="excel-filter-options" data-dock-location-options></div><div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm" data-dock-location-clear onclick="return clearDockLocationFilters()">Clear</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeDockLocationDropdown()">Done</button></div></div></div>
+            </div>`;
+        }
+
+        function setDockSearchInputValue(container, inputId = '', value = '') {
+            const input = container ? container.querySelector(`#${inputId}`) : null;
+            if (input && document.activeElement !== input && input.value !== value) input.value = value;
+        }
+
+        function updateDockFilterPanelUi(container, config) {
+            const summaryEl = container.querySelector(config.summarySelector);
+            const selectedCount = Number(config.selectedCount || 0);
+            if (summaryEl) summaryEl.textContent = selectedCount ? `${selectedCount} selected` : config.defaultLabel;
+            const panelEl = container.querySelector(config.panelSelector);
+            if (panelEl) panelEl.classList.toggle('hidden', !config.open);
+            const optionsEl = container.querySelector(config.optionsSelector);
+            if (optionsEl) {
+                optionsEl.innerHTML = config.options.length
+                    ? buildDockFilterOptionHtml(config.filteredOptions, config.selectedSet, config.toggleHandler, 'No matches')
+                    : `<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">${escapeHtml(config.emptyText)}</div>`;
+            }
+            const clearBtn = container.querySelector(config.clearSelector);
+            const clearDisabled = selectedCount === 0 && !String(config.searchTerm || '').trim();
+            if (clearBtn) {
+                clearBtn.classList.toggle('opacity-50', clearDisabled);
+                clearBtn.classList.toggle('cursor-not-allowed', clearDisabled);
+                clearBtn.classList.toggle('pointer-events-none', clearDisabled);
+            }
+            setDockSearchInputValue(container, config.searchInputId, config.rawSearchTerm || '');
+        }
+
+        function updateDockFilterControlsUi(state, controls) {
+            if (!controls) return;
+            controls.classList.toggle('hidden', dockViewMode !== 'docks');
+            if (dockViewMode !== 'docks') return;
+            updateDockFilterPanelUi(controls, {
+                summarySelector: '[data-dock-genus-summary]',
+                panelSelector: '[data-dock-genus-panel]',
+                optionsSelector: '[data-dock-genus-options]',
+                clearSelector: '[data-dock-genus-clear]',
+                searchInputId: 'dock-genus-search',
+                rawSearchTerm: dockGenusSearchTerm,
+                searchTerm: state.genusSearchTerm,
+                options: state.genusOptions,
+                filteredOptions: state.filteredGenusOptions,
+                selectedSet: selectedDockGenusNames,
+                selectedCount: state.selectedGenusCount,
+                open: dockGenusFilterOpen,
+                toggleHandler: 'toggleDockGenusSelection',
+                defaultLabel: 'All Genus',
+                emptyText: 'No genus data available.'
+            });
+            updateDockFilterPanelUi(controls, {
+                summarySelector: '[data-dock-contsize-summary]',
+                panelSelector: '[data-dock-contsize-panel]',
+                optionsSelector: '[data-dock-contsize-options]',
+                clearSelector: '[data-dock-contsize-clear]',
+                searchInputId: 'dock-contsize-search',
+                rawSearchTerm: dockContSizeSearchTerm,
+                searchTerm: state.contSizeSearchTerm,
+                options: state.contSizeOptions,
+                filteredOptions: state.filteredContSizeOptions,
+                selectedSet: selectedDockContSizes,
+                selectedCount: state.selectedContSizeCount,
+                open: dockContSizeFilterOpen,
+                toggleHandler: 'toggleDockContSizeSelection',
+                defaultLabel: 'All Sizes',
+                emptyText: 'No size data available.'
+            });
+            updateDockFilterPanelUi(controls, {
+                summarySelector: '[data-dock-location-summary]',
+                panelSelector: '[data-dock-location-panel]',
+                optionsSelector: '[data-dock-location-options]',
+                clearSelector: '[data-dock-location-clear]',
+                searchInputId: 'dock-location-search',
+                rawSearchTerm: dockLocationSearchTerm,
+                searchTerm: state.locationSearchTerm,
+                options: state.locationOptions,
+                filteredOptions: state.filteredLocationOptions,
+                selectedSet: selectedDockLocationCodes,
+                selectedCount: state.selectedLocationCount,
+                open: dockLocationFilterOpen,
+                toggleHandler: 'toggleDockLocationSelection',
+                defaultLabel: 'All Locations',
+                emptyText: 'No location data available.'
+            });
         }
 
         function syncDockFilterControls(baseItems = []) {
             const controls = document.getElementById('docks-filter-controls');
+            dockFilterItemsCache = Array.isArray(baseItems) ? baseItems : [];
             if (controls) controls.classList.toggle('hidden', dockViewMode !== 'docks');
             if (dockViewMode !== 'docks') return;
-            setDockSelectOptions(document.getElementById('docks-genus-filter'), buildDockFilterOptions(baseItems, getDockGenusName), selectedDockGenusFilter, 'All Genus');
-            setDockSelectOptions(document.getElementById('docks-contsize-filter'), buildDockFilterOptions(baseItems, getDockContSizeValue), selectedDockContSizeFilter, 'All Sizes');
+            ensureDockFilterControlsShell(controls);
+            const state = buildDockFilterState(dockFilterItemsCache);
+            const renderSignature = [
+                dockFilterItemsCache.length,
+                state.genusOptions.join('\u001f'),
+                state.contSizeOptions.join('\u001f'),
+                state.locationOptions.join('\u001f'),
+                buildSelectionStateKey(selectedDockGenusNames),
+                buildSelectionStateKey(selectedDockContSizes),
+                buildSelectionStateKey(selectedDockLocationCodes),
+                String(dockGenusSearchTerm || '').trim(),
+                String(dockContSizeSearchTerm || '').trim(),
+                String(dockLocationSearchTerm || '').trim(),
+                dockGenusFilterOpen ? 'genus-open' : 'genus-closed',
+                dockContSizeFilterOpen ? 'size-open' : 'size-closed',
+                dockLocationFilterOpen ? 'loc-open' : 'loc-closed'
+            ].join('|');
+            if (renderSignature === lastDockFilterRenderSignature) return;
+            lastDockFilterRenderSignature = renderSignature;
+            updateDockFilterControlsUi(state, controls);
         }
 
         function applyDockStructuredFilters(items = []) {
             let nextItems = Array.isArray(items) ? items : [];
-            const genusValue = normalizeDockFilterValue(selectedDockGenusFilter);
-            const contSizeValue = normalizeDockFilterValue(selectedDockContSizeFilter);
-            if (genusValue) nextItems = nextItems.filter((item) => getDockGenusName(item) === genusValue);
-            if (contSizeValue) nextItems = nextItems.filter((item) => getDockContSizeValue(item) === contSizeValue);
+            if (selectedDockGenusNames.size) nextItems = nextItems.filter((item) => selectedDockGenusNames.has(getDockGenusName(item)));
+            if (selectedDockContSizes.size) nextItems = nextItems.filter((item) => selectedDockContSizes.has(getDockContSizeValue(item)));
+            if (selectedDockLocationCodes.size) nextItems = nextItems.filter((item) => selectedDockLocationCodes.has(getDockLocationCodeValue(item)));
             return nextItems;
         }
 
@@ -16092,18 +16262,157 @@ function toggleDriveQuickRequestItem(domId) {
             selectedDockStop = null;
         }
 
-        function setDockGenusFilter(value = '') {
-            selectedDockGenusFilter = normalizeDockFilterValue(value);
-            resetDockDrillForFilterChange();
-            scheduleDocksRender(0);
+        function refreshDockFilterControls() {
+            lastDockFilterRenderSignature = '';
+            syncDockFilterControls(dockFilterItemsCache);
+        }
+
+        function setDockFilterSearchTerm(kind = '', value = '') {
+            const safeKind = String(kind || '').trim().toLowerCase();
+            if (safeKind === 'genus') dockGenusSearchTerm = String(value || '');
+            else if (safeKind === 'contsize') dockContSizeSearchTerm = String(value || '');
+            else if (safeKind === 'location') dockLocationSearchTerm = String(value || '');
+            const controls = document.getElementById('docks-filter-controls');
+            const inputId = safeKind === 'genus' ? 'dock-genus-search' : safeKind === 'contsize' ? 'dock-contsize-search' : 'dock-location-search';
+            const input = controls ? controls.querySelector(`#${inputId}`) : null;
+            const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
+            scheduleUiRender(`dock-${safeKind || 'filter'}-search-ui`, () => {
+                const state = buildDockFilterState(dockFilterItemsCache);
+                updateDockFilterControlsUi(state, controls);
+                if (!input) return;
+                requestAnimationFrame(() => {
+                    const current = controls ? controls.querySelector(`#${inputId}`) : null;
+                    if (!current) return;
+                    if (document.activeElement !== current) current.focus();
+                    if (cursorPos !== null && typeof current.setSelectionRange === 'function') {
+                        current.setSelectionRange(cursorPos, cursorPos);
+                    }
+                });
+            });
             return false;
         }
 
-        function setDockContSizeFilter(value = '') {
-            selectedDockContSizeFilter = normalizeDockFilterValue(value);
+        function setDockGenusSearchTerm(value = '') { return setDockFilterSearchTerm('genus', value); }
+        function setDockContSizeSearchTerm(value = '') { return setDockFilterSearchTerm('contsize', value); }
+        function setDockLocationSearchTerm(value = '') { return setDockFilterSearchTerm('location', value); }
+
+        function toggleDockFilterDropdown(kind = '') {
+            const safeKind = String(kind || '').trim().toLowerCase();
+            const nextOpen = safeKind === 'genus' ? !dockGenusFilterOpen : safeKind === 'contsize' ? !dockContSizeFilterOpen : !dockLocationFilterOpen;
+            dockGenusFilterOpen = safeKind === 'genus' ? nextOpen : false;
+            dockContSizeFilterOpen = safeKind === 'contsize' ? nextOpen : false;
+            dockLocationFilterOpen = safeKind === 'location' ? nextOpen : false;
+            refreshDockFilterControls();
+            return false;
+        }
+
+        function toggleDockGenusDropdown() { return toggleDockFilterDropdown('genus'); }
+        function toggleDockContSizeDropdown() { return toggleDockFilterDropdown('contsize'); }
+        function toggleDockLocationDropdown() { return toggleDockFilterDropdown('location'); }
+
+        function closeDockFilterDropdown(kind = '') {
+            const safeKind = String(kind || '').trim().toLowerCase();
+            if (!safeKind || safeKind === 'genus') dockGenusFilterOpen = false;
+            if (!safeKind || safeKind === 'contsize') dockContSizeFilterOpen = false;
+            if (!safeKind || safeKind === 'location') dockLocationFilterOpen = false;
+            refreshDockFilterControls();
+            return false;
+        }
+
+        function closeDockGenusDropdown() { return closeDockFilterDropdown('genus'); }
+        function closeDockContSizeDropdown() { return closeDockFilterDropdown('contsize'); }
+        function closeDockLocationDropdown() { return closeDockFilterDropdown('location'); }
+
+        function toggleDockFilterSelection(kind = '', value = '') {
+            const safeKind = String(kind || '').trim().toLowerCase();
+            const safeValue = normalizeDockFilterValue(value);
+            if (!safeValue) return false;
+            const targetSet = safeKind === 'genus' ? selectedDockGenusNames : safeKind === 'contsize' ? selectedDockContSizes : selectedDockLocationCodes;
+            if (targetSet.has(safeValue)) targetSet.delete(safeValue);
+            else targetSet.add(safeValue);
+            dockGenusFilterOpen = safeKind === 'genus';
+            dockContSizeFilterOpen = safeKind === 'contsize';
+            dockLocationFilterOpen = safeKind === 'location';
             resetDockDrillForFilterChange();
             scheduleDocksRender(0);
+            refreshDockFilterControls();
             return false;
+        }
+
+        function toggleDockGenusSelection(value = '') { return toggleDockFilterSelection('genus', value); }
+        function toggleDockContSizeSelection(value = '') { return toggleDockFilterSelection('contsize', value); }
+        function toggleDockLocationSelection(value = '') { return toggleDockFilterSelection('location', value); }
+
+        function clearDockFilterSelection(kind = '') {
+            const safeKind = String(kind || '').trim().toLowerCase();
+            if (safeKind === 'genus') {
+                if (!selectedDockGenusNames.size && !dockGenusSearchTerm) return false;
+                selectedDockGenusNames = new Set();
+                dockGenusSearchTerm = '';
+                dockGenusFilterOpen = false;
+            } else if (safeKind === 'contsize') {
+                if (!selectedDockContSizes.size && !dockContSizeSearchTerm) return false;
+                selectedDockContSizes = new Set();
+                dockContSizeSearchTerm = '';
+                dockContSizeFilterOpen = false;
+            } else {
+                if (!selectedDockLocationCodes.size && !dockLocationSearchTerm) return false;
+                selectedDockLocationCodes = new Set();
+                dockLocationSearchTerm = '';
+                dockLocationFilterOpen = false;
+            }
+            resetDockDrillForFilterChange();
+            scheduleDocksRender(0);
+            refreshDockFilterControls();
+            return false;
+        }
+
+        function clearDockGenusFilters() { return clearDockFilterSelection('genus'); }
+        function clearDockContSizeFilters() { return clearDockFilterSelection('contsize'); }
+        function clearDockLocationFilters() { return clearDockFilterSelection('location'); }
+
+        function applyVisibleDockFilterResults(kind = '') {
+            const safeKind = String(kind || '').trim().toLowerCase();
+            const state = buildDockFilterState(dockFilterItemsCache);
+            const options = safeKind === 'genus' ? state.genusOptions : safeKind === 'contsize' ? state.contSizeOptions : state.locationOptions;
+            const filteredOptions = safeKind === 'genus' ? state.filteredGenusOptions : safeKind === 'contsize' ? state.filteredContSizeOptions : state.filteredLocationOptions;
+            if (!filteredOptions.length) return false;
+            const nextSelection = filteredOptions.length === options.length ? new Set() : new Set(filteredOptions);
+            if (safeKind === 'genus') {
+                selectedDockGenusNames = nextSelection;
+                dockGenusSearchTerm = '';
+                dockGenusFilterOpen = false;
+            } else if (safeKind === 'contsize') {
+                selectedDockContSizes = nextSelection;
+                dockContSizeSearchTerm = '';
+                dockContSizeFilterOpen = false;
+            } else {
+                selectedDockLocationCodes = nextSelection;
+                dockLocationSearchTerm = '';
+                dockLocationFilterOpen = false;
+            }
+            resetDockDrillForFilterChange();
+            scheduleDocksRender(0);
+            return true;
+        }
+
+        function applyVisibleDockGenusResults() { return applyVisibleDockFilterResults('genus'); }
+        function applyVisibleDockContSizeResults() { return applyVisibleDockFilterResults('contsize'); }
+        function applyVisibleDockLocationResults() { return applyVisibleDockFilterResults('location'); }
+
+        function handleDockGenusSearchKeydown(event) {
+            if (!isEnterKeypress(event)) return;
+            handleSearchEnterApply(event, applyVisibleDockGenusResults);
+        }
+
+        function handleDockContSizeSearchKeydown(event) {
+            if (!isEnterKeypress(event)) return;
+            handleSearchEnterApply(event, applyVisibleDockContSizeResults);
+        }
+
+        function handleDockLocationSearchKeydown(event) {
+            if (!isEnterKeypress(event)) return;
+            handleSearchEnterApply(event, applyVisibleDockLocationResults);
         }
 
         function updateDockModeToggleUi() {
@@ -16129,6 +16438,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (nextMode === 'docks') {
                 selectedDockIssueUid = null;
             } else {
+                closeDockFilterDropdown();
                 dockViewLevel = 0;
                 selectedDockNum = null;
                 selectedDockStop = null;
