@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.01.08';
+    window.__APP_SHELL_VERSION__ = 'V2026.05.01.09';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -942,7 +942,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.08').trim() || 'V2026.05.01.08';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.09').trim() || 'V2026.05.01.09';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1506,7 +1506,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.08';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.09';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -4091,13 +4091,38 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
 
         function getHoldStopSnapshotFromItem(item) {
-            return normalizeHoldStopSnapshotValue(firstNonEmptyValue(item && item.HOLDSTOPCODE, item && item.HOLD_STOP_CODE, item && item.HOLDSTOP, ''));
+            return normalizeHoldStopSnapshotValue(firstNonEmptyValue(
+                item && item.HOLDSTOPCODE,
+                item && item.holdstopcode,
+                item && item.HOLD_STOP_CODE,
+                item && item.hold_stop_code,
+                item && item.HOLDSTOP_CODE,
+                item && item.holdstop_code,
+                item && item.HOLDSTOP,
+                item && item.holdstop,
+                item && item.HOLSTOPCODE,
+                item && item.holstopcode,
+                ''
+            ));
         }
 
         function hasBlockingHoldStopCodeForAv(value) {
             const snapshot = normalizeHoldStopSnapshotValue(value);
             if (!snapshot) return false;
-            return snapshot.includes('S');
+            return snapshot.includes('H') || snapshot.includes('S');
+        }
+
+        function itemOrLinkedMasterHasBlockingHoldStopCodeForAv(item = null) {
+            if (hasBlockingHoldStopCodeForAv(getHoldStopSnapshotFromItem(item))) return true;
+            if (item && typeof findLinkedMasterRow === 'function') {
+                const linkedMaster = findLinkedMasterRow(item);
+                if (linkedMaster && linkedMaster !== item && hasBlockingHoldStopCodeForAv(getHoldStopSnapshotFromItem(linkedMaster))) return true;
+            }
+            return false;
+        }
+
+        function requiresAvNoteForCompletion(item = null) {
+            return !itemOrLinkedMasterHasBlockingHoldStopCodeForAv(item);
         }
 
         function isSeasonSalesNotesAssignmentValue(value = '') {
@@ -4152,9 +4177,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 ''
             ) || '').trim().toLowerCase();
             if (!isSeasonSalesNotesAssignmentValue(assignmentValue)) return false;
-            const holdSnapshot = getHoldStopSnapshotFromItem(item);
-            if (!holdSnapshot) return false;
-            return holdSnapshot.includes('H') || holdSnapshot.includes('S');
+            return hasBlockingHoldStopCodeForAv(getHoldStopSnapshotFromItem(item));
         }
 
         function getPrioritySnapshotFromItem(item) {
@@ -4322,15 +4345,16 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
 
         function getMasterAvInvalidationReasons(item) {
-            if (!item || !hasTrackedAvPayload(item)) return [];
+            if (!item) return [];
             const reasons = [];
             const currentHold = getHoldStopSnapshotFromItem(item);
+            if (hasBlockingHoldStopCodeForAv(currentHold)) reasons.push('holdstop_blocked');
+            if (!hasTrackedAvPayload(item)) return [...new Set(reasons)];
             const bundleUpdatedAt = getEffectiveAvRuleUpdatedAt(item);
             const effectiveLocMatchQty = calculateLocMatchQtyValue(item) ?? parseAppNumber(item.LOC_MATCH_QTY);
 
             if (effectiveLocMatchQty != null) item.LOC_MATCH_QTY = effectiveLocMatchQty;
             if (effectiveLocMatchQty != null && effectiveLocMatchQty <= 0) reasons.push('loc_match_qty_zero');
-            if (hasBlockingHoldStopCodeForAv(currentHold)) reasons.push('holdstop_blocked');
             if (bundleUpdatedAt) {
                 const ageMs = Date.now() - Date.parse(bundleUpdatedAt);
                 if (ageMs > AV_RULE_MAX_AGE_MS) reasons.push('stale_10_day');
@@ -9093,7 +9117,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.08').trim() || 'V2026.05.01.08';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.09').trim() || 'V2026.05.01.09';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -26406,6 +26430,16 @@ function toggleDriveQuickRequestItem(domId) {
             ) || '').trim();
         }
 
+        function applyAvNoteFieldVisibilityForPrefix(prefix = '', item = activeItem) {
+            const safePrefix = String(prefix || '').trim();
+            if (!safePrefix || safePrefix === 'global-') return;
+            const avNote = document.getElementById(safePrefix + 'av-note');
+            if (!avNote) return;
+            const wrapper = avNote.closest('.relative.w-full.mb-3');
+            if (!wrapper) return;
+            wrapper.classList.toggle('hidden', !requiresAvNoteForCompletion(item));
+        }
+
         function populateDetailSummaryValues(item = activeItem, detailSourceView = '') {
             if (!item) return;
             const safeDetailSourceView = String(detailSourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
@@ -26474,6 +26508,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (comments) comments.value = safePrefix === 'req-' ? (item.REQ_COMMENTS || '') : sharedSalesNoteValue;
             if (desc) desc.value = item.DOCK_NOTE || '';
             if (avNote) avNote.value = safePrefix === 'flyer-' ? firstNonEmptyValue(item.FLYER_AV_NOTE, item.AV_NOTE, '') : (safePrefix === 'req-' ? requestAvNoteValue : sharedAvNoteValue);
+            applyAvNoteFieldVisibilityForPrefix(safePrefix, item);
 
             if (safePrefix === 'req-') {
                 const reserveSelect = document.getElementById('req-reserve');
@@ -27004,6 +27039,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (comments) comments.value = p === 'req-' ? (activeItem.REQ_COMMENTS || '') : sharedSalesNoteValue;
                 if (desc) desc.value = activeItem.DOCK_NOTE || '';
                 if (avNote) avNote.value = p === 'flyer-' ? firstNonEmptyValue(activeItem.FLYER_AV_NOTE, activeItem.AV_NOTE, '') : (p === 'req-' ? requestAvNoteValue : sharedAvNoteValue);
+                applyAvNoteFieldVisibilityForPrefix(p, activeItem);
                 if (p === 'req-') {
                     let res = document.getElementById('req-reserve'); if (res) res.value = activeItem.REQ_RESERVE || "NO";
                 }
@@ -36979,9 +37015,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const effectiveMatch = parseAppNumber(itemToSave.MATCH);
                     const effectiveSpec = String(itemToSave.SPEC || '').trim();
                     const effectiveCaliper = String(itemToSave.CALIPER || '').trim();
+                    const requiresAvNote = requiresAvNoteForCompletion(itemToSave);
                     const needsCaliper = itemToSave.PLANTGROUPCODE && String(itemToSave.PLANTGROUPCODE).includes('330_TREES') && ['#7','#10','#15','#25','#45'].includes(itemToSave.CONTSIZE);
                     if (effectiveMatch == null) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','LOC MATCH % is required before completing this note.',true); return; }
-                    if (!effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','AV Note is required before completing this note.',true); return; }
+                    if (requiresAvNote && !effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','AV Note is required before completing this note.',true); return; }
                     if (!effectiveSpec) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Spec is required before completing this note.',true); return; }
                     if (needsCaliper && !effectiveCaliper) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Caliper is required for this note.',true); return; }
                 }
@@ -37063,8 +37100,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                         const effectiveSourceItem = requestMasterItem || itemToSave;
                         const effectiveSpec = String(firstNonEmptyValue(itemToSave.REQ_SPEC, getItemDisplayValue(effectiveSourceItem, 'SPEC', 'drive'), '')).trim();
                         const effectiveCaliper = String(firstNonEmptyValue(itemToSave.REQ_CALIPER, getItemDisplayValue(effectiveSourceItem, 'CALIPER', 'drive'), '')).trim();
+                        const requiresAvNote = requiresAvNoteForCompletion(effectiveSourceItem);
                         if (effectiveMatch == null) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','LOC MATCH % is required before completing this request.',true); return; }
-                        if (!effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','AV Note is required before completing this request.',true); return; }
+                        if (requiresAvNote && !effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','AV Note is required before completing this request.',true); return; }
                         if (!effectiveSpec) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Spec is required before completing this request.',true); return; }
                         if (needsCaliper && !effectiveCaliper) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Caliper is required for this request.',true); return; }
                     } else if (isComplete) {
@@ -37112,8 +37150,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                         const effectiveMatch = parseAppNumber(itemToSave.MATCH);
                         const effectiveSpec = String(itemToSave.SPEC || '').trim();
                         const effectiveCaliper = String(itemToSave.CALIPER || '').trim();
+                        const requiresAvNote = requiresAvNoteForCompletion(itemToSave);
                         if (effectiveMatch == null) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','LOC MATCH % is required before completing this flyer.',true); return; }
-                        if (!effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','AV Note is required before completing this flyer.',true); return; }
+                        if (requiresAvNote && !effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','AV Note is required before completing this flyer.',true); return; }
                         if (!effectiveSpec) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Spec is required before completing this flyer.',true); return; }
                         if (needsCaliper && !effectiveCaliper) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Caliper is required for this flyer.',true); return; }
                     }
