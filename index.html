@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-    window.__APP_SHELL_VERSION__ = 'V2026.05.01.16';
+    window.__APP_SHELL_VERSION__ = 'V2026.05.01.17';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.16').trim() || 'V2026.05.01.16';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.17').trim() || 'V2026.05.01.17';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1557,7 +1557,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.16';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.17';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -3439,7 +3439,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         function closeLoginBlockingLayers() {
             try { closePhotoModal(); } catch (e) {}
             try { toggleMenu(false); } catch (e) {}
-            ['tab-select-modal', 'assign-modal', 'endcap-modal', 'dock-mistake-modal', 'dock-allocation-modal', 'dock-info-modal', 'sales-office-av-modal', 'request-publish-modal', 'ncr-email-modal', 'request-rep-modal', 'bloom-share-modal', 'bloom-picker-modal', 'drawer-overlay', 'side-drawer'].forEach(forceHideUiLayer);
+            ['tab-select-modal', 'assign-modal', 'endcap-modal', 'dock-mistake-modal', 'dock-allocation-modal', 'dock-info-modal', 'sales-office-av-modal', 'request-publish-modal', 'ncr-email-modal', 'request-rep-modal', 'bloom-share-modal', 'bloom-picker-modal', 'take-back-done-confirm-modal', 'drawer-overlay', 'side-drawer'].forEach(forceHideUiLayer);
         }
 
         function resetLoginUiState() {
@@ -6187,11 +6187,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (!el) return;
                 if (candidateViewId === safeViewId) {
                     targetView = el;
-                    el.classList.remove('hidden');
+                    if (el.classList.contains('hidden')) el.classList.remove('hidden');
                 } else {
-                    el.classList.add('hidden');
+                    if (!el.classList.contains('hidden')) el.classList.add('hidden');
                 }
             });
+            if (targetView) currentPrimaryViewId = safeViewId;
             return targetView;
         }
 
@@ -8874,12 +8875,12 @@ let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let t
         let lastBackgroundRefreshAt=0;
         let cacheWarmPromise=null;
         let cachePersistTimer=null; let cachePersistIdleHandle=null; let lastCachePersistAt=0; let pendingCachePersist=false;
-let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0; let leafVoiceRecognition=null; let leafVoiceListening=false; let leafVoiceSpeaking=false; let leafVoiceAbortRequested=false; let leafVoiceSubmitPending=false; let leafVoiceInterimText=''; let leafVoiceFinalText=''; let leafVoiceStatusOverride=''; let leafLastSpokenAnswer=''; let leafVoiceUtterance=null; let leafVoiceFinalizeTimer=null; let leafVoiceLastSpeechAt=0;
+        let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let currentPrimaryViewId="home"; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0; let leafVoiceRecognition=null; let leafVoiceListening=false; let leafVoiceSpeaking=false; let leafVoiceAbortRequested=false; let leafVoiceSubmitPending=false; let leafVoiceInterimText=''; let leafVoiceFinalText=''; let leafVoiceStatusOverride=''; let leafLastSpokenAnswer=''; let leafVoiceUtterance=null; let leafVoiceFinalizeTimer=null; let leafVoiceLastSpeechAt=0;
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
         let dockIssueStatusByUid=new Map(); let dockIssueAllocationsBySourceUid=new Map(); let dockIssueAllocationsById=new Map(); let dockIssueDataPromise=null; let dockIssueDataLoaded=false; let dockIssueStatusSchemaReady=null; let dockIssueStatusSchemaPromise=null; let dockIssueAllocationSchemaReady=null; let dockIssueAllocationSchemaPromise=null; let dockIssueSchemaWarningShown=false; let dockViewMode='docks'; let selectedDockIssueUid=null; let dockResolvedStateCacheKey=''; let dockResolvedStateCache=null; let dockDisplayInventory=[]; let dockDisplayInventoryById=new Map(); let dockDisplayInventoryBySourceUid=new Map(); let dockIssueSourceRowsCacheKey=''; let dockIssueSourceRowsById=new Map(); let dockIssueSourceRowsByCurrentUid=new Map(); let dockIssueSourceRowsByMatchKey=new Map();
-        let takeBackRows=[]; let takeBackRowsById=new Map(); let takeBackSchemaReady=null; let takeBackSchemaPromise=null; let takeBackSchemaWarningShown=false; let takeBackDataLoaded=false; let takeBackDataPromise=null; let takeBackOptimisticDoneIds=new Set();
+        let takeBackRows=[]; let takeBackRowsById=new Map(); let takeBackSchemaReady=null; let takeBackSchemaPromise=null; let takeBackSchemaWarningShown=false; let takeBackDataLoaded=false; let takeBackDataPromise=null; let takeBackOptimisticDoneIds=new Set(); let takeBackDoneConfirmResolve=null;
         let detailRequestSourceDomIds=[];
         let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false;
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
@@ -9194,7 +9195,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.16').trim() || 'V2026.05.01.16';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.17').trim() || 'V2026.05.01.17';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -11951,6 +11952,7 @@ function openDriveQuickFiltersModal() {
 }
 
 function closeDriveQuickFiltersModal() {
+    if (!driveQuickFiltersModalOpen) return false;
     driveQuickFiltersModalOpen = false;
     const modal = document.getElementById('drive-quick-filters-modal');
     if (modal) {
@@ -16842,6 +16844,8 @@ function toggleDriveQuickRequestItem(domId) {
             const overlay = document.getElementById('drawer-overlay');
             const shouldOpen = !!isOpen;
             if (!drawer || !overlay) return false;
+            const currentlyOpen = drawer.classList.contains('open') || overlay.classList.contains('open');
+            if (!shouldOpen && !currentlyOpen) return false;
             if (shouldOpen) {
                 drawer.classList.remove('hidden');
                 overlay.classList.remove('hidden');
@@ -20671,11 +20675,19 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getCurrentVisibleViewId() {
+            if (currentPrimaryViewId) {
+                const cachedView = document.getElementById('view-' + currentPrimaryViewId);
+                if (cachedView && !cachedView.classList.contains('hidden')) return currentPrimaryViewId;
+            }
             const viewOrder = ['detail', 'home', ...TRACKED_VIEW_IDS];
             for (const viewId of viewOrder) {
                 const el = document.getElementById('view-' + viewId);
-                if (el && !el.classList.contains('hidden')) return viewId;
+                if (el && !el.classList.contains('hidden')) {
+                    currentPrimaryViewId = viewId;
+                    return viewId;
+                }
             }
+            currentPrimaryViewId = 'home';
             return 'home';
         }
 
@@ -20796,6 +20808,7 @@ function toggleDriveQuickRequestItem(domId) {
             const targetViewId = String(viewId || '').trim();
             if (!targetViewId) return;
             const activationStartedAt = beginInternalPerfMeasure();
+            const viewActivateDelay = isTouchConstrainedDevice() ? 180 : 72;
             scheduleUiRender(`view-activate:${targetViewId}`, () => {
                 if (getCurrentVisibleViewId() !== targetViewId) return;
                 setRealtimeSubscriptionsForView(targetViewId);
@@ -20811,7 +20824,7 @@ function toggleDriveQuickRequestItem(domId) {
                     scrollDelayMs: 180,
                     interactionDelayMs: 160
                 });
-            });
+            }, viewActivateDelay);
         }
 
         function shouldRunImmediateViewActivation(viewId = '', state = null, options = {}) {
@@ -20869,9 +20882,9 @@ function toggleDriveQuickRequestItem(domId) {
 
         function switchView(viewId, options = {}) {
             const viewSwitchStartedAt = beginInternalPerfMeasure();
-            closeDriveQuickFiltersModal();
+            if (driveQuickFiltersModalOpen) closeDriveQuickFiltersModal();
             if (String(viewId || '').trim() !== 'tasks') closeTaskDropdowns(false);
-            setMenuOpenState(false);
+            if (isDrawerOpen()) setMenuOpenState(false);
             beginDirectNavigationActivity();
             const switchOptions = (options && typeof options === 'object') ? options : {};
             const fromHistory = !!switchOptions.fromHistory;
@@ -20879,6 +20892,13 @@ function toggleDriveQuickRequestItem(domId) {
             const requestedViewId = String(viewId || 'home').trim();
             const nextViewId = canAccessView(requestedViewId) ? requestedViewId : 'home';
             const currentViewId = getCurrentVisibleViewId();
+            if (currentViewId && currentViewId !== nextViewId) {
+                cancelScheduledViewRenderWork(currentViewId);
+                cancelChunkRenderWorkForView(currentViewId);
+                cancelScheduledUiRenderByPrefix(`view-enter:${currentViewId}`);
+                cancelScheduledUiRenderByPrefix(`view-activate:${currentViewId}`);
+                cancelScheduledUiRenderByPrefix(`view-chrome:${currentViewId}`);
+            }
             if (nextViewId === 'drive' && currentViewId !== 'drive' && !fromHistory && activeDriveMode === 'ok') {
                 const driveWasNotCommon = activeDriveTab !== 'name' || driveViewLevel !== 0 || selectedDriveName || selectedDriveSize || selectedDriveSeason || selectedDriveBlock || selectedDriveLoc;
                 activeDriveTab = 'name';
@@ -20918,6 +20938,7 @@ function toggleDriveQuickRequestItem(domId) {
             const needsTargetRender = !nextState.initialized || nextState.dirty;
             if (targetView) {
                 showOnlyPrimaryView(nextViewId);
+                updateFooterNavState();
                 if (needsTargetRender) {
                     scheduleUiRender(`view-switch-render:${nextViewId}`, () => {
                         if (!isLatestViewRenderToken(nextViewId, renderToken)) {
@@ -25696,11 +25717,44 @@ function toggleDriveQuickRequestItem(domId) {
             });
         }
 
+        function getTakeBackEmptyHtml() {
+            return '<div class="p-8 text-center bg-white rounded-2xl border border-emerald-100 shadow-sm"><div class="text-[#007a4d] text-3xl mb-2"><i class="ph-bold ph-check-circle"></i></div><div class="font-black text-slate-900 mb-1">All clear</div><div class="text-sm font-semibold text-slate-500">Rows added from Bloom Picker will show here.</div></div>';
+        }
+
+        function syncTakeBackVisibleCount() {
+            const crumb = document.getElementById('take-back-crumb');
+            if (!crumb) return;
+            const openCount = takeBackRows.filter((row) => row && isTakeBackRowOpen(row)).length;
+            crumb.innerText = `${openCount} Open Row${openCount === 1 ? '' : 's'}`;
+        }
+
+        function removeTakeBackCardFromDom(uniqueId = '') {
+            const safeUid = String(uniqueId || '').trim();
+            if (!safeUid) return false;
+            let removed = false;
+            document.querySelectorAll('[data-take-back-uid]').forEach((card) => {
+                if (String(card && card.dataset && card.dataset.takeBackUid || '').trim() !== safeUid) return;
+                card.remove();
+                removed = true;
+            });
+            if (!removed) return false;
+            syncTakeBackVisibleCount();
+            if (!takeBackRows.some((row) => row && isTakeBackRowOpen(row)) && isViewVisible('take-back')) {
+                const container = document.getElementById('take-back-content');
+                if (container) {
+                    setContainerHtml(container, getTakeBackEmptyHtml());
+                    setContainerUiState(container, 'empty');
+                }
+            }
+            return true;
+        }
+
         function removeTakeBackRowFromCache(uniqueId = '') {
             const safeUid = String(uniqueId || '').trim();
             if (!safeUid) return;
             takeBackRowsById.delete(safeUid);
             takeBackRows = takeBackRows.filter((row) => String(row && row.UNIQUE_ID || '').trim() !== safeUid);
+            removeTakeBackCardFromDom(safeUid);
         }
 
         function cacheTakeBackRow(rawRow = null) {
@@ -25882,10 +25936,68 @@ function toggleDriveQuickRequestItem(domId) {
                 </div>`;
         }
 
+        function ensureTakeBackDoneConfirmModal() {
+            let modal = document.getElementById('take-back-done-confirm-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'take-back-done-confirm-modal';
+                modal.className = 'hidden fixed inset-0 z-[17000] flex items-center justify-center p-4';
+                document.body.appendChild(modal);
+            }
+            return modal;
+        }
+
+        function closeTakeBackDoneConfirm(choice = 'cancel') {
+            const modal = document.getElementById('take-back-done-confirm-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.innerHTML = '';
+            }
+            const resolver = takeBackDoneConfirmResolve;
+            takeBackDoneConfirmResolve = null;
+            if (typeof resolver === 'function') resolver(String(choice || '').trim().toLowerCase() === 'done');
+            return false;
+        }
+
+        function openTakeBackDoneConfirm(row = null) {
+            if (typeof takeBackDoneConfirmResolve === 'function') {
+                const previousResolver = takeBackDoneConfirmResolve;
+                takeBackDoneConfirmResolve = null;
+                previousResolver(false);
+            }
+            const modal = ensureTakeBackDoneConfirmModal();
+            const itemLabel = escapeHtml(String(firstNonEmptyValue(row && row.COMMONNAME, 'this row')).trim() || 'this row');
+            const itemMeta = [row && row.CONTSIZE, row && row.LOCATIONCODE, row && row.LOTCODE].map((value) => String(value || '').trim()).filter(Boolean).join(' / ');
+            modal.innerHTML = `
+                <div class="absolute inset-0 bg-slate-900/45" onclick="return closeTakeBackDoneConfirm('cancel')"></div>
+                <div class="relative w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl" onclick="event.stopPropagation()">
+                    <div class="mb-1 text-[11px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Take Back</div>
+                    <div class="text-2xl font-black text-slate-900">Are you sure?</div>
+                    <div class="mt-2 text-sm font-bold leading-snug text-slate-600">Mark ${itemLabel} done and remove it from everyone&apos;s Take Back view?</div>
+                    ${itemMeta ? `<div class="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700">${escapeHtml(itemMeta)}</div>` : ''}
+                    <div class="mt-5 grid grid-cols-2 gap-3">
+                        <button type="button" class="min-h-[48px] rounded-xl border border-slate-200 bg-slate-50 px-4 text-[12px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-95" onclick="return closeTakeBackDoneConfirm('cancel')">Cancel</button>
+                        <button id="take-back-confirm-done-btn" type="button" class="min-h-[48px] rounded-xl bg-[#007a4d] px-4 text-[12px] font-black uppercase tracking-[0.12em] text-white shadow-md active:scale-95" onclick="return closeTakeBackDoneConfirm('done')">Done</button>
+                    </div>
+                </div>`;
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                const doneButton = document.getElementById('take-back-confirm-done-btn');
+                if (doneButton && typeof doneButton.focus === 'function') {
+                    try { doneButton.focus({ preventScroll: true }); } catch (error) { doneButton.focus(); }
+                }
+            });
+            return new Promise((resolve) => {
+                takeBackDoneConfirmResolve = resolve;
+            });
+        }
+
         async function completeTakeBackRow(uniqueId = '', button = null) {
             const safeUid = String(uniqueId || '').trim();
             if (!safeUid) return false;
             const existing = takeBackRowsById.get(safeUid) || null;
+            const confirmed = await openTakeBackDoneConfirm(existing || { COMMONNAME: 'this row' });
+            if (!confirmed) return false;
             if (button) {
                 button.disabled = true;
                 button.classList.add('opacity-60', 'pointer-events-none');
@@ -25893,7 +26005,7 @@ function toggleDriveQuickRequestItem(domId) {
             takeBackOptimisticDoneIds.add(safeUid);
             removeTakeBackRowFromCache(safeUid);
             markViewDirty('take-back');
-            scheduleTakeBackRender(0);
+            scheduleTakeBackRender(takeBackRows.length ? 80 : 0);
             const completedAt = new Date().toISOString();
             const payload = {
                 status: 'done',
@@ -25947,7 +26059,7 @@ function toggleDriveQuickRequestItem(domId) {
             const rows = takeBackRows.filter((row) => row && isTakeBackRowOpen(row));
             if (crumb) crumb.innerText = `${rows.length} Open Row${rows.length === 1 ? '' : 's'}`;
             if (!rows.length) {
-                setContainerHtml(container, '<div class="p-8 text-center bg-white rounded-2xl border border-emerald-100 shadow-sm"><div class="text-[#007a4d] text-3xl mb-2"><i class="ph-bold ph-check-circle"></i></div><div class="font-black text-slate-900 mb-1">All clear</div><div class="text-sm font-semibold text-slate-500">Rows added from Bloom Picker will show here.</div></div>');
+                setContainerHtml(container, getTakeBackEmptyHtml());
                 setContainerUiState(container, 'empty');
                 return;
             }
@@ -35776,6 +35888,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             const hadSubviewOpen = taskSubviewDropdownOpen;
             const hadReserveCustomerOpen = taskReserveCustomerDropdownOpen;
             const hadOpen = hadModeOpen || hadSubviewOpen || hadReserveCustomerOpen;
+            const hadSearch = !!(taskModeSearchTerm || taskSubviewSearchTerm || taskReserveCustomerSearchTerm);
+            if (!hadOpen && !hadSearch) return false;
             taskTabDropdownOpen = false;
             taskSubviewDropdownOpen = false;
             taskModeSearchTerm = '';
