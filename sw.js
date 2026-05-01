@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.05.01.04';
+const APP_SHELL_BUILD = 'V2026.05.01.05';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const CACHE_NAME = 'greenleaf-v4.2-rebuild-' + APP_SHELL_BUILD;
@@ -42,9 +42,11 @@ function getRequestedShellBuild(request) {
 async function cacheShellResponse(cache, requestedShellUrl, networkResponse) {
   if (!cache || !requestedShellUrl || !networkResponse || networkResponse.status !== 200) return;
   const responseClone = networkResponse.clone();
+  const responseCloneForCurrent = networkResponse.clone();
   const responseCloneForIndex = networkResponse.clone();
   await Promise.all([
     cache.put(requestedShellUrl, responseClone).catch(() => {}),
+    cache.put(APP_SHELL_URL, responseCloneForCurrent).catch(() => {}),
     cache.put('./index.html', responseCloneForIndex).catch(() => {})
   ]);
 }
@@ -75,11 +77,12 @@ self.addEventListener('fetch', (event) => {
   if (event.request.mode === 'navigate') {
     event.respondWith(
       (async () => {
-        const requestedBuild = getRequestedShellBuild(event.request) || APP_SHELL_BUILD;
-        const requestedShellUrl = buildShellUrl(requestedBuild);
+        const requestedBuild = getRequestedShellBuild(event.request);
+        const requestedShellUrl = buildShellUrl(requestedBuild || APP_SHELL_BUILD);
+        const primaryShellUrl = !requestedBuild || requestedBuild === APP_SHELL_BUILD ? requestedShellUrl : APP_SHELL_URL;
         const cache = await caches.open(CACHE_NAME).catch(() => null);
         try {
-          const networkResponse = await fetch(requestedShellUrl, { cache: 'no-store' });
+          const networkResponse = await fetch(primaryShellUrl, { cache: 'reload' });
           if (networkResponse && networkResponse.status === 200) {
             await cacheShellResponse(cache, requestedShellUrl, networkResponse);
           }
@@ -87,17 +90,17 @@ self.addEventListener('fetch', (event) => {
         } catch (error) {
         }
         if (cache) {
-          const cachedRequestedShell = await cache.match(requestedShellUrl);
-          if (cachedRequestedShell) return cachedRequestedShell;
           const cachedCurrentShell = await cache.match(APP_SHELL_URL);
           if (cachedCurrentShell) return cachedCurrentShell;
+          const cachedRequestedShell = await cache.match(requestedShellUrl);
+          if (cachedRequestedShell) return cachedRequestedShell;
           const cachedIndex = await cache.match('./index.html');
           if (cachedIndex) return cachedIndex;
         }
-        const globalRequestedShell = await caches.match(requestedShellUrl);
-        if (globalRequestedShell) return globalRequestedShell;
         const globalCurrentShell = await caches.match(APP_SHELL_URL);
         if (globalCurrentShell) return globalCurrentShell;
+        const globalRequestedShell = await caches.match(requestedShellUrl);
+        if (globalRequestedShell) return globalRequestedShell;
         const cachedRequestedNavigation = await caches.match(event.request);
         if (cachedRequestedNavigation) return cachedRequestedNavigation;
         const globalIndex = await caches.match('./index.html');
