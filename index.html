@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-    window.__APP_SHELL_VERSION__ = 'V2026.05.01.17';
+    window.__APP_SHELL_VERSION__ = 'V2026.05.01.19';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.17').trim() || 'V2026.05.01.17';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.19').trim() || 'V2026.05.01.19';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1557,7 +1557,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.17';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.19';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1573,23 +1573,23 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             auth: { persistSession: false, autoRefreshToken: false },
             realtime: { params: { eventsPerSecond: 8 } }
         });
-const LIVE_SYNC_POLL_STANDALONE_MS = 3000;
-const LIVE_SYNC_POLL_BROWSER_MS = 5000;
+const LIVE_SYNC_POLL_STANDALONE_MS = 15000;
+const LIVE_SYNC_POLL_BROWSER_MS = 20000;
         const LIVE_SYNC_VIEW_POLICY = Object.freeze({
             home: { realtimeTables: [], pollMs: 0 },
             chat: { realtimeTables: ['v2_chat_conversations', 'v2_chat_participants', 'v2_chat_messages'], pollMs: 2000 },
             walkie: { realtimeTables: ['v2_walkie_channels', 'v2_walkie_channel_members', 'v2_walkie_calls', 'v2_walkie_call_members', 'v2_walkie_signal_events'], pollMs: 2000 },
-            drive: { realtimeTables: [], pollMs: 'visible-default' },
-            tasks: { realtimeTables: [], pollMs: 'visible-default' },
+            drive: { realtimeTables: ['v2_master_inventory'], pollMs: 'visible-default' },
+            tasks: { realtimeTables: ['v2_master_inventory', 'v2_cav_import', 'v2_av_notes', 'v2_active_request', 'v2_sales_office'], pollMs: 'visible-default' },
             request: { realtimeTables: ['v2_active_request'], pollMs: 'visible-default' },
-            'sales-office': { realtimeTables: ['v2_sales_office'], pollMs: 'visible-default' },
+            'sales-office': { realtimeTables: ['v2_sales_office', 'v2_master_inventory'], pollMs: 'visible-default' },
             'take-back': { realtimeTables: ['v2_take_back_queue'], pollMs: 'visible-default' },
-            av: { realtimeTables: [], pollMs: 'visible-default' },
-            reserves: { realtimeTables: [], pollMs: 'visible-default' },
+            av: { realtimeTables: ['v2_master_inventory', 'v2_reserves', 'v2_cav_import', 'v2_av_notes'], pollMs: 'visible-default' },
+            reserves: { realtimeTables: ['v2_reserves'], pollMs: 'visible-default' },
             docks: { realtimeTables: ['v2_soc_master', 'v2_dock_team_status', 'v2_dock_item_status', 'v2_dock_issue_status', 'v2_dock_issue_allocations'], pollMs: 0 },
-            reports: { realtimeTables: [], pollMs: 'visible-default' },
-            review: { realtimeTables: [], pollMs: 'visible-default' },
-            'low-stock': { realtimeTables: [], pollMs: 'visible-default' },
+            reports: { realtimeTables: ['v2_master_inventory', 'v2_active_request', 'v2_reserves', 'v2_soc_master'], pollMs: 'visible-default' },
+            review: { realtimeTables: ['v2_master_inventory'], pollMs: 'visible-default' },
+            'low-stock': { realtimeTables: ['v2_master_inventory'], pollMs: 'visible-default' },
             hours: { realtimeTables: [], pollMs: 0 }
         });
         const REALTIME_TABLES = Array.from(new Set(Object.values(LIVE_SYNC_VIEW_POLICY).flatMap((policy) => Array.isArray(policy && policy.realtimeTables) ? policy.realtimeTables : [])));
@@ -1599,9 +1599,9 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         let visibleViewPollTimer = null;
         let activeVisibleViewPollViewId = '';
         let activeVisibleViewPollMs = 0;
-        const VIEW_ENTER_REFRESH_MIN_INTERVAL_MS = 12000;
+        const VIEW_ENTER_REFRESH_MIN_INTERVAL_MS = 24000;
         const VIEW_ENTER_REFRESH_REALTIME_HEALTHY_MS = 60000;
-        const REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS = 2500;
+        const REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS = 12000;
         const viewEnterRefreshAt = new Map();
         const REALTIME_STARTUP_GRACE_MS = 12000;
         const REALTIME_RECOVERY_GRACE_MS = 3200;
@@ -1623,6 +1623,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
         let realtimeStartupUntil = 0;
         let realtimeTableStatus = Object.create(null);
         const SUPABASE_READ_TIMEOUT_MS = 30000;
+        const SUPABASE_READ_CONCURRENCY_LIMIT = 2;
         const LOGIN_READ_TIMEOUT_MS = 8000;
         const LOGIN_FETCH_RETRY_COUNT = 2;
         const LOGIN_FETCH_RETRY_DELAY_MS = 450;
@@ -5487,7 +5488,16 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 return;
             }
             try {
-                await forceRefreshViewDatasets(policy.viewId, { includeBackground: true });
+                if (policy.viewId === 'chat') {
+                    await forceRefreshViewDatasets(policy.viewId, { includeBackground: true });
+                } else {
+                    const realtimeHealthy = hasHealthyCoreRealtimeSubscriptions(policy.viewId);
+                    if (realtimeHealthy) {
+                        liveSyncMode = 'realtime';
+                        updateSyncDiagnostics('realtime');
+                    }
+                    await refreshLoadedDatasets(false);
+                }
             } catch (error) {
             } finally {
                 syncVisibleViewPoll(policy.viewId);
@@ -5518,7 +5528,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 liveSyncMode = navigator.onLine === false ? 'offline' : 'polling';
                 updateSyncDiagnostics(liveSyncMode);
             }
-            const nextDelay = Math.max(600, Number(options && options.delay !== undefined ? options.delay : policy.pollMs) || policy.pollMs);
+            const baseDelay = Number(options && options.delay !== undefined ? options.delay : policy.pollMs) || policy.pollMs;
+            const realtimeHealthy = policy.realtimeTables.length ? hasHealthyCoreRealtimeSubscriptions(policy.viewId) : false;
+            const healthyRealtimeDelay = policy.viewId === 'chat' ? Math.max(baseDelay, 15000) : Math.max(baseDelay, 30000);
+            const nextDelay = Math.max(1200, realtimeHealthy ? healthyRealtimeDelay : baseDelay);
             visibleViewPollTimer = setTimeout(() => {
                 visibleViewPollTimer = null;
                 runVisibleViewPollSync(policy.viewId).catch(() => {});
@@ -6845,6 +6858,42 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             }
         }
 
+        const supabaseReadInFlight = new Map();
+        const supabaseReadQueue = [];
+        let activeSupabaseReadCount = 0;
+
+        function runWithSupabaseReadSlot(taskFn) {
+            return new Promise((resolve, reject) => {
+                const runTask = () => {
+                    activeSupabaseReadCount += 1;
+                    Promise.resolve()
+                        .then(taskFn)
+                        .then(resolve, reject)
+                        .finally(() => {
+                            activeSupabaseReadCount = Math.max(0, activeSupabaseReadCount - 1);
+                            const nextTask = supabaseReadQueue.shift();
+                            if (nextTask) nextTask();
+                        });
+                };
+                if (activeSupabaseReadCount < SUPABASE_READ_CONCURRENCY_LIMIT) runTask();
+                else supabaseReadQueue.push(runTask);
+            });
+        }
+
+        function runDedupeSupabaseRead(readKey = '', taskFn = null) {
+            const safeKey = String(readKey || '').trim();
+            if (!safeKey || typeof taskFn !== 'function') return Promise.resolve(null);
+            if (supabaseReadInFlight.has(safeKey)) {
+                incrementInternalPerfCounter('dedupedSupabaseReads');
+                return supabaseReadInFlight.get(safeKey);
+            }
+            const promise = runWithSupabaseReadSlot(taskFn).finally(() => {
+                supabaseReadInFlight.delete(safeKey);
+            });
+            supabaseReadInFlight.set(safeKey, promise);
+            return promise;
+        }
+
         async function getResponseError(response, fallback = 'Supabase error') {
             try {
                 const text = await response.text();
@@ -7307,20 +7356,33 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
         }
 
         async function supabaseFetch(table, method='GET', body=null, query='select=*', requestOptions = {}) {
-            startGlobalProgress();
-            try {
-                let allData=[]; let offset=0; const limit=1000; let hasMore=true;
-                if(method==='GET'){
+            if(method==='GET'){
+                const readKey = `legacy:${String(table || '').trim()}:${String(query || '').trim()}`;
+                try {
+                    return await runDedupeSupabaseRead(readKey, async () => {
+                        startGlobalProgress();
+                        try {
+                            let allData=[]; let offset=0; const limit=1000; let hasMore=true;
                     while(hasMore){
                         let queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
                         const url=`${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
                         const response=await fetchWithTimeout(url,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}}, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
                         if(!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
                         const text=await response.text(); const data=text?JSON.parse(text):[];
-                        if(Array.isArray(data)&&data.length>0){ allData=allData.concat(data); offset+=limit; if(data.length<limit) hasMore=false; }
+                        if(Array.isArray(data)&&data.length>0){ allData=allData.concat(data); offset+=data.length; if(data.length<limit) hasMore=false; }
                         else { hasMore=false; }
-                    } return allData;
-                } else {
+                    }
+                            return allData;
+                        } finally {
+                            stopGlobalProgress();
+                        }
+                    });
+                } catch(e){
+                    return [];
+                }
+            }
+            startGlobalProgress();
+            try {
                     const writeTimeoutMs = Math.max(1000, Number(requestOptions && requestOptions.timeoutMs) || SUPABASE_WRITE_TIMEOUT_MS);
                     const options={method:method,headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}};
                     if(method==='POST') options.headers['Prefer']=table==='v2_active_request' ? 'return=minimal' : 'return=minimal,resolution=merge-duplicates';
@@ -7330,9 +7392,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                     const response=await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/${table}${query?'?'+query:''}`,options,writeTimeoutMs, `${table} ${method}`);
                     if(!response.ok) throw new Error(await getResponseError(response, `Supabase write failed (${response.status})`));
                     const text=await response.text(); return text?JSON.parse(text):{};
-                }
             } catch(e){
-                if(method==='GET') return [];
                 throw e;
             } finally { stopGlobalProgress(); }
         }
@@ -9195,7 +9255,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.17').trim() || 'V2026.05.01.17';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.19').trim() || 'V2026.05.01.19';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -9446,6 +9506,13 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             syncGoogleScriptButton();
 
             if (isActive) {
+                if (shouldPauseManualSyncViewRefresh()) {
+                    const visibleView = typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : (activeRealtimeViewId || 'home');
+                    cleanupRealtime();
+                    activeRealtimeViewId = visibleView || 'home';
+                    activeRealtimeContextViewId = resolveRealtimeContextViewId(visibleView || 'home');
+                    activeRealtimeTables = [];
+                }
                 updateSyncDiagnostics('manual-sync');
                 if (!opts.skipPollSchedule) scheduleManualSyncStatusPoll(opts.delayMs);
                 return next;
@@ -10153,8 +10220,10 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
         }
 
         async function fetchAllSupabaseRows(table, query = 'select=*') {
-            startGlobalProgress();
-            try {
+            const readKey = `all:${String(table || '').trim()}:${String(query || '').trim()}`;
+            return runDedupeSupabaseRead(readKey, async () => {
+                startGlobalProgress();
+                try {
                 let allData = [];
                 let offset = 0;
                 const limit = table === 'v2_master_inventory'
@@ -10174,19 +10243,23 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
                         allData = allData.concat(data);
                         offset += data.length;
                         await yieldToUiFrame();
+                        if (data.length < limit) hasMore = false;
                     } else {
                         hasMore = false;
                     }
                 }
                 return allData;
-            } finally {
-                stopGlobalProgress();
-            }
+                } finally {
+                    stopGlobalProgress();
+                }
+            });
         }
 
         async function fetchSupabasePage(table, query = 'select=*', limit = INITIAL_PAGE_LIMIT, offset = 0) {
-            startGlobalProgress();
-            try {
+            const readKey = `page:${String(table || '').trim()}:${String(query || '').trim()}:${Math.max(1, Number(limit) || INITIAL_PAGE_LIMIT)}:${Math.max(0, Number(offset) || 0)}`;
+            return runDedupeSupabaseRead(readKey, async () => {
+                startGlobalProgress();
+                try {
                 const attemptLimits = table === 'v2_master_inventory'
                     ? Array.from(new Set([limit, Math.min(limit, 100), Math.min(limit, 60)].filter((value) => Number(value) > 0)))
                     : [limit];
@@ -10208,9 +10281,10 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
                     }
                 }
                 throw lastError || new Error(`${table} read failed`);
-            } finally {
-                stopGlobalProgress();
-            }
+                } finally {
+                    stopGlobalProgress();
+                }
+            });
         }
 
         function buildDatasetPayload(key, rows) {
@@ -10617,12 +10691,21 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
                 return;
             }
             if (targetView === 'request') {
+                if (!options.force && hasHealthyCoreRealtimeSubscriptions('request')) {
+                    updateSyncDiagnostics('realtime');
+                    return;
+                }
                 forceRefreshRequestsForView('request-view-enter', {
                     force: !!options.force,
                     minIntervalMs: options.force ? 0 : REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS
                 }).catch(() => {});
+                return;
             }
             if (targetView === 'chat') {
+                if (!options.force && hasHealthyCoreRealtimeSubscriptions('chat')) {
+                    updateSyncDiagnostics('realtime');
+                    return;
+                }
                 fetchChatData(!!options.force).then(() => {
                     if (isViewVisible('chat')) renderChat();
                 }).catch(() => {});
@@ -20919,7 +21002,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (currentViewId === nextViewId && nextState.initialized && !nextState.dirty) {
                 incrementInternalPerfCounter('warmViewReuseHits');
                 if (nextViewId === 'request') {
-                    refreshViewDatasetsOnEnter('request', { force: true, minInterval: 0, backgroundDelay: 0 });
+                    refreshViewDatasetsOnEnter('request', { backgroundDelay: 0 });
                 }
                 if (targetScrollTop != null) scheduleUiRender(`view-restore:${nextViewId}:${targetScrollTop}`, () => setMainAreaScrollTop(targetScrollTop));
                 schedulePrimaryViewChromeRefresh(nextViewId, {
