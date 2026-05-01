@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.04.30.07';
+window.__APP_SHELL_VERSION__ = 'V2026.05.01.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -38,31 +38,34 @@ body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-h
         .footer-nav-btn.active,.footer-nav-btn.menu-open{color:#007a4d;background:#ecfdf5;border-color:#a7f3d0;box-shadow:0 6px 16px rgba(7,94,63,.12)}
         .footer-nav-badge{position:absolute;top:3px;right:8px;min-width:18px;height:18px;padding:0 4px;background:#ef4444;color:#fff;font-size:10px;font-weight:900;border-radius:999px;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
         #chat-content{max-width:100%;min-width:0;overflow:hidden}
-        .chat-thread-shell{height:clamp(260px,calc(var(--visual-height) - var(--footer-nav-reserve) - 11.5rem),720px);min-height:0;display:flex;flex-direction:column;overflow:hidden;background:#fff}
-        .chat-message-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-gutter:stable;padding:14px 12px 10px;display:flex;flex-direction:column;gap:6px;background:#fff}
-        .chat-thread-composer{position:relative;z-index:2;flex:0 0 auto;background:#fff;padding:8px 10px calc(10px + env(safe-area-inset-bottom));border-top:1px solid #eef2f7}
-        .android-chat-shell{border:1px solid #e5e7eb;border-radius:24px;box-shadow:0 8px 22px rgba(15,23,42,.06)}
-        .android-chat-header{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #eef2f7;background:#fff}
-        .android-chat-avatar{width:42px;height:42px;border-radius:999px;background:#dbeafe;color:#0b57d0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;letter-spacing:.02em;flex-shrink:0}
+        .chat-thread-shell{height:clamp(260px,calc(var(--visual-height) - var(--footer-nav-reserve) - 11.5rem),720px);min-height:0;display:flex;flex-direction:column;overflow:hidden;background:#f7f7f9}
+        .chat-message-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-gutter:stable;padding:14px 12px 10px;display:flex;flex-direction:column;gap:6px;background:#f7f7f9}
+        .chat-thread-composer{position:relative;z-index:2;flex:0 0 auto;background:#f7f7f9;padding:8px 10px calc(10px + env(safe-area-inset-bottom));border-top:1px solid #d1d1d6}
+        .android-chat-shell{border:1px solid #d8d8de;border-radius:28px;box-shadow:0 8px 22px rgba(15,23,42,.06)}
+        .android-chat-header{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #d1d1d6;background:rgba(248,248,248,.96)}
+        .android-chat-avatar{width:42px;height:42px;border-radius:999px;background:#dbeafe;color:#007aff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;letter-spacing:.02em;flex-shrink:0}
         .android-message-row{display:flex;width:100%;align-items:flex-end;gap:6px}
         .android-message-row.mine{justify-content:flex-end}
         .android-message-row.theirs{justify-content:flex-start}
         .android-message-bubble{max-width:min(78%,620px);border-radius:20px;padding:9px 12px;box-shadow:none;word-break:break-word}
-        .android-message-bubble.mine{background:#0b57d0;color:#fff;border-bottom-right-radius:6px}
-        .android-message-bubble.theirs{background:#f1f3f4;color:#202124;border-bottom-left-radius:6px}
+        .android-message-bubble.mine{background:#007aff;color:#fff;border-bottom-right-radius:6px}
+        .android-message-bubble.theirs{background:#e9e9eb;color:#111827;border-bottom-left-radius:6px}
         .android-message-meta{margin-top:3px;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;text-align:right}
         .android-message-bubble.mine .android-message-meta{color:rgba(255,255,255,.68)}
         .android-message-bubble.theirs .android-message-meta{color:#8a94a6}
-        .android-composer-row{display:grid;grid-template-columns:minmax(0,1fr) 46px;align-items:flex-end;gap:8px;width:100%;min-width:0}
-        .android-composer-pill{min-height:46px;min-width:0;display:flex;align-items:center;background:#f1f3f4;border-radius:24px;padding:6px 8px 6px 14px;border:1px solid transparent}
-        .android-chat-input{width:100%;min-width:0;flex:1;min-height:30px;max-height:92px;background:transparent;border:0;outline:0;resize:none;margin:0;padding:5px 0;font-size:16px;line-height:20px;font-weight:600;color:#202124}
-        .android-chat-input::placeholder{color:#7c8798;font-weight:600}
+        .android-composer-row{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:flex-end;gap:8px;width:100%;min-width:0}
+        .android-composer-row.no-voice{grid-template-columns:minmax(0,1fr) 44px}
+        .android-composer-pill{min-height:44px;min-width:0;display:flex;align-items:center;background:#fff;border-radius:24px;padding:6px 13px;border:1px solid #d1d1d6}
+        .android-chat-input{width:100%;min-width:0;flex:1;min-height:30px;max-height:92px;background:transparent;border:0;outline:0;resize:none;margin:0;padding:5px 0;font-size:16px;line-height:20px;font-weight:500;color:#111827}
+        .android-chat-input::placeholder{color:#8e8e93;font-weight:500}
         .android-icon-btn{width:44px;height:44px;border-radius:999px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .14s ease,background .14s ease,color .14s ease}
         .android-icon-btn:active{transform:scale(.94)}
-        .android-icon-btn.mic{background:transparent;color:#5f6368}
-        .android-icon-btn.send{background:#0b57d0;color:#fff;box-shadow:0 8px 18px rgba(11,87,208,.22)}
+        .android-icon-btn.mic{background:transparent;color:#8e8e93}
+        .chat-voice-hold-btn{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+        .chat-voice-hold-btn.recording{background:#ff3b30;color:#fff;box-shadow:0 8px 18px rgba(255,59,48,.22)}
+        .android-icon-btn.send{background:#007aff;color:#fff;box-shadow:0 8px 18px rgba(0,122,255,.22)}
         .android-recording-bar{border-radius:20px;border:1px solid #fecaca;background:#fef2f2;padding:10px;margin-bottom:8px}
-        .android-record-send-btn{height:38px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#0b57d0;color:#fff;padding:0 12px;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;box-shadow:0 8px 18px rgba(11,87,208,.22)}
+        .android-record-send-btn{height:38px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#007aff;color:#fff;padding:0 12px;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;box-shadow:0 8px 18px rgba(0,122,255,.22)}
         .chat-compose-form{position:sticky;bottom:calc(var(--footer-nav-reserve) + env(safe-area-inset-bottom) + .75rem);z-index:20;border-radius:18px;border:1px solid #dcfce7;background:#fff;padding:12px;box-shadow:0 14px 34px rgba(15,23,42,.14)}
         .chat-compose-actions{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:stretch;gap:8px}
         .android-voice-wave{display:flex;align-items:center;gap:3px;height:18px}
@@ -936,7 +939,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.04.30.07').trim() || 'V2026.04.30.07';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.02').trim() || 'V2026.05.01.02';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1108,6 +1111,10 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 </div>
 
                 <div id="view-request" class="hidden">
+                    <div id="request-search-container" class="sticky-search relative mb-2 hidden">
+                        <input type="text" id="request-search" class="input-field w-full pr-10 !mb-0" placeholder="Search sales reps..." oninput="handleRequestHeaderSearch()" onkeydown="dismissSearchKeyboard(event)">
+                        <i id="request-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearRequestHeaderSearch()"></i>
+                    </div>
                     <div class="freeze-panel">
                     <div class="task-tabs mb-2 mt-2">
                         <div id="tab-req-pending" class="task-tab active" onclick="setReqTab('pending')">Pending</div>
@@ -1496,7 +1503,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.04.30.07';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2151,22 +2158,23 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             const minBatch = Math.max(1, Number(options && options.minBatch) || 6);
             const liveGestureActive = isUserInLiveTouchScrollGesture();
             const interactionSlowMode = liveGestureActive || shouldDeferInteractiveBackgroundWork() || isRecentViewSwitchActivity();
+            const touchConstrained = isTouchConstrainedDevice();
             if (liveGestureActive) {
                 return {
                     liveGestureActive: true,
                     interactionSlowMode: true,
-                    batchTarget: Math.min(safeTargetCount, Math.max(minBatch, Math.ceil(safeTargetCount / 6))),
-                    timeBudget: Math.max(1.4, safeFrameBudget - 2.6),
-                    frameDelayMs: 72
+                    batchTarget: Math.min(safeTargetCount, Math.max(minBatch, Math.ceil(safeTargetCount / 2))),
+                    timeBudget: Math.max(touchConstrained ? 2.1 : 2.4, safeFrameBudget - 0.4),
+                    frameDelayMs: touchConstrained ? 24 : 32
                 };
             }
             if (interactionSlowMode) {
                 return {
                     liveGestureActive: false,
                     interactionSlowMode: true,
-                    batchTarget: Math.min(safeTargetCount, Math.max(minBatch, Math.ceil(safeTargetCount / 4))),
-                    timeBudget: Math.max(1.8, safeFrameBudget - 1.75),
-                    frameDelayMs: 48
+                    batchTarget: Math.min(safeTargetCount, Math.max(minBatch, Math.ceil(safeTargetCount / 2))),
+                    timeBudget: Math.max(touchConstrained ? 2.4 : 2.8, safeFrameBudget - 0.25),
+                    frameDelayMs: touchConstrained ? 18 : 24
                 };
             }
             return {
@@ -5723,6 +5731,50 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             });
         }
 
+        function rememberNavigationScrollPosition(key = '') {
+            const safeKey = String(key || '').trim();
+            if (!safeKey) return;
+            if (!(navigationScrollMemory instanceof Map)) navigationScrollMemory = new Map();
+            navigationScrollMemory.set(safeKey, {
+                scrollTop: getMainAreaScrollTop(),
+                at: Date.now()
+            });
+            while (navigationScrollMemory.size > 60) {
+                const oldest = navigationScrollMemory.keys().next();
+                if (oldest && !oldest.done) navigationScrollMemory.delete(oldest.value);
+                else break;
+            }
+        }
+
+        function getNavigationScrollPosition(key = '') {
+            const safeKey = String(key || '').trim();
+            if (!safeKey || !(navigationScrollMemory instanceof Map)) return null;
+            const entry = navigationScrollMemory.get(safeKey);
+            if (!entry) return null;
+            const scrollTop = Math.max(0, Number(entry.scrollTop) || 0);
+            return Number.isFinite(scrollTop) ? scrollTop : null;
+        }
+
+        function schedulePostRenderMainAreaScrollRestore(viewId = '', key = 'global', scrollTop = 0) {
+            const safeViewId = String(viewId || '').trim();
+            const safeKey = String(key || safeViewId || 'global').trim() || 'global';
+            const restoreTop = Math.max(0, Number(scrollTop) || 0);
+            const restoreToken = (Number(latestPostRenderMainAreaTopResetTokensByKey[safeKey] || 0) + 1);
+            latestPostRenderMainAreaTopResetTokensByKey[safeKey] = restoreToken;
+            const applyRestore = () => {
+                if (Number(latestPostRenderMainAreaTopResetTokensByKey[safeKey] || 0) !== restoreToken) return;
+                if (safeViewId && getCurrentVisibleViewId() !== safeViewId) return;
+                setMainAreaScrollTop(restoreTop);
+            };
+            cancelPendingNavigationScrollResets();
+            requestAnimationFrame(() => {
+                applyRestore();
+                requestAnimationFrame(() => {
+                    if (Math.abs(getMainAreaScrollTop() - restoreTop) > 2) applyRestore();
+                });
+            });
+        }
+
         function getMainAreaScrollTop() {
             const scrollTarget = getMainAreaScrollTarget();
             if (scrollTarget) return Number(scrollTarget.scrollTop || 0);
@@ -5959,7 +6011,16 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             );
             const afterRenderCallbacks = [];
             if (typeof nextOptions.afterRender === 'function') afterRenderCallbacks.push(nextOptions.afterRender);
-            if (nextOptions.resetScrollTopAfterRender) {
+            const hasRestoreScroll = nextOptions.restoreScrollTopAfterRender !== undefined
+                && nextOptions.restoreScrollTopAfterRender !== null
+                && Number.isFinite(Number(nextOptions.restoreScrollTopAfterRender));
+            if (hasRestoreScroll) {
+                const scrollRestoreKey = String(nextOptions.scrollResetKey || renderKey || safeViewId || 'tracked').trim() || safeViewId || 'tracked';
+                const restoreTop = Math.max(0, Number(nextOptions.restoreScrollTopAfterRender) || 0);
+                afterRenderCallbacks.push(() => {
+                    schedulePostRenderMainAreaScrollRestore(safeViewId, scrollRestoreKey, restoreTop);
+                });
+            } else if (nextOptions.resetScrollTopAfterRender) {
                 const scrollResetKey = String(nextOptions.scrollResetKey || renderKey || safeViewId || 'tracked').trim() || safeViewId || 'tracked';
                 afterRenderCallbacks.push(() => {
                     schedulePostRenderMainAreaTopReset(safeViewId, scrollResetKey);
@@ -5987,6 +6048,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 delete trackedOptions.afterRender;
             }
             delete trackedOptions.resetScrollTopAfterRender;
+            delete trackedOptions.restoreScrollTopAfterRender;
             delete trackedOptions.scrollResetKey;
             return scheduleTrackedViewRender(viewId, renderKey, trackedOptions);
         }
@@ -8655,7 +8717,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
         }
 
 let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let salesOfficeInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
-let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null;
+let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null; let chatVoiceHoldPointerId=''; let chatVoiceHoldForComposer=false; let chatVoiceHoldFinishPending=''; let chatVoiceHoldStartPromise=null;
 let walkieChannels=[]; let walkieChannelMembers=[]; let walkieCalls=[]; let walkieCallMembers=[]; let walkieUsers=[]; let walkieSignalsSeen=new Set(); let walkieDataLoaded=false; let walkieLoadPromise=null; let walkieSchemaReady=null; let walkieSchemaProbePromise=null; let walkieSchemaWarningShown=false; let activeWalkieChannelId=''; let pendingWalkieOpenChannelId=''; let pendingWalkieOpenCallId=''; let walkieComposeOpen=false; let walkieUserSearchTerm=''; let walkieComposeTitle=''; let walkieSelectedUsers=new Set(); let walkieLastRenderSignature=''; let walkieDeviceId=''; let activeWalkieCallId=''; let walkieJoinedCallId=''; let walkieActiveMembershipId=''; let walkiePeerConnections=new Map(); let walkieRemoteAudioElements=new Map(); let walkieLocalStream=null; let walkieHeartbeatTimer=null; let walkieSpeakerHeartbeatTimer=null; let walkieReconnectTimer=null; let walkieActiveSpeakerIntent=false; let walkiePressedPointerId=''; let walkieForegroundNoticeShown=false;
 let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let managerReviewInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
@@ -8909,8 +8971,9 @@ let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; le
         let drivePlantFilterStateCacheKey=''; let drivePlantFilterStateCache=null;
 
 let activeTaskView="hot-price"; let activeTaskFilter="all"; let activeTaskCustomerFilter="all"; let activeTaskReserveRepFilter="all"; let activeTaskReserveCustomerFilter="all"; let activeTaskReserveCustomerFilters=new Set(); let activeTaskReserveRowStatusMode="all"; let activeTaskReservePhotoMode="all"; let activeTaskSeasonReviewMode="winner"; let activeTaskTab=activeTaskView; let activeTaskSubview=activeTaskFilter; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let selectedTaskContSizes=new Set(); let taskContSizeSearchTerm=""; let taskContSizeDropdownOpen=false; let taskContSizeFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let taskModeSearchTerm=""; let taskSubviewSearchTerm=""; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees=""; let taskReserveCustomerSearchTerm=''; let taskReserveCustomerDropdownOpen=false; let taskReserveCustomerDraftFilters=new Set(); let lastTaskReserveCustomerRenderSignature='';
-        let detailReturnState = { viewId: '', scrollTop: 0 };
-        let viewHistoryStack = [];
+let detailReturnState = { viewId: '', scrollTop: 0 };
+let viewHistoryStack = [];
+let navigationScrollMemory = new Map();
         let pendingFieldSaveCount = 0;
         let lastFieldSaveAt = 0;
         let lastViewSwitchAt = 0;
@@ -8924,7 +8987,7 @@ let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKe
 
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
         let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let tempReqAppendToExistingFolder=false; let previousReqStep=""; let driveQuickRequestItems=new Set(); let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
-let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending'; let requestFolderSearchTerm='';
+let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending'; let requestFolderSearchTerm=''; let requestRepSearchTerm=''; let requestCustomerSearchTerm=''; let requestFolderDateFilter=''; let lastRequestHeaderSearchMode='';
         let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let lastSyncTime=new Date().toISOString();
         let lastSuccessfulSyncTime = "";
         let syncDiagnosticsOverride = "";
@@ -8983,7 +9046,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.04.30.07').trim() || 'V2026.04.30.07';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.02').trim() || 'V2026.05.01.02';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -9009,6 +9072,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             reserves: 'reserves-search-container',
             docks: 'docks-search-container',
             drive: 'drive-search-container',
+            request: 'request-search-container',
             tasks: 'tasks-search-container'
         };
 
@@ -9703,6 +9767,9 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             selectedReqCustView = null;
             selectedReqFolderView = null;
             requestFolderSearchTerm = '';
+            requestRepSearchTerm = '';
+            requestCustomerSearchTerm = '';
+            requestFolderDateFilter = '';
             syncRequestTabButtons();
             if (safeOptions.clearSelection) clearSelection();
         }
@@ -9716,7 +9783,10 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
                 selectedReqRepView: String(selectedReqRepView || '').trim(),
                 selectedReqCustView: String(selectedReqCustView || '').trim(),
                 selectedReqFolderView: String(selectedReqFolderView || '').trim(),
-                requestFolderSearchTerm: String(requestFolderSearchTerm || '').trim()
+                requestFolderSearchTerm: String(requestFolderSearchTerm || '').trim(),
+                requestRepSearchTerm: String(requestRepSearchTerm || '').trim(),
+                requestCustomerSearchTerm: String(requestCustomerSearchTerm || '').trim(),
+                requestFolderDateFilter: String(requestFolderDateFilter || '').trim()
             };
         }
 
@@ -9730,6 +9800,9 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             selectedReqCustView = String(snapshot.selectedReqCustView || '').trim() || null;
             selectedReqFolderView = String(snapshot.selectedReqFolderView || '').trim() || null;
             requestFolderSearchTerm = String(snapshot.requestFolderSearchTerm || '').trim();
+            requestRepSearchTerm = String(snapshot.requestRepSearchTerm || '').trim();
+            requestCustomerSearchTerm = String(snapshot.requestCustomerSearchTerm || '').trim();
+            requestFolderDateFilter = String(snapshot.requestFolderDateFilter || '').trim();
             syncRequestTabButtons();
             return true;
         }
@@ -9750,6 +9823,8 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
                 selectedReqCustView = null;
                 selectedReqFolderView = null;
                 requestFolderSearchTerm = '';
+                requestCustomerSearchTerm = '';
+                requestFolderDateFilter = '';
                 selectedReqStatus = 'Pending';
                 changed = true;
                 return { items: scopedItems, changed };
@@ -9763,6 +9838,8 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
                 selectedReqCustView = null;
                 selectedReqFolderView = null;
                 requestFolderSearchTerm = '';
+                requestCustomerSearchTerm = '';
+                requestFolderDateFilter = '';
                 changed = true;
                 return { items: scopedItems, changed };
             }
@@ -10299,15 +10376,17 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             }
             const pending = config.required.filter((item) => !isDatasetLoaded(item.key, item.mode));
             if (!pending.length) {
+                const backgroundDelay = isTouchConstrainedDevice() ? 72 : 36;
                 (config.background || []).forEach((item) => {
-                    if (!isDatasetFrozenDuringManualSync(item.key, item.mode)) queueDatasetLoad(item.key, item.mode);
+                    if (!isDatasetFrozenDuringManualSync(item.key, item.mode)) queueDatasetLoad(item.key, item.mode, backgroundDelay);
                 });
                 return false;
             }
             showViewLoadingState(viewId, config.label);
             Promise.all(pending.map((item) => ensureDatasetLoaded(item.key, item.mode))).then(() => {
+                const backgroundDelay = isTouchConstrainedDevice() ? 90 : 48;
                 (config.background || []).forEach((item) => {
-                    if (!isDatasetFrozenDuringManualSync(item.key, item.mode)) queueDatasetLoad(item.key, item.mode);
+                    if (!isDatasetFrozenDuringManualSync(item.key, item.mode)) queueDatasetLoad(item.key, item.mode, backgroundDelay);
                 });
                 markViewDirty(viewId);
                 if (isViewVisible(viewId)) {
@@ -16506,6 +16585,141 @@ function toggleDriveQuickRequestItem(domId) {
             chatVoiceRecorderStream = null;
         }
 
+        function clearChatVoiceHoldState() {
+            chatVoiceHoldPointerId = '';
+            chatVoiceHoldForComposer = false;
+            chatVoiceHoldFinishPending = '';
+            chatVoiceHoldStartPromise = null;
+            window.removeEventListener('pointerup', handleChatVoiceGlobalPointerRelease, true);
+            window.removeEventListener('pointercancel', handleChatVoiceGlobalPointerCancel, true);
+            window.removeEventListener('keyup', handleChatVoiceGlobalKeyRelease, true);
+            window.removeEventListener('mouseup', handleChatVoiceGlobalFallbackRelease, true);
+            window.removeEventListener('touchend', handleChatVoiceGlobalFallbackRelease, true);
+            window.removeEventListener('touchcancel', handleChatVoiceGlobalFallbackCancel, true);
+            window.removeEventListener('blur', handleChatVoiceWindowBlur, true);
+        }
+
+        function armChatVoiceHoldReleaseListeners() {
+            window.addEventListener('pointerup', handleChatVoiceGlobalPointerRelease, true);
+            window.addEventListener('pointercancel', handleChatVoiceGlobalPointerCancel, true);
+            window.addEventListener('keyup', handleChatVoiceGlobalKeyRelease, true);
+            window.addEventListener('mouseup', handleChatVoiceGlobalFallbackRelease, true);
+            window.addEventListener('touchend', handleChatVoiceGlobalFallbackRelease, { capture: true, passive: false });
+            window.addEventListener('touchcancel', handleChatVoiceGlobalFallbackCancel, { capture: true, passive: false });
+            window.addEventListener('blur', handleChatVoiceWindowBlur, true);
+        }
+
+        function getChatVoiceHoldPointerId(event = null) {
+            if (!event || event.pointerId === undefined || event.pointerId === null) return '';
+            return `pointer:${event.pointerId}`;
+        }
+
+        function isChatVoiceHoldKey(event = null) {
+            const key = String(event && event.key || '');
+            return key === ' ' || key === 'Spacebar' || key === 'Enter';
+        }
+
+        function getChatVoiceHoldButtonAttrs(forComposer = false) {
+            const mode = forComposer ? 'true' : 'false';
+            return `onpointerdown="return startChatVoicePress(event, ${mode})" ontouchstart="return startChatVoicePress(event, ${mode})" onmousedown="return startChatVoicePress(event, ${mode})" onkeydown="return handleChatVoicePressKeydown(event, ${mode})" onkeyup="return handleChatVoicePressKeyup(event)" oncontextmenu="event.preventDefault(); return false;"`;
+        }
+
+        function handleChatVoiceGlobalPointerRelease(event = null) {
+            finishChatVoicePress(event, false);
+        }
+
+        function handleChatVoiceGlobalPointerCancel(event = null) {
+            finishChatVoicePress(event, true);
+        }
+
+        function handleChatVoiceGlobalFallbackRelease(event = null) {
+            finishChatVoicePress(event, false);
+        }
+
+        function handleChatVoiceGlobalFallbackCancel(event = null) {
+            finishChatVoicePress(event, true);
+        }
+
+        function handleChatVoiceGlobalKeyRelease(event = null) {
+            if (isChatVoiceHoldKey(event)) finishChatVoicePress(event, false);
+            else if (String(event && event.key || '') === 'Escape') finishChatVoicePress(event, true);
+        }
+
+        function handleChatVoiceWindowBlur() {
+            if (chatVoiceHoldStartPromise || chatVoiceRecordingActive) finishChatVoicePress(null, true);
+        }
+
+        function startChatVoicePress(event = null, forComposer = false) {
+            if (event && event.type === 'pointerdown' && Number(event.button || 0) !== 0) return false;
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (chatVoiceUploadInFlight || chatVoiceHoldStartPromise || chatVoiceRecordingActive) return false;
+            if (forComposer && !normalizeSelectedChatRecipients().length) {
+                showToast('Select User', 'Choose at least one user before recording a voice note.', true);
+                focusChatRecipientInput(30);
+                return false;
+            }
+            const pointerId = getChatVoiceHoldPointerId(event);
+            chatVoiceHoldPointerId = pointerId || 'keyboard';
+            chatVoiceHoldForComposer = !!forComposer;
+            chatVoiceHoldFinishPending = '';
+            if (event && event.currentTarget && pointerId && typeof event.currentTarget.setPointerCapture === 'function') {
+                try { event.currentTarget.setPointerCapture(event.pointerId); } catch (error) {}
+            }
+            armChatVoiceHoldReleaseListeners();
+            chatVoiceHoldStartPromise = beginChatVoiceRecording(!!forComposer).then(async (started) => {
+                chatVoiceHoldStartPromise = null;
+                if (!started) {
+                    clearChatVoiceHoldState();
+                    return false;
+                }
+                const pendingFinish = chatVoiceHoldFinishPending;
+                if (!pendingFinish) return true;
+                chatVoiceHoldFinishPending = '';
+                return pendingFinish === 'cancel'
+                    ? cancelChatVoiceRecording()
+                    : finalizeChatVoiceRecording();
+            }).catch((error) => {
+                clearChatVoiceHoldState();
+                showToast('Voice Note Error', error && error.message ? error.message : 'Could not start this voice note.', true);
+                return false;
+            });
+            return false;
+        }
+
+        function finishChatVoicePress(event = null, cancel = false) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            const pointerId = getChatVoiceHoldPointerId(event);
+            if (chatVoiceHoldPointerId && pointerId && pointerId !== chatVoiceHoldPointerId) return false;
+            if (chatVoiceHoldStartPromise && !chatVoiceRecordingActive) {
+                chatVoiceHoldFinishPending = cancel ? 'cancel' : 'send';
+                return false;
+            }
+            if (!chatVoiceRecordingActive) {
+                clearChatVoiceHoldState();
+                return false;
+            }
+            chatVoiceHoldFinishPending = '';
+            const finishPromise = cancel ? cancelChatVoiceRecording() : finalizeChatVoiceRecording();
+            Promise.resolve(finishPromise).finally(() => clearChatVoiceHoldState());
+            return false;
+        }
+
+        function handleChatVoicePressKeydown(event = null, forComposer = false) {
+            if (!isChatVoiceHoldKey(event) || (event && event.repeat)) return false;
+            return startChatVoicePress(event, forComposer);
+        }
+
+        function handleChatVoicePressKeyup(event = null) {
+            if (!isChatVoiceHoldKey(event)) return false;
+            return finishChatVoicePress(event, false);
+        }
+
         async function resetChatVoiceRecording(options = {}) {
             const safeOptions = options && typeof options === 'object' ? options : {};
             clearChatVoiceRecordTimer();
@@ -16515,6 +16729,7 @@ function toggleDriveQuickRequestItem(domId) {
             chatVoiceRecordMimeType = '';
             if (!safeOptions.preserveRecorder) chatVoiceRecorder = null;
             await stopChatVoiceRecorderStream();
+            clearChatVoiceHoldState();
             chatLastRenderSignature = '';
             renderChat();
         }
@@ -16657,7 +16872,12 @@ function toggleDriveQuickRequestItem(domId) {
                     }
                 };
                 try {
-                    if (recorder.state !== 'inactive') recorder.stop();
+                    if (recorder.state !== 'inactive') {
+                        if (typeof recorder.requestData === 'function') {
+                            try { recorder.requestData(); } catch (error) {}
+                        }
+                        recorder.stop();
+                    }
                     else recorder.onstop && recorder.onstop(new Event('stop'));
                 } catch (error) {
                     chatVoiceUploadInFlight = false;
@@ -16907,9 +17127,9 @@ function toggleDriveQuickRequestItem(domId) {
             const conversations = getSortedChatConversations();
             if (!conversations.length) {
                 return `<div class="rounded-[24px] border border-slate-200 bg-white p-8 text-center shadow-sm">
-                    <div class="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-[#0b57d0]"><i class="ph-bold ph-chats-circle text-3xl"></i></div>
+                    <div class="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-[#007aff]"><i class="ph-bold ph-chats-circle text-3xl"></i></div>
                     <div class="text-lg font-black text-slate-900">No chats yet</div>
-                    <button type="button" class="mt-5 rounded-full bg-[#0b57d0] px-5 py-3 text-xs font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="openNewChatComposer()">Start Chat</button>
+                    <button type="button" class="mt-5 rounded-full bg-[#007aff] px-5 py-3 text-xs font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="openNewChatComposer()">Start Chat</button>
                 </div>`;
             }
             return `<div class="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">${conversations.map((conversation, index) => {
@@ -16921,7 +17141,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const participantCount = getChatParticipants(conversation.id).length;
                 return `<button type="button" class="w-full bg-white px-4 py-3 text-left active:bg-slate-50 ${index ? 'border-t border-slate-100' : ''}" onclick="openChatConversation('${esc(conversation.id)}')">
                     <div class="flex items-center gap-3">
-                        <div class="relative flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-[#0b57d0] text-sm font-black">${escapeHtml(getChatAvatarInitials(title))}${unread ? '<span class="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-[#0b57d0]"></span>' : ''}</div>
+                        <div class="relative flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-[#007aff] text-sm font-black">${escapeHtml(getChatAvatarInitials(title))}${unread ? '<span class="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-[#007aff]"></span>' : ''}</div>
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center justify-between gap-2">
                                 <div class="truncate text-base ${unread ? 'font-black text-slate-950' : 'font-bold text-slate-900'}">${escapeHtml(title)}</div>
@@ -16929,7 +17149,7 @@ function toggleDriveQuickRequestItem(domId) {
                             </div>
                             <div class="mt-0.5 flex items-center gap-2">
                                 <div class="min-w-0 flex-1 truncate text-sm ${unread ? 'font-bold text-slate-700' : 'font-medium text-slate-500'}">${escapeHtml(preview)}</div>
-                                ${unread ? `<span class="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0b57d0] px-1.5 text-[10px] font-black text-white">${unread > 99 ? '99+' : unread}</span>` : ''}
+                            ${unread ? `<span class="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#007aff] px-1.5 text-[10px] font-black text-white">${unread > 99 ? '99+' : unread}</span>` : ''}
                             </div>
                             <div class="mt-1 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">${participantCount} member${participantCount === 1 ? '' : 's'}</div>
                         </div>
@@ -16947,7 +17167,7 @@ function toggleDriveQuickRequestItem(domId) {
                 .filter((user) => !chatSelectedUsers.has(user.username))
                 .slice(0, 14);
             const selectedCount = chatSelectedUsers.size;
-            const voiceSupported = isChatVoiceSupported();
+            const showVoiceControls = true;
             const isRecordingHere = !!(chatVoiceRecordingActive && chatVoiceRecordingForComposer);
             const chipsHtml = selectedUsers.map((user) => `<button type="button" class="inline-flex max-w-full items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black text-[#007a4d] ring-1 ring-emerald-200" onclick="removeChatRecipient('${esc(user.username)}')" aria-label="Remove ${escapeHtml(user.displayName)}"><span class="truncate">${escapeHtml(user.displayName)}</span><i class="ph-bold ph-x text-[11px]"></i></button>`).join('');
             return `<div class="space-y-4">
@@ -16980,15 +17200,11 @@ function toggleDriveQuickRequestItem(domId) {
                 }).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No matching users.</div>'}</div>
                 <form class="chat-compose-form" onsubmit="event.preventDefault(); sendNewChatMessage();">
                     <textarea id="chat-new-message-input" class="input-field min-h-[74px] resize-none !mb-2" placeholder="Message..." oninput="chatMessageDraft=this.value">${escapeHtml(chatMessageDraft)}</textarea>
-                    ${voiceSupported ? `<div class="${isRecordingHere ? '' : 'hidden'} mb-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-3">
+                    ${showVoiceControls ? `<div class="${isRecordingHere ? '' : 'hidden'} mb-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-3">
                         <div id="chat-new-voice-status" class="text-sm font-black text-red-600">${isRecordingHere ? `Recording ${formatChatVoiceDuration(getChatVoiceRecordingDurationSeconds())}` : ''}</div>
-                        <div class="mt-2 flex gap-2">
-                            <button type="button" class="flex-1 rounded-xl border border-red-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-red-600 shadow-sm active:scale-[.99]" onclick="cancelChatVoiceRecording()">Cancel</button>
-                            <button type="button" class="flex-1 rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99]" onclick="finalizeChatVoiceRecording()">Send Voice</button>
-                        </div>
                     </div>` : ''}
                     <div class="chat-compose-actions">
-                        ${voiceSupported ? `<button type="button" class="flex h-[52px] w-[52px] flex-shrink-0 items-center justify-center rounded-xl border ${isRecordingHere ? 'border-red-300 bg-red-500 text-white' : 'border-green-200 bg-white text-[#007a4d]'} shadow-sm active:scale-[.99]" onclick="${isRecordingHere ? 'finalizeChatVoiceRecording()' : 'beginChatVoiceRecording(true)'}" aria-label="Voice note"><i class="ph-bold ${isRecordingHere ? 'ph-stop-circle' : 'ph-microphone'} text-xl"></i></button>` : ''}
+                        ${showVoiceControls ? `<button type="button" class="chat-voice-hold-btn flex h-[52px] w-[52px] flex-shrink-0 items-center justify-center rounded-full border ${isRecordingHere ? 'border-red-300 bg-red-500 text-white' : 'border-slate-200 bg-white text-[#8e8e93]'} shadow-sm active:scale-[.99] disabled:opacity-40" ${getChatVoiceHoldButtonAttrs(true)} aria-label="Hold to record voice note" title="Hold to record; release to send" ${chatVoiceUploadInFlight ? 'disabled' : ''}><i class="ph-bold ph-microphone text-xl"></i></button>` : ''}
                         <button type="submit" class="flex-1 rounded-xl bg-[#007a4d] px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99] disabled:opacity-40" ${selectedCount ? '' : 'disabled'}><i class="ph-bold ph-paper-plane-tilt align-middle text-base"></i><span class="ml-2 align-middle">Send</span></button>
                     </div>
                 </form>
@@ -17024,7 +17240,7 @@ function toggleDriveQuickRequestItem(domId) {
             const participants = getChatParticipants(conversation.id);
             const messages = getChatConversationMessages(conversation.id);
             const currentUsername = getCurrentChatUsername();
-            const voiceSupported = isChatVoiceSupported();
+            const showVoiceControls = true;
             const isRecordingHere = !!(chatVoiceRecordingActive && !chatVoiceRecordingForComposer);
             const participantLine = participants.map((participant) => participant.displayName || getChatUserDisplayName(participant.username)).join(', ');
             const titleInitials = getChatAvatarInitials(title);
@@ -17032,11 +17248,11 @@ function toggleDriveQuickRequestItem(domId) {
                 const mine = message.senderUsername === currentUsername;
                 return `<div class="android-message-row ${mine ? 'mine' : 'theirs'}">
                     <div class="android-message-bubble ${mine ? 'mine' : 'theirs'}">
-                        ${mine ? '' : `<div class="mb-1 text-[10px] font-black uppercase tracking-[0.11em] text-[#0b57d0]">${escapeHtml(message.senderDisplayName || getChatUserDisplayName(message.senderUsername))}</div>`}
+                        ${mine ? '' : `<div class="mb-1 text-[10px] font-black uppercase tracking-[0.11em] text-[#007aff]">${escapeHtml(message.senderDisplayName || getChatUserDisplayName(message.senderUsername))}</div>`}
                         ${message.messageType === 'voice' && message.audioUrl ? `<button type="button" class="flex w-full min-w-[170px] items-center gap-3 rounded-2xl ${mine ? 'bg-white/10' : 'bg-white'} px-2.5 py-2 text-left" onclick="playChatVoiceMessage('${esc(message.audioUrl)}', this)" aria-label="Play voice message">
-                            <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${mine ? 'bg-white text-[#0b57d0]' : 'bg-[#0b57d0] text-white'}"><i class="ph-bold ph-play text-base"></i></span>
+                            <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${mine ? 'bg-white text-[#007aff]' : 'bg-[#007aff] text-white'}"><i class="ph-bold ph-play text-base"></i></span>
                             <span class="min-w-0 flex-1">
-                                <span class="android-voice-wave ${mine ? 'text-white' : 'text-[#0b57d0]'}"><span></span><span></span><span></span><span></span><span></span><span></span></span>
+                                <span class="android-voice-wave ${mine ? 'text-white' : 'text-[#007aff]'}"><span></span><span></span><span></span><span></span><span></span><span></span></span>
                                 <span class="mt-1 block text-[11px] font-black uppercase tracking-[0.1em] ${mine ? 'text-white/72' : 'text-slate-500'}">${escapeHtml(formatChatVoiceDuration(message.audioDurationSeconds || 0))}</span>
                             </span>
                         </button>` : `<div class="whitespace-pre-wrap text-[15px] font-medium leading-snug">${escapeHtml(message.body)}</div>`}
@@ -17056,19 +17272,13 @@ function toggleDriveQuickRequestItem(domId) {
                 </div>
                 <div id="chat-message-list" class="chat-message-scroll">${messageHtml}</div>
                 <form class="chat-thread-composer" onsubmit="event.preventDefault(); sendChatMessage();">
-                    ${voiceSupported ? `<div class="android-recording-bar ${isRecordingHere ? '' : 'hidden'}">
-                        <div class="flex items-center justify-between gap-2">
-                            <div id="chat-voice-status" class="text-sm font-black text-red-600">${isRecordingHere ? `Recording ${formatChatVoiceDuration(getChatVoiceRecordingDurationSeconds())}` : ''}</div>
-                            <div class="flex gap-2">
-                                <button type="button" class="android-icon-btn !h-9 !w-9 bg-white text-red-600" onclick="cancelChatVoiceRecording()" aria-label="Cancel voice note"><i class="ph-bold ph-x text-lg"></i></button>
-                                <button type="button" class="android-record-send-btn" onclick="finalizeChatVoiceRecording()" aria-label="Send voice note"><i class="ph-bold ph-paper-plane-tilt text-base"></i><span>Send</span></button>
-                            </div>
-                        </div>
+                    ${showVoiceControls ? `<div class="android-recording-bar ${isRecordingHere ? '' : 'hidden'}">
+                        <div id="chat-voice-status" class="text-sm font-black text-red-600">${isRecordingHere ? `Recording ${formatChatVoiceDuration(getChatVoiceRecordingDurationSeconds())}` : ''}</div>
                     </div>` : ''}
-                    <div class="android-composer-row">
+                    <div class="android-composer-row ${showVoiceControls ? '' : 'no-voice'}">
+                        ${showVoiceControls ? `<button type="button" class="android-icon-btn mic chat-voice-hold-btn ${isRecordingHere ? 'recording' : ''} disabled:opacity-40" ${getChatVoiceHoldButtonAttrs(false)} aria-label="Hold to record voice note" title="Hold to record; release to send" ${chatVoiceUploadInFlight ? 'disabled' : ''}><i class="ph-bold ph-microphone text-xl"></i></button>` : ''}
                         <div class="android-composer-pill">
-                            <textarea id="chat-message-input" class="android-chat-input" rows="1" placeholder="Text message" oninput="chatMessageDraft=this.value">${escapeHtml(chatMessageDraft)}</textarea>
-                            ${voiceSupported ? `<button type="button" class="android-icon-btn mic" onclick="${isRecordingHere ? 'finalizeChatVoiceRecording()' : 'beginChatVoiceRecording(false)'}" aria-label="Voice note"><i class="ph-bold ${isRecordingHere ? 'ph-stop-circle text-red-500' : 'ph-microphone'} text-xl"></i></button>` : ''}
+                            <textarea id="chat-message-input" class="android-chat-input" rows="1" placeholder="Message" oninput="chatMessageDraft=this.value">${escapeHtml(chatMessageDraft)}</textarea>
                         </div>
                         <button type="submit" class="android-icon-btn send" aria-label="Send message" title="Send"><i class="ph-bold ph-paper-plane-tilt text-xl"></i></button>
                     </div>
@@ -19817,6 +20027,9 @@ function toggleDriveQuickRequestItem(domId) {
             selectedReqCustView = null;
             selectedReqFolderView = null;
             requestFolderSearchTerm = '';
+            requestRepSearchTerm = '';
+            requestCustomerSearchTerm = '';
+            requestFolderDateFilter = '';
             clearSelection();
             if (shouldRender) scheduleRequestRender();
         }
@@ -20340,6 +20553,14 @@ function toggleDriveQuickRequestItem(domId) {
         function setTaskView(view) {
             const previousTaskView = activeTaskView;
             const normalizedView = normalizeTaskViewValue(view);
+            if (normalizedView === previousTaskView && activeTaskTab === normalizedView) {
+                taskTabDropdownOpen = false;
+                taskModeSearchTerm = '';
+                syncTaskModeControls(normalizedView);
+                syncTaskSubviewControls(normalizedView);
+                syncTaskSharedFilterArea();
+                return false;
+            }
             const nextUsesBlockDrill = taskViewUsesBlockDrill(normalizedView);
             const previousUsesBlockDrill = taskViewUsesBlockDrill(previousTaskView);
             lastViewSwitchAt = Date.now();
@@ -20399,16 +20620,35 @@ function toggleDriveQuickRequestItem(domId) {
             const allowedFilters = getTaskFilterDropdownOptions(activeTaskView).map((option) => option.value);
             const nextFilter = allowedFilters.includes(filter) ? filter : 'all';
             if (normalizeTaskViewValue(activeTaskView) === 'cust') {
+                if (nextFilter === activeTaskCustomerFilter && activeTaskSubview === activeTaskCustomerFilter) {
+                    syncTaskModeControls(activeTaskView);
+                    syncTaskSubviewControls(activeTaskView);
+                    syncTaskSharedFilterArea();
+                    return false;
+                }
                 activeTaskCustomerFilter = nextFilter;
                 activeTaskSubview = activeTaskCustomerFilter;
             } else if (normalizeTaskViewValue(activeTaskView) === 'reserves') {
+                if (nextFilter === activeTaskReserveRepFilter && activeTaskSubview === activeTaskReserveRepFilter) {
+                    syncTaskModeControls(activeTaskView);
+                    syncTaskSubviewControls(activeTaskView);
+                    syncTaskSharedFilterArea();
+                    return false;
+                }
                 activeTaskReserveRepFilter = nextFilter;
                 resetTaskReserveCustomerPickerState();
                 activeTaskReserveRowStatusMode = 'all';
                 activeTaskReservePhotoMode = 'all';
                 activeTaskSubview = activeTaskReserveRepFilter;
             } else {
-                activeTaskFilter = normalizeTaskFilterValue(nextFilter);
+                const normalizedFilter = normalizeTaskFilterValue(nextFilter);
+                if (normalizedFilter === activeTaskFilter && activeTaskSubview === activeTaskFilter) {
+                    syncTaskModeControls(activeTaskView);
+                    syncTaskSubviewControls(activeTaskView);
+                    syncTaskSharedFilterArea();
+                    return false;
+                }
+                activeTaskFilter = normalizedFilter;
                 activeTaskSubview = activeTaskFilter;
             }
             syncTaskModeControls(activeTaskView);
@@ -20735,6 +20975,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function selectDriveBlock(block) {
             cancelDriveSearchRenderWork();
+            rememberNavigationScrollPosition('drive:loc:blocks');
             return runDirectTrackedNavigation('drive', `drive-block:${String(block || '').trim()}`, () => {
                 setDriveSearchManualSelectionLock(false);
                 selectedDriveBlock = block;
@@ -20744,6 +20985,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
         function selectDriveLoc(loc) {
             cancelDriveSearchRenderWork();
+            rememberNavigationScrollPosition(`drive:loc:${selectedDriveBlock || ''}:locations`);
             return runDirectTrackedNavigation('drive', `drive-loc:${String(loc || '').trim()}`, () => {
                 setDriveSearchManualSelectionLock(false);
                 selectedDriveLoc = loc;
@@ -20843,7 +21085,7 @@ function toggleDriveQuickRequestItem(domId) {
             beginDirectNavigationActivity();
             activeReqTab = tab === 'reps' ? 'reps' : 'pending';
             syncRequestTabButtons();
-            requestViewLevel = 0; selectedReqFolder = null; selectedReqRepView = null; selectedReqCustView = null; selectedReqFolderView = null; requestFolderSearchTerm = ''; clearSelection(); scheduleRequestRender();
+            requestViewLevel = 0; selectedReqFolder = null; selectedReqRepView = null; selectedReqCustView = null; selectedReqFolderView = null; requestFolderSearchTerm = ''; requestRepSearchTerm = ''; requestCustomerSearchTerm = ''; requestFolderDateFilter = ''; clearSelection(); scheduleRequestRender();
             forceRefreshRequestsForView('request-tab', { force: true, minIntervalMs: 0 }).catch(() => {});
         }
 
@@ -23689,18 +23931,18 @@ function toggleDriveQuickRequestItem(domId) {
             const reserveOffset = Number(options.reserveOffset) || 0;
             const renderSignature = normalizeRenderSignature(options.renderSignature || buildRowsRenderSignature(`${key}|${String(crumbText || '')}|${prefixHtml}`, rows));
             const chunkSize = touchOptimized
-                ? (total > 1800 ? 9 : (total > 900 ? 10 : 14))
+                ? (total > 1800 ? 14 : (total > 900 ? 16 : 22))
                 : (total > 1400 ? 18 : (total > 700 ? 22 : 28));
             const configuredInitialScreens = Number(options.initialScreens);
             const initialScreens = Number.isFinite(configuredInitialScreens) && configuredInitialScreens > 0
                 ? configuredInitialScreens
-                : (touchOptimized ? 0.78 : 1.2);
+                : (touchOptimized ? 1.75 : 1.55);
             const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(7, chunkSize - 2) : Math.max(chunkSize, 18), Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 10) : Math.max(chunkSize, 24);
-            const frameBudgetMs = touchOptimized ? 1.35 : 2.1;
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 18) : Math.max(chunkSize, 28);
+            const frameBudgetMs = touchOptimized ? 3.2 : 3.1;
             const hasFollowupChunks = total > initialTarget;
             const reserveHeightCap = touchOptimized
-                ? Math.max(viewportHeight * 1.18, approxCardHeight * Math.max(5, initialTarget + Math.ceil(chunkSize * 0.25)))
+                ? Math.max(viewportHeight * 3.2, approxCardHeight * Math.max(12, initialTarget + (chunkSize * 3)))
                 : Math.max(viewportHeight * 2.8, approxCardHeight * Math.max(12, initialTarget + chunkSize));
             let index = 0;
 
@@ -23823,12 +24065,12 @@ function toggleDriveQuickRequestItem(domId) {
             const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
             const approxCardHeight = sourceView === 'reserves_drill' ? 255 : (getIsAvPhotoSubview() ? 230 : 245);
             const chunkSize = touchOptimized
-                ? (total > 1600 ? 10 : (total > 800 ? 12 : 16))
+                ? (total > 1600 ? 14 : (total > 800 ? 18 : 24))
                 : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = touchOptimized ? 0.92 : 1.65;
+            const initialScreens = touchOptimized ? 1.85 : 1.75;
             const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(8, chunkSize - 2) : chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 12) : Math.max(chunkSize, 44);
-            const frameBudgetMs = touchOptimized ? 1.75 : 2.85;
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 20) : Math.max(chunkSize, 48);
+            const frameBudgetMs = touchOptimized ? 3.2 : 3.2;
             let index = 0;
             container.classList.add('performance-windowed-list');
             crumb.innerText = crumbText;
@@ -23838,7 +24080,7 @@ function toggleDriveQuickRequestItem(domId) {
                 recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, `av-open:${sourceView}`);
                 return;
             }
-            const reserveHeight = Math.max(0, Math.round(Math.min(total * approxCardHeight, Math.max(viewportHeight * 1.22, approxCardHeight * Math.max(6, initialTarget + Math.ceil(chunkSize * 0.24))))));
+            const reserveHeight = Math.max(0, Math.round(Math.min(total * approxCardHeight, Math.max(viewportHeight * 3.2, approxCardHeight * Math.max(12, initialTarget + (chunkSize * 3))))));
             container.style.minHeight = reserveHeight ? `${reserveHeight}px` : '';
             if (!total) {
                 container.style.minHeight = '';
@@ -23907,12 +24149,12 @@ function toggleDriveQuickRequestItem(domId) {
             const approxCardHeight = Math.max(120, Number(options.approxCardHeight) || 185);
             const emptyHtml = options.emptyHtml || `<div class="p-6 text-center text-gray-400">No rows found.</div>`;
             const chunkSize = touchOptimized
-                ? (total > 1600 ? 10 : (total > 800 ? 12 : 16))
+                ? (total > 1600 ? 14 : (total > 800 ? 18 : 24))
                 : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = touchOptimized ? 0.92 : 1.65;
+            const initialScreens = touchOptimized ? 1.85 : 1.75;
             const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(8, chunkSize - 2) : chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 12) : Math.max(chunkSize, 44);
-            const frameBudgetMs = touchOptimized ? 1.75 : 2.85;
+            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 20) : Math.max(chunkSize, 48);
+            const frameBudgetMs = touchOptimized ? 3.2 : 3.2;
             let index = 0;
             container.classList.add('performance-windowed-list');
             crumb.innerText = crumbText;
@@ -23922,7 +24164,7 @@ function toggleDriveQuickRequestItem(domId) {
                 recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, String(options.chunkKey || 'av-generic'));
                 return;
             }
-            const reserveHeight = Math.max(0, Math.round(Math.min(total * approxCardHeight, Math.max(viewportHeight * 1.22, approxCardHeight * Math.max(6, initialTarget + Math.ceil(chunkSize * 0.24))))));
+            const reserveHeight = Math.max(0, Math.round(Math.min(total * approxCardHeight, Math.max(viewportHeight * 3.2, approxCardHeight * Math.max(12, initialTarget + (chunkSize * 3))))));
             container.style.minHeight = reserveHeight ? `${reserveHeight}px` : '';
             if (!total) {
                 container.style.minHeight = '';
@@ -27820,18 +28062,112 @@ function toggleDriveQuickRequestItem(domId) {
             return true;
         }
 
-        function setRequestFolderSearchTerm(value = '') {
-            requestFolderSearchTerm = String(value || '').trim();
+        function getRequestHeaderSearchMode() {
+            if (activeReqTab !== 'reps') return '';
+            if (requestViewLevel === 0) return 'reps';
+            if (requestViewLevel === 1) return 'customers';
+            return '';
+        }
+
+        function syncRequestHeaderSearchChrome(options = {}) {
+            const mode = getRequestHeaderSearchMode();
+            const previousMode = lastRequestHeaderSearchMode;
+            lastRequestHeaderSearchMode = mode;
+            const container = document.getElementById('request-search-container');
+            const input = document.getElementById('request-search');
+            const clearBtn = document.getElementById('request-search-clear');
+            const visible = !!mode;
+            const value = mode === 'customers' ? requestCustomerSearchTerm : (mode === 'reps' ? requestRepSearchTerm : '');
+            const placeholder = mode === 'customers' ? 'Search customers...' : 'Search sales reps...';
+            if (container) container.classList.toggle('hidden', !visible);
+            if (input) {
+                if (document.activeElement !== input && input.value !== value) input.value = value;
+                input.placeholder = placeholder;
+                input.setAttribute('aria-label', placeholder.replace(/\.\.\.$/, ''));
+            }
+            if (clearBtn) clearBtn.classList.toggle('hidden', !String(value || '').trim());
+            if ((options && options.forceHeader) || previousMode !== mode) syncGlobalHeaderChrome({ reason: 'request-search', force: true });
+        }
+
+        function handleRequestHeaderSearch() {
+            const mode = getRequestHeaderSearchMode();
+            const input = document.getElementById('request-search');
+            const value = input ? input.value : '';
+            if (mode === 'customers') {
+                requestCustomerSearchTerm = value;
+            } else if (mode === 'reps') {
+                requestRepSearchTerm = value;
+            } else {
+                return false;
+            }
+            const clearBtn = document.getElementById('request-search-clear');
+            if (clearBtn) clearBtn.classList.toggle('hidden', !String(value || '').trim());
+            return scheduleTrackedSearchViewRender('request', `request-header-search:${mode}`, value, { force: true, debounceDelay: 1, typingDelay: 18 });
+        }
+
+        function clearRequestHeaderSearch() {
+            const mode = getRequestHeaderSearchMode();
+            if (mode === 'customers') requestCustomerSearchTerm = '';
+            else if (mode === 'reps') requestRepSearchTerm = '';
+            const input = document.getElementById('request-search');
+            const clearBtn = document.getElementById('request-search-clear');
+            if (input) input.value = '';
+            if (clearBtn) clearBtn.classList.add('hidden');
+            return scheduleTrackedSearchViewRender('request', `request-header-search:${mode || 'none'}`, '', { force: true, skipDebounce: true, typingDelay: 12 });
+        }
+
+        function getRequestFolderDateKey(ms = 0) {
+            const stamp = Number(ms) || 0;
+            if (!stamp) return '';
+            const date = new Date(stamp);
+            if (!Number.isFinite(date.getTime())) return '';
+            const pad = (value) => String(value).padStart(2, '0');
+            return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+        }
+
+        function applyRequestFolderFilters() {
             const filterToken = normalizeRepMatchToken(requestFolderSearchTerm);
+            const dateFilter = String(requestFolderDateFilter || '').trim();
             let visibleCount = 0;
             document.querySelectorAll('[data-request-folder-card="true"]').forEach((card) => {
                 const haystack = normalizeRepMatchToken(card.getAttribute('data-request-folder-search') || '');
-                const isVisible = !filterToken || haystack.includes(filterToken);
+                const dateKey = String(card.getAttribute('data-request-folder-date') || '').trim();
+                const isVisible = (!filterToken || haystack.includes(filterToken)) && (!dateFilter || dateKey === dateFilter);
                 card.classList.toggle('hidden', !isVisible);
                 if (isVisible) visibleCount += 1;
             });
             const empty = document.getElementById('request-folder-empty-filter');
             if (empty) empty.classList.toggle('hidden', visibleCount > 0);
+            const clearBtn = document.getElementById('request-folder-clear-filters');
+            const hasFilters = !!(filterToken || dateFilter);
+            if (clearBtn) {
+                clearBtn.classList.toggle('opacity-50', !hasFilters);
+                clearBtn.classList.toggle('cursor-not-allowed', !hasFilters);
+                clearBtn.classList.toggle('pointer-events-none', !hasFilters);
+            }
+            return visibleCount;
+        }
+
+        function setRequestFolderSearchTerm(value = '') {
+            requestFolderSearchTerm = String(value || '').trim();
+            applyRequestFolderFilters();
+            return false;
+        }
+
+        function setRequestFolderDateFilter(value = '') {
+            requestFolderDateFilter = String(value || '').trim();
+            applyRequestFolderFilters();
+            return false;
+        }
+
+        function clearRequestFolderFilters() {
+            requestFolderSearchTerm = '';
+            requestFolderDateFilter = '';
+            const searchInput = document.getElementById('request-folder-search-input');
+            const dateInput = document.getElementById('request-folder-date-filter');
+            if (searchInput) searchInput.value = '';
+            if (dateInput) dateInput.value = '';
+            applyRequestFolderFilters();
             return false;
         }
 
@@ -27848,6 +28184,8 @@ function toggleDriveQuickRequestItem(domId) {
                 selectedReqCustView = null;
                 selectedReqFolderView = null;
                 requestFolderSearchTerm = '';
+                requestCustomerSearchTerm = '';
+                requestFolderDateFilter = '';
                 requestViewLevel = 1;
             }, {
                 resetScrollTopAfterRender: true,
@@ -27861,6 +28199,7 @@ function toggleDriveQuickRequestItem(domId) {
                 selectedReqCustView = safeCustomerName;
                 selectedReqFolderView = null;
                 requestFolderSearchTerm = '';
+                requestFolderDateFilter = '';
                 requestViewLevel = 2;
             }, {
                 resetScrollTopAfterRender: true,
@@ -27874,6 +28213,7 @@ function toggleDriveQuickRequestItem(domId) {
                 selectedReqStatus = safeStatus;
                 selectedReqFolderView = null;
                 requestFolderSearchTerm = '';
+                requestFolderDateFilter = '';
                 requestViewLevel = 2;
             }, {
                 resetScrollTopAfterRender: true,
@@ -27907,6 +28247,9 @@ function toggleDriveQuickRequestItem(domId) {
                 selectedReqCustView = null;
                 selectedReqFolderView = null;
                 requestFolderSearchTerm = '';
+                requestRepSearchTerm = '';
+                requestCustomerSearchTerm = '';
+                requestFolderDateFilter = '';
             }, {
                 resetScrollTopAfterRender: true,
                 scrollResetKey: 'request-rep-list'
@@ -27919,6 +28262,8 @@ function toggleDriveQuickRequestItem(domId) {
                 selectedReqCustView = null;
                 selectedReqFolderView = null;
                 requestFolderSearchTerm = '';
+                requestCustomerSearchTerm = '';
+                requestFolderDateFilter = '';
             }, {
                 resetScrollTopAfterRender: true,
                 scrollResetKey: `request-rep:${selectedReqRepView || ''}`
@@ -28071,6 +28416,8 @@ function toggleDriveQuickRequestItem(domId) {
         function renderRequest() {
             updateFooterRequestBadge();
             updateFooterChatBadge();
+            syncRequestTabButtons();
+            syncRequestHeaderSearchChrome();
             if (ensureViewDataForRender('request')) return;
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
@@ -28101,13 +28448,19 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (activeReqTab === 'reps') {
                 if (requestViewLevel === 0) {
                     const crumbText = 'Sales Reps';
-                    let reps = [...new Set(items.filter(i => !i.REQ_ARCHIVED).map(i => getRequestAssignedRep(i)))].sort();
-                    if (reps.length === 0) {
+                    const allReps = [...new Set(items.filter(i => !i.REQ_ARCHIVED).map(i => getRequestAssignedRep(i)))].sort();
+                    const repSearchToken = normalizeRepMatchToken(requestRepSearchTerm);
+                    let reps = repSearchToken ? allReps.filter((repName) => normalizeRepMatchToken(repName).includes(repSearchToken)) : allReps;
+                    if (allReps.length === 0) {
                         applyRequestRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No sales reps found.</div>`, 'request:reps:empty');
                         return;
                     }
+                    if (reps.length === 0) {
+                        applyRequestRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No matching sales reps.</div>`, `request:reps:filter-empty:${repSearchToken}`);
+                        return;
+                    }
                     const html = reps.map(r => `<div class="drill-item" ${buildFastInvokeAttrs('openRequestRepView', [r], 'Open ' + r)}><span class="font-bold text-lg">${escapeShareHtml(r)}</span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`).join('');
-                    applyRequestRenderMarkup(container, crumb, crumbText, html);
+                    applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${repSearchToken}:${reps.join('|')}`);
                     return;
                 } else if (requestViewLevel === 1) {
                     const crumbText = `${selectedReqRepView} > Customers`;
@@ -28126,20 +28479,29 @@ function toggleDriveQuickRequestItem(domId) {
                         }, 0);
                         return { customerName, rows, info: getRequestFolderStatusInfo(rows), folderCount: folderNames.length, unreadCount };
                     }).sort((a, b) => (b.info.latestMs - a.info.latestMs) || String(a.customerName).localeCompare(String(b.customerName)));
+                    const customerSearchToken = normalizeRepMatchToken(requestCustomerSearchTerm);
+                    const visibleCustomerEntries = customerSearchToken
+                        ? customerEntries.filter((entry) => normalizeRepMatchToken(`${entry.customerName} ${entry.rows.map((row) => [row.REQ_CUSTOMER, row.REQUEST_FOLDER].join(' ')).join(' ')}`).includes(customerSearchToken))
+                        : customerEntries;
                     if (!customerEntries.length) {
                         const html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestRepList', [], 'Back to Reps')}><i class="ph-bold ph-arrow-left"></i> Back to Reps</div><div class="p-8 text-center text-gray-400">No customer request folders for this rep.</div>`;
                         applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:customers:empty`);
                         return;
                     }
+                    if (!visibleCustomerEntries.length) {
+                        const html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestRepList', [], 'Back to Reps')}><i class="ph-bold ph-arrow-left"></i> Back to Reps</div><div class="p-8 text-center text-gray-400">No matching customers.</div>`;
+                        applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:customers:filter-empty:${customerSearchToken}`);
+                        return;
+                    }
                     let html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestRepList', [], 'Back to Reps')}><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>`;
-                    html += customerEntries.map((entry) => {
+                    html += visibleCustomerEntries.map((entry) => {
                         const latestLabel = formatRequestFolderLatestLabel(entry.info.latestMs);
                         const unreadDot = entry.unreadCount ? `<span class="inline-flex h-3 w-3 rounded-full bg-red-500 shadow-sm ring-2 ring-white" aria-label="Unread completed request"></span>` : '';
                         const pendingBadge = entry.info.pendingCount ? `<span class="rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-orange-700">${entry.info.pendingCount} Pending</span>` : '';
                         const completeBadge = entry.info.completeCount ? `<span class="rounded-full border border-green-200 bg-green-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-green-700">${entry.info.completeCount} Complete</span>` : '';
                         return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('openRequestCustomerView', [entry.customerName], 'Open customer ' + entry.customerName)}><div class="flex justify-between items-center gap-3"><div class="flex items-center gap-3 min-w-0"><div class="bg-emerald-50 p-2 rounded-lg"><i class="ph-bold ph-users-three text-2xl text-[#007a4d]"></i></div><div class="min-w-0"><div class="flex items-center gap-2"><span class="font-bold text-sm text-emerald-900 break-words">${escapeShareHtml(entry.customerName)}</span>${unreadDot}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${entry.folderCount} request folder${entry.folderCount === 1 ? '' : 's'}${latestLabel ? ` &bull; Newest ${escapeShareHtml(latestLabel)}` : ''}</div></div></div><i class="ph-bold ph-caret-right text-gray-300"></i></div><div class="mt-3 flex flex-wrap gap-2">${pendingBadge}${completeBadge}</div></div>`;
                     }).join('');
-                    applyRequestRenderMarkup(container, crumb, crumbText, html);
+                    applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:customers:${customerSearchToken}:${visibleCustomerEntries.map((entry) => entry.customerName).join('|')}`);
                     return;
                 } else if (requestViewLevel === 2) {
                     const crumbText = `${selectedReqRepView} > ${selectedReqCustView}`;
@@ -28157,15 +28519,25 @@ function toggleDriveQuickRequestItem(domId) {
                         if (!folderMap.has(folderName)) folderMap.set(folderName, []);
                         folderMap.get(folderName).push(item);
                     });
-                    const folderEntries = Array.from(folderMap.entries()).map(([folderName, rows]) => ({
-                        folderName,
-                        rows,
-                        info: getRequestFolderStatusInfo(rows),
-                        searchText: `${folderName} ${selectedReqCustView} ${rows.map((row) => [row.COMMONNAME, row.ITEMCODE, row.LOCATIONCODE, row.LOTCODE, row.CONTSIZE].join(' ')).join(' ')}`
-                    })).sort((a, b) => (b.info.latestMs - a.info.latestMs) || String(a.folderName).localeCompare(String(b.folderName)));
+                    const folderEntries = Array.from(folderMap.entries()).map(([folderName, rows]) => {
+                        const info = getRequestFolderStatusInfo(rows);
+                        return {
+                            folderName,
+                            rows,
+                            info,
+                            dateKey: getRequestFolderDateKey(info.latestMs),
+                            searchText: `${folderName} ${selectedReqCustView} ${rows.map((row) => [row.COMMONNAME, row.ITEMCODE, row.LOCATIONCODE, row.LOTCODE, row.CONTSIZE].join(' ')).join(' ')}`
+                        };
+                    }).sort((a, b) => (b.info.latestMs - a.info.latestMs) || String(a.folderName).localeCompare(String(b.folderName)));
                     const searchToken = normalizeRepMatchToken(requestFolderSearchTerm);
-                    const visibleFolderCount = folderEntries.filter((entry) => !searchToken || normalizeRepMatchToken(entry.searchText).includes(searchToken)).length;
-                    let html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestStatusList', [], 'Back to Customers')}><i class="ph-bold ph-arrow-left"></i> Back to Customers</div><div class="mb-3"><input id="request-folder-search-input" class="input-field !mb-0 border-emerald-200 focus:border-[#007a4d]" type="text" value="${esc(requestFolderSearchTerm)}" placeholder="Search requests..." oninput="return setRequestFolderSearchTerm(this.value)"></div><div id="request-folder-empty-filter" class="${visibleFolderCount ? 'hidden ' : ''}p-8 text-center text-gray-400">No matching request folders.</div>`;
+                    const dateFilter = String(requestFolderDateFilter || '').trim();
+                    const visibleFolderCount = folderEntries.filter((entry) => {
+                        const matchesSearch = !searchToken || normalizeRepMatchToken(entry.searchText).includes(searchToken);
+                        const matchesDate = !dateFilter || entry.dateKey === dateFilter;
+                        return matchesSearch && matchesDate;
+                    }).length;
+                    const hasFolderFilters = !!(searchToken || dateFilter);
+                    let html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestStatusList', [], 'Back to Customers')}><i class="ph-bold ph-arrow-left"></i> Back to Customers</div><div class="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_12rem_auto]"><div class="relative"><input id="request-folder-search-input" class="input-field !mb-0 border-emerald-200 focus:border-[#007a4d] pr-10" type="text" value="${esc(requestFolderSearchTerm)}" placeholder="Search folders..." oninput="return setRequestFolderSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"><i class="ph-bold ph-magnifying-glass pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-emerald-500"></i></div><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Date<input id="request-folder-date-filter" class="input-field !mb-0 mt-1 border-emerald-200 focus:border-[#007a4d]" type="date" value="${esc(requestFolderDateFilter)}" oninput="return setRequestFolderDateFilter(this.value)" onchange="return setRequestFolderDateFilter(this.value)"></label><button id="request-folder-clear-filters" type="button" class="min-h-[42px] rounded-xl border border-emerald-200 bg-white px-4 text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm self-end ${hasFolderFilters ? '' : 'opacity-50 cursor-not-allowed pointer-events-none'}" onclick="return clearRequestFolderFilters()">Clear</button></div><div id="request-folder-empty-filter" class="${visibleFolderCount ? 'hidden ' : ''}p-8 text-center text-gray-400">No matching request folders.</div>`;
                     html += folderEntries.map((entry) => {
                         const f = entry.folderName;
                         const folderStatus = entry.info.allComplete ? 'Complete' : 'Pending';
@@ -28175,9 +28547,11 @@ function toggleDriveQuickRequestItem(domId) {
                         const shareActions = canShareRequestFolders() ? `<div class="grid ${showResendAction ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'} gap-2 mt-3"><button class="bg-white border border-purple-200 text-purple-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('copy', '${esc(f)}', '${folderStatus}', '${esc(selectedReqRepView)}')">Copy</button><button class="bg-white border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('email', '${esc(f)}', '${folderStatus}', '${esc(selectedReqRepView)}')">Email</button><button class="bg-white border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('text', '${esc(f)}', '${folderStatus}', '${esc(selectedReqRepView)}')">Text</button>${showResendAction ? `<button class="bg-white border border-sky-200 text-sky-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); resendRequestCompletionEmail('${esc(f)}', '${esc(selectedReqRepView)}')">Resend</button>` : ''}<button class="bg-white border border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); setRequestFolderNote('${esc(f)}', '${folderStatus}', '${esc(selectedReqRepView)}')">Note</button></div>` : '';
                         const latestLabel = formatRequestFolderLatestLabel(entry.info.latestMs);
                         const unreadDot = isCompletedRequestFolderUnread(selectedReqRepView, selectedReqCustView, f, entry.rows) ? `<span class="inline-flex h-3 w-3 rounded-full bg-red-500 shadow-sm ring-2 ring-white" aria-label="Unread completed request"></span>` : '';
-                        const hiddenClass = searchToken && !normalizeRepMatchToken(entry.searchText).includes(searchToken) ? ' hidden' : '';
+                        const matchesSearch = !searchToken || normalizeRepMatchToken(entry.searchText).includes(searchToken);
+                        const matchesDate = !dateFilter || entry.dateKey === dateFilter;
+                        const hiddenClass = matchesSearch && matchesDate ? '' : ' hidden';
                         const statusBadges = `<span class="rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-orange-700">${entry.info.pendingCount} Pending</span><span class="rounded-full border border-green-200 bg-green-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-green-700">${entry.info.completeCount} Complete</span>`;
-                        return `<div data-request-folder-card="true" data-request-folder-search="${escapeShareHtml(entry.searchText)}" class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform${hiddenClass}" ${buildFastInvokeAttrs('openRequestFolderView', [f], 'Open folder ' + f)}><div class="flex justify-between items-center gap-3"><div class="flex items-center gap-3 min-w-0"><div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div><div class="min-w-0"><div class="flex items-center gap-2"><span class="font-bold text-sm text-purple-800 break-all">${escapeShareHtml(f)}</span>${unreadDot}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${latestLabel ? `Newest ${escapeShareHtml(latestLabel)}` : 'Request Folder'}</div></div></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg min-w-max ml-2">${entry.info.itemCount} Items</span></div><div class="mt-3 flex flex-wrap gap-2">${statusBadges}</div>${noteHtml}${shareActions}</div>`;
+                        return `<div data-request-folder-card="true" data-request-folder-search="${escapeShareHtml(entry.searchText)}" data-request-folder-date="${escapeShareHtml(entry.dateKey)}" class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform${hiddenClass}" ${buildFastInvokeAttrs('openRequestFolderView', [f], 'Open folder ' + f)}><div class="flex justify-between items-center gap-3"><div class="flex items-center gap-3 min-w-0"><div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div><div class="min-w-0"><div class="flex items-center gap-2"><span class="font-bold text-sm text-purple-800 break-all">${escapeShareHtml(f)}</span>${unreadDot}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${latestLabel ? `Newest ${escapeShareHtml(latestLabel)}` : 'Request Folder'}</div></div></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg min-w-max ml-2">${entry.info.itemCount} Items</span></div><div class="mt-3 flex flex-wrap gap-2">${statusBadges}</div>${noteHtml}${shareActions}</div>`;
                     }).join('');
                     applyRequestRenderMarkup(container, crumb, crumbText, html);
                     return;
@@ -29455,6 +29829,41 @@ function toggleDriveQuickRequestItem(domId) {
                 row.appendChild(surface);
             });
         }
+        function refreshRequestViewAfterArchive() {
+            updateFooterRequestBadge();
+            requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+            markViewDirty('request');
+            markViewDirty('reports');
+            if (isViewVisible('request')) {
+                prepareLatestViewRender('request');
+                renderViewContent('request', false, true);
+                schedulePrimaryViewChromeRefresh('request', { delay: 0, requestSyncDelay: 120, force: true });
+                return;
+            }
+            scheduleRequestRender(0, 28, true);
+        }
+
+        function refreshTaskViewAfterCompletion(delay = 0) {
+            const runRefresh = () => {
+                invalidateResolvedViewStateCaches();
+                markViewDirty('tasks');
+                markViewDirty('reports');
+                if (isViewVisible('tasks')) {
+                    prepareLatestViewRender('tasks');
+                    renderViewContent('tasks', false, true);
+                    schedulePrimaryViewChromeRefresh('tasks', { delay: 0, force: true });
+                    return;
+                }
+                scheduleTasksRender(0, 28, true);
+            };
+            const safeDelay = Math.max(0, Number(delay) || 0);
+            if (safeDelay > 0) {
+                scheduleUiRender('tasks-complete-refresh', runRefresh, safeDelay);
+                return;
+            }
+            runRefresh();
+        }
+
         async function archiveRequestRow(uid) {
             const item = requestsInventory.find((entry) => entry.UNIQUE_ID === uid);
             if (!item) return;
@@ -29462,9 +29871,7 @@ function toggleDriveQuickRequestItem(domId) {
             buildSearchIndex(item);
             queuePendingRequestArchive(item);
             closeAllRequestSwipes();
-            updateFooterRequestBadge();
-            markViewDirty('request');
-            scheduleRequestRender(0);
+            refreshRequestViewAfterArchive();
             persistCurrentCache();
             showToast('Removing', 'Updating request...', false);
             const archived = await syncRequestArchive(uid, 3);
@@ -32642,6 +33049,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function selectDriveName(name) {
             cancelDriveSearchRenderWork();
+            rememberNavigationScrollPosition('drive:name:names');
             return runDirectTrackedNavigation('drive', `drive-name:${String(name || '').trim()}`, () => {
                 setDriveSearchManualSelectionLock(false);
                 selectedDriveName = name;
@@ -32652,6 +33060,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
         function selectDriveSize(size) {
             cancelDriveSearchRenderWork();
+            rememberNavigationScrollPosition(`drive:name:${selectedDriveName || ''}:sizes`);
             return runDirectTrackedNavigation('drive', `drive-size:${String(size || '').trim()}`, () => {
                 setDriveSearchManualSelectionLock(false);
                 selectedDriveSize = size;
@@ -32661,6 +33070,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
         function selectDriveSeason(season) {
             cancelDriveSearchRenderWork();
+            rememberNavigationScrollPosition(`drive:name:${selectedDriveName || ''}:${selectedDriveSize || ''}:seasons`);
             return runDirectTrackedNavigation('drive', `drive-season:${String(season || '').trim()}`, () => {
                 setDriveSearchManualSelectionLock(false);
                 selectedDriveSeason = season;
@@ -32669,42 +33079,47 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
         function backToDriveSeasons() {
             cancelDriveSearchRenderWork();
+            const restoreScrollTop = getNavigationScrollPosition(`drive:name:${selectedDriveName || ''}:${selectedDriveSize || ''}:seasons`);
             return runDirectTrackedNavigation('drive', `drive-size:${String(selectedDriveSize || '').trim()}`, () => {
                 driveViewLevel = 2;
                 selectedDriveSeason = null;
-            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
+            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: `drive-name:${selectedDriveName || ''}:${selectedDriveSize || ''}:seasons` });
         }
         function backToDriveSizes() {
             cancelDriveSearchRenderWork();
+            const restoreScrollTop = getNavigationScrollPosition(`drive:name:${selectedDriveName || ''}:sizes`);
             return runDirectTrackedNavigation('drive', `drive-name:${String(selectedDriveName || '').trim()}`, () => {
                 driveViewLevel = 1;
                 selectedDriveSize = null;
                 selectedDriveSeason = null;
-            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
+            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: `drive-name:${selectedDriveName || ''}:sizes` });
         }
         function backToDriveNames() {
             cancelDriveSearchRenderWork();
+            const restoreScrollTop = getNavigationScrollPosition('drive:name:names');
             return runDirectTrackedNavigation('drive', 'drive-names', () => {
                 driveViewLevel = 0;
                 selectedDriveName = null;
                 selectedDriveSize = null;
                 selectedDriveSeason = null;
-            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
+            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: 'drive:name:names' });
         }
         function backToDriveBlocks() {
             cancelDriveSearchRenderWork();
+            const restoreScrollTop = getNavigationScrollPosition('drive:loc:blocks');
             return runDirectTrackedNavigation('drive', 'drive-blocks', () => {
                 driveViewLevel = 0;
                 selectedDriveBlock = null;
                 selectedDriveLoc = null;
-            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
+            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: 'drive:loc:blocks' });
         }
         function backToDriveLocations() {
             cancelDriveSearchRenderWork();
+            const restoreScrollTop = getNavigationScrollPosition(`drive:loc:${selectedDriveBlock || ''}:locations`);
             return runDirectTrackedNavigation('drive', `drive-block:${String(selectedDriveBlock || '').trim()}`, () => {
                 driveViewLevel = 1;
                 selectedDriveLoc = null;
-            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
+            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: `drive:loc:${selectedDriveBlock || ''}:locations` });
         }
 
        function sortDriveCardItems(items) {
@@ -33291,6 +33706,8 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function openTaskBlockView(block) {
             const safeBlock = String(block || '').trim();
+            const returnScrollKey = `tasks:${activeTaskTab}:${activeTaskSubview}:blocks`;
+            rememberNavigationScrollPosition(returnScrollKey);
             return runDirectTrackedNavigation('tasks', 'tasks:block', () => {
                 closeTaskDropdowns(false);
                 resetTaskLocationDetailFilters();
@@ -33305,6 +33722,8 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function openTaskLocationView(loc) {
             const safeLoc = String(loc || '').trim();
+            const returnScrollKey = `tasks:${activeTaskTab}:${activeTaskSubview}:block:${selectedTaskBlock || ''}:locations`;
+            rememberNavigationScrollPosition(returnScrollKey);
             return runDirectTrackedNavigation('tasks', 'tasks:location', () => {
                 closeTaskDropdowns(false);
                 resetTaskLocationDetailFilters();
@@ -33317,6 +33736,8 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function backToTaskBlockList() {
+            const returnScrollKey = `tasks:${activeTaskTab}:${activeTaskSubview}:blocks`;
+            const restoreScrollTop = getNavigationScrollPosition(returnScrollKey);
             return runDirectTrackedNavigation('tasks', 'tasks:block:list', () => {
                 closeTaskDropdowns(false);
                 resetTaskLocationDetailFilters();
@@ -33324,25 +33745,30 @@ ${folderNote ? `Folder Note: ${folderNote}
                 selectedTaskBlock = null;
                 selectedTaskLoc = null;
             }, {
-                resetScrollTopAfterRender: true,
+                resetScrollTopAfterRender: restoreScrollTop == null,
+                restoreScrollTopAfterRender: restoreScrollTop,
                 scrollResetKey: 'task-block-list'
             });
         }
 
         function backToTaskLocationList() {
+            const returnScrollKey = `tasks:${activeTaskTab}:${activeTaskSubview}:block:${selectedTaskBlock || ''}:locations`;
+            const restoreScrollTop = getNavigationScrollPosition(returnScrollKey);
             return runDirectTrackedNavigation('tasks', 'tasks:location:list', () => {
                 closeTaskDropdowns(false);
                 resetTaskLocationDetailFilters();
                 taskViewLevel = 1;
                 selectedTaskLoc = null;
             }, {
-                resetScrollTopAfterRender: true,
+                resetScrollTopAfterRender: restoreScrollTop == null,
+                restoreScrollTopAfterRender: restoreScrollTop,
                 scrollResetKey: `task-block:${selectedTaskBlock || ''}`
             });
         }
 
         function openTaskEndCapFolder(folderName = '') {
             const safeFolderName = String(folderName || '').trim() || 'Unassigned';
+            rememberNavigationScrollPosition('tasks:endcap:folders');
             return runDirectTrackedNavigation('tasks', 'tasks:endcap:folder', () => {
                 selectedEndCapFolder = safeFolderName;
                 taskViewLevel = 1;
@@ -33353,11 +33779,13 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function backToTaskEndCapFolderList() {
+            const restoreScrollTop = getNavigationScrollPosition('tasks:endcap:folders');
             return runDirectTrackedNavigation('tasks', 'tasks:endcap:list', () => {
                 selectedEndCapFolder = null;
                 taskViewLevel = 0;
             }, {
-                resetScrollTopAfterRender: true,
+                resetScrollTopAfterRender: restoreScrollTop == null,
+                restoreScrollTopAfterRender: restoreScrollTop,
                 scrollResetKey: 'task-endcap:list'
             });
         }
@@ -33373,6 +33801,8 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function openFlyerFolder(folderName, folderTab = activeFlyerFolderTab) {
+            const returnScrollKey = `tasks:flyer:${getFlyerFolderTabValue(activeFlyerFolderTab)}:folders`;
+            rememberNavigationScrollPosition(returnScrollKey);
             activeFlyerFolderTab = getFlyerFolderTabValue(folderTab);
             selectedFlyerFolder = getFlyerFolderName(folderName);
             taskViewLevel = 1;
@@ -33383,11 +33813,14 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function backToFlyerFolderList() {
+            const returnScrollKey = `tasks:flyer:${getFlyerFolderTabValue(activeFlyerFolderTab)}:folders`;
+            const restoreScrollTop = getNavigationScrollPosition(returnScrollKey);
             taskViewLevel = 0;
             selectedFlyerFolder = null;
             closeAllFlyerSwipes();
             scheduleTasksRender(0);
-            queueScrollMainAreaToTop(`flyer-tab:${activeFlyerFolderTab}`);
+            if (restoreScrollTop == null) queueScrollMainAreaToTop(`flyer-tab:${activeFlyerFolderTab}`);
+            else schedulePostRenderMainAreaScrollRestore('tasks', returnScrollKey, restoreScrollTop);
             return false;
         }
 
@@ -36347,6 +36780,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                             typingDelay: 44,
                             renderHiddenRequest: !!(requestOptions && requestOptions.renderHiddenRequest)
                         });
+                        return;
+                    }
+                    if (isComplete && ['ssn-', 'lsn-', 'na-'].includes(prefix)) {
+                        refreshTaskViewAfterCompletion(delay);
                         return;
                     }
                     queueVisibleSaveRefresh(delay);
