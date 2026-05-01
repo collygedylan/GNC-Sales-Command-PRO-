@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.01.06';
+window.__APP_SHELL_VERSION__ = 'V2026.05.01.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -942,7 +942,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.06').trim() || 'V2026.05.01.06';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.07').trim() || 'V2026.05.01.07';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1506,7 +1506,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.06';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -4102,6 +4102,43 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
         function isSeasonSalesNotesAssignmentValue(value = '') {
             return String(value || '').trim().toLowerCase() === 'season';
+        }
+
+        function isSeasonLocationAssignmentValue(value = '') {
+            const normalizedValue = String(value || '').trim().toLowerCase();
+            return normalizedValue === 'season' || normalizedValue === 'location';
+        }
+
+        function captureSeasonLocationAssignmentFields(row = null) {
+            return {
+                APP_TAB_ASSIGNMENT: row ? row.APP_TAB_ASSIGNMENT : '',
+                app_tab_assignment: row ? row.app_tab_assignment : '',
+                PRODUCTIVITY_ORIGIN_ASSIGNMENT: row ? row.PRODUCTIVITY_ORIGIN_ASSIGNMENT : '',
+                productivity_origin_assignment: row ? row.productivity_origin_assignment : ''
+            };
+        }
+
+        function applySeasonLocationAssignmentFields(row = null, assignment = '') {
+            if (!row) return row;
+            const normalizedAssignment = String(assignment || '').trim().toLowerCase();
+            if (!isSeasonLocationAssignmentValue(normalizedAssignment)) return row;
+            row.APP_TAB_ASSIGNMENT = normalizedAssignment;
+            row.app_tab_assignment = normalizedAssignment;
+            const currentOrigin = String(firstNonEmptyValue(row.PRODUCTIVITY_ORIGIN_ASSIGNMENT, row.productivity_origin_assignment, '') || '').trim().toLowerCase();
+            if (!currentOrigin || isSeasonLocationAssignmentValue(currentOrigin)) {
+                row.PRODUCTIVITY_ORIGIN_ASSIGNMENT = normalizedAssignment;
+                row.productivity_origin_assignment = normalizedAssignment;
+            }
+            return row;
+        }
+
+        function restoreSeasonLocationAssignmentFields(row = null, snapshot = null) {
+            if (!row || !snapshot) return row;
+            row.APP_TAB_ASSIGNMENT = snapshot.APP_TAB_ASSIGNMENT || '';
+            row.app_tab_assignment = snapshot.app_tab_assignment || '';
+            row.PRODUCTIVITY_ORIGIN_ASSIGNMENT = snapshot.PRODUCTIVITY_ORIGIN_ASSIGNMENT || '';
+            row.productivity_origin_assignment = snapshot.productivity_origin_assignment || '';
+            return row;
         }
 
         function isHeldSeasonSalesNotesRow(item = null, assignmentOverride = '') {
@@ -9056,7 +9093,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.06').trim() || 'V2026.05.01.06';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.07').trim() || 'V2026.05.01.07';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -14352,7 +14389,7 @@ function toggleDriveQuickRequestItem(domId) {
             itemGroups.forEach((rows) => {
                 const winner = pickSeasonWinnerCandidate(rows);
                 rows.forEach((row) => {
-                    row.APP_TAB_ASSIGNMENT = winner && row.UNIQUE_ID === winner.UNIQUE_ID ? 'season' : 'location';
+                    applySeasonLocationAssignmentFields(row, winner && row.UNIQUE_ID === winner.UNIQUE_ID ? 'season' : 'location');
                 });
             });
         }
@@ -14510,6 +14547,24 @@ function toggleDriveQuickRequestItem(domId) {
                 );
             });
             return remoteOps;
+        }
+
+        function syncSeasonSalesOfficeAfterSeasonDataSave(item = null, prefix = '', options = {}) {
+            if (!item) return [];
+            const safePrefix = String(prefix || '').trim().toLowerCase();
+            if (!['ssn-','lsn-','na-'].includes(safePrefix)) return [];
+            const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, 'v2_master_inventory') || '').trim().toLowerCase();
+            if (sourceTable !== 'v2_master_inventory') return [];
+            const assignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '') || '').trim().toLowerCase();
+            if (assignment !== 'season') return [];
+            if (!isSeasonSalesOfficeAutoPublishable(item)) return [];
+            const itemCode = getMasterItemCodeKey(item);
+            if (!itemCode) return [];
+            return syncSeasonSalesOfficeStateForItemCodes([itemCode], {
+                skipRemote: !!(options && options.skipRemote),
+                preserveAssignments: true,
+                reason: options && options.reason ? options.reason : 'season-sales-note-data-save'
+            });
         }
 
         function buildAvOpenInventoryFromMasterItems(items = []) {
@@ -26610,8 +26665,9 @@ function toggleDriveQuickRequestItem(domId) {
             };
             const previousAssignments = new Map();
             familyRows.forEach((row) => {
-                previousAssignments.set(String(firstNonEmptyValue(row.UNIQUE_ID, '')).trim(), String(firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, row.app_tab_assignment, '')).trim().toLowerCase());
-                row.APP_TAB_ASSIGNMENT = String(firstNonEmptyValue(row.UNIQUE_ID, '')).trim() === targetUid ? 'season' : 'location';
+                const rowUid = String(firstNonEmptyValue(row.UNIQUE_ID, '')).trim();
+                previousAssignments.set(rowUid, captureSeasonLocationAssignmentFields(row));
+                applySeasonLocationAssignmentFields(row, rowUid === targetUid ? 'season' : 'location');
                 backupLocalItem(row);
                 buildSearchIndex(row);
                 syncRowDataAcrossViews(row);
@@ -26644,7 +26700,7 @@ function toggleDriveQuickRequestItem(domId) {
                 familyRows.forEach((row) => {
                     const rowUid = String(firstNonEmptyValue(row && row.UNIQUE_ID, '')).trim();
                     if (!rowUid || !previousAssignments.has(rowUid)) return;
-                    row.APP_TAB_ASSIGNMENT = previousAssignments.get(rowUid) || '';
+                    restoreSeasonLocationAssignmentFields(row, previousAssignments.get(rowUid));
                     buildSearchIndex(row);
                     syncRowDataAcrossViews(row);
                 });
@@ -28955,14 +29011,14 @@ function toggleDriveQuickRequestItem(domId) {
             const masterRow = opts.masterRow === undefined ? (findLinkedMasterRow(item) || null) : opts.masterRow;
             const candidates = [
                 opts.originAssignment,
-                item && item.PRODUCTIVITY_ORIGIN_ASSIGNMENT,
-                item && item.productivity_origin_assignment,
                 item && item.APP_TAB_ASSIGNMENT,
                 item && item.app_tab_assignment,
-                masterRow && masterRow.PRODUCTIVITY_ORIGIN_ASSIGNMENT,
-                masterRow && masterRow.productivity_origin_assignment,
+                item && item.PRODUCTIVITY_ORIGIN_ASSIGNMENT,
+                item && item.productivity_origin_assignment,
                 masterRow && masterRow.APP_TAB_ASSIGNMENT,
-                masterRow && masterRow.app_tab_assignment
+                masterRow && masterRow.app_tab_assignment,
+                masterRow && masterRow.PRODUCTIVITY_ORIGIN_ASSIGNMENT,
+                masterRow && masterRow.productivity_origin_assignment
             ];
             for (const candidate of candidates) {
                 const resolvedKind = getProductivityOriginKindFromAssignment(candidate);
@@ -34507,6 +34563,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (safeView === 'colorwalk') return 'status-indigo';
             if (safeView === 'endcap') return 'status-yellow';
             if (safeView === 'reserves') return 'status-indigo';
+            const currentAssignment = String(firstNonEmptyValue(item && item.APP_TAB_ASSIGNMENT, item && item.app_tab_assignment, '') || '').trim().toLowerCase();
+            if (currentAssignment === 'season') return 'status-green';
+            if (currentAssignment === 'location' || currentAssignment === 'colorwalk') return 'status-blue';
             return resolveProductivityOriginKind(item) === 'season_sales_note' ? 'status-green' : 'status-blue';
         }
 
@@ -36905,8 +36964,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     payload.sales_note = setVal(firstNonEmptyValue(itemToSave.SALES_NOTE, itemToSave.SALESNOTE, ''));
                     payload.av_note = setVal(itemToSave.AV_NOTE);
                     if (prefix === 'ssn-') {
-                        itemToSave.APP_TAB_ASSIGNMENT = 'season';
-                        itemToSave.app_tab_assignment = 'season';
+                        applySeasonLocationAssignmentFields(itemToSave, 'season');
                         payload.app_tab_assignment = 'season';
                     }
                 } else if (prefix === 'req-') {
@@ -37311,6 +37369,24 @@ ${folderNote ? `Folder Note: ${folderNote}
                         : null;
                     if (productivityHistoryEntry) {
                         deferNonCriticalWork('productivity-history', () => appendProductivityHistoryEntries([productivityHistoryEntry]).catch(() => {}), 28);
+                    }
+
+                    if (!isComplete && !artifacts.soPayload && ['ssn-','lsn-','na-'].includes(prefix)) {
+                        const syncedLocally = syncSeasonSalesOfficeAfterSeasonDataSave(itemToSave, prefix, {
+                            skipRemote: true,
+                            reason: 'season-sales-note-data-save-local'
+                        });
+                        if (syncedLocally.length || isSeasonSalesOfficeAutoPublishable(itemToSave)) {
+                            deferNonCriticalWork('season-office-data-sync', () => {
+                                const salesOfficeOps = syncSeasonSalesOfficeAfterSeasonDataSave(itemToSave, prefix, {
+                                    skipRemote: false,
+                                    reason: 'season-sales-note-data-save-remote'
+                                });
+                                if (salesOfficeOps.length) {
+                                    Promise.allSettled(salesOfficeOps).then(() => queueVisibleDatasetCatchup(POST_SAVE_DATASET_CATCHUP_MS)).catch(() => {});
+                                }
+                            }, SALES_OFFICE_SYNC_DEFER_MS);
+                        }
                     }
 
                     if (!artifacts.soPayload && trackedChangeFlags.avNote) {
