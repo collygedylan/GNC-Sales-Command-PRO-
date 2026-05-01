@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-    window.__APP_SHELL_VERSION__ = 'V2026.05.01.11';
+    window.__APP_SHELL_VERSION__ = 'V2026.05.01.12';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.11').trim() || 'V2026.05.01.11';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.12').trim() || 'V2026.05.01.12';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -996,6 +996,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <div id="drawer-drive-btn" class="drawer-item role-access role-admin role-qc-supervisor hidden" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
             <div id="drawer-tasks-btn" class="drawer-item role-access role-admin hidden" onclick="switchView('tasks'); toggleMenu();"><i class="ph-bold ph-clipboard-text"></i> My Tasks</div>
             <div id="drawer-docks-btn" class="drawer-item text-orange-600 font-bold role-access role-admin role-rep role-qc-supervisor role-qc hidden" onclick="switchView('docks'); toggleMenu();"><i class="ph-bold ph-truck"></i> Docks</div>
+            <div id="drawer-take-back-btn" class="drawer-item text-emerald-700 font-bold" onclick="switchView('take-back'); toggleMenu();"><i class="ph-bold ph-arrow-u-up-left"></i> Take Back</div>
             <div id="drawer-av-btn" class="drawer-item text-teal-600 font-bold role-access role-admin role-rep hidden" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> AV</div>
             <hr class="my-2">
         <div id="drawer-request-btn" class="drawer-item text-blue-600 font-bold role-access role-admin role-rep role-request-enabled hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
@@ -1058,6 +1059,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div id="home-tile-drive" onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-qc-supervisor hidden"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
                                 <div id="home-tile-tasks" onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
                                 <div id="home-tile-docks" onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-qc-supervisor role-qc hidden"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
+                                <div id="home-tile-take-back" onclick="switchView('take-back')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-arrow-u-up-left text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Take Back</span></div>
                                 <div id="home-tile-av" onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
                                 <div id="home-tile-request" onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-request-enabled hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
                                 <div id="home-tile-chat" onclick="switchView('chat')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-chats-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Chat</span></div>
@@ -1204,6 +1206,19 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div id="docks-crumb" class="text-xs font-bold text-orange-600 mb-3 mt-3">Select a Dock</div>
                     </div>
                     <div id="docks-content"></div>
+                </div>
+
+                <div id="view-take-back" class="hidden">
+                    <div class="freeze-panel">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <div>
+                                <div id="take-back-crumb" class="text-xs font-bold text-[#007a4d] uppercase tracking-[0.16em]">Open Rows</div>
+                                <div id="take-back-title" class="text-xl font-black text-slate-900">Take Back</div>
+                            </div>
+                            <button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="refreshTakeBackRows()"><i class="ph-bold ph-arrows-clockwise text-base align-middle"></i><span class="align-middle ml-1">Refresh</span></button>
+                        </div>
+                    </div>
+                    <div id="take-back-content"></div>
                 </div>
 
                 <div id="view-low-stock" class="hidden">
@@ -1468,6 +1483,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <button id="batch-btn-bloom-order" onclick="initiateBatchAction('bloom_order')" class="flex-1 min-w-[72px] bg-[#007a4d] text-white p-2 rounded-lg text-[10px] font-bold shadow-md hidden"><i class="ph-bold ph-package block text-lg mb-1"></i> Submit Order</button>
                     <button id="batch-btn-request" onclick="initiateBatchAction('request_action')" class="flex-1 min-w-[60px] bg-orange-500 text-white p-2 rounded-lg text-[10px] font-bold shadow-md hidden"><i class="ph-bold ph-warning-circle block text-lg mb-1"></i> Request</button>
                     <button id="batch-btn-flyer" onclick="initiateBatchAction('flyer')" class="flex-1 min-w-[60px] bg-indigo-100 text-indigo-700 p-2 rounded-lg text-[10px] font-bold hover:bg-indigo-200 hidden"><i class="ph-bold ph-megaphone block text-lg mb-1"></i> Flyer</button>
+                    <button id="batch-btn-take-back" onclick="initiateBatchAction('take_back')" class="flex-1 min-w-[74px] bg-emerald-100 text-emerald-700 p-2 rounded-lg text-[10px] font-bold hover:bg-emerald-200 hidden"><i class="ph-bold ph-arrow-u-up-left block text-lg mb-1"></i> Take Back</button>
                     <button id="batch-btn-endcap" onclick="initiateBatchAction('endcap')" class="flex-1 min-w-[70px] bg-yellow-100 text-yellow-700 p-2 rounded-lg text-[10px] font-bold hover:bg-yellow-200 shadow-sm hidden"><i class="ph-bold ph-storefront block text-lg mb-1"></i> End Cap</button>
                 </div>
                 <div id="cart-helper-text" class="hidden">Bloom Picker orders are for AV open stock rows. Assign, Request, Flyer, and End Cap work on inventory rows.</div>
@@ -1541,7 +1557,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.11';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.12';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1567,6 +1583,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 5000;
             tasks: { realtimeTables: [], pollMs: 'visible-default' },
             request: { realtimeTables: ['v2_active_request'], pollMs: 'visible-default' },
             'sales-office': { realtimeTables: ['v2_sales_office'], pollMs: 'visible-default' },
+            'take-back': { realtimeTables: ['v2_take_back_queue'], pollMs: 'visible-default' },
             av: { realtimeTables: [], pollMs: 'visible-default' },
             reserves: { realtimeTables: [], pollMs: 'visible-default' },
             docks: { realtimeTables: ['v2_soc_master', 'v2_dock_team_status', 'v2_dock_item_status', 'v2_dock_issue_status', 'v2_dock_issue_allocations'], pollMs: 0 },
@@ -5134,6 +5151,19 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 return true;
             }
 
+            if (tableName === TAKE_BACK_TABLE) {
+                const rawRow = eventType === 'DELETE' ? (payload.old || {}) : (payload.new || {});
+                const uniqueId = String(firstNonEmptyValue(rawRow.unique_id, rawRow.UNIQUE_ID, '')).trim();
+                if (!uniqueId) return false;
+                if (eventType === 'DELETE') removeTakeBackRowFromCache(uniqueId);
+                else cacheTakeBackRow(rawRow);
+                takeBackDataLoaded = true;
+                markViewDirty('take-back');
+                scheduleTakeBackRender(48);
+                recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'take-back');
+                return true;
+            }
+
             if (tableName === CHAT_CONVERSATIONS_TABLE || tableName === CHAT_PARTICIPANTS_TABLE || tableName === CHAT_MESSAGES_TABLE) {
                 handleChatRealtimeChange(tableName, payload);
                 recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'chat');
@@ -6255,6 +6285,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return scheduleTrackedViewRender('docks', 'docks:render', { delay, typingDelay: 180, userAction: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 32, interactionDelayMs: 32, scrollDelayMs: 120 });
         }
 
+        function scheduleTakeBackRender(delay = 24) {
+            return scheduleTrackedViewRender('take-back', 'take-back:render', { delay, typingDelay: 120, userAction: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 24, interactionDelayMs: 24, scrollDelayMs: 100 });
+        }
+
         function scheduleAVRender(delay = 0) {
             return scheduleTrackedViewRender('av', 'av:render', { delay, typingDelay: 40, userAction: true, preferImmediate: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 16, interactionDelayMs: 16, scrollDelayMs: 72 });
         }
@@ -6667,6 +6701,7 @@ bindFastInvokeById('drawer-walkie-btn', 'openDrawerView', ['walkie'], 'Walkie');
 bindFastInvokeById('drawer-drive-btn', 'openDrawerView', ['drive'], 'Drive Mode');
             bindFastInvokeById('drawer-tasks-btn', 'openDrawerView', ['tasks'], 'My Tasks');
             bindFastInvokeById('drawer-docks-btn', 'openDrawerView', ['docks'], 'Docks');
+            bindFastInvokeById('drawer-take-back-btn', 'openDrawerView', ['take-back'], 'Take Back');
             bindFastInvokeById('drawer-av-btn', 'openDrawerView', ['av'], 'AV');
             bindFastInvokeById('drawer-request-btn', 'openDrawerView', ['request'], 'Requests');
             bindFastInvokeById('drawer-reserves-btn', 'openDrawerView', ['reserves'], 'Reserves');
@@ -6679,6 +6714,7 @@ bindFastInvokeById('drawer-drive-btn', 'openDrawerView', ['drive'], 'Drive Mode'
             bindFastInvokeById('home-tile-drive', 'switchView', ['drive'], 'Drive Mode');
             bindFastInvokeById('home-tile-tasks', 'switchView', ['tasks'], 'Tasks');
             bindFastInvokeById('home-tile-docks', 'switchView', ['docks'], 'Docks');
+            bindFastInvokeById('home-tile-take-back', 'switchView', ['take-back'], 'Take Back');
             bindFastInvokeById('home-tile-av', 'switchView', ['av'], 'AV');
 bindFastInvokeById('home-tile-request', 'switchView', ['request'], 'Requests');
 bindFastInvokeById('home-tile-chat', 'switchView', ['chat'], 'Chat');
@@ -8843,6 +8879,7 @@ let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
         let dockIssueStatusByUid=new Map(); let dockIssueAllocationsBySourceUid=new Map(); let dockIssueAllocationsById=new Map(); let dockIssueDataPromise=null; let dockIssueDataLoaded=false; let dockIssueStatusSchemaReady=null; let dockIssueStatusSchemaPromise=null; let dockIssueAllocationSchemaReady=null; let dockIssueAllocationSchemaPromise=null; let dockIssueSchemaWarningShown=false; let dockViewMode='docks'; let selectedDockIssueUid=null; let dockResolvedStateCacheKey=''; let dockResolvedStateCache=null; let dockDisplayInventory=[]; let dockDisplayInventoryById=new Map(); let dockDisplayInventoryBySourceUid=new Map(); let dockIssueSourceRowsCacheKey=''; let dockIssueSourceRowsById=new Map(); let dockIssueSourceRowsByCurrentUid=new Map(); let dockIssueSourceRowsByMatchKey=new Map();
+        let takeBackRows=[]; let takeBackRowsById=new Map(); let takeBackSchemaReady=null; let takeBackSchemaPromise=null; let takeBackSchemaWarningShown=false; let takeBackDataLoaded=false; let takeBackDataPromise=null; let takeBackOptimisticDoneIds=new Set();
         let detailRequestSourceDomIds=[];
         let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false;
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
@@ -9149,13 +9186,15 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const NCR_COMPLETIONS_TABLE = 'v2_ncr_completions';
         const NCR_COMPLETION_SELECT_FIELDS = 'source_unique_id,itemcode,locationcode,completed_by,completed_at,emailed_jd';
+        const TAKE_BACK_TABLE = 'v2_take_back_queue';
+        const TAKE_BACK_SELECT_FIELDS = 'unique_id,master_unique_id,source_table,status,added_by_username,added_by_display,added_at,completed_by_username,completed_by_display,completed_at,itemcode,commonname,contsize,locationcode,lotcode,priority,ptravailable,s_lts,holdstopcode,photo_link,photo_name,snapshot,updated_at';
         const NCR_EMAIL_RECIPIENTS = Object.freeze([
             'jd_jones@greenleafnursery.com',
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.11').trim() || 'V2026.05.01.11';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.12').trim() || 'V2026.05.01.12';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -9193,6 +9232,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
             drive: { eyebrow: 'Amazon Search', title: 'Drive Mode' },
             request: { eyebrow: 'Amazon Filters', title: 'Requests' },
             tasks: { eyebrow: 'Amazon Filters', title: 'My Tasks' },
+            'take-back': { eyebrow: 'Bloom Picker', title: 'Take Back' },
             reports: { eyebrow: 'Amazon Filters', title: 'Reports' },
             'low-stock': { eyebrow: 'Amazon Filters', title: 'NCR' },
             'sales-office': { eyebrow: 'Amazon Filters', title: 'Sales Office' },
@@ -16676,7 +16716,7 @@ function toggleDriveQuickRequestItem(domId) {
             return dockAssignableUsersPromise;
         }
 
-        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','av','request','reserves','sales-office','reports','hours','low-stock','review','chat'];
+        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','av','request','reserves','sales-office','reports','hours','low-stock','review','chat'];
 
         function getRoleAccessState() {
             const roleDisplay = String(currentRole || safeRole || '').toUpperCase();
@@ -16687,7 +16727,7 @@ function toggleDriveQuickRequestItem(domId) {
             const isCsr = normalizedRole === 'CSR' || normalizedRole.includes('CSR');
             const isRequestRepScopedUser = canUseRequestRepScopedAccess();
             const isAdmin = normalizedRole.includes('ADMIN') || normalizedRole.includes('MANAGER') || isCsr || (!isRep && !isQcSupervisor && !isQc);
-            const allowedViews = new Set(['home','chat','walkie']);
+            const allowedViews = new Set(['home','chat','walkie','take-back']);
             if (isAdmin) {
                 ROLE_ACCESS_VIEWS.forEach(viewId => allowedViews.add(viewId));
             } else if (isRep) {
@@ -19993,7 +20033,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (canAccessView(target)) switchView(target);
         }
 
-        const TRACKED_VIEW_IDS = ['drive','tasks','review','sales-office','reports','low-stock','docks','request','chat','walkie','reserves','av','hours'];
+        const TRACKED_VIEW_IDS = ['drive','tasks','review','sales-office','reports','low-stock','docks','take-back','request','chat','walkie','reserves','av','hours'];
 
         function getAffectedViewsForDatasets(changedKeys = []) {
             const changedSet = new Set((changedKeys || []).filter(Boolean));
@@ -20614,6 +20654,8 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (viewId === 'docks') {
                 if (forceReset || !state.initialized) resetDockView(false);
                 renderDocks();
+            } else if (viewId === 'take-back') {
+                renderTakeBack();
             } else if (viewId === 'av') {
                 if (forceReset || !state.initialized) resetAVView(false);
                 renderAV();
@@ -25538,6 +25580,372 @@ function toggleDriveQuickRequestItem(domId) {
             return items.length > 0 && items.every((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
         }
 
+        function maybeWarnTakeBackSchemaMissing() {
+            if (takeBackSchemaWarningShown || !currentUser) return;
+            takeBackSchemaWarningShown = true;
+            console.warn('Take Back schema is not installed. Run take_back_migration.sql in Supabase to enable the shared Take Back queue.');
+            showToast('Schema Required', 'Run take_back_migration.sql in Supabase to enable Take Back.', true);
+        }
+
+        async function ensureTakeBackSchemaReady(force = false) {
+            if (takeBackSchemaReady === true && !force) return true;
+            if (takeBackSchemaReady === false && !force) return false;
+            if (takeBackSchemaPromise && !force) return takeBackSchemaPromise;
+            takeBackSchemaPromise = (async () => {
+                if (navigator.onLine === false) return false;
+                try {
+                    const url = `${SUPABASE_URL}/rest/v1/${TAKE_BACK_TABLE}?select=${TAKE_BACK_SELECT_FIELDS}&limit=1`;
+                    const response = await fetchWithTimeout(url, {
+                        method: 'GET',
+                        headers: {
+                            apikey: SUPABASE_KEY,
+                            Authorization: 'Bearer ' + SUPABASE_KEY,
+                            'Content-Type': 'application/json'
+                        }
+                    }, SUPABASE_READ_TIMEOUT_MS, 'take back schema probe');
+                    if (!response.ok) throw new Error(await getResponseError(response, `Take Back schema probe failed (${response.status})`));
+                    takeBackSchemaReady = true;
+                    takeBackSchemaWarningShown = false;
+                    return true;
+                } catch (error) {
+                    takeBackSchemaReady = false;
+                    maybeWarnTakeBackSchemaMissing();
+                    console.warn('Take Back schema probe failed', error);
+                    return false;
+                } finally {
+                    takeBackSchemaPromise = null;
+                }
+            })();
+            return takeBackSchemaPromise;
+        }
+
+        function normalizeTakeBackSnapshot(rawSnapshot = {}) {
+            if (!rawSnapshot) return {};
+            if (typeof rawSnapshot === 'string') {
+                try {
+                    const parsed = JSON.parse(rawSnapshot);
+                    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+                } catch (error) {
+                    return {};
+                }
+            }
+            return rawSnapshot && typeof rawSnapshot === 'object' && !Array.isArray(rawSnapshot) ? rawSnapshot : {};
+        }
+
+        function normalizeTakeBackRow(row = null) {
+            if (!row || typeof row !== 'object') return null;
+            const snapshot = normalizeTakeBackSnapshot(firstNonEmptyValue(row.snapshot, row.SNAPSHOT, {}));
+            const uniqueId = String(firstNonEmptyValue(row.unique_id, row.UNIQUE_ID, '')).trim();
+            if (!uniqueId) return null;
+            const masterUniqueId = String(firstNonEmptyValue(row.master_unique_id, row.MASTER_UNIQUE_ID, snapshot.master_unique_id, snapshot.UNIQUE_ID, snapshot.unique_id, '')).trim();
+            const item = {
+                SOURCE_TABLE: TAKE_BACK_TABLE,
+                TAKE_BACK_SOURCE_TABLE: String(firstNonEmptyValue(row.source_table, row.SOURCE_TABLE, snapshot.source_table, snapshot.SOURCE_TABLE, 'v2_master_inventory')).trim() || 'v2_master_inventory',
+                UNIQUE_ID: uniqueId,
+                MASTER_UNIQUE_ID: masterUniqueId,
+                TAKE_BACK_STATUS: String(firstNonEmptyValue(row.status, row.STATUS, snapshot.status, 'open')).trim().toLowerCase() || 'open',
+                ADDED_BY_USERNAME: String(firstNonEmptyValue(row.added_by_username, row.ADDED_BY_USERNAME, snapshot.added_by_username, '')).trim(),
+                ADDED_BY_DISPLAY: String(firstNonEmptyValue(row.added_by_display, row.ADDED_BY_DISPLAY, snapshot.added_by_display, '')).trim(),
+                ADDED_AT: String(firstNonEmptyValue(row.added_at, row.ADDED_AT, snapshot.added_at, '')).trim(),
+                COMPLETED_BY_USERNAME: String(firstNonEmptyValue(row.completed_by_username, row.COMPLETED_BY_USERNAME, snapshot.completed_by_username, '')).trim(),
+                COMPLETED_BY_DISPLAY: String(firstNonEmptyValue(row.completed_by_display, row.COMPLETED_BY_DISPLAY, snapshot.completed_by_display, '')).trim(),
+                COMPLETED_AT: String(firstNonEmptyValue(row.completed_at, row.COMPLETED_AT, snapshot.completed_at, '')).trim(),
+                ITEMCODE: String(firstNonEmptyValue(row.itemcode, row.ITEMCODE, snapshot.ITEMCODE, snapshot.itemcode, '')).trim(),
+                COMMONNAME: String(firstNonEmptyValue(row.commonname, row.COMMONNAME, snapshot.COMMONNAME, snapshot.commonname, 'Unknown')).trim() || 'Unknown',
+                CONTSIZE: String(firstNonEmptyValue(row.contsize, row.CONTSIZE, snapshot.CONTSIZE, snapshot.contsize, '')).trim(),
+                LOCATIONCODE: String(firstNonEmptyValue(row.locationcode, row.LOCATIONCODE, snapshot.LOCATIONCODE, snapshot.locationcode, '')).trim(),
+                LOTCODE: String(firstNonEmptyValue(row.lotcode, row.LOTCODE, snapshot.LOTCODE, snapshot.lotcode, '')).trim(),
+                PRIORITY: String(firstNonEmptyValue(row.priority, row.PRIORITY, snapshot.PRIORITY, snapshot.priority, '')).trim(),
+                PTRAVAILABLE: String(firstNonEmptyValue(row.ptravailable, row.PTRAVAILABLE, snapshot.PTRAVAILABLE, snapshot.ptravailable, '')).trim(),
+                S_LTS: String(firstNonEmptyValue(row.s_lts, row.S_LTS, snapshot.S_LTS, snapshot.s_lts, '')).trim(),
+                HOLDSTOPCODE: String(firstNonEmptyValue(row.holdstopcode, row.HOLDSTOPCODE, snapshot.HOLDSTOPCODE, snapshot.holdstopcode, '')).trim(),
+                PHOTO_LINK: String(firstNonEmptyValue(row.photo_link, row.PHOTO_LINK, snapshot.PHOTO_LINK, snapshot.photo_link, snapshot.SAVED_PHOTO_LINK, '')).trim(),
+                PHOTO_NAME: String(firstNonEmptyValue(row.photo_name, row.PHOTO_NAME, snapshot.PHOTO_NAME, snapshot.photo_name, snapshot.SAVED_PHOTO_NAME, '')).trim(),
+                SNAPSHOT: snapshot,
+                DOM_ID: `takeback_${uniqueId.replace(/[^a-z0-9_-]+/gi, '_')}`
+            };
+            item.SAVED_PHOTO_LINK = item.PHOTO_LINK;
+            item.SAVED_PHOTO_NAME = item.PHOTO_NAME;
+            normalizeRowPhotoFields(item);
+            buildSearchIndex(item);
+            return item;
+        }
+
+        function isTakeBackRowOpen(row = null) {
+            if (!row) return false;
+            const status = String(firstNonEmptyValue(row.TAKE_BACK_STATUS, row.status, row.STATUS, 'open')).trim().toLowerCase();
+            const completedAt = String(firstNonEmptyValue(row.COMPLETED_AT, row.completed_at, row.completedAt, '')).trim();
+            return status !== 'done' && !completedAt;
+        }
+
+        function sortTakeBackRows() {
+            takeBackRows.sort((a, b) => {
+                const aTime = Date.parse(a && a.ADDED_AT ? a.ADDED_AT : '') || 0;
+                const bTime = Date.parse(b && b.ADDED_AT ? b.ADDED_AT : '') || 0;
+                if (bTime !== aTime) return bTime - aTime;
+                return String(a && a.COMMONNAME || '').localeCompare(String(b && b.COMMONNAME || ''));
+            });
+        }
+
+        function removeTakeBackRowFromCache(uniqueId = '') {
+            const safeUid = String(uniqueId || '').trim();
+            if (!safeUid) return;
+            takeBackRowsById.delete(safeUid);
+            takeBackRows = takeBackRows.filter((row) => String(row && row.UNIQUE_ID || '').trim() !== safeUid);
+        }
+
+        function cacheTakeBackRow(rawRow = null) {
+            const row = normalizeTakeBackRow(rawRow);
+            if (!row) return null;
+            if (!isTakeBackRowOpen(row) || takeBackOptimisticDoneIds.has(row.UNIQUE_ID)) {
+                removeTakeBackRowFromCache(row.UNIQUE_ID);
+                return null;
+            }
+            const existingIndex = takeBackRows.findIndex((entry) => String(entry && entry.UNIQUE_ID || '').trim() === row.UNIQUE_ID);
+            if (existingIndex >= 0) takeBackRows[existingIndex] = row;
+            else takeBackRows.push(row);
+            takeBackRowsById.set(row.UNIQUE_ID, row);
+            sortTakeBackRows();
+            return row;
+        }
+
+        async function ensureTakeBackRowsLoaded(force = false) {
+            if (takeBackDataLoaded && !force) return true;
+            if (takeBackDataPromise && !force) return takeBackDataPromise;
+            takeBackDataPromise = (async () => {
+                const ready = await ensureTakeBackSchemaReady(force);
+                if (!ready) {
+                    takeBackDataLoaded = true;
+                    return false;
+                }
+                const rows = await supabaseFetch(TAKE_BACK_TABLE, 'GET', null, `select=${TAKE_BACK_SELECT_FIELDS}&status=eq.open&order=added_at.desc`);
+                takeBackRows = [];
+                takeBackRowsById = new Map();
+                (Array.isArray(rows) ? rows : []).forEach((rawRow) => cacheTakeBackRow(rawRow));
+                takeBackDataLoaded = true;
+                return true;
+            })();
+            try {
+                return await takeBackDataPromise;
+            } finally {
+                takeBackDataPromise = null;
+            }
+        }
+
+        function refreshTakeBackRows() {
+            takeBackDataLoaded = false;
+            ensureTakeBackRowsLoaded(true).then(() => {
+                markViewDirty('take-back');
+                scheduleTakeBackRender(0);
+            }).catch((error) => {
+                console.warn('Take Back refresh failed', error);
+                showToast('Refresh Failed', 'Could not refresh Take Back rows.', true);
+            });
+            return false;
+        }
+
+        function buildTakeBackRowId(item = null) {
+            const baseValue = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, item && item.ITEMCODE, item && item.DOM_ID, '')).trim();
+            const safeBase = baseValue.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+            return `TB-${safeBase || Date.now().toString(36).toUpperCase()}`;
+        }
+
+        function buildTakeBackSnapshot(item = null) {
+            const source = item && typeof item === 'object' ? item : {};
+            return {
+                UNIQUE_ID: String(firstNonEmptyValue(source.UNIQUE_ID, source.unique_id, '')).trim(),
+                SOURCE_TABLE: String(firstNonEmptyValue(source.SOURCE_TABLE, source.source_table, 'v2_master_inventory')).trim() || 'v2_master_inventory',
+                ITEMCODE: String(firstNonEmptyValue(source.ITEMCODE, source.itemcode, '')).trim(),
+                COMMONNAME: String(firstNonEmptyValue(source.COMMONNAME, source.commonname, '')).trim(),
+                CONTSIZE: String(firstNonEmptyValue(source.CONTSIZE, source.contsize, '')).trim(),
+                LOCATIONCODE: String(firstNonEmptyValue(source.LOCATIONCODE, source.locationcode, '')).trim(),
+                LOTCODE: String(firstNonEmptyValue(source.LOTCODE, source.lotcode, '')).trim(),
+                PRIORITY: String(firstNonEmptyValue(source.PRIORITY, source.priority, '')).trim(),
+                PTRAVAILABLE: String(firstNonEmptyValue(source.PTRAVAILABLE, source.ptravailable, '')).trim(),
+                S_LTS: String(firstNonEmptyValue(source.S_LTS, source.s_lts, '')).trim(),
+                HOLDSTOPCODE: String(firstNonEmptyValue(source.HOLDSTOPCODE, source.holdstopcode, '')).trim(),
+                PHOTO_LINK: String(getRowPhotoLink(source, 'drive') || '').trim(),
+                PHOTO_NAME: String(firstNonEmptyValue(getSharedAppPhotoName(source), source.PHOTO_NAME, source.photo_name, '')).trim()
+            };
+        }
+
+        function buildTakeBackPayload(item = null, addedAt = new Date().toISOString()) {
+            const snapshot = buildTakeBackSnapshot(item);
+            const uniqueId = buildTakeBackRowId(item);
+            return {
+                unique_id: uniqueId,
+                master_unique_id: snapshot.UNIQUE_ID || uniqueId,
+                source_table: snapshot.SOURCE_TABLE || 'v2_master_inventory',
+                status: 'open',
+                added_by_username: String(currentUser || '').trim() || null,
+                added_by_display: String(currentUserDisplay || currentUser || '').trim() || null,
+                added_at: addedAt,
+                completed_by_username: null,
+                completed_by_display: null,
+                completed_at: null,
+                itemcode: snapshot.ITEMCODE || null,
+                commonname: snapshot.COMMONNAME || null,
+                contsize: snapshot.CONTSIZE || null,
+                locationcode: snapshot.LOCATIONCODE || null,
+                lotcode: snapshot.LOTCODE || null,
+                priority: snapshot.PRIORITY || null,
+                ptravailable: snapshot.PTRAVAILABLE || null,
+                s_lts: snapshot.S_LTS || null,
+                holdstopcode: snapshot.HOLDSTOPCODE || null,
+                photo_link: snapshot.PHOTO_LINK || null,
+                photo_name: snapshot.PHOTO_NAME || null,
+                snapshot,
+                updated_at: addedAt
+            };
+        }
+
+        async function addSelectedItemsToTakeBack() {
+            const items = getCartSelectedItems().filter((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
+            if (!items.length) {
+                showToast('Take Back', 'Select Drive Mode rows before adding to Take Back.', true);
+                return false;
+            }
+            const ready = await ensureTakeBackSchemaReady();
+            if (!ready) return false;
+            const addedAt = new Date().toISOString();
+            const payloads = items.map((item) => buildTakeBackPayload(item, addedAt));
+            try {
+                payloads.forEach((payload) => cacheTakeBackRow(payload));
+                takeBackDataLoaded = true;
+                markViewDirty('take-back');
+                if (isViewVisible('take-back')) scheduleTakeBackRender(0);
+                await supabaseFetch(TAKE_BACK_TABLE, 'POST', payloads, 'on_conflict=unique_id');
+                clearSelection();
+                if (cartPanelOpen) toggleCartPanel(false);
+                showToast('Take Back', `${payloads.length} row${payloads.length === 1 ? '' : 's'} added.`);
+                return true;
+            } catch (error) {
+                console.error('Add to Take Back failed', error);
+                payloads.forEach((payload) => removeTakeBackRowFromCache(payload.unique_id));
+                markViewDirty('take-back');
+                if (isViewVisible('take-back')) scheduleTakeBackRender(0);
+                showToast('Could Not Save', 'Take Back row was not saved. Check the Supabase table.', true);
+                return false;
+            }
+        }
+
+        function buildTakeBackCardHtml(row = null) {
+            if (!row) return '';
+            const uid = String(row.UNIQUE_ID || '').trim();
+            const safeUidJs = escJsAttrValue(uid);
+            const commonName = escapeHtml(row.COMMONNAME || 'Unknown');
+            const contSize = escapeHtml(row.CONTSIZE || '-');
+            const addedBy = escapeHtml(row.ADDED_BY_DISPLAY || row.ADDED_BY_USERNAME || 'Unknown');
+            const addedAt = escapeHtml(formatSalesOfficeDate(row.ADDED_AT));
+            const photoCsv = String(row.PHOTO_LINK || getRowPhotoLink(row, 'drive') || '').trim();
+            const firstPhoto = parsePhotoCsvValues(photoCsv)[0] || '';
+            const thumbUrl = firstPhoto ? getDirectImageUrl(firstPhoto, 'card-inline') : '';
+            const photoHtml = thumbUrl ? `
+                <button type="button" class="app-inline-thumb-column flex-shrink-0 ml-3" onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(photoCsv)}','${escJsAttrValue(row.COMMONNAME || 'Take Back Photo')}')">
+                    <img class="app-inline-thumb" src="${escapeHtml(thumbUrl)}" loading="lazy" decoding="async" alt="">
+                    <span class="mt-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Photo</span>
+                </button>`
+                : `<div class="app-inline-thumb-column flex-shrink-0 ml-3"><div class="app-inline-thumb flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div></div>`;
+            const chips = [
+                row.ITEMCODE ? `<span class="bg-white text-slate-700 px-2 py-1 rounded border border-slate-200">Item ${escapeHtml(row.ITEMCODE)}</span>` : '',
+                row.LOCATIONCODE ? `<span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">Loc ${escapeHtml(row.LOCATIONCODE)}</span>` : '',
+                row.LOTCODE ? `<span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">Lot ${escapeHtml(row.LOTCODE)}</span>` : '',
+                row.PTRAVAILABLE ? `<span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">Avail ${escapeHtml(row.PTRAVAILABLE)}</span>` : '',
+                row.S_LTS ? `<span class="bg-purple-50 text-purple-700 px-2 py-1 rounded border border-purple-100">S_LTS ${escapeHtml(row.S_LTS)}</span>` : '',
+                row.PRIORITY ? `<span class="bg-orange-50 text-orange-700 px-2 py-1 rounded border border-orange-100">PRI ${escapeHtml(row.PRIORITY)}</span>` : '',
+                row.HOLDSTOPCODE ? `<span class="bg-red-50 text-red-700 px-2 py-1 rounded border border-red-100">Hold ${escapeHtml(row.HOLDSTOPCODE)}</span>` : ''
+            ].filter(Boolean).join('');
+            return `
+                <div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory relative bg-white p-4 rounded-xl border border-emerald-200 shadow-sm overflow-hidden" data-take-back-uid="${escapeHtml(uid)}">
+                    <div class="flex flex-col w-full min-w-0">
+                        <div class="flex justify-between items-start w-full">
+                            <div class="app-card-main flex-grow min-w-0 pr-2">
+                                <div class="app-card-eyebrow text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d] mb-1">Take Back</div>
+                                <div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words mb-1">${commonName}</div>
+                                <div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${contSize}</div>
+                                <div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${chips}</div>
+                                <div class="mt-2 text-[11px] font-semibold text-slate-500">Added ${addedAt} by ${addedBy}</div>
+                            </div>
+                            ${photoHtml}
+                        </div>
+                        <button type="button" class="mt-3 w-full bg-[#007a4d] hover:bg-green-700 text-white text-[11px] font-black py-3 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95 uppercase tracking-[0.12em]" onclick="event.stopPropagation(); return completeTakeBackRow('${safeUidJs}', this)"><i class="ph-bold ph-check-circle text-lg"></i>Done</button>
+                    </div>
+                </div>`;
+        }
+
+        async function completeTakeBackRow(uniqueId = '', button = null) {
+            const safeUid = String(uniqueId || '').trim();
+            if (!safeUid) return false;
+            const existing = takeBackRowsById.get(safeUid) || null;
+            if (button) {
+                button.disabled = true;
+                button.classList.add('opacity-60', 'pointer-events-none');
+            }
+            takeBackOptimisticDoneIds.add(safeUid);
+            removeTakeBackRowFromCache(safeUid);
+            markViewDirty('take-back');
+            scheduleTakeBackRender(0);
+            const completedAt = new Date().toISOString();
+            const payload = {
+                status: 'done',
+                completed_by_username: String(currentUser || '').trim() || null,
+                completed_by_display: String(currentUserDisplay || currentUser || '').trim() || null,
+                completed_at: completedAt,
+                updated_at: completedAt
+            };
+            try {
+                await supabaseFetch(TAKE_BACK_TABLE, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(safeUid)}`);
+                takeBackOptimisticDoneIds.delete(safeUid);
+                showToast('Done', 'Take Back row completed.');
+                return false;
+            } catch (error) {
+                console.error('Complete Take Back failed', error);
+                takeBackOptimisticDoneIds.delete(safeUid);
+                if (existing) cacheTakeBackRow(existing);
+                markViewDirty('take-back');
+                scheduleTakeBackRender(0);
+                showToast('Could Not Save', 'The Take Back row was not marked done.', true);
+                return false;
+            }
+        }
+
+        function renderTakeBack() {
+            const container = document.getElementById('take-back-content');
+            const crumb = document.getElementById('take-back-crumb');
+            if (!container) return;
+            if (!takeBackDataLoaded) {
+                if (crumb) crumb.innerText = 'Loading Rows';
+                setContainerHtml(container, '<div class="p-4 space-y-3"><div class="skeleton h-24 w-full rounded-xl"></div><div class="skeleton h-24 w-full rounded-xl"></div><div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">Loading Take Back...</div></div>');
+                setContainerUiState(container, 'loading');
+                ensureTakeBackRowsLoaded(false).then(() => {
+                    markViewDirty('take-back');
+                    if (isViewVisible('take-back')) scheduleTakeBackRender(0);
+                }).catch((error) => {
+                    console.warn('Take Back load failed', error);
+                    if (isViewVisible('take-back')) {
+                        setContainerHtml(container, '<div class="p-8 text-center"><div class="font-black text-red-600 mb-2">Load Failed</div><div class="text-sm text-gray-500">Could not load Take Back rows.</div></div>');
+                        setContainerUiState(container, 'error');
+                    }
+                });
+                return;
+            }
+            if (takeBackSchemaReady === false) {
+                if (crumb) crumb.innerText = 'Setup Required';
+                setContainerHtml(container, '<div class="p-8 text-center bg-white rounded-2xl border border-amber-200 shadow-sm"><div class="text-amber-600 text-3xl mb-2"><i class="ph-bold ph-database"></i></div><div class="font-black text-slate-900 mb-1">Take Back table needed</div><div class="text-sm font-semibold text-slate-500">Run take_back_migration.sql in Supabase, then tap Refresh.</div></div>');
+                setContainerUiState(container, 'error');
+                return;
+            }
+            const rows = takeBackRows.filter((row) => row && isTakeBackRowOpen(row));
+            if (crumb) crumb.innerText = `${rows.length} Open Row${rows.length === 1 ? '' : 's'}`;
+            if (!rows.length) {
+                setContainerHtml(container, '<div class="p-8 text-center bg-white rounded-2xl border border-emerald-100 shadow-sm"><div class="text-[#007a4d] text-3xl mb-2"><i class="ph-bold ph-check-circle"></i></div><div class="font-black text-slate-900 mb-1">All clear</div><div class="text-sm font-semibold text-slate-500">Rows added from Bloom Picker will show here.</div></div>');
+                setContainerUiState(container, 'empty');
+                return;
+            }
+            const signature = buildRowsRenderSignature('take-back', rows, ['TAKE_BACK_STATUS', 'ADDED_AT', 'PHOTO_LINK', 'COMPLETED_AT']);
+            setContainerHtmlWithSignature(container, rows.map((row) => buildTakeBackCardHtml(row)).join(''), signature);
+        }
+
         function getBloomPickerActionVisibility(items = getCartSelectedItems()) {
             const access = getRoleAccessState();
             const canUseInventoryActions = canUseCartInventoryActions(items);
@@ -25551,6 +25959,7 @@ function toggleDriveQuickRequestItem(domId) {
                     showAssign: false,
                     showRequest: canUseInventoryActions,
                     showFlyer: canUseFlyerFromBloom,
+                    showTakeBack: canUseInventoryActions,
                     showEndCap: false,
                     showBloomOrder: canUseBloomOrders,
                     canUseInventoryActions,
@@ -25565,6 +25974,7 @@ function toggleDriveQuickRequestItem(domId) {
                     showAssign: false,
                     showRequest: canUseInventoryActions,
                     showFlyer: canUseFlyerFromBloom,
+                    showTakeBack: canUseInventoryActions,
                     showEndCap: false,
                     showBloomOrder: canUseBloomOrders,
                     canUseInventoryActions,
@@ -25578,6 +25988,7 @@ function toggleDriveQuickRequestItem(domId) {
                 showAssign: canUseInventoryActions && safeRole === 'ADMIN',
                 showRequest: canUseInventoryActions,
                 showFlyer: canUseFlyerFromBloom,
+                showTakeBack: canUseInventoryActions,
                 showEndCap: canUseInventoryActions,
                 showBloomOrder: canUseBloomOrders,
                 canUseInventoryActions,
@@ -30780,6 +31191,7 @@ function toggleDriveQuickRequestItem(domId) {
             const btnAssign=document.getElementById('batch-btn-assign');
             const btnRequest=document.getElementById('batch-btn-request');
             const btnFlyer=document.getElementById('batch-btn-flyer');
+            const btnTakeBack=document.getElementById('batch-btn-take-back');
             const btnEndCap=document.getElementById('batch-btn-endcap');
             const btnBloomOrder=document.getElementById('batch-btn-bloom-order');
             const hasItems=selectedItems.size>0;
@@ -30799,6 +31211,7 @@ function toggleDriveQuickRequestItem(domId) {
             if(btnAssign)btnAssign.classList.toggle('hidden', !actionVisibility.showAssign);
             if(btnRequest)btnRequest.classList.toggle('hidden', !actionVisibility.showRequest);
             if(btnFlyer)btnFlyer.classList.toggle('hidden', !actionVisibility.showFlyer);
+            if(btnTakeBack)btnTakeBack.classList.toggle('hidden', !actionVisibility.showTakeBack);
             if(btnEndCap)btnEndCap.classList.toggle('hidden', !actionVisibility.showEndCap);
             if(btnBloomOrder)btnBloomOrder.classList.toggle('hidden', !actionVisibility.showBloomOrder);
             if(helper)helper.classList.toggle('hidden', !hasItems || actionVisibility.canUseInventoryActions || actionVisibility.canUseBloomOrders);
@@ -31494,7 +31907,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const canUseFlyerFromBloom = canUseDriveQuickRequest() && items.some((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
             if ((access.isRep || access.isCsr) && (action === 'assign' || action === 'endcap' || (action === 'flyer' && !canUseFlyerFromBloom))) {
-                showToast('Restricted', access.isRep ? 'REP users can only Copy, Email, Text, Request, and Submit Order from Bloom Picker.' : 'CSR users can only Copy, Email, Request, and Submit Order from Bloom Picker.', true);
+                showToast('Restricted', access.isRep ? 'REP users can only Copy, Email, Text, Request, Submit Order, and Take Back from Bloom Picker.' : 'CSR users can only Copy, Email, Request, Submit Order, and Take Back from Bloom Picker.', true);
                 return;
             }
             const requestOnly = items.every((item) => isRequestLikeItem(item));
@@ -31511,6 +31924,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if(action==='request_action'){pendingActionOptions = null; openRequestModal('selection');return}
             if(action==='flyer'){pendingActionOptions = null; createCartFlyers();return}
+            if(action==='take_back'){pendingActionOptions = null; addSelectedItemsToTakeBack();return}
             if(action==='endcap'){pendingActionOptions = null; openEndCapModal();return}
             if(requestOnly){pendingActionOptions = batchActionOptions; executeBatchAction(action,'request', batchActionOptions); pendingActionOptions = null; return}
             if(docksOnly){pendingActionOptions = batchActionOptions; executeBatchAction(action,'docks', batchActionOptions); pendingActionOptions = null; return}
