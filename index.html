@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-    window.__APP_SHELL_VERSION__ = 'V2026.05.02.01';
+    window.__APP_SHELL_VERSION__ = 'V2026.05.02.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.02.01').trim() || 'V2026.05.02.01';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.02.02').trim() || 'V2026.05.02.02';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1557,7 +1557,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.02.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.02.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1578,7 +1578,6 @@ const LIVE_SYNC_POLL_BROWSER_MS = 20000;
         const LIVE_SYNC_VIEW_POLICY = Object.freeze({
             home: { realtimeTables: [], pollMs: 0 },
             chat: { realtimeTables: ['v2_chat_conversations', 'v2_chat_participants', 'v2_chat_messages'], pollMs: 2000 },
-            walkie: { realtimeTables: ['v2_walkie_channels', 'v2_walkie_channel_members', 'v2_walkie_calls', 'v2_walkie_call_members', 'v2_walkie_signal_events'], pollMs: 2000 },
             drive: { realtimeTables: ['v2_master_inventory'], pollMs: 'visible-default' },
             tasks: { realtimeTables: ['v2_master_inventory', 'v2_cav_import', 'v2_av_notes', 'v2_active_request', 'v2_sales_office'], pollMs: 'visible-default' },
             request: { realtimeTables: ['v2_active_request'], pollMs: 'visible-default' },
@@ -9255,7 +9254,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.02.01').trim() || 'V2026.05.02.01';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.02.02').trim() || 'V2026.05.02.02';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -16801,7 +16800,7 @@ function toggleDriveQuickRequestItem(domId) {
             return dockAssignableUsersPromise;
         }
 
-        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','av','request','reserves','sales-office','reports','hours','low-stock','review','chat','walkie'];
+        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','av','request','reserves','sales-office','reports','hours','low-stock','review','chat'];
         const ROLE_VIEW_ELEMENT_IDS = Object.freeze({
             drive: ['drawer-drive-btn', 'home-tile-drive'],
             tasks: ['drawer-tasks-btn', 'home-tile-tasks'],
@@ -16843,7 +16842,7 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (isForeman && !isAdmin) {
                 ['drive', 'take-back', 'chat', 'hours'].forEach(viewId => allowedViews.add(viewId));
             } else {
-                ['chat', 'walkie', 'take-back'].forEach(viewId => allowedViews.add(viewId));
+                ['chat', 'take-back'].forEach(viewId => allowedViews.add(viewId));
             }
             if (isAdmin) {
                 ROLE_ACCESS_VIEWS.forEach(viewId => allowedViews.add(viewId));
@@ -16860,6 +16859,7 @@ function toggleDriveQuickRequestItem(domId) {
         function canAccessView(viewId) {
             const targetView = String(viewId || '').trim();
             if (!targetView || targetView === 'home' || targetView === 'detail') return true;
+            if (targetView === 'walkie') return false;
             const access = getRoleAccessState();
             if (targetView === 'request' && !access.isForeman && !access.isTakeBackOnly && access.isRequestRepScopedUser) return true;
             return access.allowedViews.has(targetView);
@@ -20167,7 +20167,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (canAccessView(target)) switchView(target);
         }
 
-        const TRACKED_VIEW_IDS = ['drive','tasks','review','sales-office','reports','low-stock','docks','take-back','request','chat','walkie','reserves','av','hours'];
+        const TRACKED_VIEW_IDS = ['drive','tasks','review','sales-office','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
 
         function getAffectedViewsForDatasets(changedKeys = []) {
             const changedSet = new Set((changedKeys || []).filter(Boolean));
