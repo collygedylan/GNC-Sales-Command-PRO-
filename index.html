@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-    window.__APP_SHELL_VERSION__ = 'V2026.05.01.19';
+    window.__APP_SHELL_VERSION__ = 'V2026.05.02.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.01.19').trim() || 'V2026.05.01.19';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.02.01').trim() || 'V2026.05.02.01';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1557,7 +1557,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.01.19';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.02.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9255,7 +9255,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.01.19').trim() || 'V2026.05.01.19';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.02.01').trim() || 'V2026.05.02.01';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -16801,18 +16801,50 @@ function toggleDriveQuickRequestItem(domId) {
             return dockAssignableUsersPromise;
         }
 
-        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','av','request','reserves','sales-office','reports','hours','low-stock','review','chat'];
+        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','av','request','reserves','sales-office','reports','hours','low-stock','review','chat','walkie'];
+        const ROLE_VIEW_ELEMENT_IDS = Object.freeze({
+            drive: ['drawer-drive-btn', 'home-tile-drive'],
+            tasks: ['drawer-tasks-btn', 'home-tile-tasks'],
+            docks: ['drawer-docks-btn', 'home-tile-docks'],
+            'take-back': ['drawer-take-back-btn', 'home-tile-take-back'],
+            av: ['drawer-av-btn', 'home-tile-av'],
+            request: ['drawer-request-btn', 'home-tile-request', 'footer-request-btn'],
+            reserves: ['drawer-reserves-btn', 'home-tile-reserves'],
+            'sales-office': ['drawer-sales-office-btn', 'home-tile-sales-office'],
+            reports: ['drawer-reports-btn', 'home-tile-reports'],
+            hours: ['drawer-hours-btn', 'home-tile-hours'],
+            'low-stock': ['drawer-low-stock-btn'],
+            review: ['drawer-review-btn', 'home-tile-review'],
+            chat: ['drawer-chat-btn', 'home-tile-chat', 'footer-chat-btn'],
+            walkie: ['drawer-walkie-btn', 'home-tile-walkie', 'footer-walkie-btn']
+        });
+
+        function normalizeRoleAccessToken(value = '') {
+            return String(value || '').toUpperCase().replace(/[^A-Z0-9]+/g, '');
+        }
 
         function getRoleAccessState() {
             const roleDisplay = String(currentRole || safeRole || '').toUpperCase();
             const normalizedRole = String(safeRole || roleDisplay).toUpperCase().replace(/\s+/g, '');
+            const compactRole = normalizeRoleAccessToken(roleDisplay || normalizedRole);
             const isRep = normalizedRole === 'REP' || normalizedRole === 'SALESREP' || normalizedRole.includes('SALESREP') || roleDisplay.includes('SALES REP');
             const isQcSupervisor = normalizedRole.includes('QCSUPERVISOR') || normalizedRole.includes('QCSUP') || roleDisplay.includes('QC SUPERVISOR');
             const isQc = !isQcSupervisor && (normalizedRole === 'QC' || normalizedRole.startsWith('QC'));
             const isCsr = normalizedRole === 'CSR' || normalizedRole.includes('CSR');
+            const isForeman = compactRole === 'FOREMAN' || compactRole.includes('FOREMAN');
+            const isTakeBackRole = compactRole === 'TAKEBACK' || compactRole === 'TAKEBACKUSER' || compactRole.includes('TAKEBACK');
             const isRequestRepScopedUser = canUseRequestRepScopedAccess();
-            const isAdmin = normalizedRole.includes('ADMIN') || normalizedRole.includes('MANAGER') || isCsr || (!isRep && !isQcSupervisor && !isQc);
-            const allowedViews = new Set(['home','chat','walkie','take-back']);
+            const isKnownLimitedRole = isRep || isQcSupervisor || isQc || isForeman || isTakeBackRole;
+            const isAdmin = normalizedRole.includes('ADMIN') || normalizedRole.includes('MANAGER') || isCsr || (!isKnownLimitedRole);
+            const isTakeBackOnly = isTakeBackRole && !isAdmin;
+            const allowedViews = new Set(['home']);
+            if (isTakeBackOnly) {
+                allowedViews.add('take-back');
+            } else if (isForeman && !isAdmin) {
+                ['drive', 'take-back', 'chat', 'hours'].forEach(viewId => allowedViews.add(viewId));
+            } else {
+                ['chat', 'walkie', 'take-back'].forEach(viewId => allowedViews.add(viewId));
+            }
             if (isAdmin) {
                 ROLE_ACCESS_VIEWS.forEach(viewId => allowedViews.add(viewId));
             } else if (isRep) {
@@ -16822,15 +16854,15 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (isQc) {
                 ['docks'].forEach(viewId => allowedViews.add(viewId));
             }
-            return { isAdmin, isRep, isQcSupervisor, isQc, isRequestRepScopedUser, allowedViews };
+            return { isAdmin, isRep, isQcSupervisor, isQc, isCsr, isForeman, isTakeBackOnly, isRequestRepScopedUser, allowedViews };
         }
 
         function canAccessView(viewId) {
             const targetView = String(viewId || '').trim();
             if (!targetView || targetView === 'home' || targetView === 'detail') return true;
-            if (targetView === 'chat' || targetView === 'walkie') return true;
-            if (targetView === 'request' && canUseRequestRepScopedAccess()) return true;
-            return getRoleAccessState().allowedViews.has(targetView);
+            const access = getRoleAccessState();
+            if (targetView === 'request' && !access.isForeman && !access.isTakeBackOnly && access.isRequestRepScopedUser) return true;
+            return access.allowedViews.has(targetView);
         }
 
         function getAssignmentMatchKeys(value = '') {
@@ -16904,6 +16936,7 @@ function toggleDriveQuickRequestItem(domId) {
                 el.classList.toggle('hidden', !isAllowed);
                 el.style.display = '';
             });
+            syncRoleAccessUi(access);
             updateFooterRequestBadge();
             const currentView = getCurrentVisibleViewId();
             if (currentView && currentView !== 'home' && !canAccessView(currentView)) {
@@ -16916,6 +16949,20 @@ function toggleDriveQuickRequestItem(domId) {
                 switchView('home');
                 return;
             }
+        }
+
+        function syncRoleAccessUi(access = getRoleAccessState()) {
+            const allowedViews = access && access.allowedViews instanceof Set ? access.allowedViews : new Set();
+            Object.keys(ROLE_VIEW_ELEMENT_IDS).forEach((viewId) => {
+                const isAllowed = viewId === 'request' ? canAccessView('request') : allowedViews.has(viewId);
+                ROLE_VIEW_ELEMENT_IDS[viewId].forEach((elementId) => {
+                    const el = document.getElementById(elementId);
+                    if (!el) return;
+                    el.classList.toggle('hidden', !isAllowed);
+                    el.style.display = '';
+                    if (!isAllowed) el.classList.remove('active');
+                });
+            });
         }
         function isDrawerOpen() {
             const drawer = document.getElementById('side-drawer');
@@ -20879,7 +20926,10 @@ function toggleDriveQuickRequestItem(domId) {
         function updateFooterNavState() {
             const currentView = getCurrentVisibleViewId();
             document.querySelectorAll('#bottom-nav [data-footer-view]').forEach((button) => {
-                button.classList.toggle('active', button.getAttribute('data-footer-view') === currentView);
+                const viewId = String(button.getAttribute('data-footer-view') || '').trim();
+                const isAllowed = canAccessView(viewId);
+                button.classList.toggle('hidden', !isAllowed);
+                button.classList.toggle('active', isAllowed && viewId === currentView);
             });
             const menuBtn = document.getElementById('footer-menu-btn');
             const drawer = document.getElementById('side-drawer');
