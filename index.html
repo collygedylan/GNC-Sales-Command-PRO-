@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-    window.__APP_SHELL_VERSION__ = 'V2026.05.02.02';
+    window.__APP_SHELL_VERSION__ = 'V2026.05.02.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.02.02').trim() || 'V2026.05.02.02';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.02.03').trim() || 'V2026.05.02.03';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1524,8 +1524,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const PUSH_MOBILE_REFRESH_STORAGE_KEY = 'gnc_mobile_push_refresh_v1';
         const CHAT_REALTIME_TABLES = [CHAT_CONVERSATIONS_TABLE, CHAT_PARTICIPANTS_TABLE, CHAT_MESSAGES_TABLE];
         const WALKIE_REALTIME_TABLES = [WALKIE_CHANNELS_TABLE, WALKIE_CHANNEL_MEMBERS_TABLE, WALKIE_CALLS_TABLE, WALKIE_CALL_MEMBERS_TABLE, WALKIE_SIGNAL_TABLE];
-        const CHAT_BACKGROUND_POLL_MS = 3000;
-        const CHAT_BACKGROUND_HEALTHY_POLL_MS = 30000;
+        const CHAT_BACKGROUND_POLL_MS = 60000;
+        const CHAT_BACKGROUND_HEALTHY_POLL_MS = 180000;
         const WALKIE_LISTENER_CAP = 6;
         const WALKIE_MEMBERSHIP_STALE_MS = 45000;
         const WALKIE_HEARTBEAT_MS = 12000;
@@ -1557,7 +1557,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.02.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.02.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1573,22 +1573,22 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             auth: { persistSession: false, autoRefreshToken: false },
             realtime: { params: { eventsPerSecond: 8 } }
         });
-const LIVE_SYNC_POLL_STANDALONE_MS = 15000;
-const LIVE_SYNC_POLL_BROWSER_MS = 20000;
+const LIVE_SYNC_POLL_STANDALONE_MS = 60000;
+const LIVE_SYNC_POLL_BROWSER_MS = 90000;
         const LIVE_SYNC_VIEW_POLICY = Object.freeze({
             home: { realtimeTables: [], pollMs: 0 },
-            chat: { realtimeTables: ['v2_chat_conversations', 'v2_chat_participants', 'v2_chat_messages'], pollMs: 2000 },
-            drive: { realtimeTables: ['v2_master_inventory'], pollMs: 'visible-default' },
-            tasks: { realtimeTables: ['v2_master_inventory', 'v2_cav_import', 'v2_av_notes', 'v2_active_request', 'v2_sales_office'], pollMs: 'visible-default' },
+            chat: { realtimeTables: ['v2_chat_conversations', 'v2_chat_participants', 'v2_chat_messages'], pollMs: 60000 },
+            drive: { realtimeTables: [], pollMs: 'visible-default' },
+            tasks: { realtimeTables: ['v2_active_request', 'v2_sales_office'], pollMs: 'visible-default' },
             request: { realtimeTables: ['v2_active_request'], pollMs: 'visible-default' },
-            'sales-office': { realtimeTables: ['v2_sales_office', 'v2_master_inventory'], pollMs: 'visible-default' },
+            'sales-office': { realtimeTables: ['v2_sales_office'], pollMs: 'visible-default' },
             'take-back': { realtimeTables: ['v2_take_back_queue'], pollMs: 'visible-default' },
-            av: { realtimeTables: ['v2_master_inventory', 'v2_reserves', 'v2_cav_import', 'v2_av_notes'], pollMs: 'visible-default' },
-            reserves: { realtimeTables: ['v2_reserves'], pollMs: 'visible-default' },
-            docks: { realtimeTables: ['v2_soc_master', 'v2_dock_team_status', 'v2_dock_item_status', 'v2_dock_issue_status', 'v2_dock_issue_allocations'], pollMs: 0 },
-            reports: { realtimeTables: ['v2_master_inventory', 'v2_active_request', 'v2_reserves', 'v2_soc_master'], pollMs: 'visible-default' },
-            review: { realtimeTables: ['v2_master_inventory'], pollMs: 'visible-default' },
-            'low-stock': { realtimeTables: ['v2_master_inventory'], pollMs: 'visible-default' },
+            av: { realtimeTables: [], pollMs: 'visible-default' },
+            reserves: { realtimeTables: [], pollMs: 'visible-default' },
+            docks: { realtimeTables: ['v2_dock_team_status', 'v2_dock_item_status', 'v2_dock_issue_status', 'v2_dock_issue_allocations'], pollMs: 'visible-default' },
+            reports: { realtimeTables: ['v2_active_request'], pollMs: 'visible-default' },
+            review: { realtimeTables: [], pollMs: 'visible-default' },
+            'low-stock': { realtimeTables: [], pollMs: 'visible-default' },
             hours: { realtimeTables: [], pollMs: 0 }
         });
         const REALTIME_TABLES = Array.from(new Set(Object.values(LIVE_SYNC_VIEW_POLICY).flatMap((policy) => Array.isArray(policy && policy.realtimeTables) ? policy.realtimeTables : [])));
@@ -1598,9 +1598,9 @@ const LIVE_SYNC_POLL_BROWSER_MS = 20000;
         let visibleViewPollTimer = null;
         let activeVisibleViewPollViewId = '';
         let activeVisibleViewPollMs = 0;
-        const VIEW_ENTER_REFRESH_MIN_INTERVAL_MS = 24000;
-        const VIEW_ENTER_REFRESH_REALTIME_HEALTHY_MS = 60000;
-        const REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS = 12000;
+        const VIEW_ENTER_REFRESH_MIN_INTERVAL_MS = 60000;
+        const VIEW_ENTER_REFRESH_REALTIME_HEALTHY_MS = 180000;
+        const REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS = 30000;
         const viewEnterRefreshAt = new Map();
         const REALTIME_STARTUP_GRACE_MS = 12000;
         const REALTIME_RECOVERY_GRACE_MS = 3200;
@@ -2380,7 +2380,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = 20000;
 
         function getRealtimeSubscriptionTablesForView(viewId = '') {
             const policy = getLiveSyncPolicy(viewId);
-            return normalizeRealtimeTableList([...(policy.realtimeTables || []), ...CHAT_REALTIME_TABLES]);
+            const includeChatRealtime = policy.viewId === 'chat';
+            return normalizeRealtimeTableList([...(policy.realtimeTables || []), ...(includeChatRealtime ? CHAT_REALTIME_TABLES : [])]);
         }
 
         function hasHealthyRealtimeSubscriptions(tables = null) {
@@ -9254,7 +9255,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.02.02').trim() || 'V2026.05.02.02';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.02.03').trim() || 'V2026.05.02.03';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -17765,9 +17766,32 @@ function toggleDriveQuickRequestItem(domId) {
 
         function handleChatRealtimeChange(tableName = '', payload = null) {
             const eventType = String(payload && payload.eventType ? payload.eventType : '').toUpperCase();
+            const isMessageEvent = tableName === CHAT_MESSAGES_TABLE;
+            const rawMessage = isMessageEvent ? (eventType === 'DELETE' ? (payload && payload.old ? payload.old : {}) : (payload && payload.new ? payload.new : {})) : {};
             const incomingMessage = tableName === CHAT_MESSAGES_TABLE && eventType !== 'DELETE'
                 ? normalizeChatMessage(payload && payload.new ? payload.new : null)
                 : null;
+            const messageId = String(firstNonEmptyValue(rawMessage.id, rawMessage.ID, incomingMessage && incomingMessage.id, '')).trim();
+            const messageConversationId = String(firstNonEmptyValue(rawMessage.conversation_id, rawMessage.conversationId, incomingMessage && incomingMessage.conversationId, '')).trim();
+            const isKnownConversation = !messageConversationId
+                || chatConversations.some((conversation) => conversation && conversation.id === messageConversationId)
+                || chatParticipants.some((participant) => participant && participant.conversationId === messageConversationId);
+            if (chatDataLoaded && isMessageEvent && messageId && isKnownConversation) {
+                if (eventType === 'DELETE') {
+                    chatMessages = chatMessages.filter((message) => message && message.id !== messageId);
+                } else if (incomingMessage) {
+                    const existingIndex = chatMessages.findIndex((message) => message && message.id === incomingMessage.id);
+                    if (existingIndex >= 0) chatMessages[existingIndex] = incomingMessage;
+                    else chatMessages.push(incomingMessage);
+                    chatMessages.sort((a, b) => (Date.parse(a.createdAt || '') || 0) - (Date.parse(b.createdAt || '') || 0));
+                }
+                markViewDirty('chat');
+                updateFooterChatBadge();
+                if (incomingMessage && incomingMessage.senderUsername !== getCurrentChatUsername()) maybeShowForegroundChatNotification(incomingMessage);
+                if (isViewVisible('chat')) renderChat();
+                scheduleChatBackgroundPoll(hasHealthyBackgroundChatRealtime() ? CHAT_BACKGROUND_HEALTHY_POLL_MS : CHAT_BACKGROUND_POLL_MS);
+                return;
+            }
             if (incomingMessage && incomingMessage.id && !chatMessages.some((message) => message.id === incomingMessage.id)) {
                 chatMessages.push(incomingMessage);
                 chatMessages.sort((a, b) => (Date.parse(a.createdAt || '') || 0) - (Date.parse(b.createdAt || '') || 0));
