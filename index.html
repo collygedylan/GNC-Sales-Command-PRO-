@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.04.01';
+  window.__APP_SHELL_VERSION__ = 'V2026.05.04.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.04.01').trim() || 'V2026.05.04.01';</script>
+  <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.04.03').trim() || 'V2026.05.04.03';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1565,7 +1565,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.04.01';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.04.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -5881,7 +5881,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             backgroundRefreshInFlight = true;
             updateSyncDiagnostics('refreshing');
             try {
-                await Promise.all(targets.map((item) => ensureDatasetLoaded(item.key, item.mode, { force: true })));
+                await loadDatasetTargetsWithLimit(targets, { force: true }, 1);
                 lastBackgroundRefreshAt = Date.now();
                 const nextMode = hasHealthyCoreRealtimeSubscriptions(targetView) ? 'realtime' : 'polling';
                 liveSyncMode = nextMode;
@@ -9346,7 +9346,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             return warmed;
         }
 
-        const INITIAL_PAGE_LIMIT = ((/iPhone|iPad|Android/i.test(navigator.userAgent) || window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) ? 150 : 250);
+        const INITIAL_PAGE_LIMIT = ((/iPhone|iPad|Android/i.test(navigator.userAgent) || window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) ? 300 : 500);
 
         function createDatasetLoadEntry() {
             return { initialLoaded: false, fullLoaded: false, initialPromise: null, fullPromise: null, lastLoadedAt: '' };
@@ -9702,7 +9702,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.04.01').trim() || 'V2026.05.04.01';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.04.03').trim() || 'V2026.05.04.03';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -10674,9 +10674,9 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
                 let allData = [];
                 let offset = 0;
                 const limit = table === 'v2_master_inventory'
-                    ? ((isIOSDevice() || isStandaloneApp()) ? 500 : 700)
+                    ? ((isIOSDevice() || isStandaloneApp()) ? 900 : 1000)
                     : (table === 'v2_reserves'
-                        ? ((isIOSDevice() || isStandaloneApp()) ? 2500 : 3000)
+                        ? ((isIOSDevice() || isStandaloneApp()) ? 4000 : 5000)
                         : 1000);
                 let hasMore = true;
                 while (hasMore) {
@@ -10909,6 +10909,27 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             }
         }
 
+        async function loadDatasetTargetsWithLimit(targets = [], options = {}, concurrency = 1) {
+            const safeTargets = (Array.isArray(targets) ? targets : []).filter((item) => item && item.key);
+            if (!safeTargets.length) return true;
+            const limit = Math.max(1, Math.min(3, Number(concurrency) || 1));
+            let index = 0;
+            const runWorker = async () => {
+                while (index < safeTargets.length) {
+                    const item = safeTargets[index];
+                    index += 1;
+                    await ensureDatasetLoaded(item.key, item.mode, options);
+                    await yieldToUiFrame();
+                }
+            };
+            const workers = [];
+            for (let workerIndex = 0; workerIndex < Math.min(limit, safeTargets.length); workerIndex += 1) {
+                workers.push(runWorker());
+            }
+            await Promise.all(workers);
+            return true;
+        }
+
         function getLoadedDatasetRefreshTargets(loadedKeys = []) {
             const targetMap = new Map();
             loadedKeys.forEach((key) => {
@@ -10961,10 +10982,10 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
         }
 
         function getViewLoadingConfig(viewId) {
-            if (viewId === 'drive') return { required: [{ key: 'master', mode: 'full' }], background: [], label: 'Loading all Drive rows...' };
+            if (viewId === 'drive') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading Drive rows...' };
             if (viewId === 'av') {
                 if (activeAVTab === 'hotprice') {
-                    return { required: [{ key: 'master', mode: 'full' }, { key: 'avHotPriceKeys', mode: 'full' }], background: [], label: 'Loading hot price rows...' };
+                    return { required: [{ key: 'master', mode: 'initial' }, { key: 'avHotPriceKeys', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }, { key: 'avHotPriceKeys', mode: 'full' }], label: 'Loading hot price rows...' };
                 }
                 if (activeAVTab === 'reserves') {
                     if (getRoleAccessState().isRep) {
@@ -10984,7 +11005,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
                 }
                 return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading reserves...' };
             }
-            if (viewId === 'sales-office') return { required: [{ key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }, { key: 'master', mode: 'full' }], label: 'Loading sales office...' };
+            if (viewId === 'sales-office') return { required: [{ key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }, { key: 'master', mode: 'initial' }], label: 'Loading sales office...' };
             if (viewId === 'tasks') {
                 const required = [{ key: 'master', mode: 'initial' }];
                 const background = [{ key: 'master', mode: 'full' }, { key: 'avNotes', mode: 'full' }];
@@ -11048,15 +11069,15 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             }
             const pending = config.required.filter((item) => !isDatasetLoaded(item.key, item.mode));
             if (!pending.length) {
-                const backgroundDelay = isTouchConstrainedDevice() ? 72 : 36;
+                const backgroundDelay = isTouchConstrainedDevice() ? 900 : 520;
                 (config.background || []).forEach((item) => {
                     if (!isDatasetFrozenDuringManualSync(item.key, item.mode)) queueDatasetLoad(item.key, item.mode, backgroundDelay);
                 });
                 return false;
             }
             showViewLoadingState(viewId, config.label);
-            Promise.all(pending.map((item) => ensureDatasetLoaded(item.key, item.mode))).then(() => {
-                const backgroundDelay = isTouchConstrainedDevice() ? 90 : 48;
+            loadDatasetTargetsWithLimit(pending, {}, 1).then(() => {
+                const backgroundDelay = isTouchConstrainedDevice() ? 900 : 520;
                 (config.background || []).forEach((item) => {
                     if (!isDatasetFrozenDuringManualSync(item.key, item.mode)) queueDatasetLoad(item.key, item.mode, backgroundDelay);
                 });
@@ -11092,7 +11113,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
                 const visibleView = TRACKED_VIEW_IDS.find((viewId) => isViewVisible(viewId));
                 const config = visibleView ? getViewLoadingConfig(visibleView) : null;
                 if (!config) return true;
-                await Promise.all(config.required.map((item) => ensureDatasetLoaded(item.key, item.mode, { force })));
+                await loadDatasetTargetsWithLimit(config.required, { force }, 1);
                 lastBackgroundRefreshAt = Date.now();
                 return true;
             }
@@ -11115,7 +11136,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             backgroundRefreshInFlight = true;
             updateSyncDiagnostics('refreshing');
             try {
-                await Promise.all(eligibleTargets.map((item) => ensureDatasetLoaded(item.key, item.mode, { force: true })));
+                await loadDatasetTargetsWithLimit(eligibleTargets, { force: true }, force ? 1 : 1);
                 lastBackgroundRefreshAt = Date.now();
                 updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'idle');
                 return true;
@@ -11167,7 +11188,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             const config = getViewLoadingConfig(targetView);
             if (!config || !Array.isArray(config.required) || !config.required.length) return;
             if (options.force) {
-                Promise.all(config.required.map((item) => ensureDatasetLoaded(item.key, item.mode, { force: true }))).then(() => {
+                loadDatasetTargetsWithLimit(config.required, { force: true }, 1).then(() => {
                     markViewDirty(targetView);
                     if (isViewVisible(targetView)) queueInteractiveViewRender(targetView, false, false, 0, 180);
                 }).catch(() => {});
@@ -11175,7 +11196,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             }
             const pendingRequired = config.required.filter((item) => !isDatasetLoaded(item.key, item.mode));
             if (pendingRequired.length) {
-                Promise.all(pendingRequired.map((item) => ensureDatasetLoaded(item.key, item.mode))).then(() => {
+                loadDatasetTargetsWithLimit(pendingRequired, {}, 1).then(() => {
                     markViewDirty(targetView);
                     if (isViewVisible(targetView)) queueInteractiveViewRender(targetView, false, false, 0, 180);
                 }).catch(() => {});
@@ -14530,8 +14551,14 @@ function toggleDriveQuickRequestItem(domId) {
                         showForcedPasswordChangeGate(currentUser, inputPass, currentRole, currentUserDisplay);
                     }
                     else{
-                        const finishLogin = () => finalizeLogin(currentUser,inputPass,isBiometricLogin);
-                        loginPushPermissionPromise.finally(() => primePushPermissionFromLoginGesture().finally(finishLogin));
+                        finalizeLogin(currentUser,inputPass,isBiometricLogin).catch(err => {
+                            finishInitialAppLoad();
+                            setBootingSession(false);
+                            console.warn('Login crashed unexpectedly.', err);
+                            showToast('Error', getLoginFailureMessage(err), true);
+                            resetLoginUiState();
+                        });
+                        loginPushPermissionPromise.catch(() => false);
                     }
                 } else if (result && result.reason === 'mismatch') {
                     finishInitialAppLoad();
@@ -14765,22 +14792,11 @@ function toggleDriveQuickRequestItem(domId) {
             const shouldPromptBiometric = !loginOptions.skipBiometricPrompt && !deferHeavyLoginWarm && !isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled')!=='true';
             setLoginProgress(Math.max(currentProgress, 30), 'Preparing your workspace...');
 
-            const localWarmTasks = [];
-            if (!hasWarmAppData()) localWarmTasks.push(warmCachedInventory().catch(() => false));
+            const hadWarmDataBeforeLocalWarm = hasWarmAppData();
+            const localWarmTaskFactories = [];
+            if (!hadWarmDataBeforeLocalWarm) localWarmTaskFactories.push(() => warmCachedInventory().catch(() => false));
             if (shouldWarmReserveCache && (!Array.isArray(reservesInventory) || reservesInventory.length === 0)) {
-                localWarmTasks.push(warmUserScopedDatasetCaches().catch(() => false));
-            }
-            if (localWarmTasks.length) {
-                if (isRestoredSession) {
-                    Promise.allSettled(localWarmTasks).then(() => {
-                        if (!currentUser || document.hidden) return;
-                        if (!hasWarmAppData()) return;
-                        queueVisibleTrackedViewRefresh('restore-cache-ready', 40, 180);
-                        queueVisibleDatasetCatchup(isTouchConstrainedDevice() ? 260 : 140);
-                    }).catch(() => {});
-                } else {
-                    await Promise.allSettled(localWarmTasks);
-                }
+                localWarmTaskFactories.push(() => warmUserScopedDatasetCaches().catch(() => false));
             }
 
             let appOpened = false;
@@ -14793,11 +14809,39 @@ function toggleDriveQuickRequestItem(domId) {
                 }
             };
 
-            const openedFromCache = hasWarmAppData();
+            const expectsLocalWarm = localWarmTaskFactories.length > 0;
+            const openedFromCache = hadWarmDataBeforeLocalWarm || expectsLocalWarm;
             openApp(openedFromCache);
             refreshManualSyncStatus(true).catch(() => {});
 
             const scheduleAfterTouch = deferHeavyLoginWarm ? runAfterTouchInteraction : runAfterShellInteractive;
+            const runLoginLocalWarmTasks = () => {
+                if (!localWarmTaskFactories.length) return Promise.resolve(hadWarmDataBeforeLocalWarm);
+                return Promise.allSettled(localWarmTaskFactories.map((taskFactory) => {
+                    try {
+                        return taskFactory();
+                    } catch (error) {
+                        return false;
+                    }
+                })).then(() => {
+                    const warmed = hasWarmAppData();
+                    if (currentUser && warmed) {
+                        queueVisibleTrackedViewRefresh('login-cache-ready', 40, 180);
+                        queueVisibleDatasetCatchup(isTouchConstrainedDevice() ? 520 : 260);
+                        syncGlobalHeaderChrome();
+                        updateFooterNavState();
+                    }
+                    return warmed;
+                }).catch(() => hasWarmAppData());
+            };
+            let loginLocalWarmPromise = Promise.resolve(hadWarmDataBeforeLocalWarm);
+            if (expectsLocalWarm) {
+                loginLocalWarmPromise = new Promise((resolve) => {
+                    runAfterShellInteractive(() => {
+                        runLoginLocalWarmTasks().then(resolve).catch(() => resolve(hasWarmAppData()));
+                    }, deferHeavyLoginWarm ? 80 : 20);
+                });
+            }
 
             scheduleAfterTouch(() => {
                 syncGlobalHeaderChrome();
@@ -14828,19 +14872,27 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             runAfterShellInteractive(() => {
-                const warmupPlan = primeLoginDataLoad(openedFromCache, { restoredSession: isRestoredSession });
-                if (!openedFromCache && (warmupPlan.initialQueue.length || warmupPlan.fullQueue.length)) {
-                    showToast("Ready", "Fast mode is on. Data is warming in the background.", false);
+                const startNetworkWarm = (cacheAvailable = false) => {
+                    const warmupPlan = primeLoginDataLoad(!!cacheAvailable, { restoredSession: isRestoredSession });
+                    if (!cacheAvailable && (warmupPlan.initialQueue.length || warmupPlan.fullQueue.length)) {
+                        showToast("Ready", "Fast mode is on. Data is warming in the background.", false);
+                    }
+                    warmupPlan.fullQueue.forEach((item) => {
+                        queueDatasetLoad(item.key, item.mode, item.delay);
+                    });
+                    if (cacheAvailable) queueVisibleDatasetCatchup(isTouchConstrainedDevice() ? 900 : 520);
+                    scheduleTaskHotCacheWarmup('login-warm', cacheAvailable ? 320 : 180);
+                    if (getPushPromptUserScope()) {
+                        installPushEnrollmentListeners();
+                        scheduleCellularPushEnrollment('login', cacheAvailable ? 650 : 1400);
+                    }
+                    ensureChatBackgroundSync('login', cacheAvailable ? 1200 : 1800);
+                };
+                if (expectsLocalWarm) {
+                    loginLocalWarmPromise.then((warmed) => startNetworkWarm(!!warmed)).catch(() => startNetworkWarm(hasWarmAppData()));
+                } else {
+                    startNetworkWarm(hadWarmDataBeforeLocalWarm);
                 }
-                warmupPlan.fullQueue.forEach((item) => {
-                    queueDatasetLoad(item.key, item.mode, item.delay);
-                });
-                scheduleTaskHotCacheWarmup('login-warm', openedFromCache ? 220 : 140);
-                if (getPushPromptUserScope()) {
-                    installPushEnrollmentListeners();
-                    scheduleCellularPushEnrollment('login', openedFromCache ? 450 : 1200);
-                }
-                ensureChatBackgroundSync('login', openedFromCache ? 900 : 1600);
             }, queueWarmDelay);
 
             if (loginOptions.restoredSession !== false) {
