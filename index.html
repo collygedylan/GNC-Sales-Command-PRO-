@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.04.06';
+  window.__APP_SHELL_VERSION__ = 'V2026.05.04.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.04.06').trim() || 'V2026.05.04.06';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.04.07').trim() || 'V2026.05.04.07';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1565,7 +1565,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.04.06';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.04.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1984,6 +1984,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = 90000;
             dockDisplayInventory = [];
             dockDisplayInventoryById = new Map();
             dockDisplayInventoryBySourceUid = new Map();
+            dockFilterStateCacheKey = '';
+            dockFilterStateCache = null;
             dockIssueSourceRowsCacheKey = '';
             dockIssueSourceRowsById = new Map();
             dockIssueSourceRowsByCurrentUid = new Map();
@@ -2008,6 +2010,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = 90000;
             dockDisplayInventory = [];
             dockDisplayInventoryById = new Map();
             dockDisplayInventoryBySourceUid = new Map();
+            dockFilterStateCacheKey = '';
+            dockFilterStateCache = null;
             dockIssueSourceRowsCacheKey = '';
             dockIssueSourceRowsById = new Map();
             dockIssueSourceRowsByCurrentUid = new Map();
@@ -6706,8 +6710,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return false;
         }
 
-        function scheduleDriveRender(delay = 0, typingDelay = 112, forceRender = false) {
-            return scheduleTrackedViewRender('drive', 'drive:render', { delay, typingDelay, forceRender, userAction: true, preferImmediate: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 24, interactionDelayMs: 24, scrollDelayMs: 84 });
+        function scheduleDriveRender(delay = 0, typingDelay = 36, forceRender = false) {
+            return scheduleTrackedViewRender('drive', 'drive:render', { delay, typingDelay, forceRender, userAction: true, preferImmediate: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 12, interactionDelayMs: 12, scrollDelayMs: 56 });
         }
 
         function scheduleTasksRender(delay = 0, typingDelay = 20, forceRender = false) {
@@ -6738,8 +6742,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return scheduleTrackedViewRender('low-stock', 'low-stock:render', { delay, typingDelay, forceRender, userAction: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 32, interactionDelayMs: 32, scrollDelayMs: 120 });
         }
 
-        function scheduleDocksRender(delay = 32) {
-            return scheduleTrackedViewRender('docks', 'docks:render', { delay, typingDelay: 180, userAction: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 32, interactionDelayMs: 32, scrollDelayMs: 120 });
+        function scheduleDocksRender(delay = 0, typingDelay = 48, forceRender = false) {
+            return scheduleTrackedViewRender('docks', 'docks:render', { delay, typingDelay, forceRender, userAction: true, preferImmediate: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 16, interactionDelayMs: 16, scrollDelayMs: 72 });
         }
 
         function scheduleTakeBackRender(delay = 24) {
@@ -9618,7 +9622,7 @@ let activeHomeTab='dashboard'; let selectedProductivityUser=''; let productivity
         }
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
 let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
-let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveSeason=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let drivePlantFilterItemsCache=[]; let drivePlantFilterGenusOptions=[]; let drivePlantFilterContSizeOptions=[]; let driveGenusSelectionMode='all'; let driveContSizeSelectionMode='all'; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; let driveSeasonSearchTerm=''; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); const DRIVE_DRILL_ALL_VALUE='__ALL__'; const DRIVE_DRILL_ALL_LABEL='ALL'; let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS); let driveResolvedCardStateKey=''; let driveResolvedCardStateCache=null; let driveSearchRequiresManualSelection=false; let driveSearchDebounceTimer=null; let driveSearchRequestToken=0;
+let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveSeason=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let drivePlantFilterItemsCache=[]; let drivePlantFilterGenusOptions=[]; let drivePlantFilterContSizeOptions=[]; let driveGenusSelectionMode='all'; let driveContSizeSelectionMode='all'; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; let driveSeasonSearchTerm=''; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); const DRIVE_DRILL_ALL_VALUE='__ALL__'; const DRIVE_DRILL_ALL_LABEL='ALL'; let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS); let driveResolvedCardStateKey=''; let driveResolvedCardStateCache=null; let driveVisibleItemsStateCacheKey=''; let driveVisibleItemsStateCache=null; let driveDrillGroupStateCache=new Map(); let driveSearchRequiresManualSelection=false; let driveSearchDebounceTimer=null; let driveSearchRequestToken=0;
         let drivePlantFilterStateCacheKey=''; let drivePlantFilterStateCache=null;
 
 const DEFAULT_TASK_VIEW="av-blanks"; const DEFAULT_TASK_FILTER="season";
@@ -9642,7 +9646,7 @@ let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKe
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null;
         let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let tempReqAppendToExistingFolder=false; let previousReqStep=""; let driveQuickRequestItems=new Set(); let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
 let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending'; let requestFolderSearchTerm=''; let requestRepSearchTerm=''; let requestCustomerSearchTerm=''; let requestFolderDateFilter=''; let lastRequestHeaderSearchMode='';
-        let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let selectedDockGenusNames=new Set(); let dockGenusSearchTerm=""; let dockGenusFilterOpen=false; let selectedDockContSizes=new Set(); let dockContSizeSearchTerm=""; let dockContSizeFilterOpen=false; let selectedDockLocationCodes=new Set(); let dockLocationSearchTerm=""; let dockLocationFilterOpen=false; let dockFilterItemsCache=[]; let lastDockFilterRenderSignature=""; let lastSyncTime=new Date().toISOString();
+let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pendingDockNum=null; let selectedDockName=null; let selectedDockSize=null; let selectedDockItemCode=null; let selectedDockCustomer=""; let selectedDockTrip=""; let selectedDockRep=""; let selectedDockGenusNames=new Set(); let dockGenusSearchTerm=""; let dockGenusFilterOpen=false; let selectedDockContSizes=new Set(); let dockContSizeSearchTerm=""; let dockContSizeFilterOpen=false; let selectedDockLocationCodes=new Set(); let dockLocationSearchTerm=""; let dockLocationFilterOpen=false; let dockFilterItemsCache=[]; let dockFilterStateCacheKey=""; let dockFilterStateCache=null; let lastDockFilterRenderSignature=""; let lastSyncTime=new Date().toISOString();
         let lastSuccessfulSyncTime = "";
         let syncDiagnosticsOverride = "";
         let manualSyncStatusState = null;
@@ -9702,7 +9706,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.04.06').trim() || 'V2026.05.04.06';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.04.07').trim() || 'V2026.05.04.07';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -12166,6 +12170,9 @@ let searchRenderToken = {};
         function invalidateDriveResolvedCardState() {
             driveResolvedCardStateKey = '';
             driveResolvedCardStateCache = null;
+            driveVisibleItemsStateCacheKey = '';
+            driveVisibleItemsStateCache = null;
+            driveDrillGroupStateCache = new Map();
             driveQuickFilterCacheKey = '';
             driveQuickFilterCacheItems = [];
         }
@@ -12283,7 +12290,6 @@ return false;
             const masterState = getDatasetState('master');
             return [
                 activeDriveMode,
-                activeDriveTab,
                 [...driveSelectedSeasons].sort().join('|'),
                 driveQuickHoldStopOnly ? '1' : '0',
                 fullInventory.length,
@@ -16727,13 +16733,34 @@ function toggleDriveQuickRequestItem(domId) {
 
         function buildDockFilterState(items = []) {
             const source = Array.isArray(items) ? items : [];
+            const stateScopeKey = [
+                getDatasetLoadSignature('soc'),
+                dockWorkflowStateEpoch,
+                source.length,
+                buildSelectionStateKey(selectedDockGenusNames),
+                buildSelectionStateKey(selectedDockContSizes),
+                buildSelectionStateKey(selectedDockLocationCodes),
+                String(dockGenusSearchTerm || '').trim().toLowerCase(),
+                String(dockContSizeSearchTerm || '').trim().toLowerCase(),
+                String(dockLocationSearchTerm || '').trim().toLowerCase()
+            ].join('|');
+            if (dockFilterStateCacheKey === stateScopeKey && dockFilterStateCache) {
+                incrementInternalPerfCounter('viewStateCacheHits');
+                return dockFilterStateCache;
+            }
             const genusOptions = buildDockFilterOptions(source, getDockGenusName);
             const contSizeOptions = buildDockFilterOptions(source, getDockContSizeValue);
             const locationOptions = buildDockFilterOptions(source, getDockLocationCodeValue);
             selectedDockGenusNames = pruneDockFilterSelection(selectedDockGenusNames, genusOptions);
             selectedDockContSizes = pruneDockFilterSelection(selectedDockContSizes, contSizeOptions);
             selectedDockLocationCodes = pruneDockFilterSelection(selectedDockLocationCodes, locationOptions);
-            return {
+            let optionHash = 2166136261;
+            [genusOptions, contSizeOptions, locationOptions].forEach((optionList) => {
+                optionHash = updateRenderSignatureHash(optionHash, optionList.length);
+                optionList.forEach((value) => { optionHash = updateRenderSignatureHash(optionHash, value); });
+            });
+            dockFilterStateCacheKey = stateScopeKey;
+            dockFilterStateCache = {
                 genusOptions,
                 contSizeOptions,
                 locationOptions,
@@ -16745,8 +16772,10 @@ function toggleDriveQuickRequestItem(domId) {
                 locationSearchTerm: normalizeExcelFilterSearchTerm(dockLocationSearchTerm),
                 selectedGenusCount: selectedDockGenusNames.size,
                 selectedContSizeCount: selectedDockContSizes.size,
-                selectedLocationCount: selectedDockLocationCodes.size
+                selectedLocationCount: selectedDockLocationCodes.size,
+                optionSignature: (optionHash >>> 0).toString(16)
             };
+            return dockFilterStateCache;
         }
 
         function buildDockFilterOptionHtml(options = [], selectedSet = new Set(), toggleHandler = '', emptyText = 'No matches') {
@@ -16863,9 +16892,7 @@ function toggleDriveQuickRequestItem(domId) {
             const state = buildDockFilterState(dockFilterItemsCache);
             const renderSignature = [
                 dockFilterItemsCache.length,
-                state.genusOptions.join('\u001f'),
-                state.contSizeOptions.join('\u001f'),
-                state.locationOptions.join('\u001f'),
+                state.optionSignature,
                 buildSelectionStateKey(selectedDockGenusNames),
                 buildSelectionStateKey(selectedDockContSizes),
                 buildSelectionStateKey(selectedDockLocationCodes),
@@ -22271,8 +22298,7 @@ function toggleDriveQuickRequestItem(domId) {
             driveContSizeFilterOpen = false;
             resetDriveDrillSelectionState();
             setDriveSearchManualSelectionLock(nextTab !== 'card' && hasActiveDriveSearchTerm());
-            invalidateDriveResolvedCardState();
-            scheduleDriveRender();
+            scheduleDriveRender(0, 28, true);
             queueScrollMainAreaToTop(`drive-tab:${nextTab}`);
         }
 
@@ -25251,8 +25277,8 @@ function toggleDriveQuickRequestItem(domId) {
             const configuredInitialScreens = Number(options.initialScreens);
             const initialScreens = Number.isFinite(configuredInitialScreens) && configuredInitialScreens > 0
                 ? configuredInitialScreens
-                : (touchOptimized ? 1.75 : 1.55);
-            const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(7, chunkSize - 2) : Math.max(chunkSize, 18), Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
+                : (touchOptimized ? 1.25 : 1.15);
+            const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(6, chunkSize - 8) : Math.max(10, Math.ceil(chunkSize / 2)), Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
             const perFrameLimit = touchOptimized ? Math.max(chunkSize, 18) : Math.max(chunkSize, 28);
             const frameBudgetMs = touchOptimized ? 3.2 : 3.1;
             const hasFollowupChunks = total > initialTarget;
@@ -26080,13 +26106,15 @@ function toggleDriveQuickRequestItem(domId) {
                 if (!dockTeamStatusPromise) ensureDockTeamStatusLoaded().then(() => scheduleDocksRender(0)).catch(() => scheduleDocksRender(0));
                 if (!dockItemProgressPromise) ensureDockItemStatusLoaded().then(() => scheduleDocksRender(0)).catch(() => scheduleDocksRender(0));
                 if (!dockIssueDataPromise) ensureDockIssueDataLoaded().then(() => scheduleDocksRender(0)).catch(() => scheduleDocksRender(0));
-                if (!containerHasRenderableContent(container)) setContainerHtml(container, `<div class="p-8 text-center text-gray-400">Loading dock workflow...</div>`);
-                crumb.innerText = 'Loading Assignments';
-                return;
+                if (waitingForDockAssignments && !containerHasRenderableContent(container)) {
+                    setContainerHtml(container, `<div class="p-8 text-center text-gray-400">Loading dock workflow...</div>`);
+                    crumb.innerText = 'Loading Assignments';
+                    return;
+                }
             }
             const term = document.getElementById('docks-search').value.toLowerCase().trim();
-            const resolvedState = getDockResolvedState();
             if (dockViewMode === 'mistakes') {
+                const resolvedState = getDockResolvedState();
                 if (dockIssueStatusSchemaReady === false || dockIssueAllocationSchemaReady === false) {
                     container.innerHTML = `<div class="p-8 text-center text-gray-400">Run dock_issue_resolution_migration.sql and dock_issue_source_match_key_migration.sql in Supabase to use the shared dock mistake queue.</div>`;
                     crumb.innerText = 'Dock Setup Required';
@@ -26097,6 +26125,9 @@ function toggleDriveQuickRequestItem(domId) {
                 return;
             }
 
+            const resolvedState = !dockIssueDataLoaded
+                ? { rows: Array.isArray(socInventory) ? socInventory : [], cacheKey: `dock-fast:${getDatasetLoadSignature('soc')}:${dockWorkflowStateEpoch}` }
+                : getDockResolvedState();
             let items = getScopedDocksItems(resolvedState.rows, `dock-display:${resolvedState.cacheKey}`);
             syncDockFilterControls(items);
             items = applyDockStructuredFilters(items);
@@ -26131,19 +26162,29 @@ function toggleDriveQuickRequestItem(domId) {
             };
 
             if (dockViewLevel === 0) {
-                const dockCards = [...new Set(items.map(i => normalizeDockViewDockKey(i && i.DOCK_NUM)))].sort(sortStops).map((dockNum) => {
-                    const dItems = items.filter(i => normalizeDockViewDockKey(i && i.DOCK_NUM) === dockNum);
+                const dockGroups = new Map();
+                items.forEach((item) => {
+                    const dockNum = normalizeDockViewDockKey(item && item.DOCK_NUM);
+                    let entry = dockGroups.get(dockNum);
+                    if (!entry) {
+                        entry = { dockNum, count: 0, hasCoUt: false };
+                        dockGroups.set(dockNum, entry);
+                    }
+                    entry.count += 1;
+                    if (!entry.hasCoUt) {
+                        const state = String(item && (item.CONSIGNEESTATE || item.STATE) || '').toUpperCase().trim();
+                        const city = String(item && item.CONSIGNEECITY || '').toUpperCase().trim();
+                        entry.hasCoUt = state === 'CO' || state === 'UT' || state === 'COLORADO' || state === 'UTAH' || city.includes(' CO') || city.includes(' UT') || city.endsWith('CO') || city.endsWith('UT');
+                    }
+                });
+                const dockCards = [...dockGroups.values()].sort((a, b) => sortStops(a.dockNum, b.dockNum)).map((entry) => {
+                    const dockNum = entry.dockNum;
                     const savedInfo = getDockTeamInfo(dockNum);
                     let statusColor = 'text-blue-600 bg-blue-50';
                     if (savedInfo.status.includes('Missing')) statusColor = 'text-red-600 bg-red-50';
                     else if (savedInfo.status === 'Palletize') statusColor = 'text-purple-600 bg-purple-50';
                     else if (savedInfo.status === 'Complete') statusColor = 'text-green-600 bg-green-50';
-                    const hasCoUt = dItems.some(i => {
-                        const state = String(i.CONSIGNEESTATE || i.STATE || '').toUpperCase().trim();
-                        const city = String(i.CONSIGNEECITY || '').toUpperCase().trim();
-                        return state === 'CO' || state === 'UT' || state === 'COLORADO' || state === 'UTAH' || city.includes(' CO') || city.includes(' UT') || city.endsWith('CO') || city.endsWith('UT');
-                    });
-                    return { dockNum, count: dItems.length, savedInfo, statusColor, borderCls: hasCoUt ? 'border-red-500' : 'border-[#007a4d]', bgCls: hasCoUt ? 'bg-red-50' : 'bg-green-50', textCls: hasCoUt ? 'text-red-700' : 'text-[#007a4d]' };
+                    return { dockNum, count: entry.count, savedInfo, statusColor, borderCls: entry.hasCoUt ? 'border-red-500' : 'border-[#007a4d]', bgCls: entry.hasCoUt ? 'bg-red-50' : 'bg-green-50', textCls: entry.hasCoUt ? 'text-red-700' : 'text-[#007a4d]' };
                 });
                 renderMarkupChunkedByKey('docks-main', container, crumb, dockCards, 'Select a Dock', (dockCard) => {
                     const editDockButton = canEditDockConfig ? `<button class="w-full bg-white border border-gray-200 text-gray-600 hover:text-[#007a4d] hover:border-[#007a4d] font-bold py-2 rounded-lg text-xs shadow-sm transition-colors" onclick="openDockInfoModal('${esc(dockCard.dockNum)}')"><i class="ph-bold ph-pencil-simple mr-1"></i> Edit Team & Status</button>` : '';
@@ -34399,7 +34440,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                 baseItems === driveBaseFilterCacheItems || baseItems === drivePlantFilterItemsCache
                     ? String(driveBaseFilterCacheKey || `drive-base:${resolvedViewStateEpoch}:${baseItems.length}`)
                     : `drive-manual:${resolvedViewStateEpoch}:${activeDriveTab}:${baseItems.length}`,
-                activeDriveTab,
                 buildSelectionStateKey(selectedDriveGenusNames),
                 String(driveGenusSearchTerm || '').trim().toLowerCase(),
                 buildSelectionStateKey(selectedDriveContSizes),
@@ -35112,14 +35152,20 @@ ${folderNote ? `Folder Note: ${folderNote}
                 String(driveQuickFilterLtsMode || '').trim(),
                 String(driveQuickFilterLtsValue || '').trim()
             ].join('::');
+            if (driveVisibleItemsStateCacheKey === resolvedStateKey && driveVisibleItemsStateCache) {
+                incrementInternalPerfCounter('viewStateCacheHits');
+                return driveVisibleItemsStateCache;
+            }
             const visibleItems = applyDriveQuickFiltersToItems(drivePlantFilterState.filteredItems, `plant:${resolvedStateKey}`);
             reconcileDriveDrillSelectionWithVisibleItems(visibleItems);
-            return {
+            driveVisibleItemsStateCacheKey = resolvedStateKey;
+            driveVisibleItemsStateCache = {
                 baseSearchFilteredItems,
                 drivePlantFilterState,
                 visibleItems,
                 resolvedStateKey
             };
+            return driveVisibleItemsStateCache;
         }
 
         function buildDriveResolvedCardState(driveModeLabel = '', viewStateOverride = null) {
@@ -35245,31 +35291,45 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function renderDriveCommonNameDrill(container, crumb, driveModeLabel = '', viewStateOverride = null) {
             const resolvedDriveModeLabel = String(driveModeLabel || DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode');
-            const { visibleItems } = viewStateOverride && typeof viewStateOverride === 'object'
+            const driveViewState = viewStateOverride && typeof viewStateOverride === 'object'
                 ? viewStateOverride
                 : buildDriveVisibleItemsState();
+            const { visibleItems, resolvedStateKey } = driveViewState;
             const forceTopLevelSearchResults = shouldLockDriveSearchToTopLevel();
             if (!visibleItems.length) {
                 applyDriveRenderMarkup(container, crumb, `${resolvedDriveModeLabel} > Common Name`, `<div class="p-8 text-center text-gray-400">No rows match the current Drive filters.</div>`, 'drive:name:empty');
                 return;
             }
             if (driveViewLevel <= 0 || !selectedDriveName || forceTopLevelSearchResults) {
-                const nameMap = new Map();
-                visibleItems.forEach((item) => {
-                    const commonName = getDrivePlantCommonName(item) || 'Unknown';
-                    if (!nameMap.has(commonName)) nameMap.set(commonName, { name: commonName, rowCount: 0, sizes: new Set(), __driveRenderKeyValue: '' });
-                    const entry = nameMap.get(commonName);
-                    entry.rowCount += 1;
-                    entry.sizes.add(getDrivePlantContSize(item) || '-');
-                });
-                const groups = [...nameMap.values()]
-                    .map((entry) => ({
-                        name: entry.name,
-                        rowCount: entry.rowCount,
-                        sizeCount: entry.sizes.size,
-                        __driveRenderKeyValue: `${entry.name}|${entry.rowCount}|${entry.sizes.size}`
-                    }))
-                    .sort((a, b) => compareDriveCommonName(a.name, b.name));
+                const groupCacheKey = `drive:name:list:${resolvedStateKey || ''}`;
+                let groups = driveDrillGroupStateCache instanceof Map ? driveDrillGroupStateCache.get(groupCacheKey) : null;
+                if (Array.isArray(groups)) {
+                    incrementInternalPerfCounter('viewStateCacheHits');
+                } else {
+                    const nameMap = new Map();
+                    visibleItems.forEach((item) => {
+                        const commonName = getDrivePlantCommonName(item) || 'Unknown';
+                        if (!nameMap.has(commonName)) nameMap.set(commonName, { name: commonName, rowCount: 0, sizes: new Set(), __driveRenderKeyValue: '' });
+                        const entry = nameMap.get(commonName);
+                        entry.rowCount += 1;
+                        entry.sizes.add(getDrivePlantContSize(item) || '-');
+                    });
+                    groups = [...nameMap.values()]
+                        .map((entry) => ({
+                            name: entry.name,
+                            rowCount: entry.rowCount,
+                            sizeCount: entry.sizes.size,
+                            __driveRenderKeyValue: `${entry.name}|${entry.rowCount}|${entry.sizes.size}`
+                        }))
+                        .sort((a, b) => compareDriveCommonName(a.name, b.name));
+                    if (!(driveDrillGroupStateCache instanceof Map)) driveDrillGroupStateCache = new Map();
+                    driveDrillGroupStateCache.set(groupCacheKey, groups);
+                    while (driveDrillGroupStateCache.size > 16) {
+                        const oldest = driveDrillGroupStateCache.keys().next();
+                        if (oldest && !oldest.done) driveDrillGroupStateCache.delete(oldest.value);
+                        else break;
+                    }
+                }
                 renderDriveDrillEntries(container, crumb, `${resolvedDriveModeLabel} > Select Common Name (${groups.length} names)`, groups, 'drive:name:list', renderDriveCommonNameGroupCard, {
                     emptyMessage: 'No common names match the current Drive search.',
                     approxCardHeight: 84
@@ -35374,28 +35434,42 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function renderDriveLocationDrill(container, crumb, driveModeLabel = '', viewStateOverride = null) {
             const resolvedDriveModeLabel = String(driveModeLabel || DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode');
-            const { visibleItems } = viewStateOverride && typeof viewStateOverride === 'object'
+            const driveViewState = viewStateOverride && typeof viewStateOverride === 'object'
                 ? viewStateOverride
                 : buildDriveVisibleItemsState();
+            const { visibleItems, resolvedStateKey } = driveViewState;
             const forceTopLevelSearchResults = shouldLockDriveSearchToTopLevel();
             if (!visibleItems.length) {
                 applyDriveRenderMarkup(container, crumb, `${resolvedDriveModeLabel} > Location`, `<div class="p-8 text-center text-gray-400">No rows match the current Drive filters.</div>`, 'drive:loc:empty');
                 return;
             }
             if (driveViewLevel <= 0 || !selectedDriveBlock || forceTopLevelSearchResults) {
-                const blockCounts = {};
-                visibleItems.forEach((item) => {
-                    const blockAlpha = getTaskBlockAlpha(item);
-                    if (!blockCounts[blockAlpha]) blockCounts[blockAlpha] = 0;
-                    blockCounts[blockAlpha] += 1;
-                });
-                const groups = Object.keys(blockCounts)
-                    .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }))
-                    .map((block) => ({
-                        block,
-                        rowCount: blockCounts[block],
-                        __driveRenderKeyValue: `${block}|${blockCounts[block]}`
-                    }));
+                const groupCacheKey = `drive:loc:blocks:${resolvedStateKey || ''}`;
+                let groups = driveDrillGroupStateCache instanceof Map ? driveDrillGroupStateCache.get(groupCacheKey) : null;
+                if (Array.isArray(groups)) {
+                    incrementInternalPerfCounter('viewStateCacheHits');
+                } else {
+                    const blockCounts = {};
+                    visibleItems.forEach((item) => {
+                        const blockAlpha = getTaskBlockAlpha(item);
+                        if (!blockCounts[blockAlpha]) blockCounts[blockAlpha] = 0;
+                        blockCounts[blockAlpha] += 1;
+                    });
+                    groups = Object.keys(blockCounts)
+                        .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }))
+                        .map((block) => ({
+                            block,
+                            rowCount: blockCounts[block],
+                            __driveRenderKeyValue: `${block}|${blockCounts[block]}`
+                        }));
+                    if (!(driveDrillGroupStateCache instanceof Map)) driveDrillGroupStateCache = new Map();
+                    driveDrillGroupStateCache.set(groupCacheKey, groups);
+                    while (driveDrillGroupStateCache.size > 16) {
+                        const oldest = driveDrillGroupStateCache.keys().next();
+                        if (oldest && !oldest.done) driveDrillGroupStateCache.delete(oldest.value);
+                        else break;
+                    }
+                }
                 renderDriveDrillEntries(container, crumb, `${resolvedDriveModeLabel} > Select Block (${groups.length} blocks)`, groups, 'drive:loc:blocks', renderDriveBlockGroupCard, {
                     emptyMessage: 'No Drive blocks match the current search.',
                     approxCardHeight: 84
