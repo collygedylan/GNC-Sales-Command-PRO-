@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-  window.__APP_SHELL_VERSION__ = 'V2026.05.04.09';
+  window.__APP_SHELL_VERSION__ = 'V2026.05.04.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.04.09').trim() || 'V2026.05.04.09';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.04.10').trim() || 'V2026.05.04.10';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1508,9 +1508,9 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const APP_LIVE_EVENTS_TABLE = 'v2_app_live_events';
         const APP_LIVE_EVENT_CLIENT_STORAGE_KEY = 'gnc_app_live_event_client_v1';
         const APP_LIVE_EVENT_PRUNE_STORAGE_KEY = 'gnc_app_live_event_pruned_v1';
-        const APP_LIVE_EVENT_WRITE_COALESCE_MS = 700;
-        const APP_LIVE_EVENT_REFRESH_BATCH_MS = 180;
-        const APP_LIVE_EVENT_REFRESH_JITTER_MS = 900;
+        const APP_LIVE_EVENT_WRITE_COALESCE_MS = 280;
+        const APP_LIVE_EVENT_REFRESH_BATCH_MS = 90;
+        const APP_LIVE_EVENT_REFRESH_JITTER_MS = 220;
         const APP_LIVE_EVENT_ROW_ID_LIMIT = 80;
         const APP_LIVE_EVENT_RETENTION_DAYS = 10;
         const CHAT_CONVERSATIONS_TABLE = 'v2_chat_conversations';
@@ -1565,7 +1565,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.04.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.04.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1609,6 +1609,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 90000;
         const VIEW_ENTER_REFRESH_MIN_INTERVAL_MS = 60000;
         const VIEW_ENTER_REFRESH_REALTIME_HEALTHY_MS = 180000;
         const REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS = 30000;
+        const REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS = 6000;
         const viewEnterRefreshAt = new Map();
         const REALTIME_STARTUP_GRACE_MS = 12000;
         const REALTIME_RECOVERY_GRACE_MS = 3200;
@@ -2035,15 +2036,15 @@ const LIVE_SYNC_POLL_BROWSER_MS = 90000;
         function getRealtimeSignatureFieldList(tableName = '') {
             const safeTable = String(tableName || '').trim().toLowerCase();
             if (safeTable === 'v2_active_request') {
-                return ['UNIQUE_ID','DATE_COMPLETED','REQ_STATUS','REQ_ARCHIVED','REQ_REP_ACTION','REQUEST_FOLDER','REQ_CUSTOMER','REQ_QTY','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','REQ_PHOTO_LINK','REQ_PHOTO_NAME','MASTER_ID','MASTER_UNIQUE_ID','MASTER_APP_TAB_ASSIGNMENT','APP_TAB_ASSIGNMENT','ASSIGNEDTO'];
+                return ['UNIQUE_ID','DATE_COMPLETED','REQ_STATUS','REQ_ARCHIVED','REQ_REP_ACTION','REQUESTED_BY','REQUEST_FOLDER','REQ_CUSTOMER','REQ_QTY','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','REQ_RESERVE','AV_NOTE','REQ_PHOTO_LINK','REQ_PHOTO_NAME','REQUEST_PHOTO_LINK','REQUEST_PHOTO_NAME','PHOTO_LINK','PHOTO_NAME','SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME','MASTER_ID','MASTER_UNIQUE_ID','MASTER_APP_TAB_ASSIGNMENT','APP_TAB_ASSIGNMENT','ASSIGNEDTO','UPDATED_AT','CREATED_AT'];
             }
             if (safeTable === 'v2_sales_office') {
-                return ['UNIQUE_ID','DATE_COMPLETED','AV_NOTE','SALES_NOTE','SPEC','CALIPER','SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','MASTER_ID','MASTER_UNIQUE_ID','SO_SOURCE'];
+                return ['UNIQUE_ID','DATE_COMPLETED','COMPLETED_AT','UPDATED_AT','AV_NOTE','SALES_NOTE','SPEC','CALIPER','PHOTO_LINK','PHOTO_NAME','SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME','MASTER_ID','MASTER_UNIQUE_ID','SO_SOURCE','ORDER_FOLDER','ORDER_CUSTOMER','ORDER_SUBMITTED_BY'];
             }
             if (safeTable === 'v2_master_inventory') {
-                return ['UNIQUE_ID','DATE_COMPLETED','APP_TAB_ASSIGNMENT','ASSIGNEDTO','AV_NOTE','SALES_NOTE','SPEC','CALIPER','MATCH','LOC_MATCH_QTY','INITIAL_PTR','PICK','SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','FLYER_FOLDER','FLYER_COMPLETED','REQUEST_FOLDER','REQ_STATUS','HOLSTOPCODE','PTRAVAILABLE','S_LTS'];
+                return ['UNIQUE_ID','DATE_COMPLETED','APP_TAB_ASSIGNMENT','ASSIGNEDTO','AV_NOTE','SALES_NOTE','SPEC','CALIPER','MATCH','LOC_MATCH_QTY','INITIAL_PTR','PICK','PHOTO_LINK','PHOTO_NAME','SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME','FLYER_AV_NOTE','FLYER_MATCH','FLYER_LOC_MATCH_QTY','FLYER_SPEC','FLYER_CALIPER','FLYER_PICK','FLYER_INITIAL_PTR','FLYER_FOLDER','FLYER_COMPLETED','REQUEST_FOLDER','REQ_STATUS','HOLDSTOPCODE','HOLSTOPCODE','PTRAVAILABLE','S_LTS','UPDATED_AT'];
             }
-            return ['UNIQUE_ID','DATE_COMPLETED','APP_TAB_ASSIGNMENT','ASSIGNEDTO','AV_NOTE','SPEC','CALIPER','MATCH','LOC_MATCH_QTY','PICK','SAVED_PHOTO_LINK','SAVED_PHOTO_NAME'];
+            return ['UNIQUE_ID','DATE_COMPLETED','APP_TAB_ASSIGNMENT','ASSIGNEDTO','AV_NOTE','SPEC','CALIPER','MATCH','LOC_MATCH_QTY','PICK','PHOTO_LINK','PHOTO_NAME','SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME','UPDATED_AT'];
         }
 
         function buildRealtimeRowSignature(row = null, tableName = '') {
@@ -4003,6 +4004,14 @@ const LIVE_SYNC_POLL_BROWSER_MS = 90000;
             item.DOCK_PHOTO_NAME = firstNonEmptyValue(item.DOCK_PHOTO_NAME, item.DOCKPHOTO_NAME);
             item.FLYER_PHOTO_LINK = firstNonEmptyValue(item.FLYER_PHOTO_LINK, item.FLYERPHOTO_LINK);
             item.FLYER_PHOTO_NAME = firstNonEmptyValue(item.FLYER_PHOTO_NAME, item.FLYERPHOTONAME);
+            if (item.SAVED_PHOTO_LINK) { item.PHOTO_LINK = item.SAVED_PHOTO_LINK; item.PHOTOLINK = item.SAVED_PHOTO_LINK; item['PHOTO LINK'] = item.SAVED_PHOTO_LINK; }
+            if (item.SAVED_PHOTO_NAME) { item.PHOTO_NAME = item.SAVED_PHOTO_NAME; item.PHOTONAME = item.SAVED_PHOTO_NAME; item['PHOTO NAME'] = item.SAVED_PHOTO_NAME; }
+            if (item.REQ_PHOTO_LINK) { item.REQUEST_PHOTO_LINK = item.REQ_PHOTO_LINK; item.REQUESTPHOTO_LINK = item.REQ_PHOTO_LINK; }
+            if (item.REQ_PHOTO_NAME) { item.REQUEST_PHOTO_NAME = item.REQ_PHOTO_NAME; item.REQUESTPHOTONAME = item.REQ_PHOTO_NAME; }
+            if (item.DOCK_PHOTO_LINK) item.DOCKPHOTO_LINK = item.DOCK_PHOTO_LINK;
+            if (item.DOCK_PHOTO_NAME) item.DOCKPHOTO_NAME = item.DOCK_PHOTO_NAME;
+            if (item.FLYER_PHOTO_LINK) item.FLYERPHOTO_LINK = item.FLYER_PHOTO_LINK;
+            if (item.FLYER_PHOTO_NAME) item.FLYERPHOTONAME = item.FLYER_PHOTO_NAME;
             item.FLYER_VISIBLE_PHOTO_LINK = mergePhotoCsvList([item.FLYER_PHOTO_LINK, item.FLYERPHOTO_LINK]);
             item.FLYER_VISIBLE_PHOTO_NAME = firstNonEmptyValue(item.FLYER_PHOTO_NAME, item.FLYERPHOTONAME, '');
             item.ROW_PHOTO_LINK = mergePhotoCsvList([item.REQ_PHOTO_LINK, item.DOCK_PHOTO_LINK, item.SAVED_PHOTO_LINK, item.FLYER_PHOTO_LINK]);
@@ -5516,7 +5525,13 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 return true;
             }
             const rows = await fetchAppLiveEventRowsByIds(sourceTable, rowIds);
-            if (!rows.length) return false;
+            if (!rows.length) {
+                if (sourceTable === 'v2_active_request' && (isViewVisible('request') || isViewVisible('reports'))) {
+                    forceRefreshRequestsForView('app-live-request-miss', { force: true, minIntervalMs: 0 }).catch(() => {});
+                    return true;
+                }
+                return false;
+            }
             rows.forEach((row) => {
                 applyRealtimeChange(sourceTable, { eventType: 'UPDATE', new: row }, true);
             });
@@ -6742,7 +6757,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
 
         function scheduleTasksRender(delay = 0, typingDelay = 20, forceRender = false) {
-            return scheduleTrackedViewRender('tasks', 'tasks:render', { delay, typingDelay, forceRender, userAction: true, preferImmediate: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 12, interactionDelayMs: 12, scrollDelayMs: 48 });
+            return scheduleTrackedViewRender('tasks', 'tasks:render', { delay, typingDelay, forceRender, userAction: true, preferImmediate: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 8, interactionDelayMs: 8, scrollDelayMs: 32 });
         }
 
         function scheduleRequestRender(delay = 0, typingDelay = 180, forceRender = false) {
@@ -6795,7 +6810,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (!targetView || targetView.classList.contains('hidden')) return;
                 renderViewContent('tasks', false, forceRender);
                 recordInternalPerfDuration('touchToRenderDurations', touchRenderStartedAt, 'tasks');
-            }, Math.max(0, Number(delay) || 0), typingDelay, { allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 14, scrollDelayMs: 56, interactionDelayMs: 14 });
+            }, Math.max(0, Number(delay) || 0), typingDelay, { allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 8, scrollDelayMs: 32, interactionDelayMs: 8 });
             return false;
         }
 
@@ -7952,7 +7967,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             flyerShadowColumnsProbePromise = (async () => {
                 if (navigator.onLine === false) return false;
                 try {
-                    const url = `${SUPABASE_URL}/rest/v1/v2_master_inventory?select=unique_id,flyer_av_note,flyer_match,flyer_loc_match_qty,flyer_spec,flyer_caliper,flyer_pick,flyer_initial_ptr&limit=1`;
+                    const url = `${SUPABASE_URL}/rest/v1/v2_master_inventory?select=unique_id,flyer_av_note,flyer_match,flyer_loc_match_qty,flyer_spec,flyer_caliper,flyer_pick,flyer_initial_ptr,flyer_photo_link,flyer_photo_name&limit=1`;
                     const response = await fetchWithTimeout(url, {
                         method: 'GET',
                         headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
@@ -9733,7 +9748,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.04.09').trim() || 'V2026.05.04.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.04.10').trim() || 'V2026.05.04.10';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -10410,7 +10425,15 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const customer = String(firstNonEmptyValue(row.REQ_CUSTOMER, row.req_customer, '')).trim();
                 const qty = String(firstNonEmptyValue(row.REQ_QTY, row.req_qty, '')).trim();
                 const completedAt = String(firstNonEmptyValue(row.DATE_COMPLETED, row.date_completed, '')).trim();
-                return [uniqueId, status, archived ? '1' : '0', repAction, folder, customer, qty, completedAt].join('|');
+                const match = String(firstNonEmptyValue(row.REQ_MATCH, row.req_match, '')).trim();
+                const spec = String(firstNonEmptyValue(row.REQ_SPEC, row.req_spec, row.DESIRED_SPEC, row.desired_spec, '')).trim();
+                const caliper = String(firstNonEmptyValue(row.REQ_CALIPER, row.req_caliper, row.DESIRED_CALIPER, row.desired_caliper, '')).trim();
+                const pick = String(firstNonEmptyValue(row.REQ_PICK, row.req_pick, row.REQ_PIC_NOTE, row.req_pic_note, '')).trim();
+                const comments = String(firstNonEmptyValue(row.REQ_COMMENTS, row.req_comments, '')).trim();
+                const avNote = String(firstNonEmptyValue(row.AV_NOTE, row.av_note, '')).trim();
+                const photoLink = String(firstNonEmptyValue(row.REQ_PHOTO_LINK, row.req_photo_link, row.PHOTO_LINK, row.photo_link, '')).trim();
+                const photoName = String(firstNonEmptyValue(row.REQ_PHOTO_NAME, row.req_photo_name, row.PHOTO_NAME, row.photo_name, '')).trim();
+                return [uniqueId, status, archived ? '1' : '0', repAction, folder, customer, qty, completedAt, match, spec, caliper, pick, comments, avNote, photoLink, photoName].join('|');
             }).sort().join('||');
         }
 
@@ -11198,6 +11221,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (targetView === 'request') {
                 if (!options.force && hasHealthyCoreRealtimeSubscriptions('request')) {
                     updateSyncDiagnostics('realtime');
+                    runRequestViewLiveSync({
+                        allowHealthyRealtime: true,
+                        once: true,
+                        minIntervalMs: REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS
+                    }).catch(() => {});
                     return;
                 }
                 forceRefreshRequestsForView('request-view-enter', {
@@ -20761,12 +20789,16 @@ function toggleDriveQuickRequestItem(domId) {
         function getAffectedViewsForDatasets(changedKeys = []) {
             const changedSet = new Set((changedKeys || []).filter(Boolean));
             if (!changedSet.size) return [];
-            return TRACKED_VIEW_IDS.filter((viewId) => {
+            const affectedViews = TRACKED_VIEW_IDS.filter((viewId) => {
                 const config = getViewLoadingConfig(viewId);
                 if (!config) return false;
                 const datasetKeys = [...(config.required || []), ...(config.background || [])].map((item) => item.key);
                 return datasetKeys.some((key) => changedSet.has(key));
             });
+            if ((changedSet.has('requests') || changedSet.has('salesOffice')) && !affectedViews.includes('tasks')) {
+                affectedViews.push('tasks');
+            }
+            return affectedViews;
         }
 
         function getVisibleTrackedViewIds() {
@@ -21973,7 +22005,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!shouldShowTaskInlineDetailFilters(normalizedView, taskViewLevel)) {
                 resetTaskLocationDetailFilters();
             }
-            scheduleTasksRender();
+            scheduleTasksRender(0, 8, true);
             scheduleTaskHotCacheWarmup('task-tab', 60);
             return false;
         }
@@ -22027,7 +22059,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!shouldShowTaskInlineDetailFilters(activeTaskView, taskViewLevel)) {
                 resetTaskLocationDetailFilters();
             }
-            scheduleTasksRender();
+            scheduleTasksRender(0, 8, true);
             scheduleTaskHotCacheWarmup('task-subview', 60);
             return false;
         }
@@ -30468,6 +30500,7 @@ function toggleDriveQuickRequestItem(domId) {
         let requestViewLiveSyncPausedUntil = 0;
         let requestViewForceRefreshInFlight = false;
         let lastRequestViewForceRefreshAt = 0;
+        let lastRequestViewSignatureSyncAt = 0;
 
         function pauseRequestViewLiveSync(delayMs = 4500) {
             requestViewLiveSyncPausedUntil = Math.max(requestViewLiveSyncPausedUntil, Date.now() + Math.max(0, Number(delayMs) || 0));
@@ -30480,7 +30513,8 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
 
-        function shouldRunRequestViewLiveSync() {
+        function shouldRunRequestViewLiveSync(options = {}) {
+            const safeOptions = options && typeof options === 'object' ? options : {};
             const roleAccess = getRoleAccessState();
             const canSeeRequests = !!(canAccessView('request') || (roleAccess.allowedViews && typeof roleAccess.allowedViews.has === 'function' && roleAccess.allowedViews.has('reports')));
             const requestState = getDatasetState('requests');
@@ -30488,31 +30522,37 @@ function toggleDriveQuickRequestItem(domId) {
             const isRequestContextVisible = isViewVisible('request')
                 || isViewVisible('reports')
                 || (isViewVisible('detail') && lastView === 'request');
-            return !!(currentUser && canSeeRequests && requestDatasetReady && isRequestContextVisible && navigator.onLine !== false && !document.hidden && !isRealtimeTableHealthy('v2_active_request'));
+            const realtimeNeedsCatchup = safeOptions.allowHealthyRealtime === true || !isRealtimeTableHealthy('v2_active_request');
+            return !!(currentUser && canSeeRequests && requestDatasetReady && isRequestContextVisible && navigator.onLine !== false && !document.hidden && realtimeNeedsCatchup);
         }
 
         function getRequestViewLiveSyncInterval() {
             return (isIOSDevice() || isStandaloneApp()) ? 9000 : 12000;
         }
 
-        async function runRequestViewLiveSync() {
+        async function runRequestViewLiveSync(options = {}) {
+            const safeOptions = options && typeof options === 'object' ? options : {};
             if (requestViewLiveSyncInFlight) return;
-            if (!shouldRunRequestViewLiveSync()) {
-                clearRequestViewLiveSync();
+            if (!shouldRunRequestViewLiveSync(safeOptions)) {
+                if (!safeOptions.once) clearRequestViewLiveSync();
                 return;
             }
             const pauseDelay = requestViewLiveSyncPausedUntil - Date.now();
             if (pauseDelay > 0) {
-                syncRequestViewLiveSync(pauseDelay + 120);
+                if (!safeOptions.once) syncRequestViewLiveSync(pauseDelay + 120);
                 return;
             }
             if (shouldDeferInteractiveBackgroundWork()) {
-                syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS);
+                if (!safeOptions.once) syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS);
                 return;
             }
+            const minInterval = Math.max(0, Number(safeOptions.minIntervalMs) || 0);
+            const now = Date.now();
+            if (!safeOptions.force && minInterval && lastRequestViewSignatureSyncAt && (now - lastRequestViewSignatureSyncAt) < minInterval) return;
+            lastRequestViewSignatureSyncAt = now;
             requestViewLiveSyncInFlight = true;
             try {
-                const signatureRows = await fetchAllSupabaseRows('v2_active_request', 'select=unique_id,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,date_completed&order=unique_id.desc');
+                const signatureRows = await fetchAllSupabaseRows('v2_active_request', 'select=unique_id,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,date_completed,req_match,req_spec,req_caliper,req_pic_note,req_comments,av_note,req_photo_link,req_photo_name&order=unique_id.desc');
                 const nextSignature = buildRequestLiveSyncSignature(signatureRows);
                 if (nextSignature === requestViewLiveSyncSignature) return;
                 const rows = await fetchAllSupabaseRows('v2_active_request', 'select=*&order=unique_id.desc');
@@ -30522,7 +30562,7 @@ function toggleDriveQuickRequestItem(domId) {
             } catch (error) {
             } finally {
                 requestViewLiveSyncInFlight = false;
-                if (shouldRunRequestViewLiveSync()) syncRequestViewLiveSync(getRequestViewLiveSyncInterval());
+                if (!safeOptions.once && shouldRunRequestViewLiveSync()) syncRequestViewLiveSync(getRequestViewLiveSyncInterval());
             }
         }
 
@@ -33546,6 +33586,10 @@ function toggleDriveQuickRequestItem(domId) {
                 const savedCount = savedIdSet.size;
                 const missingIds = optimisticIds.filter(id => !savedIdSet.has(id));
                 const savedRequestIds = optimisticIds.filter(id => savedIdSet.has(id));
+                if (savedRequestIds.length) {
+                    queueAppLiveEventForWrite('v2_active_request', 'POST', savedRequestIds.map((id) => ({ unique_id: id })), '');
+                    flushQueuedAppLiveEvents();
+                }
                 const autoCompleteSavedIds = savedRequestIds.filter(id => autoCompleteRequestIds.has(id));
                 const autoCompleteSavedIdSet = new Set(autoCompleteSavedIds);
                 autoCompleteSavedIds.forEach((requestId) => {
@@ -36306,6 +36350,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             const cacheKey = [
                 resolvedViewStateEpoch,
                 getDatasetLoadSignature('master'),
+                getDatasetLoadSignature('requests'),
+                getDatasetLoadSignature('salesOffice'),
                 safeView,
                 keepCompletedInTaskTab ? '1' : '0',
                 useSharedQueue ? '1' : '0',
@@ -37711,6 +37757,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             const cacheKey = [
                 resolvedViewStateEpoch,
                 getDatasetLoadSignature('master'),
+                getDatasetLoadSignature('requests'),
+                getDatasetLoadSignature('salesOffice'),
                 cavSignature,
                 hotPriceSignature,
                 safeRole,
@@ -37902,7 +37950,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             addTarget('colorwalk', 'all', { targetUser: currentUser, useSharedTaskQueue: shouldUseSharedTaskQueue('colorwalk'), colorWalkSearchTerm: '' });
             const cavState = getDatasetState('cav');
             if (cavState.initialLoaded || cavState.fullLoaded) {
+                addTarget('av-blanks', 'all', { targetUser: currentUser, useSharedTaskQueue: shouldUseSharedTaskQueue('av-blanks') });
                 addTarget('av-blanks', 'season', { targetUser: currentUser, useSharedTaskQueue: shouldUseSharedTaskQueue('av-blanks') });
+                addTarget('av-blanks', 'location', { targetUser: currentUser, useSharedTaskQueue: shouldUseSharedTaskQueue('av-blanks') });
             }
             const hotPriceState = getDatasetState('avHotPriceKeys');
             if (hotPriceState.fullLoaded) {
@@ -39093,7 +39143,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const scopedPhotoFieldPairs = {
                         'req-': [['req_photo_link', 'REQ_PHOTO_LINK'], ['req_photo_name', 'REQ_PHOTO_NAME']],
                         'dock-': [['dock_photo_link', 'DOCK_PHOTO_LINK'], ['dock_photo_name', 'DOCK_PHOTO_NAME']],
-                        'flyer-': [['flyer_photo_link', 'FLYER_PHOTO_LINK'], ['flyer_photo_name', 'FLYER_PHOTO_NAME']]
+                        'flyer-': canPersistFlyerShadow ? [['flyer_photo_link', 'FLYER_PHOTO_LINK'], ['flyer_photo_name', 'FLYER_PHOTO_NAME']] : []
                     };
                     const fieldPairs = scopedPhotoFieldPairs[prefix] || allPhotoFieldPairs;
                     const shouldClearEmptyScopedPhotoFields = !!saveOptions.photoChanged;
