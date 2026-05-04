@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-  window.__APP_SHELL_VERSION__ = 'V2026.05.04.03';
+window.__APP_SHELL_VERSION__ = 'V2026.05.04.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-  <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.04.03').trim() || 'V2026.05.04.03';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.04.04').trim() || 'V2026.05.04.04';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1565,7 +1565,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.04.03';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.04.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9702,7 +9702,7 @@ let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqFolder
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.04.03').trim() || 'V2026.05.04.03';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.04.04').trim() || 'V2026.05.04.04';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -10842,6 +10842,12 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
                 if (key === 'reserves' && wantsFull) {
                     const formattedRows = formatFetchedRows(rows, definition.sourceTable);
                     reservesInventory = await buildReserveInventoryRowsAsync(formattedRows);
+                    rebuildDetailLookupIndexes();
+                    invalidateResolvedViewStateCaches();
+                    requestModalCustomerOptionsCacheKey = '';
+                    requestModalCustomerOptionsReady = areRequestModalCustomerDatasetsReady();
+                    if (requestModalCustomerOptionsReady) buildRequestModalCustomerOptionsCache(true);
+                    refreshRequestModalCustomerStepIfVisible();
                     persistUserScopedDatasetCache('reserves').catch(() => {});
                 } else {
                     processAndLoadData(buildDatasetPayload(key, rows));
@@ -10989,9 +10995,9 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
                 }
                 if (activeAVTab === 'reserves') {
                     if (getRoleAccessState().isRep) {
-                        return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading your reserve rows...' };
+                        return { required: [{ key: 'reserves', mode: 'full' }], background: [], label: 'Loading all of your reserve rows...' };
                     }
-                    return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading AV reserves...' };
+                    return { required: [{ key: 'reserves', mode: 'full' }], background: [], label: 'Loading all reserve rows...' };
                 }
                 return { required: [{ key: 'avOpen', mode: 'initial' }], background: [{ key: 'avOpen', mode: 'full' }], label: 'Loading AV open stock...' };
             }
@@ -11001,9 +11007,9 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             if (viewId === 'walkie') return { required: [], background: [], label: 'Loading walkie...' };
             if (viewId === 'reserves') {
                 if (getRoleAccessState().isRep) {
-                    return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading your reserve rows...' };
+                    return { required: [{ key: 'reserves', mode: 'full' }], background: [], label: 'Loading all of your reserve rows...' };
                 }
-                return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading reserves...' };
+                return { required: [{ key: 'reserves', mode: 'full' }], background: [], label: 'Loading all reserve rows...' };
             }
             if (viewId === 'sales-office') return { required: [{ key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }, { key: 'master', mode: 'initial' }], label: 'Loading sales office...' };
             if (viewId === 'tasks') {
@@ -12957,7 +12963,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function areRequestModalCustomerDatasetsReady() {
-            return isDatasetLoaded('reserves', 'initial');
+            return isDatasetLoaded('reserves', 'full');
         }
 
         function refreshRequestModalCustomerStepIfVisible() {
@@ -13027,7 +13033,7 @@ function toggleDriveQuickRequestItem(domId) {
             requestModalCustomerOptionsReady = areRequestModalCustomerDatasetsReady();
             requestModalCustomerOptionsError = '';
             requestModalCustomerOptionsLoadPromise = Promise.all([
-                ensureDatasetLoaded('reserves', 'initial')
+                ensureDatasetLoaded('reserves', 'full')
             ]).then(() => {
                 requestModalCustomerOptionsReady = areRequestModalCustomerDatasetsReady();
                 requestModalCustomerOptionsError = requestModalCustomerOptionsReady ? '' : 'Customer / consignee suggestions are still unavailable.';
@@ -13050,6 +13056,9 @@ function toggleDriveQuickRequestItem(domId) {
             const canonicalRepName = resolveCanonicalRequestRepName(repName);
             const repKey = normalizeRepMatchToken(canonicalRepName);
             if (!repKey) return [];
+            const cache = buildRequestModalCustomerOptionsCache();
+            const cachedOptions = Array.isArray(cache.get(repKey)) ? cache.get(repKey) : null;
+            if (cachedOptions && cachedOptions.length) return cachedOptions.slice();
             const optionMap = new Map();
             (reservesInventory || []).forEach((item) => {
                 const repValue = firstNonEmptyValue(item && item.SALESREPNAME, item && item.SALESREP, item && item.SALES_REP, item && item.SALESREPID, '');
@@ -13059,14 +13068,15 @@ function toggleDriveQuickRequestItem(domId) {
                     firstNonEmptyValue(item && item.CONSIGNEENAME, item && item.CONSIGNEE, '')
                 );
                 if (!option || !option.customerName) return;
-                const optionKey = normalizeRepMatchToken(option.customerName || option.label);
+                const optionKey = `${normalizeRepMatchToken(option.customerName)}|||${normalizeRepMatchToken(option.consigneeName)}|||${normalizeRepMatchToken(option.label)}`;
                 if (optionKey && !optionMap.has(optionKey)) optionMap.set(optionKey, option);
             });
             if (optionMap.size) {
-                return Array.from(optionMap.values()).sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+                const options = Array.from(optionMap.values()).sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+                cache.set(repKey, options);
+                return options.slice();
             }
-            const cache = buildRequestModalCustomerOptionsCache();
-            return Array.isArray(cache.get(repKey)) ? cache.get(repKey).slice() : [];
+            return cachedOptions ? cachedOptions.slice() : [];
         }
 
         function scheduleRequestModalSearchRender(searchKey = 'rep', term = '', renderFn = null, options = {}) {
