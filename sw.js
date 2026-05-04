@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.05.04.07';
+const APP_SHELL_BUILD = 'V2026.05.04.08';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const CACHE_NAME = 'greenleaf-v4.2-rebuild-' + APP_SHELL_BUILD;
@@ -51,6 +51,23 @@ async function cacheShellResponse(cache, requestedShellUrl, networkResponse) {
   ]);
 }
 
+async function broadcastShellVersion(type = 'GNC_SHELL_VERSION') {
+  try {
+    const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    await Promise.all(clientList.map((client) => {
+      try {
+        client.postMessage({
+          type,
+          build: APP_SHELL_BUILD,
+          version: APP_SHELL_BUILD,
+          shellUrl: APP_SHELL_URL
+        });
+      } catch (error) {}
+      return Promise.resolve();
+    }));
+  } catch (error) {}
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE).catch(() => {}))
@@ -60,7 +77,10 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.map((key) => key !== CACHE_NAME ? caches.delete(key) : Promise.resolve()))).then(() => self.clients.claim())
+    caches.keys()
+      .then((keys) => Promise.all(keys.map((key) => key !== CACHE_NAME ? caches.delete(key) : Promise.resolve())))
+      .then(() => self.clients.claim())
+      .then(() => broadcastShellVersion('GNC_SHELL_ACTIVATED'))
   );
 });
 
@@ -69,6 +89,17 @@ self.addEventListener('message', (event) => {
   if (!data || typeof data !== 'object') return;
   if (data.type === 'SKIP_WAITING') {
     event.waitUntil(self.skipWaiting());
+  } else if (data.type === 'GNC_GET_SHELL_VERSION') {
+    try {
+      if (event.source) {
+        event.source.postMessage({
+          type: 'GNC_SHELL_VERSION',
+          build: APP_SHELL_BUILD,
+          version: APP_SHELL_BUILD,
+          shellUrl: APP_SHELL_URL
+        });
+      }
+    } catch (error) {}
   }
 });
 

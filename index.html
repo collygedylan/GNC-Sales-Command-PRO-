@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-  window.__APP_SHELL_VERSION__ = 'V2026.05.04.07';
+  window.__APP_SHELL_VERSION__ = 'V2026.05.04.08';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.04.07').trim() || 'V2026.05.04.07';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.04.08').trim() || 'V2026.05.04.08';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1565,7 +1565,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.04.07';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.04.08';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9706,7 +9706,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.04.07').trim() || 'V2026.05.04.07';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.04.08').trim() || 'V2026.05.04.08';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -39760,6 +39760,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const shellVersion = String(window.__APP_SHELL_VERSION__ || ((typeof APP_VERSION === 'string' && APP_VERSION.trim()) ? APP_VERSION.trim() : shellBuild)).trim() || shellBuild;
             const shellRefreshStorageKey = 'gnc_app_shell_refresh_v1';
             const shellControllerReloadStorageKey = 'gnc_app_shell_controller_reload_v1';
+            const shellTargetReloadStorageKey = 'gnc_app_shell_target_reload_v1';
             const shellQueryParam = 'shellv';
             const currentReloadMarker = `${shellVersion}::${shellBuild}`;
             const hasReloadedCurrentShell = () => {
@@ -39775,7 +39776,61 @@ ${folderNote ? `Folder Note: ${folderNote}
                 } catch (e) {}
             };
             clearStaleReloadMarker();
+            try {
+                if (sessionStorage.getItem(shellTargetReloadStorageKey) === shellBuild) sessionStorage.removeItem(shellTargetReloadStorageKey);
+            } catch (e) {}
             try { localStorage.setItem(APP_BOOTED_VERSION_STORAGE_KEY, shellVersion); } catch (e) {}
+            let latestShellCheckAt = 0;
+            let latestShellCheckPromise = null;
+            const isShellReloadBusy = () => !!(
+                (window.pendingPhotoUploads && window.pendingPhotoUploads.size)
+                || window.backgroundRefreshInFlight
+                || window.googleScriptRunInFlight
+                || window.pendingRequestArchiveFlushInFlight
+            );
+            const extractShellBuildFromUrl = (rawUrl = '') => {
+                try {
+                    const parsedUrl = new URL(String(rawUrl || ''), window.location.href);
+                    return String(parsedUrl.searchParams.get(shellQueryParam) || '').trim();
+                } catch (e) {
+                    return '';
+                }
+            };
+            const getRegistrationShellBuild = (reg = window.__swReg) => {
+                const worker = (reg && (reg.waiting || reg.installing || reg.active)) || null;
+                if (!worker || !worker.scriptURL) return '';
+                try {
+                    const parsedUrl = new URL(worker.scriptURL);
+                    return String(parsedUrl.searchParams.get('v') || '').trim();
+                } catch (e) {
+                    return '';
+                }
+            };
+            const reloadToShellBuild = (targetBuild = shellBuild, reason = 'shell-update') => {
+                const safeTargetBuild = String(targetBuild || shellBuild || '').trim();
+                if (!safeTargetBuild) return false;
+                if (isShellReloadBusy()) {
+                    try { sessionStorage.setItem(shellTargetReloadStorageKey, safeTargetBuild); } catch (e) {}
+                    try { sessionStorage.setItem(shellRefreshStorageKey, safeTargetBuild); } catch (e) {}
+                    return false;
+                }
+                try {
+                    if (sessionStorage.getItem(shellTargetReloadStorageKey) === safeTargetBuild && safeTargetBuild !== shellBuild) return false;
+                    sessionStorage.setItem(shellTargetReloadStorageKey, safeTargetBuild);
+                } catch (e) {}
+                if (safeTargetBuild === shellBuild && hasReloadedCurrentShell()) return false;
+                if (safeTargetBuild === shellBuild) markReloadedCurrentShell();
+                try {
+                    const nextUrl = new URL(window.location.href);
+                    nextUrl.searchParams.set(shellQueryParam, safeTargetBuild);
+                    nextUrl.searchParams.set('shellts', String(Date.now()));
+                    nextUrl.searchParams.set('shellreason', String(reason || 'update').slice(0, 48));
+                    window.location.replace(nextUrl.toString());
+                } catch (e) {
+                    window.location.reload();
+                }
+                return true;
+            };
             const requestWaitingShellActivation = (reg = window.__swReg, targetBuild = shellBuild) => {
                 const waiting = reg && reg.waiting;
                 if (!waiting) return false;
@@ -39815,35 +39870,72 @@ ${folderNote ? `Folder Note: ${folderNote}
             window.requestWaitingShellActivation = requestWaitingShellActivation;
             window.updateShellServiceWorkerRegistration = updateShellRegistration;
             const markShellUpdateReady = (reg = window.__swReg) => {
+                const targetBuild = getRegistrationShellBuild(reg) || shellBuild;
                 window.__gncShellUpdateReady = true;
-                try { sessionStorage.setItem(shellRefreshStorageKey, shellBuild); } catch (e) {}
-                requestWaitingShellActivation(reg, shellBuild);
+                try { sessionStorage.setItem(shellRefreshStorageKey, targetBuild); } catch (e) {}
+                requestWaitingShellActivation(reg, targetBuild);
                 if (typeof window.showToast === 'function' && !document.hidden && !window.__gncShellUpdateToastShown) {
                     window.__gncShellUpdateToastShown = true;
-                    try { window.showToast('Update Ready', 'New code is staged and will apply when the app is backgrounded or reopened.', false); } catch (e) {}
+                    try { window.showToast('Updating', 'New code is being applied...', false); } catch (e) {}
                 }
+                setTimeout(() => tryApplyShellUpdateSilently(true, targetBuild), 220);
             };
-            const tryApplyShellUpdateSilently = () => {
-                if (!window.__gncShellUpdateReady) return;
-                if (!document.hidden) return;
-                if ((window.pendingPhotoUploads && window.pendingPhotoUploads.size) || window.backgroundRefreshInFlight) return;
-                requestWaitingShellActivation(window.__swReg, shellBuild);
+            const tryApplyShellUpdateSilently = (allowVisible = false, targetBuild = shellBuild) => {
+                const safeTargetBuild = String(targetBuild || shellBuild || '').trim() || shellBuild;
+                if (!window.__gncShellUpdateReady && safeTargetBuild === shellBuild) return;
+                if (!allowVisible && !document.hidden) return;
+                if (isShellReloadBusy()) return;
+                requestWaitingShellActivation(window.__swReg, safeTargetBuild);
                 window.__gncShellUpdateReady = false;
                 window.__gncShellUpdateToastShown = false;
+                if (safeTargetBuild !== shellBuild) {
+                    reloadToShellBuild(safeTargetBuild, 'sw-update');
+                    return;
+                }
                 if (hasReloadedCurrentShell()) return;
                 markReloadedCurrentShell();
                 try {
                     const nextUrl = new URL(window.location.href);
-                    nextUrl.searchParams.set(shellQueryParam, shellBuild);
+                    nextUrl.searchParams.set(shellQueryParam, safeTargetBuild);
+                    nextUrl.searchParams.set('shellts', String(Date.now()));
                     window.location.replace(nextUrl.toString());
                 } catch (e) {
                     window.location.reload();
                 }
             };
+            const checkLatestShellAndReload = async (reason = 'shell-check', force = false) => {
+                if (navigator.onLine === false) return false;
+                const now = Date.now();
+                if (!force && (now - latestShellCheckAt) < 15000) return false;
+                if (latestShellCheckPromise) return latestShellCheckPromise;
+                latestShellCheckAt = now;
+                latestShellCheckPromise = (async () => {
+                    try {
+                        const response = await fetch(`./manifest.json?v=${encodeURIComponent(shellBuild)}&check=${now}`, { cache: 'no-store' });
+                        if (!response || !response.ok) return false;
+                        const manifest = await response.json();
+                        const targetBuild = String(
+                            extractShellBuildFromUrl(manifest && manifest.start_url)
+                            || (manifest && manifest.version)
+                            || ''
+                        ).trim();
+                        if (!targetBuild || targetBuild === shellBuild) return false;
+                        const reg = await updateShellRegistration(`${reason}:manifest`);
+                        requestWaitingShellActivation(reg, targetBuild);
+                        return reloadToShellBuild(targetBuild, `${reason}:manifest`);
+                    } catch (e) {
+                        return false;
+                    } finally {
+                        latestShellCheckPromise = null;
+                    }
+                })();
+                return latestShellCheckPromise;
+            };
             navigator.serviceWorker.register('./sw.js?v=' + encodeURIComponent(shellBuild), { scope: './', updateViaCache: 'none' }).then(async (reg) => {
                 console.log('Service Worker Registered');
                 try { await updateShellRegistration('startup-register'); } catch (error) {}
                 if (reg.waiting) markShellUpdateReady(reg);
+                checkLatestShellAndReload('startup', true).catch(() => {});
                 reg.addEventListener('updatefound', () => {
                     const installing = reg.installing;
                     if (!installing) return;
@@ -39855,7 +39947,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (typeof window.scheduleCellularPushEnrollment === 'function') window.scheduleCellularPushEnrollment('sw-register', 500);
                 window.__swUpdateIntervalId = setInterval(() => {
                     updateShellRegistration('interval').catch(() => {});
-                }, 1000 * 60 * 30);
+                    checkLatestShellAndReload('interval', false).catch(() => {});
+                }, 1000 * 60 * 5);
             }).catch(err => console.error('Service Worker Error:', err));
             navigator.serviceWorker.addEventListener('message', (event) => {
                 const data = event && event.data ? event.data : {};
@@ -39865,6 +39958,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 } else if (data.type === 'GNC_RESUBSCRIBE_PUSH') {
                     if (typeof window.scheduleCellularPushEnrollment === 'function') window.scheduleCellularPushEnrollment('subscriptionchange', 0);
                     else if (typeof window.subscribeCurrentDeviceForPush === 'function') window.subscribeCurrentDeviceForPush({ prompt: false, force: true }).catch(() => {});
+                } else if (data.type === 'GNC_SHELL_ACTIVATED' || data.type === 'GNC_SHELL_VERSION') {
+                    const targetBuild = String(data.build || data.version || '').trim();
+                    if (targetBuild && targetBuild !== shellBuild) reloadToShellBuild(targetBuild, 'sw-message');
                 }
             });
             navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -39887,21 +39983,28 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                 } else {
                     if (!window.__swUpdateIntervalId && window.__swReg) {
-                        window.__swUpdateIntervalId = setInterval(() => { updateShellRegistration('interval-resume').catch(() => {}); }, 1000 * 60 * 30);
+                        window.__swUpdateIntervalId = setInterval(() => {
+                            updateShellRegistration('interval-resume').catch(() => {});
+                            checkLatestShellAndReload('interval-resume', false).catch(() => {});
+                        }, 1000 * 60 * 5);
                     }
                     if (window.__swReg) {
                         updateShellRegistration('visibility-visible').catch(() => {});
                     }
+                    checkLatestShellAndReload('visibility-visible', true).catch(() => {});
                 }
             }, { passive: true });
             window.addEventListener('pageshow', () => {
                 updateShellRegistration('pageshow').catch(() => {});
+                checkLatestShellAndReload('pageshow', true).catch(() => {});
             }, { passive: true });
             window.addEventListener('online', () => {
                 updateShellRegistration('online').catch(() => {});
+                checkLatestShellAndReload('online', true).catch(() => {});
             }, { passive: true });
             window.addEventListener('focus', () => {
                 updateShellRegistration('focus').catch(() => {});
+                checkLatestShellAndReload('focus', false).catch(() => {});
             }, { passive: true });
             window.addEventListener('pagehide', () => {
                 if (window.handleWalkieAppHidden) window.handleWalkieAppHidden().catch(() => {});
