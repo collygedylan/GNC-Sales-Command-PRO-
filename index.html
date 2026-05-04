@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-  window.__APP_SHELL_VERSION__ = 'V2026.05.04.11';
+  window.__APP_SHELL_VERSION__ = 'V2026.05.04.12';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.04.11').trim() || 'V2026.05.04.11';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.04.12').trim() || 'V2026.05.04.12';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1565,7 +1565,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.04.11';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.04.12';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9748,7 +9748,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.04.11').trim() || 'V2026.05.04.11';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.04.12').trim() || 'V2026.05.04.12';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -12056,6 +12056,11 @@ let searchRenderToken = {};
             const tokens = getProtectedUserTokens();
             const hasAdminViews = canAccessView('drive') && canAccessView('tasks');
             return hasAdminViews || canUseRequestRepScopedAccess() || tokens.has('dylan') || tokens.has('dylan_collyge') || tokens.has('jd') || tokens.has('jd_jones') || tokens.has('kayla') || tokens.has('kayla_knepp') || tokens.has('morgan') || tokens.has('morgan_anderson');
+        }
+
+        function canUseDriveBloomPickerForTakeBack() {
+            const access = getRoleAccessState();
+            return !!(canAccessView('drive') && (access.isForeman || canUseDriveQuickRequest()));
         }
 
         function canUseFooterRequestShortcut() {
@@ -26378,6 +26383,13 @@ function toggleDriveQuickRequestItem(domId) {
             return items.length > 0 && items.every((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
         }
 
+        function canAddItemToBloomPicker(item = null) {
+            if (!item || !canUseCartInventoryActions([item])) return false;
+            const access = getRoleAccessState();
+            if (access.isForeman) return canAccessView('drive') && hasPriorityColumnData(item);
+            return true;
+        }
+
         function maybeWarnTakeBackSchemaMissing() {
             if (takeBackSchemaWarningShown || !currentUser) return;
             takeBackSchemaWarningShown = true;
@@ -26635,9 +26647,10 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function addSelectedItemsToTakeBack() {
-            const items = getCartSelectedItems().filter((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
+            const access = getRoleAccessState();
+            const items = getCartSelectedItems().filter((item) => item && canUseCartInventoryActions([item]) && (!access.isForeman || hasPriorityColumnData(item)));
             if (!items.length) {
-                showToast('Take Back', 'Select Drive Mode rows before adding to Take Back.', true);
+                showToast('Take Back', access.isForeman ? 'Select priority Drive Mode rows before adding to Take Back.' : 'Select Drive Mode rows before adding to Take Back.', true);
                 return false;
             }
             const ready = await ensureTakeBackSchemaReady();
@@ -26844,6 +26857,22 @@ function toggleDriveQuickRequestItem(domId) {
             const canUseInventoryActions = canUseCartInventoryActions(items);
             const canUseBloomOrders = canUseBloomPicker(items);
             const canUseFlyerFromBloom = canUseDriveQuickRequest() && items.some((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
+            if (access.isForeman) {
+                const canUseForemanTakeBack = canUseInventoryActions && items.every((item) => hasPriorityColumnData(item));
+                return {
+                    showCopy: false,
+                    showEmail: false,
+                    showText: false,
+                    showAssign: false,
+                    showRequest: false,
+                    showFlyer: false,
+                    showTakeBack: canUseForemanTakeBack,
+                    showEndCap: false,
+                    showBloomOrder: false,
+                    canUseInventoryActions: canUseForemanTakeBack,
+                    canUseBloomOrders: false
+                };
+            }
             if (access.isRep) {
                 return {
                     showCopy: true,
@@ -26913,6 +26942,8 @@ function toggleDriveQuickRequestItem(domId) {
         function getInventoryCardBottomRailHtml(domId = '') {
             const safeDomId = String(domId || '').trim();
             if (!safeDomId) return '';
+            const item = findItemByDomId(safeDomId);
+            if (getRoleAccessState().isForeman && !canAddItemToBloomPicker(item)) return '';
             const inBag = selectedItems.has(safeDomId);
             return `<div class="app-card-bottom-rail" onclick="event.stopPropagation();"><button type="button" class="app-card-bottom-btn ${inBag ? 'app-card-bottom-btn--secondary' : ''}" onclick="return handleInventoryCardBottomCartAction(event, '${esc(safeDomId)}')"><i class="ph-bold ${inBag ? 'ph-check' : 'ph-package'} text-base"></i>${inBag ? 'Open Bloom Picker' : 'Add To Bloom Picker'}</button></div>`;
         }
@@ -26927,6 +26958,10 @@ function toggleDriveQuickRequestItem(domId) {
             if (!safeDomId) return false;
             const item = findItemByDomId(safeDomId);
             if (!item) return false;
+            if (!canAddItemToBloomPicker(item)) {
+                showToast('Restricted', getRoleAccessState().isForeman ? 'Foreman users can add priority Drive Mode rows to Take Back.' : 'That row cannot be added to Bloom Picker.', true);
+                return false;
+            }
             toggleGlobalItem(safeDomId, true);
             cartPanelOpen = true;
             updateGlobalActionBar();
@@ -27146,6 +27181,14 @@ function toggleDriveQuickRequestItem(domId) {
         }
         function toggleGlobalItem(domId,isChecked=null) {
             const hadItem = selectedItems.has(domId);
+            const wantsAdd = isChecked === null ? !hadItem : !!isChecked;
+            if (wantsAdd && getRoleAccessState().isForeman) {
+                const item = findItemByDomId(domId);
+                if (!canAddItemToBloomPicker(item)) {
+                    showToast('Restricted', 'Foreman users can add priority Drive Mode rows to Take Back.', true);
+                    return;
+                }
+            }
             if(isChecked===null){
                 if(hadItem)selectedItems.delete(domId);
                 else selectedItems.add(domId);
@@ -32767,7 +32810,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if(displayAvNote&&String(displayAvNote).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${displayAvNote}</div>`}
                 let extraData='';extraData=`<div class="mt-2 flex flex-wrap gap-2 text-[10px] font-bold text-gray-500 uppercase">${displaySpec?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${displaySpec}</span>`:''}${displayCaliper?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${displayCaliper}</span>`:''}${displayMatch?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">LOC MATCH %: ${displayMatch}%</span>`:''}</div>`;
                 let quickRequestBtn='';
-                if(canUseDriveQuickRequest()){
+                if(canUseDriveBloomPickerForTakeBack()){
                     quickRequestBtn=getInventoryCardBottomRailHtml(item.DOM_ID);
                 }
                 const customerOutreachHtml = buildCustomerConsigneeOutreachCardAction(item, sourceView);
@@ -32805,6 +32848,10 @@ function toggleDriveQuickRequestItem(domId) {
                 preferBloomTextPhotoAttachments: action === 'text' && canUseBloomPicker(items)
             };
             const access = getRoleAccessState();
+            if (access.isForeman && action !== 'take_back') {
+                showToast('Restricted', 'Foreman users can only send Bloom Picker rows to Take Back.', true);
+                return;
+            }
             if (access.isCsr && action === 'text') {
                 showToast('Restricted', 'CSR users can use Copy or Email from Bloom Picker.', true);
                 return;
