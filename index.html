@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-  window.__APP_SHELL_VERSION__ = 'V2026.05.04.08';
+  window.__APP_SHELL_VERSION__ = 'V2026.05.04.09';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.04.08').trim() || 'V2026.05.04.08';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.04.09').trim() || 'V2026.05.04.09';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1565,7 +1565,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.04.08';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.04.09';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -3872,6 +3872,33 @@ const LIVE_SYNC_POLL_BROWSER_MS = 90000;
                 if (value !== null && value !== undefined && String(value).trim() !== '') return value;
             }
             return '';
+        }
+
+        function getRowPriorityColumnValue(row = null) {
+            if (!row || typeof row !== 'object') return '';
+            return String(firstNonEmptyValue(
+                row.PRIORITY,
+                row.priority,
+                row.PRI,
+                row.pri,
+                row.PRIORITYCODE,
+                row.prioritycode,
+                row.PRIORITY_CODE,
+                row.priority_code,
+                ''
+            ) || '').trim();
+        }
+
+        function hasPriorityColumnData(row = null) {
+            const value = getRowPriorityColumnValue(row);
+            if (!value) return false;
+            const normalized = value.toUpperCase();
+            return !['-', '--', '---', 'N/A', 'NA', 'NULL', 'NONE'].includes(normalized);
+        }
+
+        function applyForemanPriorityRowScope(items = []) {
+            const rows = Array.isArray(items) ? items : [];
+            return getRoleAccessState().isForeman ? rows.filter((row) => hasPriorityColumnData(row)) : rows;
         }
 
         const FLYER_SHADOW_FIELD_MAP = Object.freeze({
@@ -9706,7 +9733,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.04.08').trim() || 'V2026.05.04.08';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.04.09').trim() || 'V2026.05.04.09';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -12260,7 +12287,7 @@ return false;
 }
 
         function getDriveModeItems() {
-            if (activeDriveMode === 'ok') return fullInventory;
+            if (activeDriveMode === 'ok') return applyForemanPriorityRowScope(fullInventory);
             return [];
         }
 
@@ -12269,6 +12296,7 @@ return false;
             const masterState = getDatasetState('master');
             const cacheKey = [
                 activeDriveMode,
+                getRoleAccessState().isForeman ? 'foreman-priority-only' : 'all-priority',
                 [...driveSelectedSeasons].sort().join('|'),
                 searchInput ? searchInput.value.toLowerCase().trim() : '',
                 candidateItems.length,
@@ -12290,6 +12318,7 @@ return false;
             const masterState = getDatasetState('master');
             return [
                 activeDriveMode,
+                getRoleAccessState().isForeman ? 'foreman-priority-only' : 'all-priority',
                 [...driveSelectedSeasons].sort().join('|'),
                 driveQuickHoldStopOnly ? '1' : '0',
                 fullInventory.length,
@@ -26431,8 +26460,12 @@ function toggleDriveQuickRequestItem(domId) {
         function syncTakeBackVisibleCount() {
             const crumb = document.getElementById('take-back-crumb');
             if (!crumb) return;
-            const openCount = takeBackRows.filter((row) => row && isTakeBackRowOpen(row)).length;
+            const openCount = getVisibleTakeBackRows().length;
             crumb.innerText = `${openCount} Open Row${openCount === 1 ? '' : 's'}`;
+        }
+
+        function getVisibleTakeBackRows() {
+            return applyForemanPriorityRowScope(takeBackRows.filter((row) => row && isTakeBackRowOpen(row)));
         }
 
         function removeTakeBackCardFromDom(uniqueId = '') {
@@ -26446,7 +26479,7 @@ function toggleDriveQuickRequestItem(domId) {
             });
             if (!removed) return false;
             syncTakeBackVisibleCount();
-            if (!takeBackRows.some((row) => row && isTakeBackRowOpen(row)) && isViewVisible('take-back')) {
+            if (!getVisibleTakeBackRows().length && isViewVisible('take-back')) {
                 const container = document.getElementById('take-back-content');
                 if (container) {
                     setContainerHtml(container, getTakeBackEmptyHtml());
@@ -26763,7 +26796,7 @@ function toggleDriveQuickRequestItem(domId) {
                 setContainerUiState(container, 'error');
                 return;
             }
-            const rows = takeBackRows.filter((row) => row && isTakeBackRowOpen(row));
+            const rows = getVisibleTakeBackRows();
             if (crumb) crumb.innerText = `${rows.length} Open Row${rows.length === 1 ? '' : 's'}`;
             if (!rows.length) {
                 setContainerHtml(container, getTakeBackEmptyHtml());
