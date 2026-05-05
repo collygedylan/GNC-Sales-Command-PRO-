@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-  window.__APP_SHELL_VERSION__ = 'V2026.05.04.13';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.05.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.04.13').trim() || 'V2026.05.04.13';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.05.01').trim() || 'V2026.05.05.01';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1506,6 +1506,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec";
         const PUSH_SUBSCRIPTIONS_TABLE = 'v2_push_subscriptions';
         const APP_LIVE_EVENTS_TABLE = 'v2_app_live_events';
+        const FLYER_FOLDER_ROWS_TABLE = 'v2_flyer_folder_rows';
         const APP_LIVE_EVENT_CLIENT_STORAGE_KEY = 'gnc_app_live_event_client_v1';
         const APP_LIVE_EVENT_PRUNE_STORAGE_KEY = 'gnc_app_live_event_pruned_v1';
         const APP_LIVE_EVENT_WRITE_COALESCE_MS = 280;
@@ -1565,7 +1566,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.04.13';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.05.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1587,7 +1588,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 90000;
             home: { realtimeTables: [], pollMs: 0 },
             chat: { realtimeTables: ['v2_chat_conversations', 'v2_chat_participants', 'v2_chat_messages'], pollMs: 60000 },
             drive: { realtimeTables: [], pollMs: 'visible-default' },
-            tasks: { realtimeTables: ['v2_active_request', 'v2_sales_office'], pollMs: 'visible-default' },
+            tasks: { realtimeTables: ['v2_active_request', 'v2_sales_office', FLYER_FOLDER_ROWS_TABLE], pollMs: 'visible-default' },
             request: { realtimeTables: ['v2_active_request'], pollMs: 'visible-default' },
             'sales-office': { realtimeTables: ['v2_sales_office'], pollMs: 'visible-default' },
             'take-back': { realtimeTables: ['v2_take_back_queue'], pollMs: 'visible-default' },
@@ -2041,6 +2042,9 @@ const LIVE_SYNC_POLL_BROWSER_MS = 90000;
             if (safeTable === 'v2_sales_office') {
                 return ['UNIQUE_ID','DATE_COMPLETED','COMPLETED_AT','UPDATED_AT','AV_NOTE','SALES_NOTE','SPEC','CALIPER','PHOTO_LINK','PHOTO_NAME','SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME','MASTER_ID','MASTER_UNIQUE_ID','SO_SOURCE','ORDER_FOLDER','ORDER_CUSTOMER','ORDER_SUBMITTED_BY'];
             }
+            if (safeTable === FLYER_FOLDER_ROWS_TABLE) {
+                return ['UNIQUE_ID','MASTER_UNIQUE_ID','SOURCE_TABLE','FLYER_TITLE','FLYER_ASSIGNED','FLYER_CAT','FLYER_INST','FLYER_NOTES','FLYER_COMPLETED','DATE_COMPLETED','ASSIGNEDTO','ITEMCODE','COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','PRIORITY','PTRAVAILABLE','S_LTS','HOLDSTOPCODE','AV_NOTE','MATCH','LOC_MATCH_QTY','SPEC','CALIPER','PICK','INITIAL_PTR','FLYER_AV_NOTE','FLYER_MATCH','FLYER_LOC_MATCH_QTY','FLYER_SPEC','FLYER_CALIPER','FLYER_PICK','FLYER_INITIAL_PTR','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','UPDATED_AT','CREATED_AT'];
+            }
             if (safeTable === 'v2_master_inventory') {
                 return ['UNIQUE_ID','DATE_COMPLETED','APP_TAB_ASSIGNMENT','ASSIGNEDTO','AV_NOTE','SALES_NOTE','SPEC','CALIPER','MATCH','LOC_MATCH_QTY','INITIAL_PTR','PICK','PHOTO_LINK','PHOTO_NAME','SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME','FLYER_AV_NOTE','FLYER_MATCH','FLYER_LOC_MATCH_QTY','FLYER_SPEC','FLYER_CALIPER','FLYER_PICK','FLYER_INITIAL_PTR','FLYER_FOLDER','FLYER_COMPLETED','REQUEST_FOLDER','REQ_STATUS','HOLDSTOPCODE','HOLSTOPCODE','PTRAVAILABLE','S_LTS','UPDATED_AT'];
             }
@@ -2473,6 +2477,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 90000;
             if (safeTable === 'v2_active_request') return 'request';
             if (safeTable === 'v2_sales_office') return 'sales-office';
             if (safeTable === 'v2_take_back_queue') return 'take-back';
+            if (safeTable === FLYER_FOLDER_ROWS_TABLE) return 'tasks';
             if (safeTable === 'v2_master_inventory') return 'inventory';
             if (safeTable === 'v2_reserves') return 'reserves';
             if (safeTable === 'v2_soc_master') return 'docks';
@@ -4124,7 +4129,10 @@ const LIVE_SYNC_POLL_BROWSER_MS = 90000;
             if (!item) return null;
             const uniqueId = String(firstNonEmptyValue(item.UNIQUE_ID, '')).trim();
             if (!uniqueId) return null;
-            const masterUniqueId = String(firstNonEmptyValue(item.MASTER_ID, item.MASTER_UNIQUE_ID, item.master_id, uniqueId)).trim() || uniqueId;
+            const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '')).trim().toLowerCase();
+            const masterUniqueId = sourceTable === FLYER_FOLDER_ROWS_TABLE
+                ? uniqueId
+                : (String(firstNonEmptyValue(item.MASTER_ID, item.MASTER_UNIQUE_ID, item.master_id, uniqueId)).trim() || uniqueId);
             const data = {};
             EXACT_ROW_SYNC_KEYS.forEach((key) => { data[key] = item[key]; });
             ROW_SYNC_SNAPSHOT_EXTRA_KEYS.forEach((key) => {
@@ -4133,6 +4141,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 90000;
             return {
                 uniqueId,
                 masterUniqueId,
+                sourceTable,
                 prefix: String(prefix || ''),
                 at: new Date().toISOString(),
                 data
@@ -4144,7 +4153,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = 90000;
             const payload = snapshot.data && typeof snapshot.data === 'object' ? snapshot.data : {};
             const uniqueId = String(firstNonEmptyValue(snapshot.uniqueId, '')).trim();
             const masterUniqueId = String(firstNonEmptyValue(snapshot.masterUniqueId, uniqueId, '')).trim();
-            const targetId = masterUniqueId || uniqueId;
+            const snapshotSourceTable = String(firstNonEmptyValue(snapshot.sourceTable, '')).trim().toLowerCase();
+            const targetId = snapshotSourceTable === FLYER_FOLDER_ROWS_TABLE ? uniqueId : (masterUniqueId || uniqueId);
             if (!targetId) return false;
             let target = findItemByUniqueId(targetId) || findRequestRowByUniqueId(targetId);
             if (!target && uniqueId && uniqueId !== targetId) target = findItemByUniqueId(uniqueId) || findRequestRowByUniqueId(uniqueId);
@@ -4942,6 +4952,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function syncRowDataAcrossViews(masterItem) {
             if (!masterItem) return;
             normalizeRowPhotoFields(masterItem);
+            if (isFlyerFolderRow(masterItem)) {
+                buildSearchIndex(masterItem);
+                return;
+            }
             const canonicalMaster = findLinkedMasterRow(masterItem) || masterItem;
             if (canonicalMaster && canonicalMaster !== masterItem) {
                 syncMasterFieldsToRow(masterItem, canonicalMaster, EXACT_ROW_SYNC_KEYS, { attachMasterLink: false, exactPhotoClone: true, photoPrefix: 'flyer-' });
@@ -5045,6 +5059,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (tableName === 'v2_reserves') return ['reserves'];
             if (tableName === 'v2_soc_master') return ['soc'];
             if (tableName === 'v2_sales_office') return ['salesOffice'];
+            if (tableName === FLYER_FOLDER_ROWS_TABLE) return ['flyerRows'];
             if (tableName === 'v2_cav_import') return ['cav'];
             if (tableName === 'v2_view_av_hot_price_keys') return ['avHotPriceKeys'];
             if (tableName === 'v2_av_notes') return ['avNotes'];
@@ -5370,6 +5385,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (tableSet.has('v2_sales_office') && !changedDatasetKeys.has('salesOffice')) {
                 syncRealtimeSalesOfficeRows();
                 changedDatasetKeys.add('salesOffice');
+            }
+            if (tableSet.has(FLYER_FOLDER_ROWS_TABLE)) {
+                changedDatasetKeys.add('flyerRows');
             }
             if (tableSet.has('v2_cav_import')) {
                 syncRealtimeCavRows();
@@ -5759,6 +5777,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 } else if (nextRow) {
                     changed = upsertRealtimeRow(salesOfficeInventory, nextRow, tableName);
                 }
+            } else if (tableName === FLYER_FOLDER_ROWS_TABLE) {
+                if (eventType === 'DELETE') {
+                    changed = removeFlyerFolderRowFromCache(uniqueId);
+                } else if (nextRow) {
+                    changed = !!cacheFlyerFolderRow(nextRow);
+                }
             } else if (tableName === 'v2_cav_import') {
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(cavInventory, uniqueId)
@@ -5786,6 +5810,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 invalidateResolvedViewStateCaches();
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
                 triggerRequestRealtimeUiRefresh(0);
+            } else if (tableName === FLYER_FOLDER_ROWS_TABLE) {
+                invalidateResolvedViewStateCaches();
+                markViewDirty('tasks');
+                scheduleTasksRender(48);
             }
             if (!deferVisualSync) flushRealtimeDatasetUpdates([tableName]);
             recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'unknown');
@@ -9298,7 +9326,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             return items.map((item) => stripTransientCacheFields(item));
         }
 
-        const CACHE_SCHEMA_VERSION = 7;
+        const CACHE_SCHEMA_VERSION = 8;
         const INLINE_CACHE_RESERVE_LIMIT = 180;
         function buildCacheSnapshot() {
             const inlineReserveRows = buildCacheRows(reservesInventory.slice(0, INLINE_CACHE_RESERVE_LIMIT));
@@ -9309,6 +9337,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 reservesData: inlineReserveRows,
                 socData: buildCacheRows(socInventory),
                 salesOfficeData: buildCacheRows(salesOfficeInventory),
+                flyerFolderRowsData: buildCacheRows(flyerFolderInventory),
                 cavData: buildCacheRows(cavInventory),
                 avHotPriceKeysData: buildCacheRows(avHotPriceKeysInventory),
                 avNotesData: buildCacheRows(avNotesDb),
@@ -9337,6 +9366,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 reserves: { initialLoaded: hasRows(cachedRes.reservesData), fullLoaded: false },
                 soc: { initialLoaded: hasRows(cachedRes.socData), fullLoaded: false },
                 salesOffice: { initialLoaded: hasRows(cachedRes.salesOfficeData), fullLoaded: false },
+                flyerRows: { initialLoaded: hasRows(cachedRes.flyerFolderRowsData), fullLoaded: false },
                 cav: { initialLoaded: hasRows(cachedRes.cavData), fullLoaded: false },
                 avHotPriceKeys: { initialLoaded: hasRows(cachedRes.avHotPriceKeysData), fullLoaded: false },
                 avNotes: { initialLoaded: hasRows(cachedRes.avNotesData), fullLoaded: false }
@@ -9370,6 +9400,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             if (schemaVersion < CACHE_SCHEMA_VERSION) {
                 delete next.cavData;
                 delete next.avHotPriceKeysData;
+                delete next.flyerFolderRowsData;
             }
             return next;
         }
@@ -9461,16 +9492,17 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 reserves: createDatasetLoadEntry(),
                 soc: createDatasetLoadEntry(),
                 salesOffice: createDatasetLoadEntry(),
+                flyerRows: createDatasetLoadEntry(),
                 cav: createDatasetLoadEntry(),
                 avHotPriceKeys: createDatasetLoadEntry(),
                 avNotes: createDatasetLoadEntry()
             };
         }
 
-let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let salesOfficeInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
+let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
 let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null; let chatVoiceHoldPointerId=''; let chatVoiceHoldForComposer=false; let chatVoiceHoldFinishPending=''; let chatVoiceHoldStartPromise=null;
 let walkieChannels=[]; let walkieChannelMembers=[]; let walkieCalls=[]; let walkieCallMembers=[]; let walkieUsers=[]; let walkieSignalsSeen=new Set(); let walkieDataLoaded=false; let walkieLoadPromise=null; let walkieSchemaReady=null; let walkieSchemaProbePromise=null; let walkieSchemaWarningShown=false; let activeWalkieChannelId=''; let pendingWalkieOpenChannelId=''; let pendingWalkieOpenCallId=''; let walkieComposeOpen=false; let walkieUserSearchTerm=''; let walkieComposeTitle=''; let walkieSelectedUsers=new Set(); let walkieLastRenderSignature=''; let walkieDeviceId=''; let activeWalkieCallId=''; let walkieJoinedCallId=''; let walkieActiveMembershipId=''; let walkiePeerConnections=new Map(); let walkieRemoteAudioElements=new Map(); let walkieLocalStream=null; let walkieHeartbeatTimer=null; let walkieSpeakerHeartbeatTimer=null; let walkieReconnectTimer=null; let walkieActiveSpeakerIntent=false; let walkiePressedPointerId=''; let walkieForegroundNoticeShown=false;
-let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let managerReviewInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
+let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let managerReviewInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
         let reviewSearchTerm=''; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set();
         let ncrCompletionSchemaReady=null; let ncrCompletionSchemaPromise=null; let ncrCompletionSchemaWarningShown=false; let ncrCompletionLoadPromise=null; let ncrCompletionsLoaded=false;
@@ -9490,7 +9522,7 @@ let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let t
         let dockIssueStatusByUid=new Map(); let dockIssueAllocationsBySourceUid=new Map(); let dockIssueAllocationsById=new Map(); let dockIssueDataPromise=null; let dockIssueDataLoaded=false; let dockIssueStatusSchemaReady=null; let dockIssueStatusSchemaPromise=null; let dockIssueAllocationSchemaReady=null; let dockIssueAllocationSchemaPromise=null; let dockIssueSchemaWarningShown=false; let dockViewMode='docks'; let selectedDockIssueUid=null; let dockResolvedStateCacheKey=''; let dockResolvedStateCache=null; let dockDisplayInventory=[]; let dockDisplayInventoryById=new Map(); let dockDisplayInventoryBySourceUid=new Map(); let dockIssueSourceRowsCacheKey=''; let dockIssueSourceRowsById=new Map(); let dockIssueSourceRowsByCurrentUid=new Map(); let dockIssueSourceRowsByMatchKey=new Map();
         let takeBackRows=[]; let takeBackRowsById=new Map(); let takeBackSchemaReady=null; let takeBackSchemaPromise=null; let takeBackSchemaWarningShown=false; let takeBackDataLoaded=false; let takeBackDataPromise=null; let takeBackOptimisticDoneIds=new Set(); let takeBackDoneConfirmResolve=null;
         let detailRequestSourceDomIds=[];
-        let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false;
+        let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false; let flyerFolderRowsSchemaReady=null; let flyerFolderRowsSchemaPromise=null; let flyerFolderRowsSchemaWarningShown=false;
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
 let activeHomeTab='dashboard'; let selectedProductivityUser=''; let productivityViewMode='cards'; let productivityHistoryByUser=new Map(); let productivityHistoryLoadState=new Map(); let productivityHistorySchemaReady=null; let productivityHistorySchemaPromise=null; let productivityHistorySchemaWarningShown=false; let productivityHistoryBackfillPromise=null;
 
@@ -9797,13 +9829,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const NCR_COMPLETION_SELECT_FIELDS = 'source_unique_id,itemcode,locationcode,completed_by,completed_at,emailed_jd';
         const TAKE_BACK_TABLE = 'v2_take_back_queue';
         const TAKE_BACK_SELECT_FIELDS = 'unique_id,master_unique_id,source_table,status,added_by_username,added_by_display,added_at,completed_by_username,completed_by_display,completed_at,itemcode,commonname,contsize,locationcode,lotcode,priority,ptravailable,s_lts,holdstopcode,photo_link,photo_name,snapshot,updated_at';
+        const FLYER_FOLDER_ROW_SELECT_FIELDS = 'unique_id,master_unique_id,source_table,flyer_title,flyer_assigned,flyer_cat,flyer_inst,flyer_notes,flyer_completed,assignedto,date_completed,itemcode,commonname,contsize,locationcode,lotcode,priority,ptravailable,s_lts,holdstopcode,plantgroupcode,locationnote,av_note,match,loc_match_qty,spec,caliper,pick,initial_ptr,flyer_av_note,flyer_match,flyer_loc_match_qty,flyer_spec,flyer_caliper,flyer_pick,flyer_initial_ptr,flyer_photo_link,flyer_photo_name,snapshot,created_by_username,created_by_display,created_at,updated_at';
         const NCR_EMAIL_RECIPIENTS = Object.freeze([
             'jd_jones@greenleafnursery.com',
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.04.13').trim() || 'V2026.05.04.13';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.05.01').trim() || 'V2026.05.05.01';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -10335,6 +10368,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             reserves: { table: 'v2_reserves', sourceTable: 'v2_reserves', initialQuery: buildReserveDatasetQuery, fullQuery: buildReserveDatasetQuery, initialLimit: getReserveDatasetInitialLimit },
             soc: { table: 'v2_soc_master', sourceTable: 'v2_soc_master', initialQuery: 'select=*', fullQuery: 'select=*' },
             salesOffice: { table: 'v2_sales_office', sourceTable: 'v2_sales_office', initialQuery: 'select=*', fullQuery: 'select=*' },
+            flyerRows: { table: FLYER_FOLDER_ROWS_TABLE, sourceTable: FLYER_FOLDER_ROWS_TABLE, initialQuery: () => `select=${FLYER_FOLDER_ROW_SELECT_FIELDS}&order=created_at.desc`, fullQuery: () => `select=${FLYER_FOLDER_ROW_SELECT_FIELDS}&order=created_at.desc` },
             cav: { table: 'v2_cav_import', sourceTable: 'v2_cav_import', initialQuery: 'select=*', fullQuery: 'select=*' },
             avHotPriceKeys: { table: 'v2_view_av_hot_price_keys', sourceTable: 'v2_view_av_hot_price_keys', initialQuery: 'select=*', fullQuery: 'select=*' },
             avNotes: { table: 'v2_av_notes', sourceTable: 'v2_av_notes', initialQuery: 'select=*', fullQuery: 'select=*' }
@@ -10852,6 +10886,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (key === 'reserves') return { reservesData: formatted };
             if (key === 'soc') return { socData: formatted };
             if (key === 'salesOffice') return { salesOfficeData: formatted };
+            if (key === 'flyerRows') return { flyerFolderRowsData: formatted };
             if (key === 'cav') return { cavData: formatted };
             if (key === 'avHotPriceKeys') return { avHotPriceKeysData: formatted };
             if (key === 'avNotes') return { avNotesData: formatted };
@@ -11125,6 +11160,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const required = [{ key: 'master', mode: 'initial' }];
                 const background = [{ key: 'master', mode: 'full' }, { key: 'avNotes', mode: 'full' }];
                 const needsTaskHotPriceKeys = activeTaskView === 'hot-price';
+                if (activeTaskView === 'flyer') {
+                    required.push({ key: 'flyerRows', mode: 'initial' });
+                    background.push({ key: 'flyerRows', mode: 'full' });
+                }
                 if (needsTaskHotPriceKeys) {
                     required.push({ key: 'avHotPriceKeys', mode: 'full' });
                 }
@@ -11340,6 +11379,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     || dockDisplayInventoryById.get(normalizedUid)
                     || managerReviewInventoryById.get(normalizedUid)
                     || salesOfficeInventoryById.get(normalizedUid)
+                    || flyerFolderInventoryById.get(normalizedUid)
                 )
                 : null;
             if (indexedMatch) {
@@ -11357,6 +11397,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 || dockDisplayInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
                 || managerReviewInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
                 || salesOfficeInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
+                || flyerFolderInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
                 || null;
         }
 
@@ -11388,6 +11429,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             reservesInventoryById = rebuildInventoryByIdMap(reservesInventory);
             managerReviewInventoryById = rebuildInventoryByIdMap(managerReviewInventory);
             salesOfficeInventoryById = rebuildInventoryByIdMap(salesOfficeInventory);
+            flyerFolderInventoryById = rebuildInventoryByIdMap(flyerFolderInventory);
             cavInventoryById = rebuildInventoryByIdMap(cavInventory);
             rebuildRequestInventoryIndexes();
         }
@@ -11409,6 +11451,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             if (safeTableName === 'v2_sales_office') {
                 salesOfficeInventoryById = rebuildInventoryByIdMap(salesOfficeInventory);
+                return;
+            }
+            if (safeTableName === FLYER_FOLDER_ROWS_TABLE) {
+                flyerFolderInventoryById = rebuildInventoryByIdMap(flyerFolderInventory);
                 return;
             }
             if (safeTableName === 'v2_cav_import') {
@@ -11871,6 +11917,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 || dockDisplayInventory.find(i=>i.DOM_ID===domId)
                 || managerReviewInventory.find(i=>i.DOM_ID===domId)
                 || salesOfficeInventory.find(i=>i.DOM_ID===domId)
+                || flyerFolderInventory.find(i=>i.DOM_ID===domId)
                 || null;
         }
 
@@ -12717,9 +12764,20 @@ function toggleDriveQuickRequestItem(domId) {
             if (!item) return false;
             const folderName = getFlyerFolderName(item);
             if (!folderName) return false;
+            if (isFlyerFolderRow(item)) return true;
             const legacyAssignment = String(item.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'flyer';
             const hasFlyerMetadata = [item.FLYER_ASSIGNED, item.FLYER_CAT, item.FLYER_INST, item.FLYER_NOTES, getFlyerVisiblePhotoLinkCsvRaw(item)].some(value => String(value || '').trim() !== '');
             return legacyAssignment || hasFlyerMetadata;
+        }
+
+        function isFlyerFolderRow(item) {
+            return String(firstNonEmptyValue(item && item.SOURCE_TABLE, item && item.source_table, '')).trim().toLowerCase() === FLYER_FOLDER_ROWS_TABLE;
+        }
+
+        function getAllFlyerTaskItems() {
+            const legacyItems = (Array.isArray(fullInventory) ? fullInventory : []).filter((item) => item && isFlyerTaskItem(item));
+            const snapshotItems = Array.isArray(flyerFolderInventory) ? flyerFolderInventory.filter(Boolean) : [];
+            return legacyItems.concat(snapshotItems);
         }
 
         function isFlyerAssignedToUser(item, userName = '') {
@@ -12741,12 +12799,13 @@ function toggleDriveQuickRequestItem(domId) {
             return ltsValue > 0 && !seasonValue.includes('Y') && !seasonValue.includes('Z');
         }
 
-        function getFlyerFolderAssignedNames(folderName, items = fullInventory, folderTab = activeFlyerFolderTab) {
+        function getFlyerFolderAssignedNames(folderName, items = null, folderTab = activeFlyerFolderTab) {
             const normalizedFolder = getFlyerFolderName(folderName);
             const normalizedTab = getFlyerFolderTabValue(folderTab);
+            const sourceItems = Array.isArray(items) ? items : getAllFlyerTaskItems();
             const names = new Set();
             if (!normalizedFolder) return [];
-            items.filter(item => item && doesItemMatchFlyerFolder(item, normalizedFolder, normalizedTab))
+            sourceItems.filter(item => item && doesItemMatchFlyerFolder(item, normalizedFolder, normalizedTab))
                 .forEach(item => getFlyerAssigneeList(item.FLYER_ASSIGNED || item.ASSIGNEDTO || '').forEach(name => names.add(name)));
             return Array.from(names);
         }
@@ -12756,7 +12815,7 @@ function toggleDriveQuickRequestItem(domId) {
         function getFlyerFolderItemsForPush(folderName = '') {
             const normalizedFolder = getFlyerFolderName(folderName);
             if (!normalizedFolder) return [];
-            return (fullInventory || []).filter((item) => item && isFlyerTaskItem(item) && getFlyerFolderName(item) === normalizedFolder && !isFlyerFolderArchived(item));
+            return getAllFlyerTaskItems().filter((item) => item && isFlyerTaskItem(item) && getFlyerFolderName(item) === normalizedFolder && !isFlyerFolderArchived(item));
         }
 
         function hasFlyerRowPhotoAndSpec(item = null) {
@@ -12813,6 +12872,278 @@ function toggleDriveQuickRequestItem(domId) {
             return true;
         }
 
+        function normalizeFlyerFolderSnapshot(rawSnapshot = {}) {
+            if (!rawSnapshot) return {};
+            if (typeof rawSnapshot === 'string') {
+                try {
+                    const parsed = JSON.parse(rawSnapshot);
+                    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+                } catch (error) {
+                    return {};
+                }
+            }
+            return rawSnapshot && typeof rawSnapshot === 'object' && !Array.isArray(rawSnapshot) ? rawSnapshot : {};
+        }
+
+        function getFlyerFolderRowSafeIdPart(value = '', fallback = 'row') {
+            const safe = String(value || '').trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 90);
+            return safe || fallback;
+        }
+
+        function buildFlyerFolderRowId(folderName = '', item = null) {
+            const sourceItem = findLinkedMasterRow(item) || item || {};
+            const folderPart = getFlyerFolderRowSafeIdPart(getFlyerFolderName(folderName), 'folder');
+            const sourcePart = getFlyerFolderRowSafeIdPart(firstNonEmptyValue(
+                sourceItem.UNIQUE_ID,
+                sourceItem.unique_id,
+                item && item.MASTER_UNIQUE_ID,
+                item && item.MASTER_ID,
+                item && item.UNIQUE_ID,
+                item && item.ITEMCODE,
+                item && item.DOM_ID,
+                ''
+            ), Date.now().toString(36).toUpperCase());
+            return `FF-${folderPart}-${sourcePart}`;
+        }
+
+        function buildFlyerFolderSnapshot(item = null) {
+            const source = findLinkedMasterRow(item) || item || {};
+            const matchValue = getItemDisplayValue(source, 'MATCH', 'drive');
+            const specValue = getItemDisplayValue(source, 'SPEC', 'drive');
+            const caliperValue = getItemDisplayValue(source, 'CALIPER', 'drive');
+            const pickValue = getItemDisplayValue(source, 'PICK', 'drive');
+            const avNoteValue = getItemDisplayValue(source, 'AV_NOTE', 'drive');
+            const initialPtrValue = getItemDisplayValue(source, 'INITIAL_PTR', 'drive');
+            const locMatchQtyValue = String(matchValue || '').trim() ? getDisplayLocMatchQtyValue(source, 'drive') : '';
+            const photoLink = getSharedAppPhotoLinkCsv(source, { includePending: false });
+            const photoName = photoLink ? getSharedAppPhotoName(source) : '';
+            return {
+                UNIQUE_ID: String(firstNonEmptyValue(source.UNIQUE_ID, source.unique_id, item && item.UNIQUE_ID, '')).trim(),
+                SOURCE_TABLE: String(firstNonEmptyValue(source.SOURCE_TABLE, source.source_table, 'v2_master_inventory')).trim() || 'v2_master_inventory',
+                ITEMCODE: String(firstNonEmptyValue(source.ITEMCODE, source.itemcode, '')).trim(),
+                COMMONNAME: String(firstNonEmptyValue(source.COMMONNAME, source.commonname, source.DESCRIPTION, source.PLANT_NAME, '')).trim(),
+                CONTSIZE: String(firstNonEmptyValue(source.CONTSIZE, source.contsize, source.ITEMSPEC, '')).trim(),
+                LOCATIONCODE: String(firstNonEmptyValue(source.LOCATIONCODE, source.locationcode, source.LOCATION, '')).trim(),
+                LOTCODE: String(firstNonEmptyValue(source.LOTCODE, source.lotcode, source.LOT, '')).trim(),
+                PRIORITY: String(firstNonEmptyValue(source.PRIORITY, source.priority, '')).trim(),
+                PTRAVAILABLE: String(firstNonEmptyValue(source.PTRAVAILABLE, source.ptravailable, source.LOC_AVAIL, '')).trim(),
+                S_LTS: String(firstNonEmptyValue(source.S_LTS, source.s_lts, '')).trim(),
+                HOLDSTOPCODE: String(firstNonEmptyValue(source.HOLDSTOPCODE, source.holdstopcode, source.HOLSTOPCODE, '')).trim(),
+                PLANTGROUPCODE: String(firstNonEmptyValue(source.PLANTGROUPCODE, source.plantgroupcode, '')).trim(),
+                LOCATIONNOTE: String(firstNonEmptyValue(source.LOCATIONNOTE, source.locationnote, '')).trim(),
+                AV_NOTE: String(avNoteValue || '').trim(),
+                MATCH: String(matchValue || '').trim(),
+                LOC_MATCH_QTY: String(locMatchQtyValue || '').trim(),
+                SPEC: String(specValue || '').trim(),
+                CALIPER: String(caliperValue || '').trim(),
+                PICK: String(pickValue || '').trim(),
+                INITIAL_PTR: String(initialPtrValue || '').trim(),
+                PHOTO_LINK: String(photoLink || '').trim(),
+                PHOTO_NAME: String(photoName || '').trim(),
+                PRODUCTIVITY_ORIGIN_ASSIGNMENT: String(firstNonEmptyValue(source.PRODUCTIVITY_ORIGIN_ASSIGNMENT, source.productivity_origin_assignment, source.APP_TAB_ASSIGNMENT, source.app_tab_assignment, '')).trim()
+            };
+        }
+
+        function buildFlyerFolderRowPayload(item = null, folderName = '', flyerAssignedTo = '', primaryAssignee = '', createdAt = new Date().toISOString()) {
+            const snapshot = buildFlyerFolderSnapshot(item);
+            const uniqueId = buildFlyerFolderRowId(folderName, item);
+            const matchNumber = parseAppNumber(snapshot.MATCH);
+            const locMatchQtyNumber = parseAppNumber(snapshot.LOC_MATCH_QTY);
+            const initialPtrNumber = parseAppNumber(snapshot.INITIAL_PTR);
+            return {
+                unique_id: uniqueId,
+                master_unique_id: snapshot.UNIQUE_ID || uniqueId,
+                source_table: snapshot.SOURCE_TABLE || 'v2_master_inventory',
+                flyer_title: getFlyerFolderName(folderName),
+                flyer_assigned: flyerAssignedTo || null,
+                flyer_cat: null,
+                flyer_inst: null,
+                flyer_notes: null,
+                flyer_completed: null,
+                assignedto: primaryAssignee || null,
+                date_completed: null,
+                itemcode: snapshot.ITEMCODE || null,
+                commonname: snapshot.COMMONNAME || null,
+                contsize: snapshot.CONTSIZE || null,
+                locationcode: snapshot.LOCATIONCODE || null,
+                lotcode: snapshot.LOTCODE || null,
+                priority: snapshot.PRIORITY || null,
+                ptravailable: snapshot.PTRAVAILABLE || null,
+                s_lts: snapshot.S_LTS || null,
+                holdstopcode: snapshot.HOLDSTOPCODE || null,
+                plantgroupcode: snapshot.PLANTGROUPCODE || null,
+                locationnote: snapshot.LOCATIONNOTE || null,
+                av_note: snapshot.AV_NOTE || null,
+                match: matchNumber == null ? null : matchNumber,
+                loc_match_qty: locMatchQtyNumber == null ? null : locMatchQtyNumber,
+                spec: snapshot.SPEC || null,
+                caliper: snapshot.CALIPER || null,
+                pick: snapshot.PICK || null,
+                initial_ptr: initialPtrNumber == null ? null : initialPtrNumber,
+                flyer_av_note: snapshot.AV_NOTE || null,
+                flyer_match: matchNumber == null ? null : matchNumber,
+                flyer_loc_match_qty: locMatchQtyNumber == null ? null : locMatchQtyNumber,
+                flyer_spec: snapshot.SPEC || null,
+                flyer_caliper: snapshot.CALIPER || null,
+                flyer_pick: snapshot.PICK || null,
+                flyer_initial_ptr: initialPtrNumber == null ? null : initialPtrNumber,
+                flyer_photo_link: snapshot.PHOTO_LINK || null,
+                flyer_photo_name: snapshot.PHOTO_NAME || null,
+                snapshot,
+                created_by_username: currentUser || null,
+                created_by_display: currentUserDisplay || currentUser || null,
+                created_at: createdAt,
+                updated_at: createdAt
+            };
+        }
+
+        function normalizeFlyerFolderRow(rawRow = null, idx = 0) {
+            if (!rawRow || typeof rawRow !== 'object') return null;
+            const snapshot = normalizeFlyerFolderSnapshot(firstNonEmptyValue(rawRow.snapshot, rawRow.SNAPSHOT, {}));
+            const uniqueId = String(firstNonEmptyValue(rawRow.unique_id, rawRow.UNIQUE_ID, '')).trim();
+            if (!uniqueId) return null;
+            const flyerTitle = getFlyerFolderName(firstNonEmptyValue(rawRow.flyer_title, rawRow.FLYER_TITLE, snapshot.FLYER_TITLE, ''));
+            if (!flyerTitle) return null;
+            const masterUniqueId = String(firstNonEmptyValue(rawRow.master_unique_id, rawRow.MASTER_UNIQUE_ID, snapshot.UNIQUE_ID, snapshot.unique_id, '')).trim();
+            const sourceTable = String(firstNonEmptyValue(rawRow.source_table, rawRow.SOURCE_TABLE, snapshot.SOURCE_TABLE, 'v2_master_inventory')).trim() || 'v2_master_inventory';
+            const item = {
+                SOURCE_TABLE: FLYER_FOLDER_ROWS_TABLE,
+                FLYER_SOURCE_TABLE: sourceTable === FLYER_FOLDER_ROWS_TABLE ? 'v2_master_inventory' : sourceTable,
+                UNIQUE_ID: uniqueId,
+                MASTER_UNIQUE_ID: masterUniqueId,
+                MASTER_ID: masterUniqueId,
+                APP_TAB_ASSIGNMENT: 'flyer',
+                PRODUCTIVITY_ORIGIN_ASSIGNMENT: String(firstNonEmptyValue(rawRow.productivity_origin_assignment, rawRow.PRODUCTIVITY_ORIGIN_ASSIGNMENT, snapshot.PRODUCTIVITY_ORIGIN_ASSIGNMENT, '')).trim(),
+                ASSIGNEDTO: String(firstNonEmptyValue(rawRow.assignedto, rawRow.ASSIGNEDTO, snapshot.ASSIGNEDTO, '')).trim(),
+                DATE_COMPLETED: String(firstNonEmptyValue(rawRow.date_completed, rawRow.DATE_COMPLETED, rawRow.flyer_completed, rawRow.FLYER_COMPLETED, '')).trim(),
+                FLYER_COMPLETED: String(firstNonEmptyValue(rawRow.flyer_completed, rawRow.FLYER_COMPLETED, rawRow.date_completed, rawRow.DATE_COMPLETED, '')).trim(),
+                FLYER_TITLE: firstNonEmptyValue(rawRow.flyer_title, rawRow.FLYER_TITLE, flyerTitle),
+                FLYER_ASSIGNED: String(firstNonEmptyValue(rawRow.flyer_assigned, rawRow.FLYER_ASSIGNED, snapshot.FLYER_ASSIGNED, '')).trim(),
+                FLYER_CAT: String(firstNonEmptyValue(rawRow.flyer_cat, rawRow.FLYER_CAT, snapshot.FLYER_CAT, '')).trim(),
+                FLYER_INST: String(firstNonEmptyValue(rawRow.flyer_inst, rawRow.FLYER_INST, snapshot.FLYER_INST, '')).trim(),
+                FLYER_NOTES: String(firstNonEmptyValue(rawRow.flyer_notes, rawRow.FLYER_NOTES, snapshot.FLYER_NOTES, '')).trim(),
+                ITEMCODE: String(firstNonEmptyValue(rawRow.itemcode, rawRow.ITEMCODE, snapshot.ITEMCODE, '')).trim(),
+                COMMONNAME: String(firstNonEmptyValue(rawRow.commonname, rawRow.COMMONNAME, snapshot.COMMONNAME, 'Unknown')).trim() || 'Unknown',
+                CONTSIZE: String(firstNonEmptyValue(rawRow.contsize, rawRow.CONTSIZE, snapshot.CONTSIZE, '')).trim(),
+                LOCATIONCODE: String(firstNonEmptyValue(rawRow.locationcode, rawRow.LOCATIONCODE, snapshot.LOCATIONCODE, '')).trim(),
+                LOTCODE: String(firstNonEmptyValue(rawRow.lotcode, rawRow.LOTCODE, snapshot.LOTCODE, '')).trim(),
+                PRIORITY: String(firstNonEmptyValue(rawRow.priority, rawRow.PRIORITY, snapshot.PRIORITY, '')).trim(),
+                PTRAVAILABLE: String(firstNonEmptyValue(rawRow.ptravailable, rawRow.PTRAVAILABLE, snapshot.PTRAVAILABLE, '')).trim(),
+                S_LTS: String(firstNonEmptyValue(rawRow.s_lts, rawRow.S_LTS, snapshot.S_LTS, '')).trim(),
+                HOLDSTOPCODE: String(firstNonEmptyValue(rawRow.holdstopcode, rawRow.HOLDSTOPCODE, snapshot.HOLDSTOPCODE, '')).trim(),
+                PLANTGROUPCODE: String(firstNonEmptyValue(rawRow.plantgroupcode, rawRow.PLANTGROUPCODE, snapshot.PLANTGROUPCODE, '')).trim(),
+                LOCATIONNOTE: String(firstNonEmptyValue(rawRow.locationnote, rawRow.LOCATIONNOTE, snapshot.LOCATIONNOTE, '')).trim(),
+                AV_NOTE: String(firstNonEmptyValue(rawRow.av_note, rawRow.AV_NOTE, rawRow.flyer_av_note, rawRow.FLYER_AV_NOTE, snapshot.AV_NOTE, '')).trim(),
+                MATCH: firstNonEmptyValue(rawRow.match, rawRow.MATCH, rawRow.flyer_match, rawRow.FLYER_MATCH, snapshot.MATCH, ''),
+                LOC_MATCH_QTY: firstNonEmptyValue(rawRow.loc_match_qty, rawRow.LOC_MATCH_QTY, rawRow.flyer_loc_match_qty, rawRow.FLYER_LOC_MATCH_QTY, snapshot.LOC_MATCH_QTY, ''),
+                SPEC: String(firstNonEmptyValue(rawRow.spec, rawRow.SPEC, rawRow.flyer_spec, rawRow.FLYER_SPEC, snapshot.SPEC, '')).trim(),
+                CALIPER: String(firstNonEmptyValue(rawRow.caliper, rawRow.CALIPER, rawRow.flyer_caliper, rawRow.FLYER_CALIPER, snapshot.CALIPER, '')).trim(),
+                PICK: String(firstNonEmptyValue(rawRow.pick, rawRow.PICK, rawRow.pic_note, rawRow.PIC_NOTE, rawRow.flyer_pick, rawRow.FLYER_PICK, snapshot.PICK, '')).trim(),
+                INITIAL_PTR: firstNonEmptyValue(rawRow.initial_ptr, rawRow.INITIAL_PTR, rawRow.flyer_initial_ptr, rawRow.FLYER_INITIAL_PTR, snapshot.INITIAL_PTR, ''),
+                FLYER_PHOTO_LINK: String(firstNonEmptyValue(rawRow.flyer_photo_link, rawRow.FLYER_PHOTO_LINK, snapshot.PHOTO_LINK, '')).trim(),
+                FLYER_PHOTO_NAME: String(firstNonEmptyValue(rawRow.flyer_photo_name, rawRow.FLYER_PHOTO_NAME, snapshot.PHOTO_NAME, '')).trim(),
+                SNAPSHOT: snapshot,
+                CREATED_AT: String(firstNonEmptyValue(rawRow.created_at, rawRow.CREATED_AT, '')).trim(),
+                UPDATED_AT: String(firstNonEmptyValue(rawRow.updated_at, rawRow.UPDATED_AT, '')).trim(),
+                DOM_ID: `flyer_${uniqueId.replace(/[^a-z0-9_-]+/gi, '_') || idx}`
+            };
+            item.FLYER_AV_NOTE = item.AV_NOTE;
+            item.FLYER_MATCH = firstNonEmptyValue(rawRow.flyer_match, rawRow.FLYER_MATCH, item.MATCH, '');
+            item.FLYER_LOC_MATCH_QTY = firstNonEmptyValue(rawRow.flyer_loc_match_qty, rawRow.FLYER_LOC_MATCH_QTY, item.LOC_MATCH_QTY, '');
+            item.FLYER_SPEC = firstNonEmptyValue(rawRow.flyer_spec, rawRow.FLYER_SPEC, item.SPEC, '');
+            item.FLYER_CALIPER = firstNonEmptyValue(rawRow.flyer_caliper, rawRow.FLYER_CALIPER, item.CALIPER, '');
+            item.FLYER_PICK = firstNonEmptyValue(rawRow.flyer_pick, rawRow.FLYER_PICK, item.PICK, '');
+            item.FLYER_INITIAL_PTR = firstNonEmptyValue(rawRow.flyer_initial_ptr, rawRow.FLYER_INITIAL_PTR, item.INITIAL_PTR, '');
+            if (!String(item.LOC_MATCH_QTY || '').trim()) {
+                const derivedQty = calculateLocMatchQtyValue(item, undefined, { useFlyerFields: true });
+                if (derivedQty != null) {
+                    item.LOC_MATCH_QTY = derivedQty;
+                    item.FLYER_LOC_MATCH_QTY = derivedQty;
+                }
+            }
+            item.SAVED_PHOTO_LINK = item.FLYER_PHOTO_LINK;
+            item.SAVED_PHOTO_NAME = item.FLYER_PHOTO_NAME;
+            normalizeRowPhotoFields(item);
+            buildSearchIndex(item);
+            return item;
+        }
+
+        function removeFlyerFolderRowFromCache(uniqueId = '') {
+            const safeUid = String(uniqueId || '').trim();
+            if (!safeUid) return false;
+            const beforeLength = flyerFolderInventory.length;
+            flyerFolderInventoryById.delete(safeUid);
+            flyerFolderInventory = flyerFolderInventory.filter((row) => String(row && row.UNIQUE_ID || '').trim() !== safeUid);
+            return beforeLength !== flyerFolderInventory.length;
+        }
+
+        function cacheFlyerFolderRow(rawRow = null) {
+            const row = normalizeFlyerFolderRow(rawRow);
+            if (!row) return null;
+            removeFlyerFolderRowFromCache(row.UNIQUE_ID);
+            flyerFolderInventory.push(row);
+            flyerFolderInventoryById.set(row.UNIQUE_ID, row);
+            return row;
+        }
+
+        function touchFlyerFolderRowsDatasetState() {
+            const state = getDatasetState('flyerRows');
+            state.initialLoaded = true;
+            state.lastLoadedAt = new Date().toISOString();
+        }
+
+        function maybeWarnFlyerFolderRowsSchemaMissing() {
+            if (flyerFolderRowsSchemaWarningShown || !currentUser) return;
+            flyerFolderRowsSchemaWarningShown = true;
+            console.warn('Flyer folder row schema is not installed. Run flyer_folder_rows_migration.sql in Supabase to preserve folder photos/specs permanently.');
+            showToast('Schema Required', 'Run flyer_folder_rows_migration.sql in Supabase before creating Flyer folders.', true);
+        }
+
+        async function ensureFlyerFolderRowsSchemaReady(force = false) {
+            if (flyerFolderRowsSchemaReady === true && !force) return true;
+            if (flyerFolderRowsSchemaReady === false && !force) return false;
+            if (flyerFolderRowsSchemaPromise && !force) return flyerFolderRowsSchemaPromise;
+            flyerFolderRowsSchemaPromise = (async () => {
+                if (navigator.onLine === false) return false;
+                try {
+                    const url = `${SUPABASE_URL}/rest/v1/${FLYER_FOLDER_ROWS_TABLE}?select=${FLYER_FOLDER_ROW_SELECT_FIELDS}&limit=1`;
+                    const response = await fetchWithTimeout(url, {
+                        method: 'GET',
+                        headers: {
+                            apikey: SUPABASE_KEY,
+                            Authorization: 'Bearer ' + SUPABASE_KEY,
+                            'Content-Type': 'application/json'
+                        }
+                    }, SUPABASE_READ_TIMEOUT_MS, 'flyer folder row schema probe');
+                    if (!response.ok) throw new Error(await getResponseError(response, `Flyer folder row schema probe failed (${response.status})`));
+                    flyerFolderRowsSchemaReady = true;
+                    flyerFolderRowsSchemaWarningShown = false;
+                    return true;
+                } catch (error) {
+                    flyerFolderRowsSchemaReady = false;
+                    maybeWarnFlyerFolderRowsSchemaMissing();
+                    console.warn('Flyer folder row schema probe failed', error);
+                    return false;
+                } finally {
+                    flyerFolderRowsSchemaPromise = null;
+                }
+            })();
+            return flyerFolderRowsSchemaPromise;
+        }
+
+        function finalizeFlyerFolderNavigation(flyerFolder = '') {
+            clearDriveQuickRequestItems(true);
+            clearPendingFlyerFolderTarget(true);
+            setTaskTab('flyer');
+            activeFlyerFolderTab = 'active';
+            selectedFlyerFolder = getFlyerFolderName(flyerFolder);
+            taskViewLevel = 1;
+            invalidateResolvedViewStateCaches();
+            markViewDirty('tasks');
+            switchView('tasks');
+            queueInteractiveViewRender('tasks', false, true, 0, 160);
+        }
+
         function clearPendingFlyerFolderTarget(silent = false) {
             const previousFolder = String(pendingFlyerFolderTarget || '').trim();
             pendingFlyerFolderTarget = null;
@@ -12832,7 +13163,7 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             pendingFlyerFolderTarget = normalizedFolder;
-            pendingFlyerFolderAssignees = getFlyerFolderAssignedNames(normalizedFolder, fullInventory, 'active').join(', ');
+            pendingFlyerFolderAssignees = getFlyerFolderAssignedNames(normalizedFolder, null, 'active').join(', ');
             switchView('drive');
             showToast('Add Rows', `Select Drive rows, then tap Add To Folder to add them to ${normalizedFolder}.`);
             return false;
@@ -12885,61 +13216,30 @@ function toggleDriveQuickRequestItem(domId) {
 
             const flyerAssignedTo = assignees.join(', ');
             const primaryAssignee = assignees[0] || currentUser;
-            const updates = [];
-            const updateItems = [];
-            domIds.forEach((domId) => {
-                const item = findItemByDomId(domId);
-                if (!item) return;
-                item.PRODUCTIVITY_ORIGIN_ASSIGNMENT = firstNonEmptyValue(item.PRODUCTIVITY_ORIGIN_ASSIGNMENT, item.productivity_origin_assignment, item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '');
-                item.APP_TAB_ASSIGNMENT = 'flyer';
-                item.ASSIGNEDTO = primaryAssignee;
-                item.DATE_COMPLETED = '';
-                item.FLYER_COMPLETED = '';
-                item.FLYER_TITLE = flyerFolder;
-                item.FLYER_ASSIGNED = flyerAssignedTo;
-                buildSearchIndex(item);
-                syncRowDataAcrossViews(item);
-                const table = item.SOURCE_TABLE || 'v2_master_inventory';
-                updateItems.push(item);
-                updates.push(supabaseFetch(table, 'PATCH', {
-                    assignedto: primaryAssignee,
-                    date_completed: null,
-                    flyer_title: flyerFolder,
-                    flyer_assigned: flyerAssignedTo || null
-                }, `unique_id=eq.${encodeURIComponent(item.UNIQUE_ID)}`));
-            });
-            if (!updates.length) {
+            const sourceItems = domIds.map((domId) => findItemByDomId(domId)).filter(Boolean);
+            const createdAt = new Date().toISOString();
+            const payloads = sourceItems.map((item) => buildFlyerFolderRowPayload(item, flyerFolder, flyerAssignedTo, primaryAssignee, createdAt));
+            if (!payloads.length) {
                 showToast('Error', 'No valid Drive rows were available for Flyer.', true);
                 return false;
             }
             showToast('Processing...', `${isAddingToExistingFolder ? 'Adding rows to' : 'Creating flyer folder'} ${flyerFolder}...`, false);
-            Promise.allSettled(updates).then((results) => {
-                const failed = results.filter(result => result.status === 'rejected');
-                const succeeded = results.length - failed.length;
-                if (!succeeded) {
-                    const firstError = failed[0] && failed[0].reason && failed[0].reason.message ? failed[0].reason.message : 'Flyer creation failed.';
-                    throw new Error(firstError);
-                }
+            ensureFlyerFolderRowsSchemaReady().then((ready) => {
+                if (!ready) throw new Error('Flyer folder row table is missing. Run flyer_folder_rows_migration.sql in Supabase.');
+                const emailItems = payloads.map((payload) => cacheFlyerFolderRow(payload)).filter(Boolean);
+                touchFlyerFolderRowsDatasetState();
+                invalidateResolvedViewStateCaches();
+                markViewDirty('tasks');
+                scheduleTasksRender(0);
+                return supabaseFetch(FLYER_FOLDER_ROWS_TABLE, 'POST', payloads, 'on_conflict=unique_id').then(() => emailItems);
+            }).then((emailItems) => {
                 if (!isAddingToExistingFolder) {
-                    const emailItems = updateItems.filter((item, idx) => results[idx] && results[idx].status === 'fulfilled');
                     if (emailItems.length) sendFlyerCreatedEmail(flyerFolder, flyerAssignedTo, emailItems, currentUserDisplay || currentUser || '');
                 }
-                clearDriveQuickRequestItems(true);
-                clearPendingFlyerFolderTarget(true);
-                activeFlyerFolderTab = 'active';
-                selectedFlyerFolder = flyerFolder;
-                taskViewLevel = 1;
-                setTaskTab('flyer');
-                markViewDirty('tasks');
-                switchView('tasks');
-                queueInteractiveViewRender('tasks', false, true, 0, 160);
-                if (failed.length) {
-                    const firstError = failed[0] && failed[0].reason && failed[0].reason.message ? failed[0].reason.message : 'Some rows could not be added.';
-                    showToast('Partial Success', `${succeeded} row${succeeded === 1 ? '' : 's'} added to ${flyerFolder}. ${failed.length} failed. ${firstError}`, true);
-                } else {
-                    showToast('Success', `${domIds.length} row${domIds.length === 1 ? '' : 's'} added to ${flyerFolder}.`);
-                }
+                finalizeFlyerFolderNavigation(flyerFolder);
+                showToast('Success', `${payloads.length} row${payloads.length === 1 ? '' : 's'} added to ${flyerFolder}.`);
             }).catch((err) => {
+                payloads.forEach((payload) => removeFlyerFolderRowFromCache(payload.unique_id));
                 showToast('Error', err && err.message ? err.message : 'Flyer creation failed.', true);
             });
             return false;
@@ -12985,60 +13285,31 @@ function toggleDriveQuickRequestItem(domId) {
 
             const flyerAssignedTo = assignees.join(', ');
             const primaryAssignee = assignees[0] || currentUser;
-            const updates = [];
-            const updateItems = [];
-            validItems.forEach((item) => {
-                item.PRODUCTIVITY_ORIGIN_ASSIGNMENT = firstNonEmptyValue(item.PRODUCTIVITY_ORIGIN_ASSIGNMENT, item.productivity_origin_assignment, item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '');
-                item.APP_TAB_ASSIGNMENT = 'flyer';
-                item.ASSIGNEDTO = primaryAssignee;
-                item.DATE_COMPLETED = '';
-                item.FLYER_COMPLETED = '';
-                item.FLYER_TITLE = flyerFolder;
-                item.FLYER_ASSIGNED = flyerAssignedTo;
-                buildSearchIndex(item);
-                syncRowDataAcrossViews(item);
-                const table = item.SOURCE_TABLE || 'v2_master_inventory';
-                updateItems.push(item);
-                updates.push(supabaseFetch(table, 'PATCH', {
-                    assignedto: primaryAssignee,
-                    date_completed: null,
-                    flyer_title: flyerFolder,
-                    flyer_assigned: flyerAssignedTo || null
-                }, `unique_id=eq.${encodeURIComponent(item.UNIQUE_ID)}`));
-            });
-            if (!updates.length) {
+            const createdAt = new Date().toISOString();
+            const payloads = validItems.map((item) => buildFlyerFolderRowPayload(item, flyerFolder, flyerAssignedTo, primaryAssignee, createdAt));
+            if (!payloads.length) {
                 showToast('Error', 'No valid inventory rows were available for Flyer.', true);
                 return false;
             }
             toggleCartPanel(false);
             showToast('Processing...', `${isAddingToExistingFolder ? 'Adding rows to' : 'Creating flyer folder'} ${flyerFolder}...`, false);
-            Promise.allSettled(updates).then((results) => {
-                const failed = results.filter((result) => result.status === 'rejected');
-                const succeeded = results.length - failed.length;
-                if (!succeeded) {
-                    const firstError = failed[0] && failed[0].reason && failed[0].reason.message ? failed[0].reason.message : 'Flyer creation failed.';
-                    throw new Error(firstError);
-                }
+            ensureFlyerFolderRowsSchemaReady().then((ready) => {
+                if (!ready) throw new Error('Flyer folder row table is missing. Run flyer_folder_rows_migration.sql in Supabase.');
+                const emailItems = payloads.map((payload) => cacheFlyerFolderRow(payload)).filter(Boolean);
+                touchFlyerFolderRowsDatasetState();
+                invalidateResolvedViewStateCaches();
+                markViewDirty('tasks');
+                scheduleTasksRender(0);
+                return supabaseFetch(FLYER_FOLDER_ROWS_TABLE, 'POST', payloads, 'on_conflict=unique_id').then(() => emailItems);
+            }).then((emailItems) => {
                 if (!isAddingToExistingFolder) {
-                    const emailItems = validItems.filter((item, idx) => results[idx] && results[idx].status === 'fulfilled');
                     if (emailItems.length) sendFlyerCreatedEmail(flyerFolder, flyerAssignedTo, emailItems, currentUserDisplay || currentUser || '');
                 }
-                clearPendingFlyerFolderTarget(true);
                 clearSelection();
-                activeFlyerFolderTab = 'active';
-                selectedFlyerFolder = flyerFolder;
-                taskViewLevel = 1;
-                setTaskTab('flyer');
-                markViewDirty('tasks');
-                switchView('tasks');
-                queueInteractiveViewRender('tasks', false, true, 0, 160);
-                if (failed.length) {
-                    const firstError = failed[0] && failed[0].reason && failed[0].reason.message ? failed[0].reason.message : 'Some rows could not be added.';
-                    showToast('Partial Success', `${succeeded} row${succeeded === 1 ? '' : 's'} added to ${flyerFolder}. ${failed.length} failed. ${firstError}`, true);
-                } else {
-                    showToast('Success', `${validItems.length} row${validItems.length === 1 ? '' : 's'} added to ${flyerFolder}.`);
-                }
+                finalizeFlyerFolderNavigation(flyerFolder);
+                showToast('Success', `${payloads.length} row${payloads.length === 1 ? '' : 's'} added to ${flyerFolder}.`);
             }).catch((err) => {
+                payloads.forEach((payload) => removeFlyerFolderRowFromCache(payload.unique_id));
                 showToast('Error', err && err.message ? err.message : 'Flyer creation failed.', true);
             });
             return false;
@@ -15455,10 +15726,11 @@ function toggleDriveQuickRequestItem(domId) {
             const hasReserves = hasKey('reservesData');
             const hasSoc = hasKey('socData');
             const hasSalesOffice = hasKey('salesOfficeData');
+            const hasFlyerRows = hasKey('flyerFolderRowsData');
             const hasCav = hasKey('cavData');
             const hasAvHotPrice = hasKey('avHotPriceKeysData');
             const hasAvNotes = hasKey('avNotesData');
-            const didStructuralDataChange = hasMaster || hasAvOpen || hasRequests || hasReserves || hasSoc || hasSalesOffice || hasCav || hasAvHotPrice || hasAvNotes;
+            const didStructuralDataChange = hasMaster || hasAvOpen || hasRequests || hasReserves || hasSoc || hasSalesOffice || hasFlyerRows || hasCav || hasAvHotPrice || hasAvNotes;
             const changedDatasetKeys = [];
             if (hasMaster) changedDatasetKeys.push('master');
             if (hasAvOpen) changedDatasetKeys.push('avOpen');
@@ -15466,6 +15738,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasReserves) changedDatasetKeys.push('reserves');
             if (hasSoc) changedDatasetKeys.push('soc');
             if (hasSalesOffice) changedDatasetKeys.push('salesOffice');
+            if (hasFlyerRows) changedDatasetKeys.push('flyerRows');
             if (hasCav) changedDatasetKeys.push('cav');
             if (hasAvHotPrice) changedDatasetKeys.push('avHotPriceKeys');
             let avRuleClearOps = [];
@@ -15541,6 +15814,11 @@ function toggleDriveQuickRequestItem(domId) {
                     return item;
                 }).filter(Boolean);
                 syncRealtimeSalesOfficeRows();
+            }
+
+            if (hasFlyerRows) {
+                flyerFolderInventory = (res.flyerFolderRowsData || []).map((item, idx) => normalizeFlyerFolderRow(item, idx)).filter(Boolean);
+                flyerFolderInventoryById = rebuildInventoryByIdMap(flyerFolderInventory);
             }
 
             if (hasSoc || (hasMaster && socInventory.length)) {
@@ -20856,6 +21134,9 @@ function toggleDriveQuickRequestItem(domId) {
                 return datasetKeys.some((key) => changedSet.has(key));
             });
             if ((changedSet.has('requests') || changedSet.has('salesOffice')) && !affectedViews.includes('tasks')) {
+                affectedViews.push('tasks');
+            }
+            if (changedSet.has('flyerRows') && !affectedViews.includes('tasks')) {
                 affectedViews.push('tasks');
             }
             return affectedViews;
@@ -27260,6 +27541,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
         function getTaskDetailTabForItem(item = activeItem, taskTab = activeTaskTab) {
             const safeTaskView = normalizeTaskViewValue(taskTab);
+            if (safeTaskView === 'flyer') return 'flyer';
             const originKind = resolveProductivityOriginKind(item);
             if (originKind === 'season_sales_note') return 'season';
             if (originKind === 'location_sales_note') return 'location';
@@ -28961,6 +29243,7 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             const targetTable = prefix === 'req-' ? 'v2_active_request' : (activeItem.SOURCE_TABLE || 'v2_master_inventory');
+            const isFlyerFolderRowClear = prefix === 'flyer-' && isFlyerFolderRow(activeItem);
             const beforeState = JSON.parse(JSON.stringify(activeItem));
             const setNull = (value) => (value === '' || value === undefined ? null : value);
             let payload = { date_completed: null };
@@ -29004,6 +29287,13 @@ function toggleDriveQuickRequestItem(domId) {
                 activeItem.PICK = '';
                 activeItem.LOC_MATCH_QTY = '';
                 activeItem.INITIAL_PTR = '';
+                activeItem.FLYER_AV_NOTE = '';
+                activeItem.FLYER_MATCH = '';
+                activeItem.FLYER_SPEC = '';
+                activeItem.FLYER_CALIPER = '';
+                activeItem.FLYER_PICK = '';
+                activeItem.FLYER_LOC_MATCH_QTY = '';
+                activeItem.FLYER_INITIAL_PTR = '';
                 activeItem.FLYER_NOTES = '';
                 activeItem.FLYER_PHOTO_LINK = '';
                 activeItem.FLYER_PHOTO_NAME = '';
@@ -29013,13 +29303,35 @@ function toggleDriveQuickRequestItem(domId) {
                 payload.match = null;
                 payload.spec = null;
                 payload.caliper = null;
-                payload.pic_note = null;
+                if (isFlyerFolderRowClear) payload.pick = null;
+                else payload.pic_note = null;
                 payload.loc_match_qty = null;
                 payload.initial_ptr = null;
                 payload.flyer_notes = null;
                 payload.flyer_photo_link = null;
                 payload.flyer_photo_name = null;
                 payload.flyer_completed = null;
+                if (isFlyerFolderRowClear) {
+                    payload.flyer_av_note = null;
+                    payload.flyer_match = null;
+                    payload.flyer_spec = null;
+                    payload.flyer_caliper = null;
+                    payload.flyer_pick = null;
+                    payload.flyer_loc_match_qty = null;
+                    payload.flyer_initial_ptr = null;
+                    payload.snapshot = Object.assign({}, normalizeFlyerFolderSnapshot(activeItem.SNAPSHOT), {
+                        AV_NOTE: '',
+                        MATCH: '',
+                        LOC_MATCH_QTY: '',
+                        SPEC: '',
+                        CALIPER: '',
+                        PICK: '',
+                        INITIAL_PTR: '',
+                        PHOTO_LINK: '',
+                        PHOTO_NAME: ''
+                    });
+                    activeItem.SNAPSHOT = payload.snapshot;
+                }
             } else {
                 activeItem.AV_NOTE = '';
                 activeItem.SALES_NOTE = '';
@@ -32004,7 +32316,7 @@ function toggleDriveQuickRequestItem(domId) {
             const targetTab = getFlyerFolderTabValue(nextTab);
             const cleanFolderName = getFlyerFolderName(folderName);
             if (!cleanFolderName) return false;
-            const matchingItems = fullInventory.filter((item) => doesItemMatchFlyerFolder(item, cleanFolderName, currentTab));
+            const matchingItems = getAllFlyerTaskItems().filter((item) => doesItemMatchFlyerFolder(item, cleanFolderName, currentTab));
             if (!matchingItems.length) {
                 showToast('Folder Missing', 'That flyer folder could not be found.', true);
                 return false;
@@ -32043,10 +32355,33 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function removeFlyerRow(uid) {
-            const item = fullInventory.find((entry) => entry.UNIQUE_ID === uid);
+            const item = findItemByUniqueId(uid) || getAllFlyerTaskItems().find((entry) => entry && entry.UNIQUE_ID === uid);
             if (!item) return false;
             const folderName = getFlyerFolderName(item);
             const folderTab = isFlyerFolderArchived(item) ? 'archive' : 'active';
+            if (isFlyerFolderRow(item)) {
+                removeFlyerFolderRowFromCache(uid);
+                closeAllFlyerSwipes();
+                const remainingItems = getAllFlyerTaskItems().filter((entry) => entry && entry.UNIQUE_ID !== uid && doesItemMatchFlyerFolder(entry, folderName, folderTab));
+                if (!remainingItems.length && taskViewLevel === 1 && selectedFlyerFolder === folderName) {
+                    taskViewLevel = 0;
+                    selectedFlyerFolder = null;
+                }
+                touchFlyerFolderRowsDatasetState();
+                invalidateResolvedViewStateCaches();
+                markViewDirty('tasks');
+                persistCurrentCache();
+                scheduleTasksRender(0);
+                showToast('Removing', 'Updating flyer row...', false);
+                try {
+                    await supabaseFetch(FLYER_FOLDER_ROWS_TABLE, 'DELETE', null, `unique_id=eq.${encodeURIComponent(uid)}`);
+                    showToast('Removed', 'Row removed from Flyer folder.');
+                } catch (error) {
+                    cacheFlyerFolderRow(item);
+                    showToast('Sync Warning', 'Supabase did not confirm the removal yet.', true);
+                }
+                return false;
+            }
             const wasFlyerAssignment = String(item.APP_TAB_ASSIGNMENT || '').toLowerCase() === 'flyer';
             item.FLYER_TITLE = '';
             item.flyer_title = '';
@@ -32061,7 +32396,7 @@ function toggleDriveQuickRequestItem(domId) {
             buildSearchIndex(item);
             syncRowDataAcrossViews(item);
             closeAllFlyerSwipes();
-            const remainingItems = fullInventory.filter((entry) => entry && entry.UNIQUE_ID !== uid && doesItemMatchFlyerFolder(entry, folderName, folderTab));
+            const remainingItems = getAllFlyerTaskItems().filter((entry) => entry && entry.UNIQUE_ID !== uid && doesItemMatchFlyerFolder(entry, folderName, folderTab));
             if (!remainingItems.length && taskViewLevel === 1 && selectedFlyerFolder === folderName) {
                 taskViewLevel = 0;
                 selectedFlyerFolder = null;
@@ -36454,13 +36789,15 @@ ${folderNote ? `Folder Note: ${folderNote}
                 getDatasetLoadSignature('master'),
                 getDatasetLoadSignature('requests'),
                 getDatasetLoadSignature('salesOffice'),
+                safeView === 'flyer' ? getDatasetLoadSignature('flyerRows') : 'flyerRows:na',
                 safeView,
                 keepCompletedInTaskTab ? '1' : '0',
                 useSharedQueue ? '1' : '0',
                 safeRole,
                 currentUser || '',
                 owner,
-                Array.isArray(fullInventory) ? fullInventory.length : 0
+                Array.isArray(fullInventory) ? fullInventory.length : 0,
+                safeView === 'flyer' && Array.isArray(flyerFolderInventory) ? flyerFolderInventory.length : 0
             ].join('|');
             if (taskScopedQueueItemsCache.has(cacheKey)) {
                 const cachedItems = taskScopedQueueItemsCache.get(cacheKey) || [];
@@ -36469,9 +36806,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 incrementInternalPerfCounter('taskScopedQueueCacheHits');
                 return cachedItems.slice();
             }
-            const baseItems = keepCompletedInTaskTab
-                ? (Array.isArray(fullInventory) ? fullInventory.slice() : [])
-                : (Array.isArray(fullInventory) ? fullInventory.filter((item) => !hasCompletionDateValue(item) && !isOptimisticallyCompletedRow(item)) : []);
+            const baseItems = safeView === 'flyer'
+                ? getAllFlyerTaskItems()
+                : (keepCompletedInTaskTab
+                    ? (Array.isArray(fullInventory) ? fullInventory.slice() : [])
+                    : (Array.isArray(fullInventory) ? fullInventory.filter((item) => !hasCompletionDateValue(item) && !isOptimisticallyCompletedRow(item)) : []));
             let nextItems = [];
             if (useSharedQueue) {
                 nextItems = safeView === 'flyer' ? baseItems.filter((item) => isFlyerTaskItem(item)) : baseItems;
@@ -37856,6 +38195,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 : '';
             const hotPriceSignature = isTaskHotPriceSubview(safeTab, safeSubview) ? getDatasetLoadSignature('avHotPriceKeys') : 'avHotPriceKeys:na';
             const cavSignature = safeTab === 'av-blanks' ? getDatasetLoadSignature('cav') : 'cav:na';
+            const flyerRowsSignature = safeTab === 'flyer' ? getDatasetLoadSignature('flyerRows') : 'flyerRows:na';
             const cacheKey = [
                 resolvedViewStateEpoch,
                 getDatasetLoadSignature('master'),
@@ -37863,6 +38203,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 getDatasetLoadSignature('salesOffice'),
                 cavSignature,
                 hotPriceSignature,
+                flyerRowsSignature,
                 safeRole,
                 currentUser || '',
                 safeTargetUser,
@@ -39012,9 +39353,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                 }
 
+                const isFlyerFolderRowSave = prefix === 'flyer-' && isFlyerFolderRow(itemToSave);
                 const canPersistFlyerShadow = prefix === 'flyer-' && String(itemToSave.SOURCE_TABLE || 'v2_master_inventory') === 'v2_master_inventory'
                     ? await ensureFlyerShadowColumnsReady().catch(() => false)
                     : false;
+                const canPersistFlyerSnapshot = canPersistFlyerShadow || isFlyerFolderRowSave;
                 const trackedStateAfterSave = captureTrackedAvState(itemToSave);
                 const trackedChangeFlags = getTrackedAvChangeFlags(trackedStateBeforeSave, trackedStateAfterSave, saveOptions);
                 const setVal = (val) => (val === '' || val === undefined) ? null : val;
@@ -39175,14 +39518,29 @@ ${folderNote ? `Folder Note: ${folderNote}
                     payload.av_note = setVal(itemToSave.AV_NOTE);
                     payload.spec = setVal(itemToSave.SPEC);
                     payload.caliper = setVal(itemToSave.CALIPER);
-                    payload.pic_note = setVal(itemToSave.PICK);
+                    if (isFlyerFolderRowSave) payload.pick = setVal(itemToSave.PICK);
+                    else payload.pic_note = setVal(itemToSave.PICK);
                     payload.assignedto = setVal(itemToSave.ASSIGNEDTO);
                     payload.flyer_cat = setVal(itemToSave.FLYER_CAT);
                     payload.flyer_title = setVal(itemToSave.FLYER_TITLE);
                     payload.flyer_inst = setVal(itemToSave.FLYER_INST);
                     payload.flyer_assigned = setVal(itemToSave.FLYER_ASSIGNED);
                     payload.flyer_notes = setVal(itemToSave.FLYER_NOTES);
-                    if (canPersistFlyerShadow) {
+                    if (isFlyerFolderRowSave) {
+                        const nextSnapshot = Object.assign({}, normalizeFlyerFolderSnapshot(itemToSave.SNAPSHOT), {
+                            AV_NOTE: String(firstNonEmptyValue(itemToSave.FLYER_AV_NOTE, itemToSave.AV_NOTE, '') || '').trim(),
+                            MATCH: firstNonEmptyValue(itemToSave.FLYER_MATCH, itemToSave.MATCH, ''),
+                            LOC_MATCH_QTY: firstNonEmptyValue(itemToSave.FLYER_LOC_MATCH_QTY, itemToSave.LOC_MATCH_QTY, ''),
+                            SPEC: String(firstNonEmptyValue(itemToSave.FLYER_SPEC, itemToSave.SPEC, '') || '').trim(),
+                            CALIPER: String(firstNonEmptyValue(itemToSave.FLYER_CALIPER, itemToSave.CALIPER, '') || '').trim(),
+                            PICK: String(firstNonEmptyValue(itemToSave.FLYER_PICK, itemToSave.PICK, '') || '').trim(),
+                            PHOTO_LINK: String(firstNonEmptyValue(itemToSave.FLYER_PHOTO_LINK, '') || '').trim(),
+                            PHOTO_NAME: String(firstNonEmptyValue(itemToSave.FLYER_PHOTO_NAME, '') || '').trim()
+                        });
+                        itemToSave.SNAPSHOT = nextSnapshot;
+                        payload.snapshot = nextSnapshot;
+                    }
+                    if (canPersistFlyerSnapshot) {
                         payload.flyer_av_note = setVal(itemToSave.FLYER_AV_NOTE);
                         payload.flyer_match = (itemToSave.FLYER_MATCH === '' || itemToSave.FLYER_MATCH == null) ? null : parseFloat(itemToSave.FLYER_MATCH);
                         payload.flyer_spec = setVal(itemToSave.FLYER_SPEC);
@@ -39203,7 +39561,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         if (prefix === 'flyer-') {
                             itemToSave.FLYER_INITIAL_PTR = '';
                             itemToSave.FLYER_LOC_MATCH_QTY = '';
-                            if (canPersistFlyerShadow) {
+                            if (canPersistFlyerSnapshot) {
                                 payload.flyer_initial_ptr = null;
                                 payload.flyer_loc_match_qty = null;
                             }
@@ -39216,12 +39574,17 @@ ${folderNote ? `Folder Note: ${folderNote}
                         if (prefix === 'flyer-') {
                             itemToSave.FLYER_INITIAL_PTR = baselinePtr;
                             itemToSave.FLYER_LOC_MATCH_QTY = derivedMatchQty;
-                            if (canPersistFlyerShadow) {
+                            if (canPersistFlyerSnapshot) {
                                 payload.flyer_initial_ptr = baselinePtr;
                                 payload.flyer_loc_match_qty = derivedMatchQty;
                             }
                         }
                     }
+                }
+
+                if (isFlyerFolderRowSave && payload.snapshot) {
+                    payload.snapshot.INITIAL_PTR = firstNonEmptyValue(itemToSave.FLYER_INITIAL_PTR, itemToSave.INITIAL_PTR, '');
+                    payload.snapshot.LOC_MATCH_QTY = firstNonEmptyValue(itemToSave.FLYER_LOC_MATCH_QTY, itemToSave.LOC_MATCH_QTY, '');
                 }
 
                 if ((prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'flyer-') && String(itemToSave.SOURCE_TABLE || 'v2_master_inventory') === 'v2_master_inventory') {
@@ -39245,7 +39608,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const scopedPhotoFieldPairs = {
                         'req-': [['req_photo_link', 'REQ_PHOTO_LINK'], ['req_photo_name', 'REQ_PHOTO_NAME']],
                         'dock-': [['dock_photo_link', 'DOCK_PHOTO_LINK'], ['dock_photo_name', 'DOCK_PHOTO_NAME']],
-                        'flyer-': canPersistFlyerShadow ? [['flyer_photo_link', 'FLYER_PHOTO_LINK'], ['flyer_photo_name', 'FLYER_PHOTO_NAME']] : []
+                        'flyer-': canPersistFlyerSnapshot ? [['flyer_photo_link', 'FLYER_PHOTO_LINK'], ['flyer_photo_name', 'FLYER_PHOTO_NAME']] : []
                     };
                     const fieldPairs = scopedPhotoFieldPairs[prefix] || allPhotoFieldPairs;
                     const shouldClearEmptyScopedPhotoFields = !!saveOptions.photoChanged;
@@ -39260,6 +39623,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
                 if (isComplete) {
                     payload.date_completed = new Date().toISOString();
+                    if (isFlyerFolderRowSave) payload.flyer_completed = payload.date_completed;
                 }
 
                 const buildCompletionArtifacts = () => {
