@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-  window.__APP_SHELL_VERSION__ = 'V2026.05.04.12';
+  window.__APP_SHELL_VERSION__ = 'V2026.05.04.13';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.04.12').trim() || 'V2026.05.04.12';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.04.13').trim() || 'V2026.05.04.13';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1565,7 +1565,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.04.12';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.04.13';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2638,9 +2638,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = 90000;
             }
             const entries = Array.from(pendingAppLiveEventWrites.values());
             pendingAppLiveEventWrites.clear();
-            entries.forEach((entry) => {
-                postAppLiveEvent(entry).catch(() => {});
-            });
+            return Promise.allSettled(entries.map((entry) => postAppLiveEvent(entry)));
         }
 
         function resolveRealtimeContextViewId(viewId = '') {
@@ -5446,6 +5444,21 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function queueAppLiveEventRefresh(eventRow = null) {
             const event = normalizeAppLiveEventRow(eventRow);
             if (!event || !event.sourceTable) return false;
+            if (event.sourceTable === 'v2_active_request' && currentUser && canAccessView('request') && navigator.onLine !== false && !document.hidden) {
+                const method = String((event.payload && event.payload.method) || event.eventType.split(':').pop() || '').trim().toUpperCase();
+                const entry = {
+                    sourceTable: event.sourceTable,
+                    area: event.area,
+                    methods: new Set(method ? [method] : []),
+                    rowIds: new Set(event.rowIds || []),
+                    bulk: !event.rowIds.length,
+                    lastEvent: event
+                };
+                applyAppLiveEventTargetedRefresh(entry).catch((error) => {
+                    console.warn('Request live event refresh failed', error);
+                });
+                return true;
+            }
             const key = event.sourceTable;
             const existing = pendingAppLiveEventRefreshes.get(key) || {
                 sourceTable: event.sourceTable,
@@ -5501,9 +5514,51 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return getAppLiveEventDatasetKeys(tableName).some((key) => isDatasetLoaded(key, 'initial'));
         }
 
+        async function applyRequestAppLiveEventRefresh(entry = null) {
+            if (!entry || !currentUser || !canAccessView('request') || navigator.onLine === false) return false;
+            const rowIds = normalizeAppLiveEventRowIds(Array.from(entry.rowIds || []));
+            const methods = Array.from(entry.methods || []).map((value) => String(value || '').trim().toUpperCase()).filter(Boolean);
+            const isDelete = methods.includes('DELETE');
+            const isBulk = !!entry.bulk || !rowIds.length;
+            markAppLiveEventDatasetsDirty('v2_active_request', entry.lastEvent);
+            if (isDelete) {
+                rowIds.forEach((id) => applyRealtimeChange('v2_active_request', { eventType: 'DELETE', old: { unique_id: id, UNIQUE_ID: id } }, true));
+                queueRealtimeDatasetFlush(['v2_active_request'], 0);
+                touchSyncTimestamp();
+                return true;
+            }
+            if (isBulk) {
+                if (isViewVisible('request') || isViewVisible('reports')) {
+                    forceRefreshRequestsForView('request-live-bulk', { force: true, minIntervalMs: 0 }).catch(() => {});
+                }
+                return true;
+            }
+            const rows = await fetchAppLiveEventRowsByIds('v2_active_request', rowIds);
+            if (!rows.length) {
+                if (isViewVisible('request') || isViewVisible('reports')) {
+                    forceRefreshRequestsForView('request-live-miss', { force: true, minIntervalMs: 0 }).catch(() => {});
+                    return true;
+                }
+                return false;
+            }
+            rows.forEach((row) => {
+                applyRealtimeChange('v2_active_request', { eventType: 'UPDATE', new: row }, true);
+            });
+            requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+            markViewDirty('request');
+            markViewDirty('reports');
+            queueRealtimeDatasetFlush(['v2_active_request'], 0);
+            if (isViewVisible('request')) queueInteractiveViewRender('request', false, true, 0, REQUEST_REALTIME_UI_DELAY_MS);
+            if (isViewVisible('reports')) queueInteractiveViewRender('reports', false, true, 0, 160);
+            persistCurrentCache(false, 'request-live-event');
+            touchSyncTimestamp();
+            return true;
+        }
+
         async function applyAppLiveEventTargetedRefresh(entry = null) {
             if (!entry || !entry.sourceTable) return false;
             const sourceTable = String(entry.sourceTable || '').trim();
+            if (sourceTable === 'v2_active_request') return applyRequestAppLiveEventRefresh(entry);
             const rowIds = normalizeAppLiveEventRowIds(Array.from(entry.rowIds || []));
             const methods = Array.from(entry.methods || []).map((value) => String(value || '').trim().toUpperCase()).filter(Boolean);
             const isDelete = methods.includes('DELETE');
@@ -9748,7 +9803,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.04.12').trim() || 'V2026.05.04.12';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.04.13').trim() || 'V2026.05.04.13';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -33635,7 +33690,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const savedRequestIds = optimisticIds.filter(id => savedIdSet.has(id));
                 if (savedRequestIds.length) {
                     queueAppLiveEventForWrite('v2_active_request', 'POST', savedRequestIds.map((id) => ({ unique_id: id })), '');
-                    flushQueuedAppLiveEvents();
+                    await flushQueuedAppLiveEvents();
                 }
                 const autoCompleteSavedIds = savedRequestIds.filter(id => autoCompleteRequestIds.has(id));
                 const autoCompleteSavedIdSet = new Set(autoCompleteSavedIds);
