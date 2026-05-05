@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.05.01';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.05.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.05.01').trim() || 'V2026.05.05.01';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.05.02').trim() || 'V2026.05.05.02';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1566,7 +1566,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.05.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.05.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9836,7 +9836,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.05.01').trim() || 'V2026.05.05.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.05.02').trim() || 'V2026.05.05.02';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -27874,13 +27874,15 @@ function toggleDriveQuickRequestItem(domId) {
         function normalizeDriveCustomerOutreachItemCodeValue(value = '') {
             const text = String(value || '').trim().toUpperCase();
             if (!text) return '';
-            return text.replace(/^0+(?=\d)/, '');
+            return text.replace(/^0+(?=\d)/, '').replace(/[^A-Z0-9]+/g, '');
         }
 
         function getDriveCustomerOutreachItemCodeVariants(item = activeItem) {
             const raw = getDriveCustomerOutreachItemCode(item);
             const normalized = normalizeDriveCustomerOutreachItemCodeValue(raw);
-            return [...new Set([raw, normalized].map((value) => String(value || '').trim()).filter(Boolean))];
+            const noLeadingZeros = String(raw || '').trim().toUpperCase().replace(/^0+(?=\d)/, '');
+            const compact = String(raw || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '');
+            return [...new Set([raw, noLeadingZeros, compact, normalized].map((value) => String(value || '').trim()).filter(Boolean))];
         }
 
         function isDriveCustomerOutreachSameItemCode(row = null, item = activeItem) {
@@ -27919,7 +27921,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getLocalDriveCustomerOutreachReserveRows(item = activeItem) {
             if (!item || !Array.isArray(reservesInventory)) return [];
-            return reservesInventory.filter((row) => isDriveCustomerOutreachSameItemSeason(row, item));
+            return reservesInventory.filter((row) => isDriveCustomerOutreachSameItemCode(row, item));
         }
 
         function preferDriveCustomerOutreachSeasonRows(rows = [], item = activeItem) {
@@ -27927,7 +27929,7 @@ function toggleDriveQuickRequestItem(domId) {
             const targetSeason = getDriveCustomerOutreachNormalizedSeason(item);
             if (!targetSeason) return itemRows;
             const seasonRows = itemRows.filter((row) => isDriveCustomerOutreachSameSeason(row, item));
-            return seasonRows;
+            return seasonRows.length ? seasonRows : itemRows;
         }
 
         function isDriveCustomerOutreachSeasonFallback(rows = [], item = activeItem) {
@@ -27964,12 +27966,10 @@ function toggleDriveQuickRequestItem(domId) {
             const itemCodes = getDriveCustomerOutreachItemCodeVariants(item);
             if (!itemCodes.length) return '';
             const conditions = itemCodes.map((itemCode) => `itemcode.eq.${encodeURIComponent(itemCode)}`);
-            const season = getDriveCustomerOutreachNormalizedSeason(item);
-            const seasonParam = season ? `&season=ilike.${encodeURIComponent(season)}` : '';
             const itemCodeQuery = conditions.length === 1
                 ? `select=*&itemcode=eq.${encodeURIComponent(itemCodes[0])}`
                 : `select=*&or=(${conditions.join(',')})`;
-            return `${itemCodeQuery}${seasonParam}`;
+            return itemCodeQuery;
         }
 
         async function loadDriveCustomerOutreachReserveRows(item = activeItem, force = false) {
@@ -28113,6 +28113,7 @@ function toggleDriveQuickRequestItem(domId) {
             const renderOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const loadedReserveRows = renderOptions.skipEnsure ? getDriveCustomerOutreachReserveRows(item) : ensureDriveCustomerOutreachReserveRows(item);
             const reserveRows = preferDriveCustomerOutreachSeasonRows(loadedReserveRows, item);
+            const reserveSeasonFallback = isDriveCustomerOutreachSeasonFallback(loadedReserveRows, item);
             const sourceSeasonFallback = isDriveCustomerOutreachSeasonFallback(fullInventory.filter((row) => hasDriveCustomerOutreachPhotoSpec(row)), item);
             const cards = getDriveCustomerOutreachCustomerCards(item);
             const sourceRows = getDriveCustomerOutreachSourceRows(item);
@@ -28125,7 +28126,9 @@ function toggleDriveQuickRequestItem(domId) {
             const sourceLabel = getCustomerConsigneeOutreachSourceLabel(activeDetailSourceView || lastView || '', item);
             const canSendAllSalesReps = canSendCustomerConsigneeOutreachToAllSalesReps(item, activeDetailSourceView || lastView || '');
             const allSalesRepCount = canSendAllSalesReps ? getAllSalesRepOutreachRecipientEmails().length : 0;
-            const scopeNote = 'Matched by itemcode and season.';
+            const scopeNote = reserveSeasonFallback
+                ? 'Matched by itemcode from v2_reserves; no exact reserve season match was found.'
+                : 'Matched by itemcode and season from v2_reserves.';
             const sourceScopeNote = sourceSeasonFallback ? '<div class="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-bold text-amber-700">Rows exist for this itemcode, but no exact season photo/spec rows matched.</div>' : '';
             const loadingHtml = driveCustomerOutreachReserveRowsLoading
                 ? '<div class="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-sky-700">Loading v2_reserves...</div>'
@@ -28137,7 +28140,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const checked = driveCustomerOutreachSelectedCustomerKeys.has(card.key) ? 'checked' : '';
                 const qtyLabel = card.qty ? `Qty ${card.qty}` : `${card.rows.length} row${card.rows.length === 1 ? '' : 's'}`;
                 return `<label class="flex items-start gap-3 rounded-xl border border-emerald-100 bg-white px-3 py-3 shadow-sm"><input type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-emerald-600" ${checked} onclick='event.stopPropagation(); return toggleDriveCustomerOutreachCustomer(${JSON.stringify(card.key)})'><span class="min-w-0 flex-1"><span class="block break-words text-[12px] font-black text-slate-800">${esc(card.label)}</span><span class="mt-1 block text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${esc(card.repName)} &bull; ${esc(qtyLabel)}</span></span></label>`;
-            }).join('') : '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[11px] font-bold text-slate-400">No customer / consignee rows found in v2_reserves for this itemcode and season.</div>';
+            }).join('') : '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[11px] font-bold text-slate-400">No customer / consignee rows found in v2_reserves for this itemcode.</div>';
             const sourceHtml = sourceRows.length ? sourceRows.map((row) => {
                 const rowId = getDriveCustomerOutreachRowId(row);
                 const checked = driveCustomerOutreachSelectedSourceRowIds.has(rowId) ? 'checked' : '';
