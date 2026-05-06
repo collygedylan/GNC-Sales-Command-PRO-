@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.06.09';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.06.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -37,6 +37,7 @@ body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-h
         .footer-nav-btn:active{transform:scale(.97)}
         .footer-nav-btn.active,.footer-nav-btn.menu-open{color:#007a4d;background:#ecfdf5;border-color:#a7f3d0;box-shadow:0 6px 16px rgba(7,94,63,.12)}
         .footer-nav-badge{position:absolute;top:3px;right:8px;min-width:18px;height:18px;padding:0 4px;background:#ef4444;color:#fff;font-size:10px;font-weight:900;border-radius:999px;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+        button,a,[role="button"],[onclick],label,.excel-filter-option,.footer-nav-btn,.amazon-inline-back,.app-card-bottom-btn,.request-swipe-action{touch-action:manipulation;-webkit-tap-highlight-color:rgba(0,0,0,0)}
         #chat-content{max-width:100%;min-width:0;overflow:hidden}
         .chat-thread-shell{height:clamp(260px,calc(var(--visual-height) - var(--footer-nav-reserve) - 11.5rem),720px);min-height:0;display:flex;flex-direction:column;overflow:hidden;background:#f7f7f9}
         .chat-message-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-gutter:stable;padding:14px 12px 10px;display:flex;flex-direction:column;gap:6px;background:#f7f7f9}
@@ -1054,7 +1055,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.09').trim() || 'V2026.05.06.09';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.10').trim() || 'V2026.05.06.10';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1653,7 +1654,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7201,6 +7202,47 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return !!(interactiveAncestor && interactiveAncestor !== currentTarget && currentTarget.contains(interactiveAncestor));
         }
 
+        function shouldUseTouchFastPressFallback() {
+            return !(window.PointerEvent && typeof window.PointerEvent === 'function');
+        }
+
+        function normalizeTouchFastPressEvent(event = null) {
+            const touch = event && event.changedTouches && event.changedTouches[0]
+                ? event.changedTouches[0]
+                : (event && event.touches && event.touches[0] ? event.touches[0] : null);
+            return {
+                button: 0,
+                pointerId: -7,
+                pointerType: 'touch',
+                clientX: touch && Number.isFinite(touch.clientX) ? touch.clientX : 0,
+                clientY: touch && Number.isFinite(touch.clientY) ? touch.clientY : 0,
+                currentTarget: event && event.currentTarget ? event.currentTarget : null,
+                target: event && event.target ? event.target : null,
+                preventDefault: () => { if (event && typeof event.preventDefault === 'function') event.preventDefault(); },
+                stopPropagation: () => { if (event && typeof event.stopPropagation === 'function') event.stopPropagation(); }
+            };
+        }
+
+        function beginTouchFastPress(event, actionType = '', actionName = '', encodedArgs = '') {
+            if (!shouldUseTouchFastPressFallback()) return true;
+            return beginFastPress(normalizeTouchFastPressEvent(event), actionType, actionName, encodedArgs);
+        }
+
+        function trackTouchFastPressMove(event) {
+            if (!shouldUseTouchFastPressFallback()) return true;
+            return trackFastPressMove(normalizeTouchFastPressEvent(event));
+        }
+
+        function cancelTouchFastPress(event) {
+            if (!shouldUseTouchFastPressFallback()) return true;
+            return cancelFastPress(normalizeTouchFastPressEvent(event));
+        }
+
+        function finishTouchFastPress(event, actionType = '', actionName = '', encodedArgs = '') {
+            if (!shouldUseTouchFastPressFallback()) return true;
+            return finishFastPress(normalizeTouchFastPressEvent(event), actionType, actionName, encodedArgs);
+        }
+
         function clearActiveFastPress(pointerId = null) {
             if (!activeFastPress) return;
             if (pointerId !== null && pointerId !== undefined && activeFastPress.pointerId !== null && activeFastPress.pointerId !== pointerId) return;
@@ -7333,7 +7375,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const safeActionName = esc(actionName);
             const safeEncodedArgs = esc(encodeFastPressArgs(args));
             const safeLabel = esc(label);
-            return `role="button" tabindex="0" aria-label="${safeLabel}" onpointerdown="return beginFastPress(event, '${safeActionType}', '${safeActionName}', '${safeEncodedArgs}')" onpointermove="return trackFastPressMove(event)" onpointercancel="return cancelFastPress(event)" onpointerleave="return cancelFastPress(event)" onpointerup="return finishFastPress(event, '${safeActionType}', '${safeActionName}', '${safeEncodedArgs}')" onclick="return handleFastPressClick(event, '${safeActionType}', '${safeActionName}', '${safeEncodedArgs}')" onkeydown="return handleFastPressKeydown(event, '${safeActionType}', '${safeActionName}', '${safeEncodedArgs}')"`;
+            return `role="button" tabindex="0" aria-label="${safeLabel}" onpointerdown="return beginFastPress(event, '${safeActionType}', '${safeActionName}', '${safeEncodedArgs}')" onpointermove="return trackFastPressMove(event)" onpointercancel="return cancelFastPress(event)" onpointerleave="return cancelFastPress(event)" onpointerup="return finishFastPress(event, '${safeActionType}', '${safeActionName}', '${safeEncodedArgs}')" ontouchstart="return beginTouchFastPress(event, '${safeActionType}', '${safeActionName}', '${safeEncodedArgs}')" ontouchmove="return trackTouchFastPressMove(event)" ontouchcancel="return cancelTouchFastPress(event)" ontouchend="return finishTouchFastPress(event, '${safeActionType}', '${safeActionName}', '${safeEncodedArgs}')" onclick="return handleFastPressClick(event, '${safeActionType}', '${safeActionName}', '${safeEncodedArgs}')" onkeydown="return handleFastPressKeydown(event, '${safeActionType}', '${safeActionName}', '${safeEncodedArgs}')"`;
         }
 
         function buildCardActivationAttrs(domId = '', uniqueId = '', sourceView = '', label = 'Open item') {
@@ -7371,6 +7413,30 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const config = getFastPressBindingConfigFromElement(event.currentTarget);
             if (!config) return;
             const handled = finishFastPress(event, config.actionType, config.actionName, config.encodedArgs);
+            if (handled === false) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        }
+
+        function handleBoundFastPressTouchStart(event) {
+            const config = getFastPressBindingConfigFromElement(event.currentTarget);
+            if (!config) return;
+            beginTouchFastPress(event, config.actionType, config.actionName, config.encodedArgs);
+        }
+
+        function handleBoundFastPressTouchMove(event) {
+            trackTouchFastPressMove(event);
+        }
+
+        function handleBoundFastPressTouchCancel(event) {
+            cancelTouchFastPress(event);
+        }
+
+        function handleBoundFastPressTouchEnd(event) {
+            const config = getFastPressBindingConfigFromElement(event.currentTarget);
+            if (!config) return;
+            const handled = finishTouchFastPress(event, config.actionType, config.actionName, config.encodedArgs);
             if (handled === false) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -7419,6 +7485,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             element.addEventListener('pointercancel', handleBoundFastPressPointerCancel);
             element.addEventListener('pointerleave', handleBoundFastPressPointerCancel);
             element.addEventListener('pointerup', handleBoundFastPressPointerUp);
+            if (shouldUseTouchFastPressFallback()) {
+                element.addEventListener('touchstart', handleBoundFastPressTouchStart, { passive: true });
+                element.addEventListener('touchmove', handleBoundFastPressTouchMove, { passive: true });
+                element.addEventListener('touchcancel', handleBoundFastPressTouchCancel, { passive: true });
+                element.addEventListener('touchend', handleBoundFastPressTouchEnd, { passive: false });
+            }
             element.addEventListener('click', handleBoundFastPressClick);
             element.addEventListener('keydown', handleBoundFastPressKeydown);
             return true;
@@ -10022,7 +10094,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.09').trim() || 'V2026.05.06.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.10').trim() || 'V2026.05.06.10';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -10402,7 +10474,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const currentView = getCurrentVisibleViewId();
             const meta = AMAZON_HEADER_META[currentView] || { title: formatGlobalHeaderTitle(currentView) };
             const resolvedTitle = meta.title || formatGlobalHeaderTitle(currentView);
-            const showHomeBack = currentView === 'home' && shouldShowHomeProductivityBackButton();
+            const showHomeBack = currentView === 'home' && (shouldShowHomeProductivityBackButton() || cartPanelOpen || bloomShareMenuOpen);
             const searchContainerId = currentView === 'tasks'
                 ? (shouldShowTaskHeaderSearch() ? GLOBAL_HEADER_SEARCH_CONFIG.tasks : '')
                 : GLOBAL_HEADER_SEARCH_CONFIG[currentView];
@@ -10420,6 +10492,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     currentView,
                     resolvedTitle,
                     showHomeBack ? 'home-back' : 'no-home-back',
+                    cartPanelOpen ? 'cart-open' : 'cart-closed',
+                    bloomShareMenuOpen ? 'share-open' : 'share-closed',
                     searchContainerId || 'no-search',
                     searchVisible ? 'search-visible' : 'search-hidden',
                     currentUserDisplay || currentUser || 'User',
@@ -22129,9 +22203,59 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
+        function hasOpenInteractiveSurfaceForBack() {
+            const currentView = getCurrentVisibleViewId();
+            if (bloomShareMenuOpen || cartPanelOpen || driveQuickFiltersModalOpen || isDrawerOpen()) return true;
+            if (currentView === 'tasks') return !!(taskTabDropdownOpen || taskSubviewDropdownOpen || taskReserveCustomerDropdownOpen || taskGenusFilterOpen || taskContSizeDropdownOpen);
+            if (currentView === 'drive') return !!(driveViewDropdownOpen || driveSeasonDropdownOpen || driveGenusFilterOpen || driveContSizeFilterOpen);
+            if (currentView === 'av') return !!(avSeasonDropdownOpen || avGenusFilterOpen || avContSizeFilterOpen);
+            if (currentView === 'docks') return !!(dockGenusFilterOpen || dockContSizeFilterOpen || dockLocationFilterOpen);
+            return false;
+        }
+
+        function closeOpenInteractiveSurfaceForBack() {
+            const currentView = getCurrentVisibleViewId();
+            if (bloomShareMenuOpen) {
+                closeBloomShareMenu();
+                updateGlobalBackButton();
+                syncGlobalHeaderChrome({ reason: 'back:share', force: true });
+                return true;
+            }
+            if (cartPanelOpen) {
+                toggleCartPanel(false);
+                updateGlobalBackButton();
+                syncGlobalHeaderChrome({ reason: 'back:cart', force: true });
+                return true;
+            }
+            if (driveQuickFiltersModalOpen) {
+                closeDriveQuickFiltersModal();
+                return true;
+            }
+            if (currentView === 'tasks' && (taskTabDropdownOpen || taskSubviewDropdownOpen || taskReserveCustomerDropdownOpen || taskGenusFilterOpen || taskContSizeDropdownOpen)) {
+                if (taskGenusFilterOpen) closeTaskGenusDropdown();
+                if (taskContSizeDropdownOpen) closeTaskContSizeDropdown();
+                closeTaskDropdowns(true);
+                return true;
+            }
+            if (currentView === 'drive' && (driveViewDropdownOpen || driveSeasonDropdownOpen || driveGenusFilterOpen || driveContSizeFilterOpen)) {
+                closeDriveTopControlDropdowns(true);
+                return true;
+            }
+            if (currentView === 'av' && (avSeasonDropdownOpen || avGenusFilterOpen || avContSizeFilterOpen)) {
+                closeAvTopControlDropdowns(true);
+                return true;
+            }
+            if (currentView === 'docks' && (dockGenusFilterOpen || dockContSizeFilterOpen || dockLocationFilterOpen)) {
+                closeDockFilterDropdown('');
+                return true;
+            }
+            return false;
+        }
+
         function hasInAppBackDestination() {
             const currentView = getCurrentVisibleViewId();
             if (!currentView) return false;
+            if (hasOpenInteractiveSurfaceForBack()) return true;
             if (isDrawerOpen()) return true;
             if (currentView === 'home') return shouldShowHomeProductivityBackButton();
             if (currentView === 'detail') return true;
@@ -22183,10 +22307,16 @@ function toggleDriveQuickRequestItem(domId) {
 
         function updateGlobalBackButton() {
             const backBtn = document.getElementById('global-back-btn');
-            if (!backBtn) return;
+            const inlineBackBtn = document.getElementById('global-header-inline-back');
             const currentView = getCurrentVisibleViewId();
-            const showBack = currentView === 'detail' || currentView !== 'home' || (currentView === 'home' && shouldShowHomeProductivityBackButton());
-            backBtn.classList.toggle('hidden', !showBack);
+            const showBack = currentView === 'detail'
+                || currentView !== 'home'
+                || (currentView === 'home' && (shouldShowHomeProductivityBackButton() || cartPanelOpen || bloomShareMenuOpen));
+            if (backBtn) backBtn.classList.toggle('hidden', !showBack);
+            if (inlineBackBtn) {
+                inlineBackBtn.classList.toggle('hidden', !showBack);
+                inlineBackBtn.setAttribute('aria-hidden', showBack ? 'false' : 'true');
+            }
         }
 
         function updateFooterNavState() {
@@ -22386,6 +22516,12 @@ function toggleDriveQuickRequestItem(domId) {
         }
         function goBackUniversal() {
             const currentView = getCurrentVisibleViewId();
+            if (isDrawerOpen()) {
+                setMenuOpenState(false);
+                updateGlobalBackButton();
+                return false;
+            }
+            if (closeOpenInteractiveSurfaceForBack()) return false;
             if (currentView === 'home' && shouldShowHomeProductivityBackButton()) {
                 backToProductivityUserList();
                 return false;
@@ -27578,7 +27714,27 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function refreshCartButtons() {
-            return;
+            const rows = document.querySelectorAll('[data-dom-id]');
+            rows.forEach((row) => {
+                const domId = String(row && row.dataset && row.dataset.domId || '').trim();
+                if (!domId) return;
+                const isSelected = selectedItems.has(domId);
+                row.classList.toggle('cart-selected', isSelected);
+                row.querySelectorAll('.card-checkbox').forEach((input) => {
+                    if (input && typeof input.checked === 'boolean') input.checked = isSelected;
+                });
+            });
+            document.querySelectorAll('[data-cart-dom-id]').forEach((button) => {
+                const domId = String(button && button.dataset && button.dataset.cartDomId || '').trim();
+                if (!domId) return;
+                const isSelected = selectedItems.has(domId);
+                button.classList.toggle('app-card-bottom-btn--secondary', isSelected);
+                button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+                const icon = button.querySelector('i');
+                if (icon) icon.className = `ph-bold ${isSelected ? 'ph-check' : 'ph-package'} text-base`;
+                const label = button.querySelector('[data-cart-label]');
+                if (label) label.textContent = isSelected ? 'Open Bloom Picker' : 'Add To Bloom Picker';
+            });
         }
 
         function handleCartTogglePress(event, domId) {
@@ -27604,7 +27760,7 @@ function toggleDriveQuickRequestItem(domId) {
             const item = findItemByDomId(safeDomId);
             if (getRoleAccessState().isForeman && !canAddItemToBloomPicker(item)) return '';
             const inBag = selectedItems.has(safeDomId);
-            return `<div class="app-card-bottom-rail" onclick="event.stopPropagation();"><button type="button" class="app-card-bottom-btn ${inBag ? 'app-card-bottom-btn--secondary' : ''}" onclick="return handleInventoryCardBottomCartAction(event, '${esc(safeDomId)}')"><i class="ph-bold ${inBag ? 'ph-check' : 'ph-package'} text-base"></i>${inBag ? 'Open Bloom Picker' : 'Add To Bloom Picker'}</button></div>`;
+            return `<div class="app-card-bottom-rail" data-cart-rail="${esc(safeDomId)}" onclick="event.stopPropagation();"><button type="button" class="app-card-bottom-btn ${inBag ? 'app-card-bottom-btn--secondary' : ''}" data-cart-dom-id="${esc(safeDomId)}" aria-pressed="${inBag ? 'true' : 'false'}" onclick="return handleInventoryCardBottomCartAction(event, '${esc(safeDomId)}')"><i class="ph-bold ${inBag ? 'ph-check' : 'ph-package'} text-base"></i><span data-cart-label>${inBag ? 'Open Bloom Picker' : 'Add To Bloom Picker'}</span></button></div>`;
         }
 
         function handleInventoryCardBottomCartAction(event, domId) {
@@ -27856,6 +28012,7 @@ function toggleDriveQuickRequestItem(domId) {
             const hasItemNow = selectedItems.has(domId);
             if(!selectedItems.size)cartPanelOpen=false;
             updateGlobalActionBar();
+            refreshCartButtons();
             if(!hadItem && hasItemNow){
                 showToast('Added To Bloom Picker', `${selectedItems.size} row${selectedItems.size === 1 ? '' : 's'} in Bloom Picker.`);
             } else if(hadItem && !hasItemNow){
@@ -32930,6 +33087,7 @@ function toggleDriveQuickRequestItem(domId) {
             if(bar)bar.classList.toggle('hidden', !hasItems||!cartPanelOpen);
             syncBloomShareMenuUi(actionVisibility);
             updateFooterNavState();
+            syncGlobalHeaderChrome({ reason: 'selection', force: true });
         }
 
         function copyTextToClipboard(text,label) {
