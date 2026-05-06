@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.06.13';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.06.14';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1055,7 +1055,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.13').trim() || 'V2026.05.06.13';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.14').trim() || 'V2026.05.06.14';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1654,7 +1654,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.13';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.14';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10151,7 +10151,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.13').trim() || 'V2026.05.06.13';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.14').trim() || 'V2026.05.06.14';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -11127,6 +11127,66 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return nextItems;
         }
 
+        function getFullDatasetPageLimit(table = '') {
+            const normalizedTable = String(table || '').trim();
+            if (normalizedTable === 'v2_master_inventory') return (isIOSDevice() || isStandaloneApp()) ? 900 : 1000;
+            if (normalizedTable === 'v2_reserves') return (isIOSDevice() || isStandaloneApp()) ? 4000 : 5000;
+            return 1000;
+        }
+
+        function getFullDatasetPageConcurrency(table = '') {
+            const normalizedTable = String(table || '').trim();
+            if (normalizedTable === 'v2_master_inventory' || normalizedTable === 'v2_reserves') return 2;
+            return 1;
+        }
+
+        function parseSupabaseContentRangeTotal(response) {
+            try {
+                const header = response && response.headers && response.headers.get ? String(response.headers.get('content-range') || '').trim() : '';
+                const match = header.match(/\/(\d+|\*)$/);
+                if (!match || match[1] === '*') return null;
+                const total = Number(match[1]);
+                return Number.isFinite(total) && total >= 0 ? total : null;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        async function fetchSupabaseRowsPage(table, query = 'select=*', limit = 1000, offset = 0, options = {}) {
+            const safeLimit = Math.max(1, Number(limit) || 1000);
+            const safeOffset = Math.max(0, Number(offset) || 0);
+            const queryString = query ? `${query}&limit=${safeLimit}&offset=${safeOffset}` : `limit=${safeLimit}&offset=${safeOffset}`;
+            const url = `${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
+            const headers = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' };
+            if (options && options.count === true) headers.Prefer = 'count=exact';
+            const response = await fetchWithTimeout(url, { method: 'GET', headers }, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
+            if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
+            const text = await response.text();
+            const rows = text ? JSON.parse(text) : [];
+            return {
+                offset: safeOffset,
+                rows: Array.isArray(rows) ? rows : [],
+                total: parseSupabaseContentRangeTotal(response)
+            };
+        }
+
+        async function fetchSupabaseRowsPageBatch(table, query, limit, offsets, concurrency) {
+            const safeOffsets = Array.isArray(offsets) ? offsets : [];
+            const safeConcurrency = Math.max(1, Math.min(2, Number(concurrency) || 1));
+            const pages = new Array(safeOffsets.length);
+            let index = 0;
+            const workers = Array.from({ length: Math.min(safeConcurrency, safeOffsets.length) }, async () => {
+                while (index < safeOffsets.length) {
+                    const pageIndex = index;
+                    index += 1;
+                    pages[pageIndex] = await fetchSupabaseRowsPage(table, query, limit, safeOffsets[pageIndex]);
+                    await yieldToUiFrame();
+                }
+            });
+            await Promise.all(workers);
+            return pages.filter(Boolean).sort((a, b) => a.offset - b.offset);
+        }
+
         async function fetchAllSupabaseRows(table, query = 'select=*') {
             const readKey = `all:${String(table || '').trim()}:${String(query || '').trim()}`;
             return runDedupeSupabaseRead(readKey, async () => {
@@ -11134,29 +11194,63 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 try {
                 const fetchStartedAt = beginInternalPerfMeasure();
                 const allData = [];
-                let offset = 0;
                 let pageCount = 0;
-                const limit = table === 'v2_master_inventory'
-                    ? ((isIOSDevice() || isStandaloneApp()) ? 900 : 1000)
-                    : (table === 'v2_reserves'
-                        ? ((isIOSDevice() || isStandaloneApp()) ? 4000 : 5000)
-                        : 1000);
-                let hasMore = true;
-                while (hasMore) {
-                    const queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
-                    const url = `${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
-                    const response = await fetchWithTimeout(url, { method: 'GET', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' } }, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
-                    if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
-                    const text = await response.text();
-                    const data = text ? JSON.parse(text) : [];
-                    if (Array.isArray(data) && data.length > 0) {
-                        for (let dataIndex = 0; dataIndex < data.length; dataIndex += 1) allData.push(data[dataIndex]);
+                const requestedLimit = getFullDatasetPageLimit(table);
+                const pageConcurrency = getFullDatasetPageConcurrency(table);
+                const firstPage = await fetchSupabaseRowsPage(table, query, requestedLimit, 0);
+                const firstRows = firstPage.rows || [];
+                if (firstRows.length) {
+                    for (let dataIndex = 0; dataIndex < firstRows.length; dataIndex += 1) allData.push(firstRows[dataIndex]);
+                    pageCount += 1;
+                    await yieldToUiFrame();
+                }
+                if (!firstRows.length) {
+                    incrementInternalPerfCounter(`datasetFetchPages:${table}`, pageCount);
+                    recordInternalPerfDuration('datasetFetchDurations', fetchStartedAt, table);
+                    return allData;
+                }
+                const knownTotal = firstPage.total;
+                const detectedLimit = firstRows.length > 0 && firstRows.length < requestedLimit && ((knownTotal != null && knownTotal > firstRows.length) || firstRows.length >= 1000)
+                    ? firstRows.length
+                    : requestedLimit;
+                const limit = Math.max(1, detectedLimit);
+                if (knownTotal != null && knownTotal <= allData.length) {
+                    incrementInternalPerfCounter(`datasetFetchPages:${table}`, pageCount);
+                    recordInternalPerfDuration('datasetFetchDurations', fetchStartedAt, table);
+                    return allData;
+                }
+                if (knownTotal != null && knownTotal > allData.length) {
+                    const offsets = [];
+                    for (let nextOffset = limit; nextOffset < knownTotal; nextOffset += limit) offsets.push(nextOffset);
+                    const pages = await fetchSupabaseRowsPageBatch(table, query, limit, offsets, pageConcurrency);
+                    pages.forEach((page) => {
+                        const pageRows = page.rows || [];
+                        if (!pageRows.length) return;
+                        for (let dataIndex = 0; dataIndex < pageRows.length; dataIndex += 1) allData.push(pageRows[dataIndex]);
                         pageCount += 1;
-                        offset += data.length;
-                        await yieldToUiFrame();
-                        if (data.length < limit) hasMore = false;
-                    } else {
+                    });
+                } else {
+                    let offset = firstRows.length >= limit ? limit : 0;
+                    let hasMore = firstRows.length >= limit;
+                    while (hasMore) {
+                        const offsets = [];
+                        for (let batchIndex = 0; batchIndex < pageConcurrency; batchIndex += 1) offsets.push(offset + (batchIndex * limit));
+                        const pages = await fetchSupabaseRowsPageBatch(table, query, limit, offsets, pageConcurrency);
                         hasMore = false;
+                        for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
+                            const pageRows = pages[pageIndex].rows || [];
+                            if (pageRows.length) {
+                                for (let dataIndex = 0; dataIndex < pageRows.length; dataIndex += 1) allData.push(pageRows[dataIndex]);
+                                pageCount += 1;
+                            }
+                            if (pageRows.length >= limit) {
+                                hasMore = true;
+                                offset = pages[pageIndex].offset + limit;
+                            } else {
+                                hasMore = false;
+                                break;
+                            }
+                        }
                     }
                 }
                 incrementInternalPerfCounter(`datasetFetchPages:${table}`, pageCount);
@@ -15734,7 +15828,14 @@ function toggleDriveQuickRequestItem(domId) {
                 const target = fullTargets.get(key);
                 if (!target) return;
                 const extraDelay = key === 'reserves' && (isIOSDevice() || isStandaloneApp()) ? (openedFromCache ? 350 : 180) : 0;
-                fullQueue.push({ key, mode: target.mode, delay: fullStart + (fullQueue.length * fullStep) + extraDelay });
+                let targetDelay = fullStart + (fullQueue.length * fullStep) + extraDelay;
+                if (key === 'master') {
+                    const masterFastDelay = openedFromCache
+                        ? (prefersDeferredWarm ? 360 : 220)
+                        : (prefersDeferredWarm ? 300 : 220);
+                    targetDelay = Math.min(targetDelay, masterFastDelay);
+                }
+                fullQueue.push({ key, mode: target.mode, delay: targetDelay });
             });
 
             return { initialQueue, fullQueue };
