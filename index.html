@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.06.10';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.06.11';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1055,7 +1055,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.10').trim() || 'V2026.05.06.10';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.11').trim() || 'V2026.05.06.11';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1654,7 +1654,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.10';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.11';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1734,8 +1734,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         let appLiveEventSeenKeys = new Map();
         const SUPABASE_READ_TIMEOUT_MS = 30000;
         const SUPABASE_READ_CONCURRENCY_LIMIT = 2;
-        const LOGIN_READ_TIMEOUT_MS = 8000;
-        const LOGIN_FETCH_RETRY_COUNT = 2;
+        const LOGIN_READ_TIMEOUT_MS = 6000;
+        const LOGIN_FETCH_RETRY_COUNT = 1;
         const LOGIN_FETCH_RETRY_DELAY_MS = 450;
         const VERIFIED_LOGIN_STORAGE_KEY = 'gnc_verified_login_v1';
         const EXPLICIT_LOGOUT_STORAGE_KEY = 'gnc_explicit_logout_v1';
@@ -9407,17 +9407,35 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             const password = String(sessionRecord.password || '').trim();
             if (usernameInput && normalizedUsername) usernameInput.value = normalizedUsername;
             if (pinInput && password) pinInput.value = password;
+            runAfterShellInteractive(() => scheduleLoginCachePrefetch(sessionRecord), isTouchConstrainedDevice() ? 260 : 120);
             return !!(normalizedUsername && password);
         }
 
-        function doesCacheSnapshotMatchCurrentSession(cachedRes = null) {
+        function getLoginCacheScopeKey(username = '', role = '') {
+            const normalizedUser = normalizeSessionIdentity(username);
+            const normalizedRole = normalizeSessionIdentity(role);
+            if (!normalizedUser || !normalizedRole) return '';
+            return `${normalizedUser}::${normalizedRole}`;
+        }
+
+        function getCurrentLoginCacheScopeKey() {
+            return getLoginCacheScopeKey(currentUser, safeRole || currentRole);
+        }
+
+        function doesCacheSnapshotMatchIdentity(cachedRes = null, username = '', role = '') {
             if (!cachedRes || typeof cachedRes !== 'object') return false;
-            if (!currentUser || !safeRole) return false;
+            const normalizedUser = normalizeSessionIdentity(username);
+            const normalizedRole = normalizeSessionIdentity(role);
+            if (!normalizedUser || !normalizedRole) return false;
             const cachedMeta = cachedRes && cachedRes.meta ? cachedRes.meta : {};
             const cachedUser = normalizeSessionIdentity(firstNonEmptyValue(cachedMeta.scopedUser, ''));
             const cachedRole = normalizeSessionIdentity(firstNonEmptyValue(cachedMeta.scopedRole, ''));
             if (!cachedUser || !cachedRole) return false;
-            return cachedUser === normalizeSessionIdentity(currentUser) && cachedRole === normalizeSessionIdentity(safeRole || currentRole);
+            return cachedUser === normalizedUser && cachedRole === normalizedRole;
+        }
+
+        function doesCacheSnapshotMatchCurrentSession(cachedRes = null) {
+            return doesCacheSnapshotMatchIdentity(cachedRes, currentUser, safeRole || currentRole);
         }
 
         function hasWarmAppData() {
@@ -9431,6 +9449,27 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 || (Array.isArray(cavInventory) && cavInventory.length)
                 || (Array.isArray(avNotesDb) && avNotesDb.length)
             );
+        }
+
+        function clearLoginCachePrefetch() {
+            loginPrefetchPromise = null;
+            loginPrefetchMode = '';
+        }
+
+        function scheduleLoginCachePrefetch(sessionRecord = null) {
+            const record = sessionRecord && typeof sessionRecord === 'object' ? sessionRecord : {};
+            const username = normalizeSessionIdentity(firstNonEmptyValue(record.username, record.displayName, ''));
+            const role = String(firstNonEmptyValue(record.role, record.ROLE, '') || '').trim();
+            const scopeKey = getLoginCacheScopeKey(username, role);
+            if (!scopeKey) return null;
+            if (loginPrefetchPromise && loginPrefetchMode === scopeKey) return loginPrefetchPromise;
+            loginPrefetchMode = scopeKey;
+            loginPrefetchPromise = loadFromCache().then((cachedRes) => {
+                if (!cachedRes || loginPrefetchMode !== scopeKey) return null;
+                if (!doesCacheSnapshotMatchIdentity(cachedRes, username, role)) return null;
+                return normalizeCachedInventorySnapshot(cachedRes);
+            }).catch(() => null);
+            return loginPrefetchPromise;
         }
 
         function scheduleBackgroundLoginValidation(username = '', password = '') {
@@ -9508,16 +9547,21 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 const normalizedUsername = String(username || '').trim().toLowerCase();
                 const normalizedPassword = String(password || '').trim();
                 const cachedUser = await tryLocalCachedLoginRecord(normalizedUsername, normalizedPassword);
-                if (cachedUser) return { ok: true, user: cachedUser, source: 'local-cache' };
+                if (cachedUser) {
+                    scheduleLoginCachePrefetch(cachedUser);
+                    return { ok: true, user: cachedUser, source: 'local-cache' };
+                }
                 const verifiedUser = await tryVerifiedLoginRecord(normalizedUsername, normalizedPassword);
+                if (verifiedUser) {
+                    scheduleLoginCachePrefetch(verifiedUser);
+                    return { ok: true, user: verifiedUser, source: 'verified-cache', backgroundValidation: navigator.onLine !== false };
+                }
                 if (navigator.onLine === false) {
-                    if (verifiedUser) return { ok: true, user: verifiedUser, source: 'verified-cache' };
                     return { ok: false, reason: 'network', error: new Error('No network connection.') };
                 }
                 try {
                     return await fetchRemoteLoginUser(normalizedUsername, normalizedPassword);
                 } catch (error) {
-                    if (verifiedUser) return { ok: true, user: verifiedUser, source: 'verified-cache', warning: error };
                     return { ok: false, reason: 'network', error: error };
                 }
             } catch (e) {
@@ -9664,12 +9708,24 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
         }
 
         function warmCachedInventory(force = false) {
-            if (force) cacheWarmPromise = null;
+            if (force) {
+                cacheWarmPromise = null;
+                clearLoginCachePrefetch();
+            }
             if (!cacheWarmPromise) {
-                cacheWarmPromise = loadFromCache().then((cachedRes) => {
-                    if (!cachedRes) return false;
-                    if (!doesCacheSnapshotMatchCurrentSession(cachedRes)) return false;
-                    const normalizedCache = normalizeCachedInventorySnapshot(cachedRes);
+                const currentScopeKey = getCurrentLoginCacheScopeKey();
+                const prefetchedCachePromise = !force && currentScopeKey && loginPrefetchPromise && loginPrefetchMode === currentScopeKey
+                    ? loginPrefetchPromise
+                    : null;
+                cacheWarmPromise = Promise.resolve(prefetchedCachePromise).then((prefetchedCache) => {
+                    if (prefetchedCache && doesCacheSnapshotMatchCurrentSession(prefetchedCache)) return prefetchedCache;
+                    return loadFromCache().then((cachedRes) => {
+                        if (!cachedRes) return null;
+                        if (!doesCacheSnapshotMatchCurrentSession(cachedRes)) return null;
+                        return normalizeCachedInventorySnapshot(cachedRes);
+                    });
+                }).then((normalizedCache) => {
+                    if (!normalizedCache) return false;
                     processAndLoadData({ ...normalizedCache, _fromCache: true });
                     hydrateDatasetLoadState(getCachedDatasetLoadState(normalizedCache));
                     return true;
@@ -10094,7 +10150,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.10').trim() || 'V2026.05.06.10';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.11').trim() || 'V2026.05.06.11';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -15604,10 +15660,11 @@ function toggleDriveQuickRequestItem(domId) {
             };
             let loginLocalWarmPromise = Promise.resolve(hadWarmDataBeforeLocalWarm);
             if (expectsLocalWarm) {
+                const prefetchMatchesCurrentSession = !!(loginPrefetchPromise && loginPrefetchMode === getCurrentLoginCacheScopeKey());
                 loginLocalWarmPromise = new Promise((resolve) => {
                     runAfterShellInteractive(() => {
                         runLoginLocalWarmTasks().then(resolve).catch(() => resolve(hasWarmAppData()));
-                    }, deferHeavyLoginWarm ? 80 : 20);
+                    }, prefetchMatchesCurrentSession ? 0 : (deferHeavyLoginWarm ? 80 : 20));
                 });
             }
 
@@ -15666,8 +15723,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (loginOptions.restoredSession !== false) {
                 scheduleBackgroundLoginValidation(user, pass);
             }
-            loginPrefetchPromise = null;
-            loginPrefetchMode = '';
+            loginLocalWarmPromise.then(() => clearLoginCachePrefetch(), () => clearLoginCachePrefetch());
         }
         async function silentBackgroundSync() {
             if(!currentUser)return;
