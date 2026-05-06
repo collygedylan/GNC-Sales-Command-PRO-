@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.06.15';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.06.16';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1055,7 +1055,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.15').trim() || 'V2026.05.06.15';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.16').trim() || 'V2026.05.06.16';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1654,7 +1654,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.15';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.16';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9628,7 +9628,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             return items.map((item) => stripTransientCacheFields(item));
         }
 
-        const CACHE_SCHEMA_VERSION = 10;
+        const CACHE_SCHEMA_VERSION = 11;
         const MIN_TRUSTED_MASTER_COMMON_NAME_CACHE_COUNT = 1200;
         const INLINE_CACHE_RESERVE_LIMIT = 180;
         function buildCacheSnapshot() {
@@ -10166,7 +10166,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.15').trim() || 'V2026.05.06.15';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.16').trim() || 'V2026.05.06.16';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -11636,7 +11636,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function getViewLoadingConfig(viewId) {
-            if (viewId === 'drive') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading Drive rows...' };
+            if (viewId === 'drive') return { required: [{ key: 'master', mode: 'full' }], background: [], label: 'Loading all Drive rows from v2_master_inventory...' };
             if (viewId === 'av') {
                 if (activeAVTab === 'hotprice') {
                     return { required: [{ key: 'master', mode: 'initial' }, { key: 'avHotPriceKeys', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }, { key: 'avHotPriceKeys', mode: 'full' }], label: 'Loading hot price rows...' };
