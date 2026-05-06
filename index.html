@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.05.02';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.05.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.05.02').trim() || 'V2026.05.05.02';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.05.03').trim() || 'V2026.05.05.03';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1566,7 +1566,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.05.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.05.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1837,6 +1837,9 @@ const LIVE_SYNC_POLL_BROWSER_MS = 90000;
         let requestScopedItemsCache = null;
         let reservesScopedItemsCacheKey = '';
         let reservesScopedItemsCache = null;
+        let reportsSummaryCacheKey = '';
+        let reportsSummaryCacheHtml = '';
+        let reportsSummaryCacheCrumb = '';
         let salesOfficeSeasonItemsCacheKey = '';
         let salesOfficeSeasonItemsCache = null;
         let salesOfficeOrderItemsCacheKey = '';
@@ -1996,6 +1999,9 @@ const LIVE_SYNC_POLL_BROWSER_MS = 90000;
             requestScopedItemsCache = null;
             reservesScopedItemsCacheKey = '';
             reservesScopedItemsCache = null;
+            reportsSummaryCacheKey = '';
+            reportsSummaryCacheHtml = '';
+            reportsSummaryCacheCrumb = '';
             salesOfficeSeasonItemsCacheKey = '';
             salesOfficeSeasonItemsCache = null;
             salesOfficeOrderItemsCacheKey = '';
@@ -6010,7 +6016,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             backgroundRefreshInFlight = true;
             updateSyncDiagnostics('refreshing');
             try {
-                await loadDatasetTargetsWithLimit(targets, { force: true }, 1);
+                await loadDatasetTargetsWithLimit(targets, { force: true });
                 lastBackgroundRefreshAt = Date.now();
                 const nextMode = hasHealthyCoreRealtimeSubscriptions(targetView) ? 'realtime' : 'polling';
                 liveSyncMode = nextMode;
@@ -9836,7 +9842,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.05.02').trim() || 'V2026.05.05.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.05.03').trim() || 'V2026.05.05.03';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -10814,8 +10820,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return runDedupeSupabaseRead(readKey, async () => {
                 startGlobalProgress();
                 try {
-                let allData = [];
+                const fetchStartedAt = beginInternalPerfMeasure();
+                const allData = [];
                 let offset = 0;
+                let pageCount = 0;
                 const limit = table === 'v2_master_inventory'
                     ? ((isIOSDevice() || isStandaloneApp()) ? 900 : 1000)
                     : (table === 'v2_reserves'
@@ -10830,7 +10838,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     const text = await response.text();
                     const data = text ? JSON.parse(text) : [];
                     if (Array.isArray(data) && data.length > 0) {
-                        allData = allData.concat(data);
+                        for (let dataIndex = 0; dataIndex < data.length; dataIndex += 1) allData.push(data[dataIndex]);
+                        pageCount += 1;
                         offset += data.length;
                         await yieldToUiFrame();
                         if (data.length < limit) hasMore = false;
@@ -10838,6 +10847,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         hasMore = false;
                     }
                 }
+                incrementInternalPerfCounter(`datasetFetchPages:${table}`, pageCount);
+                recordInternalPerfDuration('datasetFetchDurations', fetchStartedAt, table);
                 return allData;
                 } finally {
                     stopGlobalProgress();
@@ -11059,10 +11070,23 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
         }
 
-        async function loadDatasetTargetsWithLimit(targets = [], options = {}, concurrency = 1) {
+        function getDatasetTargetLoadConcurrency(targets = [], options = {}) {
+            const safeTargets = (Array.isArray(targets) ? targets : []).filter((item) => item && item.key);
+            if (safeTargets.length < 2) return 1;
+            const readQueueCap = Math.max(1, Math.min(3, Number(SUPABASE_READ_CONCURRENCY_LIMIT) || 2));
+            const hasHeavyFull = safeTargets.some((item) => HEAVY_DATASET_KEYS.has(item.key) && item.mode === 'full');
+            const hasReserveFull = safeTargets.some((item) => item.key === 'reserves' && item.mode === 'full');
+            const touchConstrained = isTouchConstrainedDevice();
+            if (touchConstrained && hasHeavyFull) return 1;
+            if (hasReserveFull && !options.force && touchConstrained) return 1;
+            return Math.max(1, Math.min(readQueueCap, safeTargets.length));
+        }
+
+        async function loadDatasetTargetsWithLimit(targets = [], options = {}, concurrency = null) {
             const safeTargets = (Array.isArray(targets) ? targets : []).filter((item) => item && item.key);
             if (!safeTargets.length) return true;
-            const limit = Math.max(1, Math.min(3, Number(concurrency) || 1));
+            const resolvedConcurrency = concurrency == null ? getDatasetTargetLoadConcurrency(safeTargets, options) : concurrency;
+            const limit = Math.max(1, Math.min(3, Number(resolvedConcurrency) || 1));
             let index = 0;
             const runWorker = async () => {
                 while (index < safeTargets.length) {
@@ -11230,7 +11254,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return false;
             }
             showViewLoadingState(viewId, config.label);
-            loadDatasetTargetsWithLimit(pending, {}, 1).then(() => {
+            loadDatasetTargetsWithLimit(pending).then(() => {
                 const backgroundDelay = isTouchConstrainedDevice() ? 900 : 520;
                 (config.background || []).forEach((item) => {
                     if (!isDatasetFrozenDuringManualSync(item.key, item.mode)) queueDatasetLoad(item.key, item.mode, backgroundDelay);
@@ -11267,7 +11291,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const visibleView = TRACKED_VIEW_IDS.find((viewId) => isViewVisible(viewId));
                 const config = visibleView ? getViewLoadingConfig(visibleView) : null;
                 if (!config) return true;
-                await loadDatasetTargetsWithLimit(config.required, { force }, 1);
+                await loadDatasetTargetsWithLimit(config.required, { force });
                 lastBackgroundRefreshAt = Date.now();
                 return true;
             }
@@ -11290,7 +11314,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             backgroundRefreshInFlight = true;
             updateSyncDiagnostics('refreshing');
             try {
-                await loadDatasetTargetsWithLimit(eligibleTargets, { force: true }, force ? 1 : 1);
+                await loadDatasetTargetsWithLimit(eligibleTargets, { force: true });
                 lastBackgroundRefreshAt = Date.now();
                 updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'idle');
                 return true;
@@ -11347,7 +11371,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const config = getViewLoadingConfig(targetView);
             if (!config || !Array.isArray(config.required) || !config.required.length) return;
             if (options.force) {
-                loadDatasetTargetsWithLimit(config.required, { force: true }, 1).then(() => {
+                loadDatasetTargetsWithLimit(config.required, { force: true }).then(() => {
                     markViewDirty(targetView);
                     if (isViewVisible(targetView)) queueInteractiveViewRender(targetView, false, false, 0, 180);
                 }).catch(() => {});
@@ -11355,7 +11379,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             const pendingRequired = config.required.filter((item) => !isDatasetLoaded(item.key, item.mode));
             if (pendingRequired.length) {
-                loadDatasetTargetsWithLimit(pendingRequired, {}, 1).then(() => {
+                loadDatasetTargetsWithLimit(pendingRequired).then(() => {
                     markViewDirty(targetView);
                     if (isViewVisible(targetView)) queueInteractiveViewRender(targetView, false, false, 0, 180);
                 }).catch(() => {});
@@ -21903,21 +21927,21 @@ function toggleDriveQuickRequestItem(domId) {
             const targetViewId = String(viewId || '').trim();
             if (!targetViewId) return;
             const activationStartedAt = beginInternalPerfMeasure();
-            const viewActivateDelay = isTouchConstrainedDevice() ? 180 : 72;
+            const viewActivateDelay = isTouchConstrainedDevice() ? 64 : 28;
             scheduleUiRender(`view-activate:${targetViewId}`, () => {
                 if (getCurrentVisibleViewId() !== targetViewId) return;
                 setRealtimeSubscriptionsForView(targetViewId);
-                const viewEnterDelay = isTouchConstrainedDevice() ? 360 : 180;
+                const viewEnterDelay = isTouchConstrainedDevice() ? 140 : 72;
                 scheduleTypingAwareUiRender(`view-enter:${targetViewId}`, () => {
                     if (getCurrentVisibleViewId() !== targetViewId) return;
                     refreshViewDatasetsOnEnter(targetViewId);
                     recordInternalPerfDuration('viewActivationDurations', activationStartedAt, targetViewId);
-                }, viewEnterDelay, 180, {
+                }, viewEnterDelay, 120, {
                     allowWhileTyping: false,
                     allowDuringRecentInteraction: true,
-                    touchDelayMs: 180,
-                    scrollDelayMs: 180,
-                    interactionDelayMs: 160
+                    touchDelayMs: 120,
+                    scrollDelayMs: 120,
+                    interactionDelayMs: 96
                 });
             }, viewActivateDelay);
         }
@@ -22042,7 +22066,7 @@ function toggleDriveQuickRequestItem(domId) {
                         }
                         if (getCurrentVisibleViewId() !== nextViewId) return;
                         renderViewContent(nextViewId, false, false);
-                    }, isTouchConstrainedDevice() ? 24 : 8);
+                    }, isTouchConstrainedDevice() ? 12 : 4);
                 }
             } else if (needsTargetRender) {
                 queueViewRender(nextViewId);
@@ -30198,7 +30222,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getScopedRequestItems(items = requestsInventory) {
-            let nextItems = Array.isArray(items) ? [...items] : [];
+            const sourceItems = Array.isArray(items) ? items : [];
             const roleAccess = getRoleAccessState();
             const isRequestScopedUser = !!(roleAccess.isRep || roleAccess.isRequestRepScopedUser);
             const canUseCache = items === requestsInventory;
@@ -30213,16 +30237,18 @@ function toggleDriveQuickRequestItem(domId) {
                 incrementInternalPerfCounter('viewStateCacheHits');
                 return requestScopedItemsCache.slice();
             }
-            if (isRequestScopedUser) nextItems = nextItems.filter(item => doesCurrentUserMatchRepName(getRequestAssignedRep(item)));
+            const nextItems = isRequestScopedUser
+                ? sourceItems.filter(item => doesCurrentUserMatchRepName(getRequestAssignedRep(item)))
+                : sourceItems;
             if (canUseCache) {
                 requestScopedItemsCacheKey = cacheKey;
                 requestScopedItemsCache = nextItems.slice();
             }
-            return nextItems;
+            return canUseCache && !isRequestScopedUser ? nextItems.slice() : nextItems;
         }
 
         function getScopedReservesItems(items = reservesInventory) {
-            let nextItems = Array.isArray(items) ? [...items] : [];
+            const sourceItems = Array.isArray(items) ? items : [];
             const cacheKey = items === reservesInventory ? [
                 resolvedViewStateEpoch,
                 getDatasetLoadSignature('reserves'),
@@ -30234,12 +30260,14 @@ function toggleDriveQuickRequestItem(domId) {
                 incrementInternalPerfCounter('viewStateCacheHits');
                 return reservesScopedItemsCache.slice();
             }
-            if (safeRole === 'SALESREP') nextItems = nextItems.filter(i => isMyRep(firstNonEmptyValue(i.SALESREPNAME, i.SALESREP, i.SALES_REP, i.SALESREPID, '')));
+            const nextItems = safeRole === 'SALESREP'
+                ? sourceItems.filter(i => isMyRep(firstNonEmptyValue(i.SALESREPNAME, i.SALESREP, i.SALES_REP, i.SALESREPID, '')))
+                : sourceItems;
             if (items === reservesInventory) {
                 reservesScopedItemsCacheKey = cacheKey;
                 reservesScopedItemsCache = nextItems.slice();
             }
-            return nextItems;
+            return items === reservesInventory && safeRole !== 'SALESREP' ? nextItems.slice() : nextItems;
         }
 
         function getRequestCustomerConsigneeFolder(item) {
@@ -39121,6 +39149,22 @@ ${folderNote ? `Folder Note: ${folderNote}
             const container = document.getElementById('reports-content');
             const crumb = document.getElementById('reports-crumb');
             if (!container) return;
+            const reportRenderKey = [
+                resolvedViewStateEpoch,
+                activeReportTab,
+                safeRole,
+                currentUser || '',
+                currentUserDisplay || '',
+                getDatasetLoadSignature('master'),
+                getDatasetLoadSignature('requests'),
+                getDatasetLoadSignature('reserves'),
+                getDatasetLoadSignature('soc')
+            ].join('|');
+            if (reportsSummaryCacheKey === reportRenderKey && reportsSummaryCacheHtml) {
+                if (crumb) crumb.innerText = reportsSummaryCacheCrumb;
+                setContainerHtmlWithSignature(container, reportsSummaryCacheHtml, reportRenderKey);
+                return;
+            }
 
             let seasonItems = fullInventory.filter(i => activeReportTab === 'ALL' ? true : String(i.SEASON || '').toUpperCase() === activeReportTab);
             let reserveItems = reservesInventory;
@@ -39151,10 +39195,15 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return acc;
             }, {})).sort((a, b) => b.rows - a.rows).slice(0, 12);
 
-            crumb.innerText = activeReportTab === 'ALL' ? 'Crop Value Summary' : `${activeReportTab} Summary`;
+            const crumbText = activeReportTab === 'ALL' ? 'Crop Value Summary' : `${activeReportTab} Summary`;
+            if (crumb) crumb.innerText = crumbText;
             const cardsHtml = summaryCards.map(card => `<div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm"><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">${card.label}</div><div class="text-2xl font-black text-[#007a4d] leading-none">${card.value}</div></div>`).join('');
             const topHtml = topPlants.length ? topPlants.map(plant => `<div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex justify-between items-center gap-3"><div class="min-w-0"><div class="font-bold text-gray-800 truncate">${plant.name}</div><div class="text-xs font-semibold text-gray-500">${plant.size}</div></div><div class="text-right shrink-0"><div class="text-xs font-bold text-gray-400 uppercase">Rows</div><div class="font-black text-[#007a4d]">${plant.rows}</div><div class="text-[11px] font-semibold text-gray-500 mt-1">PTR ${plant.ptr.toLocaleString()}</div></div></div>`).join('') : `<div class="p-8 text-center text-gray-400">No report data found for this selection.</div>`;
-            container.innerHTML = `<div class="grid grid-cols-2 gap-3 mb-4">${cardsHtml}</div><div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Top Plants</div><div class="space-y-3">${topHtml}</div>`;
+            const html = `<div class="grid grid-cols-2 gap-3 mb-4">${cardsHtml}</div><div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Top Plants</div><div class="space-y-3">${topHtml}</div>`;
+            reportsSummaryCacheKey = reportRenderKey;
+            reportsSummaryCacheHtml = html;
+            reportsSummaryCacheCrumb = crumbText;
+            setContainerHtmlWithSignature(container, html, reportRenderKey);
         }
 
         function renderReview() {
