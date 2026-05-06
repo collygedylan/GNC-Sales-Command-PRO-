@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.06.14';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.06.15';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1055,7 +1055,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.14').trim() || 'V2026.05.06.14';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.15').trim() || 'V2026.05.06.15';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1654,7 +1654,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.14';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.15';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9628,7 +9628,8 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             return items.map((item) => stripTransientCacheFields(item));
         }
 
-        const CACHE_SCHEMA_VERSION = 9;
+        const CACHE_SCHEMA_VERSION = 10;
+        const MIN_TRUSTED_MASTER_COMMON_NAME_CACHE_COUNT = 1200;
         const INLINE_CACHE_RESERVE_LIMIT = 180;
         function buildCacheSnapshot() {
             const inlineReserveRows = buildCacheRows(reservesInventory.slice(0, INLINE_CACHE_RESERVE_LIMIT));
@@ -9675,6 +9676,17 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 avNotes: { initialLoaded: hasRows(cachedRes.avNotesData), fullLoaded: false }
             };
         }
+
+        function countUniqueCacheCommonNames(rows = []) {
+            if (!Array.isArray(rows) || !rows.length) return 0;
+            const names = new Set();
+            rows.forEach((row) => {
+                const name = String(firstNonEmptyValue(row && row.COMMONNAME, row && row.commonname, row && row.DESCRIPTION, row && row.description, '')).trim().toUpperCase();
+                if (name) names.add(name);
+            });
+            return names.size;
+        }
+
         function getCachedDatasetLoadState(cachedRes = {}) {
             const cachedMeta = cachedRes && cachedRes.meta ? cachedRes.meta : {};
             const schemaVersion = Number(cachedMeta.cacheSchemaVersion || 0);
@@ -9687,9 +9699,12 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 const fallbackEntry = fallback[key] || {};
                 const inlineMeta = inlineDatasetMeta[key] || {};
                 const fullInlineCacheIsTruncated = !!inlineMeta.truncated;
+                const masterCacheLooksPartial = key === 'master'
+                    && Array.isArray(cachedRes.data)
+                    && countUniqueCacheCommonNames(cachedRes.data) < MIN_TRUSTED_MASTER_COMMON_NAME_CACHE_COUNT;
                 next[key] = {
                     initialLoaded: !!(saved.initialLoaded || fallbackEntry.initialLoaded),
-                    fullLoaded: schemaVersion >= CACHE_SCHEMA_VERSION ? (!!saved.fullLoaded && !fullInlineCacheIsTruncated) : false,
+                    fullLoaded: schemaVersion >= CACHE_SCHEMA_VERSION ? (!!saved.fullLoaded && !fullInlineCacheIsTruncated && !masterCacheLooksPartial) : false,
                     lastLoadedAt: schemaVersion >= CACHE_SCHEMA_VERSION ? (saved.lastLoadedAt || '') : ''
                 };
             });
@@ -10151,7 +10166,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.14').trim() || 'V2026.05.06.14';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.15').trim() || 'V2026.05.06.15';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -10680,8 +10695,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         });
 
         const DATASET_DEFINITIONS = {
-            master: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: 'select=*', fullQuery: 'select=*', initialLimit: getPrimaryInventoryInitialLimit },
-            avOpen: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: 'select=*&s_lts=gt.0', fullQuery: 'select=*&s_lts=gt.0', initialLimit: getPrimaryInventoryInitialLimit },
+            master: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: 'select=*&order=unique_id.asc', fullQuery: 'select=*&order=unique_id.asc', initialLimit: getPrimaryInventoryInitialLimit },
+            avOpen: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: 'select=*&s_lts=gt.0&order=unique_id.asc', fullQuery: 'select=*&s_lts=gt.0&order=unique_id.asc', initialLimit: getPrimaryInventoryInitialLimit },
             requests: { table: 'v2_active_request', sourceTable: 'v2_active_request', initialQuery: 'select=*&order=unique_id.desc', fullQuery: 'select=*&order=unique_id.desc' },
             reserves: { table: 'v2_reserves', sourceTable: 'v2_reserves', initialQuery: buildReserveDatasetQuery, fullQuery: buildReserveDatasetQuery, initialLimit: getReserveDatasetInitialLimit },
             soc: { table: 'v2_soc_master', sourceTable: 'v2_soc_master', initialQuery: 'select=*', fullQuery: 'select=*' },
@@ -11214,6 +11229,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     ? firstRows.length
                     : requestedLimit;
                 const limit = Math.max(1, detectedLimit);
+                const shouldVerifyShortMasterPage = String(table || '').trim() === 'v2_master_inventory' && firstRows.length > 0 && firstRows.length < limit;
                 if (knownTotal != null && knownTotal <= allData.length) {
                     incrementInternalPerfCounter(`datasetFetchPages:${table}`, pageCount);
                     recordInternalPerfDuration('datasetFetchDurations', fetchStartedAt, table);
@@ -11230,8 +11246,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         pageCount += 1;
                     });
                 } else {
-                    let offset = firstRows.length >= limit ? limit : 0;
-                    let hasMore = firstRows.length >= limit;
+                    let offset = firstRows.length >= limit ? limit : (shouldVerifyShortMasterPage ? firstRows.length : 0);
+                    let hasMore = firstRows.length >= limit || shouldVerifyShortMasterPage;
                     while (hasMore) {
                         const offsets = [];
                         for (let batchIndex = 0; batchIndex < pageConcurrency; batchIndex += 1) offsets.push(offset + (batchIndex * limit));
@@ -11424,8 +11440,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     options.interruptedDuringLoad = true;
                     return false;
                 }
+                const masterFullLooksPartial = wantsFull
+                    && key === 'master'
+                    && countUniqueCacheCommonNames(rows) < MIN_TRUSTED_MASTER_COMMON_NAME_CACHE_COUNT;
                 state.initialLoaded = true;
-                state.fullLoaded = wantsFull ? true : state.fullLoaded;
+                state.fullLoaded = wantsFull ? !masterFullLooksPartial : state.fullLoaded;
                 state.lastLoadedAt = new Date().toISOString();
                 if (key === 'reserves' && wantsFull) {
                     const formattedRows = formatFetchedRows(rows, definition.sourceTable);
@@ -11450,6 +11469,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 }
                 persistCurrentCache();
                 touchSyncTimestamp();
+                if (masterFullLooksPartial) {
+                    state.lastLoadedAt = '';
+                    setTimeout(() => queueDatasetLoad('master', 'full', isTouchConstrainedDevice() ? 2200 : 900), 80);
+                }
                 return true;
             };
 
