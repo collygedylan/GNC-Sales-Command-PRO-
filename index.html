@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.05.03';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.05.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.05.03').trim() || 'V2026.05.05.03';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.05.04').trim() || 'V2026.05.05.04';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1566,7 +1566,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.05.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.05.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9842,7 +9842,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.05.03').trim() || 'V2026.05.05.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.05.04').trim() || 'V2026.05.05.04';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -17959,6 +17959,7 @@ function toggleDriveQuickRequestItem(domId) {
         let pushSchemaReady = null;
         let pushSchemaProbePromise = null;
         let pushSchemaWarningShown = false;
+        let pushSubscriptionSupportsPreferenceColumns = true;
         let cellularPushEnrollmentTimer = null;
         let pushBlockedNoticeShown = false;
         let pushEnrollmentListenersInstalled = false;
@@ -20817,7 +20818,7 @@ function toggleDriveQuickRequestItem(domId) {
         function maybeWarnPushSchemaMissing() {
             if (pushSchemaWarningShown || !currentUser) return;
             pushSchemaWarningShown = true;
-            showToast('Schema Required', 'Run push_notifications_migration.sql and deploy send-push-alert before using push notifications.', true);
+            console.warn('Push notification schema check failed. Device enrollment will retry later.');
         }
 
         async function ensurePushSubscriptionSchemaReady(force = false) {
@@ -20826,19 +20827,29 @@ function toggleDriveQuickRequestItem(domId) {
             if (pushSchemaProbePromise && !force) return pushSchemaProbePromise;
             pushSchemaProbePromise = (async () => {
                 if (navigator.onLine === false) return false;
-                try {
-                    const url = `${SUPABASE_URL}/rest/v1/${PUSH_SUBSCRIPTIONS_TABLE}?select=id,username,endpoint,wants_new_request,wants_request_complete&limit=1`;
-                    const response = await fetchWithTimeout(url, {
+                const readProbe = async (selectQuery) => {
+                    const url = `${SUPABASE_URL}/rest/v1/${PUSH_SUBSCRIPTIONS_TABLE}?${selectQuery}&limit=1`;
+                    return fetchWithTimeout(url, {
                         method: 'GET',
                         headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
                     }, SUPABASE_READ_TIMEOUT_MS, 'Push Subscription Schema');
-                    if (!response.ok) {
-                        pushSchemaReady = false;
-                        maybeWarnPushSchemaMissing();
-                        return false;
+                };
+                try {
+                    const preferenceResponse = await readProbe('select=id,username,endpoint,wants_new_request,wants_request_complete');
+                    if (preferenceResponse.ok) {
+                        pushSubscriptionSupportsPreferenceColumns = true;
+                        pushSchemaReady = true;
+                        return true;
                     }
-                    pushSchemaReady = true;
-                    return true;
+                    const baseResponse = await readProbe('select=id,username,endpoint,p256dh,auth,notifications_enabled');
+                    if (baseResponse.ok) {
+                        pushSubscriptionSupportsPreferenceColumns = false;
+                        pushSchemaReady = true;
+                        return true;
+                    }
+                    pushSchemaReady = false;
+                    maybeWarnPushSchemaMissing();
+                    return false;
                 } catch (error) {
                     pushSchemaReady = false;
                     maybeWarnPushSchemaMissing();
@@ -20917,7 +20928,7 @@ function toggleDriveQuickRequestItem(domId) {
                 /Android/i.test(navigator.userAgent) ? 'Android' : (isIOSDevice() ? 'iOS' : 'Desktop'),
                 isStandaloneApp() ? 'Standalone' : 'Browser'
             ].join(' ');
-            return {
+            const record = {
                 username: normalizedUser,
                 display_name: String(currentUserDisplay || currentUser || '').trim(),
                 role: String(currentRole || '').trim(),
@@ -20928,11 +20939,14 @@ function toggleDriveQuickRequestItem(domId) {
                 user_agent: String(navigator.userAgent || '').trim(),
                 app_build: APP_SHELL_BUILD,
                 notifications_enabled: true,
-                wants_new_request: !!flags.wants_new_request,
-                wants_request_complete: !!flags.wants_request_complete,
                 last_seen: new Date().toISOString(),
                 subscription_json: json
             };
+            if (pushSubscriptionSupportsPreferenceColumns) {
+                record.wants_new_request = !!flags.wants_new_request;
+                record.wants_request_complete = !!flags.wants_request_complete;
+            }
+            return record;
         }
 
         function getCurrentPushEndpoint() {

@@ -22,6 +22,14 @@ create index if not exists idx_v2_push_subscriptions_username on public.v2_push_
 create index if not exists idx_v2_push_subscriptions_enabled on public.v2_push_subscriptions (notifications_enabled);
 
 alter table public.v2_push_subscriptions
+    add column if not exists wants_new_request boolean not null default true,
+    add column if not exists wants_request_complete boolean not null default true,
+    add column if not exists notifications_enabled boolean not null default true,
+    add column if not exists subscription_json jsonb not null default '{}'::jsonb,
+    add column if not exists last_seen timestamptz not null default now(),
+    add column if not exists updated_at timestamptz not null default now();
+
+alter table public.v2_push_subscriptions
     alter column wants_new_request set default true,
     alter column wants_request_complete set default true;
 
