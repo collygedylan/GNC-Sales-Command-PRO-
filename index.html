@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.06.11';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.06.12';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1055,7 +1055,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.11').trim() || 'V2026.05.06.11';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.12').trim() || 'V2026.05.06.12';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1654,7 +1654,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.11';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.12';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9628,13 +9628,14 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             return items.map((item) => stripTransientCacheFields(item));
         }
 
-        const CACHE_SCHEMA_VERSION = 8;
+        const CACHE_SCHEMA_VERSION = 9;
         const INLINE_CACHE_RESERVE_LIMIT = 180;
         function buildCacheSnapshot() {
             const inlineReserveRows = buildCacheRows(reservesInventory.slice(0, INLINE_CACHE_RESERVE_LIMIT));
             return {
                 status: 'success',
                 data: buildCacheRows(fullInventory),
+                avOpenData: buildCacheRows(avOpenInventory),
                 requestsData: buildCacheRows(requestsInventory),
                 reservesData: inlineReserveRows,
                 socData: buildCacheRows(socInventory),
@@ -9699,7 +9700,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             const cachedMeta = cachedRes && cachedRes.meta ? cachedRes.meta : {};
             const schemaVersion = Number(cachedMeta.cacheSchemaVersion || 0);
             const next = Object.assign({}, cachedRes || {});
-            if (schemaVersion < CACHE_SCHEMA_VERSION) {
+            if (schemaVersion < 8) {
                 delete next.cavData;
                 delete next.avHotPriceKeysData;
                 delete next.flyerFolderRowsData;
@@ -9818,7 +9819,7 @@ let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chat
 let walkieChannels=[]; let walkieChannelMembers=[]; let walkieCalls=[]; let walkieCallMembers=[]; let walkieUsers=[]; let walkieSignalsSeen=new Set(); let walkieDataLoaded=false; let walkieLoadPromise=null; let walkieSchemaReady=null; let walkieSchemaProbePromise=null; let walkieSchemaWarningShown=false; let activeWalkieChannelId=''; let pendingWalkieOpenChannelId=''; let pendingWalkieOpenCallId=''; let walkieComposeOpen=false; let walkieUserSearchTerm=''; let walkieComposeTitle=''; let walkieSelectedUsers=new Set(); let walkieLastRenderSignature=''; let walkieDeviceId=''; let activeWalkieCallId=''; let walkieJoinedCallId=''; let walkieActiveMembershipId=''; let walkiePeerConnections=new Map(); let walkieRemoteAudioElements=new Map(); let walkieLocalStream=null; let walkieHeartbeatTimer=null; let walkieSpeakerHeartbeatTimer=null; let walkieReconnectTimer=null; let walkieActiveSpeakerIntent=false; let walkiePressedPointerId=''; let walkieForegroundNoticeShown=false;
 let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let managerReviewInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true;
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
-        let reviewSearchTerm=''; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set();
+        let reviewSearchTerm=''; let reviewBrowseMode='item'; let selectedReviewBlockAlpha=null; let selectedReviewLocationCode=null; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set();
         let ncrCompletionSchemaReady=null; let ncrCompletionSchemaPromise=null; let ncrCompletionSchemaWarningShown=false; let ncrCompletionLoadPromise=null; let ncrCompletionsLoaded=false;
         let ncrEmailPromptResolver=null;
         let loginPrefetchPromise=null;
@@ -10150,7 +10151,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.11').trim() || 'V2026.05.06.11';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.12').trim() || 'V2026.05.06.12';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -12250,6 +12251,116 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (locationCompare !== 0) return locationCompare;
                 return compareNcrLotCodes(String(a.LOTCODE || ''), String(b.LOTCODE || ''));
             });
+        }
+
+        function normalizeReviewBlockAlpha(value = '') {
+            return String(value || '').trim() || 'Unassigned';
+        }
+
+        function normalizeReviewLocationCode(value = '') {
+            return String(value || '').trim() || 'No Loc';
+        }
+
+        function compareReviewRowsByBlockLocation(a = null, b = null) {
+            const blockCompare = normalizeReviewBlockAlpha(firstNonEmptyValue(a && a.BLOCKALPHA, a && a.blockalpha, '')).localeCompare(normalizeReviewBlockAlpha(firstNonEmptyValue(b && b.BLOCKALPHA, b && b.blockalpha, '')), undefined, { numeric: true, sensitivity: 'base' });
+            if (blockCompare !== 0) return blockCompare;
+            const locationCompare = normalizeReviewLocationCode(firstNonEmptyValue(a && a.LOCATIONCODE, a && a.locationcode, '')).localeCompare(normalizeReviewLocationCode(firstNonEmptyValue(b && b.LOCATIONCODE, b && b.locationcode, '')), undefined, { numeric: true, sensitivity: 'base' });
+            if (locationCompare !== 0) return locationCompare;
+            const nameCompare = String(firstNonEmptyValue(a && a.COMMONNAME, '')).localeCompare(String(firstNonEmptyValue(b && b.COMMONNAME, '')), undefined, { sensitivity: 'base' });
+            if (nameCompare !== 0) return nameCompare;
+            const sizeCompare = String(firstNonEmptyValue(a && a.CONTSIZE, '')).localeCompare(String(firstNonEmptyValue(b && b.CONTSIZE, '')), undefined, { numeric: true, sensitivity: 'base' });
+            if (sizeCompare !== 0) return sizeCompare;
+            return compareNcrLotCodes(String(firstNonEmptyValue(a && a.LOTCODE, '') || ''), String(firstNonEmptyValue(b && b.LOTCODE, '') || ''));
+        }
+
+        function getReviewActionableItemCodeSet() {
+            return new Set(ensureManagerReviewInventoryBuilt().map((item) => String(firstNonEmptyValue(item && item.ITEMCODE, item && item.ITEM, '') || '').trim()).filter(Boolean));
+        }
+
+        function getReviewBlockDrilldownItems() {
+            const actionableItemCodes = getReviewActionableItemCodeSet();
+            if (!actionableItemCodes.size) return [];
+            let detailIndex = 0;
+            const items = fullInventory.reduce((rows, item) => {
+                const itemCode = String(firstNonEmptyValue(item && item.ITEMCODE, item && item.ITEM, '') || '').trim();
+                if (!itemCode || !actionableItemCodes.has(itemCode)) return rows;
+                const uid = getNcrSourceUniqueId(item);
+                if (uid && isNcrCompletedUid(uid)) return rows;
+                const lotInfo = getNcrLotInfo(item);
+                if (!isNcrNextUpLotSuffix(lotInfo.suffix)) return rows;
+                const sltsValue = parseAppNumber(firstNonEmptyValue(item.S_LTS, item.s_lts, ''));
+                if (sltsValue != null && sltsValue > 0) rows.push({ ...item, DOM_ID: 'mr_block_' + detailIndex++ });
+                return rows;
+            }, []);
+            return filterReviewItemsBySearch(items).sort(compareReviewRowsByBlockLocation);
+        }
+
+        function buildReviewBlockGroups(items = []) {
+            const groups = new Map();
+            (Array.isArray(items) ? items : []).forEach((item) => {
+                const blockAlpha = normalizeReviewBlockAlpha(firstNonEmptyValue(item && item.BLOCKALPHA, item && item.blockalpha, ''));
+                if (!groups.has(blockAlpha)) {
+                    groups.set(blockAlpha, {
+                        blockAlpha,
+                        rowCount: 0,
+                        locations: new Set(),
+                        itemCodes: new Set(),
+                        ptrAvailableTotal: 0
+                    });
+                }
+                const group = groups.get(blockAlpha);
+                group.rowCount += 1;
+                group.locations.add(normalizeReviewLocationCode(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, '')));
+                const itemCode = String(firstNonEmptyValue(item && item.ITEMCODE, item && item.ITEM, '') || '').trim();
+                if (itemCode) group.itemCodes.add(itemCode);
+                const ptrValue = parseAppNumber(firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.ptravailable, ''));
+                if (ptrValue != null) group.ptrAvailableTotal += ptrValue;
+            });
+            return Array.from(groups.values()).map((group) => ({
+                ...group,
+                locationCount: group.locations.size,
+                itemCount: group.itemCodes.size,
+                locations: sortNcrLocationCodes(Array.from(group.locations || []))
+            })).sort((a, b) => String(a.blockAlpha || '').localeCompare(String(b.blockAlpha || ''), undefined, { numeric: true, sensitivity: 'base' }));
+        }
+
+        function getReviewRowsForBlock(blockAlpha = selectedReviewBlockAlpha) {
+            const safeBlock = normalizeReviewBlockAlpha(blockAlpha);
+            return getReviewBlockDrilldownItems().filter((item) => normalizeReviewBlockAlpha(firstNonEmptyValue(item && item.BLOCKALPHA, item && item.blockalpha, '')) === safeBlock);
+        }
+
+        function buildReviewLocationGroups(items = []) {
+            const groups = new Map();
+            (Array.isArray(items) ? items : []).forEach((item) => {
+                const locationCode = normalizeReviewLocationCode(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, ''));
+                if (!groups.has(locationCode)) {
+                    groups.set(locationCode, {
+                        locationCode,
+                        rowCount: 0,
+                        itemCodes: new Set(),
+                        ptrAvailableTotal: 0
+                    });
+                }
+                const group = groups.get(locationCode);
+                group.rowCount += 1;
+                const itemCode = String(firstNonEmptyValue(item && item.ITEMCODE, item && item.ITEM, '') || '').trim();
+                if (itemCode) group.itemCodes.add(itemCode);
+                const ptrValue = parseAppNumber(firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.ptravailable, ''));
+                if (ptrValue != null) group.ptrAvailableTotal += ptrValue;
+            });
+            return Array.from(groups.values()).map((group) => ({
+                ...group,
+                itemCount: group.itemCodes.size
+            })).sort((a, b) => String(a.locationCode || '').localeCompare(String(b.locationCode || ''), undefined, { numeric: true, sensitivity: 'base' }));
+        }
+
+        function getReviewRowsForBlockLocation(blockAlpha = selectedReviewBlockAlpha, locationCode = selectedReviewLocationCode) {
+            const safeBlock = normalizeReviewBlockAlpha(blockAlpha);
+            const safeLocation = normalizeReviewLocationCode(locationCode);
+            return getReviewBlockDrilldownItems().filter((item) => (
+                normalizeReviewBlockAlpha(firstNonEmptyValue(item && item.BLOCKALPHA, item && item.blockalpha, '')) === safeBlock
+                && normalizeReviewLocationCode(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, '')) === safeLocation
+            ));
         }
 
         function findLinkedMasterRow(item) {
@@ -15573,7 +15684,7 @@ function toggleDriveQuickRequestItem(domId) {
             const fullKeys = fullPriority.concat(Array.from(fullTargets.keys()).filter((key) => !fullPriority.includes(key)));
             const fullQueue = [];
             const fullStart = openedFromCache
-                ? (prefersDeferredWarm ? 320 : 260)
+                ? (prefersDeferredWarm ? 1400 : 420)
                 : (prefersDeferredWarm ? (restoreSession ? 1200 : 650) : 900);
             const quotaSafePacing = isQuotaSafeRealtimeMode();
             const fullStep = openedFromCache
@@ -15697,7 +15808,10 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             runAfterShellInteractive(() => {
+                let networkWarmStarted = false;
                 const startNetworkWarm = (cacheAvailable = false) => {
+                    if (networkWarmStarted) return;
+                    networkWarmStarted = true;
                     const warmupPlan = primeLoginDataLoad(!!cacheAvailable, { restoredSession: isRestoredSession });
                     if (!cacheAvailable && (warmupPlan.initialQueue.length || warmupPlan.fullQueue.length)) {
                         showToast("Ready", "Fast mode is on. Data is warming in the background.", false);
@@ -15715,6 +15829,9 @@ function toggleDriveQuickRequestItem(domId) {
                 };
                 if (expectsLocalWarm) {
                     loginLocalWarmPromise.then((warmed) => startNetworkWarm(!!warmed)).catch(() => startNetworkWarm(hasWarmAppData()));
+                    if (deferHeavyLoginWarm) {
+                        delayMs(isRestoredSession ? 760 : 620).then(() => startNetworkWarm(hasWarmAppData())).catch(() => {});
+                    }
                 } else {
                     startNetworkWarm(hadWarmDataBeforeLocalWarm);
                 }
@@ -16172,7 +16289,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasMaster) {
                 fullInventory = (res.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));});
                 applyMasterAppTabAssignments(fullInventory);
-                avRuleClearOps = collectMasterAvRuleClearOps(fullInventory);
+                avRuleClearOps = res._fromCache ? [] : collectMasterAvRuleClearOps(fullInventory);
                 rebuildMasterInventoryIndexes();
                 invalidateMasterDerivedInventories();
             }
@@ -21718,12 +21835,56 @@ function toggleDriveQuickRequestItem(domId) {
             });
         }
 
-        function resetReviewView(shouldRender = true) {
+        function resetReviewView(shouldRender = true, options = {}) {
+            const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            if (nextOptions.resetMode) reviewBrowseMode = 'item';
             reviewViewLevel = 0;
             selectedReviewItemCode = null;
             selectedReviewCommonName = null;
             selectedReviewContSize = null;
+            selectedReviewBlockAlpha = null;
+            selectedReviewLocationCode = null;
             if (shouldRender) scheduleReviewRender();
+        }
+
+        function buildReviewModeSwitcherHtml() {
+            const modeButtonClass = (mode) => {
+                const active = reviewBrowseMode === mode;
+                return `inline-flex min-h-[38px] flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] shadow-sm active:scale-[0.98] ${active ? 'border-yellow-300 bg-yellow-100 text-yellow-800' : 'border-slate-200 bg-white text-slate-600'}`;
+            };
+            return `<div class="mb-3 flex gap-2 rounded-2xl border border-yellow-100 bg-yellow-50/70 p-2 shadow-sm"><button type="button" class="${modeButtonClass('item')}" ${buildFastInvokeAttrs('setReviewBrowseMode', ['item'], 'Item view')}><i class="ph-bold ph-plant"></i><span>Items</span></button><button type="button" class="${modeButtonClass('block')}" ${buildFastInvokeAttrs('setReviewBrowseMode', ['block'], 'Block view')}><i class="ph-bold ph-map-trifold"></i><span>Blocks</span></button></div>`;
+        }
+
+        function setReviewBrowseMode(mode = 'item') {
+            const nextMode = mode === 'block' ? 'block' : 'item';
+            if (reviewBrowseMode !== nextMode) reviewBrowseMode = nextMode;
+            reviewViewLevel = 0;
+            selectedReviewItemCode = null;
+            selectedReviewCommonName = null;
+            selectedReviewContSize = null;
+            selectedReviewBlockAlpha = null;
+            selectedReviewLocationCode = null;
+            markViewDirty('review');
+            scheduleReviewRender(0);
+            updateGlobalBackButton();
+            return false;
+        }
+
+        function backReviewView(shouldRender = true) {
+            if (reviewBrowseMode === 'block' && reviewViewLevel > 1) {
+                reviewViewLevel = 1;
+                selectedReviewLocationCode = null;
+            } else {
+                reviewViewLevel = 0;
+                selectedReviewItemCode = null;
+                selectedReviewCommonName = null;
+                selectedReviewContSize = null;
+                selectedReviewBlockAlpha = null;
+                selectedReviewLocationCode = null;
+            }
+            if (shouldRender) scheduleReviewRender(0);
+            updateGlobalBackButton();
+            return false;
         }
 
         function clearReviewSearch() {
@@ -21745,10 +21906,32 @@ function toggleDriveQuickRequestItem(domId) {
 
         function selectReviewItem(itemCode, commonName, contSize) {
             return runDirectTrackedNavigation('review', `review-item:${String(itemCode || '').trim()}`, () => {
+                reviewBrowseMode = 'item';
                 selectedReviewItemCode = itemCode;
                 selectedReviewCommonName = commonName;
                 selectedReviewContSize = contSize;
                 reviewViewLevel = 1;
+            }, { delay: 0, typingDelay: 180 });
+        }
+
+        function selectReviewBlock(blockAlpha) {
+            const safeBlock = normalizeReviewBlockAlpha(blockAlpha);
+            return runDirectTrackedNavigation('review', `review-block:${safeBlock}`, () => {
+                reviewBrowseMode = 'block';
+                selectedReviewBlockAlpha = safeBlock;
+                selectedReviewLocationCode = null;
+                reviewViewLevel = 1;
+            }, { delay: 0, typingDelay: 180 });
+        }
+
+        function selectReviewBlockLocation(blockAlpha, locationCode) {
+            const safeBlock = normalizeReviewBlockAlpha(blockAlpha);
+            const safeLocation = normalizeReviewLocationCode(locationCode);
+            return runDirectTrackedNavigation('review', `review-block-location:${safeBlock}:${safeLocation}`, () => {
+                reviewBrowseMode = 'block';
+                selectedReviewBlockAlpha = safeBlock;
+                selectedReviewLocationCode = safeLocation;
+                reviewViewLevel = 2;
             }, { delay: 0, typingDelay: 180 });
         }
 
@@ -21979,7 +22162,11 @@ function toggleDriveQuickRequestItem(domId) {
             optimisticNcrCompletedRowIds.delete(uid);
             managerReviewInventoryDirty = true;
             const sameItemCode = String(firstNonEmptyValue(item && item.ITEMCODE, '')).trim();
-            if (reviewViewLevel === 1 && sameItemCode && String(selectedReviewItemCode || '') === sameItemCode && !getReviewDrilldownItems(sameItemCode).length) {
+            if (reviewBrowseMode === 'item' && reviewViewLevel === 1 && sameItemCode && String(selectedReviewItemCode || '') === sameItemCode && !getReviewDrilldownItems(sameItemCode).length) {
+                resetReviewView(false);
+            } else if (reviewBrowseMode === 'block' && reviewViewLevel === 2 && !getReviewRowsForBlockLocation(selectedReviewBlockAlpha, selectedReviewLocationCode).length) {
+                backReviewView(false);
+            } else if (reviewBrowseMode === 'block' && reviewViewLevel === 1 && !getReviewRowsForBlock(selectedReviewBlockAlpha).length) {
                 resetReviewView(false);
             }
             clearNcrDraft(item);
@@ -22752,7 +22939,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (currentView === 'review') {
                 if (typeof reviewViewLevel !== 'undefined' && reviewViewLevel > 0) {
-                    resetReviewView();
+                    backReviewView();
                     updateGlobalBackButton();
                     return false;
                 }
@@ -39825,6 +40012,50 @@ ${folderNote ? `Folder Note: ${folderNote}
                 crumb.innerText = "All Clear";
                 return;
             }
+            const modeSwitcherHtml = buildReviewModeSwitcherHtml();
+            if (reviewBrowseMode === 'block') {
+                if (reviewViewLevel === 0) {
+                    const blockRows = getReviewBlockDrilldownItems();
+                    const blockGroups = buildReviewBlockGroups(blockRows);
+                    renderMarkupChunkedByKey('review-blocks', container, crumb, blockGroups, 'New Crop Release by Block', (group) => {
+                        const blockLabel = esc(group.blockAlpha || 'Unassigned');
+                        const ptrLabel = Number(group.ptrAvailableTotal || 0).toLocaleString();
+                        const locationPreview = group.locations && group.locations.length ? esc(group.locations.slice(0, 8).join(', ')) : 'No locations';
+                        const moreLocations = group.locations && group.locations.length > 8 ? `<span class="text-yellow-600"> +${group.locations.length - 8} more</span>` : '';
+                        return `<div class="bg-white border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectReviewBlock', [group.blockAlpha], `Open block ${group.blockAlpha}`)}><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-grow"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-yellow-500">Block Alpha</div><div class="mt-1 text-2xl font-black text-yellow-800 leading-none break-words">${blockLabel}</div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-yellow-200 bg-yellow-50 px-3 py-1 text-yellow-700">${esc(String(group.locationCount || 0))} Locations</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">${esc(String(group.rowCount || 0))} Rows</span><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">PTR ${esc(ptrLabel)}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">${esc(String(group.itemCount || 0))} Items</span></div><div class="mt-3 text-[11px] font-bold text-slate-500 break-words">${locationPreview}${moreLocations}</div></div><i class="ph-bold ph-caret-right text-xl text-yellow-500 mt-1"></i></div></div>`;
+                    }, {
+                        prefixHtml: modeSwitcherHtml,
+                        approxCardHeight: 150,
+                        emptyHtml: `<div class="p-8 text-center text-gray-400">No matching New Crop Release rows found by block.</div>`
+                    });
+                    return;
+                }
+                if (reviewViewLevel === 1) {
+                    const blockRows = getReviewRowsForBlock(selectedReviewBlockAlpha);
+                    const locationGroups = buildReviewLocationGroups(blockRows);
+                    const blockLabel = normalizeReviewBlockAlpha(selectedReviewBlockAlpha);
+                    renderMarkupChunkedByKey('review-block-locations', container, crumb, locationGroups, `Block ${blockLabel}`, (group) => {
+                        const ptrLabel = Number(group.ptrAvailableTotal || 0).toLocaleString();
+                        return `<div class="bg-white border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectReviewBlockLocation', [blockLabel, group.locationCode], `Open location ${group.locationCode}`)}><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-grow"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-yellow-500">Location Code</div><div class="mt-1 text-2xl font-black text-yellow-800 leading-none break-words">${esc(group.locationCode || 'No Loc')}</div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">${esc(String(group.rowCount || 0))} Rows</span><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">PTR ${esc(ptrLabel)}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">${esc(String(group.itemCount || 0))} Items</span></div></div><i class="ph-bold ph-caret-right text-xl text-yellow-500 mt-1"></i></div></div>`;
+                    }, {
+                        prefixHtml: `${modeSwitcherHtml}<div class="back-btn" ${buildFastInvokeAttrs('backReviewView', [], 'Back to blocks')}><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`,
+                        approxCardHeight: 132,
+                        emptyHtml: `<div class="p-8 text-center text-gray-400">No locations found for this block.</div>`
+                    });
+                    return;
+                }
+                if (reviewViewLevel === 2) {
+                    const blockLabel = normalizeReviewBlockAlpha(selectedReviewBlockAlpha);
+                    const locationLabel = normalizeReviewLocationCode(selectedReviewLocationCode);
+                    const rows = getReviewRowsForBlockLocation(blockLabel, locationLabel);
+                    renderMarkupChunkedByKey('review-block-location-rows', container, crumb, rows, `${blockLabel} / ${locationLabel}`, (item) => generateCard(item, 'review', 'status-yellow'), {
+                        prefixHtml: `${modeSwitcherHtml}<div class="back-btn" ${buildFastInvokeAttrs('backReviewView', [], 'Back to locations')}><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>`,
+                        approxCardHeight: 305,
+                        emptyHtml: `<div class="p-8 text-center text-gray-400">No New Crop Release rows were found for this location.</div>`
+                    });
+                    return;
+                }
+            }
             if(reviewViewLevel === 0){
                 const sorted = buildReviewCardGroups(filterReviewItemsBySearch(reviewItems));
                 renderMarkupChunkedByKey('review-main', container, crumb, sorted, 'Needs Location Priority Review', (group) => {
@@ -39835,11 +40066,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                         ? esc(group.currentSeasonLotcodes.join(', '))
                         : 'None';
                     return `<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectReviewItem', [group.code, group.name, group.size], `Open ${group.name}`)}><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-grow pr-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-yellow-500">Current ${esc(group.currentSeasonSuffix || '')} PTRAVAILABLE</div><div class="mt-1 text-2xl font-black text-yellow-700 leading-none">${esc(currentSeasonPtrLabel)}</div><div class="mt-3 font-bold text-[15px] text-yellow-800 truncate">${group.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${group.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${group.code}</span></div><div class="mt-3 text-[10px] font-black uppercase tracking-[0.14em] text-yellow-500">Current ${esc(group.currentSeasonSuffix || '')} Lotcodes</div><div class="mt-1 text-xs font-semibold text-yellow-700 break-words">${currentSeasonLotcodesLabel}</div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${group.count} Locs</div></div></div>`;
-                }, { approxCardHeight: 132, emptyHtml: `<div class="p-8 text-center text-gray-400">No items require New Crop Release review.</div>` });
+                }, { prefixHtml: modeSwitcherHtml, approxCardHeight: 132, emptyHtml: `<div class="p-8 text-center text-gray-400">No items require New Crop Release review.</div>` });
             } else if(reviewViewLevel === 1){
                 let items = getReviewDrilldownItems(selectedReviewItemCode);
                 renderMarkupChunkedByKey('review-detail', container, crumb, items, `${selectedReviewCommonName} / ${selectedReviewContSize}`, (item) => generateCard(item, 'review', 'status-yellow'), {
-                    prefixHtml: `<div class="back-btn" onclick="resetReviewView()"><i class="ph-bold ph-arrow-left"></i> Back to List</div>`,
+                    prefixHtml: `${modeSwitcherHtml}<div class="back-btn" ${buildFastInvokeAttrs('backReviewView', [], 'Back to list')}><i class="ph-bold ph-arrow-left"></i> Back to List</div>`,
                     approxCardHeight: 305,
                     emptyHtml: `<div class="p-8 text-center text-gray-400">No next-up F1, U1, U2, or U3 rows with S_LTS greater than 0 were found for this item.</div>`
                 });
