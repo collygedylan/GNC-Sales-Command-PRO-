@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.06.03';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.06.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -129,6 +129,27 @@ body.performance-lean-shell .item-row.cart-selected{box-shadow:0 0 0 2px rgba(0,
         body.ios-device.performance-scroll-active .app-card-shell,
         body.ios-device.performance-scroll-active .inv-card{
             box-shadow:none !important;
+        }
+        body.ios-device,
+        body.ios-device #app-wrapper{
+            left:0 !important;
+            right:0 !important;
+            width:100vw !important;
+            max-width:100vw !important;
+            overflow-x:hidden !important;
+            -webkit-overflow-scrolling:auto !important;
+        }
+        body.ios-device #main-scroll-area{
+            overflow-x:hidden !important;
+            overscroll-behavior:contain !important;
+            transform:translate3d(0,0,0);
+            -webkit-transform:translate3d(0,0,0);
+        }
+        body.ios-device #view-wrapper,
+        body.ios-device .nav-header-shell,
+        body.ios-device #global-header-search-row{
+            transform:translateZ(0);
+            -webkit-transform:translateZ(0);
         }
         @media (pointer: coarse){
             body.performance-lean-shell .app-smart-card,
@@ -528,7 +549,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
         }
     </style>
     <style>
-        html,body,#app-wrapper,#main-scroll-area{-webkit-overflow-scrolling:touch}
+        #main-scroll-area{-webkit-overflow-scrolling:touch}
 #main-scroll-area{scroll-behavior:auto}
 a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}
 @media (pointer: coarse){.sticky-search,.freeze-panel,#global-header-search-row,.nav-header{box-shadow:none !important}.sticky-search{transform:none !important;-webkit-transform:none !important;backface-visibility:visible !important}#bottom-nav{backdrop-filter:none !important;-webkit-backdrop-filter:none !important;box-shadow:0 -6px 14px rgba(15,23,42,.08)!important}}
@@ -967,7 +988,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.03').trim() || 'V2026.05.06.03';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.04').trim() || 'V2026.05.06.04';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1566,7 +1587,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2198,6 +2219,9 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
 
         function markScrollActivity() {
             lastScrollAt = Date.now();
+            if (document && document.body && document.body.classList.contains('ios-device')) {
+                clampHorizontalViewportShift();
+            }
             if (document && document.body) {
                 document.body.classList.add('performance-scroll-active');
                 if (scrollPerformanceClassTimer) clearTimeout(scrollPerformanceClassTimer);
@@ -2729,7 +2753,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const syncReason = normalizeUiSyncReason(nextOptions.reason);
             if (!nextOptions.force && shouldDeferChromeSyncWork(syncReason)) {
-                scheduleDeferredChromeSyncTask('viewport-height', () => syncViewportHeight({ reason: `deferred:${syncReason || 'viewport-height'}`, force: true }));
+                scheduleDeferredChromeSyncTask('viewport-height', () => syncViewportHeight({ reason: `settled:${syncReason || 'viewport-height'}`, force: false }), ACTIVE_SCROLL_GRACE_MS + 240);
                 return;
             }
             const viewport = window.visualViewport;
@@ -9863,7 +9887,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.03').trim() || 'V2026.05.06.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.04').trim() || 'V2026.05.06.04';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -10910,6 +10934,19 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             });
         }
 
+        function isOptionalFlyerRowsMissingError(error = null) {
+            const message = String(error && error.message ? error.message : error || '').toLowerCase();
+            return message.includes(FLYER_FOLDER_ROWS_TABLE)
+                && (message.includes('pgrst205') || message.includes('could not find') || message.includes('schema cache') || message.includes('relation') || message.includes('404'));
+        }
+
+        function handleMissingOptionalFlyerRowsTable(error = null) {
+            flyerFolderRowsSchemaReady = false;
+            flyerFolderRowsSchemaWarningShown = true;
+            console.warn('Optional flyer folder rows table is unavailable; using master inventory flyer rows.', error);
+            return [];
+        }
+
         function buildDatasetPayload(key, rows) {
             const definition = DATASET_DEFINITIONS[key];
             const formatted = formatFetchedRows(rows, definition.sourceTable);
@@ -11010,9 +11047,15 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const resolvedQuery = typeof querySource === 'function' ? querySource(modeLabel, options) : (querySource || 'select=*');
                 const initialLimitSource = definition.initialLimit;
                 const resolvedInitialLimit = typeof initialLimitSource === 'function' ? initialLimitSource(modeLabel, options) : (initialLimitSource || INITIAL_PAGE_LIMIT);
-                const rows = wantsFull
-                    ? await fetchAllSupabaseRows(definition.table, resolvedQuery)
-                    : await fetchSupabasePage(definition.table, resolvedQuery, resolvedInitialLimit, 0);
+                let rows = [];
+                try {
+                    rows = wantsFull
+                        ? await fetchAllSupabaseRows(definition.table, resolvedQuery)
+                        : await fetchSupabasePage(definition.table, resolvedQuery, resolvedInitialLimit, 0);
+                } catch (error) {
+                    if (key === 'flyerRows' && isOptionalFlyerRowsMissingError(error)) rows = handleMissingOptionalFlyerRowsTable(error);
+                    else throw error;
+                }
                 state.initialLoaded = true;
                 state.fullLoaded = wantsFull ? true : state.fullLoaded;
                 state.lastLoadedAt = new Date().toISOString();
@@ -11204,9 +11247,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (viewId === 'sales-office') return { required: [{ key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }, { key: 'master', mode: 'initial' }], label: 'Loading sales office...' };
             if (viewId === 'tasks') {
                 const isFlyerTaskView = activeTaskView === 'flyer';
-                const required = isFlyerTaskView ? [{ key: 'flyerRows', mode: 'initial' }] : [{ key: 'master', mode: 'initial' }];
+                const required = [{ key: 'master', mode: 'initial' }];
+                if (isFlyerTaskView) required.push({ key: 'flyerRows', mode: 'initial' });
                 const background = isFlyerTaskView
-                    ? [{ key: 'flyerRows', mode: 'full' }, { key: 'master', mode: 'initial' }, { key: 'avNotes', mode: 'full' }]
+                    ? [{ key: 'master', mode: 'full' }, { key: 'flyerRows', mode: 'full' }, { key: 'avNotes', mode: 'full' }]
                     : [{ key: 'master', mode: 'full' }, { key: 'avNotes', mode: 'full' }];
                 const needsTaskHotPriceKeys = activeTaskView === 'hot-price';
                 if (needsTaskHotPriceKeys) {
@@ -12196,7 +12240,7 @@ let searchRenderToken = {};
 
         function canUseCustomerConsigneeOutreach() {
             const tokens = getProtectedUserTokens();
-            return tokens.has('dylan') || tokens.has('dylan_collyge') || tokens.has('jd') || tokens.has('jd_jones') || tokens.has('jdjones');
+            return tokens.has('dylan') || tokens.has('dylan_collyge') || tokens.has('jd') || tokens.has('jd_jones') || tokens.has('jdjones') || tokens.has('kayla') || tokens.has('kayla_knepp');
         }
 
         function canViewDashboardSyncStatus() {
@@ -27944,7 +27988,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function openCustomerConsigneeOutreachDetail(uid = '', sourceView = '') {
             if (!canUseCustomerConsigneeOutreach()) {
-                showToast('Restricted', 'Only Dylan and JD can view Customer / Consignee Send.', true);
+                showToast('Restricted', 'Only Dylan, JD, or Kayla can view Customer / Consignee Send.', true);
                 return false;
             }
             const safeUid = String(uid || '').trim();
@@ -28348,7 +28392,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         async function sendDriveCustomerOutreachEmails(options = {}) {
             if (!canUseCustomerConsigneeOutreach()) {
-                showToast('Restricted', 'Only Dylan and JD can send Customer / Consignee emails.', true);
+                showToast('Restricted', 'Only Dylan, JD, or Kayla can send Customer / Consignee emails.', true);
                 return false;
             }
             if (driveCustomerOutreachSendBusy) return false;
