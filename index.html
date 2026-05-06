@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.06.02';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.06.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -967,7 +967,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.02').trim() || 'V2026.05.06.02';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.03').trim() || 'V2026.05.06.03';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1566,7 +1566,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6862,8 +6862,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return false;
         }
 
-        function scheduleDriveRender(delay = 0, typingDelay = 36, forceRender = false) {
-            return scheduleTrackedViewRender('drive', 'drive:render', { delay, typingDelay, forceRender, userAction: true, preferImmediate: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 12, interactionDelayMs: 12, scrollDelayMs: 56 });
+        function scheduleDriveRender(delay = 0, typingDelay = 28, forceRender = false) {
+            return scheduleTrackedViewRender('drive', 'drive:render', { delay, typingDelay, forceRender, userAction: true, preferImmediate: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 8, interactionDelayMs: 8, scrollDelayMs: 40 });
         }
 
         function scheduleTasksRender(delay = 0, typingDelay = 20, forceRender = false) {
@@ -6902,8 +6902,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return scheduleTrackedViewRender('take-back', 'take-back:render', { delay, typingDelay: 120, userAction: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 24, interactionDelayMs: 24, scrollDelayMs: 100 });
         }
 
-        function scheduleAVRender(delay = 0) {
-            return scheduleTrackedViewRender('av', 'av:render', { delay, typingDelay: 40, userAction: true, preferImmediate: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 16, interactionDelayMs: 16, scrollDelayMs: 72 });
+        function scheduleAVRender(delay = 0, typingDelay = 28, forceRender = false) {
+            return scheduleTrackedViewRender('av', 'av:render', { delay, typingDelay, forceRender, userAction: true, preferImmediate: true, allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 8, interactionDelayMs: 8, scrollDelayMs: 48 });
         }
 
         function scheduleTasksRenderWithOptions(options = {}, delay = 0, typingDelay = 28, forceRender = false, renderKey = 'tasks:render:options') {
@@ -9863,7 +9863,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.02').trim() || 'V2026.05.06.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.03').trim() || 'V2026.05.06.03';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -11185,9 +11185,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 }
                 if (activeAVTab === 'reserves') {
                     if (getRoleAccessState().isRep) {
-                        return { required: [{ key: 'reserves', mode: 'full' }], background: [], label: 'Loading all of your reserve rows...' };
+                        return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading your reserve rows...' };
                     }
-                    return { required: [{ key: 'reserves', mode: 'full' }], background: [], label: 'Loading all reserve rows...' };
+                    return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading reserve rows...' };
                 }
                 return { required: [{ key: 'avOpen', mode: 'initial' }], background: [{ key: 'avOpen', mode: 'full' }], label: 'Loading AV open stock...' };
             }
@@ -11203,13 +11203,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             if (viewId === 'sales-office') return { required: [{ key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }, { key: 'master', mode: 'initial' }], label: 'Loading sales office...' };
             if (viewId === 'tasks') {
-                const required = [{ key: 'master', mode: 'initial' }];
-                const background = [{ key: 'master', mode: 'full' }, { key: 'avNotes', mode: 'full' }];
+                const isFlyerTaskView = activeTaskView === 'flyer';
+                const required = isFlyerTaskView ? [{ key: 'flyerRows', mode: 'initial' }] : [{ key: 'master', mode: 'initial' }];
+                const background = isFlyerTaskView
+                    ? [{ key: 'flyerRows', mode: 'full' }, { key: 'master', mode: 'initial' }, { key: 'avNotes', mode: 'full' }]
+                    : [{ key: 'master', mode: 'full' }, { key: 'avNotes', mode: 'full' }];
                 const needsTaskHotPriceKeys = activeTaskView === 'hot-price';
-                if (activeTaskView === 'flyer') {
-                    required.push({ key: 'flyerRows', mode: 'initial' });
-                    background.push({ key: 'flyerRows', mode: 'full' });
-                }
                 if (needsTaskHotPriceKeys) {
                     required.push({ key: 'avHotPriceKeys', mode: 'full' });
                 }
@@ -22384,6 +22383,7 @@ function toggleDriveQuickRequestItem(domId) {
             taskSubviewDropdownOpen = false;
             taskModeSearchTerm = '';
             taskSubviewSearchTerm = '';
+            const taskViewChanged = normalizedView !== previousTaskView;
             const allowedFilters = getTaskFilterValues(normalizedView);
             if (normalizedView === 'cust') {
                 activeTaskCustomerFilter = allowedFilters.includes(activeTaskCustomerFilter) ? activeTaskCustomerFilter : 'all';
@@ -22395,7 +22395,9 @@ function toggleDriveQuickRequestItem(domId) {
                 activeTaskReservePhotoMode = 'all';
                 activeTaskSubview = activeTaskReserveRepFilter;
             } else {
-                activeTaskFilter = allowedFilters.includes(activeTaskFilter) ? activeTaskFilter : 'all';
+                const defaultTaskSubview = getDefaultTaskSubviewForView(normalizedView);
+                const nextTaskFilter = taskViewChanged ? defaultTaskSubview : (allowedFilters.includes(activeTaskFilter) ? activeTaskFilter : defaultTaskSubview);
+                activeTaskFilter = normalizeTaskFilterValue(nextTaskFilter);
                 activeTaskSubview = activeTaskFilter;
             }
             if (normalizedView !== 'colorwalk' && previousTaskView === 'colorwalk') {
@@ -22409,14 +22411,14 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (normalizedView !== 'endcap') selectedEndCapFolder = null;
             if (normalizedView !== 'flyer') selectedFlyerFolder = null;
-            if (normalizedView !== previousTaskView && (!nextUsesBlockDrill || !previousUsesBlockDrill)) {
+            if (taskViewChanged && (!nextUsesBlockDrill || !previousUsesBlockDrill)) {
                 taskViewLevel = 0;
             }
             if (!shouldShowTaskInlineDetailFilters(normalizedView, taskViewLevel)) {
                 resetTaskLocationDetailFilters();
             }
             scheduleTasksRender(0, 8, true);
-            scheduleTaskHotCacheWarmup('task-tab', 60);
+            scheduleTaskHotCacheWarmup('task-tab', 1500);
             return false;
         }
 
@@ -22470,7 +22472,7 @@ function toggleDriveQuickRequestItem(domId) {
                 resetTaskLocationDetailFilters();
             }
             scheduleTasksRender(0, 8, true);
-            scheduleTaskHotCacheWarmup('task-subview', 60);
+            scheduleTaskHotCacheWarmup('task-subview', 1500);
             return false;
         }
 
@@ -22761,16 +22763,26 @@ function toggleDriveQuickRequestItem(domId) {
             lastViewSwitchAt = Date.now();
             cancelDriveSearchRenderWork();
             const nextTab = ['name', 'loc', 'card'].includes(String(tab || '').trim()) ? String(tab || '').trim() : 'card';
-            activeDriveTab = nextTab;
-            driveQuickRequestCardMode = nextTab === 'card';
-            driveViewDropdownOpen = false;
-            driveSeasonDropdownOpen = false;
-            driveGenusFilterOpen = false;
-            driveContSizeFilterOpen = false;
-            resetDriveDrillSelectionState();
-            setDriveSearchManualSelectionLock(nextTab !== 'card' && hasActiveDriveSearchTerm());
-            scheduleDriveRender(0, 28, true);
-            queueScrollMainAreaToTop(`drive-tab:${nextTab}`);
+            return runDirectTrackedNavigation('drive', `drive-tab:${nextTab}`, () => {
+                activeDriveTab = nextTab;
+                driveQuickRequestCardMode = nextTab === 'card';
+                driveViewDropdownOpen = false;
+                driveSeasonDropdownOpen = false;
+                driveGenusFilterOpen = false;
+                driveContSizeFilterOpen = false;
+                resetDriveDrillSelectionState();
+                setDriveSearchManualSelectionLock(nextTab !== 'card' && hasActiveDriveSearchTerm());
+                invalidateDriveResolvedCardState();
+            }, {
+                delay: 0,
+                typingDelay: 32,
+                forceRender: true,
+                resetScrollTopAfterRender: true,
+                scrollResetKey: `drive-tab:${nextTab}`,
+                touchDelayMs: 8,
+                interactionDelayMs: 8,
+                scrollDelayMs: 40
+            });
         }
 
         function toggleDriveHoldStopOnly() {
@@ -22843,19 +22855,19 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function setAvSecondaryTab(tab) {
-            beginDirectNavigationActivity();
             const nextTab = tab === 'photos' ? 'photos' : 'all';
-            if (activeAVTab === 'hotprice') activeAvHotPriceTab = nextTab;
-            else if (activeAVTab === 'reserves') activeAvReserveMode = nextTab;
-            else activeAvOpenTab = nextTab === 'photos' ? 'photos' : 'name';
-            syncAvSecondaryTabs();
-            avOpenLevel = 0;
-            selectedAvOpenName = null;
-            selectedAvOpenSize = null;
-            selectedAvOpenSeason = null;
-            selectedAvOpenLot = null;
-            selectedAvReserveDetailCustomerKey = null;
-            scheduleAVRender(0);
+            return runDirectTrackedNavigation('av', `av-secondary:${activeAVTab}:${nextTab}`, () => {
+                if (activeAVTab === 'hotprice') activeAvHotPriceTab = nextTab;
+                else if (activeAVTab === 'reserves') activeAvReserveMode = nextTab;
+                else activeAvOpenTab = nextTab === 'photos' ? 'photos' : 'name';
+                syncAvSecondaryTabs();
+                avOpenLevel = 0;
+                selectedAvOpenName = null;
+                selectedAvOpenSize = null;
+                selectedAvOpenSeason = null;
+                selectedAvOpenLot = null;
+                selectedAvReserveDetailCustomerKey = null;
+            }, { delay: 0, typingDelay: 32, forceRender: true, resetScrollTopAfterRender: true, scrollResetKey: `av-secondary:${nextTab}`, touchDelayMs: 8, interactionDelayMs: 8, scrollDelayMs: 48 });
         }
 
         function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; selectedAvReserveDetailCustomerKey=null; avOpenLevel=0; scheduleAVRender(0); }
@@ -22873,24 +22885,26 @@ function toggleDriveQuickRequestItem(domId) {
         }
         function setAVTab(tab) {
             lastViewSwitchAt = Date.now();
-            beginDirectNavigationActivity();
-            activeAVTab=tab;
-            avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; activeAvReserveMode='all'; activeAvReserveDetailTab='customer'; selectedAvReserveDetailCustomerKey=null;
-            avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
-            closeAvTopControlDropdowns(false);
-            avResolvedBaseStateKey = '';
-            avResolvedBaseStateCache = null;
-            document.getElementById('tab-av-open').classList.toggle('active',tab==='open'); document.getElementById('tab-av-hotprice').classList.toggle('active',tab==='hotprice'); document.getElementById('tab-av-reserves').classList.toggle('active',tab==='reserves');
-            syncAvSecondaryTabs();
-            scheduleAVRender(0);
+            const nextTab = tab === 'hotprice' || tab === 'reserves' ? tab : 'open';
+            return runDirectTrackedNavigation('av', `av-tab:${nextTab}`, () => {
+                activeAVTab=nextTab;
+                avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; activeAvReserveMode='all'; activeAvReserveDetailTab='customer'; selectedAvReserveDetailCustomerKey=null;
+                avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
+                closeAvTopControlDropdowns(false);
+                avResolvedBaseStateKey = '';
+                avResolvedBaseStateCache = null;
+                document.getElementById('tab-av-open').classList.toggle('active',nextTab==='open'); document.getElementById('tab-av-hotprice').classList.toggle('active',nextTab==='hotprice'); document.getElementById('tab-av-reserves').classList.toggle('active',nextTab==='reserves');
+                syncAvSecondaryTabs();
+            }, { delay: 0, typingDelay: 32, forceRender: true, resetScrollTopAfterRender: true, scrollResetKey: `av-tab:${nextTab}`, touchDelayMs: 8, interactionDelayMs: 8, scrollDelayMs: 48 });
         }
         function setAvOpenTab(tab) {
-            beginDirectNavigationActivity();
-            activeAvOpenTab = tab === 'photos' ? 'photos' : 'name';
-            syncAvSecondaryTabs();
-            avOpenLevel = 0;
-            selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
-            scheduleAVRender(0);
+            const nextTab = tab === 'photos' ? 'photos' : 'name';
+            return runDirectTrackedNavigation('av', `av-open:${nextTab}`, () => {
+                activeAvOpenTab = nextTab;
+                syncAvSecondaryTabs();
+                avOpenLevel = 0;
+                selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
+            }, { delay: 0, typingDelay: 32, forceRender: true, resetScrollTopAfterRender: true, scrollResetKey: `av-open:${nextTab}`, touchDelayMs: 8, interactionDelayMs: 8, scrollDelayMs: 48 });
         }
 
         function setReqTab(tab) {
@@ -36343,37 +36357,64 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function setFlyerFolderTab(tab = 'active') {
-            beginDirectNavigationActivity();
-            activeFlyerFolderTab = getFlyerFolderTabValue(tab);
-            taskViewLevel = 0;
-            selectedFlyerFolder = null;
-            closeAllFlyerSwipes();
-            scheduleTasksRender(0);
-            return false;
+            const nextTab = getFlyerFolderTabValue(tab);
+            return runDirectTrackedNavigation('tasks', `tasks:flyer-tab:${nextTab}`, () => {
+                activeFlyerFolderTab = nextTab;
+                taskViewLevel = 0;
+                selectedFlyerFolder = null;
+                closeAllFlyerSwipes();
+            }, {
+                delay: 0,
+                typingDelay: 32,
+                forceRender: true,
+                resetScrollTopAfterRender: true,
+                scrollResetKey: `tasks:flyer-tab:${nextTab}`,
+                touchDelayMs: 8,
+                interactionDelayMs: 8,
+                scrollDelayMs: 32
+            });
         }
 
         function openFlyerFolder(folderName, folderTab = activeFlyerFolderTab) {
             const returnScrollKey = `tasks:flyer:${getFlyerFolderTabValue(activeFlyerFolderTab)}:folders`;
             rememberNavigationScrollPosition(returnScrollKey);
-            activeFlyerFolderTab = getFlyerFolderTabValue(folderTab);
-            selectedFlyerFolder = getFlyerFolderName(folderName);
-            taskViewLevel = 1;
-            closeAllFlyerSwipes();
-            scheduleTasksRender(0);
-            queueScrollMainAreaToTop(`flyer-folder:${activeFlyerFolderTab}:${selectedFlyerFolder}`);
-            return false;
+            const nextTab = getFlyerFolderTabValue(folderTab);
+            const nextFolder = getFlyerFolderName(folderName);
+            return runDirectTrackedNavigation('tasks', `tasks:flyer-folder:${nextTab}:${nextFolder}`, () => {
+                activeFlyerFolderTab = nextTab;
+                selectedFlyerFolder = nextFolder;
+                taskViewLevel = 1;
+                closeAllFlyerSwipes();
+            }, {
+                delay: 0,
+                typingDelay: 32,
+                forceRender: true,
+                resetScrollTopAfterRender: true,
+                scrollResetKey: `flyer-folder:${nextTab}:${nextFolder}`,
+                touchDelayMs: 8,
+                interactionDelayMs: 8,
+                scrollDelayMs: 32
+            });
         }
 
         function backToFlyerFolderList() {
             const returnScrollKey = `tasks:flyer:${getFlyerFolderTabValue(activeFlyerFolderTab)}:folders`;
             const restoreScrollTop = getNavigationScrollPosition(returnScrollKey);
-            taskViewLevel = 0;
-            selectedFlyerFolder = null;
-            closeAllFlyerSwipes();
-            scheduleTasksRender(0);
-            if (restoreScrollTop == null) queueScrollMainAreaToTop(`flyer-tab:${activeFlyerFolderTab}`);
-            else schedulePostRenderMainAreaScrollRestore('tasks', returnScrollKey, restoreScrollTop);
-            return false;
+            return runDirectTrackedNavigation('tasks', 'tasks:flyer-list', () => {
+                taskViewLevel = 0;
+                selectedFlyerFolder = null;
+                closeAllFlyerSwipes();
+            }, {
+                delay: 0,
+                typingDelay: 32,
+                forceRender: true,
+                resetScrollTopAfterRender: restoreScrollTop == null,
+                restoreScrollTopAfterRender: restoreScrollTop,
+                scrollResetKey: returnScrollKey,
+                touchDelayMs: 8,
+                interactionDelayMs: 8,
+                scrollDelayMs: 32
+            });
         }
 
         const TASK_VIEW_VALUES = Object.freeze(['hot-price', 'positive-lts', 'hold', 'av-blanks', 'colorwalk', 'endcap', 'flyer', 'cust', 'reserves']);
@@ -36387,6 +36428,12 @@ ${folderNote ? `Folder Note: ${folderNote}
         function normalizeTaskFilterValue(value = activeTaskFilter) {
             const normalized = String(firstNonEmptyValue(value, activeTaskFilter, activeTaskSubview, DEFAULT_TASK_FILTER, 'all') || '').trim().toLowerCase();
             return TASK_FILTER_VALUES.includes(normalized) ? normalized : DEFAULT_TASK_FILTER;
+        }
+
+        function getDefaultTaskSubviewForView(tab = activeTaskView) {
+            const safeView = normalizeTaskViewValue(tab);
+            if (safeView === 'flyer' || safeView === 'endcap' || safeView === 'colorwalk') return 'all';
+            return DEFAULT_TASK_FILTER;
         }
 
         function normalizeTaskCustomerFilterValue(value = activeTaskCustomerFilter) {
@@ -36833,6 +36880,13 @@ ${folderNote ? `Folder Note: ${folderNote}
             return resolveProductivityOriginKind(item) === expectedKind;
         }
 
+        function doesItemMatchTaskFilterOrUnspecifiedOrigin(item, filter = activeTaskFilter) {
+            const expectedKind = getTaskOriginFilterKind(filter);
+            if (!expectedKind) return true;
+            const originKind = resolveProductivityOriginKind(item);
+            return !originKind || originKind === expectedKind;
+        }
+
         function shouldUseSharedTaskQueue(tab = activeTaskView) {
             const safeView = normalizeTaskViewValue(tab);
             if (isCurrentUserInSharedTaskGroup()) return true;
@@ -37026,15 +37080,15 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             if (safeView === 'colorwalk') {
                 return getTaskAssignmentBucketItems(scopedItems, 'colorwalk')
-                    .filter((item) => doesItemMatchTaskFilter(item, safeFilter));
+                    .filter((item) => doesItemMatchTaskFilterOrUnspecifiedOrigin(item, safeFilter));
             }
             if (safeView === 'flyer') {
                 return getTaskAssignmentBucketItems(scopedItems, 'flyer')
-                    .filter((item) => doesItemMatchTaskFilter(item, safeFilter));
+                    .filter((item) => doesItemMatchTaskFilterOrUnspecifiedOrigin(item, safeFilter));
             }
             if (safeView === 'endcap') {
                 return getTaskAssignmentBucketItems(scopedItems, 'endcap')
-                    .filter((item) => doesItemMatchTaskFilter(item, safeFilter));
+                    .filter((item) => doesItemMatchTaskFilterOrUnspecifiedOrigin(item, safeFilter));
             }
             return getFilteredSeasonLocationTaskItems(scopedItems, safeFilter)
                 .filter((item) => taskRowMatchesSubview(item, safeView));
@@ -38487,7 +38541,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!targets.length || !Array.isArray(fullInventory) || !fullInventory.length) return false;
             for (const target of targets) {
                 if (shouldDeferInteractiveBackgroundWork()) {
-                    scheduleTaskHotCacheWarmup('task-hot-resume', 220);
+                    scheduleTaskHotCacheWarmup('task-hot-resume', 900);
                     return false;
                 }
                 buildTaskHotState(target);
@@ -38498,12 +38552,14 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function scheduleTaskHotCacheWarmup(reason = 'task-hot', delay = 180) {
             if (taskHotCacheWarmTimer) clearTimeout(taskHotCacheWarmTimer);
+            const requestedDelay = Math.max(0, Number(delay) || 0);
+            const safeDelay = shouldDeferInteractiveBackgroundWork() ? Math.max(requestedDelay, 900) : requestedDelay;
             taskHotCacheWarmTimer = setTimeout(() => {
                 taskHotCacheWarmTimer = null;
                 runAfterShellInteractive(() => {
                     warmTaskHotCacheEntries().catch(() => {});
                 }, 0);
-            }, Math.max(0, Number(delay) || 0));
+            }, safeDelay);
             return false;
         }
 
@@ -38594,7 +38650,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                     selectedEndCapFolder || '',
                     buildSelectionStateKey(selectedTaskGenusNames),
                     buildSelectionStateKey(selectedTaskContSizes),
-                    String(taskLocationDetailSearchTerm || '').trim().toLowerCase()
+                    String(taskLocationDetailSearchTerm || '').trim().toLowerCase(),
+                    String(selectedTaskLocationDetailGenus || '').trim(),
+                    String(selectedTaskLocationDetailLotCode || '').trim()
                 ].join('::');
                 if (taskFilteredItemsCache.has(filteredStateKey)) {
                     const cachedState = taskFilteredItemsCache.get(filteredStateKey);
