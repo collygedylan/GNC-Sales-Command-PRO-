@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.06.04';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.06.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -389,7 +389,32 @@ body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .
         body.viewport-compact #docks-filter-controls.docks-top-inline .task-top-control-panel{position:absolute;top:calc(100% + .28rem);left:0;z-index:80;width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
         body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-shell=contsize] .task-top-control-panel,
         body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-shell=location] .task-top-control-panel{left:auto;right:0}
-        body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-shell=genus] .task-top-control-panel{width:min(17rem,calc(100vw - (var(--shell-gutter) * 2)))}
+body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-shell=genus] .task-top-control-panel{width:min(17rem,calc(100vw - (var(--shell-gutter) * 2)))}
+        @media (max-width:720px),(pointer:coarse){
+            body.viewport-compact .task-top-control-panel.excel-filter-panel,
+            body.ios-device .task-top-control-panel.excel-filter-panel{
+                position:fixed !important;
+                left:max(10px,env(safe-area-inset-left)) !important;
+                right:max(10px,env(safe-area-inset-right)) !important;
+                top:auto !important;
+                bottom:calc(var(--footer-nav-reserve,74px) + env(safe-area-inset-bottom) + 10px) !important;
+                width:auto !important;
+                max-width:none !important;
+                max-height:min(70vh,34rem) !important;
+                z-index:16000 !important;
+                pointer-events:auto !important;
+                touch-action:auto !important;
+                -webkit-overflow-scrolling:touch;
+            }
+            body.viewport-compact .task-top-control-panel.excel-filter-panel .excel-filter-options,
+            body.ios-device .task-top-control-panel.excel-filter-panel .excel-filter-options{
+                max-height:min(48vh,22rem) !important;
+                overflow-y:auto !important;
+                overscroll-behavior:contain;
+                -webkit-overflow-scrolling:touch;
+                touch-action:pan-y;
+            }
+        }
         #view-wrapper{width:var(--shell-width);max-width:var(--shell-width);min-width:0;overflow-x:hidden;overflow-y:visible;margin:0 auto}#view-wrapper > div{width:100%;max-width:var(--content-width);margin:0 auto}
         .sticky-search{position:-webkit-sticky;position:sticky;top:0;z-index:35;background:var(--sticky-chrome-bg);padding-top:0;padding-bottom:.45rem;box-shadow:none;transform:none;-webkit-transform:none;backface-visibility:visible;margin-bottom:0 !important}
 .request-swipe-row{display:block !important;padding:0 !important;position:relative;overflow:hidden;background:#ffffff !important;touch-action:pan-y;overscroll-behavior-x:contain;-webkit-user-select:none;user-select:none}
@@ -546,6 +571,47 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
             :root{--shell-gutter:12px;--shell-max-width:100vw;--content-max-width:100vw;--footer-nav-reserve:6.2rem}
             #bottom-nav{left:0;right:0;transform:none;width:100vw;max-width:100vw;border-top-left-radius:0;border-top-right-radius:0;padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right));gap:.35rem}
             .footer-nav-btn{min-height:50px;border-radius:14px}
+        }
+        body.ios-device #bottom-nav{
+            position:fixed !important;
+            top:auto !important;
+            bottom:0 !important;
+            margin-bottom:0 !important;
+            transform:translate3d(-50%,0,0) !important;
+            -webkit-transform:translate3d(-50%,0,0) !important;
+            backface-visibility:hidden;
+            -webkit-backface-visibility:hidden;
+        }
+        @media (max-width: 767px){
+            body.ios-device #bottom-nav,
+            body.ios-device.performance-scroll-active #bottom-nav{
+                transform:translate3d(0,0,0) !important;
+                -webkit-transform:translate3d(0,0,0) !important;
+            }
+        }
+        @media (min-width: 768px){
+            body.ios-device.performance-scroll-active #bottom-nav{
+                transform:translate3d(-50%,0,0) !important;
+                -webkit-transform:translate3d(-50%,0,0) !important;
+            }
+        }
+        body.app-standalone.keyboard-open.ios-device #bottom-nav{
+            transform:translate3d(-50%,140%,0) !important;
+            -webkit-transform:translate3d(-50%,140%,0) !important;
+        }
+        body.detail-field-active.ios-device #bottom-nav{
+            transform:translate3d(-50%,120%,0) !important;
+            -webkit-transform:translate3d(-50%,120%,0) !important;
+        }
+        @media (max-width: 767px){
+            body.app-standalone.keyboard-open.ios-device #bottom-nav{
+                transform:translate3d(0,140%,0) !important;
+                -webkit-transform:translate3d(0,140%,0) !important;
+            }
+            body.detail-field-active.ios-device #bottom-nav{
+                transform:translate3d(0,120%,0) !important;
+                -webkit-transform:translate3d(0,120%,0) !important;
+            }
         }
     </style>
     <style>
@@ -988,7 +1054,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.04').trim() || 'V2026.05.06.04';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.06').trim() || 'V2026.05.06.06';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1587,7 +1653,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.04';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1697,6 +1763,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         const PHOTO_FIELD_PERSIST_DEBOUNCE_MS = 350;
         const PHOTO_MASTER_PERSIST_DEBOUNCE_MS = 450;
         const INTERACTION_REFRESH_DEFER_MS = 1400;
+        const INTERACTION_REFRESH_SETTLE_MS = 260;
         const DETAIL_TRANSITION_GRACE_MS = 650;
         const DETAIL_HYDRATION_DELAY_MS = 24;
         const LOCAL_REALTIME_ECHO_TTL_MS = 4200;
@@ -1767,6 +1834,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         let scrollPerformanceClassTimer = null;
         let viewportHeightSyncInitialized = false;
         let standaloneShellBaseHeight = 0;
+        let iosStableViewportHeight = 0;
+        let iosStableViewportKey = '';
         let detailFieldFocusResetTimer = null;
         let detailFormFocusInitialized = false;
         let viewportShellState = { appHeight: 0, visualHeight: 0, keyboardOffset: 0, standalone: null, ios: null, keyboardOpen: null };
@@ -2766,6 +2835,14 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             const baseKeyboardOffset = standaloneShellBaseHeight ? Math.max(0, Math.round(standaloneShellBaseHeight - visualHeight)) : 0;
             const keyboardOffset = Math.max(viewportKeyboardOffset, baseKeyboardOffset);
             const keyboardOpen = !!(standalone && activeEditable && keyboardOffset > 120);
+            const viewportWidth = Math.max(320, Math.round(window.innerWidth || document.documentElement.clientWidth || 0));
+            const orientationValue = (screen.orientation && screen.orientation.type) || window.orientation || '';
+            const iosViewportKey = `${viewportWidth}:${orientationValue}`;
+
+            if (iosDevice && (nextOptions.force || syncReason.includes('orientation') || iosStableViewportKey !== iosViewportKey)) {
+                iosStableViewportHeight = 0;
+                iosStableViewportKey = iosViewportKey;
+            }
 
             if (!standalone) {
                 standaloneShellBaseHeight = 0;
@@ -2773,16 +2850,23 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                 standaloneShellBaseHeight = Math.max(standaloneShellBaseHeight || 0, layoutHeight, visualHeight);
             }
 
-            const nextHeight = standalone && keyboardOpen
+            let nextHeight = standalone && keyboardOpen
                 ? Math.max(standaloneShellBaseHeight || 0, layoutHeight, visualHeight)
                 : (standalone ? Math.max(standaloneShellBaseHeight || 0, layoutHeight, visualHeight) : visualHeight);
+            let nextVisualHeight = visualHeight;
+            if (iosDevice && !keyboardOpen) {
+                const stableHeightCandidate = Math.max(nextHeight, layoutHeight, visualHeight);
+                iosStableViewportHeight = Math.max(iosStableViewportHeight || 0, stableHeightCandidate);
+                nextHeight = iosStableViewportHeight;
+                nextVisualHeight = iosStableViewportHeight;
+            }
             const nextKeyboardOffset = keyboardOpen ? keyboardOffset : 0;
 
             if (viewportShellState.appHeight !== nextHeight) {
                 document.documentElement.style.setProperty('--app-height', `${nextHeight}px`);
             }
-            if (viewportShellState.visualHeight !== visualHeight) {
-                document.documentElement.style.setProperty('--visual-height', `${visualHeight}px`);
+            if (viewportShellState.visualHeight !== nextVisualHeight) {
+                document.documentElement.style.setProperty('--visual-height', `${nextVisualHeight}px`);
             }
             if (viewportShellState.keyboardOffset !== nextKeyboardOffset) {
                 document.documentElement.style.setProperty('--keyboard-offset', `${nextKeyboardOffset}px`);
@@ -2800,14 +2884,14 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             const previousViewportShellState = viewportShellState;
             viewportShellState = {
                 appHeight: nextHeight,
-                visualHeight,
+                visualHeight: nextVisualHeight,
                 keyboardOffset: nextKeyboardOffset,
                 standalone,
                 ios: iosDevice,
                 keyboardOpen
             };
             if (
-                previousViewportShellState.visualHeight !== visualHeight
+                previousViewportShellState.visualHeight !== nextVisualHeight
                 || previousViewportShellState.keyboardOpen !== keyboardOpen
                 || previousViewportShellState.appHeight !== nextHeight
             ) {
@@ -2827,6 +2911,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             window.addEventListener("resize", () => syncViewportShell('window-resize'), { passive: true });
             window.addEventListener("orientationchange", () => {
                 standaloneShellBaseHeight = 0;
+                iosStableViewportHeight = 0;
+                iosStableViewportKey = '';
                 syncViewportShell('orientation');
             }, { passive: true });
             document.addEventListener("focusin", () => syncViewportShell('keyboard-focusin'));
@@ -5963,6 +6049,41 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             );
         }
 
+        function getInteractiveRefreshResumeDelayMs() {
+            let delay = INTERACTION_REFRESH_DEFER_MS;
+            if (hasActiveTextEntryFocus() || isUserActivelyTyping()) delay = Math.max(delay, ACTIVE_TYPING_GRACE_MS + INTERACTION_REFRESH_SETTLE_MS);
+            if (isUserActivelyScrolling()) delay = Math.max(delay, ACTIVE_SCROLL_GRACE_MS + INTERACTION_REFRESH_SETTLE_MS);
+            if (isUserActivelyTouching()) delay = Math.max(delay, ACTIVE_TOUCH_GRACE_MS + INTERACTION_REFRESH_SETTLE_MS);
+            if (isUserInRecentInteractionWindow()) delay = Math.max(delay, ACTIVE_INTERACTION_GRACE_MS + INTERACTION_REFRESH_SETTLE_MS);
+            if (isDetailTransitionActive() || hasExtendedInteractionBlockers()) delay = Math.max(delay, INTERACTION_REFRESH_DEFER_MS);
+            return delay;
+        }
+
+        function shouldPauseInterruptibleRefresh(options = {}) {
+            const opts = options || {};
+            if (opts.allowWhileInteractive) return false;
+            if (!opts.interruptible && !opts.requeueOnInteraction) return false;
+            if (document.hidden) return false;
+            return shouldDeferInteractiveBackgroundWork();
+        }
+
+        function queueInterruptedRefreshRetry(options = {}) {
+            const opts = options || {};
+            if (opts.requeueOnInteraction === false) return;
+            const delay = Math.max(getInteractiveRefreshResumeDelayMs(), Number(opts.retryDelayMs) || 0);
+            incrementInternalPerfCounter('interactionBlockedRefreshes');
+            updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'queued');
+            if (opts.retryForceLoadedRefresh && typeof refreshLoadedDatasets === 'function') {
+                setTimeout(() => refreshLoadedDatasets(true, { ...opts, retryDelayMs: 0 }).catch(() => {}), delay);
+                return;
+            }
+            if (opts.retryViewId && typeof refreshViewDatasetsOnEnter === 'function') {
+                refreshViewDatasetsOnEnter(opts.retryViewId, { backgroundDelay: delay });
+                return;
+            }
+            queueVisibleDatasetCatchup(delay);
+        }
+
         function scheduleRealtimeReconnect(delay = REALTIME_RECOVERY_GRACE_MS) {
             clearRealtimeReconnectTimer();
             if (!currentUser || navigator.onLine === false || !shouldUseRealtime()) return;
@@ -6040,6 +6161,19 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         async function forceRefreshViewDatasets(viewId, options = {}) {
             const targetView = resolveRealtimeContextViewId(viewId);
             await refreshManualSyncStatus(false).catch(() => {});
+            const refreshOptions = {
+                force: true,
+                preserveRequestedMode: true,
+                interruptible: true,
+                requeueOnInteraction: true,
+                retryViewId: targetView,
+                retryReason: 'view-refresh',
+                ...(options || {})
+            };
+            if (shouldPauseInterruptibleRefresh(refreshOptions)) {
+                queueInterruptedRefreshRetry(refreshOptions);
+                return false;
+            }
             if (targetView === 'chat') {
                 if (!currentUser) return false;
                 await fetchChatData(true);
@@ -6059,7 +6193,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             backgroundRefreshInFlight = true;
             updateSyncDiagnostics('refreshing');
             try {
-                await loadDatasetTargetsWithLimit(targets, { force: true });
+                const didLoad = await loadDatasetTargetsWithLimit(targets, refreshOptions);
+                if (!didLoad) return false;
                 lastBackgroundRefreshAt = Date.now();
                 const nextMode = hasHealthyCoreRealtimeSubscriptions(targetView) ? 'realtime' : 'polling';
                 liveSyncMode = nextMode;
@@ -9887,7 +10022,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.04').trim() || 'V2026.05.06.04';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.06').trim() || 'V2026.05.06.06';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -11031,7 +11166,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return wantsFull ? !!state.fullLoaded : !!(state.initialLoaded || state.fullLoaded);
             }
 
-            if (options.force && !wantsFull && state.fullLoaded) {
+            if (options.force && !wantsFull && state.fullLoaded && !options.preserveRequestedMode) {
                 return ensureDatasetLoaded(key, 'full', options);
             }
             if (!options.force) {
@@ -11042,6 +11177,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!wantsFull && state.initialPromise) return state.initialPromise;
 
             const runLoad = async () => {
+                if (shouldPauseInterruptibleRefresh(options)) {
+                    options.interruptedDuringLoad = true;
+                    return false;
+                }
                 const modeLabel = wantsFull ? 'full' : 'initial';
                 const querySource = wantsFull ? definition.fullQuery : definition.initialQuery;
                 const resolvedQuery = typeof querySource === 'function' ? querySource(modeLabel, options) : (querySource || 'select=*');
@@ -11055,6 +11194,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 } catch (error) {
                     if (key === 'flyerRows' && isOptionalFlyerRowsMissingError(error)) rows = handleMissingOptionalFlyerRowsTable(error);
                     else throw error;
+                }
+                if (shouldPauseInterruptibleRefresh(options)) {
+                    options.interruptedDuringLoad = true;
+                    return false;
                 }
                 state.initialLoaded = true;
                 state.fullLoaded = wantsFull ? true : state.fullLoaded;
@@ -11115,7 +11258,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     queueDatasetLoad(key, mode, Math.max(260, Number(delayMs) || 180));
                     return;
                 }
-                ensureDatasetLoaded(key, mode).catch(() => {});
+                loadDatasetTargetsWithLimit([{ key, mode }], {
+                    interruptible: true,
+                    requeueOnInteraction: true,
+                    preserveRequestedMode: true,
+                    retryReason: 'queued-dataset-load'
+                }, 1).catch(() => {});
             }, delayMs);
         }
 
@@ -11150,15 +11298,30 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         async function loadDatasetTargetsWithLimit(targets = [], options = {}, concurrency = null) {
             const safeTargets = (Array.isArray(targets) ? targets : []).filter((item) => item && item.key);
             if (!safeTargets.length) return true;
+            const opts = options || {};
+            opts.interruptedDuringLoad = false;
             const resolvedConcurrency = concurrency == null ? getDatasetTargetLoadConcurrency(safeTargets, options) : concurrency;
             const limit = Math.max(1, Math.min(3, Number(resolvedConcurrency) || 1));
             let index = 0;
+            let interrupted = false;
+            const interruptIfBusy = () => {
+                if (!shouldPauseInterruptibleRefresh(opts)) return false;
+                interrupted = true;
+                incrementInternalPerfCounter('deferredBackgroundRefreshes');
+                return true;
+            };
             const runWorker = async () => {
-                while (index < safeTargets.length) {
+                while (index < safeTargets.length && !interrupted) {
+                    if (interruptIfBusy()) return;
                     const item = safeTargets[index];
                     index += 1;
-                    await ensureDatasetLoaded(item.key, item.mode, options);
+                    await ensureDatasetLoaded(item.key, item.mode, opts);
+                    if (opts.interruptedDuringLoad) {
+                        interrupted = true;
+                        return;
+                    }
                     await yieldToUiFrame();
+                    if (interruptIfBusy()) return;
                 }
             };
             const workers = [];
@@ -11166,6 +11329,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 workers.push(runWorker());
             }
             await Promise.all(workers);
+            if (interrupted) {
+                queueInterruptedRefreshRetry(opts);
+                return false;
+            }
             return true;
         }
 
@@ -11340,7 +11507,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return true;
         }
 
-        async function refreshLoadedDatasets(force = true) {
+        async function refreshLoadedDatasets(force = true, options = {}) {
+            const opts = (force && typeof force === 'object' && !Array.isArray(force)) ? force : (options || {});
+            const shouldForce = typeof force === 'boolean' ? force : !!opts.force;
             if (navigator.onLine === false) {
                 liveSyncMode = 'offline';
                 updateSyncDiagnostics('offline');
@@ -11348,9 +11517,17 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             await refreshManualSyncStatus(false).catch(() => {});
             if (backgroundRefreshInFlight) return false;
-            if (!force && shouldDeferInteractiveBackgroundWork()) {
-                queueVisibleDatasetCatchup(INTERACTION_REFRESH_DEFER_MS);
-                updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'idle');
+            const refreshOptions = {
+                force: true,
+                preserveRequestedMode: true,
+                interruptible: true,
+                requeueOnInteraction: true,
+                retryReason: 'loaded-refresh',
+                retryForceLoadedRefresh: shouldForce,
+                ...opts
+            };
+            if ((!shouldForce && shouldDeferInteractiveBackgroundWork()) || (shouldForce && shouldPauseInterruptibleRefresh(refreshOptions))) {
+                queueInterruptedRefreshRetry(refreshOptions);
                 return false;
             }
             const loadedKeys = Object.keys(datasetLoadState).filter((key) => {
@@ -11361,11 +11538,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const visibleView = TRACKED_VIEW_IDS.find((viewId) => isViewVisible(viewId));
                 const config = visibleView ? getViewLoadingConfig(visibleView) : null;
                 if (!config) return true;
-                await loadDatasetTargetsWithLimit(config.required, { force });
+                const didInitialLoad = await loadDatasetTargetsWithLimit(config.required, refreshOptions);
+                if (!didInitialLoad) return false;
                 lastBackgroundRefreshAt = Date.now();
                 return true;
             }
-            const targets = force
+            const targets = shouldForce
                 ? getLoadedDatasetRefreshTargets(loadedKeys)
                 : getVisibleRefreshTargets(loadedKeys, { includeBackground: false })
                     .filter((item) => isDatasetStale(item.key, getDatasetRefreshMaxAge(item.key, item.mode)))
@@ -11380,11 +11558,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'idle');
                 return true;
             }
-            markPassiveChromeSyncWindow(force ? 1800 : 1400);
+            markPassiveChromeSyncWindow(shouldForce ? 1800 : 1400);
             backgroundRefreshInFlight = true;
             updateSyncDiagnostics('refreshing');
             try {
-                await loadDatasetTargetsWithLimit(eligibleTargets, { force: true });
+                const didLoad = await loadDatasetTargetsWithLimit(eligibleTargets, refreshOptions);
+                if (!didLoad) return false;
                 lastBackgroundRefreshAt = Date.now();
                 updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'idle');
                 return true;
@@ -30520,6 +30699,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (activeReqTab !== 'reps') return '';
             if (requestViewLevel === 0) return 'reps';
             if (requestViewLevel === 1) return 'customers';
+            if (requestViewLevel === 2) return 'folderDate';
             return '';
         }
 
@@ -30531,10 +30711,12 @@ function toggleDriveQuickRequestItem(domId) {
             const input = document.getElementById('request-search');
             const clearBtn = document.getElementById('request-search-clear');
             const visible = !!mode;
-            const value = mode === 'customers' ? requestCustomerSearchTerm : (mode === 'reps' ? requestRepSearchTerm : '');
-            const placeholder = mode === 'customers' ? 'Search customers...' : 'Search sales reps...';
+            const value = mode === 'folderDate' ? requestFolderDateFilter : (mode === 'customers' ? requestCustomerSearchTerm : (mode === 'reps' ? requestRepSearchTerm : ''));
+            const placeholder = mode === 'folderDate' ? 'Filter folders by date' : (mode === 'customers' ? 'Search customers...' : 'Search sales reps...');
+            const inputType = mode === 'folderDate' ? 'date' : 'text';
             if (container) container.classList.toggle('hidden', !visible);
             if (input) {
+                if (input.getAttribute('type') !== inputType) input.setAttribute('type', inputType);
                 if (document.activeElement !== input && input.value !== value) input.value = value;
                 input.placeholder = placeholder;
                 input.setAttribute('aria-label', placeholder.replace(/\.\.\.$/, ''));
@@ -30551,6 +30733,14 @@ function toggleDriveQuickRequestItem(domId) {
                 requestCustomerSearchTerm = value;
             } else if (mode === 'reps') {
                 requestRepSearchTerm = value;
+            } else if (mode === 'folderDate') {
+                requestFolderDateFilter = value;
+                const dateInput = document.getElementById('request-folder-date-filter');
+                if (dateInput && dateInput.value !== value) dateInput.value = value;
+                const visibleCount = applyRequestFolderFilters();
+                const clearBtn = document.getElementById('request-search-clear');
+                if (clearBtn) clearBtn.classList.toggle('hidden', !String(value || '').trim());
+                return visibleCount;
             } else {
                 return false;
             }
@@ -30563,10 +30753,17 @@ function toggleDriveQuickRequestItem(domId) {
             const mode = getRequestHeaderSearchMode();
             if (mode === 'customers') requestCustomerSearchTerm = '';
             else if (mode === 'reps') requestRepSearchTerm = '';
+            else if (mode === 'folderDate') requestFolderDateFilter = '';
             const input = document.getElementById('request-search');
             const clearBtn = document.getElementById('request-search-clear');
             if (input) input.value = '';
             if (clearBtn) clearBtn.classList.add('hidden');
+            if (mode === 'folderDate') {
+                const dateInput = document.getElementById('request-folder-date-filter');
+                if (dateInput) dateInput.value = '';
+                applyRequestFolderFilters();
+                return false;
+            }
             return scheduleTrackedSearchViewRender('request', `request-header-search:${mode || 'none'}`, '', { force: true, skipDebounce: true, typingDelay: 12 });
         }
 
@@ -30610,6 +30807,12 @@ function toggleDriveQuickRequestItem(domId) {
 
         function setRequestFolderDateFilter(value = '') {
             requestFolderDateFilter = String(value || '').trim();
+            if (getRequestHeaderSearchMode() === 'folderDate') {
+                const headerInput = document.getElementById('request-search');
+                const headerClear = document.getElementById('request-search-clear');
+                if (headerInput && headerInput.value !== requestFolderDateFilter) headerInput.value = requestFolderDateFilter;
+                if (headerClear) headerClear.classList.toggle('hidden', !requestFolderDateFilter);
+            }
             applyRequestFolderFilters();
             return false;
         }
@@ -30621,6 +30824,12 @@ function toggleDriveQuickRequestItem(domId) {
             const dateInput = document.getElementById('request-folder-date-filter');
             if (searchInput) searchInput.value = '';
             if (dateInput) dateInput.value = '';
+            if (getRequestHeaderSearchMode() === 'folderDate') {
+                const headerInput = document.getElementById('request-search');
+                const headerClear = document.getElementById('request-search-clear');
+                if (headerInput) headerInput.value = '';
+                if (headerClear) headerClear.classList.add('hidden');
+            }
             applyRequestFolderFilters();
             return false;
         }
@@ -30877,7 +31086,9 @@ function toggleDriveQuickRequestItem(domId) {
             const crumb = document.getElementById('request-crumb');
             bumpChunkRenderTokenByKey('request-main');
 
-            let items = reconcileRequestDrillState(requestsInventory).items;
+            const reconciledRequestState = reconcileRequestDrillState(requestsInventory);
+            if (reconciledRequestState.changed) syncRequestHeaderSearchChrome({ forceHeader: true });
+            let items = reconciledRequestState.items;
 
             if (activeReqTab === 'pending') {
                 const crumbText = 'All Pending Requests';
@@ -31097,9 +31308,17 @@ function toggleDriveQuickRequestItem(domId) {
             requestViewLiveSyncInFlight = true;
             try {
                 const signatureRows = await fetchAllSupabaseRows('v2_active_request', 'select=unique_id,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,date_completed,req_match,req_spec,req_caliper,req_pic_note,req_comments,av_note,req_photo_link,req_photo_name&order=unique_id.desc');
+                if (shouldDeferInteractiveBackgroundWork()) {
+                    if (!safeOptions.once) syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS);
+                    return;
+                }
                 const nextSignature = buildRequestLiveSyncSignature(signatureRows);
                 if (nextSignature === requestViewLiveSyncSignature) return;
                 const rows = await fetchAllSupabaseRows('v2_active_request', 'select=*&order=unique_id.desc');
+                if (shouldDeferInteractiveBackgroundWork()) {
+                    if (!safeOptions.once) syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS);
+                    return;
+                }
                 const formattedRows = formatFetchedRows(rows, 'v2_active_request');
                 processAndLoadData({ requestsData: formattedRows });
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(formattedRows);
@@ -31114,6 +31333,13 @@ function toggleDriveQuickRequestItem(domId) {
             const safeOptions = options && typeof options === 'object' ? options : {};
             if (!currentUser || navigator.onLine === false || shouldPauseManualSyncViewRefresh('request')) return false;
             if (requestViewForceRefreshInFlight) return false;
+            const retryIfInteractive = () => {
+                if (safeOptions.allowWhileInteractive || !shouldDeferInteractiveBackgroundWork()) return false;
+                setTimeout(() => forceRefreshRequestsForView(reason, { ...safeOptions, minIntervalMs: 0 }).catch(() => {}), getInteractiveRefreshResumeDelayMs());
+                updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'queued');
+                return true;
+            };
+            if (retryIfInteractive()) return false;
             const now = Date.now();
             const minInterval = Math.max(0, Number(safeOptions.minIntervalMs ?? REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS) || 0);
             if (!safeOptions.force && lastRequestViewForceRefreshAt && (now - lastRequestViewForceRefreshAt) < minInterval) return false;
@@ -31121,6 +31347,7 @@ function toggleDriveQuickRequestItem(domId) {
             lastRequestViewForceRefreshAt = now;
             try {
                 const rows = await fetchAllSupabaseRows('v2_active_request', 'select=*&order=unique_id.desc');
+                if (retryIfInteractive()) return false;
                 const formattedRows = formatFetchedRows(rows, 'v2_active_request');
                 processAndLoadData({ requestsData: formattedRows });
                 const state = getDatasetState('requests');
@@ -31208,7 +31435,7 @@ function toggleDriveQuickRequestItem(domId) {
                     if (requiresRealtime && !hasHealthyCoreRealtimeSubscriptions(currentSyncView) && !isRealtimeStartupPending()) refreshRealtimeSubscriptionsForCurrentView(true);
                     return;
                 }
-                if (usesVisiblePolling) forceRefreshViewDatasets(currentSyncView, { includeBackground: true }).catch(() => {});
+                if (usesVisiblePolling) forceRefreshViewDatasets(currentSyncView, { includeBackground: false }).catch(() => {});
                 else fetchBackgroundData('background').catch(() => {});
                 if (requiresRealtime && !hasHealthyCoreRealtimeSubscriptions(currentSyncView) && !isRealtimeStartupPending()) refreshRealtimeSubscriptionsForCurrentView(true);
             }, nextDelay);
