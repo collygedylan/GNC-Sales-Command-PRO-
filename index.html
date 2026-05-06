@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.06.12';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.06.13';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1055,7 +1055,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.12').trim() || 'V2026.05.06.12';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.13').trim() || 'V2026.05.06.13';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1654,7 +1654,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.12';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.13';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10151,7 +10151,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.12').trim() || 'V2026.05.06.12';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.13').trim() || 'V2026.05.06.13';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -13250,6 +13250,43 @@ function toggleDriveQuickRequestItem(domId) {
             return rawName.replace(/^\[ARCHIVED\]\s*/i, '').trim();
         }
 
+        function getFlyerFolderNameKey(folderName = '') {
+            return getFlyerFolderName(folderName).toLowerCase().replace(/\s+/g, ' ').trim();
+        }
+
+        function buildDefaultFlyerFolderName(now = new Date()) {
+            const pad = (value) => String(value).padStart(2, '0');
+            const year = now.getFullYear();
+            const month = pad(now.getMonth() + 1);
+            const day = pad(now.getDate());
+            const hour = pad(now.getHours());
+            const minute = pad(now.getMinutes());
+            return `${year}-${month}-${day} ${hour}${minute} Flyer Folder`;
+        }
+
+        function getExistingFlyerFolderNameKeys() {
+            const keys = new Set();
+            getAllFlyerTaskItems().forEach((item) => {
+                const key = getFlyerFolderNameKey(item);
+                if (key) keys.add(key);
+            });
+            return keys;
+        }
+
+        function resolveNewFlyerFolderName(folderName = '') {
+            const baseName = getFlyerFolderName(folderName) || buildDefaultFlyerFolderName();
+            const existingKeys = getExistingFlyerFolderNameKeys();
+            if (!existingKeys.has(getFlyerFolderNameKey(baseName))) return baseName;
+            const stampedBase = `${baseName} ${buildDefaultFlyerFolderName().replace(/\s*Flyer Folder$/i, '')}`;
+            let candidate = stampedBase;
+            let counter = 2;
+            while (existingKeys.has(getFlyerFolderNameKey(candidate))) {
+                candidate = `${stampedBase} ${counter}`;
+                counter += 1;
+            }
+            return candidate;
+        }
+
         function isFlyerFolderArchived(item) {
             const rawName = typeof item === 'string' ? String(item || '').trim() : getStoredFlyerFolderName(item);
             return /^\[ARCHIVED\]\s*/i.test(rawName);
@@ -13433,16 +13470,17 @@ function toggleDriveQuickRequestItem(domId) {
             return `FF-${folderPart}-${sourcePart}`;
         }
 
-        function buildFlyerFolderSnapshot(item = null) {
+        function buildFlyerFolderSnapshot(item = null, options = {}) {
             const source = findLinkedMasterRow(item) || item || {};
-            const matchValue = getItemDisplayValue(source, 'MATCH', 'drive');
-            const specValue = getItemDisplayValue(source, 'SPEC', 'drive');
-            const caliperValue = getItemDisplayValue(source, 'CALIPER', 'drive');
-            const pickValue = getItemDisplayValue(source, 'PICK', 'drive');
-            const avNoteValue = getItemDisplayValue(source, 'AV_NOTE', 'drive');
-            const initialPtrValue = getItemDisplayValue(source, 'INITIAL_PTR', 'drive');
+            const includeCurrentAvData = !!(options && options.includeCurrentAvData);
+            const matchValue = includeCurrentAvData ? getItemDisplayValue(source, 'MATCH', 'drive') : '';
+            const specValue = includeCurrentAvData ? getItemDisplayValue(source, 'SPEC', 'drive') : '';
+            const caliperValue = includeCurrentAvData ? getItemDisplayValue(source, 'CALIPER', 'drive') : '';
+            const pickValue = includeCurrentAvData ? getItemDisplayValue(source, 'PICK', 'drive') : '';
+            const avNoteValue = includeCurrentAvData ? getItemDisplayValue(source, 'AV_NOTE', 'drive') : '';
+            const initialPtrValue = includeCurrentAvData ? getItemDisplayValue(source, 'INITIAL_PTR', 'drive') : '';
             const locMatchQtyValue = String(matchValue || '').trim() ? getDisplayLocMatchQtyValue(source, 'drive') : '';
-            const photoLink = getSharedAppPhotoLinkCsv(source, { includePending: false });
+            const photoLink = includeCurrentAvData ? getSharedAppPhotoLinkCsv(source, { includePending: false }) : '';
             const photoName = photoLink ? getSharedAppPhotoName(source) : '';
             return {
                 UNIQUE_ID: String(firstNonEmptyValue(source.UNIQUE_ID, source.unique_id, item && item.UNIQUE_ID, '')).trim(),
@@ -13722,7 +13760,7 @@ function toggleDriveQuickRequestItem(domId) {
             const isAddingToExistingFolder = existingTargetFolder !== '';
             let flyerFolder = existingTargetFolder;
             if (!flyerFolder) {
-                const suggestedFolder = `${new Date().toISOString().split('T')[0]} Flyer Folder`;
+                const suggestedFolder = buildDefaultFlyerFolderName();
                 const folderInput = window.prompt('Enter the flyer folder name for these rows.', suggestedFolder);
                 if (folderInput === null) return false;
                 flyerFolder = String(folderInput || '').trim();
@@ -13731,6 +13769,7 @@ function toggleDriveQuickRequestItem(domId) {
                 showToast('Folder Required', 'Enter a flyer folder name before creating the folder.', true);
                 return false;
             }
+            if (!isAddingToExistingFolder) flyerFolder = resolveNewFlyerFolderName(flyerFolder);
 
             const defaultAssignees = String(pendingFlyerFolderAssignees || getFlyerFolderAssignedNames(flyerFolder).join(', ') || currentUserDisplay || currentUser || '').trim();
             const assigneePrompt = isAddingToExistingFolder
@@ -13791,7 +13830,7 @@ function toggleDriveQuickRequestItem(domId) {
             const isAddingToExistingFolder = existingTargetFolder !== '';
             let flyerFolder = existingTargetFolder;
             if (!flyerFolder) {
-                const suggestedFolder = `${new Date().toISOString().split('T')[0]} Flyer Folder`;
+                const suggestedFolder = buildDefaultFlyerFolderName();
                 const folderInput = window.prompt('Enter the flyer folder name for these rows.', suggestedFolder);
                 if (folderInput === null) return false;
                 flyerFolder = String(folderInput || '').trim();
@@ -13800,6 +13839,7 @@ function toggleDriveQuickRequestItem(domId) {
                 showToast('Folder Required', 'Enter a flyer folder name before creating the folder.', true);
                 return false;
             }
+            if (!isAddingToExistingFolder) flyerFolder = resolveNewFlyerFolderName(flyerFolder);
 
             const defaultAssignees = String(pendingFlyerFolderAssignees || getFlyerFolderAssignedNames(flyerFolder).join(', ') || currentUserDisplay || currentUser || '').trim();
             const assigneePrompt = isAddingToExistingFolder
@@ -22670,13 +22710,6 @@ function toggleDriveQuickRequestItem(domId) {
                 cancelScheduledUiRenderByPrefix(`view-enter:${currentViewId}`);
                 cancelScheduledUiRenderByPrefix(`view-activate:${currentViewId}`);
                 cancelScheduledUiRenderByPrefix(`view-chrome:${currentViewId}`);
-            }
-            if (nextViewId === 'drive' && currentViewId !== 'drive' && !fromHistory && activeDriveMode === 'ok') {
-                const driveWasNotCommon = activeDriveTab !== 'name' || driveViewLevel !== 0 || selectedDriveName || selectedDriveSize || selectedDriveSeason || selectedDriveBlock || selectedDriveLoc;
-                activeDriveTab = 'name';
-                driveQuickRequestCardMode = false;
-                resetDriveDrillSelectionState();
-                if (driveWasNotCommon) markViewDirty('drive');
             }
             const nextState = ensureViewRenderState(nextViewId);
             if (currentViewId === 'home' && nextViewId !== 'home' && selectedProductivityUser) {
@@ -34957,8 +34990,7 @@ function toggleDriveQuickRequestItem(domId) {
                     lines.push(`<div><strong>${escapeShareHtml(field.label)}:</strong> ${escapeShareHtml(formattedValue)}</div>`);
                 });
                 getRequestSharePhotoEntries(item).forEach(photo => {
-                    lines.push(`<div><strong>${escapeShareHtml(photo.label)}:</strong> <a href="${escapeShareHtml(photo.url)}">${escapeShareHtml(photo.displayName)}</a></div>`);
-                    lines.push(`<div style="margin-top:6px;"><img src="${escapeShareHtml(photo.url)}" alt="${escapeShareHtml(photo.displayName)}" style="max-width:220px;max-height:220px;border-radius:8px;border:1px solid #ddd;"></div>`);
+                    lines.push(buildSharePhotoHtml(photo));
                 });
                 blocks.push(`<div style="margin:0 0 18px 0;line-height:1.45;">${lines.join('')}</div>`);
             });
@@ -34995,6 +35027,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             if (action === 'email') {
                 try {
+                    try {
+                        const richHtml = `${folderNote ? `<div style="font-weight:700;margin:0 0 12px 0;">Folder Note: ${escapeShareHtml(folderNote)}</div>` : ''}${formatRequestItemsHtml(items, subject)}`;
+                        await copyTextWithFallback(text, richHtml);
+                    } catch (copyRichErr) {}
                     const shared = await handleMobileShare('email', subject, text);
                     if (!shared) {
                         window.location.href=`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
@@ -35233,6 +35269,15 @@ ${folderNote ? `Folder Note: ${folderNote}
             }).filter(Boolean);
         }
 
+        function buildSharePhotoHtml(photo = null) {
+            const url = String(photo && photo.url || '').trim();
+            if (!url) return '';
+            const safeUrl = escapeShareHtml(url);
+            const safeLabel = escapeShareHtml(firstNonEmptyValue(photo && photo.label, 'Photo'));
+            const safeDisplayName = escapeShareHtml(firstNonEmptyValue(photo && photo.displayName, url));
+            return `<div style="margin:8px 0 12px 0;"><div><strong>${safeLabel}:</strong> <a href="${safeUrl}">${safeDisplayName}</a></div><div style="margin-top:6px;"><a href="${safeUrl}"><img src="${safeUrl}" alt="${safeDisplayName}" style="display:block;max-width:320px;width:100%;height:auto;max-height:320px;border-radius:8px;border:1px solid #d7ded8;object-fit:contain;"></a></div></div>`;
+        }
+
         function formatInventoryItemsText(items, headerLabel = 'SELECTED ROWS', options = {}) {
             const includeHeader = options.includeHeader !== false && !!headerLabel;
             const includePhotoUrls = options.includePhotoUrls !== false;
@@ -35270,7 +35315,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     lines.push(`<div><strong>${escapeShareHtml(field.label)}:</strong> ${escapeShareHtml(formattedValue)}</div>`);
                 });
                 getInventorySharePhotoEntries(item).forEach(photo => {
-                    lines.push(`<div><strong>${escapeShareHtml(photo.label)}:</strong> <a href="${escapeShareHtml(photo.url)}">${escapeShareHtml(photo.displayName)}</a></div>`);
+                    lines.push(buildSharePhotoHtml(photo));
                 });
                 blocks.push(`<div style="margin:0 0 18px 0;line-height:1.45;">${lines.join('')}</div>`);
             });
@@ -35323,6 +35368,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
             }
             const text = formatInventoryItemsText(items, textHeaderLabel, { includePhotoUrls: true });
+            if (action === 'email') {
+                try {
+                    await copyTextWithFallback(text, formatInventoryItemsHtml(items, textHeaderLabel));
+                } catch (copyRichErr) {}
+            }
             const shared = await handleMobileShare(action, subject, text);
             if (shared) {
                 const usedLinkFallback = preferBloomTextPhotoAttachments && attachmentShareResult && attachmentShareResult.reason && attachmentShareResult.reason !== 'no_photos';
@@ -35393,6 +35443,15 @@ ${folderNote ? `Folder Note: ${folderNote}
                 else if(tabType==='docks')sub='Dock Notes';
                 else if(lastView==='drive' || lastView==='tasks')sub='Drive Mode Data';
                 try {
+                    try {
+                        if (isInventoryLikeTab && selectedInventoryItems.length) {
+                            const headerLabel = selectedInventoryItems.length > 1 ? sub.toUpperCase() : '';
+                            await copyTextWithFallback(text, formatInventoryItemsHtml(selectedInventoryItems, headerLabel));
+                        } else if (isRequestTab && selectedRequestItems.length) {
+                            const headerLabel = selectedRequestItems.length > 1 ? 'REQUEST DATA' : '';
+                            await copyTextWithFallback(text, formatRequestItemsHtml(selectedRequestItems, headerLabel));
+                        }
+                    } catch (copyRichErr) {}
                     const shared = await handleMobileShare('email', sub, text);
                     if (!shared) {
                         window.location.href=`mailto:?subject=${sub}&body=${encodeURIComponent(text)}`;
@@ -40520,6 +40579,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
                     const linkedMasterItem = findLinkedMasterRow(itemToSave) || requestMasterItem || null;
                     const salesRuleItem = linkedMasterItem || itemToSave;
+                    const isFlyerFolderCompletion = prefix === 'flyer-' && isFlyerFolderRowSave;
                     const salesRuleId = String(firstNonEmptyValue(
                         prefix === 'req-' ? requestMasterId : '',
                         linkedMasterItem && linkedMasterItem.UNIQUE_ID,
@@ -40530,6 +40590,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                         itemToSave.UNIQUE_ID,
                         ''
                     ) || '').trim();
+                    const salesOfficeRowId = isFlyerFolderCompletion
+                        ? String(firstNonEmptyValue(itemToSave.UNIQUE_ID, itemToSave.unique_id, '') || '').trim()
+                        : salesRuleId;
                     const salesRuleAssignment = String(firstNonEmptyValue(
                         prefix === 'req-' ? requestAssignment : '',
                         linkedMasterItem && linkedMasterItem.APP_TAB_ASSIGNMENT,
@@ -40551,7 +40614,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const seasonHoldStopBlocked = isHeldSeasonSalesNotesRow(itemToSave, salesRuleAssignment)
                         || isHeldSeasonSalesNotesRow(salesRuleItem, salesRuleAssignment)
                         || isHeldSeasonSalesNotesRow(linkedMasterItem, salesRuleAssignment);
-                    const shouldCreateSalesOfficeRow = ['ssn-','lsn-','na-','req-','flyer-'].includes(prefix) && salesRuleAssignment === 'season' && salesRuleId !== '' && !seasonHoldStopBlocked;
+                    const shouldCreateSalesOfficeRow = ['ssn-','lsn-','na-','req-','flyer-'].includes(prefix) && salesRuleAssignment === 'season' && salesOfficeRowId !== '' && !seasonHoldStopBlocked;
                     if (shouldCreateSalesOfficeRow) {
                         const salesRuleView = prefix === 'flyer-' ? 'flyer' : '';
                         const salesOfficeAvNote = prefix === 'req-' ? firstNonEmptyValue(itemToSave.AV_NOTE, getItemDisplayValue(salesRuleItem, 'AV_NOTE', salesRuleView), '') : getItemDisplayValue(salesRuleItem, 'AV_NOTE', salesRuleView);
@@ -40559,7 +40622,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                         const salesOfficeSpec = prefix === 'req-' ? firstNonEmptyValue(itemToSave.REQ_SPEC, getItemDisplayValue(salesRuleItem, 'SPEC', salesRuleView), '') : getItemDisplayValue(salesRuleItem, 'SPEC', salesRuleView);
                         const salesOfficeCaliper = prefix === 'req-' ? firstNonEmptyValue(itemToSave.REQ_CALIPER, getItemDisplayValue(salesRuleItem, 'CALIPER', salesRuleView), '') : getItemDisplayValue(salesRuleItem, 'CALIPER', salesRuleView);
                         artifacts.soPayload = {
-                            unique_id: salesRuleId,
+                            unique_id: salesOfficeRowId,
+                            master_id: salesRuleId || salesOfficeRowId,
+                            so_source: isFlyerFolderCompletion ? 'flyer_folder' : 'season',
                             itemcode: salesRuleItem.ITEMCODE || itemToSave.ITEMCODE || '',
                             commonname: salesRuleItem.COMMONNAME || itemToSave.COMMONNAME || '',
                             contsize: salesRuleItem.CONTSIZE || itemToSave.CONTSIZE || '',
