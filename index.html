@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.07.04';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.07.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1055,7 +1055,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.07.04').trim() || 'V2026.05.07.04';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.07.05').trim() || 'V2026.05.07.05';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1673,7 +1673,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.07.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.07.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10423,7 +10423,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.07.04').trim() || 'V2026.05.07.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.07.05').trim() || 'V2026.05.07.05';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -12580,6 +12580,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function getNcrSourceUniqueId(itemOrUid = null) {
             if (typeof itemOrUid === 'string') return String(itemOrUid || '').trim();
             return String(firstNonEmptyValue(itemOrUid && itemOrUid.UNIQUE_ID, itemOrUid && itemOrUid.unique_id, '')).trim();
+        }
+
+        function getNcrMasterItem(item = activeItem) {
+            const uid = getNcrSourceUniqueId(item);
+            return (uid ? findItemByUniqueId(uid) : null)
+                || findLinkedMasterRow(item)
+                || (String(firstNonEmptyValue(item && item.SOURCE_TABLE, item && item.source_table, 'v2_master_inventory')).toLowerCase() === 'v2_master_inventory' ? item : null);
         }
 
         function isNcrCompletedUid(uid = '') {
@@ -22404,16 +22411,30 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getNcrDraftDefaults(item = null) {
             const standardPick = getStandardPickNoteForItem(item);
+            const specValue = String(firstNonEmptyValue(item && item.SPEC, '') || '').trim();
+            const locationPick = getNcrAutoPickNote(item);
             return {
-                avNote: String(firstNonEmptyValue(item && item.AV_NOTE, '') || '').trim().toUpperCase(),
+                avNote: String(firstNonEmptyValue(specValue, item && item.AV_NOTE, '') || '').trim().toUpperCase(),
+                avNoteTouched: false,
                 match: String(firstNonEmptyValue(item && item.MATCH, '') || '').trim(),
-                spec: String(firstNonEmptyValue(item && item.SPEC, '') || '').trim(),
+                spec: specValue,
                 caliper: String(firstNonEmptyValue(item && item.CALIPER, '') || '').trim(),
                 reserve: String(firstNonEmptyValue(item && item.REQ_RESERVE, 'NO') || 'NO').trim().toUpperCase() === 'YES' ? 'YES' : 'NO',
-                pick: String(firstNonEmptyValue(item && item.PICK, item && item.PIC_NOTE, item && item.PICKNOTE, standardPick, '') || '').trim(),
+                pick: String(firstNonEmptyValue(locationPick, item && item.PICK, item && item.PIC_NOTE, item && item.PICKNOTE, standardPick, '') || '').trim(),
                 comments: String(firstNonEmptyValue(item && item.SALES_NOTE, item && item.SALESNOTE, '') || '').trim(),
                 photos: []
             };
+        }
+
+        function getNcrAutoPickNote(item = activeItem) {
+            const locationCode = String(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, '') || '').trim();
+            return locationCode ? `${locationCode} pick approved` : 'pick approved';
+        }
+
+        function isNcrAutoAvNoteValue(value = '', specValue = '') {
+            const safeValue = String(value || '').trim().toUpperCase();
+            const safeSpec = String(specValue || '').trim().toUpperCase();
+            return !safeValue || (!!safeSpec && safeValue === safeSpec);
         }
 
         function getNcrDraft(item = activeItem, create = true) {
@@ -22506,9 +22527,20 @@ function toggleDriveQuickRequestItem(domId) {
             if (!canEditNcrWorkflow() || !activeItem) return;
             const draft = getNcrDraft(activeItem);
             if (!draft) return;
-            if (field === 'avNote') draft.avNote = String(value || '').trim().toUpperCase();
+            if (field === 'avNote') {
+                draft.avNote = String(value || '').trim().toUpperCase();
+                draft.avNoteTouched = true;
+            }
             else if (field === 'reserve') draft.reserve = String(value || 'NO').trim().toUpperCase() === 'YES' ? 'YES' : 'NO';
-            else draft[field] = String(value || '').trim();
+            else if (field === 'spec') {
+                const nextSpec = String(value || '').trim();
+                draft.spec = nextSpec;
+                if (!draft.avNoteTouched) {
+                    draft.avNote = nextSpec.toUpperCase();
+                    const avNoteInput = document.getElementById('ncr-av-note');
+                    if (avNoteInput) avNoteInput.value = draft.avNote;
+                }
+            } else draft[field] = String(value || '').trim();
             if (field === 'match') updateNcrMatchPreview(activeItem);
             renderPhotoGallery();
         }
@@ -22721,6 +22753,105 @@ function toggleDriveQuickRequestItem(domId) {
             });
         }
 
+        function normalizeNcrDraftForCompletion(item = activeItem) {
+            const draft = getNcrDraft(item);
+            if (!draft) return null;
+            const specValue = String(firstNonEmptyValue(draft.spec, '') || '').trim();
+            if (specValue && (!draft.avNoteTouched || isNcrAutoAvNoteValue(draft.avNote, specValue))) {
+                draft.avNote = specValue.toUpperCase();
+                const avNoteInput = document.getElementById('ncr-av-note');
+                if (avNoteInput) avNoteInput.value = draft.avNote;
+            }
+            const autoPick = getNcrAutoPickNote(item);
+            if (!String(firstNonEmptyValue(draft.pick, '') || '').trim() && autoPick) {
+                draft.pick = autoPick;
+                const pickInput = document.getElementById('ncr-pick');
+                if (pickInput) pickInput.value = draft.pick;
+            }
+            return draft;
+        }
+
+        function getNcrUploadedPhotoNameCsv(item = activeItem, photoUrls = []) {
+            const urlSet = new Set(normalizeNcrEmailPhotoUrls(photoUrls));
+            const names = [];
+            getNcrDraftPhotoEntries(item).forEach((entry) => {
+                const url = String(firstNonEmptyValue(entry && entry.uploadedUrl, '') || '').trim();
+                if (urlSet.size && !urlSet.has(url)) return;
+                const name = String(firstNonEmptyValue(entry && entry.uploadedName, entry && entry.fileName, '') || '').trim();
+                if (name) names.push(name);
+            });
+            return mergePhotoCsvList(names);
+        }
+
+        function shouldPromptNcrAvPublish(item = activeItem) {
+            const draft = normalizeNcrDraftForCompletion(item);
+            if (!draft) return false;
+            return [
+                draft.avNote,
+                draft.spec,
+                draft.caliper,
+                draft.match,
+                draft.pick,
+                getNcrDraftDisplayPhotoUrls(item).join(',')
+            ].some((value) => normalizeRuleText(value) !== '');
+        }
+
+        function openNcrAvPublishApproval(item = activeItem) {
+            if (!shouldPromptNcrAvPublish(item)) return Promise.resolve(false);
+            const label = getNcrEmailModalRowLabel(item);
+            return Promise.resolve(window.confirm(`Make this New Crop Release picture and data visible in the AV tab for ${label}?`));
+        }
+
+        async function publishNcrDraftToAv(item = activeItem, photoUrls = []) {
+            const draft = normalizeNcrDraftForCompletion(item);
+            const masterItem = getNcrMasterItem(item);
+            const masterId = getNcrSourceUniqueId(masterItem || item);
+            if (!draft || !masterItem || !masterId) throw new Error('Could not find the linked AV row for this New Crop Release item.');
+            if (avRuleColumnsReady == null) await ensureAvRuleColumnsReady().catch(() => false);
+            const normalizedPhotos = normalizeNcrEmailPhotoUrls(photoUrls);
+            const photoCsv = normalizedPhotos.length
+                ? normalizedPhotos.join(',')
+                : String(getSharedAppPhotoLinkCsvRaw(masterItem, { includePending: false }) || '').trim();
+            const photoNameCsv = normalizedPhotos.length
+                ? getNcrUploadedPhotoNameCsv(item, normalizedPhotos)
+                : getSharedAppPhotoName(masterItem);
+            const matchValue = parseAppNumber(draft.match);
+            const locMatchQty = matchValue == null ? null : calculateLocMatchQtyValue(masterItem || item, draft.match, { currentAsBaseline: true });
+            const ptrAvailable = parseAppNumber(firstNonEmptyValue(masterItem && masterItem.PTRAVAILABLE, item && item.PTRAVAILABLE, ''));
+            const completedAt = new Date().toISOString();
+            const payload = {
+                date_completed: completedAt,
+                av_note: String(firstNonEmptyValue(draft.avNote, draft.spec, '') || '').trim().toUpperCase() || null,
+                match: matchValue == null ? null : matchValue,
+                spec: String(firstNonEmptyValue(draft.spec, '') || '').trim() || null,
+                caliper: String(firstNonEmptyValue(draft.caliper, '') || '').trim() || null,
+                pic_note: String(firstNonEmptyValue(draft.pick, getNcrAutoPickNote(item), '') || '').trim() || null,
+                sales_note: String(firstNonEmptyValue(draft.comments, '') || '').trim() || null,
+                loc_match_qty: locMatchQty == null ? null : locMatchQty,
+                initial_ptr: ptrAvailable == null ? null : ptrAvailable,
+                photo_link: photoCsv || null,
+                photo_name: photoNameCsv || null
+            };
+            applyAvRuleTouchPayload(masterItem, payload, {
+                avNote: true,
+                match: true,
+                spec: true,
+                caliper: true,
+                photo: normalizedPhotos.length > 0
+            }, completedAt);
+            await runDetailWriteWithRetry('v2_master_inventory', 'PATCH', payload, `unique_id=eq.${encodeURIComponent(masterId)}`, {
+                timeoutMs: getDetailRowWriteTimeoutMs(),
+                retries: DETAIL_ROW_WRITE_RETRY_COUNT,
+                retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
+            });
+            applyMasterSyncPayloadToLocalRow(masterItem, payload);
+            syncRowDataAcrossViews(masterItem);
+            invalidateResolvedViewStateCaches();
+            ['drive','av','review','low-stock','tasks'].forEach((viewId) => markViewDirty(viewId));
+            refreshPhotoAcrossViews(masterItem, 'ncr-');
+            return true;
+        }
+
         function buildNcrEmailShareItem(item = activeItem, photoUrls = []) {
             const payload = buildNcrEmailItemPayload(item, photoUrls);
             const photoCsv = normalizeNcrEmailPhotoUrls(photoUrls).join(',');
@@ -22793,22 +22924,32 @@ function toggleDriveQuickRequestItem(domId) {
             const button = document.getElementById('ncr-btn-save-complete');
             if (button) button.innerText = 'WORKING...';
             try {
+                normalizeNcrDraftForCompletion(item);
                 const choice = await openNcrEmailModal(item);
                 if (choice === 'cancel') return false;
+                const publishToAv = await openNcrAvPublishApproval(item);
                 let emailedJd = false;
                 let photoUrls = [];
-                if (choice === 'email') {
+                if (choice === 'email' || publishToAv) {
                     if (button) button.innerText = 'UPLOADING...';
                     photoUrls = await uploadNcrDraftPhotos(item);
+                }
+                if (choice === 'email') {
                     if (button) button.innerText = 'SENDING...';
                     await sendNcrCompletionEmail(item, photoUrls);
                     emailedJd = true;
+                }
+                if (publishToAv) {
+                    if (button) button.innerText = 'PUBLISHING...';
+                    await publishNcrDraftToAv(item, photoUrls);
                 }
                 if (button) button.innerText = 'FINALIZING...';
                 const record = buildNcrCompletionRecord(item, emailedJd);
                 await persistNcrCompletionRecord(record);
                 finalizeNcrCompletion(record, item);
-                showToast('Success', emailedJd ? 'New Crop Release row emailed to JD and marked done.' : 'New Crop Release row marked done.');
+                showToast('Success', publishToAv
+                    ? (emailedJd ? 'New Crop Release row published to AV, emailed to JD, and marked done.' : 'New Crop Release row published to AV and marked done.')
+                    : (emailedJd ? 'New Crop Release row emailed to JD and marked done.' : 'New Crop Release row marked done.'));
                 return true;
             } catch (error) {
                 console.error('NCR completion failed', error);
