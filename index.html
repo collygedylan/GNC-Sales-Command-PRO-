@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.06.20';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.07.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -896,7 +896,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 <button type="button" class="text-gray-500 font-bold py-2 px-3" onclick="closeNcrEmailModal('cancel')">Close</button>
             </div>
             <p class="text-sm leading-6 text-slate-600">
-                Choose <span class="font-black text-[#007a4d]">Yes, Send Email</span> to upload NCR photos to the private bucket and email JD the completed row details.
+                Choose <span class="font-black text-[#007a4d]">Yes, Send Email</span> to upload NCR photos with request-style links and email JD the completed row details.
                 Choose <span class="font-black text-slate-700">No, Mark Done Only</span> to finish the row privately without sending an email.
             </p>
             <div class="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -1055,7 +1055,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.20').trim() || 'V2026.05.06.20';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.07.01').trim() || 'V2026.05.07.01';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1654,7 +1654,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             'flyer-': 'flyer_photos',
             'default': 'flyer_photos'
         };
-        const NCR_PHOTO_BUCKET = 'ncr';
+        const NCR_PHOTO_BUCKET = PHOTO_BUCKETS['req-'] || 'request_photos';
+        const NCR_PHOTO_PATH_PREFIX = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
         const esc = (s) => String(s || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const escJsAttrValue = (value = '') => String(value == null ? '' : value)
@@ -1672,7 +1673,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.20';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.07.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10192,7 +10193,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.20').trim() || 'V2026.05.06.20';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.07.01').trim() || 'V2026.05.07.01';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -22396,7 +22397,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const extMatch = originalName.match(/(\.[a-z0-9]+)$/i);
                 const extension = extMatch ? extMatch[1].toLowerCase() : '.jpg';
                 const fileName = `${clean(firstNonEmptyValue(item && item.ITEMCODE, item && item.COMMONNAME, 'NCR'))}-${clean(firstNonEmptyValue(item && item.LOCATIONCODE, 'ROW'))}-${Date.now()}${extension}`;
-                const filePath = `${new Date().toISOString().split('T')[0]}/${fileName}`;
+                const filePath = `${NCR_PHOTO_PATH_PREFIX}/${new Date().toISOString().split('T')[0]}/${fileName}`;
                 const uploadResult = await withTimeout(
                     supabaseClient.storage.from(NCR_PHOTO_BUCKET).upload(filePath, entry.file, {
                         contentType: entry.mimeType || entry.file.type || 'application/octet-stream',
@@ -22422,6 +22423,7 @@ function toggleDriveQuickRequestItem(domId) {
             const draft = getNcrDraft(item);
             const matchValue = String(firstNonEmptyValue(draft && draft.match, '')).trim();
             const locMatchQty = calculateLocMatchQtyValue(item, matchValue);
+            const photoCsv = normalizeNcrEmailPhotoUrls(photoUrls).join(',');
             return {
                 commonname: String(firstNonEmptyValue(item && item.COMMONNAME, 'Unknown Item')).trim(),
                 contsize: String(firstNonEmptyValue(item && item.CONTSIZE, '-')).trim(),
@@ -22440,7 +22442,51 @@ function toggleDriveQuickRequestItem(domId) {
                 reserve: String(firstNonEmptyValue(draft && draft.reserve, 'NO')).trim(),
                 pick_note: String(firstNonEmptyValue(draft && draft.pick, '')).trim(),
                 comments: String(firstNonEmptyValue(draft && draft.comments, '')).trim(),
-                photo: (photoUrls || []).map((url) => String(url || '').trim()).filter(Boolean).join(',')
+                photo: photoCsv,
+                photo_link: photoCsv,
+                photo_urls: photoCsv,
+                photos: normalizeNcrEmailPhotoUrls(photoUrls).map((url, index) => ({ label: `Photo ${index + 1}`, url }))
+            };
+        }
+
+        function normalizeNcrEmailPhotoUrls(photoUrls = []) {
+            const list = Array.isArray(photoUrls) ? photoUrls : String(photoUrls || '').split(',');
+            const seen = new Set();
+            return list.map((url) => String(url || '').trim()).filter((url) => {
+                if (!url || !/^https?:\/\//i.test(url) || seen.has(url)) return false;
+                seen.add(url);
+                return true;
+            });
+        }
+
+        function buildNcrEmailShareItem(item = activeItem, photoUrls = []) {
+            const payload = buildNcrEmailItemPayload(item, photoUrls);
+            const photoCsv = normalizeNcrEmailPhotoUrls(photoUrls).join(',');
+            return {
+                SOURCE_TABLE: 'v2_active_request',
+                REQUEST_FOLDER: 'New Crop Release',
+                REQ_CUSTOMER: 'JD Jones',
+                COMMONNAME: payload.commonname,
+                CONTSIZE: payload.contsize,
+                ITEMCODE: payload.itemcode,
+                LOCATIONCODE: payload.locationcode,
+                LOTCODE: payload.lotcode,
+                SEASON: payload.season,
+                S_LTS: payload.s_lts,
+                PTRAVAILABLE: payload.ptravailable,
+                PRIORITY: firstNonEmptyValue(item && item.PRIORITY, item && item.priority, ''),
+                REQ_SPEC: payload.spec,
+                REQ_CALIPER: payload.caliper,
+                AV_NOTE: payload.av_note,
+                REQ_MATCH: payload.match,
+                LOC_MATCH_QTY: payload.loc_match_qty,
+                REQ_PICK: payload.pick_note,
+                REQ_PIC_NOTE: payload.pick_note,
+                REQ_COMMENTS: payload.comments,
+                REQ_RESERVE: payload.reserve,
+                REQ_PHOTO_LINK: photoCsv,
+                REQUEST_PHOTO_LINK: photoCsv,
+                REQUESTPHOTO_LINK: photoCsv
             };
         }
 
@@ -22450,6 +22496,8 @@ function toggleDriveQuickRequestItem(domId) {
                 String(firstNonEmptyValue(item && item.CONTSIZE, '')).trim(),
                 String(firstNonEmptyValue(item && item.LOCATIONCODE, '')).trim()
             ].filter(Boolean).join(' ').trim() || 'New Crop Release';
+            const requestStyleItem = buildNcrEmailShareItem(item, photoUrls);
+            const itemPayload = buildNcrEmailItemPayload(item, photoUrls);
             const payload = {
                 type: 'email',
                 emailType: 'ncr_complete',
@@ -22461,7 +22509,10 @@ function toggleDriveQuickRequestItem(domId) {
                 completedBy: String(currentUserDisplay || currentUser || 'Unknown').trim(),
                 recipientEmails: NCR_EMAIL_RECIPIENTS.slice(),
                 recipients: NCR_EMAIL_RECIPIENTS.map((email) => ({ email, role: 'internal' })),
-                requestItems: [buildNcrEmailItemPayload(item, photoUrls)]
+                formattedItemsHtml: formatRequestItemsHtml([requestStyleItem], 'New Crop Release'),
+                formattedItemsText: formatRequestItemsText([requestStyleItem], 'New Crop Release', { includePhotoUrls: true }),
+                photoUrls: normalizeNcrEmailPhotoUrls(photoUrls),
+                requestItems: [itemPayload]
             };
             const responseData = await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'NCR Email');
             if (responseData && responseData.ok === false) {
