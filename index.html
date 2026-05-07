@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.07.06';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.07.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1055,7 +1055,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.07.06').trim() || 'V2026.05.07.06';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.07.07').trim() || 'V2026.05.07.07';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1673,7 +1673,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.07.06';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.07.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1723,6 +1723,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         const VIEW_ENTER_REFRESH_REALTIME_HEALTHY_MS = 180000;
         const REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS = 30000;
         const REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS = 6000;
+        const REQUEST_VIEW_ACTIVE_SIGNATURE_SYNC_MS = 2800;
+        const REQUEST_VIEW_SECONDARY_SIGNATURE_SYNC_MS = 4500;
         const viewEnterRefreshAt = new Map();
         const REALTIME_STARTUP_GRACE_MS = 12000;
         const REALTIME_RECOVERY_GRACE_MS = 3200;
@@ -5740,9 +5742,23 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 markViewDirty('request');
                 return true;
             }
+            const wasCompleteBeforeLiveUpdate = hasRequestCompletionState(activeItem);
             Object.assign(activeItem, row);
             normalizeRowPhotoFields(activeItem);
             buildSearchIndex(activeItem);
+            const completedByAnotherUser = !wasCompleteBeforeLiveUpdate && hasRequestCompletionState(activeItem);
+            if (completedByAnotherUser) {
+                discardPendingLocalEdits([rowId], true);
+                scheduleUiRender(`request-detail-completed-live-${rowId}`, () => {
+                    if (!isViewVisible('detail') || !activeItem) return;
+                    const currentActiveId = String(firstNonEmptyValue(activeItem.UNIQUE_ID, activeItem.unique_id, '') || '').trim();
+                    if (currentActiveId !== rowId || !hasRequestCompletionState(activeItem)) return;
+                    showToast('Already Complete', 'That request was completed by another user.');
+                    goBackFromDetail();
+                    triggerRequestRealtimeUiRefresh(0);
+                }, 16);
+                return true;
+            }
             scheduleUiRender(`request-detail-live-${rowId}`, () => {
                 if (!isViewVisible('detail')) return;
                 renderSavedPhotos();
@@ -5906,14 +5922,14 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }
             if (isBulk) {
                 if (isViewVisible('request') || isViewVisible('reports')) {
-                    forceRefreshRequestsForView('request-live-bulk', { force: true, minIntervalMs: 0 }).catch(() => {});
+                    forceRefreshRequestsForView('request-live-bulk', { force: true, minIntervalMs: 0, allowWhileInteractive: true }).catch(() => {});
                 }
                 return true;
             }
             const rows = await fetchAppLiveEventRowsByIds('v2_active_request', rowIds);
             if (!rows.length) {
                 if (isViewVisible('request') || isViewVisible('reports')) {
-                    forceRefreshRequestsForView('request-live-miss', { force: true, minIntervalMs: 0 }).catch(() => {});
+                    forceRefreshRequestsForView('request-live-miss', { force: true, minIntervalMs: 0, allowWhileInteractive: true }).catch(() => {});
                     return true;
                 }
                 return false;
@@ -5959,7 +5975,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const rows = await fetchAppLiveEventRowsByIds(sourceTable, rowIds);
             if (!rows.length) {
                 if (sourceTable === 'v2_active_request' && (isViewVisible('request') || isViewVisible('reports'))) {
-                    forceRefreshRequestsForView('app-live-request-miss', { force: true, minIntervalMs: 0 }).catch(() => {});
+                    forceRefreshRequestsForView('app-live-request-miss', { force: true, minIntervalMs: 0, allowWhileInteractive: true }).catch(() => {});
                     return true;
                 }
                 return false;
@@ -6117,10 +6133,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             } else if (tableName === 'v2_active_request') {
                 if (eventType === 'DELETE') {
                     clearOptimisticRequestIds([uniqueId]);
+                    discardPendingLocalEdits([uniqueId], true);
                     changed = removeRealtimeRow(requestsInventory, uniqueId);
                 } else {
                     clearOptimisticRequestIds([uniqueId]);
                     changed = upsertRealtimeRow(requestsInventory, nextRow, tableName);
+                    if (nextRow && hasRequestCompletionState(nextRow)) discardPendingLocalEdits([uniqueId], true);
                 }
             } else if (tableName === 'v2_reserves') {
                 changed = eventType === 'DELETE'
@@ -10423,7 +10441,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.07.06').trim() || 'V2026.05.07.06';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.07.07').trim() || 'V2026.05.07.07';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -11088,11 +11106,15 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (didChange) invalidateResolvedViewStateCaches();
         }
 
-        function isRequestComplete(item) {
-            if (isOptimisticallyCompletedRow(item)) return true;
-            const statusComplete = normalizeRequestStatus(item && item.REQ_STATUS) === 'Complete';
+        function hasRequestCompletionState(item) {
+            const statusComplete = normalizeRequestStatus(firstNonEmptyValue(item && item.REQ_STATUS, item && item.req_status, item && item.STATUS, item && item.status, '')) === 'Complete';
             if (statusComplete) return true;
             return hasCompletionDateValue(item);
+        }
+
+        function isRequestComplete(item) {
+            if (isOptimisticallyCompletedRow(item)) return true;
+            return hasRequestCompletionState(item);
         }
 
         function buildRequestLiveSyncSignature(rows = []) {
@@ -32733,6 +32755,12 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
 
+        function isPrimaryRequestLiveSyncContextVisible() {
+            return isViewVisible('request')
+                || isViewVisible('reports')
+                || (isViewVisible('detail') && lastView === 'request');
+        }
+
         function shouldRunRequestViewLiveSync(options = {}) {
             const safeOptions = options && typeof options === 'object' ? options : {};
             const roleAccess = getRoleAccessState();
@@ -32740,15 +32768,17 @@ function toggleDriveQuickRequestItem(domId) {
             const requestState = getDatasetState('requests');
             const requestDatasetReady = !!((requestState && (requestState.initialLoaded || requestState.fullLoaded)) || (Array.isArray(requestsInventory) && requestsInventory.length));
             const currentVisibleView = typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '';
-            const isRequestContextVisible = isViewVisible('request')
-                || isViewVisible('reports')
-                || (isViewVisible('detail') && lastView === 'request')
+            const isPrimaryRequestContext = isPrimaryRequestLiveSyncContextVisible();
+            const isRequestContextVisible = isPrimaryRequestContext
                 || (currentVisibleView && currentVisibleView !== 'home' && TRACKED_VIEW_IDS.includes(currentVisibleView));
             const realtimeNeedsCatchup = safeOptions.allowHealthyRealtime === true || !isRealtimeTableHealthy('v2_active_request');
-            return !!(currentUser && canSeeRequests && requestDatasetReady && isRequestContextVisible && navigator.onLine !== false && !document.hidden && realtimeNeedsCatchup);
+            const visibleEnoughForMode = safeOptions.allowHealthyRealtime === true ? isPrimaryRequestContext : isRequestContextVisible;
+            return !!(currentUser && canSeeRequests && requestDatasetReady && visibleEnoughForMode && navigator.onLine !== false && !document.hidden && realtimeNeedsCatchup);
         }
 
-        function getRequestViewLiveSyncInterval() {
+        function getRequestViewLiveSyncInterval(options = {}) {
+            if (isViewVisible('request')) return REQUEST_VIEW_ACTIVE_SIGNATURE_SYNC_MS;
+            if (isViewVisible('reports') || (isViewVisible('detail') && lastView === 'request')) return REQUEST_VIEW_SECONDARY_SIGNATURE_SYNC_MS;
             return (isIOSDevice() || isStandaloneApp()) ? 9000 : 12000;
         }
 
@@ -32761,11 +32791,11 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const pauseDelay = requestViewLiveSyncPausedUntil - Date.now();
             if (pauseDelay > 0) {
-                if (!safeOptions.once) syncRequestViewLiveSync(pauseDelay + 120);
+                if (!safeOptions.once) syncRequestViewLiveSync(pauseDelay + 120, safeOptions);
                 return;
             }
             if (shouldDeferInteractiveBackgroundWork()) {
-                if (!safeOptions.once) syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS);
+                if (!safeOptions.once) syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS, safeOptions);
                 return;
             }
             const minInterval = Math.max(0, Number(safeOptions.minIntervalMs) || 0);
@@ -32776,14 +32806,14 @@ function toggleDriveQuickRequestItem(domId) {
             try {
                 const signatureRows = await fetchAllSupabaseRows('v2_active_request', 'select=unique_id,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,date_completed,req_match,req_spec,req_caliper,req_pic_note,req_comments,av_note,req_photo_link,req_photo_name&order=unique_id.desc');
                 if (shouldDeferInteractiveBackgroundWork()) {
-                    if (!safeOptions.once) syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS);
+                    if (!safeOptions.once) syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS, safeOptions);
                     return;
                 }
                 const nextSignature = buildRequestLiveSyncSignature(signatureRows);
                 if (nextSignature === requestViewLiveSyncSignature) return;
                 const rows = await fetchAllSupabaseRows('v2_active_request', 'select=*&order=unique_id.desc');
                 if (shouldDeferInteractiveBackgroundWork()) {
-                    if (!safeOptions.once) syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS);
+                    if (!safeOptions.once) syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS, safeOptions);
                     return;
                 }
                 const formattedRows = formatFetchedRows(rows, 'v2_active_request');
@@ -32792,7 +32822,7 @@ function toggleDriveQuickRequestItem(domId) {
             } catch (error) {
             } finally {
                 requestViewLiveSyncInFlight = false;
-                if (!safeOptions.once && shouldRunRequestViewLiveSync()) syncRequestViewLiveSync(getRequestViewLiveSyncInterval());
+                if (!safeOptions.once && shouldRunRequestViewLiveSync(safeOptions)) syncRequestViewLiveSync(getRequestViewLiveSyncInterval(safeOptions), safeOptions);
             }
         }
 
@@ -32835,15 +32865,17 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
 
-        function syncRequestViewLiveSync(delay = 0) {
+        function syncRequestViewLiveSync(delay = 0, options = {}) {
+            const safeOptions = options && typeof options === 'object' ? { ...options } : {};
+            if (isPrimaryRequestLiveSyncContextVisible()) safeOptions.allowHealthyRealtime = true;
             clearRequestViewLiveSync();
-            if (!shouldRunRequestViewLiveSync()) return;
+            if (!shouldRunRequestViewLiveSync(safeOptions)) return;
             const pauseDelay = Math.max(0, requestViewLiveSyncPausedUntil - Date.now());
             const interactionDelay = shouldDeferInteractiveBackgroundWork() ? INTERACTION_REFRESH_DEFER_MS : 0;
             const nextDelay = Math.max(Math.max(0, Number(delay) || 0), pauseDelay, interactionDelay);
             requestViewLiveSyncTimer = setTimeout(() => {
                 requestViewLiveSyncTimer = null;
-                runRequestViewLiveSync().catch(() => {});
+                runRequestViewLiveSync(safeOptions).catch(() => {});
             }, nextDelay);
         }
         function getFallbackSyncInterval() {
@@ -41254,6 +41286,21 @@ ${folderNote ? `Folder Note: ${folderNote}
                     queueVisibleSaveRefresh(delay);
                 };
 
+                const stopAlreadyCompletedRequestSave = (message = 'That request was already completed.') => {
+                    clearOptimisticCompletedRows([itemToSave.UNIQUE_ID]);
+                    discardPendingLocalEdits([itemToSave.UNIQUE_ID], true);
+                    if (btnComp) btnComp.innerText = 'MARK DONE';
+                    if (isCurrentView && detailWasVisible && isViewVisible('detail')) goBackFromDetail();
+                    queueRequestAwareSaveRefresh(0, 'request-already-complete');
+                    triggerRequestRealtimeUiRefresh(0);
+                    if (!isSilentAutoSave) showToast('Already Complete', message);
+                };
+
+                if (prefix === 'req-' && isComplete && wasAlreadyComplete) {
+                    stopAlreadyCompletedRequestSave();
+                    return;
+                }
+
                 if (!specificItem) {
                     let avEl = document.getElementById(prefix + 'av-note');
                     if (avEl) { itemToSave.AV_NOTE = avEl.value.toUpperCase(); }
@@ -41740,6 +41787,34 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                     : {};
 
+                const fetchRemoteRequestCompletionRow = async () => {
+                    if (prefix !== 'req-' || !isComplete || wasAlreadyComplete) return null;
+                    const requestId = String(firstNonEmptyValue(itemToSave.UNIQUE_ID, itemToSave.unique_id, '') || '').trim();
+                    if (!requestId || navigator.onLine === false) return null;
+                    try {
+                        const rows = await fetchSupabasePage('v2_active_request', `select=*&unique_id=eq.${encodeURIComponent(requestId)}`, 1, 0);
+                        const formattedRows = formatFetchedRows(rows || [], 'v2_active_request');
+                        return formattedRows[0] || null;
+                    } catch (error) {
+                        return null;
+                    }
+                };
+
+                const stopIfRemoteRequestAlreadyComplete = async () => {
+                    const remoteRow = await fetchRemoteRequestCompletionRow();
+                    if (!remoteRow || !hasRequestCompletionState(remoteRow)) return false;
+                    if (completionArtifacts && completionArtifacts.soPayload) rollbackOptimisticSalesOfficeArtifacts(completionArtifacts);
+                    if (completionArtifacts && completionArtifacts.masterSyncPayload) rollbackOptimisticMasterSyncArtifacts(completionArtifacts, prefix);
+                    Object.assign(itemToSave, remoteRow);
+                    normalizeRowPhotoFields(itemToSave);
+                    buildSearchIndex(itemToSave);
+                    upsertRealtimeRow(requestsInventory, itemToSave, 'v2_active_request');
+                    refreshRealtimeDetailLookupIndexes('v2_active_request');
+                    requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+                    stopAlreadyCompletedRequestSave('That request was just completed by another user.');
+                    return true;
+                };
+
                 const restoreFromFailedSave = (message) => {
                     itemToSave.DATE_COMPLETED = previousDateCompleted;
                     itemToSave.date_completed = previousDateCompleted;
@@ -41917,6 +41992,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                     applyPhotoFieldsToPayload();
                     try {
+                        if (await stopIfRemoteRequestAlreadyComplete()) return;
                         await runDetailWriteWithRetry(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`, saveRequestOptions);
                         const finalizeSave = () => handleSaveSuccess(completionArtifacts || buildCompletionArtifacts());
                         if (isLagSensitiveDetailPrefix(prefix)) setTimeout(finalizeSave, 0);
@@ -42023,10 +42099,59 @@ ${folderNote ? `Folder Note: ${folderNote}
             pendingEditsPersistTimer = setTimeout(writeNow, PENDING_EDITS_PERSIST_DEBOUNCE_MS);
         }
 
+        function isRequestLikeLocalEditRow(item = null) {
+            if (!item || typeof item !== 'object') return false;
+            const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '') || '').trim().toLowerCase();
+            if (sourceTable === 'v2_active_request') return true;
+            const domId = String(firstNonEmptyValue(item.DOM_ID, item.dom_id, '') || '').trim().toLowerCase();
+            if (domId.startsWith('req_') || domId.startsWith('req-')) return true;
+            return Object.prototype.hasOwnProperty.call(item, 'REQ_STATUS')
+                || Object.prototype.hasOwnProperty.call(item, 'req_status')
+                || Object.prototype.hasOwnProperty.call(item, 'REQUEST_FOLDER')
+                || Object.prototype.hasOwnProperty.call(item, 'request_folder')
+                || Object.prototype.hasOwnProperty.call(item, 'REQ_CUSTOMER')
+                || Object.prototype.hasOwnProperty.call(item, 'req_customer');
+        }
+
+        function findPendingEditTarget(uid = '', pendingData = null) {
+            const normalizedUid = String(uid || '').trim();
+            if (!normalizedUid) return null;
+            if (isRequestLikeLocalEditRow(pendingData)) {
+                return requestsInventoryById.get(normalizedUid)
+                    || requestsInventory.find((item) => String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim() === normalizedUid)
+                    || findItemByUniqueId(normalizedUid);
+            }
+            return findItemByUniqueId(normalizedUid);
+        }
+
+        function shouldDiscardPendingEditForCurrentRow(currentItem = null, pendingData = null) {
+            if (!currentItem || !pendingData || typeof pendingData !== 'object') return false;
+            if (!isRequestLikeLocalEditRow(currentItem) && !isRequestLikeLocalEditRow(pendingData)) return false;
+            return hasRequestCompletionState(currentItem) && !hasRequestCompletionState(pendingData);
+        }
+
+        function discardPendingLocalEdits(values = [], immediate = false) {
+            const ids = normalizeUniqueIdList(values);
+            if (!ids.length) return false;
+            const pendingEdits = getPendingEditsCache();
+            let changed = false;
+            ids.forEach((uid) => {
+                if (!Object.prototype.hasOwnProperty.call(pendingEdits, uid)) return;
+                delete pendingEdits[uid];
+                changed = true;
+            });
+            if (changed) flushPendingEditsCache(!!immediate);
+            return changed;
+        }
+
         function backupLocalItem(item) {
             if (!item) return;
             let pendingEdits = getPendingEditsCache();
-            pendingEdits[item.UNIQUE_ID] = { timestamp: new Date().getTime(), data: item };
+            pendingEdits[item.UNIQUE_ID] = {
+                timestamp: new Date().getTime(),
+                sourceTable: isRequestLikeLocalEditRow(item) ? 'v2_active_request' : String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '') || '').trim(),
+                data: item
+            };
             flushPendingEditsCache();
         }
 
@@ -42037,12 +42162,18 @@ ${folderNote ? `Folder Note: ${folderNote}
 
             for (let uid in pendingEdits) {
                 if (now - pendingEdits[uid].timestamp > 900000) { delete pendingEdits[uid]; changed = true; continue; }
-                let item = findItemByUniqueId(uid);
+                const pendingData = pendingEdits[uid] && pendingEdits[uid].data;
+                let item = findPendingEditTarget(uid, pendingData);
                 if (item) {
-                    Object.assign(item, pendingEdits[uid].data);
+                    if (shouldDiscardPendingEditForCurrentRow(item, pendingData)) {
+                        delete pendingEdits[uid];
+                        changed = true;
+                        continue;
+                    }
+                    Object.assign(item, pendingData);
                     normalizeRowPhotoFields(item);
                     buildSearchIndex(item);
-                    if (masterInventoryById.has(String(uid || '').trim())) syncRowDataAcrossViews(item);
+                    if (!isRequestLikeLocalEditRow(pendingData) && masterInventoryById.has(String(uid || '').trim())) syncRowDataAcrossViews(item);
                 }
             }
             if (changed) flushPendingEditsCache(true);
