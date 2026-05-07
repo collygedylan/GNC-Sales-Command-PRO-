@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.07.01';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.07.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1055,7 +1055,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.07.01').trim() || 'V2026.05.07.01';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.07.02').trim() || 'V2026.05.07.02';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1673,7 +1673,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.07.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.07.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2798,12 +2798,26 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             return Math.max(0, Number(pollMs) || 0);
         }
 
+        function shouldKeepRequestRealtimeSubscribed() {
+            try {
+                return !!(currentUser && canAccessView('request'));
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function getAlwaysOnRealtimeTablesForView(viewId = '') {
+            const tables = [];
+            if (shouldKeepRequestRealtimeSubscribed()) tables.push('v2_active_request');
+            return tables;
+        }
+
         function getLiveSyncPolicy(viewId = '') {
             const resolvedViewId = resolveRealtimeContextViewId(viewId);
             const policy = LIVE_SYNC_VIEW_POLICY[resolvedViewId] || LIVE_SYNC_VIEW_POLICY.home || { realtimeTables: [], pollMs: 0 };
             return {
                 viewId: resolvedViewId,
-                realtimeTables: normalizeRealtimeTableList(policy.realtimeTables || []),
+                realtimeTables: normalizeRealtimeTableList([...(policy.realtimeTables || []), ...getAlwaysOnRealtimeTablesForView(resolvedViewId)]),
                 pollMs: getLiveSyncPollIntervalMs(policy.pollMs)
             };
         }
@@ -5566,6 +5580,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             updateFooterRequestBadge();
             markViewDirty('request');
             markViewDirty('reports');
+            markViewDirty('tasks');
             const nextDelay = Math.max(0, Number(delay) || 0);
             if (shouldDeferInteractiveBackgroundWork()) {
                 incrementInternalPerfCounter('deferredBackgroundRefreshes');
@@ -5575,6 +5590,28 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }
             if (isViewVisible('request')) queueInteractiveViewRender('request', false, false, nextDelay, Math.max(160, REQUEST_REALTIME_UI_DELAY_MS));
             if (isViewVisible('reports')) queueInteractiveViewRender('reports', false, false, nextDelay, Math.max(160, REQUEST_REALTIME_UI_DELAY_MS));
+            if (isViewVisible('tasks')) queueInteractiveViewRender('tasks', false, false, nextDelay, Math.max(160, REQUEST_REALTIME_UI_DELAY_MS));
+        }
+
+        function refreshActiveRequestDetailFromRealtimeRow(row = null, eventType = '') {
+            if (!row || !isViewVisible('detail') || !activeItem) return false;
+            const rowId = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
+            const activeId = String(firstNonEmptyValue(activeItem.UNIQUE_ID, activeItem.unique_id, '') || '').trim();
+            if (!rowId || !activeId || rowId !== activeId) return false;
+            if (String(eventType || '').toUpperCase() === 'DELETE') {
+                markViewDirty('request');
+                return true;
+            }
+            Object.assign(activeItem, row);
+            normalizeRowPhotoFields(activeItem);
+            buildSearchIndex(activeItem);
+            scheduleUiRender(`request-detail-live-${rowId}`, () => {
+                if (!isViewVisible('detail')) return;
+                renderSavedPhotos();
+                if (activeDetailTab === 'gallery') renderPhotoGallery();
+                refreshProtectedSections();
+            }, 16);
+            return true;
         }
 
         function normalizeAppLiveEventRow(row = null) {
@@ -5964,6 +6001,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (tableName === 'v2_active_request') {
                 invalidateResolvedViewStateCaches();
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+                refreshActiveRequestDetailFromRealtimeRow(nextRow || oldRow, eventType);
                 triggerRequestRealtimeUiRefresh(0);
             } else if (tableName === FLYER_FOLDER_ROWS_TABLE) {
                 invalidateResolvedViewStateCaches();
@@ -10193,7 +10231,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.07.01').trim() || 'V2026.05.07.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.07.02').trim() || 'V2026.05.07.02';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -32335,9 +32373,11 @@ function toggleDriveQuickRequestItem(domId) {
             const canSeeRequests = !!(canAccessView('request') || (roleAccess.allowedViews && typeof roleAccess.allowedViews.has === 'function' && roleAccess.allowedViews.has('reports')));
             const requestState = getDatasetState('requests');
             const requestDatasetReady = !!((requestState && (requestState.initialLoaded || requestState.fullLoaded)) || (Array.isArray(requestsInventory) && requestsInventory.length));
+            const currentVisibleView = typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '';
             const isRequestContextVisible = isViewVisible('request')
                 || isViewVisible('reports')
-                || (isViewVisible('detail') && lastView === 'request');
+                || (isViewVisible('detail') && lastView === 'request')
+                || (currentVisibleView && currentVisibleView !== 'home' && TRACKED_VIEW_IDS.includes(currentVisibleView));
             const realtimeNeedsCatchup = safeOptions.allowHealthyRealtime === true || !isRealtimeTableHealthy('v2_active_request');
             return !!(currentUser && canSeeRequests && requestDatasetReady && isRequestContextVisible && navigator.onLine !== false && !document.hidden && realtimeNeedsCatchup);
         }
