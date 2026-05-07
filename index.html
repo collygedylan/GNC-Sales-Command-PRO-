@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.06.17';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.06.18';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1055,7 +1055,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.17').trim() || 'V2026.05.06.17';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.06.18').trim() || 'V2026.05.06.18';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1672,7 +1672,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.17';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.06.18';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10191,7 +10191,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.17').trim() || 'V2026.05.06.17';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.06.18').trim() || 'V2026.05.06.18';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -18461,7 +18461,7 @@ function toggleDriveQuickRequestItem(domId) {
             return dockAssignableUsersPromise;
         }
 
-        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','av','request','reserves','sales-office','moves','reports','hours','low-stock','review','chat'];
+        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','av','request','reserves','sales-office','reports','hours','low-stock','review','chat'];
         const ROLE_VIEW_ELEMENT_IDS = Object.freeze({
             drive: ['drawer-drive-btn', 'home-tile-drive'],
             tasks: ['drawer-tasks-btn', 'home-tile-tasks'],
@@ -18482,6 +18482,14 @@ function toggleDriveQuickRequestItem(domId) {
 
         function normalizeRoleAccessToken(value = '') {
             return String(value || '').toUpperCase().replace(/[^A-Z0-9]+/g, '');
+        }
+
+        function normalizeMovesUserKey(value = '') {
+            return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        }
+
+        function canUseMovesModule() {
+            return normalizeMovesUserKey(currentUser) === 'dylan_collyge';
         }
 
         function getRoleAccessState() {
@@ -18515,6 +18523,7 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (isQc) {
                 ['docks'].forEach(viewId => allowedViews.add(viewId));
             }
+            if (canUseMovesModule()) allowedViews.add('moves');
             return { isAdmin, isRep, isQcSupervisor, isQc, isCsr, isForeman, isTakeBackOnly, isRequestRepScopedUser, allowedViews };
         }
 
@@ -18523,6 +18532,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!targetView || targetView === 'home' || targetView === 'detail') return true;
             if (targetView === 'walkie') return false;
             const access = getRoleAccessState();
+            if (targetView === 'moves') return canUseMovesModule();
             if (targetView === 'request' && !access.isForeman && !access.isTakeBackOnly && access.isRequestRepScopedUser) return true;
             return access.allowedViews.has(targetView);
         }
@@ -18616,7 +18626,7 @@ function toggleDriveQuickRequestItem(domId) {
         function syncRoleAccessUi(access = getRoleAccessState()) {
             const allowedViews = access && access.allowedViews instanceof Set ? access.allowedViews : new Set();
             Object.keys(ROLE_VIEW_ELEMENT_IDS).forEach((viewId) => {
-                const isAllowed = viewId === 'request' ? canAccessView('request') : allowedViews.has(viewId);
+                const isAllowed = (viewId === 'request' || viewId === 'moves') ? canAccessView(viewId) : allowedViews.has(viewId);
                 ROLE_VIEW_ELEMENT_IDS[viewId].forEach((elementId) => {
                     const el = document.getElementById(elementId);
                     if (!el) return;
