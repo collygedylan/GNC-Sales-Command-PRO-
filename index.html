@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.07.05';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.07.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1055,7 +1055,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.07.05').trim() || 'V2026.05.07.05';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.07.06').trim() || 'V2026.05.07.06';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1673,7 +1673,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.07.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.07.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10423,7 +10423,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.07.05').trim() || 'V2026.05.07.05';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.07.06').trim() || 'V2026.05.07.06';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -24510,10 +24510,15 @@ function toggleDriveQuickRequestItem(domId) {
                 payload.folderOnly = true;
                 payload.customerHistoryAllowed = false;
             }
+            const existingThreadId = String(firstNonEmptyValue(safeDetails.threadId, existingThreadRecord && existingThreadRecord.initial_thread_id, '')).trim();
+            const existingMessageId = String(firstNonEmptyValue(safeDetails.messageId, existingThreadRecord && existingThreadRecord.initial_message_id, '')).trim();
+            const canReplyInExistingThread = !!(existingThreadId && existingMessageId && safeType === 'request_complete');
+            if (existingThreadId) payload.threadId = existingThreadId;
+            if (existingMessageId) payload.messageId = existingMessageId;
             if (safeType === 'request_complete') {
                 const folderNote = String(safeDetails.folderNote || '').trim();
                 if (folderNote) payload.folderNote = folderNote;
-                if (requestedDelayMs > 0) {
+                if (requestedDelayMs > 0 && canReplyInExistingThread) {
                     payload.delayMs = requestedDelayMs;
                     payload.queueDelivery = true;
                     delete payload.formattedItemsHtml;
@@ -24521,11 +24526,7 @@ function toggleDriveQuickRequestItem(domId) {
                     delete payload.requestItems;
                 }
             }
-            const existingThreadId = String(firstNonEmptyValue(safeDetails.threadId, existingThreadRecord && existingThreadRecord.initial_thread_id, '')).trim();
-            const existingMessageId = String(firstNonEmptyValue(safeDetails.messageId, existingThreadRecord && existingThreadRecord.initial_message_id, '')).trim();
-            if (existingThreadId) payload.threadId = existingThreadId;
-            if (existingMessageId) payload.messageId = existingMessageId;
-            payload.replyInExistingThread = !!existingThreadId && safeType === 'request_complete';
+            payload.replyInExistingThread = canReplyInExistingThread;
             try {
                 const responseData = await postRequestEmailPayload(payload);
                 if (responseData && responseData.ok === false) {
