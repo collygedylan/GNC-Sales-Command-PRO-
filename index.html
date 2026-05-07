@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.07.02';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.07.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1055,7 +1055,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.07.02').trim() || 'V2026.05.07.02';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.07.03').trim() || 'V2026.05.07.03';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1673,7 +1673,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.07.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.07.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2806,9 +2806,27 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             }
         }
 
+        function shouldKeepMasterRealtimeSubscribed() {
+            try {
+                return !!(currentUser && (
+                    canAccessView('drive')
+                    || canAccessView('tasks')
+                    || canAccessView('av')
+                    || canAccessView('sales-office')
+                    || canAccessView('review')
+                    || canAccessView('low-stock')
+                    || canAccessView('moves')
+                    || canAccessView('reports')
+                ));
+            } catch (error) {
+                return false;
+            }
+        }
+
         function getAlwaysOnRealtimeTablesForView(viewId = '') {
             const tables = [];
             if (shouldKeepRequestRealtimeSubscribed()) tables.push('v2_active_request');
+            if (shouldKeepMasterRealtimeSubscribed()) tables.push('v2_master_inventory');
             return tables;
         }
 
@@ -5614,6 +5632,35 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return true;
         }
 
+        function refreshActiveMasterDetailFromRealtimeRow(row = null, eventType = '') {
+            if (!row || !isViewVisible('detail') || !activeItem) return false;
+            const rowId = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
+            const activeId = String(firstNonEmptyValue(activeItem.UNIQUE_ID, activeItem.unique_id, '') || '').trim();
+            const activeMasterId = String(firstNonEmptyValue(activeItem.MASTER_ID, activeItem.MASTER_UNIQUE_ID, activeItem.master_id, '') || '').trim();
+            if (!rowId || (rowId !== activeId && rowId !== activeMasterId)) return false;
+            if (String(eventType || '').toUpperCase() === 'DELETE') {
+                markViewDirty('drive');
+                markViewDirty('tasks');
+                markViewDirty('av');
+                return true;
+            }
+            if (rowId === activeId) Object.assign(activeItem, row);
+            else syncMasterFieldsToRow(row, activeItem, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true, exactPhotoClone: false });
+            normalizeRowPhotoFields(activeItem);
+            buildSearchIndex(activeItem);
+            scheduleUiRender(`master-detail-live-${rowId}`, () => {
+                if (!isViewVisible('detail') || !activeItem) return;
+                if (!hasActiveTextEntryFocus()) {
+                    populateDetailSummaryValues(activeItem, activeDetailSourceView || lastView || '');
+                    renderDriveDetailOverviewFields();
+                    refreshProtectedSections();
+                }
+                renderSavedPhotos();
+                if (activeDetailTab === 'gallery') renderPhotoGallery();
+            }, 16);
+            return true;
+        }
+
         function normalizeAppLiveEventRow(row = null) {
             if (!row || typeof row !== 'object') return null;
             return {
@@ -5998,7 +6045,20 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 return false;
             }
             trackRealtimeDirtyRowId(tableName, uniqueId);
-            if (tableName === 'v2_active_request') {
+            if (tableName === 'v2_master_inventory') {
+                invalidateResolvedViewStateCaches();
+                refreshActiveMasterDetailFromRealtimeRow(nextRow || oldRow, eventType);
+                ['drive','tasks','av','review','low-stock','moves','reports'].forEach((viewId) => markViewDirty(viewId));
+                if (!shouldDeferInteractiveBackgroundWork()) {
+                    if (isViewVisible('drive')) queueInteractiveViewRender('drive', false, false, 0, 120);
+                    if (isViewVisible('tasks')) queueInteractiveViewRender('tasks', false, false, 0, 140);
+                    if (isViewVisible('av')) queueInteractiveViewRender('av', false, false, 0, 140);
+                    if (isViewVisible('review')) queueInteractiveViewRender('review', false, false, 0, 160);
+                    if (isViewVisible('low-stock')) queueInteractiveViewRender('low-stock', false, false, 0, 160);
+                    if (isViewVisible('moves')) queueInteractiveViewRender('moves', false, false, 0, 160);
+                    if (isViewVisible('reports')) queueInteractiveViewRender('reports', false, false, 0, 180);
+                }
+            } else if (tableName === 'v2_active_request') {
                 invalidateResolvedViewStateCaches();
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
                 refreshActiveRequestDetailFromRealtimeRow(nextRow || oldRow, eventType);
@@ -9764,7 +9824,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                     && Array.isArray(cachedRes.data)
                     && countUniqueCacheCommonNames(cachedRes.data) < MIN_TRUSTED_MASTER_COMMON_NAME_CACHE_COUNT;
                 next[key] = {
-                    initialLoaded: !!(saved.initialLoaded || fallbackEntry.initialLoaded),
+                    initialLoaded: !!(saved.initialLoaded || fallbackEntry.initialLoaded) && !(key === 'master' && masterCacheLooksPartial),
                     fullLoaded: schemaVersion >= CACHE_SCHEMA_VERSION ? (!!saved.fullLoaded && !fullInlineCacheIsTruncated && !masterCacheLooksPartial) : false,
                     lastLoadedAt: schemaVersion >= CACHE_SCHEMA_VERSION ? (saved.lastLoadedAt || '') : ''
                 };
@@ -10225,13 +10285,25 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const TAKE_BACK_TABLE = 'v2_take_back_queue';
         const TAKE_BACK_SELECT_FIELDS = 'unique_id,master_unique_id,source_table,status,added_by_username,added_by_display,added_at,completed_by_username,completed_by_display,completed_at,itemcode,commonname,contsize,locationcode,lotcode,priority,ptravailable,s_lts,holdstopcode,photo_link,photo_name,snapshot,updated_at';
         const FLYER_FOLDER_ROW_SELECT_FIELDS = 'unique_id,master_unique_id,source_table,flyer_title,flyer_assigned,flyer_cat,flyer_inst,flyer_notes,flyer_completed,assignedto,date_completed,itemcode,commonname,contsize,locationcode,lotcode,priority,ptravailable,s_lts,holdstopcode,plantgroupcode,locationnote,av_note,match,loc_match_qty,spec,caliper,pick,initial_ptr,flyer_av_note,flyer_match,flyer_loc_match_qty,flyer_spec,flyer_caliper,flyer_pick,flyer_initial_ptr,flyer_photo_link,flyer_photo_name,snapshot,created_by_username,created_by_display,created_at,updated_at';
+        const MASTER_INITIAL_SELECT_FIELDS = [
+            'unique_id','warehouseid','plantgroupcode','itemcode','qualitycode','contsize','commonname','description','plant_name',
+            'lotcode','locationcode','source','desigitem','desigcust','desigloc','priority','ptravailable','s_lts','season_supply',
+            'itemspec','locationnote','locationnotedate','fieldtagcolor','holdstopcode','holdstopreason','season','blockalpha','blocknumber',
+            'app_tab_assignment','assignedto','date_completed','av_note','sales_note','salesnote','match','loc_match_qty','initial_ptr','spec','caliper','pick',
+            'photo_link','photo_name','saved_photo_link','saved_photo_name','row_photo_link','row_photo_name','req_photo_link','req_photo_name',
+            'dock_photo_link','dock_photo_name','flyer_photo_link','flyer_photo_name','request_folder','req_status','flyer_folder','flyer_completed',
+            'flyer_av_note','flyer_match','flyer_loc_match_qty','flyer_spec','flyer_caliper','flyer_pick','flyer_initial_ptr','updated_at'
+        ].join(',');
+        function buildMasterInitialDatasetQuery() {
+            return `select=${MASTER_INITIAL_SELECT_FIELDS}&order=unique_id.asc`;
+        }
         const NCR_EMAIL_RECIPIENTS = Object.freeze([
             'jd_jones@greenleafnursery.com',
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.07.02').trim() || 'V2026.05.07.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.07.03').trim() || 'V2026.05.07.03';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -10761,7 +10833,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         });
 
         const DATASET_DEFINITIONS = {
-            master: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: 'select=*&order=unique_id.asc', fullQuery: 'select=*&order=unique_id.asc', initialLimit: getPrimaryInventoryInitialLimit },
+            master: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: buildMasterInitialDatasetQuery, fullQuery: 'select=*&order=unique_id.asc', initialLimit: getPrimaryInventoryInitialLimit, initialFetchAll: true, mergeInitialRows: true },
             avOpen: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: 'select=*&s_lts=gt.0&order=unique_id.asc', fullQuery: 'select=*&s_lts=gt.0&order=unique_id.asc', initialLimit: getPrimaryInventoryInitialLimit },
             requests: { table: 'v2_active_request', sourceTable: 'v2_active_request', initialQuery: 'select=*&order=unique_id.desc', fullQuery: 'select=*&order=unique_id.desc' },
             reserves: { table: 'v2_reserves', sourceTable: 'v2_reserves', initialQuery: buildReserveDatasetQuery, fullQuery: buildReserveDatasetQuery, initialLimit: getReserveDatasetInitialLimit },
@@ -11465,6 +11537,22 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return mode === 'full' ? !!state.fullLoaded : (!!state.initialLoaded || !!state.fullLoaded);
         }
 
+        function mergeInitialMasterRowsWithExisting(rows = []) {
+            const incomingRows = Array.isArray(rows) ? rows : [];
+            if (!incomingRows.length || !Array.isArray(fullInventory) || !fullInventory.length) return incomingRows;
+            const existingById = new Map();
+            fullInventory.forEach((item) => {
+                const uniqueId = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '')).trim();
+                if (uniqueId && !existingById.has(uniqueId)) existingById.set(uniqueId, item);
+            });
+            if (!existingById.size) return incomingRows;
+            return incomingRows.map((row) => {
+                const uniqueId = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '')).trim();
+                const existing = uniqueId ? existingById.get(uniqueId) : null;
+                return existing ? Object.assign({}, existing, row) : row;
+            });
+        }
+
         async function ensureDatasetLoaded(key, mode = 'initial', options = {}) {
             const definition = DATASET_DEFINITIONS[key];
             if (!definition) return false;
@@ -11494,13 +11582,22 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const resolvedQuery = typeof querySource === 'function' ? querySource(modeLabel, options) : (querySource || 'select=*');
                 const initialLimitSource = definition.initialLimit;
                 const resolvedInitialLimit = typeof initialLimitSource === 'function' ? initialLimitSource(modeLabel, options) : (initialLimitSource || INITIAL_PAGE_LIMIT);
+                const shouldFetchAllForInitial = !wantsFull && definition.initialFetchAll === true;
                 let rows = [];
                 try {
-                    rows = wantsFull
+                    rows = (wantsFull || shouldFetchAllForInitial)
                         ? await fetchAllSupabaseRows(definition.table, resolvedQuery)
                         : await fetchSupabasePage(definition.table, resolvedQuery, resolvedInitialLimit, 0);
                 } catch (error) {
-                    if (key === 'flyerRows' && isOptionalFlyerRowsMissingError(error)) rows = handleMissingOptionalFlyerRowsTable(error);
+                    if (key === 'master' && shouldFetchAllForInitial) {
+                        console.warn('Fast master inventory load failed; retrying with full master rows.', error);
+                        try {
+                            rows = await fetchAllSupabaseRows(definition.table, 'select=*&order=unique_id.asc');
+                        } catch (fallbackError) {
+                            console.warn('Full master retry failed; showing first master page while background sync retries.', fallbackError);
+                            rows = await fetchSupabasePage(definition.table, 'select=*&order=unique_id.asc', resolvedInitialLimit, 0);
+                        }
+                    } else if (key === 'flyerRows' && isOptionalFlyerRowsMissingError(error)) rows = handleMissingOptionalFlyerRowsTable(error);
                     else throw error;
                 }
                 if (shouldPauseInterruptibleRefresh(options)) {
@@ -11510,8 +11607,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const masterFullLooksPartial = wantsFull
                     && key === 'master'
                     && countUniqueCacheCommonNames(rows) < MIN_TRUSTED_MASTER_COMMON_NAME_CACHE_COUNT;
+                const masterInitialLooksPartial = shouldFetchAllForInitial
+                    && key === 'master'
+                    && countUniqueCacheCommonNames(rows) < MIN_TRUSTED_MASTER_COMMON_NAME_CACHE_COUNT;
                 state.initialLoaded = true;
-                state.fullLoaded = wantsFull ? !masterFullLooksPartial : state.fullLoaded;
+                state.fullLoaded = wantsFull ? !masterFullLooksPartial : (masterInitialLooksPartial ? false : state.fullLoaded);
                 state.lastLoadedAt = new Date().toISOString();
                 if (key === 'reserves' && wantsFull) {
                     const formattedRows = formatFetchedRows(rows, definition.sourceTable);
@@ -11524,7 +11624,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     refreshRequestModalCustomerStepIfVisible();
                     persistUserScopedDatasetCache('reserves').catch(() => {});
                 } else {
-                    processAndLoadData(buildDatasetPayload(key, rows));
+                    const payload = buildDatasetPayload(key, rows);
+                    if (key === 'master' && !wantsFull && definition.mergeInitialRows === true && Array.isArray(payload.data)) {
+                        payload.data = mergeInitialMasterRowsWithExisting(payload.data);
+                    }
+                    processAndLoadData(payload);
                 }
                 if (key === 'reserves') {
                     if (isViewVisible('av') && activeAVTab === 'reserves') queueInteractiveViewRender('av', false, true, wantsFull ? 18 : 8, 220);
@@ -11536,7 +11640,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 }
                 persistCurrentCache();
                 touchSyncTimestamp();
-                if (masterFullLooksPartial) {
+                if (masterFullLooksPartial || masterInitialLooksPartial) {
                     state.lastLoadedAt = '';
                     setTimeout(() => queueDatasetLoad('master', 'full', isTouchConstrainedDevice() ? 2200 : 900), 80);
                 }
@@ -11703,7 +11807,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function getViewLoadingConfig(viewId) {
-            if (viewId === 'drive') return { required: [{ key: 'master', mode: 'full' }], background: [], label: 'Loading all Drive rows from v2_master_inventory...' };
+            if (viewId === 'drive') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading Drive rows from v2_master_inventory...' };
             if (viewId === 'av') {
                 if (activeAVTab === 'hotprice') {
                     return { required: [{ key: 'master', mode: 'initial' }, { key: 'avHotPriceKeys', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }, { key: 'avHotPriceKeys', mode: 'full' }], label: 'Loading hot price rows...' };
