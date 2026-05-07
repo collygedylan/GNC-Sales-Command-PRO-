@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.07.03';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.07.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1055,7 +1055,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.07.03').trim() || 'V2026.05.07.03';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.07.04').trim() || 'V2026.05.07.04';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1673,7 +1673,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.07.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.07.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -4300,7 +4300,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             return normalizeRowPhotoFields(item);
         }
 
-        const LINKED_ROW_SYNC_KEYS = ['COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PTRAVAILABLE','SEASONSUPPLY','PRIORITY','QUALITYCODE','FIELDTAGCOLOR','PLANTGROUPCODE','BLOCKALPHA','SEASON','S_LTS','LOCATIONNOTE','LOCATIONNOTEDATE','AV_NOTE','SALES_NOTE','MATCH','SPEC','CALIPER','PICK','LOC_MATCH_QTY','INITIAL_PTR'];
+        const LINKED_ROW_SYNC_KEYS = ['COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PTRAVAILABLE','SEASONSUPPLY','PRIORITY','QUALITYCODE','FIELDTAGCOLOR','PLANTGROUPCODE','BLOCKALPHA','SEASON','S_LTS','HOLDSTOPCODE','HOLSTOPCODE','HOLDSTOPREASON','LOCATIONNOTE','LOCATIONNOTEDATE','AV_NOTE','SALES_NOTE','MATCH','SPEC','CALIPER','PICK','LOC_MATCH_QTY','INITIAL_PTR'];
         const EXACT_ROW_SYNC_KEYS = LINKED_ROW_SYNC_KEYS.concat(getFlyerShadowKeys(), ['APP_TAB_ASSIGNMENT','PRODUCTIVITY_ORIGIN_ASSIGNMENT','DATE_COMPLETED','FLYER_CAT','FLYER_TITLE','FLYER_INST','FLYER_ASSIGNED','FLYER_NOTES','FLYER_COMPLETED','ASSIGNEDTO']);
         const ROW_SYNC_SNAPSHOT_EXTRA_KEYS = ['SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME','REQ_STATUS','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','REQ_RESERVE'];
         const ROW_SYNC_STORAGE_KEY = 'gnc_row_state_sync_v1';
@@ -4428,6 +4428,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 SALES_NOTE: String(firstNonEmptyValue(row.SALES_NOTE, row.SALESNOTE, row.sales_note, '')).trim(),
                 SPEC: String(firstNonEmptyValue(row.SPEC, row.spec, '')).trim(),
                 CALIPER: String(firstNonEmptyValue(row.CALIPER, row.caliper, '')).trim(),
+                PICK: String(firstNonEmptyValue(row.PICK, row.PIC_NOTE, row.pic_note, row.PICKNOTE, '')).trim(),
                 SAVED_PHOTO_LINK: String(firstNonEmptyValue(row.SAVED_PHOTO_LINK, row.photo_link, row.PHOTO_LINK, row.PHOTOLINK, '')).trim(),
                 SAVED_PHOTO_NAME: String(firstNonEmptyValue(row.SAVED_PHOTO_NAME, row.photo_name, row.PHOTO_NAME, row.PHOTONAME, '')).trim()
             };
@@ -4453,6 +4454,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 row.CALIPER = preserved.CALIPER;
                 row.caliper = preserved.CALIPER;
             }
+            if (preserved.PICK !== '') {
+                row.PICK = preserved.PICK;
+                row.PIC_NOTE = preserved.PICK;
+                row.pic_note = preserved.PICK;
+            }
             if (preserved.SAVED_PHOTO_LINK !== '') {
                 row.SAVED_PHOTO_LINK = preserved.SAVED_PHOTO_LINK;
                 row.photo_link = preserved.SAVED_PHOTO_LINK;
@@ -4477,6 +4483,68 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             applySalesOfficeOwnedState(row, preserved);
             row.APP_TAB_ASSIGNMENT = firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
             return row;
+        }
+
+        function maybeAdoptSalesOfficeOwnedStateToMaster(masterItem = null, row = null) {
+            if (!masterItem || !row) return false;
+            const salesOfficeSource = String(firstNonEmptyValue(row.SO_SOURCE, row.so_source, 'season') || '').trim().toLowerCase();
+            if (salesOfficeSource === 'bloom_picker') return false;
+            const preserved = captureSalesOfficeOwnedState(row);
+            const changedFlags = { avNote: false, spec: false, match: false, caliper: false, photo: false };
+            let changed = false;
+            if (!normalizeRuleText(masterItem.AV_NOTE) && preserved.AV_NOTE) {
+                masterItem.AV_NOTE = preserved.AV_NOTE;
+                changedFlags.avNote = true;
+                changed = true;
+            }
+            if (!normalizeRuleText(firstNonEmptyValue(masterItem.SALES_NOTE, masterItem.SALESNOTE, '')) && preserved.SALES_NOTE) {
+                masterItem.SALES_NOTE = preserved.SALES_NOTE;
+                masterItem.SALESNOTE = preserved.SALES_NOTE;
+                changed = true;
+            }
+            if (!normalizeRuleText(masterItem.SPEC) && preserved.SPEC) {
+                masterItem.SPEC = preserved.SPEC;
+                changedFlags.spec = true;
+                changed = true;
+            }
+            if (!normalizeRuleText(masterItem.CALIPER) && preserved.CALIPER) {
+                masterItem.CALIPER = preserved.CALIPER;
+                changedFlags.caliper = true;
+                changed = true;
+            }
+            if (!normalizeRuleText(firstNonEmptyValue(masterItem.PICK, masterItem.PIC_NOTE, '')) && preserved.PICK) {
+                masterItem.PICK = preserved.PICK;
+                masterItem.PIC_NOTE = preserved.PICK;
+                changed = true;
+            }
+            const incomingPhotos = parsePhotoCsvValues(preserved.SAVED_PHOTO_LINK).filter((entry) => /^https?:\/\//i.test(entry));
+            if (incomingPhotos.length) {
+                const beforePhotoCsv = String(getSharedAppPhotoLinkCsvRaw(masterItem, { includePending: false }) || '').trim();
+                const mergedPhotoCsv = mergePhotoCsvList([beforePhotoCsv, incomingPhotos.join(',')]);
+                if (mergedPhotoCsv !== beforePhotoCsv) {
+                    masterItem.SAVED_PHOTO_LINK = mergedPhotoCsv;
+                    masterItem.PHOTO_LINK = mergedPhotoCsv;
+                    masterItem.PHOTOLINK = mergedPhotoCsv;
+                    masterItem['PHOTO LINK'] = mergedPhotoCsv;
+                    const mergedPhotoName = mergePhotoCsvList([masterItem.SAVED_PHOTO_NAME, preserved.SAVED_PHOTO_NAME]);
+                    masterItem.SAVED_PHOTO_NAME = mergedPhotoName;
+                    masterItem.PHOTO_NAME = mergedPhotoName;
+                    masterItem.PHOTONAME = mergedPhotoName;
+                    masterItem['PHOTO NAME'] = mergedPhotoName;
+                    changedFlags.photo = true;
+                    changed = true;
+                }
+            }
+            if (!changed) return false;
+            const touchedAt = getValidIsoTimestamp(firstNonEmptyValue(row.COMPLETED_AT, row.completed_at, row.DATE_COMPLETED, row.date_completed, row.UPDATED_AT, row.updated_at, '')) || new Date().toISOString();
+            if (!normalizeRuleText(firstNonEmptyValue(masterItem.DATE_COMPLETED, masterItem.date_completed, ''))) {
+                masterItem.DATE_COMPLETED = touchedAt;
+                masterItem.date_completed = touchedAt;
+            }
+            if (avRuleColumnsReady !== false) applyAvRuleTouchState(masterItem, changedFlags, touchedAt);
+            normalizeRowPhotoFields(masterItem);
+            buildSearchIndex(masterItem);
+            return true;
         }
         function getRowPhotoLink(item, sourceView='') {
             if (!item) return '';
@@ -4662,6 +4730,14 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return normalizeRuleText(value).toUpperCase();
         }
 
+        function getHoldStopBlockTokens(value) {
+            const snapshot = normalizeHoldStopSnapshotValue(value);
+            const tokens = new Set();
+            if (snapshot.includes('H')) tokens.add('H');
+            if (snapshot.includes('S')) tokens.add('S');
+            return tokens;
+        }
+
         function getHoldStopSnapshotFromItem(item) {
             return normalizeHoldStopSnapshotValue(firstNonEmptyValue(
                 item && item.HOLDSTOPCODE,
@@ -4678,10 +4754,27 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             ));
         }
 
+        function getAvRuleHoldStopSnapshotFromItem(item) {
+            return normalizeHoldStopSnapshotValue(firstNonEmptyValue(
+                item && item.AV_RULE_HOLDSTOP_SNAPSHOT,
+                item && item.av_rule_holdstop_snapshot,
+                ''
+            ));
+        }
+
         function hasBlockingHoldStopCodeForAv(value) {
-            const snapshot = normalizeHoldStopSnapshotValue(value);
-            if (!snapshot) return false;
-            return snapshot.includes('H') || snapshot.includes('S');
+            return getHoldStopBlockTokens(value).size > 0;
+        }
+
+        function hasHoldStopChangedSinceAvSnapshot(item = null) {
+            if (!item) return false;
+            const currentTokens = getHoldStopBlockTokens(getHoldStopSnapshotFromItem(item));
+            if (!currentTokens.size) return false;
+            const capturedTokens = getHoldStopBlockTokens(getAvRuleHoldStopSnapshotFromItem(item));
+            for (const token of currentTokens) {
+                if (!capturedTokens.has(token)) return true;
+            }
+            return false;
         }
 
         function itemOrLinkedMasterHasBlockingHoldStopCodeForAv(item = null) {
@@ -4901,8 +4994,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
 
         function applyAvRuleTouchPayload(item, payload, changeFlags = {}, nowIso = new Date().toISOString()) {
-            if (avRuleColumnsReady !== true || !payload) return payload;
+            if (!payload) return payload;
             applyAvRuleTouchState(item, changeFlags, nowIso);
+            if (avRuleColumnsReady !== true) return payload;
             const flags = changeFlags || {};
             const didChange = !!(flags.avNote || flags.spec || flags.match || flags.caliper || flags.photo);
             payload.av_rule_priority_snapshot = item.AV_RULE_PRIORITY_SNAPSHOT || null;
@@ -4919,8 +5013,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function getMasterAvInvalidationReasons(item) {
             if (!item) return [];
             const reasons = [];
-            const currentHold = getHoldStopSnapshotFromItem(item);
-            if (hasBlockingHoldStopCodeForAv(currentHold)) reasons.push('holdstop_blocked');
+            if (hasHoldStopChangedSinceAvSnapshot(item)) reasons.push('holdstop_blocked');
             if (!hasTrackedAvPayload(item)) return [...new Set(reasons)];
             const bundleUpdatedAt = getEffectiveAvRuleUpdatedAt(item);
             const effectiveLocMatchQty = calculateLocMatchQtyValue(item) ?? parseAppNumber(item.LOC_MATCH_QTY);
@@ -4977,6 +5070,20 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             };
         }
 
+        function hasCompletionMasterSyncValues(syncValues = null) {
+            if (!syncValues || typeof syncValues !== 'object') return false;
+            if (parseAppNumber(syncValues.match) != null) return true;
+            if (parseAppNumber(syncValues.locMatchQty) != null) return true;
+            return [
+                syncValues.avNote,
+                syncValues.spec,
+                syncValues.caliper,
+                syncValues.pick,
+                syncValues.photoLink,
+                syncValues.photoName
+            ].some((value) => normalizeRuleText(value) !== '');
+        }
+
         function buildCompletionMasterSyncPayload(masterItem = null, syncValues = null) {
             if (!syncValues || typeof syncValues !== 'object') return null;
             const payload = {
@@ -5010,7 +5117,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             preview.SAVED_PHOTO_LINK = syncValues.photoLink || '';
             preview.SAVED_PHOTO_NAME = syncValues.photoName || '';
             const touchPayload = {};
-            applyAvRuleTouchPayload(masterItem, touchPayload, { avNote: true, match: true, spec: true, caliper: true, photo: true });
+            applyAvRuleTouchPayload(preview, touchPayload, { avNote: true, match: true, spec: true, caliper: true, photo: true });
             Object.keys(touchPayload).forEach((key) => {
                 preview[key] = touchPayload[key];
                 preview[key.toUpperCase()] = touchPayload[key];
@@ -5393,6 +5500,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
         function syncRealtimeSalesOfficeRows(masterIdSet = null) {
             const scopedIds = masterIdSet instanceof Set && masterIdSet.size ? masterIdSet : null;
+            const adoptedMasters = [];
             salesOfficeInventory = (Array.isArray(salesOfficeInventory) ? salesOfficeInventory : [])
                 .filter((item) => item && !isSalesOfficeComplete(item))
                 .map((item, idx) => {
@@ -5404,12 +5512,24 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     const masterItem = masterId ? findItemByUniqueId(masterId) : null;
                     if (masterItem && salesOfficeSource !== 'bloom_picker') {
                         syncMasterFieldsToSalesOfficeRow(masterItem, item);
+                        if (maybeAdoptSalesOfficeOwnedStateToMaster(masterItem, item)) adoptedMasters.push(masterItem);
                         item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
                     }
                     normalizeRowPhotoFields(item);
                     buildSearchIndex(item);
                     return item;
                 });
+            if (adoptedMasters.length) {
+                const seen = new Set();
+                adoptedMasters.forEach((masterItem) => {
+                    const uid = String(firstNonEmptyValue(masterItem && masterItem.UNIQUE_ID, '') || '').trim();
+                    if (!uid || seen.has(uid)) return;
+                    seen.add(uid);
+                    syncRowDataAcrossViews(masterItem);
+                });
+                invalidateResolvedViewStateCaches();
+                ['drive','tasks','av','request','sales-office','low-stock'].forEach((viewId) => markViewDirty(viewId));
+            }
         }
 
         function syncRealtimeReserveRows() {
@@ -10303,7 +10423,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.07.03').trim() || 'V2026.05.07.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.07.04').trim() || 'V2026.05.07.04';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -41422,7 +41542,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                             || (String(firstNonEmptyValue(itemToSave.SOURCE_TABLE, itemToSave.source_table, 'v2_master_inventory')).toLowerCase() === 'v2_master_inventory' ? itemToSave : null);
                         if (artifacts.masterSyncId) {
                             const syncValues = buildCompletionMasterSyncValues(prefix, itemToSave, artifacts.masterSyncItem || linkedMasterItem || salesRuleItem || null, payload);
-                            const shouldPublishToMaster = shouldSyncRequestToMaster || (!seasonHoldStopBlocked && shouldPublishCompletionToAvOpen(artifacts.masterSyncItem || linkedMasterItem || salesRuleItem || null, syncValues));
+                            const shouldPublishSeasonCompletionToMaster = isSeasonQualifiedCompletion && hasCompletionMasterSyncValues(syncValues);
+                            const shouldPublishToMaster = shouldSyncRequestToMaster || shouldPublishSeasonCompletionToMaster;
                             if (shouldPublishToMaster) {
                                 artifacts.masterSyncPayload = buildCompletionMasterSyncPayload(artifacts.masterSyncItem || linkedMasterItem || salesRuleItem || itemToSave, syncValues);
                                 if (isSeasonQualifiedCompletion && artifacts.masterSyncPayload) {
