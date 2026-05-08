@@ -2377,6 +2377,21 @@ function formatRequestPercentForEmail_(value) {
   return /%$/.test(text) ? text : text + '%';
 }
 
+const CALIPER_MEASUREMENT_NOTE_ = '** Caliper is measured 12 inches above soil level.';
+
+function isCaliperEmailField_(label) {
+  return String(label || '').trim().toLowerCase() === 'caliper';
+}
+
+function hasCaliperEmailValue_(value) {
+  return String(value == null ? '' : value).trim() !== '';
+}
+
+function buildCaliperMeasurementNoteHtml_(value) {
+  if (!hasCaliperEmailValue_(value)) return '';
+  return '<div style="margin:2px 0 6px 0;color:#dc2626;font-weight:700;">' + escapeEmailHtml_(CALIPER_MEASUREMENT_NOTE_) + '</div>';
+}
+
 function extractRequestPhotoUrls_(value) {
   const seen = {};
   return String(value || '')
@@ -2411,7 +2426,12 @@ function buildRequestItemFieldRowsText_(item) {
 
   return fields
     .filter(function(field) { return !!String(field[1] || '').trim(); })
-    .map(function(field) { return field[0] + ': ' + field[1]; })
+    .map(function(field) {
+      const line = field[0] + ': ' + field[1];
+      return isCaliperEmailField_(field[0]) && hasCaliperEmailValue_(field[1])
+        ? line + '\n' + CALIPER_MEASUREMENT_NOTE_
+        : line;
+    })
     .join('\n');
 }
 
@@ -2438,7 +2458,8 @@ function buildRequestItemFieldRowsHtml_(item) {
   return fields
     .filter(function(field) { return !!String(field[1] || '').trim(); })
     .map(function(field) {
-      return '<div><strong>' + escapeEmailHtml_(field[0]) + ':</strong> ' + escapeEmailHtml_(field[1]) + '</div>';
+      const rowHtml = '<div><strong>' + escapeEmailHtml_(field[0]) + ':</strong> ' + escapeEmailHtml_(field[1]) + '</div>';
+      return rowHtml + (isCaliperEmailField_(field[0]) ? buildCaliperMeasurementNoteHtml_(field[1]) : '');
     })
     .join('');
 }
