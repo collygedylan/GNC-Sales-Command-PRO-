@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.08.06';
+window.__APP_SHELL_VERSION__ = 'V2026.05.08.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -982,10 +982,12 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <option value="TX">TX Reps</option>
                             <option value="NC">NC Reps</option>
                             <option value="ALL">All Reps</option>
+                            <option value="RESERVES">Reserves</option>
                         </select>
                     </div>
                 </div>
                 <div id="bloom-crop-update-recipient-list" class="mt-3 space-y-3"></div>
+                <div id="bloom-crop-update-reserve-preview" class="mt-3 hidden"></div>
                 <div id="bloom-crop-update-selected-count" class="mt-3 text-xs font-bold text-slate-500"></div>
             </div>
             <div class="border-t border-slate-100 bg-slate-50 px-5 py-4">
@@ -1092,7 +1094,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.08.06').trim() || 'V2026.05.08.06';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.08.07').trim() || 'V2026.05.08.07';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1711,7 +1713,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.08.06';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.08.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10153,6 +10155,7 @@ let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let t
         let cacheWarmPromise=null;
         let cachePersistTimer=null; let cachePersistIdleHandle=null; let lastCachePersistAt=0; let pendingCachePersist=false;
 let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let currentPrimaryViewId="home"; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let bloomCropUpdateModalOpen=false; let bloomCropUpdatePendingItems=[]; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0; let leafVoiceRecognition=null; let leafVoiceListening=false; let leafVoiceSpeaking=false; let leafVoiceAbortRequested=false; let leafVoiceSubmitPending=false; let leafVoiceInterimText=''; let leafVoiceFinalText=''; let leafVoiceStatusOverride=''; let leafLastSpokenAnswer=''; let leafVoiceUtterance=null; let leafVoiceFinalizeTimer=null; let leafVoiceLastSpeechAt=0;
+let bloomCropUpdateRecipientMode='reps'; let bloomCropUpdateReserveEmailGroups=[]; let bloomCropUpdateReserveRowsLoading=false; let bloomCropUpdateReserveRowsError=''; let bloomCropUpdateReserveFetchToken=0;
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
@@ -10509,7 +10512,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.08.06').trim() || 'V2026.05.08.06';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.08.07').trim() || 'V2026.05.08.07';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -13220,6 +13223,10 @@ let searchRenderToken = {};
 
         function showRowEditRestrictedToast(prefix = '') {
             const normalizedPrefix = String(prefix || '').trim();
+            if (normalizedPrefix === 'dock-' && isRepReadOnlyUser()) {
+                showToast('View Only', 'Docks is view only for sales reps.', true);
+                return;
+            }
             if (isRepReadOnlyUser()) {
                 showToast('Read Only', 'REP users can only edit photos and notes in Season, Location, Notes & Actions, and Flyer.', true);
                 return;
@@ -18614,11 +18621,20 @@ function toggleDriveQuickRequestItem(domId) {
                 const openCount = getVisibleDockMistakeIssues().length;
                 mistakeBtn.className = `rounded-xl border px-4 py-3 text-[11px] font-black uppercase tracking-[0.16em] shadow-sm active:scale-95 ${isActive ? 'border-red-200 bg-red-600 text-white' : 'border-red-200 bg-white text-red-600'}`;
                 mistakeBtn.innerText = openCount > 0 ? `Mistake (${openCount})` : 'Mistake';
+                mistakeBtn.classList.toggle('hidden', getRoleAccessState().isRep);
             }
         }
 
         function setDockViewMode(mode = 'docks', shouldRender = true) {
             const nextMode = String(mode || '').trim().toLowerCase() === 'mistakes' ? 'mistakes' : 'docks';
+            if (nextMode === 'mistakes' && getRoleAccessState().isRep) {
+                dockViewMode = 'docks';
+                selectedDockIssueUid = null;
+                updateDockModeToggleUi();
+                if (shouldRender) scheduleDocksRender(0);
+                showToast('View Only', 'Docks is view only for sales reps.', true);
+                return false;
+            }
             dockViewMode = nextMode;
             if (nextMode === 'docks') {
                 selectedDockIssueUid = null;
@@ -18635,6 +18651,10 @@ function toggleDriveQuickRequestItem(domId) {
         function openDockIssueDetail(uniqueId = '') {
             const normalizedUid = normalizeDockIssueSourceUniqueId(uniqueId);
             if (!normalizedUid) return;
+            if (getRoleAccessState().isRep) {
+                showToast('View Only', 'Docks is view only for sales reps.', true);
+                return false;
+            }
             dockViewMode = 'mistakes';
             selectedDockIssueUid = normalizedUid;
             updateDockModeToggleUi();
@@ -18803,6 +18823,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!item) return false;
             const normalizedStage = stage === 'inspector' ? 'inspector' : 'checker';
             const access = getRoleAccessState();
+            if (access.isRep) return false;
             const progress = getDockItemProgress(item.UNIQUE_ID);
             const queueStage = getDockRowQueueStage(item);
             if (normalizedStage === 'checker') {
@@ -18912,7 +18933,8 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (isForeman && !isAdmin) {
                 ['drive', 'take-back', 'chat', 'hours'].forEach(viewId => allowedViews.add(viewId));
             } else {
-                ['chat', 'take-back'].forEach(viewId => allowedViews.add(viewId));
+                allowedViews.add('chat');
+                if (!isRep) allowedViews.add('take-back');
             }
             if (isAdmin) {
                 ROLE_ACCESS_VIEWS.forEach(viewId => allowedViews.add(viewId));
@@ -27646,6 +27668,10 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function openDockItemMistakeModal(uid) {
+            if (getRoleAccessState().isRep) {
+                showToast('View Only', 'Docks is view only for sales reps.', true);
+                return false;
+            }
             const normalizedUid = normalizeDockIssueSourceUniqueId(uid);
             const issue = getDockIssueStatus(normalizedUid);
             const item = findDockMistakeSourceRowByUniqueId(normalizedUid, issue);
@@ -27658,6 +27684,10 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function submitDockItemMistake() {
+            if (getRoleAccessState().isRep) {
+                showToast('View Only', 'Docks is view only for sales reps.', true);
+                return false;
+            }
             const uid = normalizeDockIssueSourceUniqueId(document.getElementById('dock-mistake-uid').value);
             const text = document.getElementById('dock-mistake-text').value.toUpperCase().trim();
             const item = findDockMistakeSourceRowByUniqueId(uid, getDockIssueStatus(uid));
@@ -29483,7 +29513,7 @@ function toggleDriveQuickRequestItem(domId) {
                     showAssign: false,
                     showRequest: canUseInventoryActions,
                     showFlyer: canUseFlyerFromBloom,
-                    showTakeBack: canUseInventoryActions,
+                    showTakeBack: false,
                     showEndCap: false,
                     showBloomOrder: canUseBloomOrders,
                     canUseInventoryActions,
@@ -29679,7 +29709,183 @@ function toggleDriveQuickRequestItem(domId) {
             })).filter((rep) => rep.name && rep.email);
         }
 
+        function isBloomCropUpdateReserveMode() {
+            const presetSelect = document.getElementById('bloom-crop-update-recipient-preset');
+            return bloomCropUpdateRecipientMode === 'reserves' || String(presetSelect && presetSelect.value || '').trim().toUpperCase() === 'RESERVES';
+        }
+
+        function resetBloomCropUpdateReserveState() {
+            bloomCropUpdateReserveEmailGroups = [];
+            bloomCropUpdateReserveRowsLoading = false;
+            bloomCropUpdateReserveRowsError = '';
+            bloomCropUpdateReserveFetchToken += 1;
+        }
+
+        function getBloomCropUpdateReserveMatchKey(row = null) {
+            const itemCode = normalizeDriveCustomerOutreachItemCodeValue(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, ''));
+            const lotCode = getNormalizedAvReserveLotCode(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, row && row.LOT, ''));
+            const season = normalizeDriveCustomerOutreachSeasonValue(firstNonEmptyValue(row && row.SEASON, row && row.season, ''));
+            const invalidValues = new Set(['-', '--', 'NA', 'N/A', 'NONE', 'NULL', 'UNKNOWN']);
+            if (invalidValues.has(itemCode) || invalidValues.has(lotCode) || invalidValues.has(season)) return '';
+            return itemCode && lotCode && season ? `${itemCode}||${lotCode}||${season}` : '';
+        }
+
+        function getBloomCropUpdateReserveMatchLabel(row = null) {
+            const itemCode = String(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, '') || '').trim();
+            const lotCode = String(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, row && row.LOT, '') || '').trim();
+            const season = String(firstNonEmptyValue(row && row.SEASON, row && row.season, '') || '').trim();
+            return [itemCode ? `Item ${itemCode}` : '', lotCode ? `Lot ${lotCode}` : '', season ? `Season ${season}` : ''].filter(Boolean).join(' | ');
+        }
+
+        function getBloomCropUpdateReserveSourceRows(rows = bloomCropUpdatePendingItems) {
+            const seen = new Set();
+            return (Array.isArray(rows) ? rows : []).filter((row) => {
+                if (!row || !hasDriveCustomerOutreachPhotoSpec(row)) return false;
+                const matchKey = getBloomCropUpdateReserveMatchKey(row);
+                if (!matchKey) return false;
+                const rowId = getDriveCustomerOutreachRowId(row) || matchKey;
+                if (seen.has(rowId)) return false;
+                seen.add(rowId);
+                return true;
+            });
+        }
+
+        function buildBloomCropUpdateReserveQuery(sourceRows = []) {
+            const itemCodes = new Set();
+            (Array.isArray(sourceRows) ? sourceRows : []).forEach((row) => {
+                getDriveCustomerOutreachItemCodeVariants(row).forEach((itemCode) => {
+                    const safeCode = String(itemCode || '').trim();
+                    if (safeCode) itemCodes.add(safeCode);
+                });
+            });
+            const codes = Array.from(itemCodes);
+            if (!codes.length) return '';
+            const conditions = codes.map((itemCode) => `itemcode.eq.${encodeURIComponent(itemCode)}`);
+            return codes.length === 1
+                ? `select=*&itemcode=eq.${encodeURIComponent(codes[0])}`
+                : `select=*&or=(${conditions.join(',')})`;
+        }
+
+        function getLocalBloomCropUpdateReserveRows(sourceRows = []) {
+            if (!Array.isArray(reservesInventory) || !reservesInventory.length) return [];
+            const sourceKeys = new Set((Array.isArray(sourceRows) ? sourceRows : []).map(getBloomCropUpdateReserveMatchKey).filter(Boolean));
+            if (!sourceKeys.size) return [];
+            return reservesInventory.filter((row) => sourceKeys.has(getBloomCropUpdateReserveMatchKey(row)));
+        }
+
+        function buildBloomCropUpdateReserveEmailGroups(sourceRows = [], reserveRows = []) {
+            const sourceRowsByKey = new Map();
+            (Array.isArray(sourceRows) ? sourceRows : []).forEach((row) => {
+                const matchKey = getBloomCropUpdateReserveMatchKey(row);
+                if (!matchKey) return;
+                if (!sourceRowsByKey.has(matchKey)) sourceRowsByKey.set(matchKey, []);
+                sourceRowsByKey.get(matchKey).push(row);
+            });
+            const groupedByRep = new Map();
+            (Array.isArray(reserveRows) ? reserveRows : []).forEach((row) => {
+                const matchKey = getBloomCropUpdateReserveMatchKey(row);
+                const matchedSourceRows = sourceRowsByKey.get(matchKey) || [];
+                if (!matchedSourceRows.length) return;
+                const rawRep = firstNonEmptyValue(row && row.SALESREPNAME, row && row.SALESREP, row && row.SALES_REP, row && row.SALESREPID, '');
+                const repName = resolveCanonicalRequestRepName(rawRep) || String(rawRep || '').trim();
+                if (!repName) return;
+                const repEmail = getBloomCropUpdateRepEmail(repName);
+                if (!repEmail) return;
+                const repKey = normalizeRepMatchToken(repName).replace(/\s+/g, '') || repEmail;
+                const group = groupedByRep.get(repKey) || {
+                    repName,
+                    repEmail,
+                    cards: new Map(),
+                    sourceRows: new Map(),
+                    reserveRows: []
+                };
+                const customerName = String(firstNonEmptyValue(row && row.CUSTOMERNAME, row && row.CUSTOMER, '') || '').trim();
+                const consigneeName = String(firstNonEmptyValue(row && row.CONSIGNEENAME, row && row.CONSIGNEE, '') || '').trim();
+                const label = buildRequestCustomerValue(customerName, consigneeName) || customerName || consigneeName || 'Reserve Customer';
+                const cardKey = [repKey, customerName, consigneeName, label, matchKey].map((value) => normalizeRepMatchToken(value)).join('||');
+                const card = group.cards.get(cardKey) || {
+                    key: cardKey,
+                    repName,
+                    customerName,
+                    consigneeName,
+                    label,
+                    matchKey,
+                    matchLabel: getBloomCropUpdateReserveMatchLabel(row),
+                    rows: [],
+                    qty: 0
+                };
+                card.rows.push(row);
+                card.qty += Number(firstNonEmptyValue(row && row.QTY, row && row.QUANTITY, row && row.QTY_ORDERED, row && row.QUANTITYORDERED, row && row.qty_ordered, row && row.quantityordered, row && row.quantity, 0)) || 0;
+                group.cards.set(cardKey, card);
+                group.reserveRows.push(row);
+                matchedSourceRows.forEach((sourceRow) => {
+                    const rowId = getDriveCustomerOutreachRowId(sourceRow) || `${matchKey}_${group.sourceRows.size}`;
+                    if (rowId) group.sourceRows.set(rowId, sourceRow);
+                });
+                groupedByRep.set(repKey, group);
+            });
+            return Array.from(groupedByRep.values()).map((group) => ({
+                repName: group.repName,
+                repEmail: group.repEmail,
+                cards: Array.from(group.cards.values()).sort((a, b) => String(a.label || '').localeCompare(String(b.label || ''), undefined, { sensitivity: 'base' })),
+                sourceRows: Array.from(group.sourceRows.values()),
+                reserveRows: group.reserveRows
+            })).sort((a, b) => String(a.repName || '').localeCompare(String(b.repName || ''), undefined, { sensitivity: 'base' }));
+        }
+
+        function renderBloomCropUpdateReservePreview() {
+            const recipientList = document.getElementById('bloom-crop-update-recipient-list');
+            const preview = document.getElementById('bloom-crop-update-reserve-preview');
+            const reserveMode = isBloomCropUpdateReserveMode();
+            if (recipientList) recipientList.classList.toggle('hidden', reserveMode);
+            if (!preview) return;
+            preview.classList.toggle('hidden', !reserveMode);
+            if (!reserveMode) {
+                preview.innerHTML = '';
+                return;
+            }
+            const validSourceRows = getBloomCropUpdateReserveSourceRows(bloomCropUpdatePendingItems);
+            if (bloomCropUpdateReserveRowsLoading) {
+                preview.innerHTML = '<div class="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-sky-700">Looking up matching v2_reserves rows...</div>';
+                return;
+            }
+            if (bloomCropUpdateReserveRowsError) {
+                preview.innerHTML = `<div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] font-bold text-amber-800">${esc(bloomCropUpdateReserveRowsError)}</div>`;
+                return;
+            }
+            if (!validSourceRows.length) {
+                preview.innerHTML = '<div class="rounded-xl border border-dashed border-amber-200 bg-amber-50 px-4 py-5 text-center text-[11px] font-bold text-amber-700">No selected row has photos, spec data, itemcode, lotcode, and season for a reserve match.</div>';
+                return;
+            }
+            if (!bloomCropUpdateReserveEmailGroups.length) {
+                preview.innerHTML = '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[11px] font-bold text-slate-500">No matching v2_reserves rows found for the selected itemcode, lotcode, and season.</div>';
+                return;
+            }
+            const groupsHtml = bloomCropUpdateReserveEmailGroups.map((group) => {
+                const reserveCount = group.reserveRows.length;
+                const sourceCount = group.sourceRows.length;
+                const customerCount = group.cards.length;
+                const sampleCustomers = group.cards.slice(0, 4).map((card) => `<span class="rounded-full border border-emerald-100 bg-white px-2 py-1">${esc(card.label)}</span>`).join('');
+                const moreCount = Math.max(0, customerCount - 4);
+                return `<div class="rounded-xl border border-emerald-100 bg-white px-3 py-3 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-sm font-black text-slate-900">${esc(group.repName)}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${customerCount} customer${customerCount === 1 ? '' : 's'} | ${reserveCount} reserve row${reserveCount === 1 ? '' : 's'} | ${sourceCount} crop row${sourceCount === 1 ? '' : 's'}</div></div><div class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Email</div></div><div class="mt-2 flex flex-wrap gap-1 text-[10px] font-bold text-slate-600">${sampleCustomers}${moreCount ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-1">+${moreCount} more</span>` : ''}</div></div>`;
+            }).join('');
+            preview.innerHTML = `<div class="space-y-2"><div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-800">${bloomCropUpdateReserveEmailGroups.length} separate rep email${bloomCropUpdateReserveEmailGroups.length === 1 ? '' : 's'} ready from v2_reserves</div>${groupsHtml}</div>`;
+        }
+
         function syncBloomCropUpdateSendButton() {
+            if (isBloomCropUpdateReserveMode()) {
+                const sendBtn = document.getElementById('bloom-crop-update-send-btn');
+                const countEl = document.getElementById('bloom-crop-update-selected-count');
+                const readyCount = bloomCropUpdateReserveEmailGroups.length;
+                if (sendBtn) sendBtn.disabled = !(readyCount && bloomCropUpdatePendingItems.length) || bloomCropUpdateReserveRowsLoading;
+                if (countEl) {
+                    countEl.innerText = bloomCropUpdateReserveRowsLoading
+                        ? 'Looking up reserve customers by itemcode, lotcode, and season...'
+                        : (readyCount ? `${readyCount} separate reserve email${readyCount === 1 ? '' : 's'} ready. Dylan and JD will receive every email.` : 'Choose Reserves to send one email per matching sales rep.');
+                }
+                renderBloomCropUpdateReservePreview();
+                return;
+            }
             const selectedReps = getBloomCropUpdateSelectedReps();
             const sendBtn = document.getElementById('bloom-crop-update-send-btn');
             const countEl = document.getElementById('bloom-crop-update-selected-count');
@@ -29711,12 +29917,68 @@ function toggleDriveQuickRequestItem(domId) {
 
         function applyBloomCropUpdateRecipientPreset(preset = '') {
             const safePreset = String(preset || '').trim().toUpperCase();
+            if (safePreset === 'RESERVES') {
+                bloomCropUpdateRecipientMode = 'reserves';
+                document.querySelectorAll('[data-bloom-crop-rep="true"]').forEach((input) => {
+                    input.checked = false;
+                });
+                renderBloomCropUpdateReservePreview();
+                syncBloomCropUpdateSendButton();
+                loadBloomCropUpdateReserveEmailGroups(true).catch((error) => {
+                    bloomCropUpdateReserveRowsLoading = false;
+                    bloomCropUpdateReserveRowsError = error && error.message ? error.message : 'Could not load v2_reserves rows.';
+                    syncBloomCropUpdateSendButton();
+                });
+                return false;
+            }
+            bloomCropUpdateRecipientMode = 'reps';
+            resetBloomCropUpdateReserveState();
             document.querySelectorAll('[data-bloom-crop-rep="true"]').forEach((input) => {
                 const groupKey = String(input.getAttribute('data-bloom-crop-group') || '').trim().toUpperCase();
                 input.checked = safePreset === 'ALL' || (!!safePreset && groupKey === safePreset);
             });
+            renderBloomCropUpdateReservePreview();
             syncBloomCropUpdateSendButton();
             return false;
+        }
+
+        async function loadBloomCropUpdateReserveEmailGroups(force = false) {
+            const rows = (bloomCropUpdatePendingItems.length ? bloomCropUpdatePendingItems : getCartSelectedItems()).filter(Boolean);
+            const sourceRows = getBloomCropUpdateReserveSourceRows(rows);
+            const token = ++bloomCropUpdateReserveFetchToken;
+            bloomCropUpdateReserveRowsLoading = true;
+            bloomCropUpdateReserveRowsError = '';
+            bloomCropUpdateReserveEmailGroups = [];
+            syncBloomCropUpdateSendButton();
+            if (!sourceRows.length) {
+                bloomCropUpdateReserveRowsLoading = false;
+                bloomCropUpdateReserveRowsError = 'No selected rows have photos, spec data, itemcode, lotcode, and season.';
+                syncBloomCropUpdateSendButton();
+                return [];
+            }
+            const query = buildBloomCropUpdateReserveQuery(sourceRows);
+            const localRows = getLocalBloomCropUpdateReserveRows(sourceRows);
+            try {
+                const fetchedRows = query ? await supabaseFetch('v2_reserves', 'GET', null, query) : [];
+                if (token !== bloomCropUpdateReserveFetchToken) return bloomCropUpdateReserveEmailGroups;
+                const hydratedRows = hydrateDriveCustomerOutreachReserveRows(fetchedRows, `bloom_crop_reserves_${token}`);
+                const candidateRows = hydratedRows.length ? hydratedRows : localRows;
+                const sourceKeys = new Set(sourceRows.map(getBloomCropUpdateReserveMatchKey).filter(Boolean));
+                const exactRows = candidateRows.filter((row) => sourceKeys.has(getBloomCropUpdateReserveMatchKey(row)));
+                bloomCropUpdateReserveEmailGroups = buildBloomCropUpdateReserveEmailGroups(sourceRows, exactRows);
+                bloomCropUpdateReserveRowsError = '';
+            } catch (error) {
+                if (token === bloomCropUpdateReserveFetchToken) {
+                    bloomCropUpdateReserveRowsError = error && error.message ? error.message : 'Could not load v2_reserves rows.';
+                    bloomCropUpdateReserveEmailGroups = buildBloomCropUpdateReserveEmailGroups(sourceRows, localRows);
+                }
+            } finally {
+                if (token === bloomCropUpdateReserveFetchToken) {
+                    bloomCropUpdateReserveRowsLoading = false;
+                    syncBloomCropUpdateSendButton();
+                }
+            }
+            return bloomCropUpdateReserveEmailGroups;
         }
 
         function openBloomCropUpdateModal(items = getCartSelectedItems()) {
@@ -29740,6 +30002,9 @@ function toggleDriveQuickRequestItem(domId) {
             if (messageInput) messageInput.value = '';
             if (presetSelect) presetSelect.value = '';
             if (recipientList) recipientList.innerHTML = buildBloomCropUpdateRecipientHtml();
+            bloomCropUpdateRecipientMode = 'reps';
+            resetBloomCropUpdateReserveState();
+            renderBloomCropUpdateReservePreview();
             if (modal) modal.classList.remove('hidden');
             syncBloomCropUpdateSendButton();
             updateGlobalBackButton();
@@ -29754,10 +30019,103 @@ function toggleDriveQuickRequestItem(domId) {
         function closeBloomCropUpdateModal() {
             bloomCropUpdateModalOpen = false;
             bloomCropUpdatePendingItems = [];
+            bloomCropUpdateRecipientMode = 'reps';
+            resetBloomCropUpdateReserveState();
             const modal = document.getElementById('bloom-crop-update-modal');
             if (modal) modal.classList.add('hidden');
             updateGlobalBackButton();
             syncGlobalHeaderChrome({ reason: 'bloom-crop-update-close', force: true });
+            return false;
+        }
+
+        function buildBloomCropUpdateReserveEmailText(group = null) {
+            const safeGroup = group || {};
+            const customerLines = (safeGroup.cards || []).map((card) => {
+                const qtyLabel = card.qty ? `Qty ${card.qty}` : `${card.rows.length} reserve row${card.rows.length === 1 ? '' : 's'}`;
+                const matchLabel = card.matchLabel ? ` - ${card.matchLabel}` : '';
+                return `- ${card.label} - ${qtyLabel}${matchLabel}`;
+            }).join('\n') || '- No matching reserve customers';
+            const rowText = formatInventoryItemsText(safeGroup.sourceRows || [], '', { includeHeader: false, includePhotoUrls: true, omitFieldLabels: ['LOC MATCH %'] });
+            return `Reserve Customers for ${safeGroup.repName || 'Sales Rep'}\n${customerLines}\n\n${rowText}`.trim();
+        }
+
+        function buildBloomCropUpdateReserveEmailHtml(group = null) {
+            const safeGroup = group || {};
+            const customerHtml = (safeGroup.cards || []).map((card) => {
+                const qtyLabel = card.qty ? `Qty ${card.qty}` : `${card.rows.length} reserve row${card.rows.length === 1 ? '' : 's'}`;
+                const matchLabel = card.matchLabel ? `<span style="color:#64748b;"> - ${escapeShareHtml(card.matchLabel)}</span>` : '';
+                return `<li>${escapeShareHtml(card.label)} <span style="color:#047857;font-weight:700;">${escapeShareHtml(qtyLabel)}</span>${matchLabel}</li>`;
+            }).join('') || '<li>No matching reserve customers</li>';
+            return `<div><div style="font-weight:700;margin:0 0 6px 0;">Reserve Customers for ${escapeShareHtml(safeGroup.repName || 'Sales Rep')}</div><ul style="margin:0 0 16px 18px;padding:0;">${customerHtml}</ul>${formatInventoryItemsHtml(safeGroup.sourceRows || [], '', { omitFieldLabels: ['LOC MATCH %'] })}</div>`;
+        }
+
+        async function sendBloomCropUpdateReserveEmails(rows = []) {
+            if (bloomCropUpdateReserveRowsLoading) {
+                showToast('Still Loading', 'Reserve matches are still loading.', true);
+                return false;
+            }
+            let groups = Array.isArray(bloomCropUpdateReserveEmailGroups) ? bloomCropUpdateReserveEmailGroups : [];
+            if (!groups.length) groups = await loadBloomCropUpdateReserveEmailGroups(true);
+            if (!groups.length) {
+                showToast('No Reserve Matches', 'No matching v2_reserves rows were found for the selected itemcode, lotcode, and season.', true);
+                return false;
+            }
+            const messageInput = document.getElementById('bloom-crop-update-message');
+            const customMessage = messageInput ? messageInput.value.trim() : '';
+            const sendBtn = document.getElementById('bloom-crop-update-send-btn');
+            if (sendBtn) sendBtn.disabled = true;
+            showToast('Sending...', `Sending ${groups.length} reserve crop update email${groups.length === 1 ? '' : 's'}.`, false);
+            try {
+                let sentCount = 0;
+                for (const group of groups) {
+                    const repEmail = normalizeRequestEmailAddress(group.repEmail || getBloomCropUpdateRepEmail(group.repName));
+                    const recipientEmails = dedupeRequestEmailRecipients([repEmail, ...BLOOM_CROP_UPDATE_INTERNAL_RECIPIENTS]);
+                    if (!repEmail || !recipientEmails.length) continue;
+                    const itemPayload = buildDriveCustomerOutreachItemsPayload(group.sourceRows || []);
+                    const customerPayload = (group.cards || []).map((card) => ({
+                        customername: card.customerName,
+                        consigneename: card.consigneeName,
+                        label: card.label,
+                        item_lot_season: card.matchLabel,
+                        rows: card.rows.length,
+                        qty: card.qty
+                    }));
+                    const payload = {
+                        type: 'email',
+                        emailType: 'bloom_crop_update',
+                        subject: `GNC PH Crop Update - ${group.repName}`,
+                        message: customMessage,
+                        userMessage: customMessage,
+                        itemsCount: (group.sourceRows || []).length,
+                        recipientEmails,
+                        internalRecipients: BLOOM_CROP_UPDATE_INTERNAL_RECIPIENTS.slice(),
+                        selectedRepRecipients: [{ name: group.repName, email: repEmail, group: 'RESERVES' }],
+                        repName: group.repName,
+                        salesRepName: group.repName,
+                        repEmail,
+                        salesRepEmail: repEmail,
+                        customers: customerPayload,
+                        customerConsigneeRows: customerPayload,
+                        sourceRows: itemPayload,
+                        items: itemPayload,
+                        formattedItemsText: buildBloomCropUpdateReserveEmailText(group),
+                        formattedItemsHtml: buildBloomCropUpdateReserveEmailHtml(group),
+                        requestedBy: String(currentUser || '').trim(),
+                        requestedByDisplay: String(currentUserDisplay || currentUser || '').trim()
+                    };
+                    const responseData = await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Bloom Crop Update Reserve Email');
+                    if (!responseData || responseData.ok === false) {
+                        throw new Error(String(firstNonEmptyValue(responseData && responseData.message, responseData && responseData.error, `Could not send crop update email for ${group.repName}.`)));
+                    }
+                    sentCount += 1;
+                }
+                showToast('Sent', `Sent ${sentCount} reserve email${sentCount === 1 ? '' : 's'} with Dylan and JD included.`);
+                closeBloomCropUpdateModal();
+                clearSelection();
+            } catch (error) {
+                showToast('Email Error', error && error.message ? error.message : 'Could not send reserve crop update emails.', true);
+                syncBloomCropUpdateSendButton();
+            }
             return false;
         }
 
@@ -29766,6 +30124,9 @@ function toggleDriveQuickRequestItem(domId) {
             if (!canUseBloomCropUpdateEmail(rows)) {
                 showToast('Restricted', 'Crop update emails are only available for Dylan and JD.', true);
                 return false;
+            }
+            if (isBloomCropUpdateReserveMode()) {
+                return sendBloomCropUpdateReserveEmails(rows);
             }
             const selectedReps = getBloomCropUpdateSelectedReps();
             if (!selectedReps.length) {
@@ -30303,13 +30664,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function buildCustomerConsigneeOutreachCardAction(item = null, sourceView = '') {
-            if (!canUseCustomerConsigneeOutreach() || !isCustomerConsigneeOutreachSource(sourceView, item)) return '';
-            const rawSource = String(sourceView || '').trim().toLowerCase();
-            if (rawSource === 'av-photo') return '';
-            const safeUid = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim();
-            if (!safeUid) return '';
-            const safeSource = normalizeCustomerConsigneeOutreachSourceView(sourceView);
-            return `<div class="mt-3 flex flex-wrap gap-2" onclick="event.stopPropagation();"><button type="button" class="inline-flex min-h-[2.35rem] items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[0.98]" onclick="event.stopPropagation(); return openCustomerConsigneeOutreachDetail('${esc(safeUid)}', '${esc(safeSource)}')"><i class="ph-bold ph-users-three text-base"></i><span>Customers</span></button></div>`;
+            return '';
         }
 
         function openCustomerConsigneeOutreachDetail(uid = '', sourceView = '') {
@@ -35910,7 +36265,8 @@ function toggleDriveQuickRequestItem(domId) {
                     ? `<span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-200">Alt Loc</span>`
                     : '';
 
-                let actionBtns = `<div class="flex gap-2 mt-3 pt-3 border-t border-gray-100"><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${chkClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'checker')"><i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Verified</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${inspClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'inspector')"><i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspect</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border border-red-200 bg-red-50 text-red-600 shadow-sm transition-colors hover:bg-red-100 active:scale-95" onclick="event.stopPropagation(); openDockItemMistakeModal('${safeDockIssueSourceUidJs}')"><i class="ph-bold ph-flag mr-1 text-lg align-middle"></i> Flag Issue</button></div>`;
+                const dockViewOnlyForRep = getRoleAccessState().isRep;
+                let actionBtns = dockViewOnlyForRep ? '' : `<div class="flex gap-2 mt-3 pt-3 border-t border-gray-100"><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${chkClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'checker')"><i class="ph-bold ph-check-square mr-1 text-lg align-middle"></i> Verified</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border shadow-sm transition-colors ${inspClass} active:scale-95" onclick="event.stopPropagation(); toggleDockItemState('${safeUidJs}', 'inspector')"><i class="ph-bold ph-magnifying-glass mr-1 text-lg align-middle"></i> Inspect</button><button class="flex-1 py-2.5 rounded-lg text-[10px] uppercase font-black border border-red-200 bg-red-50 text-red-600 shadow-sm transition-colors hover:bg-red-100 active:scale-95" onclick="event.stopPropagation(); openDockItemMistakeModal('${safeDockIssueSourceUidJs}')"><i class="ph-bold ph-flag mr-1 text-lg align-middle"></i> Flag Issue</button></div>`;
 
         return `<div class="flex items-start w-full item-row app-smart-card relative bg-white p-4 rounded-xl border border-gray-300 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${cardOpacity}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open dock row')}><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start border-b border-gray-100 pb-2 mb-2 w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="app-card-title font-black text-gray-800 text-[18px] leading-tight break-words mb-1">${item.COMMONNAME||'Unknown'}</div><div class="text-[10px] font-mono text-gray-400 uppercase tracking-widest bg-gray-50 px-2 py-0.5 rounded border border-gray-200 w-max">ID: ${item.ITEMCODE||'-'}</div></div>${inlineThumbHtml}</div><div class="flex flex-wrap gap-2 mb-2 text-[10px] font-black uppercase tracking-[0.14em]">${issueBadgeHtml}${syntheticBadgeHtml}</div><div class="app-card-meta-grid grid grid-cols-2 gap-3 mb-2"><div><div class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Quantity & Specs</div><div class="font-bold text-sm text-[#007a4d]">${qty} EA &bull; ${item.CONTSIZE||'-'}</div></div><div><div class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Location</div><div class="font-bold text-sm text-blue-700">${item.LOCATIONCODE||'No Loc'}</div></div></div>${item.DOCK_SPEC || item.DOCK_CALIPER ? `<div class="text-[11px] font-bold text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-100 mb-2 w-max">Spec: ${item.DOCK_SPEC||'N/A'} | Caliper: ${item.DOCK_CALIPER||'N/A'}</div>` : ''}${noteHtml}${actionBtns}</div></div>`;
             }
@@ -36021,9 +36377,13 @@ function toggleDriveQuickRequestItem(domId) {
                 showToast('Restricted', 'CSR users can use Copy or Email from Bloom Picker.', true);
                 return;
             }
+            if (access.isRep && action === 'take_back') {
+                showToast('Restricted', 'Sales reps do not have Take Back access.', true);
+                return;
+            }
             const canUseFlyerFromBloom = canUseDriveQuickRequest() && items.some((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
             if ((access.isRep || access.isCsr) && (action === 'assign' || action === 'endcap' || (action === 'flyer' && !canUseFlyerFromBloom))) {
-                showToast('Restricted', access.isRep ? 'REP users can only Copy, Email, Text, Request, Submit Order, and Take Back from Bloom Picker.' : 'CSR users can only Copy, Email, Request, Submit Order, and Take Back from Bloom Picker.', true);
+                showToast('Restricted', access.isRep ? 'REP users can only Copy, Email, Text, Request, and Submit Order from Bloom Picker.' : 'CSR users can only Copy, Email, Request, Submit Order, and Take Back from Bloom Picker.', true);
                 return;
             }
             const requestOnly = items.every((item) => isRequestLikeItem(item));
