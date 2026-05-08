@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.07.08';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.07.09';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1674,7 +1674,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.07.08';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.07.09';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10348,9 +10348,10 @@ let activeHomeTab='dashboard'; let selectedProductivityUser=''; let productivity
         }
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
         let activeDriveMode='ok'; let activeDriveTab='name'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
-        let activeMovesTab='main'; let movesRecordsCacheKey=''; let movesRecordsCache=[];
+        let activeMovesTab='main'; let movesRecordsCacheKey=''; let movesRecordsCache=[]; let movesViewLevel=0; let selectedMovesBlock=null; let selectedMovesLocation=null;
         const MOVES_COMPLETED_STORAGE_PREFIX = 'gnc_moves_completed_v1';
         const MOVES_ACTUAL_MOVED_STORAGE_PREFIX = 'gnc_moves_actual_moved_v1';
+        const MOVES_TA_STORAGE_PREFIX = 'gnc_moves_ta_v1';
         const MOVES_THRESHOLD_BY_CONTSIZE = Object.freeze({ '#1': 300, '#1D': 300, '8IN': 300, '8DP': 300, '1GP': 300, '1G': 300, '#2': 200, '2DP': 200, '2GP': 200, '2G': 200, '#3': 150, '3DP': 150, '3GP': 150, '3G': 150, '#5': 120, '5DP': 120, '5GP': 120, '5G': 120 });
         const MOVES_PAIR_SEASONS = new Set(['F1', 'S1']);
         const MOVES_UNIVERSAL_SEASONS = new Set(['U1', 'U2', 'U3']);
@@ -10452,7 +10453,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.07.08').trim() || 'V2026.05.07.08';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.07.09').trim() || 'V2026.05.07.09';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -23551,6 +23552,21 @@ function toggleDriveQuickRequestItem(domId) {
                 switchView('home');
                 return false;
             }
+            if (currentView === 'moves') {
+                if (activeMovesTab === 'main' && movesViewLevel >= 2) {
+                    backToMovesLocations();
+                    updateGlobalBackButton();
+                    return false;
+                }
+                if (activeMovesTab === 'main' && movesViewLevel === 1) {
+                    backToMovesBlocks();
+                    updateGlobalBackButton();
+                    return false;
+                }
+                if (restorePreviousViewFromHistory()) return false;
+                switchView('home');
+                return false;
+            }
             if (currentView === 'request') {
                 if (activeReqTab === 'reps') {
                     if (requestViewLevel === 3) {
@@ -28645,6 +28661,51 @@ function toggleDriveQuickRequestItem(domId) {
             return `move-actual-${safePart}`;
         }
 
+        function getMovesTaStorageKey() {
+            const userKey = String(currentUser || currentUserDisplay || 'global').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_') || 'global';
+            return `${MOVES_TA_STORAGE_PREFIX}:${userKey}`;
+        }
+
+        function getMoveTaMap() {
+            try {
+                const raw = localStorage.getItem(getMovesTaStorageKey()) || '{}';
+                const parsed = JSON.parse(raw);
+                return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+            } catch (error) {
+                return {};
+            }
+        }
+
+        function saveMoveTaMap(taMap = {}) {
+            try {
+                localStorage.setItem(getMovesTaStorageKey(), JSON.stringify(taMap && typeof taMap === 'object' ? taMap : {}));
+            } catch (error) {}
+        }
+
+        function getMoveTaValue(moveId = '') {
+            const safeId = String(moveId || '').trim();
+            if (!safeId) return '';
+            const taMap = getMoveTaMap();
+            return String(taMap[safeId] == null ? '' : taMap[safeId]).trim();
+        }
+
+        function setMoveTa(moveId = '', value = '') {
+            const safeId = String(moveId || '').trim();
+            if (!safeId) return true;
+            const normalized = normalizeMoveActualMovedInput(value);
+            if (normalized == null) return true;
+            const taMap = getMoveTaMap();
+            if (!normalized) delete taMap[safeId];
+            else taMap[safeId] = normalized;
+            saveMoveTaMap(taMap);
+            return true;
+        }
+
+        function getMoveTaInputId(moveId = '') {
+            const safePart = String(moveId || '').trim().toUpperCase().replace(/[^A-Z0-9_-]+/g, '_').slice(0, 90) || 'ROW';
+            return `move-ta-${safePart}`;
+        }
+
         function buildMoveRecordId(record = {}) {
             const sourceUniqueId = String(firstNonEmptyValue(record.source_unique_id, '')).trim();
             if (sourceUniqueId) {
@@ -28747,6 +28808,7 @@ function toggleDriveQuickRequestItem(domId) {
             const lotcode = String(getMovesRowField(row, ['LOTCODE', 'lotcode'])).trim();
             const locationcode = String(getMovesRowField(row, ['LOCATIONCODE', 'locationcode'])).trim();
             const contsize = String(getMovesRowField(row, ['CONTSIZE', 'contsize'])).trim();
+            const blockalpha = String(getMovesRowField(row, ['BLOCKALPHA', 'blockalpha', 'BLOCK_ALPHA', 'block_alpha', 'BLOCK', 'block'])).trim();
             if (!itemcode || !lotcode || !locationcode || !contsize) return null;
             const threshold = getMovesThreshold(contsize);
             if (threshold == null) return null;
@@ -28760,6 +28822,7 @@ function toggleDriveQuickRequestItem(domId) {
                 contsize,
                 season: String(getMovesRowField(row, ['SEASON', 'season', 'SEASONCODE', 'seasoncode'])).trim(),
                 normalizedSeason: normalizeMovesSeasonValue(getMovesRowField(row, ['SEASON', 'season', 'SEASONCODE', 'seasoncode'])),
+                blockalpha,
                 locationcode,
                 locationKey: locationcode.toUpperCase(),
                 ptravailable,
@@ -28827,6 +28890,7 @@ function toggleDriveQuickRequestItem(domId) {
                         commonname: source.commonname || group.commonname,
                         lotcode: source.lotcode,
                         contsize: source.contsize,
+                        from_blockalpha: source.blockalpha || 'No Block',
                         from_locationcode: source.locationcode,
                         to_locationcode: destination.locationcode,
                         ptravailable: source.ptravailable,
@@ -28859,7 +28923,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getOpenMoveRecords() {
             const completedIds = getCompletedMoveIds();
-            return getMovesRecords().filter((record) => !completedIds.has(record.id));
+            return getMovesRecords().filter((record) => !completedIds.has(record.id) && !hasSalesOfficeMoveRecordForMove(record.id));
         }
 
         function syncMovesTabs() {
@@ -28876,6 +28940,9 @@ function toggleDriveQuickRequestItem(domId) {
         function openMovesView() {
             if (!canAccessView('moves')) return switchView('home');
             activeMovesTab = 'main';
+            movesViewLevel = 0;
+            selectedMovesBlock = null;
+            selectedMovesLocation = null;
             markViewDirty('moves');
             return switchView('moves');
         }
@@ -28889,38 +28956,163 @@ function toggleDriveQuickRequestItem(domId) {
 
         function setMovesTab(tab = 'main') {
             activeMovesTab = tab === 'office' ? 'office' : 'main';
+            if (activeMovesTab === 'main') {
+                movesViewLevel = 0;
+                selectedMovesBlock = null;
+                selectedMovesLocation = null;
+            }
             markViewDirty('moves');
             if (isViewVisible('moves')) renderViewContent('moves', false, true);
             return false;
         }
 
-        function completeMoveRecord(moveId = '') {
+        function getMoveRecordById(moveId = '') {
+            const safeId = String(moveId || '').trim();
+            if (!safeId) return null;
+            return getMovesRecords().find((record) => String(record && record.id || '').trim() === safeId) || null;
+        }
+
+        function buildMovesSalesOfficeRowId(moveId = '') {
+            const safePart = String(moveId || '').trim().toUpperCase().replace(/[^A-Z0-9_-]+/g, '_').slice(0, 110) || String(Date.now());
+            return `moves_${safePart}`;
+        }
+
+        function hasSalesOfficeMoveRecordForMove(moveId = '') {
+            const rowId = buildMovesSalesOfficeRowId(moveId);
+            if (!rowId || !Array.isArray(salesOfficeInventory) || !salesOfficeInventory.length) return false;
+            return salesOfficeInventory.some((row) => {
+                const source = String(firstNonEmptyValue(row && row.SO_SOURCE, row && row.so_source, '') || '').trim().toLowerCase();
+                if (source !== 'moves' && source !== 'move') return false;
+                const uid = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
+                return uid === rowId;
+            });
+        }
+
+        function buildMoveSalesOfficeNote(record = {}, actualMoved = '', taQty = '') {
+            const actualText = String(actualMoved || '0').trim() || '0';
+            const taText = String(taQty || '0').trim() || '0';
+            const fromLoc = String(firstNonEmptyValue(record.from_locationcode, '-') || '-').trim();
+            const toLoc = String(firstNonEmptyValue(record.to_locationcode, '-') || '-').trim();
+            const lotCode = String(firstNonEmptyValue(record.lotcode, '-') || '-').trim();
+            return [
+                `Moved ${actualText} from ${fromLoc} to ${toLoc} | Lot ${lotCode}`,
+                `TA ThrowAway ${taText} from ${fromLoc} | Lot ${lotCode}`
+            ].join('\n');
+        }
+
+        function buildMoveSalesOfficeArtifacts(record = {}, actualMoved = '', taQty = '') {
+            if (!record || !record.id) return null;
+            const rowId = buildMovesSalesOfficeRowId(record.id);
+            const completedAt = new Date().toISOString();
+            const completedBy = String(firstNonEmptyValue(currentUserDisplay, currentUser, 'Unknown User') || '').trim() || 'Unknown User';
+            const salesNote = buildMoveSalesOfficeNote(record, actualMoved, taQty);
+            const payload = {
+                unique_id: rowId,
+                master_id: String(firstNonEmptyValue(record.source_unique_id, rowId) || rowId),
+                so_source: 'moves',
+                itemcode: String(firstNonEmptyValue(record.itemcode, '') || ''),
+                commonname: String(firstNonEmptyValue(record.commonname, '') || ''),
+                contsize: String(firstNonEmptyValue(record.contsize, '') || ''),
+                locationcode: String(firstNonEmptyValue(record.from_locationcode, '') || ''),
+                lotcode: String(firstNonEmptyValue(record.lotcode, '') || ''),
+                ptravailable: String(firstNonEmptyValue(record.ptravailable, '') || ''),
+                priority: '',
+                av_note: '',
+                sales_note: salesNote,
+                spec: `Move To: ${String(firstNonEmptyValue(record.to_locationcode, '-') || '-')}`,
+                caliper: `TA: ${String(taQty || '0').trim() || '0'}`,
+                pic_note: `Block ${String(firstNonEmptyValue(record.from_blockalpha, 'No Block') || 'No Block')} | Destination PTR ${String(firstNonEmptyValue(record.to_ptravailable, '') || '')}`,
+                order_qty: String(actualMoved || '0').trim() || '0',
+                order_reserve: String(taQty || '0').trim() || '0',
+                order_submitted_by: completedBy,
+                order_submitted_at: completedAt,
+                order_status: 'Pending Review',
+                completed_by: completedBy,
+                completed_at: completedAt
+            };
+            const clone = { SOURCE_TABLE: 'v2_sales_office' };
+            Object.keys(payload).forEach((key) => {
+                if (payload[key] !== null && payload[key] !== undefined) clone[key.toUpperCase()] = payload[key];
+            });
+            clone.DOM_ID = 'so_' + rowId;
+            clone.APP_TAB_ASSIGNMENT = 'moves';
+            clone.MOVE_FROM_LOCATION = record.from_locationcode || '';
+            clone.MOVE_TO_LOCATION = record.to_locationcode || '';
+            clone.MOVE_ACTUAL_MOVED = String(actualMoved || '0').trim() || '0';
+            clone.MOVE_TA_QTY = String(taQty || '0').trim() || '0';
+            clone.MOVE_BLOCKALPHA = record.from_blockalpha || 'No Block';
+            normalizeRowPhotoFields(clone);
+            buildSearchIndex(clone);
+            return { rowId, payload, clone };
+        }
+
+        async function publishMoveRecordToSalesOffice(record = {}, actualMoved = '', taQty = '') {
+            const artifacts = buildMoveSalesOfficeArtifacts(record, actualMoved, taQty);
+            if (!artifacts) throw new Error('Could not build Sales Office row.');
+            const encodedUid = encodeURIComponent(artifacts.rowId);
+            const existingRows = await supabaseFetch('v2_sales_office', 'GET', null, `select=unique_id&unique_id=eq.${encodedUid}`).catch(() => []);
+            if (Array.isArray(existingRows) && existingRows.length) {
+                await runDetailWriteWithRetry('v2_sales_office', 'PATCH', artifacts.payload, `unique_id=eq.${encodedUid}`);
+            } else {
+                await runDetailWriteWithRetry('v2_sales_office', 'POST', artifacts.payload);
+            }
+            upsertLocalSalesOfficeRow(artifacts.clone, { delay: 0, typingDelay: 140 });
+            return artifacts;
+        }
+
+        async function completeMoveRecord(moveId = '') {
             const safeId = String(moveId || '').trim();
             if (!safeId) return false;
+            const record = getMoveRecordById(safeId);
+            if (!record) {
+                showToast('Not Found', 'That move row could not be found.', true);
+                return false;
+            }
             const input = document.getElementById(getMoveActualMovedInputId(safeId));
+            const taInput = document.getElementById(getMoveTaInputId(safeId));
             const normalizedActualMoved = normalizeMoveActualMovedInput(input ? input.value : getMoveActualMovedValue(safeId));
-            if (normalizedActualMoved == null || normalizedActualMoved === '') {
+            const normalizedTa = normalizeMoveActualMovedInput(taInput ? taInput.value : getMoveTaValue(safeId));
+            const hasActualMoved = normalizedActualMoved !== null && normalizedActualMoved !== '';
+            const hasTa = normalizedTa !== null && normalizedTa !== '';
+            if (!hasActualMoved && !hasTa) {
                 if (input) {
                     input.focus();
                     input.classList.add('ring-2', 'ring-red-300');
                     setTimeout(() => input.classList.remove('ring-2', 'ring-red-300'), 1600);
                 }
-                showToast('Actual Moved Required', 'Enter how many actually moved before marking this move done.', true);
+                showToast('Quantity Required', 'Enter Actual Moved or TA before marking this move done.', true);
                 return false;
             }
-            setMoveActualMoved(safeId, normalizedActualMoved);
-            const completedIds = getCompletedMoveIds();
-            completedIds.add(safeId);
-            saveCompletedMoveIds(completedIds);
-            markViewDirty('moves');
-            if (isViewVisible('moves')) renderViewContent('moves', false, true);
-            showToast('Move Done', `Actual moved: ${normalizedActualMoved}.`);
+            if (normalizedActualMoved == null || normalizedTa == null) {
+                showToast('Invalid Quantity', 'Use whole numbers for Actual Moved and TA.', true);
+                return false;
+            }
+            setMoveActualMoved(safeId, normalizedActualMoved || '0');
+            setMoveTa(safeId, normalizedTa || '0');
+            showToast('Processing...', 'Sending move row to Sales Office...');
+            try {
+                await publishMoveRecordToSalesOffice(record, normalizedActualMoved || '0', normalizedTa || '0');
+                const completedIds = getCompletedMoveIds();
+                completedIds.add(safeId);
+                saveCompletedMoveIds(completedIds);
+                activeSalesOfficeTab = 'season';
+                markViewDirty('moves');
+                markViewDirty('sales-office');
+                if (isViewVisible('moves')) renderViewContent('moves', false, true);
+                showToast('Move Sent', `Moved ${normalizedActualMoved || '0'} | TA ${normalizedTa || '0'}.`);
+            } catch (error) {
+                console.error('Move Sales Office publish failed', error);
+                showToast('Could Not Send', 'Move row was not sent to Sales Office.', true);
+            }
             return false;
         }
 
         function refreshMovesView() {
             movesRecordsCacheKey = '';
             movesRecordsCache = [];
+            movesViewLevel = 0;
+            selectedMovesBlock = null;
+            selectedMovesLocation = null;
             markViewDirty('moves');
             loadDatasetTargetsWithLimit([{ key: 'master', mode: 'full' }], {
                 force: true,
@@ -28934,24 +29126,112 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
+        function scheduleMovesRender(forceRender = true) {
+            markViewDirty('moves');
+            if (isViewVisible('moves')) renderViewContent('moves', false, forceRender);
+        }
+
+        function normalizeMovesDrillValue(value = '') {
+            return String(value == null ? '' : value).trim() || 'No Block';
+        }
+
+        function getMovesBlockLabel(record = {}) {
+            return normalizeMovesDrillValue(firstNonEmptyValue(record && record.from_blockalpha, 'No Block'));
+        }
+
+        function getMovesLocationLabel(record = {}) {
+            return String(firstNonEmptyValue(record && record.from_locationcode, 'No Loc') || '').trim() || 'No Loc';
+        }
+
+        function selectMovesBlock(blockValue = '') {
+            selectedMovesBlock = normalizeMovesDrillValue(blockValue);
+            selectedMovesLocation = null;
+            movesViewLevel = 1;
+            scheduleMovesRender(true);
+            return false;
+        }
+
+        function selectMovesLocation(locationValue = '') {
+            selectedMovesLocation = String(locationValue || '').trim() || 'No Loc';
+            movesViewLevel = 2;
+            scheduleMovesRender(true);
+            return false;
+        }
+
+        function backToMovesBlocks() {
+            movesViewLevel = 0;
+            selectedMovesBlock = null;
+            selectedMovesLocation = null;
+            scheduleMovesRender(true);
+            return false;
+        }
+
+        function backToMovesLocations() {
+            movesViewLevel = 1;
+            selectedMovesLocation = null;
+            scheduleMovesRender(true);
+            return false;
+        }
+
+        function buildMovesDrillBackButton(label = 'Back') {
+            return `<button type="button" class="mb-3 inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="${movesViewLevel > 1 ? 'return backToMovesLocations()' : 'return backToMovesBlocks()'}"><i class="ph-bold ph-arrow-left text-base"></i>${esc(label)}</button>`;
+        }
+
         function renderMovesMain(records = []) {
-            const locations = new Set();
             const items = new Set();
             const sizes = new Set();
+            const locations = new Set();
             records.forEach((record) => {
                 if (record.from_locationcode) locations.add(record.from_locationcode);
                 if (record.itemcode) items.add(record.itemcode);
                 if (record.contsize) sizes.add(record.contsize);
             });
-            return `<div class="space-y-4">
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="rounded-xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Open Moves</div><div class="mt-1 text-3xl font-black text-[#007a4d]">${records.length}</div></div>
-                    <div class="rounded-xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">From Locations</div><div class="mt-1 text-3xl font-black text-slate-900">${locations.size}</div></div>
-                    <div class="rounded-xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Items</div><div class="mt-1 text-3xl font-black text-slate-900">${items.size}</div></div>
-                    <div class="rounded-xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Sizes</div><div class="mt-1 text-3xl font-black text-slate-900">${sizes.size}</div></div>
-                </div>
-                <button type="button" class="w-full rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="return setMovesTab('office')">Open Inventory Office</button>
+            const statsHtml = `<div class="grid grid-cols-2 gap-3">
+                <div class="rounded-xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Open Moves</div><div class="mt-1 text-3xl font-black text-[#007a4d]">${records.length}</div></div>
+                <div class="rounded-xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">From Locations</div><div class="mt-1 text-3xl font-black text-slate-900">${locations.size}</div></div>
+                <div class="rounded-xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Items</div><div class="mt-1 text-3xl font-black text-slate-900">${items.size}</div></div>
+                <div class="rounded-xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Sizes</div><div class="mt-1 text-3xl font-black text-slate-900">${sizes.size}</div></div>
             </div>`;
+            if (!records.length) {
+                movesViewLevel = 0;
+                selectedMovesBlock = null;
+                selectedMovesLocation = null;
+                return `<div class="space-y-4">${statsHtml}<div class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-[12px] font-semibold text-slate-400">No open moves.</div></div>`;
+            }
+            if (movesViewLevel <= 0) {
+                const groups = new Map();
+                records.forEach((record) => {
+                    const block = getMovesBlockLabel(record);
+                    if (!groups.has(block)) groups.set(block, { block, rows: [], locations: new Set(), items: new Set() });
+                    const group = groups.get(block);
+                    group.rows.push(record);
+                    group.locations.add(getMovesLocationLabel(record));
+                    if (record.itemcode) group.items.add(record.itemcode);
+                });
+                const cards = Array.from(groups.values()).sort((a, b) => a.block.localeCompare(b.block, undefined, { numeric: true, sensitivity: 'base' })).map((group) => {
+                    const safeBlock = escJsAttrValue(group.block);
+                    return `<button type="button" class="w-full rounded-xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return selectMovesBlock('${safeBlock}')"><div class="flex items-center justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Block Alpha</div><div class="mt-1 text-xl font-black text-slate-900">${esc(group.block)}</div></div><i class="ph-bold ph-caret-right text-xl text-slate-300"></i></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">${group.rows.length} Move${group.rows.length === 1 ? '' : 's'}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">${group.locations.size} Loc${group.locations.size === 1 ? '' : 's'}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">${group.items.size} Item${group.items.size === 1 ? '' : 's'}</span></div></button>`;
+                }).join('');
+                return `<div class="space-y-4">${statsHtml}<button type="button" class="w-full rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="return setMovesTab('office')">Open Inventory Office</button><div class="space-y-3">${cards}</div></div>`;
+            }
+            const blockRows = records.filter((record) => getMovesBlockLabel(record) === normalizeMovesDrillValue(selectedMovesBlock));
+            if (movesViewLevel === 1) {
+                const groups = new Map();
+                blockRows.forEach((record) => {
+                    const location = getMovesLocationLabel(record);
+                    if (!groups.has(location)) groups.set(location, { location, rows: [], items: new Set() });
+                    const group = groups.get(location);
+                    group.rows.push(record);
+                    if (record.itemcode) group.items.add(record.itemcode);
+                });
+                const cards = Array.from(groups.values()).sort((a, b) => a.location.localeCompare(b.location, undefined, { numeric: true, sensitivity: 'base' })).map((group) => {
+                    const safeLocation = escJsAttrValue(group.location);
+                    return `<button type="button" class="w-full rounded-xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return selectMovesLocation('${safeLocation}')"><div class="flex items-center justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Location Code</div><div class="mt-1 text-xl font-black text-slate-900">${esc(group.location)}</div></div><i class="ph-bold ph-caret-right text-xl text-slate-300"></i></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">${group.rows.length} Move${group.rows.length === 1 ? '' : 's'}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">${group.items.size} Item${group.items.size === 1 ? '' : 's'}</span></div></button>`;
+                }).join('');
+                return `<div class="space-y-3">${buildMovesDrillBackButton('Blocks')}<div class="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Block Alpha</div><div class="mt-1 text-lg font-black text-slate-900">${esc(normalizeMovesDrillValue(selectedMovesBlock))}</div></div>${cards || '<div class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-[12px] font-semibold text-slate-400">No locations for this block.</div>'}</div>`;
+            }
+            const locationRows = blockRows.filter((record) => getMovesLocationLabel(record) === String(selectedMovesLocation || '').trim());
+            return `<div class="space-y-3">${buildMovesDrillBackButton('Locations')}<div class="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Block / Location</div><div class="mt-1 text-lg font-black text-slate-900">${esc(normalizeMovesDrillValue(selectedMovesBlock))} / ${esc(String(selectedMovesLocation || '').trim() || 'No Loc')}</div></div>${locationRows.length ? locationRows.map((record) => renderMovesOfficeRecordCard(record)).join('') : '<div class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-[12px] font-semibold text-slate-400">No moves for this location.</div>'}</div>`;
         }
 
         function buildMovesOfficePrefixHtml(records = []) {
@@ -28961,7 +29241,7 @@ function toggleDriveQuickRequestItem(domId) {
             records.forEach((record) => {
                 if (record.from_locationcode) locations.add(record.from_locationcode);
                 if (record.itemcode) items.add(record.itemcode);
-                if (getMoveActualMovedValue(record.id)) enteredCount += 1;
+                if (getMoveActualMovedValue(record.id) || getMoveTaValue(record.id)) enteredCount += 1;
             });
             return `<div class="grid grid-cols-2 gap-3 mb-4">
                 <div class="rounded-xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Open Moves</div><div class="mt-1 text-3xl font-black text-[#007a4d]">${records.length}</div></div>
@@ -28975,6 +29255,8 @@ function toggleDriveQuickRequestItem(domId) {
             const safeMoveId = escJsAttrValue(record.id);
             const actualMovedValue = getMoveActualMovedValue(record.id);
             const actualInputId = getMoveActualMovedInputId(record.id);
+            const taValue = getMoveTaValue(record.id);
+            const taInputId = getMoveTaInputId(record.id);
             const ptrAvailableValue = firstNonEmptyValue(record.ptravailable, record.quantity_available, '0');
             return `<div class="mb-3 rounded-xl border border-emerald-100 bg-white p-4 shadow-sm">
                 <div class="flex items-start justify-between gap-3">
@@ -28992,17 +29274,22 @@ function toggleDriveQuickRequestItem(domId) {
                     <div class="rounded-xl border border-red-100 bg-red-50 px-3 py-2">
                         <div class="text-[9px] font-black uppercase tracking-[0.14em] text-red-500">Move From</div>
                         <div class="mt-1 text-sm font-black text-red-700 break-words">${esc(record.from_locationcode || '-')}</div>
+                        <div class="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-red-500">Block ${esc(record.from_blockalpha || 'No Block')} | Lot ${esc(record.lotcode || '-')}</div>
                     </div>
                     <div class="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2">
                         <div class="text-[9px] font-black uppercase tracking-[0.14em] text-emerald-600">Move To</div>
                         <div class="mt-1 text-sm font-black text-emerald-700 break-words">${esc(record.to_locationcode || '-')}</div>
-                        <div class="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-600">PTR ${esc(String(record.to_ptravailable == null ? '' : record.to_ptravailable))}</div>
+                        <div class="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-600">PTR ${esc(String(record.to_ptravailable == null ? '' : record.to_ptravailable))} | Lot ${esc(record.lotcode || '-')}</div>
                     </div>
                 </div>
                 <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
                     <div class="sm:w-40">
                         <label class="ml-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Actual Moved</label>
                         <input id="${esc(actualInputId)}" type="number" min="0" step="1" inputmode="numeric" class="mt-1 w-full rounded-lg border border-emerald-200 bg-white px-3 py-3 text-right text-sm font-black text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" placeholder="Qty" value="${esc(actualMovedValue)}" oninput="setMoveActualMoved('${safeMoveId}', this.value)" onchange="setMoveActualMoved('${safeMoveId}', this.value)">
+                    </div>
+                    <div class="sm:w-40">
+                        <label class="ml-1 text-[9px] font-black uppercase tracking-[0.12em] text-red-500">TA ThrowAway</label>
+                        <input id="${esc(taInputId)}" type="number" min="0" step="1" inputmode="numeric" class="mt-1 w-full rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-right text-sm font-black text-red-700 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100" placeholder="Qty" value="${esc(taValue)}" oninput="setMoveTa('${safeMoveId}', this.value)" onchange="setMoveTa('${safeMoveId}', this.value)">
                     </div>
                     <button type="button" class="min-h-[44px] flex-1 rounded-lg bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="return completeMoveRecord('${safeMoveId}')">Done</button>
                 </div>
@@ -29016,7 +29303,9 @@ function toggleDriveQuickRequestItem(domId) {
             const container = document.getElementById('moves-content');
             if (!container) return;
             const records = getOpenMoveRecords();
-            const crumbText = activeMovesTab === 'office' ? `Inventory Office (${records.length})` : `Move Evaluation (${records.length})`;
+            let crumbText = activeMovesTab === 'office' ? `Inventory Office (${records.length})` : `Move Evaluation (${records.length})`;
+            if (activeMovesTab === 'main' && movesViewLevel === 1) crumbText = `Move Evaluation > ${normalizeMovesDrillValue(selectedMovesBlock)}`;
+            if (activeMovesTab === 'main' && movesViewLevel >= 2) crumbText = `Move Evaluation > ${normalizeMovesDrillValue(selectedMovesBlock)} > ${String(selectedMovesLocation || '').trim() || 'No Loc'}`;
             if (activeMovesTab === 'office') {
                 renderMarkupChunkedByKey('moves-office', container, crumb, records, crumbText, (record) => renderMovesOfficeRecordCard(record), {
                     prefixHtml: buildMovesOfficePrefixHtml(records),
@@ -31597,8 +31886,9 @@ function toggleDriveQuickRequestItem(domId) {
             if (!item || isBloomPickerSalesOfficeItem(item) || isSalesOfficeComplete(item)) return false;
             const salesOfficeSource = String(firstNonEmptyValue(item.SO_SOURCE, item.so_source, 'season')).toLowerCase().trim();
             if (salesOfficeSource === 'season') return true;
+            if (salesOfficeSource === 'moves' || salesOfficeSource === 'move') return true;
             const assignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).toLowerCase().trim();
-            if (assignment === 'season') return true;
+            if (assignment === 'season' || assignment === 'moves' || assignment === 'move') return true;
             const masterId = String(firstNonEmptyValue(item.MASTER_ID, item.MASTER_UNIQUE_ID, item.master_id, item.UNIQUE_ID, '')).trim();
             if (!masterId) return false;
             const masterRow = findItemByUniqueId(masterId);
@@ -35144,6 +35434,16 @@ function toggleDriveQuickRequestItem(domId) {
                 let safeAvNote = escJsAttrValue(avNoteText);
                 let safeItemCode = escJsAttrValue(itemCode);
                 let safeDomId = escJsAttrValue(item.DOM_ID);
+                const salesOfficeSource = String(firstNonEmptyValue(item.SO_SOURCE, item.so_source, '') || '').toLowerCase().trim();
+                if (salesOfficeSource === 'moves' || salesOfficeSource === 'move') {
+                    const actualMoved = String(firstNonEmptyValue(item.MOVE_ACTUAL_MOVED, item.ORDER_QTY, '0') || '0').trim() || '0';
+                    const taQty = String(firstNonEmptyValue(item.MOVE_TA_QTY, item.ORDER_RESERVE, '0') || '0').trim() || '0';
+                    const moveFrom = String(firstNonEmptyValue(item.MOVE_FROM_LOCATION, item.LOCATIONCODE, '-') || '-').trim() || '-';
+                    const moveTo = String(firstNonEmptyValue(item.MOVE_TO_LOCATION, item.SPEC, '') || '').replace(/^Move To:\s*/i, '').trim() || '-';
+                    const moveBlock = String(firstNonEmptyValue(item.MOVE_BLOCKALPHA, item.PIC_NOTE, '') || '').replace(/\|.*$/g, '').replace(/^Block\s*/i, '').trim() || 'No Block';
+                    const submittedAt = formatSalesOfficeDate(firstNonEmptyValue(item.ORDER_SUBMITTED_AT, item.COMPLETED_AT, ''));
+                    return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open Sales Office move row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="inv-card app-smart-card status-green flex-grow !mb-0 bg-emerald-50 border border-[#007a4d] transition-transform active:scale-[0.99]"><div class="flex justify-between items-start mb-3"><div class="app-card-main font-bold text-lg text-[#007a4d] leading-tight pr-2 select-text" style="-webkit-user-select: text; user-select: text;"><div class="mb-2 flex flex-wrap gap-2"><span class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"><i class="ph-bold ph-arrows-left-right text-sm"></i>Move</span><span class="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-red-700">TA ${esc(taQty)}</span></div>${item.COMMONNAME||'Unknown'}<br><span class="text-sm text-gray-500 font-semibold">${item.CONTSIZE||'-'}</span></div>${inlineThumbHtml}</div><div class="bg-white p-3 rounded-lg border border-emerald-200 shadow-sm mb-3 select-text cursor-text" style="-webkit-user-select: text; user-select: text;" onclick="event.stopPropagation();"><div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Code</span><span class="font-black text-[#007a4d] font-mono tracking-wide text-sm">${esc(itemCode)}</span></div><div class="flex justify-between items-center mb-1 border-b border-gray-100 pb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Block / Lot</span><span class="font-bold text-gray-600 text-xs">${esc(moveBlock)} / ${esc(lotCode)}</span></div><div class="grid grid-cols-2 gap-2 mt-3"><div class="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">Moved</div><div class="mt-1 text-lg font-black text-emerald-800">${esc(actualMoved)}</div><div class="mt-1 text-[10px] font-bold uppercase text-emerald-700">${esc(moveFrom)} to ${esc(moveTo)}</div><div class="mt-0.5 text-[10px] font-bold uppercase text-emerald-700">Lot ${esc(lotCode)}</div></div><div class="rounded-lg border border-red-100 bg-red-50 px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-red-600">TA ThrowAway</div><div class="mt-1 text-lg font-black text-red-700">${esc(taQty)}</div><div class="mt-1 text-[10px] font-bold uppercase text-red-600">${esc(moveFrom)}</div><div class="mt-0.5 text-[10px] font-bold uppercase text-red-600">Lot ${esc(lotCode)}</div></div></div><div class="mt-3 text-[11px] font-semibold text-slate-500">Submitted ${submittedAt}</div>${displaySalesNote ? `<div class="mt-3 rounded border border-slate-200 bg-slate-50 p-2 text-[12px] font-semibold text-slate-700 whitespace-pre-wrap">${esc(displaySalesNote)}</div>` : ''}</div><div class="flex flex-wrap gap-2"><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-indigo-200" onclick="event.stopPropagation(); return copyTextToClipboard('${safeItemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-lg"></i> COPY ITEMCODE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); return markSalesOfficeComplete('${safeUidJs}', '${safeDomId}', this)"><i class="ph-bold ph-check-circle text-lg"></i> DONE</button></div></div></div>`;
+                }
 
         return `<div class="flex items-center w-full mb-3 item-row relative" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open Sales Office row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="inv-card app-smart-card ${seasonCardShellClass} ${salesOfficeStatusClass} flex-grow !mb-0 ${salesOfficeCardToneClass} border transition-transform active:scale-[0.99]"><div class="flex justify-between items-start mb-3"><div class="app-card-main font-bold text-lg text-[#007a4d] leading-tight pr-2 select-text" style="-webkit-user-select: text; user-select: text;"><div class="mb-2 flex flex-wrap gap-2"><span class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"><i class="ph-bold ph-handbag text-sm"></i>Bloom Picker</span><span class="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${salesOfficeChipToneClass}">Season Sales Notes</span></div>${item.COMMONNAME||'Unknown'}<br><span class="text-sm text-gray-500 font-semibold">${item.CONTSIZE||'-'}</span></div>${inlineThumbHtml}</div><div class="bg-white p-3 rounded-lg border ${salesOfficePanelToneClass} shadow-sm mb-3 select-text cursor-text" style="-webkit-user-select: text; user-select: text;" onclick="event.stopPropagation();"><div class="flex justify-between items-center mb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Item Code</span><span class="font-black ${salesOfficeAccentTextClass} font-mono tracking-wide text-sm">${itemCode}</span></div><div class="flex justify-between items-center mb-1 border-b border-gray-100 pb-1"><span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Location / Lot</span><span class="font-bold text-gray-600 text-xs">${locCode} / ${lotCode}</span></div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5 mt-2">AV Note</div><div class="text-[14px] font-bold text-blue-800 leading-snug mb-2 whitespace-pre-wrap">${avNoteText}</div><div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Sales Note</div><div class="text-[14px] font-bold text-green-800 leading-snug whitespace-pre-wrap">${displaySalesNote}</div></div><div class="flex flex-wrap gap-2"><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-indigo-200" onclick="event.stopPropagation(); return copyTextToClipboard('${safeItemCode}', 'ITEM CODE')"><i class="ph-bold ph-barcode text-lg"></i> COPY ITEMCODE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-blue-200" onclick="event.stopPropagation(); openSalesOfficeAvNoteModal('${safeUidJs}'); return false;"><i class="ph-bold ph-pencil-simple-line text-lg"></i> EDIT AV NOTE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 active:bg-purple-200" onclick="event.stopPropagation(); return copyTextToClipboard('${safeAvNote}', 'AV NOTE')"><i class="ph-bold ph-chat-text text-lg"></i> COPY AV NOTE</button><button class="flex-1 min-w-[calc(50%-0.25rem)] bg-[#007a4d] hover:bg-green-700 text-white text-[10px] font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95" onclick="event.stopPropagation(); return markSalesOfficeComplete('${safeUidJs}', '${safeDomId}', this)"><i class="ph-bold ph-check-circle text-lg"></i> DONE</button></div></div></div>`;
             }
