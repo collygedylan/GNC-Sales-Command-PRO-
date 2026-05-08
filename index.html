@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.08.08';
+window.__APP_SHELL_VERSION__ = 'V2026.05.08.09';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1094,7 +1094,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.08.08').trim() || 'V2026.05.08.08';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.08.09').trim() || 'V2026.05.08.09';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1713,7 +1713,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.08.08';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.08.09';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10496,7 +10496,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const FLYER_FOLDER_ROW_SELECT_FIELDS = 'unique_id,master_unique_id,source_table,flyer_title,flyer_assigned,flyer_cat,flyer_inst,flyer_notes,flyer_completed,assignedto,date_completed,itemcode,commonname,contsize,locationcode,lotcode,priority,ptravailable,s_lts,holdstopcode,plantgroupcode,locationnote,av_note,match,loc_match_qty,spec,caliper,pick,initial_ptr,flyer_av_note,flyer_match,flyer_loc_match_qty,flyer_spec,flyer_caliper,flyer_pick,flyer_initial_ptr,flyer_photo_link,flyer_photo_name,snapshot,created_by_username,created_by_display,created_at,updated_at';
         const MASTER_INITIAL_SELECT_FIELDS = [
             'unique_id','warehouseid','plantgroupcode','itemcode','qualitycode','contsize','commonname','description','plant_name',
-            'lotcode','locationcode','source','desigitem','desigcust','desigloc','priority','ptravailable','s_lts','season_supply',
+            'lotcode','locationcode','source','desigitem','desigcust','desigloc','priority','ptravailable','s_lts','season_supply','saleyear',
             'itemspec','locationnote','locationnotedate','fieldtagcolor','holdstopcode','holdstopreason','season','blockalpha','blocknumber',
             'app_tab_assignment','assignedto','date_completed','av_note','sales_note','salesnote','match','loc_match_qty','initial_ptr','spec','caliper','pick',
             'photo_link','photo_name','saved_photo_link','saved_photo_name','row_photo_link','row_photo_name','req_photo_link','req_photo_name',
@@ -10514,7 +10514,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.08.08').trim() || 'V2026.05.08.08';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.08.09').trim() || 'V2026.05.08.09';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -23095,6 +23095,138 @@ function toggleDriveQuickRequestItem(domId) {
                 throw new Error(String(firstNonEmptyValue(responseData.message, 'NCR email failed.')).trim());
             }
             return responseData;
+        }
+
+        function getNcrReleaseSourceItemForSave(item = null, prefix = '', options = {}) {
+            const safeOptions = options || {};
+            return safeOptions.sourceItem
+                || (safeOptions.completionArtifacts && safeOptions.completionArtifacts.masterSyncItem)
+                || safeOptions.requestMasterItem
+                || findLinkedMasterRow(item)
+                || getNcrMasterItem(item)
+                || item;
+        }
+
+        function normalizeSalesYearForNcrRelease(value = '') {
+            const numericValue = parseAppNumber(value);
+            if (numericValue == null) return null;
+            return numericValue >= 2000 ? numericValue % 100 : numericValue;
+        }
+
+        function getNcrReleaseSalesYearNumber() {
+            for (let index = 0; index < arguments.length; index += 1) {
+                const item = arguments[index];
+                if (!item) continue;
+                const value = firstNonEmptyValue(
+                    item.SALEYEAR,
+                    item.SALESYEAR,
+                    item.salesyear,
+                    item.sale_year,
+                    item.SALE_YEAR,
+                    item.SNAPSHOT && item.SNAPSHOT.SALEYEAR,
+                    item.snapshot && item.snapshot.SALEYEAR,
+                    item.snapshot && item.snapshot.salesyear,
+                    ''
+                );
+                const normalized = normalizeSalesYearForNcrRelease(value);
+                if (normalized != null) return normalized;
+            }
+            return null;
+        }
+
+        function shouldOfferNcrReleaseEmailForSave(item = null, prefix = '', options = {}) {
+            const sourceItem = getNcrReleaseSourceItemForSave(item, prefix, options);
+            if (!sourceItem) return false;
+            const uid = getNcrSourceUniqueId(sourceItem);
+            if (uid && isNcrCompletedUid(uid)) return false;
+            const salesYear = getNcrReleaseSalesYearNumber(item, sourceItem);
+            return salesYear != null && salesYear > 26;
+        }
+
+        function getNcrReleaseDraftValuesFromSaveContext(item = null, prefix = '', sourceItem = null) {
+            const safePrefix = String(prefix || '').trim().toLowerCase();
+            const sharedItem = sourceItem || item;
+            const sourceView = safePrefix === 'flyer-' ? 'flyer' : '';
+            const values = {
+                avNote: String(firstNonEmptyValue(getItemDisplayValue(item, 'AV_NOTE', sourceView), sharedItem && getItemDisplayValue(sharedItem, 'AV_NOTE', sourceView), '') || '').trim().toUpperCase(),
+                match: String(firstNonEmptyValue(getItemDisplayValue(item, 'MATCH', sourceView), sharedItem && getItemDisplayValue(sharedItem, 'MATCH', sourceView), '') || '').trim(),
+                spec: String(firstNonEmptyValue(getItemDisplayValue(item, 'SPEC', sourceView), sharedItem && getItemDisplayValue(sharedItem, 'SPEC', sourceView), '') || '').trim(),
+                caliper: String(firstNonEmptyValue(getItemDisplayValue(item, 'CALIPER', sourceView), sharedItem && getItemDisplayValue(sharedItem, 'CALIPER', sourceView), '') || '').trim(),
+                reserve: String(firstNonEmptyValue(item && item.REQ_RESERVE, 'NO') || 'NO').trim().toUpperCase() === 'YES' ? 'YES' : 'NO',
+                pick: String(firstNonEmptyValue(getItemDisplayValue(item, 'PICK', sourceView), sharedItem && getItemDisplayValue(sharedItem, 'PICK', sourceView), getNcrAutoPickNote(sharedItem || item), '') || '').trim(),
+                comments: String(firstNonEmptyValue(item && item.SALES_NOTE, item && item.SALESNOTE, sharedItem && sharedItem.SALES_NOTE, sharedItem && sharedItem.SALESNOTE, '') || '').trim()
+            };
+            if (safePrefix === 'req-') {
+                values.avNote = String(firstNonEmptyValue(item && item.AV_NOTE, sharedItem && getItemDisplayValue(sharedItem, 'AV_NOTE', ''), '') || '').trim().toUpperCase();
+                values.match = String(firstNonEmptyValue(item && item.REQ_MATCH, sharedItem && getItemDisplayValue(sharedItem, 'MATCH', ''), '') || '').trim();
+                values.spec = String(firstNonEmptyValue(item && item.REQ_SPEC, sharedItem && getItemDisplayValue(sharedItem, 'SPEC', ''), '') || '').trim();
+                values.caliper = String(firstNonEmptyValue(item && item.REQ_CALIPER, sharedItem && getItemDisplayValue(sharedItem, 'CALIPER', ''), '') || '').trim();
+                values.reserve = String(firstNonEmptyValue(item && item.REQ_RESERVE, 'NO') || 'NO').trim().toUpperCase() === 'YES' ? 'YES' : 'NO';
+                values.pick = String(firstNonEmptyValue(item && item.REQ_PICK, sharedItem && getItemDisplayValue(sharedItem, 'PICK', ''), getNcrAutoPickNote(sharedItem || item), '') || '').trim();
+                values.comments = String(firstNonEmptyValue(item && item.REQ_COMMENTS, item && item.SALES_NOTE, item && item.SALESNOTE, '') || '').trim();
+            } else if (safePrefix === 'dock-') {
+                values.spec = String(firstNonEmptyValue(item && item.DOCK_SPEC, values.spec, '') || '').trim();
+                values.caliper = String(firstNonEmptyValue(item && item.DOCK_CALIPER, values.caliper, '') || '').trim();
+                values.comments = String(firstNonEmptyValue(item && item.DOCK_NOTE, values.comments, '') || '').trim();
+            } else if (safePrefix === 'flyer-') {
+                values.avNote = String(firstNonEmptyValue(item && item.FLYER_AV_NOTE, item && item.AV_NOTE, values.avNote, '') || '').trim().toUpperCase();
+                values.match = String(firstNonEmptyValue(item && item.FLYER_MATCH, item && item.MATCH, values.match, '') || '').trim();
+                values.spec = String(firstNonEmptyValue(item && item.FLYER_SPEC, item && item.SPEC, values.spec, '') || '').trim();
+                values.caliper = String(firstNonEmptyValue(item && item.FLYER_CALIPER, item && item.CALIPER, values.caliper, '') || '').trim();
+                values.pick = String(firstNonEmptyValue(item && item.FLYER_PICK, item && item.PICK, values.pick, '') || '').trim();
+                values.comments = String(firstNonEmptyValue(item && item.FLYER_NOTES, item && item.SALES_NOTE, item && item.SALESNOTE, values.comments, '') || '').trim();
+            }
+            return values;
+        }
+
+        function getNcrReleasePhotoUrlsFromSaveContext(item = null, prefix = '', sourceItem = null) {
+            const safePrefix = String(prefix || '').trim().toLowerCase();
+            const sharedCsv = sourceItem ? getSharedAppPhotoLinkCsv(sourceItem, { includePending: false }) : '';
+            let csv = '';
+            if (safePrefix === 'req-') {
+                csv = mergePhotoCsvList([
+                    getRequestPhotoLinkCsv(item, { includePending: false, includeSharedFallback: true, ruleItem: sourceItem || item }),
+                    sharedCsv
+                ]);
+            } else if (safePrefix === 'dock-') {
+                csv = mergePhotoCsvList([getDockOwnedPhotoLinkCsv(item, { includePending: false }), sharedCsv]);
+            } else if (safePrefix === 'flyer-') {
+                csv = mergePhotoCsvList([getFlyerVisiblePhotoLinkCsv(item, { includePending: false }), sharedCsv]);
+            } else {
+                csv = mergePhotoCsvList([getSharedAppPhotoLinkCsv(item, { includePending: false }), sharedCsv]);
+            }
+            return normalizeNcrEmailPhotoUrls(parsePhotoCsvValues(csv));
+        }
+
+        function prepareNcrReleaseEmailDraftFromSaveContext(item = null, prefix = '', sourceItem = null) {
+            const emailItem = sourceItem || item;
+            const draft = getNcrDraft(emailItem);
+            if (!draft) return null;
+            Object.assign(draft, getNcrReleaseDraftValuesFromSaveContext(item, prefix, emailItem));
+            return draft;
+        }
+
+        async function promptAndSendNcrReleaseEmailFromSave(item = null, prefix = '', options = {}) {
+            const safeOptions = options || {};
+            const sourceItem = getNcrReleaseSourceItemForSave(item, prefix, safeOptions);
+            if (!shouldOfferNcrReleaseEmailForSave(item, prefix, { ...safeOptions, sourceItem })) return false;
+            const choice = await openNcrEmailModal(sourceItem);
+            if (choice !== 'email') return false;
+            prepareNcrReleaseEmailDraftFromSaveContext(item, prefix, sourceItem);
+            const photoUrls = getNcrReleasePhotoUrlsFromSaveContext(item, prefix, sourceItem);
+            try {
+                await sendNcrCompletionEmail(sourceItem, photoUrls);
+                await persistNcrCompletionRecord(buildNcrCompletionRecord(sourceItem, true));
+                clearNcrDraft(sourceItem);
+                managerReviewInventoryDirty = true;
+                markViewDirty('review');
+                showToast('Success', 'New Crop Release email sent.');
+                return true;
+            } catch (error) {
+                console.error('Auto New Crop Release email failed', error);
+                showToast('Email Failed', error && error.message ? error.message : 'Could not send the New Crop Release email.', true);
+                return false;
+            }
         }
 
         async function saveNcrCompletion() {
@@ -43349,6 +43481,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 notifyRequestEvent('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length, { items: folderItems, folderNote: folderNote });
                             }
                         }, 72);
+                    }
+                    if (isComplete && !wasAlreadyComplete && !saveOptions.suppressNcrReleaseEmail && shouldOfferNcrReleaseEmailForSave(itemToSave, prefix, { requestMasterItem, completionArtifacts: artifacts })) {
+                        deferNonCriticalWork('ncr-release-email', () => {
+                            promptAndSendNcrReleaseEmailFromSave(itemToSave, prefix, { requestMasterItem, completionArtifacts: artifacts }).catch((error) => {
+                                console.error('Auto New Crop Release prompt failed', error);
+                            });
+                        }, 90);
                     }
                     if (prefix === 'flyer-') {
                         deferNonCriticalWork('flyer-complete-push', () => {
