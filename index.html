@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.07.09';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.08.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1055,7 +1055,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.07.07').trim() || 'V2026.05.07.07';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.08.01').trim() || 'V2026.05.08.01';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1674,7 +1674,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.07.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.08.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1736,6 +1736,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         const MANUAL_SYNC_COMPLETION_REFRESH_DELAY_MS = 300;
         const MANUAL_SYNC_COMPLETION_CATCHUP_DELAY_MS = 18000;
         const MANUAL_SYNC_FROZEN_DATASET_KEYS = new Set(['master', 'avOpen', 'soc', 'reserves', 'cav', 'salesOffice', 'avHotPriceKeys']);
+        const DASHBOARD_SYNC_METADATA_TTL_MS = 45000;
+        const DASHBOARD_SYNC_METADATA_LIMIT = 30;
         let realtimeChannels = [];
         let realtimeChangeTimer = null;
         let realtimeChangeQueue = [];
@@ -10388,6 +10390,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let manualSyncStatusPollInFlight = false;
         let lastManualSyncStatusCheckedAt = 0;
         let manualSyncPostRefreshInFlight = false;
+        let dashboardSyncMetadataSummaries = [];
+        let dashboardSyncMetadataFetchedAt = 0;
+        let dashboardSyncMetadataInFlight = null;
         let pendingRequestArchiveFlushTimer = null;
         let pendingRequestArchiveFlushInFlight = false;
         let pendingEditsCache = null;
@@ -10453,7 +10458,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.07.09').trim() || 'V2026.05.07.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.08.01').trim() || 'V2026.05.08.01';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -10679,12 +10684,15 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     updateSyncDiagnostics(liveSyncMode === 'offline' ? 'offline' : (liveSyncMode || 'idle'));
                     return;
                 }
-                const targetView = getManualSyncCompletionViewId();
-                const visibleRefresh = targetView
-                    ? forceRefreshViewDatasets(targetView, { includeBackground: false })
-                    : Promise.resolve(false);
-                Promise.resolve(visibleRefresh)
-                    .then((didRefresh) => didRefresh ? true : refreshLoadedDatasets(false))
+                refreshDashboardSyncMetadata(true).catch(() => {});
+                refreshLoadedDatasets(true, {
+                    force: true,
+                    allowWhileInteractive: true,
+                    interruptible: false,
+                    requeueOnInteraction: false,
+                    retryReason: 'manual-sync-complete',
+                    retryForceLoadedRefresh: true
+                })
                     .catch(() => false)
                     .finally(() => {
                         manualSyncPostRefreshInFlight = false;
@@ -33399,6 +33407,62 @@ function toggleDriveQuickRequestItem(domId) {
             return { label, iso: latestIso, ms: latestMs, files: [...fileNames].sort((a, b) => a.localeCompare(b)) };
         }
 
+        function getDashboardSyncMetadataSources() {
+            return [
+                { label: 'Drive', table: 'v2_master_inventory' },
+                { label: 'SOC', table: 'v2_soc_master' },
+                { label: 'Reserves', table: 'v2_reserves' },
+                { label: 'CAV', table: 'v2_cav_import' }
+            ];
+        }
+
+        function mergeDashboardSyncSummaries(summaries = []) {
+            const byLabel = new Map();
+            (Array.isArray(summaries) ? summaries : []).forEach((entry) => {
+                if (!entry || !entry.label || (!entry.iso && !(entry.files && entry.files.length))) return;
+                const existing = byLabel.get(entry.label);
+                if (!existing || Number(entry.ms || -1) > Number(existing.ms || -1)) {
+                    byLabel.set(entry.label, {
+                        label: entry.label,
+                        iso: entry.iso || '',
+                        ms: Number(entry.ms || -1),
+                        files: Array.isArray(entry.files) ? entry.files.slice() : []
+                    });
+                } else if (existing && Number(entry.ms || -1) === Number(existing.ms || -1) && Array.isArray(entry.files)) {
+                    existing.files = [...new Set([...(existing.files || []), ...entry.files])].sort((a, b) => a.localeCompare(b));
+                }
+            });
+            return Array.from(byLabel.values());
+        }
+
+        async function refreshDashboardSyncMetadata(force = false) {
+            if (!currentUser || navigator.onLine === false || !canViewDashboardSyncStatus()) return false;
+            const now = Date.now();
+            if (!force && dashboardSyncMetadataFetchedAt && (now - dashboardSyncMetadataFetchedAt) < DASHBOARD_SYNC_METADATA_TTL_MS) return true;
+            if (dashboardSyncMetadataInFlight) return dashboardSyncMetadataInFlight;
+            dashboardSyncMetadataInFlight = (async () => {
+                try {
+                    const entries = [];
+                    for (const source of getDashboardSyncMetadataSources()) {
+                        try {
+                            const rows = await fetchSupabasePage(source.table, 'select=filename,last_updated&last_updated=not.is.null&order=last_updated.desc', DASHBOARD_SYNC_METADATA_LIMIT, 0);
+                            const formattedRows = formatFetchedRows(rows || [], source.table);
+                            const summary = collectDashboardSyncSource(formattedRows, source.label);
+                            if (summary && (summary.iso || summary.files.length)) entries.push(summary);
+                        } catch (error) {}
+                        await yieldToUiFrame();
+                    }
+                    dashboardSyncMetadataSummaries = mergeDashboardSyncSummaries(entries);
+                    dashboardSyncMetadataFetchedAt = Date.now();
+                    updateDashboardSyncSummary();
+                    return true;
+                } finally {
+                    dashboardSyncMetadataInFlight = null;
+                }
+            })();
+            return dashboardSyncMetadataInFlight;
+        }
+
         function updateDashboardSyncSummary() {
             const accordionEl = document.getElementById('dashboard-sync-accordion');
             const stampEl = document.getElementById('dashboard-sync-stamp');
@@ -33414,19 +33478,23 @@ function toggleDriveQuickRequestItem(domId) {
                 collectDashboardSyncSource(reservesInventory, 'Reserves'),
                 collectDashboardSyncSource(cavInventory, 'CAV')
             ].filter((entry) => entry.iso || entry.files.length);
-            if (!sourceSummaries.length) {
+            if (!dashboardSyncMetadataInFlight && (!dashboardSyncMetadataFetchedAt || (Date.now() - dashboardSyncMetadataFetchedAt) > DASHBOARD_SYNC_METADATA_TTL_MS)) {
+                refreshDashboardSyncMetadata(false).catch(() => {});
+            }
+            const mergedSummaries = mergeDashboardSyncSummaries([...sourceSummaries, ...dashboardSyncMetadataSummaries]);
+            if (!mergedSummaries.length) {
                 stampEl.innerText = 'Awaiting imported file data';
                 summaryEl.innerText = '';
                 filesEl.innerHTML = '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-400">No imported file metadata loaded yet.</div>';
                 return;
             }
-            const overall = sourceSummaries.reduce((winner, entry) => {
+            const overall = mergedSummaries.reduce((winner, entry) => {
                 if (!winner || entry.ms > winner.ms) return entry;
                 return winner;
             }, null);
             stampEl.innerText = formatDashboardSyncDateTime(overall && overall.iso ? overall.iso : '');
             summaryEl.innerText = '';
-            filesEl.innerHTML = sourceSummaries.map((entry) => {
+            filesEl.innerHTML = mergedSummaries.map((entry) => {
                 const fileListHtml = entry.files.length
                     ? entry.files.map((fileName) => '<div class="truncate">' + escapeDashboardSyncText(fileName) + '</div>').join('')
                     : '<div class="text-slate-400">No file name stored on the latest rows.</div>';
