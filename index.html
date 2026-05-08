@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.08.02';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.08.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -956,6 +956,37 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <button type="button" class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-600 shadow-sm" onclick="return closeBloomShareMenu()">Cancel</button>
         </div>
     </div>
+    <div id="bloom-crop-update-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-start justify-center overflow-y-auto p-4" onclick="if(event.target===this) return closeBloomCropUpdateModal()">
+        <div class="my-4 flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div class="flex items-start justify-between gap-3 border-b border-emerald-100 px-5 py-4">
+                <div class="min-w-0">
+                    <div class="text-[10px] font-black uppercase tracking-[0.18em] text-[#007a4d]">Bloom Picker</div>
+                    <div class="mt-1 text-lg font-black text-slate-900">GNC PH Crop Update</div>
+                    <div id="bloom-crop-update-row-count" class="mt-1 text-xs font-bold text-slate-500"></div>
+                </div>
+                <button type="button" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm" onclick="return closeBloomCropUpdateModal()">Close</button>
+            </div>
+            <div class="flex-1 overflow-y-auto px-5 py-4">
+                <label class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Message</label>
+                <textarea id="bloom-crop-update-message" class="input-field mt-1 min-h-[94px] resize-y border-emerald-200 focus:border-[#007a4d]" placeholder="Add a note for the sales reps..."></textarea>
+                <div class="mt-4 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Recipients</div>
+                        <div class="mt-1 text-xs font-bold text-slate-500">Dylan and JD are included automatically.</div>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return setBloomCropUpdateAllSelection(true)">Select All</button>
+                        <button type="button" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600" onclick="return setBloomCropUpdateAllSelection(false)">Clear</button>
+                    </div>
+                </div>
+                <div id="bloom-crop-update-recipient-list" class="mt-3 space-y-3"></div>
+                <div id="bloom-crop-update-selected-count" class="mt-3 text-xs font-bold text-slate-500"></div>
+            </div>
+            <div class="border-t border-slate-100 bg-slate-50 px-5 py-4">
+                <button id="bloom-crop-update-send-btn" type="button" class="w-full rounded-xl bg-[#007a4d] px-4 py-4 text-sm font-black uppercase tracking-[0.14em] text-white shadow-md active:scale-[.99] disabled:cursor-not-allowed disabled:opacity-50" onclick="return sendBloomCropUpdateEmail()">Send Crop Update</button>
+            </div>
+        </div>
+    </div>
     <div id="bloom-picker-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-start justify-center overflow-y-auto p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl text-left flex flex-col my-4 max-h-[calc(100vh-2rem)] overflow-y-auto overscroll-contain">
             <div class="flex items-start justify-between gap-3 mb-4 border-b border-gray-100 pb-3">
@@ -1055,7 +1086,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.08.02').trim() || 'V2026.05.08.02';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.08.04').trim() || 'V2026.05.08.04';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1674,7 +1705,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.08.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.08.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1726,6 +1757,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         const REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS = 6000;
         const REQUEST_VIEW_ACTIVE_SIGNATURE_SYNC_MS = 2800;
         const REQUEST_VIEW_SECONDARY_SIGNATURE_SYNC_MS = 4500;
+        const REQUEST_VIEW_BACKGROUND_SIGNATURE_SYNC_MS = 5500;
         const viewEnterRefreshAt = new Map();
         const REALTIME_STARTUP_GRACE_MS = 12000;
         const REALTIME_RECOVERY_GRACE_MS = 3200;
@@ -3924,7 +3956,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         function closeLoginBlockingLayers() {
             try { closePhotoModal(); } catch (e) {}
             try { toggleMenu(false); } catch (e) {}
-            ['tab-select-modal', 'assign-modal', 'endcap-modal', 'dock-mistake-modal', 'dock-allocation-modal', 'dock-info-modal', 'sales-office-av-modal', 'request-publish-modal', 'ncr-email-modal', 'request-rep-modal', 'bloom-share-modal', 'bloom-picker-modal', 'take-back-done-confirm-modal', 'drawer-overlay', 'side-drawer'].forEach(forceHideUiLayer);
+            ['tab-select-modal', 'assign-modal', 'endcap-modal', 'dock-mistake-modal', 'dock-allocation-modal', 'dock-info-modal', 'sales-office-av-modal', 'request-publish-modal', 'ncr-email-modal', 'request-rep-modal', 'bloom-share-modal', 'bloom-crop-update-modal', 'bloom-picker-modal', 'take-back-done-confirm-modal', 'drawer-overlay', 'side-drawer'].forEach(forceHideUiLayer);
         }
 
         function resetLoginUiState() {
@@ -6696,11 +6728,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                                 liveSyncMode = 'queued';
                                 updateSyncDiagnostics('queued');
                             }
-                            if (tableName === 'v2_active_request') syncRequestViewLiveSync(0);
+                            if (tableName === 'v2_active_request') syncRequestViewLiveSync(0, { alwaysOn: true, allowHealthyRealtime: true });
                             if (!isQuotaSafeRealtimeMode()) queueVisibleDatasetCatchup(160);
                         }
                         if (channelStatus === 'TIMED_OUT' || channelStatus === 'CHANNEL_ERROR' || channelStatus === 'CLOSED') {
-                            if (tableName === 'v2_active_request') syncRequestViewLiveSync(140);
+                            if (tableName === 'v2_active_request') syncRequestViewLiveSync(140, { alwaysOn: true, allowHealthyRealtime: true });
                             if (isRequiredTable) {
                                 const retryDelay = isRealtimeStartupPending()
                                     ? Math.max(REALTIME_RECOVERY_GRACE_MS, realtimeStartupUntil - Date.now())
@@ -10114,7 +10146,7 @@ let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let t
         let lastBackgroundRefreshAt=0;
         let cacheWarmPromise=null;
         let cachePersistTimer=null; let cachePersistIdleHandle=null; let lastCachePersistAt=0; let pendingCachePersist=false;
-        let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let currentPrimaryViewId="home"; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0; let leafVoiceRecognition=null; let leafVoiceListening=false; let leafVoiceSpeaking=false; let leafVoiceAbortRequested=false; let leafVoiceSubmitPending=false; let leafVoiceInterimText=''; let leafVoiceFinalText=''; let leafVoiceStatusOverride=''; let leafLastSpokenAnswer=''; let leafVoiceUtterance=null; let leafVoiceFinalizeTimer=null; let leafVoiceLastSpeechAt=0;
+let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let currentPrimaryViewId="home"; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let bloomCropUpdateModalOpen=false; let bloomCropUpdatePendingItems=[]; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0; let leafVoiceRecognition=null; let leafVoiceListening=false; let leafVoiceSpeaking=false; let leafVoiceAbortRequested=false; let leafVoiceSubmitPending=false; let leafVoiceInterimText=''; let leafVoiceFinalText=''; let leafVoiceStatusOverride=''; let leafLastSpokenAnswer=''; let leafVoiceUtterance=null; let leafVoiceFinalizeTimer=null; let leafVoiceLastSpeechAt=0;
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
@@ -10435,6 +10467,19 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_EMAIL_THREAD_TABLE = 'v2_request_email_threads';
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
+        const BLOOM_CROP_UPDATE_ALLOWED_USER_TOKENS = new Set(['dylan_collyge','jd_jones']);
+        const BLOOM_CROP_UPDATE_INTERNAL_RECIPIENTS = Object.freeze(['jd_jones@greenleafnursery.com', 'dylan_collyge@greenleafnursery.com']);
+        const BLOOM_CROP_UPDATE_REP_EMAIL_OVERRIDES = Object.freeze({
+            'tobu brown': 'toby_brown@greenleafnursery.com',
+            tobubrown: 'toby_brown@greenleafnursery.com',
+            'toby brown': 'toby_brown@greenleafnursery.com',
+            tobybrown: 'toby_brown@greenleafnursery.com'
+        });
+        const BLOOM_CROP_UPDATE_REP_GROUPS = Object.freeze([
+            { key: 'NC', label: 'NC Reps', reps: ['Abbey Burka', 'Chris Farrow', 'Chris Gaydos', 'Ellen Deely'] },
+            { key: 'OK', label: 'OK Reps', reps: ['Annette Hancock', 'Tony Bono', 'Ben Brown', 'Ben Maschino', 'Brian Hatfield', 'Casey Rufener', 'David Brandt', 'Doug Baker', 'Kevin Effinger', 'Nate Douglas', 'Troy Lee', 'Wes Lugas'] },
+            { key: 'TX', label: 'TX Reps', reps: ['Ben Harveson', 'Chance Alldredge', 'Jessica Robertson', 'Josh Ringleb', 'Rudy Martinez', 'Tobu Brown', 'Tracey Tapscott', 'Traci Earle'] }
+        ]);
         const NCR_COMPLETIONS_TABLE = 'v2_ncr_completions';
         const NCR_COMPLETION_SELECT_FIELDS = 'source_unique_id,itemcode,locationcode,completed_by,completed_at,emailed_jd';
         const TAKE_BACK_TABLE = 'v2_take_back_queue';
@@ -10458,7 +10503,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.08.02').trim() || 'V2026.05.08.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.08.04').trim() || 'V2026.05.08.04';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -10845,7 +10890,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 ? { eyebrow: 'Moves', title: 'Inventory Office' }
                 : baseMeta;
             const resolvedTitle = meta.title || formatGlobalHeaderTitle(currentView);
-            const showHomeBack = currentView === 'home' && (shouldShowHomeProductivityBackButton() || cartPanelOpen || bloomShareMenuOpen);
+            const showHomeBack = currentView === 'home' && (shouldShowHomeProductivityBackButton() || cartPanelOpen || bloomShareMenuOpen || bloomCropUpdateModalOpen);
             const searchContainerId = currentView === 'tasks'
                 ? (shouldShowTaskHeaderSearch() ? GLOBAL_HEADER_SEARCH_CONFIG.tasks : '')
                 : GLOBAL_HEADER_SEARCH_CONFIG[currentView];
@@ -10865,6 +10910,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     showHomeBack ? 'home-back' : 'no-home-back',
                     cartPanelOpen ? 'cart-open' : 'cart-closed',
                     bloomShareMenuOpen ? 'share-open' : 'share-closed',
+                    bloomCropUpdateModalOpen ? 'crop-update-open' : 'crop-update-closed',
                     searchContainerId || 'no-search',
                     searchVisible ? 'search-visible' : 'search-hidden',
                     currentUserDisplay || currentUser || 'User',
@@ -10968,7 +11014,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 flushPendingRequestArchives().catch(() => {});
                 schedulePendingRequestArchiveFlush(2800);
                 queueForegroundRefresh(80);
-                syncRequestViewLiveSync(120);
+                syncRequestViewLiveSync(120, { alwaysOn: true, allowHealthyRealtime: true });
             }
         });
 
@@ -10981,7 +11027,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden && currentUser) {
                 queueForegroundRefresh(isIOSDevice() ? 60 : 120);
-                syncRequestViewLiveSync(120);
+                syncRequestViewLiveSync(120, { alwaysOn: true, allowHealthyRealtime: true });
             } else {
                 clearRequestViewLiveSync();
             }
@@ -12171,19 +12217,24 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return;
             }
             if (targetView === 'request') {
-                if (!options.force && hasHealthyCoreRealtimeSubscriptions('request')) {
-                    updateSyncDiagnostics('realtime');
-                    runRequestViewLiveSync({
-                        allowHealthyRealtime: true,
-                        once: true,
-                        minIntervalMs: REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS
+                updateSyncDiagnostics(hasHealthyCoreRealtimeSubscriptions('request') ? 'realtime' : 'queued');
+                runRequestViewLiveSync({
+                    allowHealthyRealtime: true,
+                    force: true,
+                    once: true,
+                    minIntervalMs: 0
+                }).then((didSync) => {
+                    if (didSync !== false) return;
+                    forceRefreshRequestsForView('request-view-enter', {
+                        force: !!options.force,
+                        minIntervalMs: options.force ? 0 : REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS
                     }).catch(() => {});
-                    return;
-                }
-                forceRefreshRequestsForView('request-view-enter', {
-                    force: !!options.force,
-                    minIntervalMs: options.force ? 0 : REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS
-                }).catch(() => {});
+                }).catch(() => {
+                    forceRefreshRequestsForView('request-view-enter', {
+                        force: !!options.force,
+                        minIntervalMs: options.force ? 0 : REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS
+                    }).catch(() => {});
+                });
                 return;
             }
             if (targetView === 'chat') {
@@ -16870,6 +16921,12 @@ function toggleDriveQuickRequestItem(domId) {
                 applyPendingRequestArchives();
                 updateFooterRequestBadge();
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+                if (currentUser && canAccessView('request') && navigator.onLine !== false && !document.hidden) {
+                    syncRequestViewLiveSync(getRequestViewLiveSyncInterval({ alwaysOn: true, allowHealthyRealtime: true }), {
+                        alwaysOn: true,
+                        allowHealthyRealtime: true
+                    });
+                }
             }
 
             if (hasSalesOffice || (hasMaster && salesOfficeInventory.length)) {
@@ -23174,7 +23231,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function hasOpenInteractiveSurfaceForBack() {
             const currentView = getCurrentVisibleViewId();
-            if (bloomShareMenuOpen || cartPanelOpen || driveQuickFiltersModalOpen || isDrawerOpen()) return true;
+            if (bloomCropUpdateModalOpen || bloomShareMenuOpen || cartPanelOpen || driveQuickFiltersModalOpen || isDrawerOpen()) return true;
             if (currentView === 'tasks') return !!(taskTabDropdownOpen || taskSubviewDropdownOpen || taskReserveCustomerDropdownOpen || taskGenusFilterOpen || taskContSizeDropdownOpen);
             if (currentView === 'drive') return !!(driveViewDropdownOpen || driveSeasonDropdownOpen || driveGenusFilterOpen || driveContSizeFilterOpen);
             if (currentView === 'av') return !!(avSeasonDropdownOpen || avGenusFilterOpen || avContSizeFilterOpen);
@@ -23188,6 +23245,12 @@ function toggleDriveQuickRequestItem(domId) {
                 closeBloomShareMenu();
                 updateGlobalBackButton();
                 syncGlobalHeaderChrome({ reason: 'back:share', force: true });
+                return true;
+            }
+            if (bloomCropUpdateModalOpen) {
+                closeBloomCropUpdateModal();
+                updateGlobalBackButton();
+                syncGlobalHeaderChrome({ reason: 'back:bloom-crop-update', force: true });
                 return true;
             }
             if (cartPanelOpen) {
@@ -23280,7 +23343,7 @@ function toggleDriveQuickRequestItem(domId) {
             const currentView = getCurrentVisibleViewId();
             const showBack = currentView === 'detail'
                 || currentView !== 'home'
-                || (currentView === 'home' && (shouldShowHomeProductivityBackButton() || cartPanelOpen || bloomShareMenuOpen));
+                || (currentView === 'home' && (shouldShowHomeProductivityBackButton() || cartPanelOpen || bloomShareMenuOpen || bloomCropUpdateModalOpen));
             if (backBtn) backBtn.classList.toggle('hidden', !showBack);
             if (inlineBackBtn) {
                 inlineBackBtn.classList.toggle('hidden', !showBack);
@@ -29577,6 +29640,157 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
+        function canUseBloomCropUpdateEmail(items = getCartSelectedItems()) {
+            const tokens = getProtectedUserTokens();
+            const allowedUser = Array.from(BLOOM_CROP_UPDATE_ALLOWED_USER_TOKENS).some((token) => tokens.has(token));
+            const rows = Array.isArray(items) ? items.filter(Boolean) : [];
+            return !!(allowedUser && rows.length && rows.every((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item)));
+        }
+
+        function getBloomCropUpdateRepEmail(repName = '') {
+            const token = normalizeRepMatchToken(repName);
+            const compact = token.replace(/\s+/g, '');
+            return BLOOM_CROP_UPDATE_REP_EMAIL_OVERRIDES[compact]
+                || BLOOM_CROP_UPDATE_REP_EMAIL_OVERRIDES[token]
+                || resolveRequestRecipientEmail(repName);
+        }
+
+        function buildBloomCropUpdateRecipientHtml() {
+            return BLOOM_CROP_UPDATE_REP_GROUPS.map((group) => {
+                const repsHtml = (group.reps || []).map((name) => {
+                    const email = getBloomCropUpdateRepEmail(name);
+                    return `<label class="flex min-h-[42px] items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm active:scale-[.99]"><input type="checkbox" class="h-5 w-5 accent-[#007a4d]" data-bloom-crop-rep="true" data-bloom-crop-group="${escapeShareHtml(group.key)}" data-rep-name="${escapeShareHtml(name)}" data-rep-email="${escapeShareHtml(email)}" onchange="syncBloomCropUpdateSendButton()"><span class="min-w-0 flex-1">${escapeShareHtml(name)}</span></label>`;
+                }).join('');
+                return `<div class="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3"><div class="flex items-center justify-between gap-3"><div class="text-sm font-black text-emerald-900">${escapeShareHtml(group.label)}</div><div class="flex gap-2"><button type="button" class="rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return setBloomCropUpdateGroupSelection('${escapeShareHtml(group.key)}', true)">All</button><button type="button" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setBloomCropUpdateGroupSelection('${escapeShareHtml(group.key)}', false)">None</button></div></div><div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">${repsHtml}</div></div>`;
+            }).join('');
+        }
+
+        function getBloomCropUpdateSelectedReps() {
+            return Array.from(document.querySelectorAll('[data-bloom-crop-rep="true"]:checked')).map((input) => ({
+                name: String(input.getAttribute('data-rep-name') || '').trim(),
+                email: normalizeRequestEmailAddress(input.getAttribute('data-rep-email') || ''),
+                group: String(input.getAttribute('data-bloom-crop-group') || '').trim()
+            })).filter((rep) => rep.name && rep.email);
+        }
+
+        function syncBloomCropUpdateSendButton() {
+            const selectedReps = getBloomCropUpdateSelectedReps();
+            const sendBtn = document.getElementById('bloom-crop-update-send-btn');
+            const countEl = document.getElementById('bloom-crop-update-selected-count');
+            if (sendBtn) sendBtn.disabled = !(selectedReps.length && bloomCropUpdatePendingItems.length);
+            if (countEl) {
+                countEl.innerText = selectedReps.length
+                    ? `${selectedReps.length} sales rep${selectedReps.length === 1 ? '' : 's'} selected. Dylan and JD will also receive it.`
+                    : 'Choose one or more sales reps, or use Select All.';
+            }
+        }
+
+        function setBloomCropUpdateGroupSelection(groupKey = '', selected = true) {
+            const safeGroupKey = String(groupKey || '').trim();
+            document.querySelectorAll('[data-bloom-crop-rep="true"]').forEach((input) => {
+                if (String(input.getAttribute('data-bloom-crop-group') || '').trim() !== safeGroupKey) return;
+                input.checked = !!selected;
+            });
+            syncBloomCropUpdateSendButton();
+            return false;
+        }
+
+        function setBloomCropUpdateAllSelection(selected = true) {
+            document.querySelectorAll('[data-bloom-crop-rep="true"]').forEach((input) => {
+                input.checked = !!selected;
+            });
+            syncBloomCropUpdateSendButton();
+            return false;
+        }
+
+        function openBloomCropUpdateModal(items = getCartSelectedItems()) {
+            const rows = (Array.isArray(items) ? items : []).filter(Boolean);
+            if (!canUseBloomCropUpdateEmail(rows)) {
+                showToast('Restricted', 'Crop update emails are only available for Dylan and JD.', true);
+                return false;
+            }
+            bloomCropUpdatePendingItems = rows.slice();
+            bloomCropUpdateModalOpen = true;
+            bloomShareMenuOpen = false;
+            cartPanelOpen = false;
+            syncBloomShareMenuUi();
+            updateGlobalActionBar();
+            const modal = document.getElementById('bloom-crop-update-modal');
+            const rowCount = document.getElementById('bloom-crop-update-row-count');
+            const messageInput = document.getElementById('bloom-crop-update-message');
+            const recipientList = document.getElementById('bloom-crop-update-recipient-list');
+            if (rowCount) rowCount.innerText = `${rows.length} selected row${rows.length === 1 ? '' : 's'}`;
+            if (messageInput) messageInput.value = '';
+            if (recipientList) recipientList.innerHTML = buildBloomCropUpdateRecipientHtml();
+            if (modal) modal.classList.remove('hidden');
+            syncBloomCropUpdateSendButton();
+            updateGlobalBackButton();
+            syncGlobalHeaderChrome({ reason: 'bloom-crop-update', force: true });
+            setTimeout(() => {
+                const input = document.getElementById('bloom-crop-update-message');
+                if (input) input.focus();
+            }, 80);
+            return false;
+        }
+
+        function closeBloomCropUpdateModal() {
+            bloomCropUpdateModalOpen = false;
+            bloomCropUpdatePendingItems = [];
+            const modal = document.getElementById('bloom-crop-update-modal');
+            if (modal) modal.classList.add('hidden');
+            updateGlobalBackButton();
+            syncGlobalHeaderChrome({ reason: 'bloom-crop-update-close', force: true });
+            return false;
+        }
+
+        async function sendBloomCropUpdateEmail() {
+            const rows = (bloomCropUpdatePendingItems.length ? bloomCropUpdatePendingItems : getCartSelectedItems()).filter(Boolean);
+            if (!canUseBloomCropUpdateEmail(rows)) {
+                showToast('Restricted', 'Crop update emails are only available for Dylan and JD.', true);
+                return false;
+            }
+            const selectedReps = getBloomCropUpdateSelectedReps();
+            if (!selectedReps.length) {
+                showToast('Select Reps', 'Choose at least one sales rep.', true);
+                return false;
+            }
+            const messageInput = document.getElementById('bloom-crop-update-message');
+            const customMessage = messageInput ? messageInput.value.trim() : '';
+            const repRecipientEmails = selectedReps.map((rep) => rep.email);
+            const recipientEmails = dedupeRequestEmailRecipients([...BLOOM_CROP_UPDATE_INTERNAL_RECIPIENTS, ...repRecipientEmails]);
+            const payload = {
+                type: 'email',
+                emailType: 'bloom_crop_update',
+                subject: 'GNC PH Crop Update',
+                message: customMessage,
+                userMessage: customMessage,
+                itemsCount: rows.length,
+                formattedItemsText: formatInventoryItemsText(rows, 'BLOOM PICKER ROWS', { includePhotoUrls: true }),
+                formattedItemsHtml: formatInventoryItemsHtml(rows, 'Bloom Picker Rows'),
+                recipientEmails,
+                internalRecipients: BLOOM_CROP_UPDATE_INTERNAL_RECIPIENTS.slice(),
+                selectedRepRecipients: selectedReps,
+                requestedBy: String(currentUser || '').trim(),
+                requestedByDisplay: String(currentUserDisplay || currentUser || '').trim()
+            };
+            const sendBtn = document.getElementById('bloom-crop-update-send-btn');
+            if (sendBtn) sendBtn.disabled = true;
+            showToast('Sending...', 'Sending crop update email.', false);
+            try {
+                const responseData = await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Bloom Crop Update Email');
+                if (!responseData || responseData.ok === false) {
+                    throw new Error(String(firstNonEmptyValue(responseData && responseData.message, responseData && responseData.error, 'Could not send crop update email.')));
+                }
+                showToast('Sent', `Crop update sent to ${selectedReps.length} sales rep${selectedReps.length === 1 ? '' : 's'}.`);
+                closeBloomCropUpdateModal();
+                clearSelection();
+            } catch (error) {
+                showToast('Email Error', error && error.message ? error.message : 'Could not send crop update email.', true);
+                syncBloomCropUpdateSendButton();
+            }
+            return false;
+        }
+
         function syncBloomShareMenuUi(actionVisibility = null) {
             const shareWrap = document.getElementById('batch-share-menu-wrap');
             const shareBtn = document.getElementById('batch-btn-share');
@@ -29657,6 +29871,9 @@ function toggleDriveQuickRequestItem(domId) {
             const batchActionOptions = {
                 preferBloomTextPhotoAttachments: action === 'text' && canUseBloomPicker(items)
             };
+            if (action === 'email' && selectionKind === 'inventory' && canUseBloomCropUpdateEmail(items)) {
+                return openBloomCropUpdateModal(items);
+            }
             toggleCartPanel(false);
             if (selectionKind === 'request') {
                 void executeBatchAction(action, 'request', batchActionOptions);
@@ -33193,59 +33410,78 @@ function toggleDriveQuickRequestItem(domId) {
             const canSeeRequests = !!(canAccessView('request') || (roleAccess.allowedViews && typeof roleAccess.allowedViews.has === 'function' && roleAccess.allowedViews.has('reports')));
             const requestState = getDatasetState('requests');
             const requestDatasetReady = !!((requestState && (requestState.initialLoaded || requestState.fullLoaded)) || (Array.isArray(requestsInventory) && requestsInventory.length));
+            const allowAlwaysOn = safeOptions.alwaysOn === true;
+            const requestReadyEnough = requestDatasetReady || safeOptions.force === true || safeOptions.once === true || allowAlwaysOn;
             const currentVisibleView = typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '';
             const isPrimaryRequestContext = isPrimaryRequestLiveSyncContextVisible();
             const isRequestContextVisible = isPrimaryRequestContext
+                || allowAlwaysOn
                 || (currentVisibleView && currentVisibleView !== 'home' && TRACKED_VIEW_IDS.includes(currentVisibleView));
-            const realtimeNeedsCatchup = safeOptions.allowHealthyRealtime === true || !isRealtimeTableHealthy('v2_active_request');
-            const visibleEnoughForMode = safeOptions.allowHealthyRealtime === true ? isPrimaryRequestContext : isRequestContextVisible;
-            return !!(currentUser && canSeeRequests && requestDatasetReady && visibleEnoughForMode && navigator.onLine !== false && !document.hidden && realtimeNeedsCatchup);
+            const realtimeNeedsCatchup = safeOptions.allowHealthyRealtime === true || allowAlwaysOn || !isRealtimeTableHealthy('v2_active_request');
+            const visibleEnoughForMode = allowAlwaysOn ? true : (safeOptions.allowHealthyRealtime === true ? isPrimaryRequestContext : isRequestContextVisible);
+            return !!(currentUser && canSeeRequests && requestReadyEnough && visibleEnoughForMode && navigator.onLine !== false && !document.hidden && realtimeNeedsCatchup);
         }
 
         function getRequestViewLiveSyncInterval(options = {}) {
+            const safeOptions = options && typeof options === 'object' ? options : {};
             if (isViewVisible('request')) return REQUEST_VIEW_ACTIVE_SIGNATURE_SYNC_MS;
             if (isViewVisible('reports') || (isViewVisible('detail') && lastView === 'request')) return REQUEST_VIEW_SECONDARY_SIGNATURE_SYNC_MS;
+            if (safeOptions.alwaysOn === true) return REQUEST_VIEW_BACKGROUND_SIGNATURE_SYNC_MS;
             return (isIOSDevice() || isStandaloneApp()) ? 9000 : 12000;
         }
 
         async function runRequestViewLiveSync(options = {}) {
             const safeOptions = options && typeof options === 'object' ? options : {};
-            if (requestViewLiveSyncInFlight) return;
+            if (requestViewLiveSyncInFlight) return false;
             if (!shouldRunRequestViewLiveSync(safeOptions)) {
                 if (!safeOptions.once) clearRequestViewLiveSync();
-                return;
+                return false;
             }
             const pauseDelay = requestViewLiveSyncPausedUntil - Date.now();
             if (pauseDelay > 0) {
                 if (!safeOptions.once) syncRequestViewLiveSync(pauseDelay + 120, safeOptions);
-                return;
+                return false;
             }
             if (shouldDeferInteractiveBackgroundWork()) {
                 if (!safeOptions.once) syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS, safeOptions);
-                return;
+                return false;
             }
             const minInterval = Math.max(0, Number(safeOptions.minIntervalMs) || 0);
             const now = Date.now();
-            if (!safeOptions.force && minInterval && lastRequestViewSignatureSyncAt && (now - lastRequestViewSignatureSyncAt) < minInterval) return;
+            if (!safeOptions.force && minInterval && lastRequestViewSignatureSyncAt && (now - lastRequestViewSignatureSyncAt) < minInterval) return false;
             lastRequestViewSignatureSyncAt = now;
             requestViewLiveSyncInFlight = true;
             try {
                 const signatureRows = await fetchAllSupabaseRows('v2_active_request', 'select=unique_id,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,date_completed,req_match,req_spec,req_caliper,req_pic_note,req_comments,av_note,req_photo_link,req_photo_name&order=unique_id.desc');
                 if (shouldDeferInteractiveBackgroundWork()) {
                     if (!safeOptions.once) syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS, safeOptions);
-                    return;
+                    return false;
                 }
                 const nextSignature = buildRequestLiveSyncSignature(signatureRows);
-                if (nextSignature === requestViewLiveSyncSignature) return;
+                if (nextSignature === requestViewLiveSyncSignature) return true;
                 const rows = await fetchAllSupabaseRows('v2_active_request', 'select=*&order=unique_id.desc');
                 if (shouldDeferInteractiveBackgroundWork()) {
                     if (!safeOptions.once) syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS, safeOptions);
-                    return;
+                    return false;
                 }
                 const formattedRows = formatFetchedRows(rows, 'v2_active_request');
                 processAndLoadData({ requestsData: formattedRows });
+                const state = getDatasetState('requests');
+                state.initialLoaded = true;
+                state.fullLoaded = true;
+                state.lastLoadedAt = new Date().toISOString();
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(formattedRows);
+                refreshLocalRequestViewState('request-live-sync', {
+                    renderVisible: true,
+                    forceRender: true,
+                    forceReportsRender: true,
+                    preferImmediate: true,
+                    typingDelay: REQUEST_REALTIME_UI_DELAY_MS
+                });
+                touchSyncTimestamp();
+                return true;
             } catch (error) {
+                return false;
             } finally {
                 requestViewLiveSyncInFlight = false;
                 if (!safeOptions.once && shouldRunRequestViewLiveSync(safeOptions)) syncRequestViewLiveSync(getRequestViewLiveSyncInterval(safeOptions), safeOptions);
