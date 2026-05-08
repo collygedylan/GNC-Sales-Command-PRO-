@@ -2879,6 +2879,13 @@ function buildRequestEmailMessage_(payload) {
     const userMessage = String(payload.message || payload.userMessage || '').trim();
     const requestedBy = String(payload.requestedByDisplay || payload.requestedBy || '').trim();
     const requestedByHtml = requestedBy ? '<p><strong>Sent By:</strong> ' + escapeEmailHtml_(requestedBy) + '</p>' : '';
+    const cropItemsHtml = String(itemsHtml || '')
+      .replace(/<div[^>]*>\s*Bloom Picker Rows\s*<\/div>/gi, '')
+      .replace(/<div>\s*<strong>\s*LOC MATCH %:\s*<\/strong>[^<]*<\/div>/gi, '');
+    const cropItemsText = String(itemsText || '').split(/\r?\n/).filter(function(line) {
+      const normalizedLine = String(line || '').trim().toLowerCase();
+      return normalizedLine !== 'bloom picker rows' && normalizedLine !== 'bloom picker row' && normalizedLine.indexOf('loc match %:') !== 0;
+    }).join('\n').trim();
     const messageHtml = userMessage
       ? [
           '<div style="white-space:pre-wrap; margin:16px 0 20px; padding:14px 16px; background:#f0fdf4; border-left:4px solid #007a4d; border-radius:8px; font-size:14px; line-height:1.45;">',
@@ -2886,13 +2893,12 @@ function buildRequestEmailMessage_(payload) {
           '</div>'
         ].join('')
       : '';
-    const detailSection = itemsHtml
+    const detailSection = cropItemsHtml
       ? [
           '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
-          '<p style="font-weight:700; margin-bottom:12px;">Selected Bloom Picker Rows</p>',
-          itemsHtml
+          cropItemsHtml
         ].join('')
-      : '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 12px; color: #777;">No selected Bloom Picker row details were provided.</p>';
+      : '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 12px; color: #777;">No row details were provided.</p>';
 
     return {
       subject: subject,
@@ -2900,7 +2906,7 @@ function buildRequestEmailMessage_(payload) {
         'GNC PH Crop Update',
         requestedBy ? 'Sent By: ' + requestedBy : '',
         userMessage,
-        itemsText
+        cropItemsText
       ].filter(Boolean).join('\n\n'),
       htmlBody: [
         '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',

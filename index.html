@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.08.05';
+window.__APP_SHELL_VERSION__ = 'V2026.05.08.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1092,7 +1092,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.08.05').trim() || 'V2026.05.08.05';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.08.06').trim() || 'V2026.05.08.06';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1711,7 +1711,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.08.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.08.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10509,7 +10509,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.08.05').trim() || 'V2026.05.08.05';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.08.06').trim() || 'V2026.05.08.06';
         const DRIVE_DETAIL_ITEM_FIELD_ORDER = Object.freeze([
             'WAREHOUSEID', 'PLANTGROUPCODE', 'ITEMCODE', 'QUALITYCODE', 'CONTSIZE', 'COMMONNAME',
             'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PRIORITY',
@@ -29783,8 +29783,8 @@ function toggleDriveQuickRequestItem(domId) {
                 message: customMessage,
                 userMessage: customMessage,
                 itemsCount: rows.length,
-                formattedItemsText: formatInventoryItemsText(rows, 'BLOOM PICKER ROWS', { includePhotoUrls: true }),
-                formattedItemsHtml: formatInventoryItemsHtml(rows, 'Bloom Picker Rows'),
+                formattedItemsText: formatInventoryItemsText(rows, '', { includeHeader: false, includePhotoUrls: true, omitFieldLabels: ['LOC MATCH %'] }),
+                formattedItemsHtml: formatInventoryItemsHtml(rows, '', { omitFieldLabels: ['LOC MATCH %'] }),
                 recipientEmails,
                 internalRecipients: BLOOM_CROP_UPDATE_INTERNAL_RECIPIENTS.slice(),
                 selectedRepRecipients: selectedReps,
@@ -37244,10 +37244,12 @@ ${folderNote ? `Folder Note: ${folderNote}
         function formatInventoryItemsText(items, headerLabel = 'SELECTED ROWS', options = {}) {
             const includeHeader = options.includeHeader !== false && !!headerLabel;
             const includePhotoUrls = options.includePhotoUrls !== false;
+            const omitFieldLabels = new Set(Array.isArray(options.omitFieldLabels) ? options.omitFieldLabels.map((label) => String(label || '').trim().toLowerCase()).filter(Boolean) : []);
             let returnText = includeHeader ? `${headerLabel}\n\n` : '';
             (items || []).forEach((item, itemIndex) => {
                 returnText += `${getInventoryShareSummaryLine(item)}\n`;
                 getInventoryShareFieldRows(item).forEach(field => {
+                    if (omitFieldLabels.has(String(field.label || '').trim().toLowerCase())) return;
                     const rawValue = String(firstNonEmptyValue(field.value, '') || '').trim();
                     if (!rawValue && !field.force) return;
                     const formattedValue = field.percent && rawValue ? (rawValue.includes('%') ? rawValue : `${rawValue}%`) : rawValue;
@@ -37263,7 +37265,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             return returnText.trimEnd();
         }
 
-        function formatInventoryItemsHtml(items, headerLabel = '') {
+        function formatInventoryItemsHtml(items, headerLabel = '', options = {}) {
+            const omitFieldLabels = new Set(Array.isArray(options.omitFieldLabels) ? options.omitFieldLabels.map((label) => String(label || '').trim().toLowerCase()).filter(Boolean) : []);
             const blocks = [];
             if (headerLabel) {
                 blocks.push(`<div style="font-weight:700;margin:0 0 14px 0;">${escapeShareHtml(headerLabel)}</div>`);
@@ -37272,6 +37275,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const lines = [];
                 lines.push(`<div style="font-weight:700;margin:0 0 4px 0;">${escapeShareHtml(getInventoryShareSummaryLine(item))}</div>`);
                 getInventoryShareFieldRows(item).forEach(field => {
+                    if (omitFieldLabels.has(String(field.label || '').trim().toLowerCase())) return;
                     const rawValue = String(firstNonEmptyValue(field.value, '') || '').trim();
                     if (!rawValue && !field.force) return;
                     const formattedValue = field.percent && rawValue ? (rawValue.includes('%') ? rawValue : `${rawValue}%`) : rawValue;
