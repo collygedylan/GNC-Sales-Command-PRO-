@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.09.01';
+window.__APP_SHELL_VERSION__ = 'V2026.05.09.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1094,7 +1094,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.09.01').trim() || 'V2026.05.09.01';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.09.02').trim() || 'V2026.05.09.02';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1726,7 +1726,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.09.01';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.09.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10540,7 +10540,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.09.01').trim() || 'V2026.05.09.01';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.09.02').trim() || 'V2026.05.09.02';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -12491,8 +12491,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             })
             : null;
         const NCR_NEXT_UP_LOT_SUFFIXES = Object.freeze(['F1', 'U1', 'U2', 'U3']);
+        const NCR_NEW_CROP_RELEASE_SEASONS = Object.freeze(new Set(['F1', 'S1']));
         const NCR_MOVE_UP_SEASONS = Object.freeze(new Set(['U1', 'U2', 'U3']));
-        const NCR_NEW_CROP_MIN_SALES_YEAR = 26;
         const NCR_NEXT_UP_LOT_SUFFIX_ORDER = Object.freeze(NCR_NEXT_UP_LOT_SUFFIXES.reduce((map, suffix, index) => {
             map[suffix] = index;
             return map;
@@ -12648,6 +12648,28 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return NCR_MOVE_UP_SEASONS.has(String(season || '').trim().toUpperCase());
         }
 
+        function isNcrNewCropReleaseSeasonCode(season = '') {
+            return NCR_NEW_CROP_RELEASE_SEASONS.has(String(season || '').trim().toUpperCase());
+        }
+
+        function getNcrReleaseSalesYearCutoff(now = new Date()) {
+            const releaseInfo = getNextNcrReleaseSeasonInfo(now);
+            if (releaseInfo && releaseInfo.releaseSalesYear != null) return releaseInfo.releaseSalesYear;
+            return getCurrentNcrSalesYearCode(now);
+        }
+
+        function isNcrSalesYearAboveReleaseCutoff(salesYear = null, now = new Date()) {
+            const normalizedYear = normalizeNcrSalesYearValue(salesYear);
+            const cutoffYear = getNcrReleaseSalesYearCutoff(now);
+            return normalizedYear != null && cutoffYear != null && normalizedYear > cutoffYear;
+        }
+
+        function isNcrSalesYearAtOrBelowReleaseCutoff(salesYear = null, now = new Date()) {
+            const normalizedYear = normalizeNcrSalesYearValue(salesYear);
+            const cutoffYear = getNcrReleaseSalesYearCutoff(now);
+            return normalizedYear != null && cutoffYear != null && normalizedYear <= cutoffYear;
+        }
+
         function getNcrPtrAvailableNumber(item = null) {
             return parseAppNumber(firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.ptravailable, ''));
         }
@@ -12662,20 +12684,20 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const uid = getNcrSourceUniqueId(item);
             if (uid && isNcrCompletedUid(uid)) return false;
             if (!getNcrItemCode(item)) return false;
-            if (!isNcrReleaseCropCandidate(item, now)) return false;
             return hasNcrPositivePtrAvailable(item);
         }
 
         function isNcrReleaseCandidateRow(item = null, now = new Date()) {
             if (!isNcrOpenReleaseCandidateBaseRow(item, now)) return false;
-            if (isNcrMoveUpSeasonCode(getNcrSeasonCode(item))) return false;
-            const salesYear = getNcrSalesYear(item);
-            return salesYear != null && salesYear > NCR_NEW_CROP_MIN_SALES_YEAR;
+            const seasonCode = getNcrSeasonCode(item);
+            if (!isNcrNewCropReleaseSeasonCode(seasonCode)) return false;
+            return isNcrSalesYearAboveReleaseCutoff(getNcrSalesYear(item), now);
         }
 
         function isNcrMoveUpCandidateRow(item = null, now = new Date()) {
             if (!isNcrOpenReleaseCandidateBaseRow(item, now)) return false;
-            return isNcrMoveUpSeasonCode(getNcrSeasonCode(item));
+            if (!isNcrMoveUpSeasonCode(getNcrSeasonCode(item))) return false;
+            return isNcrSalesYearAtOrBelowReleaseCutoff(getNcrSalesYear(item), now);
         }
 
         function parseNcrLotCode(lotCode = '') {
@@ -23494,8 +23516,9 @@ function toggleDriveQuickRequestItem(domId) {
             if (!sourceItem) return false;
             const uid = getNcrSourceUniqueId(sourceItem);
             if (uid && isNcrCompletedUid(uid)) return false;
+            if (!isNcrNewCropReleaseSeasonCode(getNcrSeasonCode(sourceItem))) return false;
             const salesYear = getNcrReleaseSalesYearNumber(item, sourceItem);
-            return salesYear != null && salesYear > 26;
+            return isNcrSalesYearAboveReleaseCutoff(salesYear);
         }
 
         function getNcrReleaseDraftValuesFromSaveContext(item = null, prefix = '', sourceItem = null) {
@@ -43026,18 +43049,16 @@ ${folderNote ? `Folder Note: ${folderNote}
                         ? esc(group.currentSeasonLotcodes.join(', '))
                         : 'None';
                     const currentCropLabel = `SY${group.currentSalesYear || ''} ${group.currentSeasonSuffix || ''}`.trim();
-                    const releaseYearLabel = Array.isArray(group.releaseSalesYears) && group.releaseSalesYears.length
-                        ? group.releaseSalesYears.join('/')
-                        : (group.releaseSalesYear || '');
-                    const releaseCropLabel = `Release SY${releaseYearLabel} ${group.releaseSeason || ''}`.trim();
+                    const releaseCutoffYear = getNcrReleaseSalesYearCutoff();
+                    const releaseCropLabel = `New Crop > SY${releaseCutoffYear || '-'} F1/S1`;
                     return `<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectReviewItem', [group.code, group.name, group.size], `Open ${group.name}`)}><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-grow pr-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-yellow-500">Current and older crop PTRAVAILABLE</div><div class="mt-1 text-2xl font-black text-yellow-700 leading-none">${esc(currentSeasonPtrLabel)}</div><div class="mt-3 font-bold text-[15px] text-yellow-800 truncate">${group.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${group.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${group.code}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-yellow-200 bg-white px-3 py-1 text-yellow-700">${esc(currentCropLabel)}</span><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">${esc(releaseCropLabel)}</span></div><div class="mt-3 text-[10px] font-black uppercase tracking-[0.14em] text-yellow-500">Current and older lotcodes</div><div class="mt-1 text-xs font-semibold text-yellow-700 break-words">${currentSeasonLotcodesLabel}</div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${group.count} Locs</div></div></div>`;
-                }, { prefixHtml: modeSwitcherHtml, approxCardHeight: 132, emptyHtml: `<div class="p-8 text-center text-gray-400">No items require New Crop Release review.</div>` });
+                }, { prefixHtml: modeSwitcherHtml, approxCardHeight: 132, emptyHtml: `<div class="p-8 text-center text-gray-400">No F1 or S1 rows above the New Crop salesyear cutoff require review.</div>` });
             } else if(reviewViewLevel === 1){
                 let items = getReviewDrilldownItems(selectedReviewItemCode);
                 renderMarkupChunkedByKey('review-detail', container, crumb, items, `${selectedReviewCommonName} / ${selectedReviewContSize}`, (item) => generateCard(item, 'review', 'status-yellow'), {
                     prefixHtml: `${modeSwitcherHtml}<div class="back-btn" ${buildFastInvokeAttrs('backReviewView', [], 'Back to list')}><i class="ph-bold ph-arrow-left"></i> Back to List</div>`,
                     approxCardHeight: 305,
-                    emptyHtml: `<div class="p-8 text-center text-gray-400">No next-season, U1, U2, or U3 rows with PTRAVAILABLE greater than 0 were found for this item.</div>`
+                    emptyHtml: `<div class="p-8 text-center text-gray-400">No F1 or S1 rows above the New Crop salesyear cutoff were found for this item.</div>`
                 });
             }
         }
@@ -43052,7 +43073,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (clearBtn) clearBtn.classList.toggle('hidden', !String(moveUpSearchTerm || '').trim());
             const moveUpItems = ensureMoveUpInventoryBuilt();
             if (moveUpItems.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400">No U1, U2, or U3 rows require Move Up review.</div>`;
+                container.innerHTML = `<div class="p-8 text-center text-gray-400">No U1, U2, or U3 rows at or below the Move Up salesyear cutoff require review.</div>`;
                 crumb.innerText = "All Clear";
                 return;
             }
@@ -43075,7 +43096,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 renderMarkupChunkedByKey('move-up-detail', container, crumb, items, `${selectedMoveUpCommonName} / ${selectedMoveUpContSize}`, (item) => generateCard(item, 'move-up', 'status-green'), {
                     prefixHtml: `<div class="back-btn" ${buildFastInvokeAttrs('backMoveUpView', [], 'Back to list')}><i class="ph-bold ph-arrow-left"></i> Back to List</div>`,
                     approxCardHeight: 305,
-                    emptyHtml: `<div class="p-8 text-center text-gray-400">No U1, U2, or U3 rows with PTRAVAILABLE greater than 0 were found for this item.</div>`
+                    emptyHtml: `<div class="p-8 text-center text-gray-400">No U1, U2, or U3 rows at or below the Move Up salesyear cutoff were found for this item.</div>`
                 });
             }
         }
