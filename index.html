@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.09.03';
+window.__APP_SHELL_VERSION__ = 'V2026.05.09.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -271,6 +271,8 @@ body.viewport-compact .app-av-card-thumb-action{font-size:.48rem;padding:.24rem 
         @media (max-width:720px),(pointer:coarse){
             #task-tabs-container.task-top-inline .task-top-control-panel.excel-filter-panel,
             #drive-season-filters.drive-top-inline .task-top-control-panel.excel-filter-panel,
+            #review-plant-filters.drive-top-inline .task-top-control-panel.excel-filter-panel,
+            #move-up-plant-filters.drive-top-inline .task-top-control-panel.excel-filter-panel,
             #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel,
             #drive-plant-filters.drive-top-inline .task-top-control-panel.excel-filter-panel,
             #docks-filter-controls.docks-top-inline .task-top-control-panel.excel-filter-panel{
@@ -303,30 +305,64 @@ body.viewport-compact #task-tabs-container.task-top-inline #task-subtabs-contain
 body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .task-top-control-panel,
 body.viewport-compact #task-tabs-container.task-top-inline #task-contsize-filters .task-top-control-panel{left:0;right:auto}
 body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .task-top-control-panel{width:min(20rem,calc(100vw - (var(--shell-gutter) * 2)))}
-        #drive-season-filters.drive-top-inline{display:block;overflow:visible !important;padding:0 !important;margin-bottom:.35rem !important}
+        #drive-season-filters.drive-top-inline,
+        #review-plant-filters.drive-top-inline,
+        #move-up-plant-filters.drive-top-inline{display:block;overflow:visible !important;padding:0 !important;margin-bottom:.35rem !important}
         #drive-season-filters.drive-top-inline .drive-top-controls-row{display:grid;grid-template-columns:minmax(0,1.34fr) minmax(0,1.22fr) minmax(0,1.12fr) minmax(0,.9fr);gap:.42rem;align-items:start}
-        #drive-season-filters.drive-top-inline .task-top-control-shell{position:relative;height:100%;padding:.38rem .4rem;border-radius:1rem;min-width:0}
-        #drive-season-filters.drive-top-inline .task-top-control-button{position:relative;min-height:46px;padding:.42rem .48rem;gap:.38rem;border-radius:999px}
-        #drive-season-filters.drive-top-inline .task-top-control-button i{font-size:.82rem}
-        #drive-season-filters.drive-top-inline .task-top-control-title{font-size:.48rem;letter-spacing:.11em}
-        #drive-season-filters.drive-top-inline .task-top-control-summary{margin-top:.14rem;font-size:.66rem;line-height:1.08}
-        #drive-season-filters.drive-top-inline .task-top-control-panel{position:absolute;top:calc(100% + .28rem);left:0;z-index:80;width:min(16rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
+        #review-plant-filters.drive-top-inline .drive-top-controls-row,
+        #move-up-plant-filters.drive-top-inline .drive-top-controls-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.42rem;align-items:start}
+        #drive-season-filters.drive-top-inline .task-top-control-shell,
+        #review-plant-filters.drive-top-inline .task-top-control-shell,
+        #move-up-plant-filters.drive-top-inline .task-top-control-shell{position:relative;height:100%;padding:.38rem .4rem;border-radius:1rem;min-width:0}
+        #drive-season-filters.drive-top-inline .task-top-control-button,
+        #review-plant-filters.drive-top-inline .task-top-control-button,
+        #move-up-plant-filters.drive-top-inline .task-top-control-button{position:relative;min-height:46px;padding:.42rem .48rem;gap:.38rem;border-radius:999px}
+        #drive-season-filters.drive-top-inline .task-top-control-button i,
+        #review-plant-filters.drive-top-inline .task-top-control-button i,
+        #move-up-plant-filters.drive-top-inline .task-top-control-button i{font-size:.82rem}
+        #drive-season-filters.drive-top-inline .task-top-control-title,
+        #review-plant-filters.drive-top-inline .task-top-control-title,
+        #move-up-plant-filters.drive-top-inline .task-top-control-title{font-size:.48rem;letter-spacing:.11em}
+        #drive-season-filters.drive-top-inline .task-top-control-summary,
+        #review-plant-filters.drive-top-inline .task-top-control-summary,
+        #move-up-plant-filters.drive-top-inline .task-top-control-summary{margin-top:.14rem;font-size:.66rem;line-height:1.08}
+        #drive-season-filters.drive-top-inline .task-top-control-panel,
+        #review-plant-filters.drive-top-inline .task-top-control-panel,
+        #move-up-plant-filters.drive-top-inline .task-top-control-panel{position:absolute;top:calc(100% + .28rem);left:0;z-index:80;width:min(16rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
         #drive-season-filters.drive-top-inline [data-drive-filter-shell="season"] .task-top-control-panel,
         #drive-season-filters.drive-top-inline [data-drive-filter-shell="genus"] .task-top-control-panel,
-        #drive-season-filters.drive-top-inline [data-drive-filter-shell="contsize"] .task-top-control-panel{left:auto;right:0}
+        #drive-season-filters.drive-top-inline [data-drive-filter-shell="contsize"] .task-top-control-panel,
+        #review-plant-filters.drive-top-inline [data-ncr-filter-shell="genus"] .task-top-control-panel,
+        #review-plant-filters.drive-top-inline [data-ncr-filter-shell="contsize"] .task-top-control-panel,
+        #move-up-plant-filters.drive-top-inline [data-ncr-filter-shell="genus"] .task-top-control-panel,
+        #move-up-plant-filters.drive-top-inline [data-ncr-filter-shell="contsize"] .task-top-control-panel{left:auto;right:0}
         #drive-season-filters.drive-top-inline [data-drive-filter-shell="season"] .task-top-control-panel{width:min(14rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #drive-season-filters.drive-top-inline [data-drive-filter-shell="genus"] .task-top-control-panel{width:min(17rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #drive-season-filters.drive-top-inline [data-drive-filter-shell="contsize"] .task-top-control-panel{width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #drive-season-filters.drive-top-inline .drive-filter-shell--toggle .task-top-control-button{justify-content:flex-start}
         body.viewport-compact #drive-season-filters.drive-top-inline .drive-top-controls-row{grid-template-columns:minmax(0,1.38fr) minmax(0,1.24fr) minmax(0,1.12fr) minmax(0,.92fr) !important;gap:.38rem !important}
-        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-shell{padding:.36rem .34rem !important;border-radius:1rem !important}
-        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-button{min-height:46px !important;padding:.44rem .48rem !important;gap:.34rem !important;border-radius:999px !important}
-        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-button i{font-size:.8rem !important}
-        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-title{font-size:.5rem !important;letter-spacing:.1em !important}
-        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-summary{margin-top:.14rem !important;font-size:.68rem !important;line-height:1.08 !important}
+        body.viewport-compact #review-plant-filters.drive-top-inline .drive-top-controls-row,
+        body.viewport-compact #move-up-plant-filters.drive-top-inline .drive-top-controls-row{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:.38rem !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-shell,
+        body.viewport-compact #review-plant-filters.drive-top-inline .task-top-control-shell,
+        body.viewport-compact #move-up-plant-filters.drive-top-inline .task-top-control-shell{padding:.36rem .34rem !important;border-radius:1rem !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-button,
+        body.viewport-compact #review-plant-filters.drive-top-inline .task-top-control-button,
+        body.viewport-compact #move-up-plant-filters.drive-top-inline .task-top-control-button{min-height:46px !important;padding:.44rem .48rem !important;gap:.34rem !important;border-radius:999px !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-button i,
+        body.viewport-compact #review-plant-filters.drive-top-inline .task-top-control-button i,
+        body.viewport-compact #move-up-plant-filters.drive-top-inline .task-top-control-button i{font-size:.8rem !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-title,
+        body.viewport-compact #review-plant-filters.drive-top-inline .task-top-control-title,
+        body.viewport-compact #move-up-plant-filters.drive-top-inline .task-top-control-title{font-size:.5rem !important;letter-spacing:.1em !important}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-summary,
+        body.viewport-compact #review-plant-filters.drive-top-inline .task-top-control-summary,
+        body.viewport-compact #move-up-plant-filters.drive-top-inline .task-top-control-summary{margin-top:.14rem !important;font-size:.68rem !important;line-height:1.08 !important}
         body.viewport-compact #drive-season-filters.drive-top-inline [data-drive-filter-shell="hold"] .task-top-control-title{font-size:.48rem !important;letter-spacing:.08em !important}
         body.viewport-compact #drive-season-filters.drive-top-inline [data-drive-filter-shell="hold"] .task-top-control-summary{font-size:.64rem !important}
-        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-panel{top:calc(100% + .24rem);width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
+        body.viewport-compact #drive-season-filters.drive-top-inline .task-top-control-panel,
+        body.viewport-compact #review-plant-filters.drive-top-inline .task-top-control-panel,
+        body.viewport-compact #move-up-plant-filters.drive-top-inline .task-top-control-panel{top:calc(100% + .24rem);width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
         body.viewport-compact #drive-season-filters.drive-top-inline [data-drive-filter-shell="genus"] .task-top-control-panel{width:min(16rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #av-top-filters.av-top-inline{display:block;overflow:visible !important;padding:0 !important;margin-bottom:.55rem !important}
         #av-top-filters.av-top-inline .av-top-controls-row{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(0,1.15fr) minmax(0,1.12fr) minmax(0,.9fr);gap:.42rem;align-items:start}
@@ -500,12 +536,13 @@ body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-
         .freeze-panel #drive-search-container,.freeze-panel #av-search-container,.freeze-panel #reserves-search-container,.freeze-panel #docks-search-container{position:relative;top:auto;z-index:auto}
         .freeze-panel .task-tabs,.freeze-panel .detail-tabs{background:transparent}
         .freeze-panel > :last-child{margin-bottom:0 !important}
-        #view-drive #drive-search-container.drive-search-static,#view-tasks #tasks-search-container.tasks-search-static{position:-webkit-sticky;position:sticky;top:0;z-index:54}
-        #view-drive .drive-controls-sticky,#view-tasks .task-controls-sticky{--freeze-panel-offset:0px;padding:.06rem 0 .16rem;margin:0 0 .22rem;z-index:48}
+        #view-drive #drive-search-container.drive-search-static,#view-tasks #tasks-search-container.tasks-search-static,#view-review #review-search-container.drive-search-static,#view-move-up #move-up-search-container.drive-search-static{position:-webkit-sticky;position:sticky;top:0;z-index:54}
+        #view-drive .drive-controls-sticky,#view-tasks .task-controls-sticky,#view-review .drive-controls-sticky,#view-move-up .drive-controls-sticky{--freeze-panel-offset:0px;padding:.06rem 0 .16rem;margin:0 0 .22rem;z-index:48}
         #view-drive .drive-controls-sticky #drive-drill-tabs{margin-bottom:.18rem}
         #view-drive .drive-controls-sticky #drive-season-filters{margin-bottom:.18rem}
         #view-drive .drive-controls-sticky #drive-plant-filters{margin-bottom:0 !important}
         #view-tasks .task-controls-sticky #task-tabs-container{margin-bottom:0 !important}
+        #view-review .drive-controls-sticky #review-plant-filters,#view-move-up .drive-controls-sticky #move-up-plant-filters{margin-bottom:.18rem !important}
         #view-av #av-search-container.av-search-static{position:relative;top:auto;z-index:auto}
         #view-av .av-primary-tabs-sticky{--freeze-panel-offset:0px;padding:.06rem 0 .16rem;margin:0 0 .22rem;z-index:46}
         #view-av .av-primary-tabs-sticky .task-tabs{margin-bottom:0}
@@ -1094,7 +1131,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.09.03').trim() || 'V2026.05.09.03';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.09.04').trim() || 'V2026.05.09.04';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1437,11 +1474,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 </div>
 
                 <div id="view-review" class="hidden">
-                    <div class="freeze-panel">
-                    <div id="review-search-container" class="sticky-search relative mb-2">
+                    <div id="review-search-container" class="sticky-search relative mb-2 drive-search-static">
                         <input type="text" id="review-search" class="input-field w-full pr-10 !mb-0" placeholder="Search New Crop Release..." oninput="handleReviewSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="review-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReviewSearch()"></i>
                     </div>
+                    <div class="freeze-panel drive-controls-sticky">
                     <div id="review-plant-filters" class="hidden mb-3"></div>
                     <div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                     </div>
@@ -1449,11 +1486,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 </div>
 
                 <div id="view-move-up" class="hidden">
-                    <div class="freeze-panel">
-                    <div id="move-up-search-container" class="sticky-search relative mb-2">
+                    <div id="move-up-search-container" class="sticky-search relative mb-2 drive-search-static">
                         <input type="text" id="move-up-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Move Up..." oninput="handleMoveUpSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="move-up-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearMoveUpSearch()"></i>
                     </div>
+                    <div class="freeze-panel drive-controls-sticky">
                     <div id="move-up-plant-filters" class="hidden mb-3"></div>
                     <div id="move-up-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                     </div>
@@ -1602,7 +1639,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="ncr-pick" class="input-field" placeholder="e.g. Needs spacing" oninput="handleNcrDraftInput('pick', this.value)"></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="ncr-comments" class="input-field resize-y" placeholder="Any additional comments..." oninput="handleNcrDraftInput('comments', this.value)"></textarea></div>
                         <div class="mt-4">
-                            <button id="ncr-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveNcrCompletion()">DONE</button>
+<button id="ncr-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveNcrCompletion()">SEND FOR APPROVAL</button>
                         </div>
                     </div>
                     <div id="det-docks-content" class="hidden py-4">
@@ -1728,7 +1765,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.09.03';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.09.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2137,6 +2174,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             taskTeamSelectorCacheHtml = '';
             taskTeamSelectorEmptyHtml = '';
             taskFilteredItemsCache.clear();
+            if (ncrActionabilitySummaryCache && typeof ncrActionabilitySummaryCache.clear === 'function') ncrActionabilitySummaryCache.clear();
             taskReserveJoinedDriveRowsCacheKey = '';
             taskReserveJoinedDriveRowsCache.clear();
             taskHotPriceSubsetCacheKey = '';
@@ -10169,7 +10207,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
         let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
 let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null; let chatVoiceHoldPointerId=''; let chatVoiceHoldForComposer=false; let chatVoiceHoldFinishPending=''; let chatVoiceHoldStartPromise=null;
 let walkieChannels=[]; let walkieChannelMembers=[]; let walkieCalls=[]; let walkieCallMembers=[]; let walkieUsers=[]; let walkieSignalsSeen=new Set(); let walkieDataLoaded=false; let walkieLoadPromise=null; let walkieSchemaReady=null; let walkieSchemaProbePromise=null; let walkieSchemaWarningShown=false; let activeWalkieChannelId=''; let pendingWalkieOpenChannelId=''; let pendingWalkieOpenCallId=''; let walkieComposeOpen=false; let walkieUserSearchTerm=''; let walkieComposeTitle=''; let walkieSelectedUsers=new Set(); let walkieLastRenderSignature=''; let walkieDeviceId=''; let activeWalkieCallId=''; let walkieJoinedCallId=''; let walkieActiveMembershipId=''; let walkiePeerConnections=new Map(); let walkieRemoteAudioElements=new Map(); let walkieLocalStream=null; let walkieHeartbeatTimer=null; let walkieSpeakerHeartbeatTimer=null; let walkieReconnectTimer=null; let walkieActiveSpeakerIntent=false; let walkiePressedPointerId=''; let walkieForegroundNoticeShown=false;
-        let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true;
+        let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map();
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
 let reviewSearchTerm=''; let moveUpSearchTerm=''; let reviewBrowseMode='item'; let selectedReviewBlockAlpha=null; let selectedReviewLocationCode=null; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set();
 const ncrFilterStateByView = {
@@ -10508,6 +10546,24 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_EMAIL_THREAD_TABLE = 'v2_request_email_threads';
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
+        const NCR_APPROVAL_DYLAN_USER = 'dylan_collyge';
+        const NCR_APPROVAL_JD_USER = 'jd_jones';
+        const NCR_APPROVAL_EMAIL_BY_USER = Object.freeze({
+            dylan_collyge: 'dylan_collyge@greenleafnursery.com',
+            jd_jones: 'jd_jones@greenleafnursery.com'
+        });
+        const NCR_APPROVAL_NEW_CROP_VIEW = 'ncr-approvals';
+        const NCR_APPROVAL_MOVE_UP_VIEW = 'move-up-approvals';
+        const NCR_APPROVAL_ASSIGNMENTS = Object.freeze({
+            'new-crop:dylan': 'ncr_approval_new_crop_dylan',
+            'new-crop:jd': 'ncr_approval_new_crop_jd',
+            'new-crop:inventory': 'ncr_inventory_new_crop',
+            'new-crop:complete': 'ncr_inventory_new_crop_complete',
+            'move-up:dylan': 'ncr_approval_move_up_dylan',
+            'move-up:jd': 'ncr_approval_move_up_jd',
+            'move-up:inventory': 'ncr_inventory_move_up',
+            'move-up:complete': 'ncr_inventory_move_up_complete'
+        });
         const BLOOM_CROP_UPDATE_ALLOWED_USER_TOKENS = new Set(['dylan_collyge','jd_jones']);
         const BLOOM_CROP_UPDATE_INTERNAL_RECIPIENTS = Object.freeze(['jd_jones@greenleafnursery.com', 'dylan_collyge@greenleafnursery.com']);
         const BLOOM_CROP_UPDATE_REP_EMAIL_OVERRIDES = Object.freeze({
@@ -10546,7 +10602,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.09.03').trim() || 'V2026.05.09.03';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.09.04').trim() || 'V2026.05.09.04';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -12688,6 +12744,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             if (!item) return false;
             const uid = getNcrSourceUniqueId(item);
             if (uid && isNcrCompletedUid(uid)) return false;
+            if (isNcrApprovalAssignmentValue(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, ''))) return false;
             if (!getNcrItemCode(item)) return false;
             return hasNcrPositivePtrAvailable(item);
         }
@@ -12806,9 +12863,38 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             return summaries;
         }
 
+        function getNcrActionabilityCacheKind(candidatePredicate = isNcrReleaseCandidateRow) {
+            if (candidatePredicate === isNcrMoveUpCandidateRow) return 'move-up';
+            return 'review';
+        }
+
+        function getCachedNcrActionabilitySummaryByItemCode(now = new Date(), candidatePredicate = isNcrReleaseCandidateRow) {
+            const safeNow = now instanceof Date && !Number.isNaN(now.getTime()) ? now : new Date();
+            const kind = getNcrActionabilityCacheKind(candidatePredicate);
+            const cacheKey = [
+                kind,
+                getDatasetLoadSignature('master'),
+                Array.isArray(fullInventory) ? fullInventory.length : 0,
+                getNcrReleaseSalesYearCutoff(safeNow),
+                getCurrentNcrSeasonCode(safeNow),
+                ncrCompletionsLoaded ? 'c1' : 'c0'
+            ].join('::');
+            if (ncrActionabilitySummaryCache.has(cacheKey)) {
+                const cachedSummary = ncrActionabilitySummaryCache.get(cacheKey);
+                ncrActionabilitySummaryCache.delete(cacheKey);
+                ncrActionabilitySummaryCache.set(cacheKey, cachedSummary);
+                incrementInternalPerfCounter('ncrActionabilityCacheHits');
+                return cachedSummary;
+            }
+            const summary = buildNcrActionabilitySummaryByItemCode(safeNow, candidatePredicate);
+            ncrActionabilitySummaryCache.set(cacheKey, summary);
+            trimInternalCacheMap(ncrActionabilitySummaryCache, 8);
+            return summary;
+        }
+
         function getNcrActionableItemCodes(candidatePredicate = isNcrReleaseCandidateRow) {
             const actionableItemCodes = new Set();
-            buildNcrActionabilitySummaryByItemCode(new Date(), candidatePredicate).forEach((summary, itemCode) => {
+            getCachedNcrActionabilitySummaryByItemCode(new Date(), candidatePredicate).forEach((summary, itemCode) => {
                 if ((Number(summary.ptrAvailableTotal) || 0) < 150 && Number(summary.releaseCandidateCount || 0) > 0) {
                     actionableItemCodes.add(itemCode);
                 }
@@ -12821,7 +12907,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
         }
 
         function getNcrCurrentSeasonSummaryByItemCode() {
-            return buildNcrActionabilitySummaryByItemCode();
+            return getCachedNcrActionabilitySummaryByItemCode();
         }
 
         function buildReviewCardGroups(rows = []) {
@@ -12868,7 +12954,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
         }
 
         function buildMoveUpCardGroups(rows = []) {
-            const currentSeasonSummaries = buildNcrActionabilitySummaryByItemCode(new Date(), isNcrMoveUpCandidateRow);
+            const currentSeasonSummaries = getCachedNcrActionabilitySummaryByItemCode(new Date(), isNcrMoveUpCandidateRow);
             const groups = new Map();
             (rows || []).forEach((item) => {
                 const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.ITEM, '')).trim();
@@ -13015,6 +13101,77 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             return (uid ? findItemByUniqueId(uid) : null)
                 || findLinkedMasterRow(item)
                 || (String(firstNonEmptyValue(item && item.SOURCE_TABLE, item && item.source_table, 'v2_master_inventory')).toLowerCase() === 'v2_master_inventory' ? item : null);
+        }
+
+        function normalizeNcrApprovalType(value = '') {
+            const normalized = String(value || '').trim().toLowerCase().replace(/_/g, '-');
+            if (normalized === 'move' || normalized === 'moveup' || normalized === 'move-up') return 'move-up';
+            return 'new-crop';
+        }
+
+        function getNcrApprovalTypeLabel(type = 'new-crop') {
+            return normalizeNcrApprovalType(type) === 'move-up' ? 'Move Up' : 'New Crop Release';
+        }
+
+        function getNcrApprovalTaskViewForType(type = 'new-crop') {
+            return normalizeNcrApprovalType(type) === 'move-up' ? NCR_APPROVAL_MOVE_UP_VIEW : NCR_APPROVAL_NEW_CROP_VIEW;
+        }
+
+        function getNcrApprovalTypeForTaskView(view = activeTaskView) {
+            const safeView = String(view || '').trim().toLowerCase();
+            return safeView === NCR_APPROVAL_MOVE_UP_VIEW ? 'move-up' : 'new-crop';
+        }
+
+        function isNcrApprovalTaskView(view = activeTaskView) {
+            const safeView = String(view || '').trim().toLowerCase();
+            return safeView === NCR_APPROVAL_NEW_CROP_VIEW || safeView === NCR_APPROVAL_MOVE_UP_VIEW;
+        }
+
+        function getNcrApprovalAssignment(type = 'new-crop', stage = 'dylan') {
+            const key = `${normalizeNcrApprovalType(type)}:${String(stage || 'dylan').trim().toLowerCase()}`;
+            return NCR_APPROVAL_ASSIGNMENTS[key] || NCR_APPROVAL_ASSIGNMENTS['new-crop:dylan'];
+        }
+
+        function getNcrApprovalAssignmentValue(item = null) {
+            return String(firstNonEmptyValue(item && item.APP_TAB_ASSIGNMENT, item && item.app_tab_assignment, '') || '').trim().toLowerCase();
+        }
+
+        function getNcrApprovalTypeFromAssignment(value = '') {
+            const normalized = String(value || '').trim().toLowerCase();
+            if (!normalized) return '';
+            if (normalized.includes('move_up') || normalized.includes('move-up')) return 'move-up';
+            if (normalized.includes('new_crop') || normalized.includes('new-crop')) return 'new-crop';
+            return '';
+        }
+
+        function getNcrApprovalStageFromAssignment(value = '') {
+            const normalized = String(value || '').trim().toLowerCase();
+            if (normalized.includes('_complete')) return 'complete';
+            if (normalized.includes('inventory')) return 'inventory';
+            if (normalized.endsWith('_jd') || normalized.includes('_jd_')) return 'jd';
+            if (normalized.endsWith('_dylan') || normalized.includes('_dylan_')) return 'dylan';
+            return '';
+        }
+
+        function isNcrApprovalAssignmentValue(value = '') {
+            const normalized = String(value || '').trim().toLowerCase();
+            if (!normalized) return false;
+            return Object.keys(NCR_APPROVAL_ASSIGNMENTS).some((key) => NCR_APPROVAL_ASSIGNMENTS[key] === normalized);
+        }
+
+        function getNcrApprovalTypeForItem(item = null, fallbackView = '') {
+            const assignmentType = getNcrApprovalTypeFromAssignment(getNcrApprovalAssignmentValue(item));
+            if (assignmentType) return assignmentType;
+            const sourceView = String(firstNonEmptyValue(fallbackView, activeDetailSourceView, lastView, '') || '').trim().toLowerCase();
+            if (sourceView === 'move-up') return 'move-up';
+            if (isNcrMoveUpCandidateRow(item)) return 'move-up';
+            return 'new-crop';
+        }
+
+        function canUseNcrApprovalTaskView() {
+            const normalizedUser = normalizePushUsername(currentUser || currentUserDisplay || '');
+            const access = typeof getRoleAccessState === 'function' ? getRoleAccessState() : {};
+            return !!(access && access.isAdmin) || normalizedUser === NCR_APPROVAL_DYLAN_USER || normalizedUser === NCR_APPROVAL_JD_USER;
         }
 
         function isNcrCompletedUid(uid = '') {
@@ -13906,7 +14063,7 @@ let searchRenderToken = {};
         }
 
         function canEditNcrWorkflow() {
-            return canAccessView('review') || canAccessView('move-up') || canUseNcrTaskView();
+            return canAccessView('review') || canAccessView('move-up') || canUseNcrTaskView() || canUseNcrApprovalTaskView();
         }
         function getPendingRequestCount() {
             let items = getScopedRequestItems(requestsInventory);
@@ -22950,6 +23107,22 @@ function toggleDriveQuickRequestItem(domId) {
                 openSalesOfficeView();
                 return;
             }
+            if (target === 'tasks') {
+                const safePayload = payload && typeof payload === 'object' ? payload : {};
+                const requestedTaskView = String(firstNonEmptyValue(safePayload.taskView, safePayload.task_view, '') || '').trim().toLowerCase();
+                if (requestedTaskView && getAvailableTaskViewValues().includes(requestedTaskView)) {
+                    activeTaskView = requestedTaskView;
+                    activeTaskTab = requestedTaskView;
+                    activeTaskSubview = getDefaultTaskSubviewForView(requestedTaskView);
+                    activeTaskFilter = activeTaskSubview;
+                    taskViewLevel = 0;
+                    selectedTaskBlock = null;
+                    selectedTaskLoc = null;
+                    resetTaskLocationDetailFilters();
+                }
+                switchView('tasks');
+                return;
+            }
             if (target === 'chat') {
                 const safePayload = payload && typeof payload === 'object' ? payload : {};
                 const conversationId = String(safePayload.conversationId || safePayload.conversation_id || '').trim();
@@ -23389,6 +23562,13 @@ function toggleDriveQuickRequestItem(domId) {
             const comments = document.getElementById('ncr-comments'); if (comments) comments.value = draft.comments || '';
             updateNcrMatchPreview(item);
             renderNcrDraftPhotos(item);
+            const saveButton = document.getElementById('ncr-btn-save-complete');
+            if (saveButton) {
+                const approvalStage = getNcrApprovalStageFromAssignment(getNcrApprovalAssignmentValue(item));
+                saveButton.innerText = approvalStage === 'dylan'
+                    ? 'APPROVE AND SEND TO JD'
+                    : (approvalStage === 'jd' ? 'APPROVE FROM MY TASKS CARD' : 'SEND FOR APPROVAL');
+            }
         }
 
         function handleNcrDraftInput(field = '', value = '') {
@@ -23591,7 +23771,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function buildNcrEmailItemPayload(item = activeItem, photoUrls = []) {
             const draft = getNcrDraft(item);
-            const matchValue = String(firstNonEmptyValue(draft && draft.match, '')).trim();
+            const matchValue = String(firstNonEmptyValue(draft && draft.match, item && item.MATCH, item && item.match, '')).trim();
             const locMatchQty = calculateLocMatchQtyValue(item, matchValue);
             const photoCsv = normalizeNcrEmailPhotoUrls(photoUrls).join(',');
             return {
@@ -23604,14 +23784,14 @@ function toggleDriveQuickRequestItem(domId) {
                 season: String(firstNonEmptyValue(item && item.SEASON, '')).trim(),
                 s_lts: String(firstNonEmptyValue(item && item.S_LTS, '')).trim(),
                 ptravailable: String(firstNonEmptyValue(item && item.PTRAVAILABLE, item && item.ptravailable, '')).trim(),
-                spec: String(firstNonEmptyValue(draft && draft.spec, '')).trim(),
-                caliper: String(firstNonEmptyValue(draft && draft.caliper, '')).trim(),
+                spec: String(firstNonEmptyValue(draft && draft.spec, item && item.SPEC, item && item.spec, '')).trim(),
+                caliper: String(firstNonEmptyValue(draft && draft.caliper, item && item.CALIPER, item && item.caliper, '')).trim(),
                 match: matchValue,
-                loc_match_qty: locMatchQty == null ? '' : String(locMatchQty),
-                av_note: String(firstNonEmptyValue(draft && draft.avNote, '')).trim(),
+                loc_match_qty: firstNonEmptyValue(item && item.LOC_MATCH_QTY, item && item.loc_match_qty, '') !== '' ? String(firstNonEmptyValue(item && item.LOC_MATCH_QTY, item && item.loc_match_qty, '')) : (locMatchQty == null ? '' : String(locMatchQty)),
+                av_note: String(firstNonEmptyValue(draft && draft.avNote, item && item.AV_NOTE, item && item.av_note, '')).trim(),
                 reserve: String(firstNonEmptyValue(draft && draft.reserve, 'NO')).trim(),
-                pick_note: String(firstNonEmptyValue(draft && draft.pick, '')).trim(),
-                comments: String(firstNonEmptyValue(draft && draft.comments, '')).trim(),
+                pick_note: String(firstNonEmptyValue(draft && draft.pick, item && item.PICK, item && item.pic_note, '')).trim(),
+                comments: String(firstNonEmptyValue(draft && draft.comments, item && item.SALES_NOTE, item && item.sales_note, '')).trim(),
                 photo: photoCsv,
                 photo_link: photoCsv,
                 photo_urls: photoCsv,
@@ -23929,6 +24109,246 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
 
+        function getNcrApprovalPhotoUrls(item = activeItem) {
+            return normalizeNcrEmailPhotoUrls(parsePhotoCsvValues(mergePhotoCsvList([
+                getSharedAppPhotoLinkCsv(item, { includePending: false }),
+                getRowPhotoLink(item, 'tasks')
+            ])));
+        }
+
+        function refreshNcrApprovalLocalState(reason = 'ncr-approval') {
+            managerReviewInventoryDirty = true;
+            moveUpInventoryDirty = true;
+            movesRecordsCacheKey = '';
+            movesRecordsCache = [];
+            invalidateResolvedViewStateCaches();
+            ['review','move-up','tasks','moves','drive','av','sales-office'].forEach((viewId) => markViewDirty(viewId));
+            if (isViewVisible('review')) queueInteractiveViewRender('review', false, true, 0, 120);
+            if (isViewVisible('move-up')) queueInteractiveViewRender('move-up', false, true, 0, 120);
+            if (isViewVisible('tasks')) queueInteractiveViewRender('tasks', false, true, 0, 120);
+            if (isViewVisible('moves')) queueInteractiveViewRender('moves', false, true, 0, 120);
+            persistCurrentCache(true, reason);
+        }
+
+        function applyNcrApprovalPayloadToLocalRow(masterItem = null, payload = null, reason = 'ncr-approval') {
+            if (!masterItem || !payload) return null;
+            applyMasterSyncPayloadToLocalRow(masterItem, payload);
+            backupLocalItem(masterItem);
+            syncRowDataAcrossViews(masterItem);
+            refreshNcrApprovalLocalState(reason);
+            return masterItem;
+        }
+
+        async function writeNcrApprovalMasterPayload(item = activeItem, payload = null, reason = 'ncr-approval') {
+            const masterItem = getNcrMasterItem(item);
+            const masterId = getNcrSourceUniqueId(masterItem || item);
+            if (!masterItem || !masterId) throw new Error('Could not find the linked inventory row.');
+            await runDetailWriteWithRetry('v2_master_inventory', 'PATCH', payload, `unique_id=eq.${encodeURIComponent(masterId)}`, {
+                timeoutMs: getDetailRowWriteTimeoutMs(),
+                retries: DETAIL_ROW_WRITE_RETRY_COUNT,
+                retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
+            });
+            applyNcrApprovalPayloadToLocalRow(masterItem, payload, reason);
+            if (item && item !== masterItem) applyMasterSyncPayloadToLocalRow(item, payload);
+            return masterItem;
+        }
+
+        async function buildNcrApprovalSubmissionPayload(item = activeItem, type = 'new-crop') {
+            const draft = normalizeNcrDraftForCompletion(item);
+            const masterItem = getNcrMasterItem(item) || item;
+            const payload = {
+                app_tab_assignment: getNcrApprovalAssignment(type, 'dylan'),
+                assignedto: NCR_APPROVAL_DYLAN_USER,
+                date_completed: null
+            };
+            const setIfText = (key, value) => {
+                const text = String(firstNonEmptyValue(value, '') || '').trim();
+                if (text) payload[key] = text;
+            };
+            if (draft) {
+                setIfText('av_note', String(firstNonEmptyValue(draft.avNote, draft.spec, '') || '').trim().toUpperCase());
+                setIfText('spec', draft.spec);
+                setIfText('caliper', draft.caliper);
+                setIfText('pic_note', String(firstNonEmptyValue(draft.pick, getNcrAutoPickNote(item), '') || '').trim());
+                setIfText('sales_note', draft.comments);
+                const matchValue = parseAppNumber(draft.match);
+                if (matchValue != null) {
+                    payload.match = matchValue;
+                    const locMatchQty = calculateLocMatchQtyValue(masterItem || item, draft.match, { currentAsBaseline: true });
+                    if (locMatchQty != null) payload.loc_match_qty = locMatchQty;
+                }
+            }
+            const ptrAvailable = parseAppNumber(firstNonEmptyValue(masterItem && masterItem.PTRAVAILABLE, item && item.PTRAVAILABLE, ''));
+            if (ptrAvailable != null) payload.initial_ptr = ptrAvailable;
+            let photoUrls = [];
+            const draftPhotoEntries = getNcrDraftPhotoEntries(item);
+            if (draftPhotoEntries.length) {
+                photoUrls = await uploadNcrDraftPhotos(item);
+            }
+            if (!photoUrls.length) photoUrls = normalizeNcrEmailPhotoUrls(getNcrDraftDisplayPhotoUrls(item));
+            if (!photoUrls.length) photoUrls = getNcrApprovalPhotoUrls(masterItem || item);
+            if (photoUrls.length) {
+                payload.photo_link = photoUrls.join(',');
+                const photoNameCsv = getNcrUploadedPhotoNameCsv(item, photoUrls);
+                if (photoNameCsv) payload.photo_name = photoNameCsv;
+            }
+            return { payload, photoUrls };
+        }
+
+        async function sendNcrApprovalEmail(item = activeItem, type = 'new-crop', stage = 'dylan', options = {}) {
+            const safeOptions = options || {};
+            const safeStage = String(stage || 'dylan').trim().toLowerCase();
+            const typeLabel = getNcrApprovalTypeLabel(type);
+            const recipients = safeStage === 'dylan'
+                ? [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER]]
+                : [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER], NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_JD_USER]];
+            const photoUrls = normalizeNcrEmailPhotoUrls(safeOptions.photoUrls || getNcrApprovalPhotoUrls(item));
+            const requestStyleItem = buildNcrEmailShareItem(item, photoUrls);
+            const itemPayload = {
+                ...buildNcrEmailItemPayload(item, photoUrls),
+                approval_type: normalizeNcrApprovalType(type),
+                approval_stage: safeStage,
+                approved_qty: String(firstNonEmptyValue(safeOptions.approvedQty, '') || '').trim()
+            };
+            const rowLabel = [item && item.COMMONNAME, item && item.CONTSIZE, item && item.LOCATIONCODE].map((value) => String(value || '').trim()).filter(Boolean).join(' ');
+            const stageLabel = safeStage === 'jd' ? 'JD approval needed' : (safeStage === 'inventory' ? 'Inventory Office handoff' : 'Dylan approval needed');
+            const subject = `${typeLabel} ${stageLabel}${rowLabel ? ': ' + rowLabel : ''}`;
+            const folderId = `ncr-approval-${getNcrSourceUniqueId(item) || Date.now()}`;
+            const payload = {
+                type: 'email',
+                emailType: 'ncr_approval',
+                subject,
+                folderId,
+                requestFolder: folderId,
+                customer: typeLabel,
+                itemsCount: 1,
+                completedBy: String(currentUserDisplay || currentUser || 'Unknown').trim(),
+                recipientEmails: dedupeRequestEmailRecipients(recipients),
+                recipients: dedupeRequestEmailRecipients(recipients).map((email) => ({ email, role: 'internal' })),
+                formattedItemsHtml: formatRequestItemsHtml([requestStyleItem], typeLabel),
+                formattedItemsText: formatRequestItemsText([requestStyleItem], typeLabel, { includePhotoUrls: true }),
+                photoUrls,
+                requestItems: [itemPayload]
+            };
+            const responseData = await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'NCR Approval Email');
+            if (responseData && responseData.ok === false) {
+                throw new Error(String(firstNonEmptyValue(responseData.message, 'NCR approval email failed.')).trim());
+            }
+            return responseData;
+        }
+
+        function sendNcrApprovalPush(item = activeItem, type = 'new-crop', stage = 'dylan', targetUser = NCR_APPROVAL_DYLAN_USER) {
+            const uid = getNcrSourceUniqueId(item);
+            if (!uid) return;
+            const typeLabel = getNcrApprovalTypeLabel(type);
+            const targetView = stage === 'inventory' ? 'moves' : 'tasks';
+            const title = `${typeLabel} Approval`;
+            sendPushNotification('ncr_approval', uid, targetUser, title, 1, {
+                targetUsers: [targetUser],
+                targetUsernames: [targetUser],
+                viewId: targetView,
+                taskView: getNcrApprovalTaskViewForType(type),
+                ncrApprovalStage: stage,
+                ncrApprovalType: normalizeNcrApprovalType(type)
+            });
+        }
+
+        async function notifyNcrApprovalStage(item = activeItem, type = 'new-crop', stage = 'dylan', options = {}) {
+            const safeStage = String(stage || 'dylan').trim().toLowerCase();
+            if (safeStage === 'dylan') sendNcrApprovalPush(item, type, safeStage, NCR_APPROVAL_DYLAN_USER);
+            else if (safeStage === 'jd') sendNcrApprovalPush(item, type, safeStage, NCR_APPROVAL_JD_USER);
+            try {
+                await sendNcrApprovalEmail(item, type, safeStage, options);
+            } catch (error) {
+                console.warn('NCR approval email failed', error);
+                showToast('Email Warning', 'The row was saved, but the approval email could not be sent.', true);
+            }
+        }
+
+        async function submitNcrApprovalToDylan(item = activeItem, type = 'new-crop') {
+            const safeType = normalizeNcrApprovalType(type);
+            const { payload, photoUrls } = await buildNcrApprovalSubmissionPayload(item, safeType);
+            const masterItem = await writeNcrApprovalMasterPayload(item, payload, 'ncr-approval-submit');
+            await notifyNcrApprovalStage(item || masterItem, safeType, 'dylan', { photoUrls });
+            clearNcrDraft(item);
+            if (masterItem && masterItem !== item) clearNcrDraft(masterItem);
+            return masterItem || item;
+        }
+
+        async function approveNcrApprovalAsDylan(uniqueId = '', button = null) {
+            const uid = String(uniqueId || '').trim();
+            const item = uid ? findItemByUniqueId(uid) : null;
+            if (!item) {
+                showToast('Not Found', 'That approval row could not be found.', true);
+                return false;
+            }
+            const type = getNcrApprovalTypeForItem(item);
+            if (button) button.innerText = 'SENDING...';
+            try {
+                const payload = {
+                    app_tab_assignment: getNcrApprovalAssignment(type, 'jd'),
+                    assignedto: NCR_APPROVAL_JD_USER,
+                    date_completed: null
+                };
+                const masterItem = await writeNcrApprovalMasterPayload(item, payload, 'ncr-approval-dylan');
+                await notifyNcrApprovalStage(masterItem || item, type, 'jd');
+                showToast('Sent To JD', `${getNcrApprovalTypeLabel(type)} row sent to JD.`);
+            } catch (error) {
+                console.error('Dylan NCR approval failed', error);
+                showToast('Could Not Approve', error && error.message ? error.message : 'Could not send this row to JD.', true);
+            } finally {
+                if (button) button.innerText = 'Approve And Send To JD';
+            }
+            return false;
+        }
+
+        async function approveNcrApprovalAsJd(uniqueId = '', inputId = '', button = null) {
+            const uid = String(uniqueId || '').trim();
+            const item = uid ? findItemByUniqueId(uid) : null;
+            if (!item) {
+                showToast('Not Found', 'That approval row could not be found.', true);
+                return false;
+            }
+            const input = document.getElementById(String(inputId || '').trim());
+            const rawQty = input ? input.value : '';
+            const qtyValue = parseAppNumber(rawQty);
+            const ptrValue = getNcrPtrAvailableNumber(item);
+            if (qtyValue == null || qtyValue < 0 || Math.floor(qtyValue) !== qtyValue) {
+                if (input) input.focus();
+                showToast('Invalid Quantity', 'Enter a whole number for the approved quantity.', true);
+                return false;
+            }
+            if (ptrValue != null && qtyValue > ptrValue) {
+                if (input) input.focus();
+                showToast('Too High', `Approved quantity must be ${ptrValue} or less.`, true);
+                return false;
+            }
+            if (!getNcrApprovalPhotoUrls(item).length) {
+                showToast('Photo Required', 'A photo is required before sending this row to Inventory Office.', true);
+                return false;
+            }
+            const type = getNcrApprovalTypeForItem(item);
+            if (button) button.innerText = 'SENDING...';
+            try {
+                const payload = {
+                    app_tab_assignment: getNcrApprovalAssignment(type, 'inventory'),
+                    assignedto: '',
+                    loc_match_qty: qtyValue,
+                    initial_ptr: ptrValue == null ? null : ptrValue,
+                    date_completed: null
+                };
+                const masterItem = await writeNcrApprovalMasterPayload(item, payload, 'ncr-approval-jd');
+                await notifyNcrApprovalStage(masterItem || item, type, 'inventory', { approvedQty: qtyValue });
+                showToast('Inventory Office', `${getNcrApprovalTypeLabel(type)} row sent to Inventory Office.`);
+            } catch (error) {
+                console.error('JD NCR approval failed', error);
+                showToast('Could Not Send', error && error.message ? error.message : 'Could not send this row to Inventory Office.', true);
+            } finally {
+                if (button) button.innerText = 'Approve Photo';
+            }
+            return false;
+        }
+
         async function saveNcrCompletion() {
             if (!activeItem) return false;
             if (!canEditNcrWorkflow()) {
@@ -23937,41 +24357,27 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const item = activeItem;
             const button = document.getElementById('ncr-btn-save-complete');
+            const approvalStage = getNcrApprovalStageFromAssignment(getNcrApprovalAssignmentValue(item));
+            if (approvalStage === 'dylan') {
+                return approveNcrApprovalAsDylan(getNcrSourceUniqueId(item), button);
+            }
+            if (approvalStage === 'jd') {
+                showToast('Use Approval Card', 'Enter the approved quantity from the JD approval card in My Tasks.', true);
+                return false;
+            }
             if (button) button.innerText = 'WORKING...';
             try {
-                normalizeNcrDraftForCompletion(item);
-                const choice = await openNcrEmailModal(item);
-                if (choice === 'cancel') return false;
-                const publishToAv = await openNcrAvPublishApproval(item);
-                let emailedJd = false;
-                let photoUrls = [];
-                if (choice === 'email' || publishToAv) {
-                    if (button) button.innerText = 'UPLOADING...';
-                    photoUrls = await uploadNcrDraftPhotos(item);
-                }
-                if (choice === 'email') {
-                    if (button) button.innerText = 'SENDING...';
-                    await sendNcrCompletionEmail(item, photoUrls);
-                    emailedJd = true;
-                }
-                if (publishToAv) {
-                    if (button) button.innerText = 'PUBLISHING...';
-                    await publishNcrDraftToAv(item, photoUrls);
-                }
-                if (button) button.innerText = 'FINALIZING...';
-                const record = buildNcrCompletionRecord(item, emailedJd);
-                await persistNcrCompletionRecord(record);
-                finalizeNcrCompletion(record, item);
-                showToast('Success', publishToAv
-                    ? (emailedJd ? 'New Crop Release row published to AV, emailed to JD, and marked done.' : 'New Crop Release row published to AV and marked done.')
-                    : (emailedJd ? 'New Crop Release row emailed to JD and marked done.' : 'New Crop Release row marked done.'));
+                const type = getNcrApprovalTypeForItem(item);
+                if (button) button.innerText = 'UPLOADING...';
+                await submitNcrApprovalToDylan(item, type);
+                showToast('Sent To Dylan', `${getNcrApprovalTypeLabel(type)} row sent to Dylan for approval.`);
                 return true;
             } catch (error) {
-                console.error('NCR completion failed', error);
-                showToast('Error', error && error.message ? error.message : 'Could not complete this New Crop Release row.', true);
+                console.error('NCR approval submit failed', error);
+                showToast('Error', error && error.message ? error.message : 'Could not send this row for approval.', true);
                 return false;
             } finally {
-                if (button) button.innerText = 'DONE';
+                if (button) button.innerText = 'SEND FOR APPROVAL';
             }
         }
 
@@ -29909,11 +30315,44 @@ function toggleDriveQuickRequestItem(domId) {
                 || String(a.from_locationcode || '').localeCompare(String(b.from_locationcode || ''), undefined, { numeric: true }));
         }
 
+        function getNcrInventoryOfficeMoveRecords() {
+            let nextIndex = 0;
+            return (Array.isArray(fullInventory) ? fullInventory : []).reduce((records, row) => {
+                if (!row) return records;
+                const assignment = getNcrApprovalAssignmentValue(row);
+                if (getNcrApprovalStageFromAssignment(assignment) !== 'inventory') return records;
+                const type = getNcrApprovalTypeFromAssignment(assignment) || 'new-crop';
+                const uid = getNcrSourceUniqueId(row) || `ncr-inventory-${nextIndex++}`;
+                const ptrValue = getNcrPtrAvailableNumber(row);
+                const approvedQty = parseAppNumber(firstNonEmptyValue(row.LOC_MATCH_QTY, row.loc_match_qty, ''));
+                records.push({
+                    id: `ncr_inventory_${uid}`.replace(/[^a-z0-9_-]+/gi, '_'),
+                    source_unique_id: uid,
+                    itemcode: String(firstNonEmptyValue(row.ITEMCODE, row.itemcode, '') || '').trim(),
+                    commonname: String(firstNonEmptyValue(row.COMMONNAME, row.commonname, '') || '').trim(),
+                    lotcode: String(firstNonEmptyValue(row.LOTCODE, row.lotcode, '') || '').trim(),
+                    contsize: String(firstNonEmptyValue(row.CONTSIZE, row.contsize, '') || '').trim(),
+                    from_blockalpha: String(firstNonEmptyValue(row.BLOCKALPHA, row.blockalpha, 'No Block') || 'No Block').trim(),
+                    from_locationcode: String(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, '') || '').trim(),
+                    to_locationcode: 'Inventory Office',
+                    ptravailable: ptrValue == null ? String(firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, '') || '') : ptrValue,
+                    quantity_available: ptrValue == null ? String(firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, '') || '') : ptrValue,
+                    to_ptravailable: '',
+                    threshold: 0,
+                    ncr_inventory_office: true,
+                    ncr_approval_type: type,
+                    ncr_approved_qty: approvedQty == null ? '' : approvedQty,
+                    photo_link: mergePhotoCsvList([getSharedAppPhotoLinkCsv(row, { includePending: false }), getRowPhotoLink(row, 'tasks')])
+                });
+                return records;
+            }, []);
+        }
+
         function getMovesRecords() {
             const cacheKey = `${getDatasetLoadSignature('master')}::${Array.isArray(fullInventory) ? fullInventory.length : 0}`;
             if (movesRecordsCacheKey === cacheKey && Array.isArray(movesRecordsCache)) return movesRecordsCache;
             movesRecordsCacheKey = cacheKey;
-            movesRecordsCache = evaluateMovesFromInventory(fullInventory);
+            movesRecordsCache = evaluateMovesFromInventory(fullInventory).concat(getNcrInventoryOfficeMoveRecords());
             return movesRecordsCache;
         }
 
@@ -29990,6 +30429,14 @@ function toggleDriveQuickRequestItem(domId) {
             const fromLoc = String(firstNonEmptyValue(record.from_locationcode, '-') || '-').trim();
             const toLoc = String(firstNonEmptyValue(record.to_locationcode, '-') || '-').trim();
             const lotCode = String(firstNonEmptyValue(record.lotcode, '-') || '-').trim();
+            if (record && record.ncr_inventory_office) {
+                const typeLabel = getNcrApprovalTypeLabel(record.ncr_approval_type || 'new-crop');
+                const approvedQty = String(firstNonEmptyValue(record.ncr_approved_qty, actualText, '0') || '0').trim();
+                return [
+                    `${typeLabel} approved quantity ${approvedQty} from ${fromLoc} | Lot ${lotCode}`,
+                    `Inventory Office entered ${actualText}${taText !== '0' ? ` | TA ${taText}` : ''}`
+                ].join('\n');
+            }
             return [
                 `Moved ${actualText} from ${fromLoc} to ${toLoc} | Lot ${lotCode}`,
                 `TA ThrowAway ${taText} from ${fromLoc} | Lot ${lotCode}`
@@ -30015,14 +30462,15 @@ function toggleDriveQuickRequestItem(domId) {
                 priority: '',
                 av_note: '',
                 sales_note: salesNote,
-                spec: `Move To: ${String(firstNonEmptyValue(record.to_locationcode, '-') || '-')}`,
+                spec: record && record.ncr_inventory_office ? `${getNcrApprovalTypeLabel(record.ncr_approval_type || 'new-crop')} Approval` : `Move To: ${String(firstNonEmptyValue(record.to_locationcode, '-') || '-')}`,
                 caliper: `TA: ${String(taQty || '0').trim() || '0'}`,
-                pic_note: `Block ${String(firstNonEmptyValue(record.from_blockalpha, 'No Block') || 'No Block')} | Destination PTR ${String(firstNonEmptyValue(record.to_ptravailable, '') || '')}`,
+                pic_note: record && record.ncr_inventory_office ? `Approved Qty ${String(firstNonEmptyValue(record.ncr_approved_qty, actualMoved, '') || '')}` : `Block ${String(firstNonEmptyValue(record.from_blockalpha, 'No Block') || 'No Block')} | Destination PTR ${String(firstNonEmptyValue(record.to_ptravailable, '') || '')}`,
                 order_qty: String(actualMoved || '0').trim() || '0',
                 order_reserve: String(taQty || '0').trim() || '0',
                 order_submitted_by: completedBy,
                 order_submitted_at: completedAt,
                 order_status: 'Pending Review',
+                photo_link: String(firstNonEmptyValue(record.photo_link, '') || ''),
                 completed_by: completedBy,
                 completed_at: completedAt
             };
@@ -30054,6 +30502,24 @@ function toggleDriveQuickRequestItem(domId) {
             }
             upsertLocalSalesOfficeRow(artifacts.clone, { delay: 0, typingDelay: 140 });
             return artifacts;
+        }
+
+        async function finalizeNcrInventoryOfficeRecord(record = {}, actualMoved = '') {
+            if (!record || !record.ncr_inventory_office) return false;
+            const uid = String(firstNonEmptyValue(record.source_unique_id, '') || '').trim();
+            if (!uid) return false;
+            const item = findItemByUniqueId(uid);
+            if (!item) return false;
+            const type = normalizeNcrApprovalType(record.ncr_approval_type || getNcrApprovalTypeForItem(item));
+            const qtyValue = parseAppNumber(actualMoved);
+            const payload = {
+                app_tab_assignment: getNcrApprovalAssignment(type, 'complete'),
+                assignedto: '',
+                date_completed: new Date().toISOString()
+            };
+            if (qtyValue != null) payload.loc_match_qty = qtyValue;
+            await writeNcrApprovalMasterPayload(item, payload, 'ncr-inventory-complete');
+            return true;
         }
 
         async function completeMoveRecord(moveId = '') {
@@ -30088,6 +30554,7 @@ function toggleDriveQuickRequestItem(domId) {
             showToast('Processing...', 'Sending move row to Sales Office...');
             try {
                 await publishMoveRecordToSalesOffice(record, normalizedActualMoved || '0', normalizedTa || '0');
+                if (record && record.ncr_inventory_office) await finalizeNcrInventoryOfficeRecord(record, normalizedActualMoved || '0').catch((error) => console.warn('NCR inventory completion sync failed', error));
                 const completedIds = getCompletedMoveIds();
                 completedIds.add(safeId);
                 saveCompletedMoveIds(completedIds);
@@ -30249,17 +30716,22 @@ function toggleDriveQuickRequestItem(domId) {
 
         function renderMovesOfficeRecordCard(record = {}) {
             const safeMoveId = escJsAttrValue(record.id);
-            const actualMovedValue = getMoveActualMovedValue(record.id);
+            const isNcrOfficeRecord = !!(record && record.ncr_inventory_office);
+            let actualMovedValue = getMoveActualMovedValue(record.id);
+            if (isNcrOfficeRecord && !String(actualMovedValue || '').trim()) actualMovedValue = String(firstNonEmptyValue(record.ncr_approved_qty, '') || '');
             const actualInputId = getMoveActualMovedInputId(record.id);
             const taValue = getMoveTaValue(record.id);
             const taInputId = getMoveTaInputId(record.id);
             const ptrAvailableValue = firstNonEmptyValue(record.ptravailable, record.quantity_available, '0');
+            const recordEyebrow = isNcrOfficeRecord ? `${getNcrApprovalTypeLabel(record.ncr_approval_type || 'new-crop')} Approval` : 'Consolidate Inventory';
+            const approvedQtyHtml = isNcrOfficeRecord ? `<span class="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">Approved Qty ${esc(String(firstNonEmptyValue(record.ncr_approved_qty, actualMovedValue, '0') || '0'))}</span>` : '';
             return `<div class="mb-3 rounded-xl border border-emerald-100 bg-white p-4 shadow-sm">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0 flex-1">
-                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Consolidate Inventory</div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">${esc(recordEyebrow)}</div>
                         <div class="mt-1 text-base font-black leading-tight text-slate-900 break-words">${esc(record.commonname || 'Unknown')}</div>
                         <div class="mt-1 text-[12px] font-semibold text-slate-500 break-words">${esc(record.contsize || '-')} | ${esc(record.itemcode || '-')} | Lot ${esc(record.lotcode || '-')}</div>
+                        ${approvedQtyHtml ? `<div class="mt-2 flex flex-wrap gap-2">${approvedQtyHtml}</div>` : ''}
                     </div>
                     <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-right">
                         <div class="text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">PTR Available</div>
@@ -31223,7 +31695,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
         function getTaskDetailTabForItem(item = activeItem, taskTab = activeTaskTab) {
             const safeTaskView = normalizeTaskViewValue(taskTab);
-            if (safeTaskView === 'ncr') return 'ncr';
+            if (safeTaskView === 'ncr' || isNcrApprovalTaskView(safeTaskView)) return 'ncr';
             if (safeTaskView === 'flyer') return 'flyer';
             const originKind = resolveProductivityOriginKind(item);
             if (originKind === 'season_sales_note') return 'season';
@@ -31238,7 +31710,7 @@ function toggleDriveQuickRequestItem(domId) {
         function applyCameraPermissions(sourceView, taskContextItem = activeItem) {
             const safeSourceView = String(sourceView || '').trim().toLowerCase();
             const isAvDetail = safeSourceView === 'av';
-            const isNcrDetail = safeSourceView === 'review' || safeSourceView === 'move-up' || (safeSourceView === 'tasks' && normalizeTaskViewValue(activeTaskTab) === 'ncr');
+            const isNcrDetail = safeSourceView === 'review' || safeSourceView === 'move-up' || (safeSourceView === 'tasks' && (normalizeTaskViewValue(activeTaskTab) === 'ncr' || isNcrApprovalTaskView(activeTaskTab)));
             const camSsn = document.getElementById('camera-btn-ssn');
             const camLsn = document.getElementById('camera-btn-lsn');
             const camNa = document.getElementById('camera-btn-na');
@@ -32688,7 +33160,7 @@ function toggleDriveQuickRequestItem(domId) {
                     console.error('Detail photo gallery render failed', error);
                 }
             }
-if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSourceView === 'tasks' && normalizeTaskViewValue(activeTaskTab) === 'ncr')) syncNcrDraftInputs(activeItem);
+if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSourceView === 'tasks' && (normalizeTaskViewValue(activeTaskTab) === 'ncr' || isNcrApprovalTaskView(activeTaskTab)))) syncNcrDraftInputs(activeItem);
             applyAvDetailReadOnlyState(detailSourceView);
 
             const requestedDetailTab = String(firstNonEmptyValue(renderOptions.preferredTab, '') || '').trim();
@@ -36764,6 +37236,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             if (Object.prototype.hasOwnProperty.call(payload, 'spec')) masterItem.SPEC = payload.spec || '';
             if (Object.prototype.hasOwnProperty.call(payload, 'caliper')) masterItem.CALIPER = payload.caliper || '';
             if (Object.prototype.hasOwnProperty.call(payload, 'pic_note')) masterItem.PICK = payload.pic_note || '';
+            if (Object.prototype.hasOwnProperty.call(payload, 'sales_note')) masterItem.SALES_NOTE = payload.sales_note || '';
             if (Object.prototype.hasOwnProperty.call(payload, 'loc_match_qty')) masterItem.LOC_MATCH_QTY = payload.loc_match_qty == null ? '' : payload.loc_match_qty;
             if (Object.prototype.hasOwnProperty.call(payload, 'initial_ptr')) masterItem.INITIAL_PTR = payload.initial_ptr == null ? '' : payload.initial_ptr;
             if (Object.prototype.hasOwnProperty.call(payload, 'photo_link')) {
@@ -36777,6 +37250,10 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             if (Object.prototype.hasOwnProperty.call(payload, 'app_tab_assignment')) {
                 masterItem.APP_TAB_ASSIGNMENT = payload.app_tab_assignment || '';
                 masterItem.app_tab_assignment = payload.app_tab_assignment || '';
+            }
+            if (Object.prototype.hasOwnProperty.call(payload, 'assignedto')) {
+                masterItem.ASSIGNEDTO = payload.assignedto || '';
+                masterItem.assignedto = payload.assignedto || '';
             }
             Object.keys(payload).forEach((key) => {
                 if (!/^av_rule_/i.test(key)) return;
@@ -40380,11 +40857,15 @@ ${folderNote ? `Folder Note: ${folderNote}
             });
         }
 
-        const TASK_VIEW_VALUES = Object.freeze(['hot-price', 'positive-lts', 'hold', 'av-blanks', 'ncr', 'colorwalk', 'endcap', 'flyer', 'cust', 'reserves']);
+        const TASK_VIEW_VALUES = Object.freeze(['hot-price', 'positive-lts', 'hold', 'av-blanks', 'ncr', 'ncr-approvals', 'move-up-approvals', 'colorwalk', 'endcap', 'flyer', 'cust', 'reserves']);
         const TASK_FILTER_VALUES = Object.freeze(['all', 'season', 'location']);
 
         function getAvailableTaskViewValues() {
-            return TASK_VIEW_VALUES.filter((value) => value !== 'ncr' || canUseNcrTaskView());
+            return TASK_VIEW_VALUES.filter((value) => {
+                if (value === 'ncr') return canUseNcrTaskView();
+                if (isNcrApprovalTaskView(value)) return canUseNcrApprovalTaskView();
+                return true;
+            });
         }
 
         function normalizeTaskViewValue(value = activeTaskView) {
@@ -40399,7 +40880,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function getDefaultTaskSubviewForView(tab = activeTaskView) {
             const safeView = normalizeTaskViewValue(tab);
-            if (safeView === 'flyer' || safeView === 'endcap' || safeView === 'colorwalk' || safeView === 'ncr') return 'all';
+            if (safeView === 'flyer' || safeView === 'endcap' || safeView === 'colorwalk' || safeView === 'ncr' || isNcrApprovalTaskView(safeView)) return 'all';
             return DEFAULT_TASK_FILTER;
         }
 
@@ -40789,7 +41270,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const normalized = normalizeTaskReserveFilterValue(value);
                 return options.includes(normalized) ? normalized : 'all';
             }
-            if (safeView === 'ncr') return 'all';
+            if (safeView === 'ncr' || isNcrApprovalTaskView(safeView)) return 'all';
             return normalizeTaskFilterValue(value);
         }
 
@@ -40859,6 +41340,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function shouldUseSharedTaskQueue(tab = activeTaskView) {
             const safeView = normalizeTaskViewValue(tab);
             if (safeView === 'ncr') return canUseNcrTaskView();
+            if (isNcrApprovalTaskView(safeView)) return canUseNcrApprovalTaskView();
             if (isCurrentUserInSharedTaskGroup()) return true;
             const explicitAdminTargetUser = safeRole === 'ADMIN' ? String(taskViewTargetUser || '').trim() : '';
             if (safeView === 'flyer') return true;
@@ -40887,9 +41369,36 @@ ${folderNote ? `Folder Note: ${folderNote}
             }));
         }
 
+        function getNcrApprovalTaskQueueItems(view = activeTaskView) {
+            if (!canUseNcrApprovalTaskView()) return [];
+            const safeType = getNcrApprovalTypeForTaskView(view);
+            const normalizedUser = normalizePushUsername(currentUser || currentUserDisplay || '');
+            const access = typeof getRoleAccessState === 'function' ? getRoleAccessState() : {};
+            const isAdminUser = !!(access && access.isAdmin);
+            let nextIndex = 0;
+            return (Array.isArray(fullInventory) ? fullInventory : []).reduce((rows, item) => {
+                if (!item) return rows;
+                const assignment = getNcrApprovalAssignmentValue(item);
+                if (!assignment || !isNcrApprovalAssignmentValue(assignment)) return rows;
+                if (getNcrApprovalTypeFromAssignment(assignment) !== safeType) return rows;
+                const stage = getNcrApprovalStageFromAssignment(assignment);
+                if (stage !== 'dylan' && stage !== 'jd') return rows;
+                if (!isAdminUser) {
+                    if (stage === 'dylan' && normalizedUser !== NCR_APPROVAL_DYLAN_USER) return rows;
+                    if (stage === 'jd' && normalizedUser !== NCR_APPROVAL_JD_USER) return rows;
+                }
+                rows.push({
+                    ...item,
+                    DOM_ID: String(firstNonEmptyValue(item && item.DOM_ID, '') || '').trim() || `ncr_approval_${safeType.replace(/[^a-z0-9]+/g, '_')}_${nextIndex++}`
+                });
+                return rows;
+            }, []);
+        }
+
         function getScopedTaskQueueItems(tab = activeTaskView, targetUser = currentUser) {
             const safeView = normalizeTaskViewValue(tab);
             if (safeView === 'ncr') return getNcrTaskQueueItems();
+            if (isNcrApprovalTaskView(safeView)) return getNcrApprovalTaskQueueItems(safeView);
             const keepCompletedInTaskTab = safeView === 'colorwalk' || safeView === 'flyer';
             const useSharedQueue = shouldUseSharedTaskQueue(safeView);
             const owner = String(targetUser || '').trim();
@@ -40940,6 +41449,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (safeView === 'hold') return 'HOLD';
             if (safeView === 'av-blanks') return 'AV BLANKS';
             if (safeView === 'ncr') return 'NCR';
+            if (safeView === NCR_APPROVAL_NEW_CROP_VIEW) return 'NEW CROP APPROVALS';
+            if (safeView === NCR_APPROVAL_MOVE_UP_VIEW) return 'MOVE UP APPROVALS';
             if (safeView === 'colorwalk') return 'COLOR WALK';
             if (safeView === 'endcap') return 'END CAP';
             if (safeView === 'flyer') return 'FLYER';
@@ -40960,6 +41471,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const option = getTaskReserveRepFilterOptions(items).find((entry) => entry.value === safeSubview);
                 return option ? option.label : 'ALL';
             }
+            if (isNcrApprovalTaskView(safeView)) return 'APPROVALS';
             const safeFilter = normalizeTaskFilterValue(subview);
             if (safeFilter === 'season') return 'SEASON SALES NOTES';
             if (safeFilter === 'location') return 'LOCATION SALES NOTES';
@@ -41036,7 +41548,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const safeView = normalizeTaskViewValue(tab);
             const scopedItems = Array.isArray(items) ? items : [];
             if (!scopedItems.length) return [];
-            if (safeView === 'ncr') return scopedItems;
+            if (safeView === 'ncr' || isNcrApprovalTaskView(safeView)) return scopedItems;
             if (safeView === 'cust') {
                 const safeCustomerFilter = getNormalizedTaskSubviewValue(safeView, subview, scopedItems);
                 return scopedItems
@@ -41080,6 +41592,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (safeView === 'colorwalk') return 'status-indigo';
             if (safeView === 'endcap') return 'status-yellow';
             if (safeView === 'ncr') return 'status-yellow';
+            if (isNcrApprovalTaskView(safeView)) return safeView === NCR_APPROVAL_MOVE_UP_VIEW ? 'status-green' : 'status-yellow';
             if (safeView === 'reserves') return 'status-indigo';
             const currentAssignment = String(firstNonEmptyValue(item && item.APP_TAB_ASSIGNMENT, item && item.app_tab_assignment, '') || '').trim().toLowerCase();
             if (currentAssignment === 'season') return 'status-green';
@@ -41102,16 +41615,17 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (safeView === 'reserves') {
                 return getTaskReserveRepFilterOptions().map((option) => option.value);
             }
-            if (safeView === 'ncr') return ['all'];
+            if (safeView === 'ncr' || isNcrApprovalTaskView(safeView)) return ['all'];
             return TASK_FILTER_VALUES.slice();
         }
 
         function shouldShowTaskSubviewDropdown(tab = activeTaskView) {
-            return true;
+            return !isNcrApprovalTaskView(tab);
         }
 
         function shouldShowTaskHeaderSearch(tab = activeTaskView, level = taskViewLevel) {
             const safeView = normalizeTaskViewValue(tab);
+            if (isNcrApprovalTaskView(safeView)) return true;
             if (safeView === 'reserves') return true;
             return level === 2 && taskViewUsesBlockDrill(safeView) && safeView !== 'colorwalk';
         }
@@ -41200,7 +41714,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function syncTaskSelectorRowLayout(tab = activeTaskTab) {
             const container = document.getElementById('task-tabs-container');
             if (!container) return;
-            const shouldShowSubview = true;
+            const shouldShowSubview = shouldShowTaskSubviewDropdown(tab);
             const shouldShowGenus = shouldShowTaskInlineGenusFilter(tab, taskViewLevel);
             const shouldShowContSize = shouldShowTaskInlineContSizeFilter(tab, taskViewLevel);
             const shouldShowDetailFilters = shouldShowTaskInlineDetailFilters(tab, taskViewLevel);
@@ -41421,6 +41935,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             const container = document.getElementById('task-subtabs-container');
             if (!container) return;
             syncTaskSelectorRowLayout(tab);
+            if (!shouldShowTaskSubviewDropdown(tab)) {
+                taskSubviewDropdownOpen = false;
+                container.classList.add('hidden');
+                setContainerHtmlWithSignature(container, '', `task-subview:hidden:${String(tab || activeTaskTab || '').trim().toLowerCase()}`);
+                return;
+            }
             const options = getTaskSubviewDropdownOptions(tab);
             const currentValue = options.some((option) => option.value === activeTaskSubview) ? activeTaskSubview : 'all';
             const currentOption = options.find((option) => option.value === currentValue) || options[0] || { label: 'ALL' };
@@ -42657,7 +43177,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 let nextTabItems = selectedTaskContSizes.size
                     ? nextTaskContSizeBaseItems.filter((item) => selectedTaskContSizes.has(getTaskLocationDetailContSize(item)))
                     : nextTaskContSizeBaseItems;
-                if (activeTaskTab === 'reserves' && String(taskLocationDetailSearchTerm || '').trim()) {
+                if ((activeTaskTab === 'reserves' || isNcrApprovalTaskView(activeTaskTab)) && String(taskLocationDetailSearchTerm || '').trim()) {
                     nextTabItems = filterBySearch(nextTabItems, taskLocationDetailSearchTerm, 'tasks');
                 }
                 const nextState = {
@@ -42863,6 +43383,43 @@ ${folderNote ? `Folder Note: ${folderNote}
             };
             recordInternalPerfDuration('taskStateBuildDurations', buildStartedAt, `${activeTaskTab}:${activeTaskSubview || 'all'}:resolved`);
             return taskResolvedStateCache;
+        }
+
+        function renderNcrApprovalTaskCard(item = null) {
+            if (!item) return '';
+            const uid = getNcrSourceUniqueId(item);
+            const safeUidJs = escJsAttrValue(uid);
+            const domId = String(firstNonEmptyValue(item.DOM_ID, uid, '') || '');
+            const assignment = getNcrApprovalAssignmentValue(item);
+            const stage = getNcrApprovalStageFromAssignment(assignment);
+            const type = getNcrApprovalTypeFromAssignment(assignment) || getNcrApprovalTypeForTaskView(activeTaskTab);
+            const typeLabel = getNcrApprovalTypeLabel(type);
+            const commonName = esc(String(firstNonEmptyValue(item.COMMONNAME, item.commonname, 'Unknown') || 'Unknown'));
+            const contSize = esc(String(firstNonEmptyValue(item.CONTSIZE, item.contsize, '-') || '-'));
+            const itemCode = esc(String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, '') || ''));
+            const locationCode = esc(String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, '-') || '-'));
+            const lotCode = esc(String(firstNonEmptyValue(item.LOTCODE, item.lotcode, '-') || '-'));
+            const seasonCode = esc(String(firstNonEmptyValue(item.SEASON, item.season, '-') || '-'));
+            const salesYear = esc(String(firstNonEmptyValue(item.SALEYEAR, item.SALESYEAR, item.salesyear, '-') || '-'));
+            const ptrValue = getNcrPtrAvailableNumber(item);
+            const ptrLabel = ptrValue == null ? String(firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, '0') || '0') : ptrValue.toLocaleString();
+            const qtyInputId = `ncr-approval-qty-${String(uid || domId || Date.now()).replace(/[^a-z0-9_-]+/gi, '-')}`;
+            const photoCsv = mergePhotoCsvList([
+                getSharedAppPhotoLinkCsv(item, { includePending: false }),
+                getRowPhotoLink(item, 'tasks')
+            ]);
+            const photoUrl = parsePhotoCsvValues(photoCsv)[0] || '';
+            const thumbUrl = photoUrl ? getDirectImageUrl(photoUrl, 'card-inline') : '';
+            const photoHtml = thumbUrl
+                ? `<button type="button" class="app-inline-thumb-column flex-shrink-0 ml-3" onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(photoCsv)}','${escJsAttrValue(typeLabel + ' Photo')}')"><img class="app-inline-thumb" src="${esc(thumbUrl)}" loading="lazy" decoding="async" alt=""><span class="mt-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Photo</span></button>`
+                : `<div class="app-inline-thumb-column flex-shrink-0 ml-3"><div class="app-inline-thumb flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div></div>`;
+            const stageBadge = stage === 'jd'
+                ? '<span class="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">JD Review</span>'
+                : '<span class="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Dylan Review</span>';
+            const actionHtml = stage === 'jd'
+                ? `<div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"><label class="min-w-0 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Approved Qty<input id="${esc(qtyInputId)}" type="number" min="0" max="${esc(String(ptrValue == null ? '' : ptrValue))}" step="1" inputmode="numeric" class="mt-1 w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 text-right text-sm font-black text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="0-${esc(String(ptrLabel))}" value="${esc(String(firstNonEmptyValue(item.LOC_MATCH_QTY, item.loc_match_qty, '') || ''))}" onclick="event.stopPropagation()"></label><button type="button" class="min-h-[44px] self-end rounded-lg bg-blue-600 px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="event.stopPropagation(); return approveNcrApprovalAsJd('${safeUidJs}','${escJsAttrValue(qtyInputId)}', this)">Approve Photo</button></div>`
+                : `<button type="button" class="mt-3 w-full min-h-[44px] rounded-lg bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="event.stopPropagation(); return approveNcrApprovalAsDylan('${safeUidJs}', this)">Approve And Send To JD</button>`;
+            return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border ${type === 'move-up' ? 'border-emerald-200' : 'border-yellow-200'} shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${esc(domId)}" ${buildCardActivationAttrs(domId, uid, 'tasks', 'Open approval row')}><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="mb-2 flex flex-wrap gap-2">${stageBadge}<span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${esc(typeLabel)}</span></div><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words mb-1">${commonName}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${contSize}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-white text-slate-700 px-2 py-1 rounded border border-slate-200">Item ${itemCode}</span><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">Loc ${locationCode}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">Lot ${lotCode}</span><span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">PTR ${esc(String(ptrLabel))}</span><span class="bg-slate-50 text-slate-600 px-2 py-1 rounded border border-slate-200">SY ${salesYear} ${seasonCode}</span></div></div>${photoHtml}</div>${actionHtml}</div></div>`;
         }
 
         function renderTasks(options = {}) {
@@ -43096,6 +43653,15 @@ ${folderNote ? `Folder Note: ${folderNote}
 
             if (activeTaskTab !== 'flyer' && tabItems.length === 0) {
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No active ${notesTitle} rows.</div>`;
+                scheduleTaskFilterSync();
+                finishTaskPerf();
+                return;
+            }
+            if (isNcrApprovalTaskView(activeTaskTab)) {
+                renderMarkupChunkedByKey('tasks-ncr-approval-items', container, null, tabItems, '', (item) => renderNcrApprovalTaskCard(item), {
+                    approxCardHeight: 260,
+                    emptyHtml: `<div class="p-8 text-center text-gray-400">No ${notesTitle.toLowerCase()} rows match current filters.</div>`
+                });
                 scheduleTaskFilterSync();
                 finishTaskPerf();
                 return;
