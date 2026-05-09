@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.08.09';
+window.__APP_SHELL_VERSION__ = 'V2026.05.09.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1094,7 +1094,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.08.09').trim() || 'V2026.05.08.09';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.09.01').trim() || 'V2026.05.09.01';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1713,7 +1713,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.08.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.09.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10514,7 +10514,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.08.09').trim() || 'V2026.05.08.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.09.01').trim() || 'V2026.05.09.01';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -10663,6 +10663,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function isCurrentUserInSharedTaskGroup() {
             return [currentUser, currentUserDisplay].some(value => isSharedTaskCollaboratorUser(value));
+        }
+
+        function isStrictDylanCollygeUser() {
+            return [currentUser, currentUserDisplay].some((value) => normalizeSharedTaskCollaboratorKey(value) === 'dylan_collyge');
+        }
+
+        function canUseNcrTaskView() {
+            return isStrictDylanCollygeUser();
         }
 
         function normalizeManualSyncStatusPayload(raw = null) {
@@ -12483,6 +12491,133 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return 'F1';
         }
 
+        function getNcrSalesYearForChicagoDateParts(parts = getChicagoDatePartsForNcr(new Date())) {
+            const year = Number(parts && parts.year);
+            const month = Number(parts && parts.month);
+            if (!Number.isFinite(year) || !Number.isFinite(month)) return null;
+            const twoDigitYear = year % 100;
+            return month >= 8 ? twoDigitYear + 1 : twoDigitYear;
+        }
+
+        function getCurrentNcrSalesYearCode(now = new Date()) {
+            return getNcrSalesYearForChicagoDateParts(getChicagoDatePartsForNcr(now));
+        }
+
+        function normalizeNcrSalesYearValue(value = '') {
+            const numericValue = parseAppNumber(value);
+            if (numericValue == null) return null;
+            return numericValue >= 2000 ? numericValue % 100 : numericValue;
+        }
+
+        function getNcrSalesYear(item = null) {
+            const explicitValue = firstNonEmptyValue(
+                item && item.SALEYEAR,
+                item && item.SALESYEAR,
+                item && item.salesyear,
+                item && item.sale_year,
+                item && item.SALE_YEAR,
+                item && item.SALES_YEAR,
+                ''
+            );
+            const explicitYear = normalizeNcrSalesYearValue(explicitValue);
+            if (explicitYear != null) return explicitYear;
+            return normalizeNcrSalesYearValue(getNcrLotInfo(item).year);
+        }
+
+        function getNcrSeasonCode(item = null) {
+            return String(firstNonEmptyValue(item && item.SEASON, item && item.season, '') || '').trim().toUpperCase();
+        }
+
+        function getNcrSeasonSortRank(season = '') {
+            const normalized = String(season || '').trim().toUpperCase();
+            if (normalized === 'S1') return 1;
+            if (normalized === 'F1') return 2;
+            if (normalized === 'U1') return 3;
+            if (normalized === 'U2') return 4;
+            if (normalized === 'U3') return 5;
+            return Number.MAX_SAFE_INTEGER;
+        }
+
+        function getNextNcrReleaseSeasonInfo(now = new Date()) {
+            const currentDate = getChicagoDatePartsForNcr(now);
+            const currentSeason = getCurrentNcrSeasonCode(now);
+            const currentSalesYear = getCurrentNcrSalesYearCode(now);
+            const releaseSeason = currentSeason === 'S1' ? 'F1' : 'S1';
+            let releaseYear = Number(currentDate.year) || new Date().getFullYear();
+            if (currentSeason === 'S1' && Number(currentDate.month) === 12) releaseYear += 1;
+            const releaseMonth = releaseSeason === 'F1' ? 6 : 12;
+            const releaseSalesYear = getNcrSalesYearForChicagoDateParts({
+                year: releaseYear,
+                month: releaseMonth,
+                day: releaseSeason === 'F1' ? 16 : 15
+            });
+            const releaseEndSalesYear = getNcrSalesYearForChicagoDateParts(releaseSeason === 'F1'
+                ? { year: releaseYear, month: 12, day: 14 }
+                : { year: releaseYear + 1, month: 6, day: 15 });
+            const releaseSalesYears = [...new Set([releaseSalesYear, releaseEndSalesYear].filter((value) => value != null))];
+            return {
+                currentSeason,
+                currentSalesYear,
+                currentSeasonRank: getNcrSeasonSortRank(currentSeason),
+                releaseSeason,
+                releaseSalesYear,
+                releaseSalesYears
+            };
+        }
+
+        function getNcrReleaseSeasonCodes(now = new Date()) {
+            const releaseInfo = getNextNcrReleaseSeasonInfo(now);
+            return [releaseInfo.releaseSeason, 'U1', 'U2', 'U3'];
+        }
+
+        function getNcrItemCode(item = null) {
+            return String(firstNonEmptyValue(item && item.ITEMCODE, item && item.ITEM, item && item.itemcode, '') || '').trim();
+        }
+
+        function getNcrCropPosition(item = null) {
+            const season = getNcrSeasonCode(item);
+            return {
+                salesYear: getNcrSalesYear(item),
+                season,
+                seasonRank: getNcrSeasonSortRank(season)
+            };
+        }
+
+        function isNcrCurrentOrOlderCrop(item = null, now = new Date()) {
+            const releaseInfo = getNextNcrReleaseSeasonInfo(now);
+            const position = getNcrCropPosition(item);
+            if (position.salesYear == null || !position.season || position.seasonRank === Number.MAX_SAFE_INTEGER) return false;
+            if (position.salesYear < releaseInfo.currentSalesYear) return true;
+            if (position.salesYear > releaseInfo.currentSalesYear) return false;
+            return position.seasonRank <= releaseInfo.currentSeasonRank;
+        }
+
+        function isNcrReleaseCropCandidate(item = null, now = new Date()) {
+            const releaseInfo = getNextNcrReleaseSeasonInfo(now);
+            const position = getNcrCropPosition(item);
+            if (position.salesYear == null || !position.season) return false;
+            const releaseSalesYears = Array.isArray(releaseInfo.releaseSalesYears) && releaseInfo.releaseSalesYears.length
+                ? releaseInfo.releaseSalesYears
+                : [releaseInfo.releaseSalesYear].filter((value) => value != null);
+            if (position.season === releaseInfo.releaseSeason) return releaseSalesYears.includes(position.salesYear);
+            if (position.season === 'U1' || position.season === 'U2' || position.season === 'U3') {
+                const minReleaseYear = Math.min(releaseInfo.currentSalesYear, ...releaseSalesYears);
+                const maxReleaseYear = Math.max(releaseInfo.currentSalesYear, ...releaseSalesYears);
+                return position.salesYear >= minReleaseYear && position.salesYear <= maxReleaseYear;
+            }
+            return false;
+        }
+
+        function isNcrReleaseCandidateRow(item = null, now = new Date()) {
+            if (!item) return false;
+            const uid = getNcrSourceUniqueId(item);
+            if (uid && isNcrCompletedUid(uid)) return false;
+            if (!getNcrItemCode(item)) return false;
+            if (!isNcrReleaseCropCandidate(item, now)) return false;
+            const ptrAvailableValue = parseAppNumber(firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, ''));
+            return ptrAvailableValue != null && ptrAvailableValue > 0;
+        }
+
         function parseNcrLotCode(lotCode = '') {
             const raw = String(lotCode || '').trim().toUpperCase();
             const match = raw.match(/^(\d{2})\s*\.\s*([A-Z0-9]+)$/);
@@ -12536,7 +12671,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function getNcrFutureSeasonCodes() {
-            return ['F1','U1','U2','U3','X'];
+            return getNcrReleaseSeasonCodes();
         }
 
         function buildNcrItemKey(item = null) {
@@ -12548,44 +12683,53 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return [...new Set((codes || []).map((code) => String(code || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
         }
 
+        function buildNcrActionabilitySummaryByItemCode(now = new Date()) {
+            const releaseInfo = getNextNcrReleaseSeasonInfo(now);
+            const summaries = new Map();
+            const getSummary = (itemCode = '') => {
+                const safeItemCode = String(itemCode || '').trim();
+                if (!summaries.has(safeItemCode)) {
+                    summaries.set(safeItemCode, {
+                        currentSeasonSuffix: releaseInfo.currentSeason,
+                        currentSalesYear: releaseInfo.currentSalesYear,
+                        releaseSeason: releaseInfo.releaseSeason,
+                        releaseSalesYear: releaseInfo.releaseSalesYear,
+                        releaseSalesYears: releaseInfo.releaseSalesYears,
+                        ptrAvailableTotal: 0,
+                        lotcodes: new Set(),
+                        releaseCandidateCount: 0
+                    });
+                }
+                return summaries.get(safeItemCode);
+            };
+            fullInventory.forEach((item) => {
+                const itemCode = getNcrItemCode(item);
+                if (!itemCode) return;
+                const summary = getSummary(itemCode);
+                if (isNcrCurrentOrOlderCrop(item, now)) {
+                    const ptrAvailableValue = parseAppNumber(firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, ''));
+                    if (ptrAvailableValue != null) summary.ptrAvailableTotal += ptrAvailableValue;
+                    const lotInfo = getNcrLotInfo(item);
+                    const lotCode = String(firstNonEmptyValue(lotInfo.normalizedLot, item.LOTCODE, item.lotcode, '') || '').trim().toUpperCase();
+                    if (lotCode) summary.lotcodes.add(lotCode);
+                }
+                if (isNcrReleaseCandidateRow(item, now)) summary.releaseCandidateCount += 1;
+            });
+            return summaries;
+        }
+
         function getNcrActionableItemCodes() {
             const actionableItemCodes = new Set();
-            fullInventory.forEach((item) => {
-                const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.ITEM, '')).trim();
-                if (!itemCode) return;
-                const uid = getNcrSourceUniqueId(item);
-                if (uid && isNcrCompletedUid(uid)) return;
-                const lotInfo = getNcrLotInfo(item);
-                if (!isNcrNextUpLotSuffix(lotInfo.suffix)) return;
-                const sltsValue = parseAppNumber(firstNonEmptyValue(item.S_LTS, item.s_lts, ''));
-                if (sltsValue != null && sltsValue > 0) actionableItemCodes.add(itemCode);
+            buildNcrActionabilitySummaryByItemCode().forEach((summary, itemCode) => {
+                if ((Number(summary.ptrAvailableTotal) || 0) < 150 && Number(summary.releaseCandidateCount || 0) > 0) {
+                    actionableItemCodes.add(itemCode);
+                }
             });
             return actionableItemCodes;
         }
 
         function getNcrCurrentSeasonSummaryByItemCode() {
-            const currentSuffix = getCurrentNcrSeasonCode();
-            const summaries = new Map();
-            fullInventory.forEach((item) => {
-                const uid = getNcrSourceUniqueId(item);
-                if (uid && isNcrCompletedUid(uid)) return;
-                const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.ITEM, '')).trim();
-                if (!itemCode) return;
-                const lotInfo = getNcrLotInfo(item);
-                if (lotInfo.suffix !== currentSuffix) return;
-                if (!summaries.has(itemCode)) {
-                    summaries.set(itemCode, {
-                        currentSeasonSuffix: currentSuffix,
-                        ptrAvailableTotal: 0,
-                        lotcodes: new Set()
-                    });
-                }
-                const summary = summaries.get(itemCode);
-                const ptrAvailableValue = parseAppNumber(firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, ''));
-                if (ptrAvailableValue != null) summary.ptrAvailableTotal += ptrAvailableValue;
-                if (lotInfo.normalizedLot) summary.lotcodes.add(lotInfo.normalizedLot);
-            });
-            return summaries;
+            return buildNcrActionabilitySummaryByItemCode();
         }
 
         function buildReviewCardGroups(rows = []) {
@@ -12607,12 +12751,18 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return Array.from(groups.values()).map((group) => {
                 const currentSeasonSummary = currentSeasonSummaries.get(group.code) || {
                     currentSeasonSuffix: getCurrentNcrSeasonCode(),
+                    currentSalesYear: getCurrentNcrSalesYearCode(),
                     ptrAvailableTotal: 0,
-                    lotcodes: new Set()
+                    lotcodes: new Set(),
+                    releaseSalesYears: []
                 };
                 return {
                     ...group,
                     currentSeasonSuffix: currentSeasonSummary.currentSeasonSuffix,
+                    currentSalesYear: currentSeasonSummary.currentSalesYear,
+                    releaseSeason: currentSeasonSummary.releaseSeason,
+                    releaseSalesYear: currentSeasonSummary.releaseSalesYear,
+                    releaseSalesYears: currentSeasonSummary.releaseSalesYears,
                     ptrAvailableTotal: currentSeasonSummary.ptrAvailableTotal,
                     currentSeasonLotcodes: sortNcrLotCodes(Array.from(currentSeasonSummary.lotcodes || []))
                 };
@@ -12648,7 +12798,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const locationsBySeason = new Map(futureSeasons.map((seasonCode) => [seasonCode, new Set()]));
             fullInventory.forEach((row) => {
                 if (buildNcrItemKey(row) !== itemKey) return;
-                const seasonCode = String(firstNonEmptyValue(row.SEASON, row.season, '')).trim().toUpperCase();
+                if (!isNcrReleaseCropCandidate(row)) return;
+                const seasonCode = getNcrSeasonCode(row);
                 if (!futureSeasonSet.has(seasonCode)) return;
                 const locationCode = String(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, '')).trim();
                 if (locationCode) locationsBySeason.get(seasonCode).add(locationCode);
@@ -12707,7 +12858,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const minSltsLabel = group.minSlts === '' || group.minSlts == null ? '-' : esc(String(group.minSlts));
             const futureHtml = group.futureSeasonLocations && group.futureSeasonLocations.length
                 ? group.futureSeasonLocations.map((entry) => `<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">${esc(entry.season)}</div><div class="mt-1 text-sm font-bold text-slate-800 break-words">${esc(entry.locations.join(', '))}</div></div>`).join('')
-                : `<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 px-3 py-3 text-sm font-semibold text-slate-500">No future-season locations found in F1, U1, U2, U3, or X.</div>`;
+                : `<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 px-3 py-3 text-sm font-semibold text-slate-500">No release-season locations found in the next season, U1, U2, or U3.</div>`;
             return `<div class="rounded-[1.5rem] border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">NCR</div><div class="mt-1 text-lg font-black text-slate-900 leading-tight break-words">${safeName}</div><div class="mt-1 text-sm font-semibold text-slate-500 break-words">${safeSize}</div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">Item ${safeItemCode}</span><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">Current ${esc(group.currentSeason || '')}</span><span class="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-red-600">Min S_LTS ${minSltsLabel}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">${esc(String(group.rowCount || 0))} Row${group.rowCount === 1 ? '' : 's'}</span></div></div><div class="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Current ${esc(group.currentSeason || '')} Location Codes</div><div class="mt-1 text-sm font-bold text-slate-800 break-words">${currentLocationsLabel}</div></div><div><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 mb-2">Future Season Location Codes</div><div class="space-y-2">${futureHtml}</div></div></div></div>`;
         }
 
@@ -12742,15 +12893,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const actionableItemCodes = getNcrActionableItemCodes();
             let nextIndex = 0;
             managerReviewInventory = fullInventory.reduce((rows, item) => {
-                const uid = getNcrSourceUniqueId(item);
-                if (uid && isNcrCompletedUid(uid)) return rows;
-                const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.ITEM, '')).trim();
+                const itemCode = getNcrItemCode(item);
                 if (!actionableItemCodes.has(itemCode)) return rows;
-                const seasonCode = String(firstNonEmptyValue(item.SEASON, item.season, '')).trim().toUpperCase();
-                const sltsValue = parseAppNumber(firstNonEmptyValue(item.S_LTS, item.s_lts, ''));
-                if (seasonCode === 'S1' && sltsValue != null && sltsValue < 50) {
-                    rows.push({ ...item, DOM_ID: 'mr_' + nextIndex++ });
-                }
+                if (isNcrReleaseCandidateRow(item)) rows.push({ ...item, DOM_ID: 'mr_' + nextIndex++ });
                 return rows;
             }, []);
             managerReviewInventoryDirty = false;
@@ -12779,24 +12924,17 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!safeItemCode) return [];
             let detailIndex = 0;
             const items = fullInventory.reduce((rows, item) => {
-                if (String(firstNonEmptyValue(item.ITEMCODE, item.ITEM, '') || '').trim() !== safeItemCode) return rows;
-                const uid = getNcrSourceUniqueId(item);
-                if (uid && isNcrCompletedUid(uid)) return rows;
-                const lotInfo = getNcrLotInfo(item);
-                if (!isNcrNextUpLotSuffix(lotInfo.suffix)) return rows;
-                const sltsValue = parseAppNumber(firstNonEmptyValue(item.S_LTS, item.s_lts, ''));
-                if (sltsValue != null && sltsValue > 0) rows.push({ ...item, DOM_ID: 'mr_detail_' + detailIndex++ });
+                if (getNcrItemCode(item) !== safeItemCode) return rows;
+                if (isNcrReleaseCandidateRow(item)) rows.push({ ...item, DOM_ID: 'mr_detail_' + detailIndex++ });
                 return rows;
             }, []);
             return filterReviewItemsBySearch(items).sort((a,b) => {
-                const lotA = getNcrLotInfo(a);
-                const lotB = getNcrLotInfo(b);
-                const lotSuffixOrderA = NCR_NEXT_UP_LOT_SUFFIX_ORDER[lotA.suffix];
-                const lotSuffixOrderB = NCR_NEXT_UP_LOT_SUFFIX_ORDER[lotB.suffix];
-                if (lotSuffixOrderA !== lotSuffixOrderB) return lotSuffixOrderA - lotSuffixOrderB;
-                const lotYearA = lotA.year == null ? Number.MAX_SAFE_INTEGER : lotA.year;
-                const lotYearB = lotB.year == null ? Number.MAX_SAFE_INTEGER : lotB.year;
-                if (lotYearA !== lotYearB) return lotYearA - lotYearB;
+                const cropA = getNcrCropPosition(a);
+                const cropB = getNcrCropPosition(b);
+                const salesYearA = cropA.salesYear == null ? Number.MAX_SAFE_INTEGER : cropA.salesYear;
+                const salesYearB = cropB.salesYear == null ? Number.MAX_SAFE_INTEGER : cropB.salesYear;
+                if (salesYearA !== salesYearB) return salesYearA - salesYearB;
+                if (cropA.seasonRank !== cropB.seasonRank) return cropA.seasonRank - cropB.seasonRank;
                 const locationCompare = String(a.LOCATIONCODE || "").localeCompare(String(b.LOCATIONCODE || ""), undefined, {numeric: true});
                 if (locationCompare !== 0) return locationCompare;
                 return compareNcrLotCodes(String(a.LOTCODE || ''), String(b.LOTCODE || ''));
@@ -12832,14 +12970,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!actionableItemCodes.size) return [];
             let detailIndex = 0;
             const items = fullInventory.reduce((rows, item) => {
-                const itemCode = String(firstNonEmptyValue(item && item.ITEMCODE, item && item.ITEM, '') || '').trim();
+                const itemCode = getNcrItemCode(item);
                 if (!itemCode || !actionableItemCodes.has(itemCode)) return rows;
-                const uid = getNcrSourceUniqueId(item);
-                if (uid && isNcrCompletedUid(uid)) return rows;
-                const lotInfo = getNcrLotInfo(item);
-                if (!isNcrNextUpLotSuffix(lotInfo.suffix)) return rows;
-                const sltsValue = parseAppNumber(firstNonEmptyValue(item.S_LTS, item.s_lts, ''));
-                if (sltsValue != null && sltsValue > 0) rows.push({ ...item, DOM_ID: 'mr_block_' + detailIndex++ });
+                if (isNcrReleaseCandidateRow(item)) rows.push({ ...item, DOM_ID: 'mr_block_' + detailIndex++ });
                 return rows;
             }, []);
             return filterReviewItemsBySearch(items).sort(compareReviewRowsByBlockLocation);
@@ -13268,7 +13401,7 @@ let searchRenderToken = {};
         }
 
         function canEditNcrWorkflow() {
-            return canAccessView('review');
+            return canAccessView('review') || canUseNcrTaskView();
         }
         function getPendingRequestCount() {
             let items = getScopedRequestItems(requestsInventory);
@@ -22853,7 +22986,12 @@ function toggleDriveQuickRequestItem(domId) {
             }
             clearNcrDraft(item);
             markViewDirty('review');
+            markViewDirty('tasks');
+            taskScopedQueueItemsCache.clear();
+            taskHotStateCache.clear();
+            taskResolvedStateCache = null;
             scheduleReviewRender(0);
+            scheduleTasksRender(0, 20, true);
             if (getCurrentVisibleViewId() === 'detail') goBackFromDetail();
             return true;
         }
@@ -23220,6 +23358,10 @@ function toggleDriveQuickRequestItem(domId) {
                 clearNcrDraft(sourceItem);
                 managerReviewInventoryDirty = true;
                 markViewDirty('review');
+                markViewDirty('tasks');
+                taskScopedQueueItemsCache.clear();
+                taskHotStateCache.clear();
+                taskResolvedStateCache = null;
                 showToast('Success', 'New Crop Release email sent.');
                 return true;
             } catch (error) {
@@ -30519,6 +30661,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
         function getTaskDetailTabForItem(item = activeItem, taskTab = activeTaskTab) {
             const safeTaskView = normalizeTaskViewValue(taskTab);
+            if (safeTaskView === 'ncr') return 'ncr';
             if (safeTaskView === 'flyer') return 'flyer';
             const originKind = resolveProductivityOriginKind(item);
             if (originKind === 'season_sales_note') return 'season';
@@ -30531,7 +30674,9 @@ function toggleDriveQuickRequestItem(domId) {
             return safeTaskView;
         }
         function applyCameraPermissions(sourceView, taskContextItem = activeItem) {
-            const isAvDetail = String(sourceView || '').trim().toLowerCase() === 'av';
+            const safeSourceView = String(sourceView || '').trim().toLowerCase();
+            const isAvDetail = safeSourceView === 'av';
+            const isNcrDetail = safeSourceView === 'review' || (safeSourceView === 'tasks' && normalizeTaskViewValue(activeTaskTab) === 'ncr');
             const camSsn = document.getElementById('camera-btn-ssn');
             const camLsn = document.getElementById('camera-btn-lsn');
             const camNa = document.getElementById('camera-btn-na');
@@ -30550,7 +30695,7 @@ function toggleDriveQuickRequestItem(domId) {
             ].forEach(([el, prefix]) => {
                 if (el) el.style.display = !isAvDetail && canEditRowDetails(prefix) ? 'flex' : 'none';
             });
-            if (camNcr) camNcr.style.display = sourceView === 'review' && canEditNcrWorkflow() ? 'flex' : 'none';
+            if (camNcr) camNcr.style.display = isNcrDetail && canEditNcrWorkflow() ? 'flex' : 'none';
 
             if (sourceView === 'tasks') {
                 const taskDetailTab = getTaskDetailTabForItem(taskContextItem, activeTaskTab);
@@ -31981,7 +32126,7 @@ function toggleDriveQuickRequestItem(domId) {
                     console.error('Detail photo gallery render failed', error);
                 }
             }
-            if (detailSourceView === 'review') syncNcrDraftInputs(activeItem);
+            if (detailSourceView === 'review' || (detailSourceView === 'tasks' && normalizeTaskViewValue(activeTaskTab) === 'ncr')) syncNcrDraftInputs(activeItem);
             applyAvDetailReadOnlyState(detailSourceView);
 
             const requestedDetailTab = String(firstNonEmptyValue(renderOptions.preferredTab, '') || '').trim();
@@ -32120,7 +32265,7 @@ function toggleDriveQuickRequestItem(domId) {
                 addGroup('Flyer Photos', getFlyerVisiblePhotoLinkCsv(item));
             } else {
                 addGroup('Season / Base Photos', getSharedAppPhotoLinkCsv(item));
-                if (normalizedSourceView === 'review') {
+                if (normalizedSourceView === 'review' || (normalizedSourceView === 'tasks' && normalizeTaskViewValue(activeTaskTab) === 'ncr')) {
                     const ncrDraftUrls = getNcrDraftDisplayPhotoUrls(item);
                     if (ncrDraftUrls.length) addGroup('NCR Draft Photos', ncrDraftUrls.join(','));
                 }
@@ -39483,7 +39628,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     Array.from(userTaskBuckets.keys()).sort().forEach((userName) => {
                         const userTasks = userTaskBuckets.get(userName) || [];
                         let htmlCounts = `<div class="flex gap-2 mt-2">`;
-                        TASK_VIEW_VALUES.forEach((view) => {
+                        getAvailableTaskViewValues().forEach((view) => {
                             const count = getTaskTabItems(userTasks, view, 'all').length;
                             if (count > 0) htmlCounts += `<span class="text-[10px] font-bold px-2 py-1 rounded bg-gray-100 text-gray-600 uppercase">${esc(getTaskTabLabel(view))}: ${count}</span>`;
                         });
@@ -39660,12 +39805,16 @@ ${folderNote ? `Folder Note: ${folderNote}
             });
         }
 
-        const TASK_VIEW_VALUES = Object.freeze(['hot-price', 'positive-lts', 'hold', 'av-blanks', 'colorwalk', 'endcap', 'flyer', 'cust', 'reserves']);
+        const TASK_VIEW_VALUES = Object.freeze(['hot-price', 'positive-lts', 'hold', 'av-blanks', 'ncr', 'colorwalk', 'endcap', 'flyer', 'cust', 'reserves']);
         const TASK_FILTER_VALUES = Object.freeze(['all', 'season', 'location']);
+
+        function getAvailableTaskViewValues() {
+            return TASK_VIEW_VALUES.filter((value) => value !== 'ncr' || canUseNcrTaskView());
+        }
 
         function normalizeTaskViewValue(value = activeTaskView) {
             const normalized = String(firstNonEmptyValue(value, activeTaskView, activeTaskTab, DEFAULT_TASK_VIEW, TASK_VIEW_VALUES[0]) || '').trim().toLowerCase();
-            return TASK_VIEW_VALUES.includes(normalized) ? normalized : DEFAULT_TASK_VIEW;
+            return getAvailableTaskViewValues().includes(normalized) ? normalized : DEFAULT_TASK_VIEW;
         }
 
         function normalizeTaskFilterValue(value = activeTaskFilter) {
@@ -39675,7 +39824,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function getDefaultTaskSubviewForView(tab = activeTaskView) {
             const safeView = normalizeTaskViewValue(tab);
-            if (safeView === 'flyer' || safeView === 'endcap' || safeView === 'colorwalk') return 'all';
+            if (safeView === 'flyer' || safeView === 'endcap' || safeView === 'colorwalk' || safeView === 'ncr') return 'all';
             return DEFAULT_TASK_FILTER;
         }
 
@@ -40065,6 +40214,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const normalized = normalizeTaskReserveFilterValue(value);
                 return options.includes(normalized) ? normalized : 'all';
             }
+            if (safeView === 'ncr') return 'all';
             return normalizeTaskFilterValue(value);
         }
 
@@ -40102,6 +40252,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 || safeView === 'positive-lts'
                 || safeView === 'hold'
                 || safeView === 'av-blanks'
+                || safeView === 'ncr'
                 || safeView === 'colorwalk'
                 || safeView === 'cust';
         }
@@ -40132,6 +40283,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function shouldUseSharedTaskQueue(tab = activeTaskView) {
             const safeView = normalizeTaskViewValue(tab);
+            if (safeView === 'ncr') return canUseNcrTaskView();
             if (isCurrentUserInSharedTaskGroup()) return true;
             const explicitAdminTargetUser = safeRole === 'ADMIN' ? String(taskViewTargetUser || '').trim() : '';
             if (safeView === 'flyer') return true;
@@ -40152,8 +40304,17 @@ ${folderNote ? `Folder Note: ${folderNote}
                 && !taskViewUsesBlockDrill(safeView);
         }
 
+        function getNcrTaskQueueItems() {
+            if (!canUseNcrTaskView()) return [];
+            return ensureManagerReviewInventoryBuilt().map((item, index) => ({
+                ...item,
+                DOM_ID: String(firstNonEmptyValue(item && item.DOM_ID, '') || '').trim() || `ncr_task_${index}`
+            }));
+        }
+
         function getScopedTaskQueueItems(tab = activeTaskView, targetUser = currentUser) {
             const safeView = normalizeTaskViewValue(tab);
+            if (safeView === 'ncr') return getNcrTaskQueueItems();
             const keepCompletedInTaskTab = safeView === 'colorwalk' || safeView === 'flyer';
             const useSharedQueue = shouldUseSharedTaskQueue(safeView);
             const owner = String(targetUser || '').trim();
@@ -40203,6 +40364,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (safeView === 'positive-lts') return 'POSITIVE LTS';
             if (safeView === 'hold') return 'HOLD';
             if (safeView === 'av-blanks') return 'AV BLANKS';
+            if (safeView === 'ncr') return 'NCR';
             if (safeView === 'colorwalk') return 'COLOR WALK';
             if (safeView === 'endcap') return 'END CAP';
             if (safeView === 'flyer') return 'FLYER';
@@ -40299,6 +40461,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const safeView = normalizeTaskViewValue(tab);
             const scopedItems = Array.isArray(items) ? items : [];
             if (!scopedItems.length) return [];
+            if (safeView === 'ncr') return scopedItems;
             if (safeView === 'cust') {
                 const safeCustomerFilter = getNormalizedTaskSubviewValue(safeView, subview, scopedItems);
                 return scopedItems
@@ -40341,6 +40504,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const safeView = normalizeTaskViewValue(tab);
             if (safeView === 'colorwalk') return 'status-indigo';
             if (safeView === 'endcap') return 'status-yellow';
+            if (safeView === 'ncr') return 'status-yellow';
             if (safeView === 'reserves') return 'status-indigo';
             const currentAssignment = String(firstNonEmptyValue(item && item.APP_TAB_ASSIGNMENT, item && item.app_tab_assignment, '') || '').trim().toLowerCase();
             if (currentAssignment === 'season') return 'status-green';
@@ -40349,7 +40513,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function getTaskModeDropdownOptions() {
-            return TASK_VIEW_VALUES.map((value) => ({
+            return getAvailableTaskViewValues().map((value) => ({
                 value,
                 label: getTaskTabLabel(value)
             }));
@@ -40363,6 +40527,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (safeView === 'reserves') {
                 return getTaskReserveRepFilterOptions().map((option) => option.value);
             }
+            if (safeView === 'ncr') return ['all'];
             return TASK_FILTER_VALUES.slice();
         }
 
@@ -41770,6 +41935,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 addTarget('av-blanks', 'season', { targetUser: currentUser, useSharedTaskQueue: shouldUseSharedTaskQueue('av-blanks') });
                 addTarget('av-blanks', 'location', { targetUser: currentUser, useSharedTaskQueue: shouldUseSharedTaskQueue('av-blanks') });
             }
+            if (canUseNcrTaskView()) {
+                addTarget('ncr', 'all', { targetUser: currentUser, useSharedTaskQueue: shouldUseSharedTaskQueue('ncr') });
+            }
             const hotPriceState = getDatasetState('avHotPriceKeys');
             if (hotPriceState.fullLoaded) {
                 addTarget('hot-price', 'all', { targetUser: currentUser, useSharedTaskQueue: shouldUseSharedTaskQueue('hot-price') });
@@ -42612,21 +42780,26 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             if(reviewViewLevel === 0){
                 const sorted = buildReviewCardGroups(filterReviewItemsBySearch(reviewItems));
-                renderMarkupChunkedByKey('review-main', container, crumb, sorted, 'Needs Location Priority Review', (group) => {
+                renderMarkupChunkedByKey('review-main', container, crumb, sorted, 'Needs New Crop Release Review', (group) => {
                     const currentSeasonPtrLabel = Number.isFinite(group.ptrAvailableTotal)
                         ? Number(group.ptrAvailableTotal).toLocaleString()
                         : String(group.ptrAvailableTotal || '0');
                     const currentSeasonLotcodesLabel = group.currentSeasonLotcodes && group.currentSeasonLotcodes.length
                         ? esc(group.currentSeasonLotcodes.join(', '))
                         : 'None';
-                    return `<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectReviewItem', [group.code, group.name, group.size], `Open ${group.name}`)}><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-grow pr-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-yellow-500">Current ${esc(group.currentSeasonSuffix || '')} PTRAVAILABLE</div><div class="mt-1 text-2xl font-black text-yellow-700 leading-none">${esc(currentSeasonPtrLabel)}</div><div class="mt-3 font-bold text-[15px] text-yellow-800 truncate">${group.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${group.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${group.code}</span></div><div class="mt-3 text-[10px] font-black uppercase tracking-[0.14em] text-yellow-500">Current ${esc(group.currentSeasonSuffix || '')} Lotcodes</div><div class="mt-1 text-xs font-semibold text-yellow-700 break-words">${currentSeasonLotcodesLabel}</div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${group.count} Locs</div></div></div>`;
+                    const currentCropLabel = `SY${group.currentSalesYear || ''} ${group.currentSeasonSuffix || ''}`.trim();
+                    const releaseYearLabel = Array.isArray(group.releaseSalesYears) && group.releaseSalesYears.length
+                        ? group.releaseSalesYears.join('/')
+                        : (group.releaseSalesYear || '');
+                    const releaseCropLabel = `Release SY${releaseYearLabel} ${group.releaseSeason || ''}`.trim();
+                    return `<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectReviewItem', [group.code, group.name, group.size], `Open ${group.name}`)}><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-grow pr-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-yellow-500">Current and older crop PTRAVAILABLE</div><div class="mt-1 text-2xl font-black text-yellow-700 leading-none">${esc(currentSeasonPtrLabel)}</div><div class="mt-3 font-bold text-[15px] text-yellow-800 truncate">${group.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${group.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${group.code}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-yellow-200 bg-white px-3 py-1 text-yellow-700">${esc(currentCropLabel)}</span><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">${esc(releaseCropLabel)}</span></div><div class="mt-3 text-[10px] font-black uppercase tracking-[0.14em] text-yellow-500">Current and older lotcodes</div><div class="mt-1 text-xs font-semibold text-yellow-700 break-words">${currentSeasonLotcodesLabel}</div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${group.count} Locs</div></div></div>`;
                 }, { prefixHtml: modeSwitcherHtml, approxCardHeight: 132, emptyHtml: `<div class="p-8 text-center text-gray-400">No items require New Crop Release review.</div>` });
             } else if(reviewViewLevel === 1){
                 let items = getReviewDrilldownItems(selectedReviewItemCode);
                 renderMarkupChunkedByKey('review-detail', container, crumb, items, `${selectedReviewCommonName} / ${selectedReviewContSize}`, (item) => generateCard(item, 'review', 'status-yellow'), {
                     prefixHtml: `${modeSwitcherHtml}<div class="back-btn" ${buildFastInvokeAttrs('backReviewView', [], 'Back to list')}><i class="ph-bold ph-arrow-left"></i> Back to List</div>`,
                     approxCardHeight: 305,
-                    emptyHtml: `<div class="p-8 text-center text-gray-400">No next-up F1, U1, U2, or U3 rows with S_LTS greater than 0 were found for this item.</div>`
+                    emptyHtml: `<div class="p-8 text-center text-gray-400">No next-season, U1, U2, or U3 rows with PTRAVAILABLE greater than 0 were found for this item.</div>`
                 });
             }
         }
