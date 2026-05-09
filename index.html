@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.09.02';
+window.__APP_SHELL_VERSION__ = 'V2026.05.09.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1094,7 +1094,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.09.02').trim() || 'V2026.05.09.02';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.09.03').trim() || 'V2026.05.09.03';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1442,6 +1442,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <input type="text" id="review-search" class="input-field w-full pr-10 !mb-0" placeholder="Search New Crop Release..." oninput="handleReviewSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="review-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReviewSearch()"></i>
                     </div>
+                    <div id="review-plant-filters" class="hidden mb-3"></div>
                     <div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                     </div>
                     <div id="review-content"></div>
@@ -1453,6 +1454,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <input type="text" id="move-up-search" class="input-field w-full pr-10 !mb-0" placeholder="Search Move Up..." oninput="handleMoveUpSearch()" onkeydown="dismissSearchKeyboard(event)">
                         <i id="move-up-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearMoveUpSearch()"></i>
                     </div>
+                    <div id="move-up-plant-filters" class="hidden mb-3"></div>
                     <div id="move-up-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                     </div>
                     <div id="move-up-content"></div>
@@ -1726,7 +1728,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.09.02';
+const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.09.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10170,6 +10172,10 @@ let walkieChannels=[]; let walkieChannelMembers=[]; let walkieCalls=[]; let walk
         let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true;
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
 let reviewSearchTerm=''; let moveUpSearchTerm=''; let reviewBrowseMode='item'; let selectedReviewBlockAlpha=null; let selectedReviewLocationCode=null; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set();
+const ncrFilterStateByView = {
+    review: { selectedGenusNames: new Set(), genusSearchTerm: '', genusOpen: false, genusSelectionMode: 'all', selectedContSizes: new Set(), contSizeSearchTerm: '', contSizeOpen: false, contSizeSelectionMode: 'all', itemsCache: [], lastSignature: '' },
+    'move-up': { selectedGenusNames: new Set(), genusSearchTerm: '', genusOpen: false, genusSelectionMode: 'all', selectedContSizes: new Set(), contSizeSearchTerm: '', contSizeOpen: false, contSizeSelectionMode: 'all', itemsCache: [], lastSignature: '' }
+};
         let ncrCompletionSchemaReady=null; let ncrCompletionSchemaPromise=null; let ncrCompletionSchemaWarningShown=false; let ncrCompletionLoadPromise=null; let ncrCompletionsLoaded=false;
         let ncrEmailPromptResolver=null;
         let loginPrefetchPromise=null;
@@ -10540,7 +10546,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.09.02').trim() || 'V2026.05.09.02';
+const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.09.03').trim() || 'V2026.05.09.03';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -12523,16 +12529,17 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             const currentDate = getChicagoDatePartsForNcr(now);
             const month = currentDate.month;
             const day = currentDate.day;
-            if ((month === 12 && day >= 15) || month < 6 || (month === 6 && day <= 15)) return 'S1';
+            if ((month === 12 && day >= 15) || month < 7 || (month === 7 && day < 15)) return 'S1';
             return 'F1';
         }
 
         function getNcrSalesYearForChicagoDateParts(parts = getChicagoDatePartsForNcr(new Date())) {
             const year = Number(parts && parts.year);
             const month = Number(parts && parts.month);
+            const day = Number(parts && parts.day);
             if (!Number.isFinite(year) || !Number.isFinite(month)) return null;
             const twoDigitYear = year % 100;
-            return month >= 8 ? twoDigitYear + 1 : twoDigitYear;
+            return (month > 7 || (month === 7 && Number.isFinite(day) && day >= 15)) ? twoDigitYear + 1 : twoDigitYear;
         }
 
         function getCurrentNcrSalesYearCode(now = new Date()) {
@@ -12581,15 +12588,15 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             const releaseSeason = currentSeason === 'S1' ? 'F1' : 'S1';
             let releaseYear = Number(currentDate.year) || new Date().getFullYear();
             if (currentSeason === 'S1' && Number(currentDate.month) === 12) releaseYear += 1;
-            const releaseMonth = releaseSeason === 'F1' ? 6 : 12;
+            const releaseMonth = releaseSeason === 'F1' ? 7 : 12;
             const releaseSalesYear = getNcrSalesYearForChicagoDateParts({
                 year: releaseYear,
                 month: releaseMonth,
-                day: releaseSeason === 'F1' ? 16 : 15
+                day: 15
             });
             const releaseEndSalesYear = getNcrSalesYearForChicagoDateParts(releaseSeason === 'F1'
                 ? { year: releaseYear, month: 12, day: 14 }
-                : { year: releaseYear + 1, month: 6, day: 15 });
+                : { year: releaseYear + 1, month: 7, day: 14 });
             const releaseSalesYears = [...new Set([releaseSalesYear, releaseEndSalesYear].filter((value) => value != null))];
             return {
                 currentSeason,
@@ -12653,8 +12660,6 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
         }
 
         function getNcrReleaseSalesYearCutoff(now = new Date()) {
-            const releaseInfo = getNextNcrReleaseSeasonInfo(now);
-            if (releaseInfo && releaseInfo.releaseSalesYear != null) return releaseInfo.releaseSalesYear;
             return getCurrentNcrSalesYearCode(now);
         }
 
@@ -13085,6 +13090,317 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             return (Array.isArray(items) ? items : []).filter((item) => getReviewSearchableText(item).includes(normalizedTerm));
         }
 
+        function getNcrFilterStateForView(viewId = 'review') {
+            return ncrFilterStateByView[viewId === 'move-up' ? 'move-up' : 'review'];
+        }
+
+        function getNcrFilterContainerId(viewId = 'review') {
+            return viewId === 'move-up' ? 'move-up-plant-filters' : 'review-plant-filters';
+        }
+
+        function getNcrFilterViewAccent(viewId = 'review') {
+            return viewId === 'move-up'
+                ? { text: 'text-emerald-700', border: 'border-emerald-100', active: 'bg-emerald-600 border-emerald-600 text-white shadow-md' }
+                : { text: 'text-yellow-700', border: 'border-yellow-100', active: 'bg-yellow-500 border-yellow-500 text-white shadow-md' };
+        }
+
+        function getNcrFilterGenusValue(item = null) {
+            return String(getTaskGenusName(item) || '').trim() || '(Blank)';
+        }
+
+        function getNcrFilterContSizeValue(item = null) {
+            return String(firstNonEmptyValue(item && item.CONTSIZE, item && item.contsize, item && item.ITEMSPEC, item && item.SIZE, '-') || '-').trim() || '-';
+        }
+
+        function normalizeNcrExplicitFilterSelection(options = [], selectedSet = new Set(), mode = 'all') {
+            const normalizedOptions = Array.isArray(options)
+                ? [...new Set(options.map((value) => String(value || '').trim()).filter(Boolean))]
+                : [];
+            if (mode !== 'custom') {
+                return { mode: 'all', selected: new Set(normalizedOptions), options: normalizedOptions };
+            }
+            const available = new Set(normalizedOptions);
+            const selected = new Set(
+                [...(selectedSet instanceof Set ? selectedSet : new Set())]
+                    .map((value) => String(value || '').trim())
+                    .filter((value) => available.has(value))
+            );
+            if (normalizedOptions.length && selected.size === normalizedOptions.length) {
+                return { mode: 'all', selected: new Set(normalizedOptions), options: normalizedOptions };
+            }
+            return { mode: 'custom', selected, options: normalizedOptions };
+        }
+
+        function buildNcrPlantFilterState(viewId = 'review', items = []) {
+            const filterState = getNcrFilterStateForView(viewId);
+            const baseItems = Array.isArray(items) ? items : [];
+            const genusOptions = [...new Set(baseItems.map((item) => getNcrFilterGenusValue(item)))].sort((a, b) => String(a).localeCompare(String(b)));
+            const genusState = normalizeNcrExplicitFilterSelection(genusOptions, filterState.selectedGenusNames, filterState.genusSelectionMode);
+            filterState.genusSelectionMode = genusState.mode;
+            filterState.selectedGenusNames = genusState.selected;
+            const filteredGenusOptions = filterExcelOptionValues(genusState.options, filterState.genusSearchTerm);
+
+            const contSizeOptions = [...new Set(baseItems.map((item) => getNcrFilterContSizeValue(item)).filter(Boolean))].sort(compareDrivePlantContSize);
+            const contSizeState = normalizeNcrExplicitFilterSelection(contSizeOptions, filterState.selectedContSizes, filterState.contSizeSelectionMode);
+            filterState.contSizeSelectionMode = contSizeState.mode;
+            filterState.selectedContSizes = contSizeState.selected;
+            const filteredContSizeOptions = filterExcelOptionValues(contSizeState.options, filterState.contSizeSearchTerm);
+
+            const filteredItems = baseItems.filter((item) => {
+                if (!genusState.selected.has(getNcrFilterGenusValue(item))) return false;
+                if (!contSizeState.selected.has(getNcrFilterContSizeValue(item))) return false;
+                return true;
+            });
+
+            return {
+                baseItems,
+                filteredItems,
+                genusOptions: genusState.options,
+                filteredGenusOptions,
+                selectedGenusNames: genusState.selected,
+                genusAllSelected: !!genusState.options.length && genusState.selected.size === genusState.options.length,
+                contSizeOptions: contSizeState.options,
+                filteredContSizeOptions,
+                selectedContSizes: contSizeState.selected,
+                contSizeAllSelected: !!contSizeState.options.length && contSizeState.selected.size === contSizeState.options.length,
+                hasActiveFilters: !(genusState.options.length && contSizeState.options.length && genusState.selected.size === genusState.options.length && contSizeState.selected.size === contSizeState.options.length)
+            };
+        }
+
+        function filterNcrItemsBySelectedFilters(items = [], viewId = 'review') {
+            const filterState = getNcrFilterStateForView(viewId);
+            const useGenusFilter = filterState.genusSelectionMode === 'custom';
+            const useContSizeFilter = filterState.contSizeSelectionMode === 'custom';
+            if (!useGenusFilter && !useContSizeFilter) return Array.isArray(items) ? items.slice() : [];
+            return (Array.isArray(items) ? items : []).filter((item) => {
+                if (useGenusFilter && !filterState.selectedGenusNames.has(getNcrFilterGenusValue(item))) return false;
+                if (useContSizeFilter && !filterState.selectedContSizes.has(getNcrFilterContSizeValue(item))) return false;
+                return true;
+            });
+        }
+
+        function getNcrFilterSummaryLabel(options = [], selectedSet = new Set(), allLabel = 'All') {
+            if (!Array.isArray(options) || !options.length) return `No ${allLabel}`;
+            return selectedSet.size === options.length ? `All ${allLabel}` : `${selectedSet.size} selected`;
+        }
+
+        function hideNcrTopControls(viewId = 'review') {
+            const container = document.getElementById(getNcrFilterContainerId(viewId));
+            if (!container) return;
+            container.classList.add('hidden');
+            container.classList.remove('drive-top-inline');
+            container.innerHTML = '';
+            if (container.dataset) delete container.dataset.ncrTopControlsShell;
+        }
+
+        function ensureNcrTopControlsShell(viewId = 'review') {
+            const container = document.getElementById(getNcrFilterContainerId(viewId));
+            if (!container) return null;
+            const shellSignature = `ncr-top-controls-shell:${viewId}:v1`;
+            if (container.dataset.ncrTopControlsShell === shellSignature) {
+                container.classList.add('drive-top-inline');
+                container.classList.remove('hidden');
+                return container;
+            }
+            container.dataset.ncrTopControlsShell = shellSignature;
+            setContainerHtml(container, `<div class="drive-top-controls-row"><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-ncr-filter-shell="genus"><button type="button" data-role="button" onclick="return toggleNcrGenusDropdown('${viewId}')"><i class="ph-bold ph-leaf text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Genus</span><span class="task-top-control-summary truncate" data-role="summary">All Genus</span></span><i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div></div><div class="task-top-control-shell drive-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-ncr-filter-shell="contsize"><button type="button" data-role="button" onclick="return toggleNcrContSizeDropdown('${viewId}')"><i class="ph-bold ph-ruler text-sm"></i><span class="flex min-w-0 flex-1 flex-col leading-none"><span class="task-top-control-title truncate">Cont Size</span><span class="task-top-control-summary truncate" data-role="summary">All Sizes</span></span><i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i></button><div class="task-top-control-panel excel-filter-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div></div></div>`);
+            container.classList.add('drive-top-inline');
+            container.classList.remove('hidden');
+            return container;
+        }
+
+        function syncNcrTopControlShell(container, shellName = '', config = {}) {
+            if (!container) return;
+            const shell = container.querySelector(`[data-ncr-filter-shell="${shellName}"]`);
+            if (!shell) return;
+            const button = shell.querySelector('[data-role="button"]');
+            if (button && config.buttonClass) setNodeClassNameIfChanged(button, config.buttonClass);
+            const summary = shell.querySelector('[data-role="summary"]');
+            if (summary) setNodeTextIfChanged(summary, config.summary || '');
+            const panel = shell.querySelector('[data-role="panel"]');
+            if (panel) panel.classList.toggle('hidden', !config.open);
+            const caret = shell.querySelector('[data-role="caret"]');
+            if (caret) caret.classList.toggle('rotate-180', !!config.open);
+            const body = shell.querySelector('[data-role="body"]');
+            if (body && typeof config.bodyHtml === 'string') {
+                setContainerHtmlWithSignature(body, config.bodyHtml, config.bodySignature || `${shellName}:${config.open ? 'open' : 'closed'}`);
+            }
+        }
+
+        function buildNcrFilterSearchHtml(viewId = 'review', kind = 'genus', inputId = '', value = '', placeholder = 'Search...') {
+            return `<div class="excel-filter-search-wrap"><div class="relative"><input id="${esc(inputId)}" type="text" class="excel-filter-search" placeholder="${esc(placeholder)}" value="${esc(value)}" oninput="setNcrFilterSearchTerm('${viewId}','${kind}',this.value)" onkeydown="handleNcrFilterSearchKeydown(event,'${viewId}','${kind}')"><i class="ph-bold ph-magnifying-glass pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-emerald-500"></i></div></div>`;
+        }
+
+        function buildNcrFilterOptionsHtml(viewId = 'review', kind = 'genus', options = [], selectedSet = new Set(), emptyText = 'No matches') {
+            if (!Array.isArray(options) || !options.length) {
+                return `<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">${esc(emptyText)}</div>`;
+            }
+            return options.map((value) => {
+                const checked = selectedSet.has(value) ? 'checked' : '';
+                return `<label class="excel-filter-option flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-emerald-50"><span class="min-w-0 break-words text-[12px] font-bold text-slate-700">${esc(value)}</span><input type="checkbox" class="h-4 w-4 shrink-0 accent-emerald-600" data-ncr-filter-value="${esc(value)}" ${checked} onclick="event.stopPropagation(); return toggleNcrFilterSelection('${viewId}','${kind}',this.getAttribute('data-ncr-filter-value'))"></label>`;
+            }).join('');
+        }
+
+        function renderNcrTopControls(viewId = 'review', items = []) {
+            const filterState = getNcrFilterStateForView(viewId);
+            const safeItems = Array.isArray(items) ? items : [];
+            filterState.itemsCache = safeItems;
+            if (!safeItems.length) {
+                hideNcrTopControls(viewId);
+                return buildNcrPlantFilterState(viewId, safeItems);
+            }
+            const state = buildNcrPlantFilterState(viewId, safeItems);
+            const container = ensureNcrTopControlsShell(viewId);
+            if (!container) return state;
+            const accent = getNcrFilterViewAccent(viewId);
+            const buttonClass = (isActive = false) => `task-top-control-button inline-flex w-full items-center gap-2 rounded-full border px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.11em] sm:px-3.5 sm:text-[10px] ${isActive ? accent.active : `bg-white border-emerald-200 ${accent.text} shadow-sm`}`;
+            const genusSummary = getNcrFilterSummaryLabel(state.genusOptions, state.selectedGenusNames, 'Genus');
+            const contSizeSummary = getNcrFilterSummaryLabel(state.contSizeOptions, state.selectedContSizes, 'Sizes');
+            const genusOptionsHtml = state.genusOptions.length
+                ? buildNcrFilterOptionsHtml(viewId, 'genus', state.filteredGenusOptions, state.selectedGenusNames, 'No matching genus names.')
+                : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No GENUSNAME data available.</div>';
+            const contSizeOptionsHtml = state.contSizeOptions.length
+                ? buildNcrFilterOptionsHtml(viewId, 'contsize', state.filteredContSizeOptions, state.selectedContSizes, 'No matching container sizes.')
+                : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No CONTSIZE data available.</div>';
+            syncNcrTopControlShell(container, 'genus', {
+                buttonClass: buttonClass(filterState.genusOpen),
+                summary: genusSummary,
+                open: filterState.genusOpen,
+                bodyHtml: filterState.genusOpen ? `${buildNcrFilterSearchHtml(viewId, 'genus', `${viewId}-genus-search`, filterState.genusSearchTerm, 'Search genus...')}<div class="excel-filter-options">${genusOptionsHtml}</div><div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.genusAllSelected ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return selectAllNcrFilter('${viewId}','genus')">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeNcrGenusDropdown('${viewId}')">Done</button></div>` : '',
+                bodySignature: `${viewId}:genus:${state.genusOptions.join('|')}:${state.filteredGenusOptions.join('|')}:${buildSelectionStateKey(state.selectedGenusNames)}:${String(filterState.genusSearchTerm || '').trim().toLowerCase()}:${filterState.genusOpen ? 'open' : 'closed'}`
+            });
+            syncNcrTopControlShell(container, 'contsize', {
+                buttonClass: buttonClass(filterState.contSizeOpen),
+                summary: contSizeSummary,
+                open: filterState.contSizeOpen,
+                bodyHtml: filterState.contSizeOpen ? `${buildNcrFilterSearchHtml(viewId, 'contsize', `${viewId}-contsize-search`, filterState.contSizeSearchTerm, 'Search cont size...')}<div class="excel-filter-options">${contSizeOptionsHtml}</div><div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm ${state.contSizeAllSelected ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}" onclick="return selectAllNcrFilter('${viewId}','contsize')">Select All</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" onclick="return closeNcrContSizeDropdown('${viewId}')">Done</button></div>` : '',
+                bodySignature: `${viewId}:contsize:${state.contSizeOptions.join('|')}:${state.filteredContSizeOptions.join('|')}:${buildSelectionStateKey(state.selectedContSizes)}:${String(filterState.contSizeSearchTerm || '').trim().toLowerCase()}:${filterState.contSizeOpen ? 'open' : 'closed'}`
+            });
+            return state;
+        }
+
+        function scheduleNcrFilterViewRender(viewId = 'review', delay = 0) {
+            markViewDirty(viewId === 'move-up' ? 'move-up' : 'review');
+            return viewId === 'move-up' ? scheduleMoveUpRender(delay, 80, true) : scheduleReviewRender(delay, 80, true);
+        }
+
+        function toggleNcrGenusDropdown(viewId = 'review') {
+            const filterState = getNcrFilterStateForView(viewId);
+            filterState.genusOpen = !filterState.genusOpen;
+            if (filterState.genusOpen) filterState.contSizeOpen = false;
+            renderNcrTopControls(viewId, filterState.itemsCache);
+            return false;
+        }
+
+        function closeNcrGenusDropdown(viewId = 'review') {
+            const filterState = getNcrFilterStateForView(viewId);
+            filterState.genusOpen = false;
+            renderNcrTopControls(viewId, filterState.itemsCache);
+            return false;
+        }
+
+        function toggleNcrContSizeDropdown(viewId = 'review') {
+            const filterState = getNcrFilterStateForView(viewId);
+            filterState.contSizeOpen = !filterState.contSizeOpen;
+            if (filterState.contSizeOpen) filterState.genusOpen = false;
+            renderNcrTopControls(viewId, filterState.itemsCache);
+            return false;
+        }
+
+        function closeNcrContSizeDropdown(viewId = 'review') {
+            const filterState = getNcrFilterStateForView(viewId);
+            filterState.contSizeOpen = false;
+            renderNcrTopControls(viewId, filterState.itemsCache);
+            return false;
+        }
+
+        function setNcrFilterSearchTerm(viewId = 'review', kind = 'genus', value = '') {
+            const filterState = getNcrFilterStateForView(viewId);
+            const safeKind = kind === 'contsize' ? 'contsize' : 'genus';
+            if (safeKind === 'contsize') filterState.contSizeSearchTerm = String(value || '');
+            else filterState.genusSearchTerm = String(value || '');
+            const inputId = `${viewId}-${safeKind === 'contsize' ? 'contsize' : 'genus'}-search`;
+            const input = document.getElementById(inputId);
+            const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
+            scheduleUiRender(`${viewId}-${safeKind}-filter-search-ui`, () => {
+                renderNcrTopControls(viewId, filterState.itemsCache);
+                requestAnimationFrame(() => {
+                    const current = document.getElementById(inputId);
+                    if (!current) return;
+                    if (document.activeElement !== current) current.focus();
+                    if (cursorPos !== null && typeof current.setSelectionRange === 'function') current.setSelectionRange(cursorPos, cursorPos);
+                });
+            });
+            return false;
+        }
+
+        function toggleNcrFilterSelection(viewId = 'review', kind = 'genus', value = '') {
+            const filterState = getNcrFilterStateForView(viewId);
+            const safeKind = kind === 'contsize' ? 'contsize' : 'genus';
+            const state = buildNcrPlantFilterState(viewId, filterState.itemsCache);
+            const options = safeKind === 'contsize' ? state.contSizeOptions : state.genusOptions;
+            const currentSet = safeKind === 'contsize' ? new Set(state.selectedContSizes) : new Set(state.selectedGenusNames);
+            const safeValue = String(value || '').trim();
+            if (!safeValue) return false;
+            if (currentSet.has(safeValue)) currentSet.delete(safeValue);
+            else currentSet.add(safeValue);
+            if (safeKind === 'contsize') {
+                filterState.contSizeSelectionMode = currentSet.size === options.length ? 'all' : 'custom';
+                filterState.selectedContSizes = currentSet;
+            } else {
+                filterState.genusSelectionMode = currentSet.size === options.length ? 'all' : 'custom';
+                filterState.selectedGenusNames = currentSet;
+            }
+            scheduleNcrFilterViewRender(viewId, 0);
+            renderNcrTopControls(viewId, filterState.itemsCache);
+            return false;
+        }
+
+        function selectAllNcrFilter(viewId = 'review', kind = 'genus') {
+            const filterState = getNcrFilterStateForView(viewId);
+            if (kind === 'contsize') {
+                filterState.contSizeSelectionMode = 'all';
+                filterState.contSizeSearchTerm = '';
+                filterState.selectedContSizes = new Set();
+            } else {
+                filterState.genusSelectionMode = 'all';
+                filterState.genusSearchTerm = '';
+                filterState.selectedGenusNames = new Set();
+            }
+            scheduleNcrFilterViewRender(viewId, 0);
+            renderNcrTopControls(viewId, filterState.itemsCache);
+            return false;
+        }
+
+        function applyVisibleNcrFilterResults(viewId = 'review', kind = 'genus') {
+            const filterState = getNcrFilterStateForView(viewId);
+            const safeKind = kind === 'contsize' ? 'contsize' : 'genus';
+            const state = buildNcrPlantFilterState(viewId, filterState.itemsCache);
+            const options = safeKind === 'contsize' ? state.contSizeOptions : state.genusOptions;
+            const filteredOptions = safeKind === 'contsize' ? state.filteredContSizeOptions : state.filteredGenusOptions;
+            const visibleSelection = buildVisibleExcelFilterSelection(options, filteredOptions);
+            if (!visibleSelection) return false;
+            beginDirectNavigationActivity();
+            if (safeKind === 'contsize') {
+                filterState.selectedContSizes = visibleSelection.selectedSet;
+                filterState.contSizeSelectionMode = visibleSelection.selectionMode;
+                filterState.contSizeSearchTerm = '';
+                filterState.contSizeOpen = false;
+            } else {
+                filterState.selectedGenusNames = visibleSelection.selectedSet;
+                filterState.genusSelectionMode = visibleSelection.selectionMode;
+                filterState.genusSearchTerm = '';
+                filterState.genusOpen = false;
+            }
+            scheduleNcrFilterViewRender(viewId, 0);
+            return true;
+        }
+
+        function handleNcrFilterSearchKeydown(event, viewId = 'review', kind = 'genus') {
+            if (!isEnterKeypress(event)) return;
+            handleSearchEnterApply(event, () => applyVisibleNcrFilterResults(viewId, kind));
+        }
+
         function getReviewDrilldownItems(itemCode = selectedReviewItemCode) {
             const safeItemCode = String(itemCode || '').trim();
             if (!safeItemCode) return [];
@@ -13094,7 +13410,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
                 if (isNcrReleaseCandidateRow(item)) rows.push({ ...item, DOM_ID: 'mr_detail_' + detailIndex++ });
                 return rows;
             }, []);
-            return filterReviewItemsBySearch(items).sort((a,b) => {
+            return filterReviewItemsBySearch(filterNcrItemsBySelectedFilters(items, 'review')).sort((a,b) => {
                 const cropA = getNcrCropPosition(a);
                 const cropB = getNcrCropPosition(b);
                 const salesYearA = cropA.salesYear == null ? Number.MAX_SAFE_INTEGER : cropA.salesYear;
@@ -13116,7 +13432,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
                 if (isNcrMoveUpCandidateRow(item)) rows.push({ ...item, DOM_ID: 'mu_detail_' + detailIndex++ });
                 return rows;
             }, []);
-            return filterMoveUpItemsBySearch(items).sort((a,b) => {
+            return filterMoveUpItemsBySearch(filterNcrItemsBySelectedFilters(items, 'move-up')).sort((a,b) => {
                 const cropA = getNcrCropPosition(a);
                 const cropB = getNcrCropPosition(b);
                 const salesYearA = cropA.salesYear == null ? Number.MAX_SAFE_INTEGER : cropA.salesYear;
@@ -13163,7 +13479,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
                 if (isNcrReleaseCandidateRow(item)) rows.push({ ...item, DOM_ID: 'mr_block_' + detailIndex++ });
                 return rows;
             }, []);
-            return filterReviewItemsBySearch(items).sort(compareReviewRowsByBlockLocation);
+            return filterReviewItemsBySearch(filterNcrItemsBySelectedFilters(items, 'review')).sort(compareReviewRowsByBlockLocation);
         }
 
         function buildReviewBlockGroups(items = []) {
@@ -42991,10 +43307,13 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (clearBtn) clearBtn.classList.toggle('hidden', !String(reviewSearchTerm || '').trim());
             const reviewItems = ensureManagerReviewInventoryBuilt();
             if(reviewItems.length === 0){
+                hideNcrTopControls('review');
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No items require New Crop Release review.</div>`;
                 crumb.innerText = "All Clear";
                 return;
             }
+            const reviewFilterState = renderNcrTopControls('review', reviewItems);
+            const filteredReviewItems = filterReviewItemsBySearch(reviewFilterState.filteredItems);
             const modeSwitcherHtml = buildReviewModeSwitcherHtml();
             if (reviewBrowseMode === 'block') {
                 if (reviewViewLevel === 0) {
@@ -43040,7 +43359,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
             }
             if(reviewViewLevel === 0){
-                const sorted = buildReviewCardGroups(filterReviewItemsBySearch(reviewItems));
+                const sorted = buildReviewCardGroups(filteredReviewItems);
                 renderMarkupChunkedByKey('review-main', container, crumb, sorted, 'Needs New Crop Release Review', (group) => {
                     const currentSeasonPtrLabel = Number.isFinite(group.ptrAvailableTotal)
                         ? Number(group.ptrAvailableTotal).toLocaleString()
@@ -43073,12 +43392,15 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (clearBtn) clearBtn.classList.toggle('hidden', !String(moveUpSearchTerm || '').trim());
             const moveUpItems = ensureMoveUpInventoryBuilt();
             if (moveUpItems.length === 0) {
+                hideNcrTopControls('move-up');
                 container.innerHTML = `<div class="p-8 text-center text-gray-400">No U1, U2, or U3 rows at or below the Move Up salesyear cutoff require review.</div>`;
                 crumb.innerText = "All Clear";
                 return;
             }
+            const moveUpFilterState = renderNcrTopControls('move-up', moveUpItems);
+            const filteredMoveUpItems = filterMoveUpItemsBySearch(moveUpFilterState.filteredItems);
             if (moveUpViewLevel === 0) {
-                const sorted = buildMoveUpCardGroups(filterMoveUpItemsBySearch(moveUpItems));
+                const sorted = buildMoveUpCardGroups(filteredMoveUpItems);
                 renderMarkupChunkedByKey('move-up-main', container, crumb, sorted, 'Move Up Candidates', (group) => {
                     const moveUpPtrLabel = Number.isFinite(group.ptrAvailableTotal)
                         ? Number(group.ptrAvailableTotal).toLocaleString()
