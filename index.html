@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.09.04';
+window.__APP_SHELL_VERSION__ = 'V2026.05.10.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1131,7 +1131,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
 <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.09.04').trim() || 'V2026.05.09.04';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.10.01').trim() || 'V2026.05.10.01';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1479,6 +1479,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <i id="review-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearReviewSearch()"></i>
                     </div>
                     <div class="freeze-panel drive-controls-sticky">
+                    <div id="review-drill-tabs" class="task-tabs">
+                        <div id="tab-review-name" class="task-tab" onclick="setReviewBrowseMode('item')">COMMONNAME</div>
+                        <div id="tab-review-loc" class="task-tab" onclick="setReviewBrowseMode('block')">LOCATION</div>
+                        <div id="tab-review-card" class="task-tab" onclick="setReviewBrowseMode('card')">CARD</div>
+                    </div>
                     <div id="review-plant-filters" class="hidden mb-3"></div>
                     <div id="review-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                     </div>
@@ -1491,6 +1496,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <i id="move-up-search-clear" class="ph-bold ph-x absolute right-3 top-3.5 text-gray-400 text-lg cursor-pointer hidden" onclick="clearMoveUpSearch()"></i>
                     </div>
                     <div class="freeze-panel drive-controls-sticky">
+                    <div id="move-up-drill-tabs" class="task-tabs">
+                        <div id="tab-move-up-name" class="task-tab" onclick="setMoveUpBrowseMode('item')">COMMONNAME</div>
+                        <div id="tab-move-up-loc" class="task-tab" onclick="setMoveUpBrowseMode('block')">LOCATION</div>
+                        <div id="tab-move-up-card" class="task-tab" onclick="setMoveUpBrowseMode('card')">CARD</div>
+                    </div>
                     <div id="move-up-plant-filters" class="hidden mb-3"></div>
                     <div id="move-up-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                     </div>
@@ -1765,7 +1775,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.09.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.10.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7971,6 +7981,12 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             bindFastInvokeById('tab-drive-name', 'setDriveTab', ['name'], 'COMMONNAME');
             bindFastInvokeById('tab-drive-loc', 'setDriveTab', ['loc'], 'LOCATION');
             bindFastInvokeById('tab-drive-card', 'setDriveTab', ['card'], 'CARD');
+            bindFastInvokeById('tab-review-name', 'setReviewBrowseMode', ['item'], 'COMMONNAME');
+            bindFastInvokeById('tab-review-loc', 'setReviewBrowseMode', ['block'], 'LOCATION');
+            bindFastInvokeById('tab-review-card', 'setReviewBrowseMode', ['card'], 'CARD');
+            bindFastInvokeById('tab-move-up-name', 'setMoveUpBrowseMode', ['item'], 'COMMONNAME');
+            bindFastInvokeById('tab-move-up-loc', 'setMoveUpBrowseMode', ['block'], 'LOCATION');
+            bindFastInvokeById('tab-move-up-card', 'setMoveUpBrowseMode', ['card'], 'CARD');
         }
 
         function handleGlobalGhostClickCapture(event) {
@@ -10209,7 +10225,7 @@ let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chat
 let walkieChannels=[]; let walkieChannelMembers=[]; let walkieCalls=[]; let walkieCallMembers=[]; let walkieUsers=[]; let walkieSignalsSeen=new Set(); let walkieDataLoaded=false; let walkieLoadPromise=null; let walkieSchemaReady=null; let walkieSchemaProbePromise=null; let walkieSchemaWarningShown=false; let activeWalkieChannelId=''; let pendingWalkieOpenChannelId=''; let pendingWalkieOpenCallId=''; let walkieComposeOpen=false; let walkieUserSearchTerm=''; let walkieComposeTitle=''; let walkieSelectedUsers=new Set(); let walkieLastRenderSignature=''; let walkieDeviceId=''; let activeWalkieCallId=''; let walkieJoinedCallId=''; let walkieActiveMembershipId=''; let walkiePeerConnections=new Map(); let walkieRemoteAudioElements=new Map(); let walkieLocalStream=null; let walkieHeartbeatTimer=null; let walkieSpeakerHeartbeatTimer=null; let walkieReconnectTimer=null; let walkieActiveSpeakerIntent=false; let walkiePressedPointerId=''; let walkieForegroundNoticeShown=false;
         let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map();
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
-let reviewSearchTerm=''; let moveUpSearchTerm=''; let reviewBrowseMode='item'; let selectedReviewBlockAlpha=null; let selectedReviewLocationCode=null; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set();
+let reviewSearchTerm=''; let moveUpSearchTerm=''; let reviewBrowseMode='item'; let moveUpBrowseMode='item'; let selectedReviewBlockAlpha=null; let selectedReviewLocationCode=null; let selectedMoveUpBlockAlpha=null; let selectedMoveUpLocationCode=null; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set();
 const ncrFilterStateByView = {
     review: { selectedGenusNames: new Set(), genusSearchTerm: '', genusOpen: false, genusSelectionMode: 'all', selectedContSizes: new Set(), contSizeSearchTerm: '', contSizeOpen: false, contSizeSelectionMode: 'all', itemsCache: [], lastSignature: '' },
     'move-up': { selectedGenusNames: new Set(), genusSearchTerm: '', genusOpen: false, genusSelectionMode: 'all', selectedContSizes: new Set(), contSizeSearchTerm: '', contSizeOpen: false, contSizeSelectionMode: 'all', itemsCache: [], lastSignature: '' }
@@ -10602,7 +10618,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.09.04').trim() || 'V2026.05.09.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.10.01').trim() || 'V2026.05.10.01';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -10655,6 +10671,8 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             reserves: 'reserves-search-container',
             docks: 'docks-search-container',
             drive: 'drive-search-container',
+            review: 'review-search-container',
+            'move-up': 'move-up-search-container',
             request: 'request-search-container',
             tasks: 'tasks-search-container'
         };
@@ -13562,9 +13580,9 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             const safeItemCode = String(itemCode || '').trim();
             if (!safeItemCode) return [];
             let detailIndex = 0;
-            const items = fullInventory.reduce((rows, item) => {
+            const items = ensureManagerReviewInventoryBuilt().reduce((rows, item) => {
                 if (getNcrItemCode(item) !== safeItemCode) return rows;
-                if (isNcrReleaseCandidateRow(item)) rows.push({ ...item, DOM_ID: 'mr_detail_' + detailIndex++ });
+                rows.push({ ...item, DOM_ID: 'mr_detail_' + detailIndex++ });
                 return rows;
             }, []);
             return filterReviewItemsBySearch(filterNcrItemsBySelectedFilters(items, 'review')).sort((a,b) => {
@@ -13584,9 +13602,9 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             const safeItemCode = String(itemCode || '').trim();
             if (!safeItemCode) return [];
             let detailIndex = 0;
-            const items = fullInventory.reduce((rows, item) => {
+            const items = ensureMoveUpInventoryBuilt().reduce((rows, item) => {
                 if (getNcrItemCode(item) !== safeItemCode) return rows;
-                if (isNcrMoveUpCandidateRow(item)) rows.push({ ...item, DOM_ID: 'mu_detail_' + detailIndex++ });
+                rows.push({ ...item, DOM_ID: 'mu_detail_' + detailIndex++ });
                 return rows;
             }, []);
             return filterMoveUpItemsBySearch(filterNcrItemsBySelectedFilters(items, 'move-up')).sort((a,b) => {
@@ -13627,16 +13645,7 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
         }
 
         function getReviewBlockDrilldownItems() {
-            const actionableItemCodes = getReviewActionableItemCodeSet();
-            if (!actionableItemCodes.size) return [];
-            let detailIndex = 0;
-            const items = fullInventory.reduce((rows, item) => {
-                const itemCode = getNcrItemCode(item);
-                if (!itemCode || !actionableItemCodes.has(itemCode)) return rows;
-                if (isNcrReleaseCandidateRow(item)) rows.push({ ...item, DOM_ID: 'mr_block_' + detailIndex++ });
-                return rows;
-            }, []);
-            return filterReviewItemsBySearch(filterNcrItemsBySelectedFilters(items, 'review')).sort(compareReviewRowsByBlockLocation);
+            return filterReviewItemsBySearch(filterNcrItemsBySelectedFilters(ensureManagerReviewInventoryBuilt(), 'review')).sort(compareReviewRowsByBlockLocation);
         }
 
         function buildReviewBlockGroups(items = []) {
@@ -13702,6 +13711,24 @@ const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 
             const safeBlock = normalizeReviewBlockAlpha(blockAlpha);
             const safeLocation = normalizeReviewLocationCode(locationCode);
             return getReviewBlockDrilldownItems().filter((item) => (
+                normalizeReviewBlockAlpha(firstNonEmptyValue(item && item.BLOCKALPHA, item && item.blockalpha, '')) === safeBlock
+                && normalizeReviewLocationCode(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, '')) === safeLocation
+            ));
+        }
+
+        function getMoveUpBlockDrilldownItems() {
+            return filterMoveUpItemsBySearch(filterNcrItemsBySelectedFilters(ensureMoveUpInventoryBuilt(), 'move-up')).sort(compareReviewRowsByBlockLocation);
+        }
+
+        function getMoveUpRowsForBlock(blockAlpha = selectedMoveUpBlockAlpha) {
+            const safeBlock = normalizeReviewBlockAlpha(blockAlpha);
+            return getMoveUpBlockDrilldownItems().filter((item) => normalizeReviewBlockAlpha(firstNonEmptyValue(item && item.BLOCKALPHA, item && item.blockalpha, '')) === safeBlock);
+        }
+
+        function getMoveUpRowsForBlockLocation(blockAlpha = selectedMoveUpBlockAlpha, locationCode = selectedMoveUpLocationCode) {
+            const safeBlock = normalizeReviewBlockAlpha(blockAlpha);
+            const safeLocation = normalizeReviewLocationCode(locationCode);
+            return getMoveUpBlockDrilldownItems().filter((item) => (
                 normalizeReviewBlockAlpha(firstNonEmptyValue(item && item.BLOCKALPHA, item && item.blockalpha, '')) === safeBlock
                 && normalizeReviewLocationCode(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, '')) === safeLocation
             ));
@@ -23318,24 +23345,40 @@ function toggleDriveQuickRequestItem(domId) {
             if (shouldRender) scheduleReviewRender();
         }
 
-        function resetMoveUpView(shouldRender = true) {
+        function resetMoveUpView(shouldRender = true, options = {}) {
+            const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            if (nextOptions.resetMode) moveUpBrowseMode = 'item';
             moveUpViewLevel = 0;
             selectedMoveUpItemCode = null;
             selectedMoveUpCommonName = null;
             selectedMoveUpContSize = null;
+            selectedMoveUpBlockAlpha = null;
+            selectedMoveUpLocationCode = null;
             if (shouldRender) scheduleMoveUpRender();
         }
 
-        function buildReviewModeSwitcherHtml() {
-            const modeButtonClass = (mode) => {
-                const active = reviewBrowseMode === mode;
-                return `inline-flex min-h-[38px] flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] shadow-sm active:scale-[0.98] ${active ? 'border-yellow-300 bg-yellow-100 text-yellow-800' : 'border-slate-200 bg-white text-slate-600'}`;
-            };
-            return `<div class="mb-3 flex gap-2 rounded-2xl border border-yellow-100 bg-yellow-50/70 p-2 shadow-sm"><button type="button" class="${modeButtonClass('item')}" ${buildFastInvokeAttrs('setReviewBrowseMode', ['item'], 'Item view')}><i class="ph-bold ph-plant"></i><span>Items</span></button><button type="button" class="${modeButtonClass('block')}" ${buildFastInvokeAttrs('setReviewBrowseMode', ['block'], 'Block view')}><i class="ph-bold ph-map-trifold"></i><span>Blocks</span></button></div>`;
+        function normalizeNcrBrowseMode(mode = 'item') {
+            const normalized = String(mode || '').trim().toLowerCase();
+            if (normalized === 'block' || normalized === 'loc' || normalized === 'location') return 'block';
+            if (normalized === 'card' || normalized === 'cards') return 'card';
+            return 'item';
+        }
+
+        function syncNcrBrowseTabs(viewId = 'review') {
+            const safeView = viewId === 'move-up' ? 'move-up' : 'review';
+            const activeMode = safeView === 'move-up' ? moveUpBrowseMode : reviewBrowseMode;
+            const tabMap = safeView === 'move-up'
+                ? { item: 'tab-move-up-name', block: 'tab-move-up-loc', card: 'tab-move-up-card' }
+                : { item: 'tab-review-name', block: 'tab-review-loc', card: 'tab-review-card' };
+            Object.entries(tabMap).forEach(([mode, id]) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.classList.toggle('active', activeMode === mode);
+            });
         }
 
         function setReviewBrowseMode(mode = 'item') {
-            const nextMode = mode === 'block' ? 'block' : 'item';
+            const nextMode = normalizeNcrBrowseMode(mode);
             if (reviewBrowseMode !== nextMode) reviewBrowseMode = nextMode;
             reviewViewLevel = 0;
             selectedReviewItemCode = null;
@@ -23345,6 +23388,21 @@ function toggleDriveQuickRequestItem(domId) {
             selectedReviewLocationCode = null;
             markViewDirty('review');
             scheduleReviewRender(0);
+            updateGlobalBackButton();
+            return false;
+        }
+
+        function setMoveUpBrowseMode(mode = 'item') {
+            const nextMode = normalizeNcrBrowseMode(mode);
+            if (moveUpBrowseMode !== nextMode) moveUpBrowseMode = nextMode;
+            moveUpViewLevel = 0;
+            selectedMoveUpItemCode = null;
+            selectedMoveUpCommonName = null;
+            selectedMoveUpContSize = null;
+            selectedMoveUpBlockAlpha = null;
+            selectedMoveUpLocationCode = null;
+            markViewDirty('move-up');
+            scheduleMoveUpRender(0);
             updateGlobalBackButton();
             return false;
         }
@@ -23406,24 +23464,36 @@ function toggleDriveQuickRequestItem(domId) {
                 selectedReviewItemCode = itemCode;
                 selectedReviewCommonName = commonName;
                 selectedReviewContSize = contSize;
+                selectedReviewBlockAlpha = null;
+                selectedReviewLocationCode = null;
                 reviewViewLevel = 1;
             }, { delay: 0, typingDelay: 180 });
         }
 
         function selectMoveUpItem(itemCode, commonName, contSize) {
             return runDirectTrackedNavigation('move-up', `move-up-item:${String(itemCode || '').trim()}`, () => {
+                moveUpBrowseMode = 'item';
                 selectedMoveUpItemCode = itemCode;
                 selectedMoveUpCommonName = commonName;
                 selectedMoveUpContSize = contSize;
+                selectedMoveUpBlockAlpha = null;
+                selectedMoveUpLocationCode = null;
                 moveUpViewLevel = 1;
             }, { delay: 0, typingDelay: 180 });
         }
 
         function backMoveUpView(shouldRender = true) {
-            moveUpViewLevel = 0;
-            selectedMoveUpItemCode = null;
-            selectedMoveUpCommonName = null;
-            selectedMoveUpContSize = null;
+            if (moveUpBrowseMode === 'block' && moveUpViewLevel > 1) {
+                moveUpViewLevel = 1;
+                selectedMoveUpLocationCode = null;
+            } else {
+                moveUpViewLevel = 0;
+                selectedMoveUpItemCode = null;
+                selectedMoveUpCommonName = null;
+                selectedMoveUpContSize = null;
+                selectedMoveUpBlockAlpha = null;
+                selectedMoveUpLocationCode = null;
+            }
             if (shouldRender) scheduleMoveUpRender(0);
             updateGlobalBackButton();
             return false;
@@ -23447,6 +23517,33 @@ function toggleDriveQuickRequestItem(domId) {
                 selectedReviewBlockAlpha = safeBlock;
                 selectedReviewLocationCode = safeLocation;
                 reviewViewLevel = 2;
+            }, { delay: 0, typingDelay: 180 });
+        }
+
+        function selectMoveUpBlock(blockAlpha) {
+            const safeBlock = normalizeReviewBlockAlpha(blockAlpha);
+            return runDirectTrackedNavigation('move-up', `move-up-block:${safeBlock}`, () => {
+                moveUpBrowseMode = 'block';
+                selectedMoveUpBlockAlpha = safeBlock;
+                selectedMoveUpLocationCode = null;
+                selectedMoveUpItemCode = null;
+                selectedMoveUpCommonName = null;
+                selectedMoveUpContSize = null;
+                moveUpViewLevel = 1;
+            }, { delay: 0, typingDelay: 180 });
+        }
+
+        function selectMoveUpBlockLocation(blockAlpha, locationCode) {
+            const safeBlock = normalizeReviewBlockAlpha(blockAlpha);
+            const safeLocation = normalizeReviewLocationCode(locationCode);
+            return runDirectTrackedNavigation('move-up', `move-up-block-location:${safeBlock}:${safeLocation}`, () => {
+                moveUpBrowseMode = 'block';
+                selectedMoveUpBlockAlpha = safeBlock;
+                selectedMoveUpLocationCode = safeLocation;
+                selectedMoveUpItemCode = null;
+                selectedMoveUpCommonName = null;
+                selectedMoveUpContSize = null;
+                moveUpViewLevel = 2;
             }, { delay: 0, typingDelay: 180 });
         }
 
@@ -23716,6 +23813,13 @@ function toggleDriveQuickRequestItem(domId) {
                 backReviewView(false);
             } else if (reviewBrowseMode === 'block' && reviewViewLevel === 1 && !getReviewRowsForBlock(selectedReviewBlockAlpha).length) {
                 resetReviewView(false);
+            }
+            if (moveUpBrowseMode === 'item' && moveUpViewLevel === 1 && sameItemCode && String(selectedMoveUpItemCode || '') === sameItemCode && !getMoveUpDrilldownItems(sameItemCode).length) {
+                resetMoveUpView(false);
+            } else if (moveUpBrowseMode === 'block' && moveUpViewLevel === 2 && !getMoveUpRowsForBlockLocation(selectedMoveUpBlockAlpha, selectedMoveUpLocationCode).length) {
+                backMoveUpView(false);
+            } else if (moveUpBrowseMode === 'block' && moveUpViewLevel === 1 && !getMoveUpRowsForBlock(selectedMoveUpBlockAlpha).length) {
+                resetMoveUpView(false);
             }
             clearNcrDraft(item);
             markViewDirty('review');
@@ -24599,7 +24703,8 @@ function toggleDriveQuickRequestItem(domId) {
             if (currentView === 'chat') return !!(activeChatConversationId || chatComposeOpen || viewHistoryStack.length);
             if (currentView === 'walkie') return !!(walkieComposeOpen || activeWalkieChannelId || viewHistoryStack.length);
             if (currentView === 'av') return activeAVTab === 'reserves' ? (avResLevel > 0 || !!selectedAvResRep || viewHistoryStack.length > 0) : viewHistoryStack.length > 0;
-            if (currentView === 'review') return (typeof reviewViewLevel !== 'undefined' && reviewViewLevel > 0) || viewHistoryStack.length > 0;
+            if (currentView === 'review') return (reviewBrowseMode !== 'item') || (typeof reviewViewLevel !== 'undefined' && reviewViewLevel > 0) || viewHistoryStack.length > 0;
+            if (currentView === 'move-up') return (moveUpBrowseMode !== 'item') || (typeof moveUpViewLevel !== 'undefined' && moveUpViewLevel > 0) || viewHistoryStack.length > 0;
             return currentView !== 'home' || viewHistoryStack.length > 0;
         }
 
@@ -25038,6 +25143,16 @@ function toggleDriveQuickRequestItem(domId) {
             if (currentView === 'review') {
                 if (typeof reviewViewLevel !== 'undefined' && reviewViewLevel > 0) {
                     backReviewView();
+                    updateGlobalBackButton();
+                    return false;
+                }
+                if (restorePreviousViewFromHistory()) return false;
+                switchView('home');
+                return false;
+            }
+            if (currentView === 'move-up') {
+                if (typeof moveUpViewLevel !== 'undefined' && moveUpViewLevel > 0) {
+                    backMoveUpView();
                     updateGlobalBackButton();
                     return false;
                 }
@@ -43865,6 +43980,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function renderReview() {
             if (ensureViewDataForRender('review')) return;
+            syncNcrBrowseTabs('review');
             const container = document.getElementById('review-content');
             const crumb = document.getElementById('review-crumb');
             const searchInput = document.getElementById('review-search');
@@ -43880,21 +43996,27 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             const reviewFilterState = renderNcrTopControls('review', reviewItems);
             const filteredReviewItems = filterReviewItemsBySearch(reviewFilterState.filteredItems);
-            const modeSwitcherHtml = buildReviewModeSwitcherHtml();
+            if (reviewBrowseMode === 'card') {
+                const cardRows = filteredReviewItems.slice().sort(compareReviewRowsByBlockLocation);
+                renderMarkupChunkedByKey('review-card', container, crumb, cardRows, `New Crop Release Cards (${cardRows.length} rows)`, (item) => generateCard(item, 'review', 'status-yellow'), {
+                    approxCardHeight: 305,
+                    emptyHtml: `<div class="p-8 text-center text-gray-400">No F1 or S1 rows above the New Crop salesyear cutoff matched your search.</div>`
+                });
+                return;
+            }
             if (reviewBrowseMode === 'block') {
                 if (reviewViewLevel === 0) {
                     const blockRows = getReviewBlockDrilldownItems();
                     const blockGroups = buildReviewBlockGroups(blockRows);
-                    renderMarkupChunkedByKey('review-blocks', container, crumb, blockGroups, 'New Crop Release by Block', (group) => {
+                    renderMarkupChunkedByKey('review-blocks', container, crumb, blockGroups, 'New Crop Release by Location', (group) => {
                         const blockLabel = esc(group.blockAlpha || 'Unassigned');
                         const ptrLabel = Number(group.ptrAvailableTotal || 0).toLocaleString();
                         const locationPreview = group.locations && group.locations.length ? esc(group.locations.slice(0, 8).join(', ')) : 'No locations';
                         const moreLocations = group.locations && group.locations.length > 8 ? `<span class="text-yellow-600"> +${group.locations.length - 8} more</span>` : '';
                         return `<div class="bg-white border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectReviewBlock', [group.blockAlpha], `Open block ${group.blockAlpha}`)}><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-grow"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-yellow-500">Block Alpha</div><div class="mt-1 text-2xl font-black text-yellow-800 leading-none break-words">${blockLabel}</div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-yellow-200 bg-yellow-50 px-3 py-1 text-yellow-700">${esc(String(group.locationCount || 0))} Locations</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">${esc(String(group.rowCount || 0))} Rows</span><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">PTR ${esc(ptrLabel)}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">${esc(String(group.itemCount || 0))} Items</span></div><div class="mt-3 text-[11px] font-bold text-slate-500 break-words">${locationPreview}${moreLocations}</div></div><i class="ph-bold ph-caret-right text-xl text-yellow-500 mt-1"></i></div></div>`;
                     }, {
-                        prefixHtml: modeSwitcherHtml,
                         approxCardHeight: 150,
-                        emptyHtml: `<div class="p-8 text-center text-gray-400">No matching New Crop Release rows found by block.</div>`
+                        emptyHtml: `<div class="p-8 text-center text-gray-400">No matching New Crop Release rows found by location.</div>`
                     });
                     return;
                 }
@@ -43906,7 +44028,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                         const ptrLabel = Number(group.ptrAvailableTotal || 0).toLocaleString();
                         return `<div class="bg-white border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectReviewBlockLocation', [blockLabel, group.locationCode], `Open location ${group.locationCode}`)}><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-grow"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-yellow-500">Location Code</div><div class="mt-1 text-2xl font-black text-yellow-800 leading-none break-words">${esc(group.locationCode || 'No Loc')}</div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">${esc(String(group.rowCount || 0))} Rows</span><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">PTR ${esc(ptrLabel)}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">${esc(String(group.itemCount || 0))} Items</span></div></div><i class="ph-bold ph-caret-right text-xl text-yellow-500 mt-1"></i></div></div>`;
                     }, {
-                        prefixHtml: `${modeSwitcherHtml}<div class="back-btn" ${buildFastInvokeAttrs('backReviewView', [], 'Back to blocks')}><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`,
                         approxCardHeight: 132,
                         emptyHtml: `<div class="p-8 text-center text-gray-400">No locations found for this block.</div>`
                     });
@@ -43917,7 +44038,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const locationLabel = normalizeReviewLocationCode(selectedReviewLocationCode);
                     const rows = getReviewRowsForBlockLocation(blockLabel, locationLabel);
                     renderMarkupChunkedByKey('review-block-location-rows', container, crumb, rows, `${blockLabel} / ${locationLabel}`, (item) => generateCard(item, 'review', 'status-yellow'), {
-                        prefixHtml: `${modeSwitcherHtml}<div class="back-btn" ${buildFastInvokeAttrs('backReviewView', [], 'Back to locations')}><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>`,
                         approxCardHeight: 305,
                         emptyHtml: `<div class="p-8 text-center text-gray-400">No New Crop Release rows were found for this location.</div>`
                     });
@@ -43937,11 +44057,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const releaseCutoffYear = getNcrReleaseSalesYearCutoff();
                     const releaseCropLabel = `New Crop > SY${releaseCutoffYear || '-'} F1/S1`;
                     return `<div class="bg-yellow-50 border border-yellow-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectReviewItem', [group.code, group.name, group.size], `Open ${group.name}`)}><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-grow pr-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-yellow-500">Current and older crop PTRAVAILABLE</div><div class="mt-1 text-2xl font-black text-yellow-700 leading-none">${esc(currentSeasonPtrLabel)}</div><div class="mt-3 font-bold text-[15px] text-yellow-800 truncate">${group.name}</div><div class="text-xs font-semibold text-yellow-600 mt-1">${group.size} <span class="mx-2 text-yellow-300">|</span> <span class="font-mono text-yellow-700">${group.code}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-yellow-200 bg-white px-3 py-1 text-yellow-700">${esc(currentCropLabel)}</span><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">${esc(releaseCropLabel)}</span></div><div class="mt-3 text-[10px] font-black uppercase tracking-[0.14em] text-yellow-500">Current and older lotcodes</div><div class="mt-1 text-xs font-semibold text-yellow-700 break-words">${currentSeasonLotcodesLabel}</div></div><div class="bg-white px-3 py-1 rounded-lg shadow-sm border border-yellow-100 text-yellow-600 font-bold text-xs whitespace-nowrap">${group.count} Locs</div></div></div>`;
-                }, { prefixHtml: modeSwitcherHtml, approxCardHeight: 132, emptyHtml: `<div class="p-8 text-center text-gray-400">No F1 or S1 rows above the New Crop salesyear cutoff require review.</div>` });
+                }, { approxCardHeight: 132, emptyHtml: `<div class="p-8 text-center text-gray-400">No F1 or S1 rows above the New Crop salesyear cutoff require review.</div>` });
             } else if(reviewViewLevel === 1){
                 let items = getReviewDrilldownItems(selectedReviewItemCode);
                 renderMarkupChunkedByKey('review-detail', container, crumb, items, `${selectedReviewCommonName} / ${selectedReviewContSize}`, (item) => generateCard(item, 'review', 'status-yellow'), {
-                    prefixHtml: `${modeSwitcherHtml}<div class="back-btn" ${buildFastInvokeAttrs('backReviewView', [], 'Back to list')}><i class="ph-bold ph-arrow-left"></i> Back to List</div>`,
                     approxCardHeight: 305,
                     emptyHtml: `<div class="p-8 text-center text-gray-400">No F1 or S1 rows above the New Crop salesyear cutoff were found for this item.</div>`
                 });
@@ -43950,6 +44069,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function renderMoveUp() {
             if (ensureViewDataForRender('move-up')) return;
+            syncNcrBrowseTabs('move-up');
             const container = document.getElementById('move-up-content');
             const crumb = document.getElementById('move-up-crumb');
             const searchInput = document.getElementById('move-up-search');
@@ -43965,6 +44085,54 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             const moveUpFilterState = renderNcrTopControls('move-up', moveUpItems);
             const filteredMoveUpItems = filterMoveUpItemsBySearch(moveUpFilterState.filteredItems);
+            if (moveUpBrowseMode === 'card') {
+                const cardRows = filteredMoveUpItems.slice().sort(compareReviewRowsByBlockLocation);
+                renderMarkupChunkedByKey('move-up-card', container, crumb, cardRows, `Move Up Cards (${cardRows.length} rows)`, (item) => generateCard(item, 'move-up', 'status-green'), {
+                    approxCardHeight: 305,
+                    emptyHtml: `<div class="p-8 text-center text-gray-400">No U1, U2, or U3 rows at or below the Move Up salesyear cutoff matched your search.</div>`
+                });
+                return;
+            }
+            if (moveUpBrowseMode === 'block') {
+                if (moveUpViewLevel === 0) {
+                    const blockRows = getMoveUpBlockDrilldownItems();
+                    const blockGroups = buildReviewBlockGroups(blockRows);
+                    renderMarkupChunkedByKey('move-up-blocks', container, crumb, blockGroups, 'Move Up by Location', (group) => {
+                        const blockLabel = esc(group.blockAlpha || 'Unassigned');
+                        const ptrLabel = Number(group.ptrAvailableTotal || 0).toLocaleString();
+                        const locationPreview = group.locations && group.locations.length ? esc(group.locations.slice(0, 8).join(', ')) : 'No locations';
+                        const moreLocations = group.locations && group.locations.length > 8 ? `<span class="text-emerald-600"> +${group.locations.length - 8} more</span>` : '';
+                        return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectMoveUpBlock', [group.blockAlpha], `Open block ${group.blockAlpha}`)}><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-grow"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Block Alpha</div><div class="mt-1 text-2xl font-black text-[#007a4d] leading-none break-words">${blockLabel}</div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">${esc(String(group.locationCount || 0))} Locations</span><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">${esc(String(group.rowCount || 0))} Rows</span><span class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-emerald-700">PTR ${esc(ptrLabel)}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">${esc(String(group.itemCount || 0))} Items</span></div><div class="mt-3 text-[11px] font-bold text-slate-500 break-words">${locationPreview}${moreLocations}</div></div><i class="ph-bold ph-caret-right text-xl text-emerald-500 mt-1"></i></div></div>`;
+                    }, {
+                        approxCardHeight: 150,
+                        emptyHtml: `<div class="p-8 text-center text-gray-400">No matching Move Up rows found by location.</div>`
+                    });
+                    return;
+                }
+                if (moveUpViewLevel === 1) {
+                    const blockRows = getMoveUpRowsForBlock(selectedMoveUpBlockAlpha);
+                    const locationGroups = buildReviewLocationGroups(blockRows);
+                    const blockLabel = normalizeReviewBlockAlpha(selectedMoveUpBlockAlpha);
+                    renderMarkupChunkedByKey('move-up-block-locations', container, crumb, locationGroups, `Block ${blockLabel}`, (group) => {
+                        const ptrLabel = Number(group.ptrAvailableTotal || 0).toLocaleString();
+                        return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('selectMoveUpBlockLocation', [blockLabel, group.locationCode], `Open location ${group.locationCode}`)}><div class="flex items-start justify-between gap-3"><div class="min-w-0 flex-grow"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Location Code</div><div class="mt-1 text-2xl font-black text-[#007a4d] leading-none break-words">${esc(group.locationCode || 'No Loc')}</div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">${esc(String(group.rowCount || 0))} Rows</span><span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">PTR ${esc(ptrLabel)}</span><span class="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">${esc(String(group.itemCount || 0))} Items</span></div></div><i class="ph-bold ph-caret-right text-xl text-emerald-500 mt-1"></i></div></div>`;
+                    }, {
+                        approxCardHeight: 132,
+                        emptyHtml: `<div class="p-8 text-center text-gray-400">No locations found for this block.</div>`
+                    });
+                    return;
+                }
+                if (moveUpViewLevel === 2) {
+                    const blockLabel = normalizeReviewBlockAlpha(selectedMoveUpBlockAlpha);
+                    const locationLabel = normalizeReviewLocationCode(selectedMoveUpLocationCode);
+                    const rows = getMoveUpRowsForBlockLocation(blockLabel, locationLabel);
+                    renderMarkupChunkedByKey('move-up-block-location-rows', container, crumb, rows, `${blockLabel} / ${locationLabel}`, (item) => generateCard(item, 'move-up', 'status-green'), {
+                        approxCardHeight: 305,
+                        emptyHtml: `<div class="p-8 text-center text-gray-400">No Move Up rows were found for this location.</div>`
+                    });
+                    return;
+                }
+            }
             if (moveUpViewLevel === 0) {
                 const sorted = buildMoveUpCardGroups(filteredMoveUpItems);
                 renderMarkupChunkedByKey('move-up-main', container, crumb, sorted, 'Move Up Candidates', (group) => {
@@ -43982,7 +44150,6 @@ ${folderNote ? `Folder Note: ${folderNote}
             } else if (moveUpViewLevel === 1) {
                 const items = getMoveUpDrilldownItems(selectedMoveUpItemCode);
                 renderMarkupChunkedByKey('move-up-detail', container, crumb, items, `${selectedMoveUpCommonName} / ${selectedMoveUpContSize}`, (item) => generateCard(item, 'move-up', 'status-green'), {
-                    prefixHtml: `<div class="back-btn" ${buildFastInvokeAttrs('backMoveUpView', [], 'Back to list')}><i class="ph-bold ph-arrow-left"></i> Back to List</div>`,
                     approxCardHeight: 305,
                     emptyHtml: `<div class="p-8 text-center text-gray-400">No U1, U2, or U3 rows at or below the Move Up salesyear cutoff were found for this item.</div>`
                 });
