@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.11.06';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1387,6 +1387,30 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <button class="text-gray-500 font-bold py-2 px-4" onclick="closeAssignModal()">Cancel</button>
         </div>
     </div>
+    <div id="flyer-assignee-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4" onclick="if(event.target===this) return closeFlyerAssigneePicker('cancel')">
+        <div class="bg-white rounded-2xl shadow-2xl p-5 w-full max-w-md text-left">
+            <div class="flex items-start justify-between gap-3 mb-4 border-b border-gray-100 pb-3">
+                <div class="min-w-0">
+                    <div class="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-indigo-700"><i class="ph-bold ph-paint-brush text-sm"></i>Flyer Folder</div>
+                    <h3 id="flyer-assignee-modal-title" class="mt-3 text-lg font-black text-slate-900">Assign Flyer Folder</h3>
+                    <div id="flyer-assignee-folder-label" class="mt-1 text-[11px] font-semibold text-slate-500"></div>
+                </div>
+                <button type="button" class="text-gray-500 font-bold py-2 px-3" onclick="return closeFlyerAssigneePicker('cancel')">Close</button>
+            </div>
+            <div class="relative">
+                <button id="flyer-assignee-dropdown-toggle" type="button" class="flex min-h-[52px] w-full items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-left text-sm font-black text-indigo-800 shadow-sm active:scale-[0.99]" onclick="return toggleFlyerAssigneeDropdown()">
+                    <span id="flyer-assignee-dropdown-label" class="min-w-0 flex-1 truncate">Select Users</span>
+                    <i class="ph-bold ph-caret-down text-lg"></i>
+                </button>
+                <div id="flyer-assignee-dropdown" class="hidden mt-2 max-h-[44vh] overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-lg"></div>
+            </div>
+            <div id="flyer-assignee-selected-summary" class="mt-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600">No users selected</div>
+            <div class="mt-5 grid grid-cols-2 gap-2">
+                <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-600 shadow-sm active:scale-95" onclick="return closeFlyerAssigneePicker('cancel')">Cancel</button>
+                <button id="flyer-assignee-confirm-btn" type="button" class="rounded-xl border border-emerald-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="return confirmFlyerAssigneeSelection()">Create Folder</button>
+            </div>
+        </div>
+    </div>
     <div id="endcap-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh]">
             <div id="ec-step-1" class="flex flex-col">
@@ -1729,7 +1753,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.06').trim() || 'V2026.05.11.06';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.07').trim() || 'V2026.05.11.07';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2512,7 +2536,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.06';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -4769,7 +4793,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         function closeLoginBlockingLayers() {
             try { closePhotoModal(); } catch (e) {}
             try { toggleMenu(false); } catch (e) {}
-            ['tab-select-modal', 'assign-modal', 'endcap-modal', 'dock-mistake-modal', 'dock-allocation-modal', 'dock-info-modal', 'sales-office-av-modal', 'request-publish-modal', 'ncr-email-modal', 'hold-release-modal', 'request-rep-modal', 'bloom-share-modal', 'bloom-crop-update-modal', 'bloom-picker-modal', 'take-back-done-confirm-modal', 'drawer-overlay', 'side-drawer'].forEach(forceHideUiLayer);
+            ['tab-select-modal', 'assign-modal', 'flyer-assignee-modal', 'endcap-modal', 'dock-mistake-modal', 'dock-allocation-modal', 'dock-info-modal', 'sales-office-av-modal', 'request-publish-modal', 'ncr-email-modal', 'hold-release-modal', 'request-rep-modal', 'bloom-share-modal', 'bloom-crop-update-modal', 'bloom-picker-modal', 'take-back-done-confirm-modal', 'drawer-overlay', 'side-drawer'].forEach(forceHideUiLayer);
         }
 
         function resetLoginUiState() {
@@ -11422,7 +11446,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.06').trim() || 'V2026.05.11.06';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.07').trim() || 'V2026.05.11.07';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -15729,11 +15753,166 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getFlyerAssigneeList(value = '') {
-            return [...new Set(String(value || '').split(/[;,\n]+/).map(entry => entry.trim()).filter(Boolean))];
+            const rawValues = Array.isArray(value) ? value : String(value || '').split(/[;,\n]+/);
+            return [...new Set(rawValues.map(entry => entry == null ? '' : String(entry).trim()).filter(Boolean))];
         }
 
         function normalizeFlyerAssigneeKey(value = '') {
             return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+        }
+
+        const FLYER_ASSIGNABLE_USER_FALLBACK = Object.freeze([
+            { username: 'morgan_anderson', display: 'morgan_anderson' },
+            { username: 'kayla_knepp', display: 'kayla_knepp' },
+            { username: 'dylan_collyge', display: 'dylan_collyge' },
+            { username: 'jd_jones', display: 'jd_jones' }
+        ]);
+        let flyerAssignableUsers = FLYER_ASSIGNABLE_USER_FALLBACK.slice();
+        let flyerAssignableUsersPromise = null;
+        let flyerAssigneePickerResolver = null;
+        let flyerAssigneePickerDefaultNames = [];
+
+        function addFlyerAssignableUserOption(map, username = '', display = '') {
+            if (!map || !(map instanceof Map)) return;
+            const normalizedUsername = normalizePushUsername(username || display);
+            if (!normalizedUsername) return;
+            const displayName = String(display || username || normalizedUsername).trim() || normalizedUsername;
+            const existing = map.get(normalizedUsername);
+            if (existing && existing.display && existing.display !== existing.username) return;
+            map.set(normalizedUsername, {
+                username: normalizedUsername,
+                display: displayName
+            });
+        }
+
+        function normalizeFlyerAssignableUserEntry(entry = null) {
+            if (!entry) return null;
+            if (typeof entry === 'string') {
+                const username = normalizePushUsername(entry);
+                return username ? { username, display: String(entry || username).trim() || username } : null;
+            }
+            const username = normalizePushUsername(firstNonEmptyValue(entry.username, entry.USERNAME, entry.userName, entry.USER_NAME, entry.displayName, entry.display, ''));
+            if (!username) return null;
+            const display = String(firstNonEmptyValue(entry.displayName, entry.display_name, entry.DISPLAY_NAME, entry.display, entry.username, entry.USERNAME, username)).trim() || username;
+            return { username, display };
+        }
+
+        function getFlyerAssignableUserOptions(extraNames = []) {
+            const map = new Map();
+            FLYER_ASSIGNABLE_USER_FALLBACK.forEach((entry) => addFlyerAssignableUserOption(map, entry.username, entry.display));
+            (Array.isArray(flyerAssignableUsers) ? flyerAssignableUsers : []).forEach((entry) => {
+                const normalized = normalizeFlyerAssignableUserEntry(entry);
+                if (normalized) addFlyerAssignableUserOption(map, normalized.username, normalized.display);
+            });
+            (Array.isArray(dockAssignableUsers) ? dockAssignableUsers : []).forEach((name) => addFlyerAssignableUserOption(map, name, name));
+            getFlyerAssigneeList(extraNames).forEach((name) => addFlyerAssignableUserOption(map, name, name));
+            addFlyerAssignableUserOption(map, currentUser || '', currentUserDisplay || currentUser || '');
+            return Array.from(map.values()).sort((a, b) => String(a.display || a.username).localeCompare(String(b.display || b.username), undefined, { sensitivity: 'base' }));
+        }
+
+        async function ensureFlyerAssignableUsers(forceRefresh = false) {
+            if (!forceRefresh && Array.isArray(flyerAssignableUsers) && flyerAssignableUsers.length > FLYER_ASSIGNABLE_USER_FALLBACK.length) return flyerAssignableUsers;
+            if (!forceRefresh && flyerAssignableUsersPromise) return flyerAssignableUsersPromise;
+            const previousUsers = Array.isArray(flyerAssignableUsers) ? flyerAssignableUsers.slice() : FLYER_ASSIGNABLE_USER_FALLBACK.slice();
+            flyerAssignableUsersPromise = (async () => {
+                const rows = await supabaseFetch('v2_app_users', 'GET', null, 'select=username,role&order=username.asc&limit=500');
+                const map = new Map();
+                FLYER_ASSIGNABLE_USER_FALLBACK.forEach((entry) => addFlyerAssignableUserOption(map, entry.username, entry.display));
+                (rows || []).forEach((row) => {
+                    const normalized = normalizeFlyerAssignableUserEntry(row);
+                    if (normalized) addFlyerAssignableUserOption(map, normalized.username, normalized.display);
+                });
+                flyerAssignableUsers = Array.from(map.values()).sort((a, b) => String(a.display || a.username).localeCompare(String(b.display || b.username), undefined, { sensitivity: 'base' }));
+                return flyerAssignableUsers;
+            })().catch(() => {
+                flyerAssignableUsers = previousUsers.length ? previousUsers : FLYER_ASSIGNABLE_USER_FALLBACK.slice();
+                return flyerAssignableUsers;
+            }).finally(() => {
+                flyerAssignableUsersPromise = null;
+            });
+            return flyerAssignableUsersPromise;
+        }
+
+        function getSelectedFlyerAssigneesFromModal() {
+            return Array.from(document.querySelectorAll('#flyer-assignee-dropdown input[data-flyer-assignee-option]:checked'))
+                .map((input) => String(input.value || '').trim())
+                .filter(Boolean);
+        }
+
+        function updateFlyerAssigneeSelectedSummary() {
+            const selected = getSelectedFlyerAssigneesFromModal();
+            const label = document.getElementById('flyer-assignee-dropdown-label');
+            const summary = document.getElementById('flyer-assignee-selected-summary');
+            const displayMap = new Map(getFlyerAssignableUserOptions(selected).map((entry) => [entry.username, entry.display || entry.username]));
+            const displayNames = selected.map((username) => displayMap.get(username) || username);
+            if (label) label.textContent = displayNames.length ? `${displayNames.length} selected` : 'Select Users';
+            if (summary) summary.textContent = displayNames.length ? displayNames.join(', ') : 'No users selected';
+        }
+
+        function renderFlyerAssigneePickerOptions(defaultAssignees = []) {
+            const dropdown = document.getElementById('flyer-assignee-dropdown');
+            if (!dropdown) return;
+            const selectedKeys = new Set(getFlyerAssigneeList(defaultAssignees).map(normalizePushUsername).filter(Boolean));
+            const options = getFlyerAssignableUserOptions(defaultAssignees);
+            dropdown.innerHTML = options.map((entry) => {
+                const checked = selectedKeys.has(entry.username) ? 'checked' : '';
+                const safeUsername = escJsAttrValue(entry.username);
+                const safeDisplay = escapeHtml(entry.display || entry.username);
+                return `<label class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-sm font-bold text-slate-800 active:bg-indigo-50"><input data-flyer-assignee-option type="checkbox" class="h-5 w-5 shrink-0 accent-[#007a4d]" value="${safeUsername}" ${checked} onchange="updateFlyerAssigneeSelectedSummary()"><span class="min-w-0 flex-1 truncate">${safeDisplay}</span></label>`;
+            }).join('');
+            updateFlyerAssigneeSelectedSummary();
+        }
+
+        function toggleFlyerAssigneeDropdown() {
+            const dropdown = document.getElementById('flyer-assignee-dropdown');
+            if (!dropdown) return false;
+            dropdown.classList.toggle('hidden');
+            return false;
+        }
+
+        function openFlyerAssigneePicker(options = {}) {
+            const safeOptions = options && typeof options === 'object' ? options : {};
+            const modal = document.getElementById('flyer-assignee-modal');
+            if (!modal) return Promise.resolve(getFlyerAssigneeList(safeOptions.defaultAssignees));
+            if (flyerAssigneePickerResolver) closeFlyerAssigneePicker('cancel');
+            flyerAssigneePickerDefaultNames = getFlyerAssigneeList(safeOptions.defaultAssignees);
+            const title = document.getElementById('flyer-assignee-modal-title');
+            const folderLabel = document.getElementById('flyer-assignee-folder-label');
+            const confirmBtn = document.getElementById('flyer-assignee-confirm-btn');
+            const dropdown = document.getElementById('flyer-assignee-dropdown');
+            if (title) title.textContent = safeOptions.isAddingToExistingFolder ? 'Assign Flyer Folder' : 'Create Flyer Folder';
+            if (folderLabel) folderLabel.textContent = String(safeOptions.folderName || '').trim();
+            if (confirmBtn) confirmBtn.textContent = safeOptions.isAddingToExistingFolder ? 'Add Rows' : 'Create Folder';
+            if (dropdown) dropdown.classList.add('hidden');
+            renderFlyerAssigneePickerOptions(flyerAssigneePickerDefaultNames);
+            modal.classList.remove('hidden');
+            ensureFlyerAssignableUsers().then(() => {
+                const currentSelection = getSelectedFlyerAssigneesFromModal();
+                renderFlyerAssigneePickerOptions(currentSelection.length ? currentSelection : flyerAssigneePickerDefaultNames);
+            }).catch(() => {});
+            return new Promise((resolve) => {
+                flyerAssigneePickerResolver = resolve;
+            });
+        }
+
+        function closeFlyerAssigneePicker(result = 'cancel') {
+            const modal = document.getElementById('flyer-assignee-modal');
+            if (modal) modal.classList.add('hidden');
+            const dropdown = document.getElementById('flyer-assignee-dropdown');
+            if (dropdown) dropdown.classList.add('hidden');
+            const resolver = flyerAssigneePickerResolver;
+            flyerAssigneePickerResolver = null;
+            if (resolver) resolver(result === 'confirm' ? getSelectedFlyerAssigneesFromModal() : null);
+            return false;
+        }
+
+        function confirmFlyerAssigneeSelection() {
+            const selected = getSelectedFlyerAssigneesFromModal();
+            if (!selected.length) {
+                showToast('Assign Someone', 'Select at least one user for this flyer folder.', true);
+                return false;
+            }
+            return closeFlyerAssigneePicker('confirm');
         }
 
         const FLYER_ARCHIVE_PREFIX = '[ARCHIVED] ';
@@ -16444,6 +16623,49 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
+        function createFlyerFolderRowsForItems(sourceItems = [], flyerFolder = '', isAddingToExistingFolder = false, assignees = [], options = {}) {
+            const safeItems = (Array.isArray(sourceItems) ? sourceItems : []).filter(Boolean);
+            const safeOptions = options && typeof options === 'object' ? options : {};
+            const selectedAssignees = getFlyerAssigneeList(assignees);
+            if (!selectedAssignees.length) {
+                showToast('Assign Someone', 'Select at least one user for this flyer folder.', true);
+                return false;
+            }
+            const flyerAssignedTo = selectedAssignees.join(', ');
+            const primaryAssignee = selectedAssignees[0] || currentUser;
+            const createdAt = new Date().toISOString();
+            const payloads = safeItems.map((item) => buildFlyerFolderRowPayload(item, flyerFolder, flyerAssignedTo, primaryAssignee, createdAt));
+            if (!payloads.length) {
+                showToast('Error', safeOptions.emptyMessage || 'No valid inventory rows were available for Flyer.', true);
+                return false;
+            }
+            if (safeOptions.closeCart) toggleCartPanel(false);
+            showToast('Processing...', `${isAddingToExistingFolder ? 'Adding rows to' : 'Creating flyer folder'} ${flyerFolder}...`, false);
+            ensureFlyerFolderRowsSchemaReady().then((ready) => {
+                if (!ready) throw new Error('Flyer folder row table is missing. Run flyer_folder_rows_migration.sql in Supabase.');
+                const emailItems = payloads.map((payload) => cacheFlyerFolderRow(payload)).filter(Boolean);
+                touchFlyerFolderRowsDatasetState();
+                invalidateResolvedViewStateCaches();
+                markViewDirty('tasks');
+                scheduleTasksRender(0);
+                return supabaseFetch(FLYER_FOLDER_ROWS_TABLE, 'POST', payloads, 'on_conflict=unique_id').then(() => emailItems);
+            }).then((emailItems) => {
+                if (emailItems.length) upsertFlyerFolderHistoryRows(emailItems, 'created').catch(() => {});
+                if (!isAddingToExistingFolder && emailItems.length) {
+                    sendFlyerCreatedEmail(flyerFolder, flyerAssignedTo, emailItems, currentUserDisplay || currentUser || '', {
+                        assigneeUsernames: selectedAssignees.map(normalizePushUsername).filter(Boolean)
+                    });
+                }
+                if (safeOptions.clearSelection) clearSelection();
+                finalizeFlyerFolderNavigation(flyerFolder);
+                showToast('Success', `${payloads.length} row${payloads.length === 1 ? '' : 's'} added to ${flyerFolder}.`);
+            }).catch((err) => {
+                payloads.forEach((payload) => removeFlyerFolderRowFromCache(payload.unique_id));
+                showToast('Error', err && err.message ? err.message : 'Flyer creation failed.', true);
+            });
+            return false;
+        }
+
         function createDriveQuickFlyers() {
             if (!canUseDriveQuickRequest()) return false;
             const domIds = Array.from(driveQuickRequestItems).filter(domId => !!findItemByDomId(domId));
@@ -16467,45 +16689,18 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (!isAddingToExistingFolder) flyerFolder = resolveNewFlyerFolderName(flyerFolder);
 
-            const defaultAssignees = String(pendingFlyerFolderAssignees || getFlyerFolderAssignedNames(flyerFolder).join(', ') || currentUserDisplay || currentUser || '').trim();
-            const assigneePrompt = isAddingToExistingFolder
-                ? `Assign ${flyerFolder} to one or more people. Separate names with commas.`
-                : 'Assign this flyer folder to one or more people. Separate names with commas.';
-            const assigneeInput = window.prompt(assigneePrompt, defaultAssignees);
-            if (assigneeInput === null) return false;
-            const assignees = getFlyerAssigneeList(assigneeInput);
-            if (!assignees.length) {
-                showToast('Assign Someone', 'Enter at least one person for this flyer folder.', true);
-                return false;
-            }
-
-            const flyerAssignedTo = assignees.join(', ');
-            const primaryAssignee = assignees[0] || currentUser;
             const sourceItems = domIds.map((domId) => findItemByDomId(domId)).filter(Boolean);
-            const createdAt = new Date().toISOString();
-            const payloads = sourceItems.map((item) => buildFlyerFolderRowPayload(item, flyerFolder, flyerAssignedTo, primaryAssignee, createdAt));
-            if (!payloads.length) {
+            if (!sourceItems.length) {
                 showToast('Error', 'No valid Drive rows were available for Flyer.', true);
                 return false;
             }
-            showToast('Processing...', `${isAddingToExistingFolder ? 'Adding rows to' : 'Creating flyer folder'} ${flyerFolder}...`, false);
-            ensureFlyerFolderRowsSchemaReady().then((ready) => {
-                if (!ready) throw new Error('Flyer folder row table is missing. Run flyer_folder_rows_migration.sql in Supabase.');
-                const emailItems = payloads.map((payload) => cacheFlyerFolderRow(payload)).filter(Boolean);
-                touchFlyerFolderRowsDatasetState();
-                invalidateResolvedViewStateCaches();
-                markViewDirty('tasks');
-                scheduleTasksRender(0);
-                return supabaseFetch(FLYER_FOLDER_ROWS_TABLE, 'POST', payloads, 'on_conflict=unique_id').then(() => emailItems);
-            }).then((emailItems) => {
-                if (emailItems.length) upsertFlyerFolderHistoryRows(emailItems, 'created').catch(() => {});
-                if (!isAddingToExistingFolder) {
-                    if (emailItems.length) sendFlyerCreatedEmail(flyerFolder, flyerAssignedTo, emailItems, currentUserDisplay || currentUser || '');
-                }
-                finalizeFlyerFolderNavigation(flyerFolder);
-                showToast('Success', `${payloads.length} row${payloads.length === 1 ? '' : 's'} added to ${flyerFolder}.`);
+            const defaultAssignees = String(pendingFlyerFolderAssignees || getFlyerFolderAssignedNames(flyerFolder).join(', ') || currentUserDisplay || currentUser || '').trim();
+            openFlyerAssigneePicker({ folderName: flyerFolder, defaultAssignees, isAddingToExistingFolder }).then((assignees) => {
+                if (!assignees || !assignees.length) return false;
+                return createFlyerFolderRowsForItems(sourceItems, flyerFolder, isAddingToExistingFolder, assignees, {
+                    emptyMessage: 'No valid Drive rows were available for Flyer.'
+                });
             }).catch((err) => {
-                payloads.forEach((payload) => removeFlyerFolderRowFromCache(payload.unique_id));
                 showToast('Error', err && err.message ? err.message : 'Flyer creation failed.', true);
             });
             return false;
@@ -16538,46 +16733,19 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (!isAddingToExistingFolder) flyerFolder = resolveNewFlyerFolderName(flyerFolder);
 
-            const defaultAssignees = String(pendingFlyerFolderAssignees || getFlyerFolderAssignedNames(flyerFolder).join(', ') || currentUserDisplay || currentUser || '').trim();
-            const assigneePrompt = isAddingToExistingFolder
-                ? `Assign ${flyerFolder} to one or more people. Separate names with commas.`
-                : 'Assign this flyer folder to one or more people. Separate names with commas.';
-            const assigneeInput = window.prompt(assigneePrompt, defaultAssignees);
-            if (assigneeInput === null) return false;
-            const assignees = getFlyerAssigneeList(assigneeInput);
-            if (!assignees.length) {
-                showToast('Assign Someone', 'Enter at least one person for this flyer folder.', true);
-                return false;
-            }
-
-            const flyerAssignedTo = assignees.join(', ');
-            const primaryAssignee = assignees[0] || currentUser;
-            const createdAt = new Date().toISOString();
-            const payloads = validItems.map((item) => buildFlyerFolderRowPayload(item, flyerFolder, flyerAssignedTo, primaryAssignee, createdAt));
-            if (!payloads.length) {
+            if (!validItems.length) {
                 showToast('Error', 'No valid inventory rows were available for Flyer.', true);
                 return false;
             }
-            toggleCartPanel(false);
-            showToast('Processing...', `${isAddingToExistingFolder ? 'Adding rows to' : 'Creating flyer folder'} ${flyerFolder}...`, false);
-            ensureFlyerFolderRowsSchemaReady().then((ready) => {
-                if (!ready) throw new Error('Flyer folder row table is missing. Run flyer_folder_rows_migration.sql in Supabase.');
-                const emailItems = payloads.map((payload) => cacheFlyerFolderRow(payload)).filter(Boolean);
-                touchFlyerFolderRowsDatasetState();
-                invalidateResolvedViewStateCaches();
-                markViewDirty('tasks');
-                scheduleTasksRender(0);
-                return supabaseFetch(FLYER_FOLDER_ROWS_TABLE, 'POST', payloads, 'on_conflict=unique_id').then(() => emailItems);
-            }).then((emailItems) => {
-                if (emailItems.length) upsertFlyerFolderHistoryRows(emailItems, 'created').catch(() => {});
-                if (!isAddingToExistingFolder) {
-                    if (emailItems.length) sendFlyerCreatedEmail(flyerFolder, flyerAssignedTo, emailItems, currentUserDisplay || currentUser || '');
-                }
-                clearSelection();
-                finalizeFlyerFolderNavigation(flyerFolder);
-                showToast('Success', `${payloads.length} row${payloads.length === 1 ? '' : 's'} added to ${flyerFolder}.`);
+            const defaultAssignees = String(pendingFlyerFolderAssignees || getFlyerFolderAssignedNames(flyerFolder).join(', ') || currentUserDisplay || currentUser || '').trim();
+            openFlyerAssigneePicker({ folderName: flyerFolder, defaultAssignees, isAddingToExistingFolder }).then((assignees) => {
+                if (!assignees || !assignees.length) return false;
+                return createFlyerFolderRowsForItems(validItems, flyerFolder, isAddingToExistingFolder, assignees, {
+                    closeCart: true,
+                    clearSelection: true,
+                    emptyMessage: 'No valid inventory rows were available for Flyer.'
+                });
             }).catch((err) => {
-                payloads.forEach((payload) => removeFlyerFolderRowFromCache(payload.unique_id));
                 showToast('Error', err && err.message ? err.message : 'Flyer creation failed.', true);
             });
             return false;
@@ -27816,7 +27984,24 @@ function toggleDriveQuickRequestItem(domId) {
                 return { ok: false, responseData, payload, error };
             }
         }
-        function sendFlyerCreatedEmail(folderName, assignedTo, items = [], createdBy = '') {
+        function getFlyerAssigneeUsernames(assignees = []) {
+            return [...new Set(getFlyerAssigneeList(assignees).map(normalizePushUsername).filter(Boolean))];
+        }
+
+        function getFlyerAssigneeEmails(assignees = []) {
+            return [...new Set(getFlyerAssigneeList(assignees)
+                .map((name) => resolveRequestRecipientEmail(name))
+                .map((email) => String(email || '').trim().toLowerCase())
+                .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))];
+        }
+
+        function sendFlyerCreatedEmail(folderName, assignedTo, items = [], createdBy = '', options = {}) {
+            const safeOptions = options && typeof options === 'object' ? options : {};
+            const assigneeNames = getFlyerAssigneeList(assignedTo);
+            const assigneeUsernames = safeOptions.assigneeUsernames && Array.isArray(safeOptions.assigneeUsernames)
+                ? [...new Set(safeOptions.assigneeUsernames.map(normalizePushUsername).filter(Boolean))]
+                : getFlyerAssigneeUsernames(assigneeNames);
+            const recipientEmails = getFlyerAssigneeEmails(assigneeNames.length ? assigneeNames : assigneeUsernames);
             const safeItems = Array.isArray(items)
                 ? items.map((item) => ({
                     commonname: item && item.COMMONNAME ? item.COMMONNAME : '',
@@ -27830,6 +28015,9 @@ function toggleDriveQuickRequestItem(domId) {
                 emailType: 'flyer_created',
                 folderName: folderName,
                 assignedTo: assignedTo,
+                assigneeNames,
+                assigneeUsernames,
+                recipientEmails,
                 createdBy: createdBy || currentUserDisplay || currentUser || '',
                 instructions: 'Open the app, go to Tasks > Flyer, open the folder, complete the flyer work for each row, and mark the row done when finished.',
                 items: safeItems
@@ -27838,6 +28026,9 @@ function toggleDriveQuickRequestItem(domId) {
             sendPushNotification('flyer_created', folderName, assignedTo, folderName, safeItems.length, {
                 folderName: String(folderName || '').trim(),
                 assignedTo: String(assignedTo || '').trim(),
+                assigneeUsernames,
+                targetUsers: assigneeUsernames,
+                recipients: assigneeUsernames,
                 createdBy: String(createdBy || currentUserDisplay || currentUser || '').trim()
             });
         }

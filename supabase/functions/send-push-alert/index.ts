@@ -67,7 +67,11 @@ function jsonResponse(body: unknown, status = 200) {
 
 function buildTargetUsers(eventType: string, payload: Record<string, unknown>) {
   if (eventType === "new_request") return [...REQUEST_ALERT_USERNAMES];
-  if (eventType === "flyer_created" || eventType === "flyer_complete") return [...FLYER_ALERT_USERNAMES];
+  if (eventType === "flyer_created") {
+    const assignedUsers = normalizePayloadUserList(payload.assigneeUsernames || payload.targetUsers || payload.recipients || payload.assignedTo || payload.repName);
+    return assignedUsers.length ? assignedUsers : [...FLYER_ALERT_USERNAMES];
+  }
+  if (eventType === "flyer_complete") return [...FLYER_ALERT_USERNAMES];
   if (eventType === "chat_message") {
     return normalizePayloadUserList(payload.recipients || payload.targetUsers || payload.to);
   }

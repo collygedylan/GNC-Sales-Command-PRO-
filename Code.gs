@@ -2565,6 +2565,127 @@ function collectRequestRecipients_(payload) {
   };
 }
 
+function splitFlyerAssigneeNames_(value) {
+  if (Array.isArray(value)) {
+    const names = [];
+    value.forEach(function(entry) {
+      splitFlyerAssigneeNames_(entry).forEach(function(name) { names.push(name); });
+    });
+    return names;
+  }
+  return String(value || '')
+    .split(/[;,\n]+/)
+    .map(function(entry) { return String(entry || '').trim(); })
+    .filter(Boolean);
+}
+
+function collectFlyerCreatedRecipients_(payload) {
+  const assigneeNames = splitFlyerAssigneeNames_([
+    payload.assignedTo,
+    payload.assigneeNames,
+    payload.assigneeUsernames,
+    payload.targetUsers,
+    payload.recipients
+  ]);
+  const assigneeEmails = assigneeNames.map(function(name) {
+    return resolveRequestRecipientEmail_(name, '');
+  });
+  const recipients = dedupeEmailAddresses_([
+    payload.recipientEmails,
+    payload.emailRecipients,
+    assigneeEmails
+  ]);
+  return {
+    assigneeNames: assigneeNames,
+    toArray: recipients,
+    toList: recipients.join(',')
+  };
+}
+
+function buildFlyerCreatedItemsHtml_(items) {
+  const safeItems = Array.isArray(items) ? items : [];
+  if (!safeItems.length) return '<p style="font-size: 12px; color: #777;">No row details were provided.</p>';
+  return '<ul style="list-style:none; margin:0; padding:0;">' + safeItems.map(function(item) {
+    const commonname = escapeEmailHtml_(item && (item.commonname || item.COMMONNAME || 'Unknown Item'));
+    const contsize = escapeEmailHtml_(item && (item.contsize || item.CONTSIZE || '-'));
+    const locationcode = escapeEmailHtml_(item && (item.locationcode || item.LOCATIONCODE || ''));
+    const itemcode = escapeEmailHtml_(item && (item.itemcode || item.ITEMCODE || ''));
+    const meta = [
+      itemcode ? 'Item Code: ' + itemcode : '',
+      locationcode ? 'Loc: ' + locationcode : ''
+    ].filter(Boolean).join(' | ');
+    return [
+      '<li style="margin-bottom:12px; background:#f9fafb; padding:12px; border-left:4px solid #007a4d; border-radius:8px;">',
+      '<strong>' + commonname + ' (' + contsize + ')</strong>',
+      meta ? '<br><span style="font-size:12px; color:#475569;">' + meta + '</span>' : '',
+      '</li>'
+    ].join('');
+  }).join('') + '</ul>';
+}
+
+function buildFlyerCreatedItemsText_(items) {
+  const safeItems = Array.isArray(items) ? items : [];
+  return safeItems.map(function(item) {
+    return [
+      String(item && (item.commonname || item.COMMONNAME || 'Unknown Item')) + ' (' + String(item && (item.contsize || item.CONTSIZE || '-')) + ')',
+      String(item && (item.itemcode || item.ITEMCODE || '') ? 'Item Code: ' + (item.itemcode || item.ITEMCODE) : ''),
+      String(item && (item.locationcode || item.LOCATIONCODE || '') ? 'Loc: ' + (item.locationcode || item.LOCATIONCODE) : '')
+    ].filter(Boolean).join('\n');
+  }).join('\n\n');
+}
+
+function sendFlyerCreatedEmail_(payload) {
+  const safePayload = payload || {};
+  const recipients = collectFlyerCreatedRecipients_(safePayload);
+  if (!recipients.toList) {
+    return {
+      ok: false,
+      status: 400,
+      mode: 'missing_recipients',
+      message: 'No flyer assignee email recipients were found.'
+    };
+  }
+  const folderName = String(safePayload.folderName || safePayload.folderId || 'Flyer Folder').trim();
+  const assignedTo = String(safePayload.assignedTo || recipients.assigneeNames.join(', ') || 'Unassigned').trim();
+  const createdBy = String(safePayload.createdBy || safePayload.requestedByDisplay || safePayload.requestedBy || 'GNC App').trim();
+  const itemCount = Array.isArray(safePayload.items) ? safePayload.items.length : 0;
+  const subject = 'GNC PH Flyer Created - ' + folderName;
+  const itemsHtml = buildFlyerCreatedItemsHtml_(safePayload.items);
+  const itemsText = buildFlyerCreatedItemsText_(safePayload.items);
+  const textBody = [
+    'Flyer Folder Created',
+    'Folder: ' + folderName,
+    'Assigned To: ' + assignedTo,
+    'Created By: ' + createdBy,
+    'Rows: ' + itemCount,
+    String(safePayload.instructions || ''),
+    itemsText
+  ].filter(Boolean).join('\n\n');
+  const htmlBody = [
+    '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
+    '<h2 style="color: #007a4d;">Flyer Folder Created</h2>',
+    '<p><strong>Folder:</strong> ' + escapeEmailHtml_(folderName) + '</p>',
+    '<p><strong>Assigned To:</strong> ' + escapeEmailHtml_(assignedTo) + '</p>',
+    '<p><strong>Created By:</strong> ' + escapeEmailHtml_(createdBy) + '</p>',
+    '<p><strong>Rows:</strong> ' + escapeEmailHtml_(itemCount) + '</p>',
+    safePayload.instructions ? '<p style="font-size:12px; color:#64748b;">' + escapeEmailHtml_(safePayload.instructions) + '</p>' : '',
+    '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
+    itemsHtml,
+    '</div>'
+  ].join('');
+  GmailApp.sendEmail(recipients.toList, subject, textBody, {
+    htmlBody: htmlBody,
+    name: 'GNC PH Flyer'
+  });
+  return {
+    ok: true,
+    status: 200,
+    mode: 'sent',
+    recipients: recipients.toArray,
+    subject: subject
+  };
+}
+
 function normalizeRequestEmailSubjectCustomer_(value) {
   const base = String(firstNonEmptyRequestValue_(value)).trim();
   if (!base) return 'Request';
@@ -3228,6 +3349,9 @@ function doPost(e) {
         return jsonOutput_(enqueueDelayedRequestEmail_(payload));
       }
       return jsonOutput_(sendRequestEmailWithFallback_(payload));
+    }
+    if (payload.emailType === "flyer_created") {
+      return jsonOutput_(sendFlyerCreatedEmail_(payload));
     }
 
       let subject = "", htmlBody = "", recipient = "", textBody = "";
