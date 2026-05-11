@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.11.03';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1521,6 +1521,26 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             </div>
         </div>
     </div>
+    <div id="hold-release-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4" onclick="if(event.target===this) closeHoldReleaseModal('no')">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg text-left">
+            <div class="flex items-start justify-between gap-3 mb-4 border-b border-gray-100 pb-3">
+                <div>
+                    <div class="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-red-700"><i class="ph-bold ph-hand-palm text-sm"></i>Hold Row</div>
+                    <h3 class="mt-3 text-lg font-black text-slate-900">Take off Hold?</h3>
+                    <div id="hold-release-modal-label" class="mt-1 text-[11px] font-semibold text-slate-500"></div>
+                </div>
+                <button type="button" class="text-gray-500 font-bold py-2 px-3" onclick="closeHoldReleaseModal('no')">Close</button>
+            </div>
+            <p class="text-sm leading-6 text-slate-600">
+                Choose <span class="font-black text-[#007a4d]">Yes</span> to send this completed photo row to Dylan and JD for hold release.
+                Choose <span class="font-black text-slate-700">No</span> to finish the row without sending the email.
+            </p>
+            <div class="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-sm active:scale-95" onclick="closeHoldReleaseModal('no')">No</button>
+                <button type="button" id="hold-release-yes-btn" class="rounded-xl border border-emerald-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="closeHoldReleaseModal('yes')">Yes</button>
+            </div>
+        </div>
+    </div>
     <div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh] overflow-hidden">
             <div id="step-1-rep" class="flex flex-col min-h-0">
@@ -1709,7 +1729,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.03').trim() || 'V2026.05.11.03';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.04').trim() || 'V2026.05.11.04';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2490,7 +2510,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -4745,7 +4765,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         function closeLoginBlockingLayers() {
             try { closePhotoModal(); } catch (e) {}
             try { toggleMenu(false); } catch (e) {}
-            ['tab-select-modal', 'assign-modal', 'endcap-modal', 'dock-mistake-modal', 'dock-allocation-modal', 'dock-info-modal', 'sales-office-av-modal', 'request-publish-modal', 'ncr-email-modal', 'request-rep-modal', 'bloom-share-modal', 'bloom-crop-update-modal', 'bloom-picker-modal', 'take-back-done-confirm-modal', 'drawer-overlay', 'side-drawer'].forEach(forceHideUiLayer);
+            ['tab-select-modal', 'assign-modal', 'endcap-modal', 'dock-mistake-modal', 'dock-allocation-modal', 'dock-info-modal', 'sales-office-av-modal', 'request-publish-modal', 'ncr-email-modal', 'hold-release-modal', 'request-rep-modal', 'bloom-share-modal', 'bloom-crop-update-modal', 'bloom-picker-modal', 'take-back-done-confirm-modal', 'drawer-overlay', 'side-drawer'].forEach(forceHideUiLayer);
         }
 
         function resetLoginUiState() {
@@ -10953,6 +10973,7 @@ const ncrFilterStateByView = {
 };
         let ncrCompletionSchemaReady=null; let ncrCompletionSchemaPromise=null; let ncrCompletionSchemaWarningShown=false; let ncrCompletionLoadPromise=null; let ncrCompletionsLoaded=false;
         let ncrEmailPromptResolver=null;
+        let holdReleasePromptResolver=null;
         let loginPrefetchPromise=null;
         let loginPrefetchMode='';
         let datasetLoadState=createDatasetLoadState();
@@ -11283,6 +11304,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_EMAIL_THREAD_TABLE = 'v2_request_email_threads';
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
+        const HOLD_RELEASE_EMAIL_RECIPIENTS = Object.freeze(REQUEST_EMAIL_INTERNAL_RECIPIENTS.slice());
         const NCR_APPROVAL_DYLAN_USER = 'dylan_collyge';
         const NCR_APPROVAL_JD_USER = 'jd_jones';
         const NCR_APPROVAL_EMAIL_BY_USER = Object.freeze({
@@ -11339,7 +11361,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.03').trim() || 'V2026.05.11.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.04').trim() || 'V2026.05.11.04';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -24934,6 +24956,368 @@ function toggleDriveQuickRequestItem(domId) {
             } catch (error) {
                 console.error('Auto New Crop Release email failed', error);
                 showToast('Email Failed', error && error.message ? error.message : 'Could not send the New Crop Release email.', true);
+                return false;
+            }
+        }
+
+        function getHoldReleaseHoldCode(item = null) {
+            return String(firstNonEmptyValue(
+                item && item.HOLDSTOPCODE,
+                item && item.holdstopcode,
+                item && item.HOLSTOPCODE,
+                item && item.holstopcode,
+                item && item.HOLD_STOP_CODE,
+                item && item.hold_stop_code,
+                item && item.HOLDSTOP_CODE,
+                item && item.holdstop_code,
+                item && item.HOLDSTOP,
+                item && item.holdstop,
+                item && item.HOLD,
+                item && item.hold,
+                item && item.HOLDCODE,
+                item && item.holdcode,
+                item && item.HOLD_CODE,
+                item && item.hold_code,
+                ''
+            ) || '').trim();
+        }
+
+        function getHoldReleaseHoldReason(item = null) {
+            return String(firstNonEmptyValue(
+                item && item.HOLDSTOPREASON,
+                item && item.holdstopreason,
+                item && item.HOLD_STOP_REASON,
+                item && item.hold_stop_reason,
+                item && item.HOLDREASON,
+                item && item.holdreason,
+                item && item.HOLD_REASON,
+                item && item.hold_reason,
+                ''
+            ) || '').trim();
+        }
+
+        function isHoldReleaseBlankHoldValue(value = '') {
+            const normalized = String(value || '').trim().toUpperCase();
+            return !normalized || normalized === 'NULL' || normalized === '-' || normalized === 'N/A' || normalized === 'NA' || normalized === 'NONE' || normalized === '0';
+        }
+
+        function isHoldReleaseCandidateRow(item = null) {
+            const holdCode = getHoldReleaseHoldCode(item).toUpperCase();
+            if (isHoldReleaseBlankHoldValue(holdCode)) return false;
+            return holdCode.includes('H') || holdCode.includes('S') || holdCode.includes('HOLD') || holdCode.includes('STOP');
+        }
+
+        function getHoldReleaseSourceItemForSave(item = null, prefix = '', options = {}) {
+            const safeOptions = options || {};
+            const artifacts = safeOptions.completionArtifacts || {};
+            const candidates = [
+                safeOptions.sourceItem,
+                item,
+                artifacts.masterSyncItem,
+                safeOptions.requestMasterItem,
+                findLinkedMasterRow(item),
+                getNcrMasterItem(item)
+            ].filter(Boolean);
+            const seen = new Set();
+            for (const candidate of candidates) {
+                const candidateId = String(firstNonEmptyValue(candidate && candidate.UNIQUE_ID, candidate && candidate.unique_id, candidate && candidate.DOM_ID, '') || '').trim();
+                const dedupeKey = candidateId || JSON.stringify([
+                    firstNonEmptyValue(candidate && candidate.ITEMCODE, ''),
+                    firstNonEmptyValue(candidate && candidate.LOCATIONCODE, ''),
+                    firstNonEmptyValue(candidate && candidate.LOTCODE, '')
+                ]);
+                if (dedupeKey && seen.has(dedupeKey)) continue;
+                if (dedupeKey) seen.add(dedupeKey);
+                if (isHoldReleaseCandidateRow(candidate)) return candidate;
+            }
+            return null;
+        }
+
+        function getHoldReleasePhotoUrlsFromSaveContext(item = null, prefix = '', sourceItem = null) {
+            return getNcrReleasePhotoUrlsFromSaveContext(item, prefix, sourceItem);
+        }
+
+        function shouldOfferHoldReleasePromptForSave(item = null, prefix = '', options = {}) {
+            const sourceItem = getHoldReleaseSourceItemForSave(item, prefix, options);
+            if (!sourceItem) return false;
+            return getHoldReleasePhotoUrlsFromSaveContext(item, prefix, sourceItem).length > 0;
+        }
+
+        function getHoldReleaseEmailModalRowLabel(item = activeItem) {
+            if (!item) return '';
+            const rowLabel = [
+                String(firstNonEmptyValue(item.COMMONNAME, 'Unknown Item')).trim(),
+                String(firstNonEmptyValue(item.CONTSIZE, '')).trim(),
+                String(firstNonEmptyValue(item.LOCATIONCODE, '')).trim()
+            ].filter(Boolean).join(' - ');
+            const holdCode = getHoldReleaseHoldCode(item);
+            return holdCode ? `${rowLabel} | Hold ${holdCode}` : rowLabel;
+        }
+
+        function closeHoldReleaseModal(choice = 'no') {
+            const modal = document.getElementById('hold-release-modal');
+            if (modal) modal.classList.add('hidden');
+            const resolver = holdReleasePromptResolver;
+            holdReleasePromptResolver = null;
+            if (resolver) resolver(String(choice || 'no').trim().toLowerCase() || 'no');
+        }
+
+        function isPromptModalVisible(modalId = '') {
+            const modal = document.getElementById(modalId);
+            return !!(modal && !modal.classList.contains('hidden'));
+        }
+
+        function waitForPromptModalToClose(modalId = '', timeoutMs = 60000) {
+            if (!isPromptModalVisible(modalId)) return Promise.resolve(true);
+            const startedAt = Date.now();
+            return new Promise((resolve) => {
+                const check = () => {
+                    if (!isPromptModalVisible(modalId)) {
+                        resolve(true);
+                        return;
+                    }
+                    if (Date.now() - startedAt >= timeoutMs) {
+                        resolve(false);
+                        return;
+                    }
+                    setTimeout(check, 150);
+                };
+                check();
+            });
+        }
+
+        function openHoldReleaseModal(item = activeItem) {
+            const modal = document.getElementById('hold-release-modal');
+            if (!modal) return Promise.resolve('no');
+            const label = document.getElementById('hold-release-modal-label');
+            if (label) label.textContent = getHoldReleaseEmailModalRowLabel(item);
+            if (holdReleasePromptResolver) {
+                const previousResolver = holdReleasePromptResolver;
+                holdReleasePromptResolver = null;
+                previousResolver('no');
+            }
+            modal.classList.remove('hidden');
+            return new Promise((resolve) => {
+                holdReleasePromptResolver = resolve;
+                const yesBtn = document.getElementById('hold-release-yes-btn');
+                if (yesBtn) setTimeout(() => yesBtn.focus(), 0);
+            });
+        }
+
+        function getHoldReleaseCompletionSourceLabel(prefix = '') {
+            const safePrefix = String(prefix || '').trim().toLowerCase();
+            if (safePrefix === 'req-') return 'Request';
+            if (safePrefix === 'dock-') return 'Dock';
+            if (safePrefix === 'flyer-') return 'Flyer';
+            if (safePrefix === 'ssn-') return 'Season Sales Note';
+            if (safePrefix === 'lsn-') return 'Location Sales Note';
+            if (safePrefix === 'na-') return 'Task';
+            return 'Completed Row';
+        }
+
+        function getHoldReleaseSourceView(prefix = '') {
+            const safePrefix = String(prefix || '').trim().toLowerCase();
+            if (safePrefix === 'req-') return 'request';
+            if (safePrefix === 'dock-') return 'docks';
+            if (safePrefix === 'flyer-') return 'flyer';
+            return '';
+        }
+
+        function buildHoldReleaseEmailItemPayload(item = activeItem, photoUrls = [], completedItem = null, prefix = '') {
+            const sourceItem = item || completedItem || {};
+            const completedRow = completedItem || sourceItem;
+            const sourceView = getHoldReleaseSourceView(prefix);
+            const normalizedPhotos = normalizeNcrEmailPhotoUrls(photoUrls);
+            const photoCsv = normalizedPhotos.join(',');
+            const holdCode = getHoldReleaseHoldCode(sourceItem) || getHoldReleaseHoldCode(completedRow);
+            const holdReason = getHoldReleaseHoldReason(sourceItem) || getHoldReleaseHoldReason(completedRow);
+            return {
+                unique_id: String(firstNonEmptyValue(sourceItem && sourceItem.UNIQUE_ID, sourceItem && sourceItem.unique_id, '') || '').trim(),
+                completed_unique_id: String(firstNonEmptyValue(completedRow && completedRow.UNIQUE_ID, completedRow && completedRow.unique_id, '') || '').trim(),
+                source_table: String(firstNonEmptyValue(completedRow && completedRow.SOURCE_TABLE, sourceItem && sourceItem.SOURCE_TABLE, '') || '').trim(),
+                completion_source: getHoldReleaseCompletionSourceLabel(prefix),
+                commonname: String(firstNonEmptyValue(sourceItem && sourceItem.COMMONNAME, completedRow && completedRow.COMMONNAME, 'Unknown Item')).trim(),
+                contsize: String(firstNonEmptyValue(sourceItem && sourceItem.CONTSIZE, completedRow && completedRow.CONTSIZE, '-')).trim(),
+                itemcode: String(firstNonEmptyValue(sourceItem && sourceItem.ITEMCODE, completedRow && completedRow.ITEMCODE, '')).trim(),
+                loc: String(firstNonEmptyValue(sourceItem && sourceItem.LOCATIONCODE, completedRow && completedRow.LOCATIONCODE, '')).trim(),
+                locationcode: String(firstNonEmptyValue(sourceItem && sourceItem.LOCATIONCODE, completedRow && completedRow.LOCATIONCODE, '')).trim(),
+                lotcode: String(firstNonEmptyValue(sourceItem && sourceItem.LOTCODE, completedRow && completedRow.LOTCODE, '')).trim(),
+                season: String(firstNonEmptyValue(sourceItem && sourceItem.SEASON, completedRow && completedRow.SEASON, '')).trim(),
+                s_lts: String(firstNonEmptyValue(sourceItem && sourceItem.S_LTS, completedRow && completedRow.S_LTS, '')).trim(),
+                ptravailable: String(firstNonEmptyValue(sourceItem && sourceItem.PTRAVAILABLE, completedRow && completedRow.PTRAVAILABLE, '')).trim(),
+                priority: String(firstNonEmptyValue(sourceItem && sourceItem.PRIORITY, completedRow && completedRow.PRIORITY, '')).trim(),
+                holdstopcode: String(holdCode || '').trim(),
+                holdstopreason: String(holdReason || '').trim(),
+                av_note: String(firstNonEmptyValue(getItemDisplayValue(completedRow, 'AV_NOTE', sourceView), getItemDisplayValue(sourceItem, 'AV_NOTE', sourceView), completedRow && completedRow.AV_NOTE, sourceItem && sourceItem.AV_NOTE, '') || '').trim(),
+                spec: String(firstNonEmptyValue(getItemDisplayValue(completedRow, 'SPEC', sourceView), getItemDisplayValue(sourceItem, 'SPEC', sourceView), completedRow && completedRow.SPEC, sourceItem && sourceItem.SPEC, '') || '').trim(),
+                caliper: String(firstNonEmptyValue(getItemDisplayValue(completedRow, 'CALIPER', sourceView), getItemDisplayValue(sourceItem, 'CALIPER', sourceView), completedRow && completedRow.CALIPER, sourceItem && sourceItem.CALIPER, '') || '').trim(),
+                match: String(firstNonEmptyValue(getItemDisplayValue(completedRow, 'MATCH', sourceView), getItemDisplayValue(sourceItem, 'MATCH', sourceView), completedRow && completedRow.MATCH, sourceItem && sourceItem.MATCH, '') || '').trim(),
+                loc_match_qty: String(firstNonEmptyValue(getDisplayLocMatchQtyValue(completedRow, sourceView), getDisplayLocMatchQtyValue(sourceItem, sourceView), completedRow && completedRow.LOC_MATCH_QTY, sourceItem && sourceItem.LOC_MATCH_QTY, '') || '').trim(),
+                pick_note: String(firstNonEmptyValue(getItemDisplayValue(completedRow, 'PICK', sourceView), getItemDisplayValue(sourceItem, 'PICK', sourceView), completedRow && completedRow.PICK, sourceItem && sourceItem.PICK, '') || '').trim(),
+                comments: String(firstNonEmptyValue(completedRow && completedRow.SALES_NOTE, completedRow && completedRow.SALESNOTE, sourceItem && sourceItem.SALES_NOTE, sourceItem && sourceItem.SALESNOTE, '') || '').trim(),
+                photo: photoCsv,
+                photo_link: photoCsv,
+                photo_urls: photoCsv,
+                photos: normalizedPhotos.map((url, index) => ({ label: `Photo ${index + 1}`, url })),
+                completed_by: String(currentUserDisplay || currentUser || 'Unknown').trim(),
+                completed_at: new Date().toISOString()
+            };
+        }
+
+        function buildHoldReleaseEmailShareItem(item = activeItem, photoUrls = [], completedItem = null, prefix = '') {
+            const payload = buildHoldReleaseEmailItemPayload(item, photoUrls, completedItem, prefix);
+            return {
+                SOURCE_TABLE: 'v2_active_request',
+                REQUEST_FOLDER: 'Take off Hold',
+                REQ_CUSTOMER: 'Hold Release',
+                COMMONNAME: payload.commonname,
+                CONTSIZE: payload.contsize,
+                ITEMCODE: payload.itemcode,
+                LOCATIONCODE: payload.locationcode,
+                LOTCODE: payload.lotcode,
+                SEASON: payload.season,
+                S_LTS: payload.s_lts,
+                PTRAVAILABLE: payload.ptravailable,
+                PRIORITY: payload.priority,
+                HOLDSTOPCODE: payload.holdstopcode,
+                HOLDSTOPREASON: payload.holdstopreason,
+                AV_NOTE: payload.av_note,
+                REQ_SPEC: payload.spec,
+                REQ_CALIPER: payload.caliper,
+                REQ_MATCH: payload.match,
+                LOC_MATCH_QTY: payload.loc_match_qty,
+                REQ_PICK: payload.pick_note,
+                REQ_PIC_NOTE: payload.pick_note,
+                REQ_COMMENTS: [
+                    payload.holdstopreason ? `Hold Reason: ${payload.holdstopreason}` : '',
+                    payload.comments ? `Notes: ${payload.comments}` : '',
+                    payload.completion_source ? `Completed From: ${payload.completion_source}` : ''
+                ].filter(Boolean).join('\n'),
+                REQ_PHOTO_LINK: payload.photo,
+                REQUEST_PHOTO_LINK: payload.photo,
+                REQUESTPHOTO_LINK: payload.photo
+            };
+        }
+
+        function getHoldReleaseEmailFieldRows(itemPayload = {}) {
+            return [
+                { label: 'Item Code', value: itemPayload.itemcode, force: true },
+                { label: 'Location', value: itemPayload.locationcode, force: true },
+                { label: 'Lot', value: itemPayload.lotcode, force: false },
+                { label: 'Priority', value: itemPayload.priority, force: true },
+                { label: 'PTR Available', value: itemPayload.ptravailable, force: true },
+                { label: 'S_LTS', value: itemPayload.s_lts, force: false },
+                { label: 'Season', value: itemPayload.season, force: false },
+                { label: 'Hold Code', value: itemPayload.holdstopcode, force: true },
+                { label: 'Hold Reason', value: itemPayload.holdstopreason, force: false },
+                { label: 'AV Note', value: itemPayload.av_note, force: false },
+                { label: 'Spec', value: itemPayload.spec, force: false },
+                { label: 'Caliper', value: itemPayload.caliper, force: false },
+                { label: 'LOC MATCH %', value: itemPayload.match, force: false, percent: true },
+                { label: 'LOC PHOTO MATCH', value: itemPayload.loc_match_qty, force: false },
+                { label: 'Pick Note', value: itemPayload.pick_note, force: false },
+                { label: 'Notes', value: itemPayload.comments, force: false },
+                { label: 'Completed By', value: itemPayload.completed_by, force: true },
+                { label: 'Completed From', value: itemPayload.completion_source, force: true }
+            ];
+        }
+
+        function formatHoldReleaseEmailText(itemPayload = {}) {
+            let returnText = 'Take off Hold\n\n';
+            returnText += `${[itemPayload.commonname, itemPayload.contsize, itemPayload.locationcode, itemPayload.lotcode].map((value) => String(value || '').trim()).filter(Boolean).join(' ')}\n`;
+            getHoldReleaseEmailFieldRows(itemPayload).forEach((field) => {
+                const rawValue = String(firstNonEmptyValue(field.value, '') || '').trim();
+                if (!rawValue && !field.force) return;
+                const formattedValue = field.percent && rawValue ? (rawValue.includes('%') ? rawValue : `${rawValue}%`) : rawValue;
+                returnText += `${field.label}: ${formattedValue}\n`;
+                if (isCaliperEmailField(field.label) && hasCaliperEmailValue(formattedValue)) returnText += `${CALIPER_MEASUREMENT_NOTE}\n`;
+            });
+            normalizeNcrEmailPhotoUrls(itemPayload.photo_urls || itemPayload.photo).forEach((url, index) => {
+                returnText += `Photo ${index + 1}: ${url}\n`;
+            });
+            return returnText.trimEnd();
+        }
+
+        function formatHoldReleaseEmailHtml(itemPayload = {}) {
+            const lines = [];
+            lines.push(`<div style="font-weight:700;margin:0 0 14px 0;">Take off Hold</div>`);
+            lines.push(`<div style="font-weight:700;margin:4px 0 0 0;">${escapeShareHtml([itemPayload.commonname, itemPayload.contsize, itemPayload.locationcode, itemPayload.lotcode].map((value) => String(value || '').trim()).filter(Boolean).join(' '))}</div>`);
+            getHoldReleaseEmailFieldRows(itemPayload).forEach((field) => {
+                const rawValue = String(firstNonEmptyValue(field.value, '') || '').trim();
+                if (!rawValue && !field.force) return;
+                const formattedValue = field.percent && rawValue ? (rawValue.includes('%') ? rawValue : `${rawValue}%`) : rawValue;
+                lines.push(`<div><strong>${escapeShareHtml(field.label)}:</strong> ${escapeShareHtml(formattedValue)}</div>`);
+                if (isCaliperEmailField(field.label)) lines.push(buildCaliperMeasurementNoteHtml(formattedValue));
+            });
+            normalizeNcrEmailPhotoUrls(itemPayload.photo || itemPayload.photo_urls || '').forEach((url, index) => {
+                const displayName = [
+                    itemPayload.commonname,
+                    itemPayload.contsize,
+                    itemPayload.lotcode,
+                    itemPayload.locationcode,
+                    getSharePhotoDateLabel(url),
+                    String(index + 1)
+                ].map((value) => String(value || '').trim()).filter(Boolean).join(' ');
+                lines.push(buildSharePhotoHtml({ label: `Photo ${index + 1}`, url, displayName, index: index + 1 }));
+            });
+            return `<div style="line-height:1.45;">${lines.join('')}</div>`;
+        }
+
+        async function sendHoldReleaseEmail(item = activeItem, photoUrls = [], options = {}) {
+            const safeOptions = options || {};
+            const completedItem = safeOptions.completedItem || item;
+            const safePrefix = String(safeOptions.prefix || '').trim().toLowerCase();
+            const normalizedPhotos = normalizeNcrEmailPhotoUrls(photoUrls);
+            const itemPayload = buildHoldReleaseEmailItemPayload(item, normalizedPhotos, completedItem, safePrefix);
+            const requestStyleItem = buildHoldReleaseEmailShareItem(item, normalizedPhotos, completedItem, safePrefix);
+            const subjectLabel = getHoldReleaseEmailModalRowLabel(item) || [itemPayload.commonname, itemPayload.contsize, itemPayload.locationcode].filter(Boolean).join(' ');
+            const recipientEmails = dedupeRequestEmailRecipients(HOLD_RELEASE_EMAIL_RECIPIENTS);
+            const folderId = `hold-release-${String(firstNonEmptyValue(itemPayload.unique_id, itemPayload.completed_unique_id, Date.now()) || Date.now()).trim()}`;
+            const payload = {
+                type: 'email',
+                emailType: 'hold_release_request',
+                subject: `Take off Hold: ${subjectLabel || 'Completed Photo Row'}`,
+                folderId,
+                requestFolder: 'Take off Hold',
+                customer: 'Hold Release',
+                requestCustomer: 'Hold Release',
+                itemsCount: 1,
+                completedBy: itemPayload.completed_by,
+                requestedBy: itemPayload.completed_by,
+                dylanEmail: HOLD_RELEASE_EMAIL_RECIPIENTS[0],
+                jdEmail: HOLD_RELEASE_EMAIL_RECIPIENTS[1],
+                internalRecipients: recipientEmails,
+                recipientEmails,
+                recipients: recipientEmails.map((email) => ({ email, role: 'internal' })),
+                formattedItemsHtml: formatHoldReleaseEmailHtml(itemPayload),
+                formattedItemsText: formatHoldReleaseEmailText(itemPayload),
+                photoUrls: normalizedPhotos,
+                requestItems: [itemPayload],
+                requestRows: [requestStyleItem],
+                holdRelease: true
+            };
+            const responseData = await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Hold Release Email');
+            if (responseData && responseData.ok === false) {
+                throw new Error(String(firstNonEmptyValue(responseData.message, 'Hold release email failed.')).trim());
+            }
+            return responseData;
+        }
+
+        async function promptAndSendHoldReleaseEmailFromSave(item = null, prefix = '', options = {}) {
+            const safeOptions = options || {};
+            const sourceItem = getHoldReleaseSourceItemForSave(item, prefix, safeOptions);
+            if (!sourceItem || !shouldOfferHoldReleasePromptForSave(item, prefix, { ...safeOptions, sourceItem })) return false;
+            await waitForPromptModalToClose('ncr-email-modal');
+            const choice = await openHoldReleaseModal(sourceItem);
+            if (choice !== 'yes') return false;
+            const photoUrls = getHoldReleasePhotoUrlsFromSaveContext(item, prefix, sourceItem);
+            try {
+                await sendHoldReleaseEmail(sourceItem, photoUrls, { completedItem: item, prefix });
+                showToast('Success', 'Take off Hold email sent to Dylan and JD.');
+                return true;
+            } catch (error) {
+                console.error('Auto Hold Release email failed', error);
+                showToast('Email Failed', error && error.message ? error.message : 'Could not send the Take off Hold email.', true);
                 return false;
             }
         }
@@ -46899,6 +47283,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 console.error('Auto New Crop Release prompt failed', error);
                             });
                         }, 90);
+                    }
+                    if (isComplete && !wasAlreadyComplete && !saveOptions.suppressHoldReleaseEmail && shouldOfferHoldReleasePromptForSave(itemToSave, prefix, { requestMasterItem, completionArtifacts: artifacts })) {
+                        deferNonCriticalWork('hold-release-email', () => {
+                            promptAndSendHoldReleaseEmailFromSave(itemToSave, prefix, { requestMasterItem, completionArtifacts: artifacts }).catch((error) => {
+                                console.error('Auto Hold Release prompt failed', error);
+                            });
+                        }, 108);
                     }
                     if (prefix === 'flyer-') {
                         deferNonCriticalWork('flyer-complete-push', () => {
