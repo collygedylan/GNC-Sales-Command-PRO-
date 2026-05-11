@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.11.14';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.15';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1754,7 +1754,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.14').trim() || 'V2026.05.11.14';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.15').trim() || 'V2026.05.11.15';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2537,7 +2537,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.14';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.15';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11561,7 +11561,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.14').trim() || 'V2026.05.11.14';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.15').trim() || 'V2026.05.11.15';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -26097,6 +26097,73 @@ function toggleDriveQuickRequestItem(domId) {
             return normalizeNcrEmailPhotoUrls(parsePhotoCsvValues(csv));
         }
 
+        function getNcrReleasePhotoNameCsvFromSaveContext(item = null, prefix = '', sourceItem = null) {
+            const safePrefix = String(prefix || '').trim().toLowerCase();
+            const sharedName = sourceItem ? getSharedAppPhotoName(sourceItem) : '';
+            const candidates = [];
+            if (safePrefix === 'req-') {
+                candidates.push(
+                    item && item.REQ_PHOTO_NAME,
+                    item && item.REQUEST_PHOTO_NAME,
+                    item && item.request_photo_name,
+                    item && item.req_photo_name
+                );
+            } else if (safePrefix === 'dock-') {
+                candidates.push(item && item.DOCK_PHOTO_NAME, item && item.dock_photo_name);
+            } else if (safePrefix === 'flyer-') {
+                candidates.push(item && item.FLYER_PHOTO_NAME, item && item.flyer_photo_name);
+            } else {
+                candidates.push(item && item.SAVED_PHOTO_NAME, item && item.PHOTO_NAME, item && item.photo_name);
+            }
+            candidates.push(sharedName);
+            return mergePhotoCsvList(candidates);
+        }
+
+        async function persistNcrReleaseSaveContextToMaster(item = null, prefix = '', sourceItem = null, photoUrls = []) {
+            const masterItem = getNcrMasterItem(sourceItem) || getNcrMasterItem(item) || findLinkedMasterRow(item) || null;
+            const masterId = getNcrSourceUniqueId(masterItem || sourceItem || item);
+            if (!masterItem || !masterId) return null;
+            const values = getNcrReleaseDraftValuesFromSaveContext(item, prefix, sourceItem || masterItem);
+            const normalizedPhotos = normalizeNcrEmailPhotoUrls(photoUrls);
+            const matchValue = parseAppNumber(values.match);
+            const locMatchQty = matchValue == null ? null : calculateLocMatchQtyValue(masterItem || sourceItem || item, values.match, { currentAsBaseline: true });
+            const ptrAvailable = parseAppNumber(firstNonEmptyValue(masterItem && masterItem.PTRAVAILABLE, sourceItem && sourceItem.PTRAVAILABLE, item && item.PTRAVAILABLE, ''));
+            const completedAt = String(firstNonEmptyValue(item && item.DATE_COMPLETED, item && item.date_completed, '') || '').trim() || new Date().toISOString();
+            const photoNameCsv = getNcrReleasePhotoNameCsvFromSaveContext(item, prefix, sourceItem || masterItem);
+            const payload = {
+                date_completed: completedAt,
+                av_note: String(firstNonEmptyValue(values.avNote, values.spec, '') || '').trim().toUpperCase() || null,
+                match: matchValue == null ? null : matchValue,
+                spec: String(firstNonEmptyValue(values.spec, '') || '').trim() || null,
+                caliper: String(firstNonEmptyValue(values.caliper, '') || '').trim() || null,
+                pic_note: String(firstNonEmptyValue(values.pick, getNcrAutoPickNote(masterItem || sourceItem || item), '') || '').trim() || null,
+                sales_note: String(firstNonEmptyValue(values.comments, '') || '').trim() || null,
+                loc_match_qty: locMatchQty == null ? null : locMatchQty,
+                initial_ptr: ptrAvailable == null ? null : ptrAvailable
+            };
+            if (normalizedPhotos.length) payload.photo_link = normalizedPhotos.join(',');
+            if (photoNameCsv) payload.photo_name = photoNameCsv;
+            if (avRuleColumnsReady == null) await ensureAvRuleColumnsReady().catch(() => false);
+            applyAvRuleTouchPayload(masterItem, payload, {
+                avNote: !!payload.av_note,
+                match: matchValue != null,
+                spec: !!payload.spec,
+                caliper: !!payload.caliper,
+                photo: normalizedPhotos.length > 0
+            }, completedAt);
+            await runDetailWriteWithRetry('v2_master_inventory', 'PATCH', payload, `unique_id=eq.${encodeURIComponent(masterId)}`, {
+                timeoutMs: getDetailRowWriteTimeoutMs(),
+                retries: DETAIL_ROW_WRITE_RETRY_COUNT,
+                retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
+            });
+            applyMasterSyncPayloadToLocalRow(masterItem, payload);
+            if (sourceItem && sourceItem !== masterItem) applyMasterSyncPayloadToLocalRow(sourceItem, payload);
+            if (item && item !== masterItem && item !== sourceItem && String(prefix || '').trim().toLowerCase() !== 'req-') applyMasterSyncPayloadToLocalRow(item, payload);
+            syncRowDataAcrossViews(masterItem);
+            refreshNcrApprovalLocalState('ncr-release-save-context');
+            return masterItem;
+        }
+
         function prepareNcrReleaseEmailDraftFromSaveContext(item = null, prefix = '', sourceItem = null) {
             const emailItem = sourceItem || item;
             const draft = getNcrDraft(emailItem);
@@ -26114,9 +26181,18 @@ function toggleDriveQuickRequestItem(domId) {
             prepareNcrReleaseEmailDraftFromSaveContext(item, prefix, sourceItem);
             const photoUrls = getNcrReleasePhotoUrlsFromSaveContext(item, prefix, sourceItem);
             try {
-                await sendNcrCompletionEmail(sourceItem, photoUrls);
-                await persistNcrCompletionRecord(buildNcrCompletionRecord(sourceItem, true));
-                clearNcrDraft(sourceItem);
+                const persistedSourceItem = await persistNcrReleaseSaveContextToMaster(item, prefix, sourceItem, photoUrls).catch((error) => {
+                    console.warn('NCR release app-save failed', error);
+                    showToast('Save Warning', 'New Crop Release email will send, but the app could not save the photo/data back to inventory yet.', true);
+                    return null;
+                });
+                const finalSourceItem = persistedSourceItem || sourceItem;
+                if (String(prefix || '').trim().toLowerCase() === 'req-') {
+                    upsertRequestHistoryRows([item], 'ncr-release-email').catch(() => {});
+                }
+                await sendNcrCompletionEmail(finalSourceItem, photoUrls);
+                await persistNcrCompletionRecord(buildNcrCompletionRecord(finalSourceItem, true));
+                clearNcrDraft(finalSourceItem);
                 managerReviewInventoryDirty = true;
                 moveUpInventoryDirty = true;
                 markViewDirty('review');
