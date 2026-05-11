@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.11.13';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.14';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1754,7 +1754,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.13').trim() || 'V2026.05.11.13';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.14').trim() || 'V2026.05.11.14';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2537,7 +2537,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.13';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.14';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -5669,11 +5669,53 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return getHoldStopBlockTokens(value).size > 0;
         }
 
-        function hasHoldStopChangedSinceAvSnapshot(item = null) {
+        function hasMeaningfulAvRuleHoldStopSnapshot(item = null) {
             if (!item) return false;
+            if (getAvRuleHoldStopSnapshotFromItem(item)) return true;
+            return [
+                item.AV_RULE_BUNDLE_UPDATED_AT,
+                item.av_rule_bundle_updated_at,
+                item.AV_RULE_AV_NOTE_UPDATED_AT,
+                item.av_rule_av_note_updated_at,
+                item.AV_RULE_SPEC_UPDATED_AT,
+                item.av_rule_spec_updated_at,
+                item.AV_RULE_MATCH_UPDATED_AT,
+                item.av_rule_match_updated_at,
+                item.AV_RULE_CALIPER_UPDATED_AT,
+                item.av_rule_caliper_updated_at,
+                item.AV_RULE_PHOTO_UPDATED_AT,
+                item.av_rule_photo_updated_at
+            ].some((value) => normalizeRuleText(value) !== '');
+        }
+
+        function hasHoldStopChangedSinceAvSnapshot(item = null, options = {}) {
+            if (!item) return false;
+            const safeOptions = options && typeof options === 'object' ? options : {};
             const currentTokens = getHoldStopBlockTokens(getHoldStopSnapshotFromItem(item));
             if (!currentTokens.size) return false;
             const capturedTokens = getHoldStopBlockTokens(getAvRuleHoldStopSnapshotFromItem(item));
+            const previousItem = safeOptions.previousItem || null;
+            const hasTransientPreviousHoldStop = Object.prototype.hasOwnProperty.call(item, '__AV_RULE_PREVIOUS_HOLDSTOP_SNAPSHOT');
+            const previousHoldStopSnapshot = hasTransientPreviousHoldStop
+                ? String(item.__AV_RULE_PREVIOUS_HOLDSTOP_SNAPSHOT || '')
+                : String(firstNonEmptyValue(safeOptions.previousHoldStopSnapshot, '') || '');
+            if (previousItem) {
+                const previousTokens = getHoldStopBlockTokens(getHoldStopSnapshotFromItem(previousItem));
+                let newlyBlocked = false;
+                for (const token of currentTokens) {
+                    if (!previousTokens.has(token)) newlyBlocked = true;
+                }
+                if (!newlyBlocked) return false;
+            } else if (hasTransientPreviousHoldStop || previousHoldStopSnapshot) {
+                const previousTokens = getHoldStopBlockTokens(previousHoldStopSnapshot);
+                let newlyBlocked = false;
+                for (const token of currentTokens) {
+                    if (!previousTokens.has(token)) newlyBlocked = true;
+                }
+                if (!newlyBlocked) return false;
+            } else if (!capturedTokens.size && !hasMeaningfulAvRuleHoldStopSnapshot(item)) {
+                return false;
+            }
             for (const token of currentTokens) {
                 if (!capturedTokens.has(token)) return true;
             }
@@ -5913,10 +5955,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return payload;
         }
 
-        function getMasterAvInvalidationReasons(item) {
+        function getMasterAvInvalidationReasons(item, options = {}) {
             if (!item) return [];
             const reasons = [];
-            if (hasHoldStopChangedSinceAvSnapshot(item)) reasons.push('holdstop_blocked');
+            if (hasHoldStopChangedSinceAvSnapshot(item, options)) reasons.push('holdstop_blocked');
             if (!hasTrackedAvPayload(item)) return [...new Set(reasons)];
             const bundleUpdatedAt = getEffectiveAvRuleUpdatedAt(item);
             const effectiveLocMatchQty = calculateLocMatchQtyValue(item) ?? parseAppNumber(item.LOC_MATCH_QTY);
@@ -7040,6 +7082,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const uniqueId = String((nextRow && nextRow.UNIQUE_ID) || oldRow.unique_id || oldRow.UNIQUE_ID || '');
             if (!uniqueId) return false;
             const isLocalEcho = eventType !== 'DELETE' && nextRow ? consumeMatchingLocalRealtimeEcho(tableName, nextRow) : false;
+            if (tableName === 'v2_master_inventory' && nextRow) {
+                const previousMasterRow = fullInventory.find((item) => String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim() === uniqueId);
+                if (previousMasterRow) nextRow.__AV_RULE_PREVIOUS_HOLDSTOP_SNAPSHOT = getHoldStopSnapshotFromItem(previousMasterRow);
+            }
 
             let changed = false;
             if (tableName === 'v2_master_inventory') {
@@ -11515,7 +11561,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.13').trim() || 'V2026.05.11.13';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.14').trim() || 'V2026.05.11.14';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -19216,16 +19262,21 @@ function toggleDriveQuickRequestItem(domId) {
             return items.filter((item) => shouldIncludeMasterItemInAvOpen(item));
         }
 
-        function collectMasterAvRuleClearOps(items = []) {
+        function collectMasterAvRuleClearOps(items = [], options = {}) {
+            const safeOptions = options && typeof options === 'object' ? options : {};
+            const previousRowsById = safeOptions.previousRowsById instanceof Map ? safeOptions.previousRowsById : null;
             const ops = [];
             items.forEach((item) => {
                 if (!item) return;
                 const sourceTable = String(item.SOURCE_TABLE || 'v2_master_inventory').toLowerCase();
                 if (sourceTable !== 'v2_master_inventory') return;
                 normalizeRowPhotoFields(item);
-                const reasons = getMasterAvInvalidationReasons(item);
-                if (!reasons.length) return;
                 const uniqueId = String(item.UNIQUE_ID || '').trim();
+                const previousItem = uniqueId && previousRowsById ? previousRowsById.get(uniqueId) : null;
+                const hadTransientPreviousHoldStop = Object.prototype.hasOwnProperty.call(item, '__AV_RULE_PREVIOUS_HOLDSTOP_SNAPSHOT');
+                const reasons = getMasterAvInvalidationReasons(item, { previousItem });
+                if (hadTransientPreviousHoldStop) delete item.__AV_RULE_PREVIOUS_HOLDSTOP_SNAPSHOT;
+                if (!reasons.length) return;
                 if (!uniqueId) return;
                 const reasonText = reasons.join(',');
                 const clearedAt = new Date().toISOString();
@@ -19304,9 +19355,12 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             if (hasMaster) {
+                const previousMasterRowsById = Array.isArray(fullInventory) && fullInventory.length
+                    ? new Map(fullInventory.map((item) => [String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim(), item]).filter(([uniqueId]) => uniqueId))
+                    : null;
                 fullInventory = (res.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));});
                 applyMasterAppTabAssignments(fullInventory);
-                avRuleClearOps = res._fromCache ? [] : collectMasterAvRuleClearOps(fullInventory);
+                avRuleClearOps = res._fromCache ? [] : collectMasterAvRuleClearOps(fullInventory, { previousRowsById: previousMasterRowsById });
                 rebuildMasterInventoryIndexes();
                 invalidateMasterDerivedInventories();
             }
@@ -48123,8 +48177,15 @@ ${folderNote ? `Folder Note: ${folderNote}
                     payload.snapshot.LOC_MATCH_QTY = firstNonEmptyValue(itemToSave.FLYER_LOC_MATCH_QTY, itemToSave.LOC_MATCH_QTY, '');
                 }
 
+                const shouldWriteAvRuleFieldsForSave = (
+                    ((prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'flyer-') && String(itemToSave.SOURCE_TABLE || 'v2_master_inventory') === 'v2_master_inventory')
+                    || (isComplete && ['req-','ssn-','lsn-','na-','flyer-'].includes(prefix))
+                );
+                if (shouldWriteAvRuleFieldsForSave && avRuleColumnsReady == null) {
+                    await ensureAvRuleColumnsReady().catch(() => false);
+                }
+
                 if ((prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'flyer-') && String(itemToSave.SOURCE_TABLE || 'v2_master_inventory') === 'v2_master_inventory') {
-                    if (avRuleColumnsReady == null) ensureAvRuleColumnsReady().catch(() => {});
                     applyAvRuleTouchPayload(itemToSave, payload, trackedChangeFlags);
                 }
 
