@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.11.05';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1729,7 +1729,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.05').trim() || 'V2026.05.11.05';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.06').trim() || 'V2026.05.11.06';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2447,6 +2447,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const PUSH_SUBSCRIPTIONS_TABLE = 'v2_push_subscriptions';
         const APP_LIVE_EVENTS_TABLE = 'v2_app_live_events';
         const FLYER_FOLDER_ROWS_TABLE = 'v2_flyer_folder_rows';
+        const REQUEST_HISTORY_TABLE = 'v2_request_history';
+        const FLYER_FOLDER_HISTORY_TABLE = 'v2_flyer_folder_history';
         const APP_LIVE_EVENT_CLIENT_STORAGE_KEY = 'gnc_app_live_event_client_v1';
         const APP_LIVE_EVENT_PRUNE_STORAGE_KEY = 'gnc_app_live_event_pruned_v1';
         const APP_LIVE_EVENT_WRITE_COALESCE_MS = 280;
@@ -2510,7 +2512,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2537,14 +2539,14 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             home: { realtimeTables: [], pollMs: 0 },
             chat: { realtimeTables: ['v2_chat_conversations', 'v2_chat_participants', 'v2_chat_messages'], pollMs: 60000 },
             drive: { realtimeTables: [], pollMs: 'visible-default' },
-            tasks: { realtimeTables: ['v2_active_request', 'v2_sales_office', FLYER_FOLDER_ROWS_TABLE], pollMs: 'visible-default' },
-            request: { realtimeTables: ['v2_active_request'], pollMs: 'visible-default' },
+            tasks: { realtimeTables: ['v2_active_request', 'v2_sales_office', FLYER_FOLDER_ROWS_TABLE, FLYER_FOLDER_HISTORY_TABLE], pollMs: 'visible-default' },
+            request: { realtimeTables: ['v2_active_request', REQUEST_HISTORY_TABLE], pollMs: 'visible-default' },
             'sales-office': { realtimeTables: ['v2_sales_office'], pollMs: 'visible-default' },
             'take-back': { realtimeTables: ['v2_take_back_queue'], pollMs: 'visible-default' },
             av: { realtimeTables: [], pollMs: 'visible-default' },
             reserves: { realtimeTables: [], pollMs: 'visible-default' },
             docks: { realtimeTables: ['v2_dock_team_status', 'v2_dock_item_status', 'v2_dock_issue_status', 'v2_dock_issue_allocations'], pollMs: 'visible-default' },
-            reports: { realtimeTables: ['v2_active_request'], pollMs: 'visible-default' },
+            reports: { realtimeTables: ['v2_active_request', REQUEST_HISTORY_TABLE], pollMs: 'visible-default' },
             review: { realtimeTables: [], pollMs: 'visible-default' },
             'move-up': { realtimeTables: [], pollMs: 'visible-default' },
             'low-stock': { realtimeTables: [], pollMs: 'visible-default' },
@@ -3443,9 +3445,11 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             const safeTable = String(tableName || '').trim();
             if (!safeTable || safeTable === APP_LIVE_EVENTS_TABLE) return '';
             if (safeTable === 'v2_active_request') return 'request';
+            if (safeTable === REQUEST_HISTORY_TABLE) return 'request';
             if (safeTable === 'v2_sales_office') return 'sales-office';
             if (safeTable === 'v2_take_back_queue') return 'take-back';
             if (safeTable === FLYER_FOLDER_ROWS_TABLE) return 'tasks';
+            if (safeTable === FLYER_FOLDER_HISTORY_TABLE) return 'tasks';
             if (safeTable === 'v2_master_inventory') return 'inventory';
             if (safeTable === 'v2_reserves') return 'reserves';
             if (safeTable === 'v2_soc_master') return 'docks';
@@ -6167,6 +6171,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (sameLinkedRow(row)) applyLinkedRowCatalogData(row);
             });
             requestsInventory.forEach((row) => {
+                if (row && row.REQUEST_HISTORY) return;
                 if (sameLinkedRow(row)) applyRequestSnapshotData(row);
             });
 
@@ -6199,10 +6204,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function getDatasetKeysForTable(tableName = '') {
             if (tableName === 'v2_master_inventory') return ['master', 'avOpen'];
             if (tableName === 'v2_active_request') return ['requests'];
+            if (tableName === REQUEST_HISTORY_TABLE) return ['requestHistory'];
             if (tableName === 'v2_reserves') return ['reserves'];
             if (tableName === 'v2_soc_master') return ['soc'];
             if (tableName === 'v2_sales_office') return ['salesOffice'];
             if (tableName === FLYER_FOLDER_ROWS_TABLE) return ['flyerRows'];
+            if (tableName === FLYER_FOLDER_HISTORY_TABLE) return ['flyerHistory'];
             if (tableName === 'v2_cav_import') return ['cav'];
             if (tableName === 'v2_view_av_hot_price_keys') return ['avHotPriceKeys'];
             if (tableName === 'v2_av_notes') return ['avNotes'];
@@ -6280,6 +6287,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (!item.DOM_ID) item.DOM_ID = 'req_' + (item.UNIQUE_ID || '');
                 item.REQ_STATUS = normalizeRequestStatus(firstNonEmptyValue(item.REQ_STATUS, item.req_status, item.STATUS, 'Pending')) || 'Pending';
                 item.REQ_ARCHIVED = item.REQ_ARCHIVED === true || item.REQ_ARCHIVED === 1 || item.REQ_ARCHIVED === '1' || String(item.REQ_ARCHIVED || '').trim().toLowerCase() === 'true';
+                if (item.REQUEST_HISTORY) {
+                    item.REQ_ARCHIVED = false;
+                    normalizeRowPhotoFields(item);
+                    buildSearchIndex(item);
+                    return item;
+                }
                 const masterItem = findLinkedMasterRow(item);
                 if (!masterItem) {
                     normalizeRowPhotoFields(item);
@@ -6530,6 +6543,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 syncRealtimeRequestRows();
                 changedDatasetKeys.add('requests');
             }
+            if (tableSet.has(REQUEST_HISTORY_TABLE)) {
+                syncRealtimeRequestRows();
+                changedDatasetKeys.add('requestHistory');
+                changedDatasetKeys.add('requests');
+            }
             if (tableSet.has('v2_reserves')) {
                 syncRealtimeReserveRows();
                 changedDatasetKeys.add('reserves');
@@ -6544,6 +6562,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }
             if (tableSet.has(FLYER_FOLDER_ROWS_TABLE)) {
                 changedDatasetKeys.add('flyerRows');
+            }
+            if (tableSet.has(FLYER_FOLDER_HISTORY_TABLE)) {
+                changedDatasetKeys.add('flyerHistory');
             }
             if (tableSet.has('v2_cav_import')) {
                 syncRealtimeCavRows();
@@ -6987,6 +7008,19 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     changed = upsertRealtimeRow(requestsInventory, nextRow, tableName);
                     if (nextRow && hasRequestCompletionState(nextRow)) discardPendingLocalEdits([uniqueId], true);
                 }
+            } else if (tableName === REQUEST_HISTORY_TABLE) {
+                if (eventType === 'DELETE') {
+                    changed = removeRealtimeRow(requestHistoryInventory, uniqueId);
+                } else {
+                    const historyRow = normalizeRequestHistoryRow(payload.new || nextRow);
+                    if (historyRow) {
+                        changed = !!cacheRequestHistoryRow(historyRow);
+                        requestsInventory = mergeRequestRowsWithHistory(
+                            (requestsInventory || []).filter((item) => item && !item.REQUEST_HISTORY),
+                            requestHistoryInventory
+                        );
+                    }
+                }
             } else if (tableName === 'v2_reserves') {
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(reservesInventory, uniqueId)
@@ -7006,6 +7040,13 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     changed = removeFlyerFolderRowFromCache(uniqueId);
                 } else if (nextRow) {
                     changed = !!cacheFlyerFolderRow(nextRow);
+                }
+            } else if (tableName === FLYER_FOLDER_HISTORY_TABLE) {
+                if (eventType === 'DELETE') {
+                    changed = removeRealtimeRow(flyerFolderHistoryInventory, uniqueId);
+                } else {
+                    const historyRow = normalizeFlyerFolderHistoryRow(payload.new || nextRow);
+                    if (historyRow) changed = !!cacheFlyerFolderHistoryRow(historyRow);
                 }
             } else if (tableName === 'v2_cav_import') {
                 changed = eventType === 'DELETE'
@@ -7049,7 +7090,19 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
                 refreshActiveRequestDetailFromRealtimeRow(nextRow || oldRow, eventType);
                 triggerRequestRealtimeUiRefresh(0);
+            } else if (tableName === REQUEST_HISTORY_TABLE) {
+                invalidateResolvedViewStateCaches();
+                requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+                triggerRequestRealtimeUiRefresh(0);
             } else if (tableName === FLYER_FOLDER_ROWS_TABLE) {
+                invalidateResolvedViewStateCaches();
+                markViewDirty('tasks');
+                markViewDirty('advertisement');
+                scheduleTasksRender(48);
+                if (isViewVisible('advertisement')) {
+                    renderAdvertisementFlyerFolders();
+                }
+            } else if (tableName === FLYER_FOLDER_HISTORY_TABLE) {
                 invalidateResolvedViewStateCaches();
                 markViewDirty('tasks');
                 markViewDirty('advertisement');
@@ -10760,7 +10813,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             return items.map((item) => stripTransientCacheFields(item));
         }
 
-        const CACHE_SCHEMA_VERSION = 11;
+        const CACHE_SCHEMA_VERSION = 12;
         const MIN_TRUSTED_MASTER_COMMON_NAME_CACHE_COUNT = 1200;
         const INLINE_CACHE_RESERVE_LIMIT = 180;
         function buildCacheSnapshot() {
@@ -10770,10 +10823,12 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 data: buildCacheRows(fullInventory),
                 avOpenData: buildCacheRows(avOpenInventory),
                 requestsData: buildCacheRows(requestsInventory),
+                requestHistoryData: buildCacheRows(requestHistoryInventory),
                 reservesData: inlineReserveRows,
                 socData: buildCacheRows(socInventory),
                 salesOfficeData: buildCacheRows(salesOfficeInventory),
                 flyerFolderRowsData: buildCacheRows(flyerFolderInventory),
+                flyerFolderHistoryData: buildCacheRows(flyerFolderHistoryInventory),
                 cavData: buildCacheRows(cavInventory),
                 avHotPriceKeysData: buildCacheRows(avHotPriceKeysInventory),
                 avNotesData: buildCacheRows(avNotesDb),
@@ -10799,10 +10854,12 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 master: { initialLoaded: hasRows(cachedRes.data), fullLoaded: false },
                 avOpen: { initialLoaded: hasRows(cachedRes.avOpenData) || hasRows(cachedRes.data), fullLoaded: false },
                 requests: { initialLoaded: hasRows(cachedRes.requestsData), fullLoaded: false },
+                requestHistory: { initialLoaded: hasRows(cachedRes.requestHistoryData), fullLoaded: false },
                 reserves: { initialLoaded: hasRows(cachedRes.reservesData), fullLoaded: false },
                 soc: { initialLoaded: hasRows(cachedRes.socData), fullLoaded: false },
                 salesOffice: { initialLoaded: hasRows(cachedRes.salesOfficeData), fullLoaded: false },
                 flyerRows: { initialLoaded: hasRows(cachedRes.flyerFolderRowsData), fullLoaded: false },
+                flyerHistory: { initialLoaded: hasRows(cachedRes.flyerFolderHistoryData), fullLoaded: false },
                 cav: { initialLoaded: hasRows(cachedRes.cavData), fullLoaded: false },
                 avHotPriceKeys: { initialLoaded: hasRows(cachedRes.avHotPriceKeysData), fullLoaded: false },
                 avNotes: { initialLoaded: hasRows(cachedRes.avNotesData), fullLoaded: false }
@@ -10951,20 +11008,22 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 master: createDatasetLoadEntry(),
                 avOpen: createDatasetLoadEntry(),
                 requests: createDatasetLoadEntry(),
+                requestHistory: createDatasetLoadEntry(),
                 reserves: createDatasetLoadEntry(),
                 soc: createDatasetLoadEntry(),
                 salesOffice: createDatasetLoadEntry(),
                 flyerRows: createDatasetLoadEntry(),
+                flyerHistory: createDatasetLoadEntry(),
                 cav: createDatasetLoadEntry(),
                 avHotPriceKeys: createDatasetLoadEntry(),
                 avNotes: createDatasetLoadEntry()
             };
         }
 
-        let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
+        let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
 let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null; let chatVoiceHoldPointerId=''; let chatVoiceHoldForComposer=false; let chatVoiceHoldFinishPending=''; let chatVoiceHoldStartPromise=null;
 let walkieChannels=[]; let walkieChannelMembers=[]; let walkieCalls=[]; let walkieCallMembers=[]; let walkieUsers=[]; let walkieSignalsSeen=new Set(); let walkieDataLoaded=false; let walkieLoadPromise=null; let walkieSchemaReady=null; let walkieSchemaProbePromise=null; let walkieSchemaWarningShown=false; let activeWalkieChannelId=''; let pendingWalkieOpenChannelId=''; let pendingWalkieOpenCallId=''; let walkieComposeOpen=false; let walkieUserSearchTerm=''; let walkieComposeTitle=''; let walkieSelectedUsers=new Set(); let walkieLastRenderSignature=''; let walkieDeviceId=''; let activeWalkieCallId=''; let walkieJoinedCallId=''; let walkieActiveMembershipId=''; let walkiePeerConnections=new Map(); let walkieRemoteAudioElements=new Map(); let walkieLocalStream=null; let walkieHeartbeatTimer=null; let walkieSpeakerHeartbeatTimer=null; let walkieReconnectTimer=null; let walkieActiveSpeakerIntent=false; let walkiePressedPointerId=''; let walkieForegroundNoticeShown=false;
-        let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map();
+        let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let requestHistoryInventoryById=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let flyerFolderHistoryInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map();
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
 let reviewSearchTerm=''; let moveUpSearchTerm=''; let reviewBrowseMode='item'; let moveUpBrowseMode='item'; let selectedReviewBlockAlpha=null; let selectedReviewLocationCode=null; let selectedMoveUpBlockAlpha=null; let selectedMoveUpLocationCode=null; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set();
 const ncrFilterStateByView = {
@@ -10990,7 +11049,7 @@ let bloomCropUpdateRecipientMode='reps'; let bloomCropUpdateReserveEmailGroups=[
         let dockIssueStatusByUid=new Map(); let dockIssueAllocationsBySourceUid=new Map(); let dockIssueAllocationsById=new Map(); let dockIssueDataPromise=null; let dockIssueDataLoaded=false; let dockIssueStatusSchemaReady=null; let dockIssueStatusSchemaPromise=null; let dockIssueAllocationSchemaReady=null; let dockIssueAllocationSchemaPromise=null; let dockIssueSchemaWarningShown=false; let dockViewMode='docks'; let selectedDockIssueUid=null; let dockResolvedStateCacheKey=''; let dockResolvedStateCache=null; let dockDisplayInventory=[]; let dockDisplayInventoryById=new Map(); let dockDisplayInventoryBySourceUid=new Map(); let dockIssueSourceRowsCacheKey=''; let dockIssueSourceRowsById=new Map(); let dockIssueSourceRowsByCurrentUid=new Map(); let dockIssueSourceRowsByMatchKey=new Map();
         let takeBackRows=[]; let takeBackRowsById=new Map(); let takeBackSchemaReady=null; let takeBackSchemaPromise=null; let takeBackSchemaWarningShown=false; let takeBackDataLoaded=false; let takeBackDataPromise=null; let takeBackOptimisticDoneIds=new Set(); let takeBackDoneConfirmResolve=null;
         let detailRequestSourceDomIds=[];
-        let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false; let flyerFolderRowsSchemaReady=null; let flyerFolderRowsSchemaPromise=null; let flyerFolderRowsSchemaWarningShown=false;
+        let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false; let flyerFolderRowsSchemaReady=null; let flyerFolderRowsSchemaPromise=null; let flyerFolderRowsSchemaWarningShown=false; let requestHistorySchemaReady=null; let requestHistorySchemaWarningShown=false; let flyerFolderHistorySchemaReady=null; let flyerFolderHistorySchemaWarningShown=false;
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
 let activeHomeTab='dashboard'; let selectedProductivityUser=''; let productivityViewMode='cards'; let productivityHistoryByUser=new Map(); let productivityHistoryLoadState=new Map(); let productivityHistorySchemaReady=null; let productivityHistorySchemaPromise=null; let productivityHistorySchemaWarningShown=false; let productivityHistoryBackfillPromise=null;
 
@@ -11303,6 +11362,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const PRODUCTIVITY_COMPLETION_SOURCE_KINDS = new Set(['season_sales_note','location_sales_note']);
         const REQUEST_EMAIL_THREAD_TABLE = 'v2_request_email_threads';
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
+        const REQUEST_HISTORY_SELECT_FIELDS = 'unique_id,master_id,master_unique_id,source_table,request_folder,request_customer,requested_by,req_status,req_archived,req_rep_action,req_qty,req_reserve,req_match,req_spec,req_caliper,req_pic_note,req_comments,av_note,date_completed,itemcode,commonname,contsize,locationcode,lotcode,priority,ptravailable,s_lts,holdstopcode,season,photo_link,photo_name,snapshot,last_event,created_by_username,created_by_display,created_at,updated_at';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
         const HOLD_RELEASE_EMAIL_RECIPIENTS = Object.freeze(REQUEST_EMAIL_INTERNAL_RECIPIENTS.slice());
         const NCR_APPROVAL_DYLAN_USER = 'dylan_collyge';
@@ -11341,6 +11401,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const TAKE_BACK_TABLE = 'v2_take_back_queue';
         const TAKE_BACK_SELECT_FIELDS = 'unique_id,master_unique_id,source_table,status,added_by_username,added_by_display,added_at,completed_by_username,completed_by_display,completed_at,itemcode,commonname,contsize,locationcode,lotcode,priority,ptravailable,s_lts,holdstopcode,photo_link,photo_name,snapshot,updated_at';
         const FLYER_FOLDER_ROW_SELECT_FIELDS = 'unique_id,master_unique_id,source_table,flyer_title,flyer_assigned,flyer_cat,flyer_inst,flyer_notes,flyer_completed,assignedto,date_completed,itemcode,commonname,contsize,locationcode,lotcode,priority,ptravailable,s_lts,holdstopcode,plantgroupcode,locationnote,av_note,match,loc_match_qty,spec,caliper,pick,initial_ptr,flyer_av_note,flyer_match,flyer_loc_match_qty,flyer_spec,flyer_caliper,flyer_pick,flyer_initial_ptr,flyer_photo_link,flyer_photo_name,snapshot,created_by_username,created_by_display,created_at,updated_at';
+        const FLYER_FOLDER_HISTORY_SELECT_FIELDS = 'unique_id,master_unique_id,source_table,flyer_title,folder_name,folder_tab,history_state,flyer_assigned,flyer_cat,flyer_inst,flyer_notes,flyer_completed,assignedto,date_completed,itemcode,commonname,contsize,locationcode,lotcode,priority,ptravailable,s_lts,holdstopcode,plantgroupcode,locationnote,av_note,match,loc_match_qty,spec,caliper,pick,initial_ptr,flyer_av_note,flyer_match,flyer_loc_match_qty,flyer_spec,flyer_caliper,flyer_pick,flyer_initial_ptr,flyer_photo_link,flyer_photo_name,snapshot,last_event,created_by_username,created_by_display,created_at,updated_at';
         const MASTER_INITIAL_SELECT_FIELDS = [
             'unique_id','warehouseid','plantgroupcode','itemcode','qualitycode','contsize','commonname','description','plant_name',
             'lotcode','locationcode','source','desigitem','desigcust','desigloc','priority','ptravailable','s_lts','season_supply','saleyear',
@@ -11361,7 +11422,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.05').trim() || 'V2026.05.11.05';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.06').trim() || 'V2026.05.11.06';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -11940,10 +12001,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             master: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: buildMasterInitialDatasetQuery, fullQuery: 'select=*&order=unique_id.asc', initialLimit: getPrimaryInventoryInitialLimit, initialFetchAll: true, mergeInitialRows: true },
             avOpen: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: 'select=*&s_lts=gt.0&order=unique_id.asc', fullQuery: 'select=*&s_lts=gt.0&order=unique_id.asc', initialLimit: getPrimaryInventoryInitialLimit },
             requests: { table: 'v2_active_request', sourceTable: 'v2_active_request', initialQuery: 'select=*&order=unique_id.desc', fullQuery: 'select=*&order=unique_id.desc' },
+            requestHistory: { table: REQUEST_HISTORY_TABLE, sourceTable: 'v2_active_request', initialQuery: () => `select=${REQUEST_HISTORY_SELECT_FIELDS}&order=updated_at.desc`, fullQuery: () => `select=${REQUEST_HISTORY_SELECT_FIELDS}&order=updated_at.desc` },
             reserves: { table: 'v2_reserves', sourceTable: 'v2_reserves', initialQuery: buildReserveDatasetQuery, fullQuery: buildReserveDatasetQuery, initialLimit: getReserveDatasetInitialLimit },
             soc: { table: 'v2_soc_master', sourceTable: 'v2_soc_master', initialQuery: 'select=*', fullQuery: 'select=*' },
             salesOffice: { table: 'v2_sales_office', sourceTable: 'v2_sales_office', initialQuery: 'select=*', fullQuery: 'select=*' },
             flyerRows: { table: FLYER_FOLDER_ROWS_TABLE, sourceTable: FLYER_FOLDER_ROWS_TABLE, initialQuery: () => `select=${FLYER_FOLDER_ROW_SELECT_FIELDS}&order=created_at.desc`, fullQuery: () => `select=${FLYER_FOLDER_ROW_SELECT_FIELDS}&order=created_at.desc` },
+            flyerHistory: { table: FLYER_FOLDER_HISTORY_TABLE, sourceTable: FLYER_FOLDER_ROWS_TABLE, initialQuery: () => `select=${FLYER_FOLDER_HISTORY_SELECT_FIELDS}&order=updated_at.desc`, fullQuery: () => `select=${FLYER_FOLDER_HISTORY_SELECT_FIELDS}&order=updated_at.desc` },
             cav: { table: 'v2_cav_import', sourceTable: 'v2_cav_import', initialQuery: 'select=*', fullQuery: 'select=*' },
             avHotPriceKeys: { table: 'v2_view_av_hot_price_keys', sourceTable: 'v2_view_av_hot_price_keys', initialQuery: 'select=*', fullQuery: 'select=*' },
             avNotes: { table: 'v2_av_notes', sourceTable: 'v2_av_notes', initialQuery: 'select=*', fullQuery: 'select=*' }
@@ -12138,6 +12201,272 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 seenIds.add(id);
             });
             return nextRows;
+        }
+
+        function parseHistorySnapshotValue(rawSnapshot = {}) {
+            if (!rawSnapshot) return {};
+            if (typeof rawSnapshot === 'string') {
+                try {
+                    const parsed = JSON.parse(rawSnapshot);
+                    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+                } catch (error) {
+                    return {};
+                }
+            }
+            return rawSnapshot && typeof rawSnapshot === 'object' && !Array.isArray(rawSnapshot) ? rawSnapshot : {};
+        }
+
+        function isHistoryTableWriteMissing(error = null, tableName = '') {
+            return isOptionalTableMissingError(error, tableName);
+        }
+
+        function warnMissingRequestHistorySchema(error = null) {
+            requestHistorySchemaReady = false;
+            if (requestHistorySchemaWarningShown || !currentUser) return;
+            requestHistorySchemaWarningShown = true;
+            console.warn('Request history schema is not installed. Run request_history_migration.sql in Supabase to preserve request folders permanently.', error);
+            showToast('Schema Required', 'Run request_history_migration.sql in Supabase to preserve request folder history.', true);
+        }
+
+        function warnMissingFlyerHistorySchema(error = null) {
+            flyerFolderHistorySchemaReady = false;
+            if (flyerFolderHistorySchemaWarningShown || !currentUser) return;
+            flyerFolderHistorySchemaWarningShown = true;
+            console.warn('Flyer folder history schema is not installed. Run request_history_migration.sql in Supabase to preserve flyer folders permanently.', error);
+            showToast('Schema Required', 'Run request_history_migration.sql in Supabase to preserve flyer folder history.', true);
+        }
+
+        function isTruthishHistoryValue(value) {
+            return value === true || value === 1 || value === '1' || String(value || '').trim().toLowerCase() === 'true';
+        }
+
+        function getRequestHistoryPhotoLink(item = null) {
+            return String(firstNonEmptyValue(
+                getRequestPhotoLinkCsv(item, { includePending: false, includeSharedFallback: true }),
+                item && item.REQ_PHOTO_LINK,
+                item && item.REQUEST_PHOTO_LINK,
+                item && item.PHOTO_LINK,
+                ''
+            ) || '').trim();
+        }
+
+        function getRequestHistoryPhotoName(item = null) {
+            return String(firstNonEmptyValue(
+                item && item.REQ_PHOTO_NAME,
+                item && item.REQUEST_PHOTO_NAME,
+                item && item.PHOTO_NAME,
+                item && item.ROW_PHOTO_NAME,
+                ''
+            ) || '').trim();
+        }
+
+        function buildRequestHistorySnapshot(item = null) {
+            const source = item || {};
+            const master = findLinkedMasterRow(source) || null;
+            const masterId = String(firstNonEmptyValue(source.MASTER_ID, source.MASTER_UNIQUE_ID, source.master_id, master && master.UNIQUE_ID, '') || '').trim();
+            const photoLink = getRequestHistoryPhotoLink(source);
+            const photoName = getRequestHistoryPhotoName(source);
+            return {
+                SOURCE_TABLE: 'v2_active_request',
+                UNIQUE_ID: String(firstNonEmptyValue(source.UNIQUE_ID, source.unique_id, '') || '').trim(),
+                MASTER_ID: masterId,
+                MASTER_UNIQUE_ID: masterId,
+                REQUEST_FOLDER: getRequestFolderName(source),
+                REQUESTED_BY: getRequestAssignedRep(source),
+                REQ_CUSTOMER: String(firstNonEmptyValue(source.REQ_CUSTOMER, source.req_customer, source.CUSTOMERNAME, source.CUSTOMER, '') || '').trim(),
+                REQ_QTY: String(firstNonEmptyValue(source.REQ_QTY, source.req_qty, '') || '').trim(),
+                REQ_RESERVE: String(firstNonEmptyValue(source.REQ_RESERVE, source.req_reserve, 'NO') || 'NO').trim(),
+                REQ_STATUS: normalizeRequestStatus(firstNonEmptyValue(source.REQ_STATUS, source.req_status, source.STATUS, 'Pending')) || 'Pending',
+                REQ_ARCHIVED: isTruthishHistoryValue(firstNonEmptyValue(source.REQ_ARCHIVED, source.req_archived, false)),
+                REQ_REP_ACTION: String(firstNonEmptyValue(source.REQ_REP_ACTION, source.req_rep_action, '') || '').trim(),
+                DATE_COMPLETED: String(firstNonEmptyValue(source.DATE_COMPLETED, source.date_completed, '') || '').trim(),
+                REQ_MATCH: String(firstNonEmptyValue(source.REQ_MATCH, source.req_match, source.MATCH, '') || '').trim(),
+                REQ_SPEC: String(firstNonEmptyValue(source.REQ_SPEC, source.req_spec, source.REQ_DESIRED_SPEC, source.DESIRED_SPEC, source.SPEC, '') || '').trim(),
+                REQ_CALIPER: String(firstNonEmptyValue(source.REQ_CALIPER, source.req_caliper, source.REQ_DESIRED_CALIPER, source.DESIRED_CALIPER, source.CALIPER, '') || '').trim(),
+                REQ_PICK: String(firstNonEmptyValue(source.REQ_PICK, source.REQ_PIC_NOTE, source.req_pic_note, source.PICK, source.PIC_NOTE, '') || '').trim(),
+                REQ_COMMENTS: String(firstNonEmptyValue(source.REQ_COMMENTS, source.req_comments, '') || '').trim(),
+                AV_NOTE: String(firstNonEmptyValue(source.AV_NOTE, source.av_note, '') || '').trim(),
+                REQ_PHOTO_LINK: photoLink,
+                REQ_PHOTO_NAME: photoName,
+                ITEMCODE: String(firstNonEmptyValue(source.ITEMCODE, source.itemcode, master && master.ITEMCODE, '') || '').trim(),
+                COMMONNAME: String(firstNonEmptyValue(source.COMMONNAME, source.commonname, master && master.COMMONNAME, master && master.DESCRIPTION, 'Unknown') || 'Unknown').trim(),
+                CONTSIZE: String(firstNonEmptyValue(source.CONTSIZE, source.contsize, master && master.CONTSIZE, master && master.ITEMSPEC, '') || '').trim(),
+                LOCATIONCODE: String(firstNonEmptyValue(source.LOCATIONCODE, source.locationcode, master && master.LOCATIONCODE, '') || '').trim(),
+                LOTCODE: String(firstNonEmptyValue(source.LOTCODE, source.lotcode, master && master.LOTCODE, '') || '').trim(),
+                PRIORITY: String(firstNonEmptyValue(source.PRIORITY, source.priority, master && master.PRIORITY, '') || '').trim(),
+                PTRAVAILABLE: String(firstNonEmptyValue(source.PTRAVAILABLE, source.ptravailable, master && master.PTRAVAILABLE, '') || '').trim(),
+                S_LTS: String(firstNonEmptyValue(source.S_LTS, source.s_lts, master && master.S_LTS, '') || '').trim(),
+                HOLDSTOPCODE: String(firstNonEmptyValue(source.HOLDSTOPCODE, source.holdstopcode, master && master.HOLDSTOPCODE, '') || '').trim(),
+                SEASON: String(firstNonEmptyValue(source.SEASON, source.season, master && master.SEASON, '') || '').trim()
+            };
+        }
+
+        function buildRequestHistoryPayload(item = null, eventName = 'snapshot') {
+            if (!item) return null;
+            const snapshot = buildRequestHistorySnapshot(item);
+            const uniqueId = String(snapshot.UNIQUE_ID || '').trim();
+            if (!uniqueId) return null;
+            const updatedAt = new Date().toISOString();
+            return {
+                unique_id: uniqueId,
+                master_id: snapshot.MASTER_ID || null,
+                master_unique_id: snapshot.MASTER_UNIQUE_ID || null,
+                source_table: 'v2_active_request',
+                request_folder: snapshot.REQUEST_FOLDER || null,
+                request_customer: snapshot.REQ_CUSTOMER || null,
+                requested_by: snapshot.REQUESTED_BY || null,
+                req_status: snapshot.REQ_STATUS || 'Pending',
+                req_archived: !!snapshot.REQ_ARCHIVED,
+                req_rep_action: snapshot.REQ_REP_ACTION || null,
+                req_qty: snapshot.REQ_QTY || null,
+                req_reserve: snapshot.REQ_RESERVE || null,
+                req_match: snapshot.REQ_MATCH || null,
+                req_spec: snapshot.REQ_SPEC || null,
+                req_caliper: snapshot.REQ_CALIPER || null,
+                req_pic_note: snapshot.REQ_PICK || null,
+                req_comments: snapshot.REQ_COMMENTS || null,
+                av_note: snapshot.AV_NOTE || null,
+                date_completed: snapshot.DATE_COMPLETED || null,
+                itemcode: snapshot.ITEMCODE || null,
+                commonname: snapshot.COMMONNAME || null,
+                contsize: snapshot.CONTSIZE || null,
+                locationcode: snapshot.LOCATIONCODE || null,
+                lotcode: snapshot.LOTCODE || null,
+                priority: snapshot.PRIORITY || null,
+                ptravailable: snapshot.PTRAVAILABLE || null,
+                s_lts: snapshot.S_LTS || null,
+                holdstopcode: snapshot.HOLDSTOPCODE || null,
+                season: snapshot.SEASON || null,
+                photo_link: snapshot.REQ_PHOTO_LINK || null,
+                photo_name: snapshot.REQ_PHOTO_NAME || null,
+                snapshot,
+                last_event: String(eventName || 'snapshot').trim() || 'snapshot',
+                created_by_username: currentUser || null,
+                created_by_display: currentUserDisplay || currentUser || null,
+                updated_at: updatedAt
+            };
+        }
+
+        function normalizeRequestHistoryRow(rawRow = null, idx = 0) {
+            if (!rawRow || typeof rawRow !== 'object') return null;
+            const snapshot = parseHistorySnapshotValue(firstNonEmptyValue(rawRow.SNAPSHOT, rawRow.snapshot, {}));
+            const uniqueId = String(firstNonEmptyValue(rawRow.UNIQUE_ID, rawRow.unique_id, snapshot.UNIQUE_ID, '') || '').trim();
+            if (!uniqueId) return null;
+            const item = Object.assign({}, snapshot, rawRow);
+            item.SOURCE_TABLE = 'v2_active_request';
+            item.UNIQUE_ID = uniqueId;
+            item.MASTER_ID = String(firstNonEmptyValue(rawRow.MASTER_ID, rawRow.master_id, snapshot.MASTER_ID, snapshot.MASTER_UNIQUE_ID, '') || '').trim();
+            item.MASTER_UNIQUE_ID = String(firstNonEmptyValue(rawRow.MASTER_UNIQUE_ID, rawRow.master_unique_id, item.MASTER_ID, '') || '').trim();
+            item.REQUEST_FOLDER = String(firstNonEmptyValue(rawRow.REQUEST_FOLDER, rawRow.request_folder, snapshot.REQUEST_FOLDER, 'Unassigned') || 'Unassigned').trim() || 'Unassigned';
+            item.REQUESTED_BY = String(firstNonEmptyValue(rawRow.REQUESTED_BY, rawRow.requested_by, snapshot.REQUESTED_BY, snapshot.SALESREPNAME, 'Unknown Rep') || 'Unknown Rep').trim() || 'Unknown Rep';
+            item.SALESREPNAME = item.REQUESTED_BY;
+            item.SALESREP = item.REQUESTED_BY;
+            item.REQ_CUSTOMER = String(firstNonEmptyValue(rawRow.REQUEST_CUSTOMER, rawRow.request_customer, rawRow.REQ_CUSTOMER, rawRow.req_customer, snapshot.REQ_CUSTOMER, '') || '').trim();
+            item.REQ_QTY = String(firstNonEmptyValue(rawRow.REQ_QTY, rawRow.req_qty, snapshot.REQ_QTY, '') || '').trim();
+            item.REQ_RESERVE = String(firstNonEmptyValue(rawRow.REQ_RESERVE, rawRow.req_reserve, snapshot.REQ_RESERVE, 'NO') || 'NO').trim();
+            item.REQ_STATUS = normalizeRequestStatus(firstNonEmptyValue(rawRow.REQ_STATUS, rawRow.req_status, snapshot.REQ_STATUS, 'Pending')) || 'Pending';
+            item.REQUEST_HISTORY_ARCHIVED = isTruthishHistoryValue(firstNonEmptyValue(rawRow.REQ_ARCHIVED, rawRow.req_archived, snapshot.REQ_ARCHIVED, false));
+            item.REQ_ARCHIVED = false;
+            item.REQ_REP_ACTION = String(firstNonEmptyValue(rawRow.REQ_REP_ACTION, rawRow.req_rep_action, snapshot.REQ_REP_ACTION, '') || '').trim();
+            item.DATE_COMPLETED = String(firstNonEmptyValue(rawRow.DATE_COMPLETED, rawRow.date_completed, snapshot.DATE_COMPLETED, '') || '').trim();
+            item.date_completed = item.DATE_COMPLETED;
+            item.REQ_MATCH = firstNonEmptyValue(rawRow.REQ_MATCH, rawRow.req_match, snapshot.REQ_MATCH, '');
+            item.REQ_SPEC = String(firstNonEmptyValue(rawRow.REQ_SPEC, rawRow.req_spec, snapshot.REQ_SPEC, '') || '').trim();
+            item.REQ_CALIPER = String(firstNonEmptyValue(rawRow.REQ_CALIPER, rawRow.req_caliper, snapshot.REQ_CALIPER, '') || '').trim();
+            item.REQ_PICK = String(firstNonEmptyValue(rawRow.REQ_PICK, rawRow.REQ_PIC_NOTE, rawRow.req_pic_note, snapshot.REQ_PICK, '') || '').trim();
+            item.REQ_COMMENTS = String(firstNonEmptyValue(rawRow.REQ_COMMENTS, rawRow.req_comments, snapshot.REQ_COMMENTS, '') || '').trim();
+            item.AV_NOTE = String(firstNonEmptyValue(rawRow.AV_NOTE, rawRow.av_note, snapshot.AV_NOTE, '') || '').trim();
+            item.REQ_PHOTO_LINK = String(firstNonEmptyValue(rawRow.PHOTO_LINK, rawRow.photo_link, rawRow.REQ_PHOTO_LINK, rawRow.req_photo_link, snapshot.REQ_PHOTO_LINK, '') || '').trim();
+            item.REQ_PHOTO_NAME = String(firstNonEmptyValue(rawRow.PHOTO_NAME, rawRow.photo_name, rawRow.REQ_PHOTO_NAME, rawRow.req_photo_name, snapshot.REQ_PHOTO_NAME, '') || '').trim();
+            item.ITEMCODE = String(firstNonEmptyValue(rawRow.ITEMCODE, rawRow.itemcode, snapshot.ITEMCODE, '') || '').trim();
+            item.COMMONNAME = String(firstNonEmptyValue(rawRow.COMMONNAME, rawRow.commonname, snapshot.COMMONNAME, 'Unknown') || 'Unknown').trim() || 'Unknown';
+            item.CONTSIZE = String(firstNonEmptyValue(rawRow.CONTSIZE, rawRow.contsize, snapshot.CONTSIZE, '') || '').trim();
+            item.LOCATIONCODE = String(firstNonEmptyValue(rawRow.LOCATIONCODE, rawRow.locationcode, snapshot.LOCATIONCODE, '') || '').trim();
+            item.LOTCODE = String(firstNonEmptyValue(rawRow.LOTCODE, rawRow.lotcode, snapshot.LOTCODE, '') || '').trim();
+            item.PRIORITY = String(firstNonEmptyValue(rawRow.PRIORITY, rawRow.priority, snapshot.PRIORITY, '') || '').trim();
+            item.PTRAVAILABLE = String(firstNonEmptyValue(rawRow.PTRAVAILABLE, rawRow.ptravailable, snapshot.PTRAVAILABLE, '') || '').trim();
+            item.S_LTS = String(firstNonEmptyValue(rawRow.S_LTS, rawRow.s_lts, snapshot.S_LTS, '') || '').trim();
+            item.HOLDSTOPCODE = String(firstNonEmptyValue(rawRow.HOLDSTOPCODE, rawRow.holdstopcode, snapshot.HOLDSTOPCODE, '') || '').trim();
+            item.SEASON = String(firstNonEmptyValue(rawRow.SEASON, rawRow.season, snapshot.SEASON, '') || '').trim();
+            item.REQUEST_HISTORY = true;
+            item.REQUEST_HISTORY_EVENT = String(firstNonEmptyValue(rawRow.LAST_EVENT, rawRow.last_event, '') || '').trim();
+            item.SNAPSHOT = snapshot;
+            item.DOM_ID = `reqhist_${uniqueId.replace(/[^a-z0-9_-]+/gi, '_') || idx}`;
+            normalizeRowPhotoFields(item);
+            buildSearchIndex(item);
+            return item;
+        }
+
+        function cacheRequestHistoryRow(rawRow = null) {
+            const row = normalizeRequestHistoryRow(rawRow);
+            if (!row) return null;
+            const id = String(row.UNIQUE_ID || '').trim();
+            requestHistoryInventory = requestHistoryInventory.filter((entry) => String(entry && entry.UNIQUE_ID || '').trim() !== id);
+            requestHistoryInventory.push(row);
+            requestHistoryInventoryById.set(id, row);
+            return row;
+        }
+
+        async function upsertRequestHistoryRows(items = [], eventName = 'snapshot') {
+            if (requestHistorySchemaReady === false) {
+                warnMissingRequestHistorySchema();
+                return false;
+            }
+            const sourceItems = (Array.isArray(items) ? items : [items]).filter(Boolean);
+            const payloads = sourceItems.map((item) => buildRequestHistoryPayload(item, eventName)).filter(Boolean);
+            if (!payloads.length) return false;
+            payloads.forEach((payload) => cacheRequestHistoryRow(payload));
+            requestsInventory = mergeRequestRowsWithHistory(
+                (requestsInventory || []).filter((item) => item && !item.REQUEST_HISTORY),
+                requestHistoryInventory
+            );
+            rebuildRequestInventoryIndexes();
+            const state = getDatasetState('requestHistory');
+            state.initialLoaded = true;
+            state.lastLoadedAt = new Date().toISOString();
+            try {
+                await supabaseFetch(REQUEST_HISTORY_TABLE, 'POST', payloads, 'on_conflict=unique_id');
+                requestHistorySchemaReady = true;
+                requestHistorySchemaWarningShown = false;
+                return true;
+            } catch (error) {
+                if (isHistoryTableWriteMissing(error, REQUEST_HISTORY_TABLE)) {
+                    warnMissingRequestHistorySchema(error);
+                    return false;
+                }
+                console.warn('Request history save failed', error);
+                return false;
+            }
+        }
+
+        function mergeRequestRowsWithHistory(activeRows = [], historyRows = []) {
+            const merged = [];
+            const activeIndexById = new Map();
+            (Array.isArray(activeRows) ? activeRows : []).forEach((row) => {
+                if (!row) return;
+                const id = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
+                if (id && !activeIndexById.has(id)) activeIndexById.set(id, merged.length);
+                merged.push(row);
+            });
+            (Array.isArray(historyRows) ? historyRows : []).forEach((historyRow) => {
+                if (!historyRow) return;
+                const id = String(firstNonEmptyValue(historyRow.UNIQUE_ID, historyRow.unique_id, '') || '').trim();
+                if (!id) return;
+                const activeIndex = activeIndexById.get(id);
+                if (activeIndex == null) {
+                    merged.push(historyRow);
+                    return;
+                }
+                const activeRow = merged[activeIndex];
+                if (activeRow && isTruthishHistoryValue(activeRow.REQ_ARCHIVED)) {
+                    merged[activeIndex] = Object.assign({}, activeRow, historyRow, {
+                        REQUEST_HISTORY: true,
+                        REQUEST_HISTORY_ARCHIVED: true,
+                        REQ_ARCHIVED: false
+                    });
+                }
+            });
+            return merged;
         }
 
         function syncRequestTabButtons() {
@@ -12559,10 +12888,15 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             });
         }
 
-        function isOptionalFlyerRowsMissingError(error = null) {
+        function isOptionalTableMissingError(error = null, tableName = '') {
             const message = String(error && error.message ? error.message : error || '').toLowerCase();
-            return message.includes(FLYER_FOLDER_ROWS_TABLE)
+            const tableToken = String(tableName || '').trim().toLowerCase();
+            return (!tableToken || message.includes(tableToken))
                 && (message.includes('pgrst205') || message.includes('could not find') || message.includes('schema cache') || message.includes('relation') || message.includes('404'));
+        }
+
+        function isOptionalFlyerRowsMissingError(error = null) {
+            return isOptionalTableMissingError(error, FLYER_FOLDER_ROWS_TABLE);
         }
 
         function handleMissingOptionalFlyerRowsTable(error = null) {
@@ -12572,16 +12906,29 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return [];
         }
 
+        function handleMissingOptionalHistoryTable(key = '', error = null) {
+            if (key === 'requestHistory') {
+                requestHistorySchemaReady = false;
+                console.warn('Optional request history table is unavailable; request folders will use active request rows only.', error);
+            } else if (key === 'flyerHistory') {
+                flyerFolderHistorySchemaReady = false;
+                console.warn('Optional flyer folder history table is unavailable; flyer folders will use active flyer rows only.', error);
+            }
+            return [];
+        }
+
         function buildDatasetPayload(key, rows) {
             const definition = DATASET_DEFINITIONS[key];
             const formatted = formatFetchedRows(rows, definition.sourceTable);
             if (key === 'master') return { data: formatted };
             if (key === 'avOpen') return { avOpenData: formatted };
             if (key === 'requests') return { requestsData: formatted };
+            if (key === 'requestHistory') return { requestHistoryData: formatted };
             if (key === 'reserves') return { reservesData: formatted };
             if (key === 'soc') return { socData: formatted };
             if (key === 'salesOffice') return { salesOfficeData: formatted };
             if (key === 'flyerRows') return { flyerFolderRowsData: formatted };
+            if (key === 'flyerHistory') return { flyerFolderHistoryData: formatted };
             if (key === 'cav') return { cavData: formatted };
             if (key === 'avHotPriceKeys') return { avHotPriceKeysData: formatted };
             if (key === 'avNotes') return { avNotesData: formatted };
@@ -12708,6 +13055,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                             rows = await fetchSupabasePage(definition.table, 'select=*&order=unique_id.asc', resolvedInitialLimit, 0);
                         }
                     } else if (key === 'flyerRows' && isOptionalFlyerRowsMissingError(error)) rows = handleMissingOptionalFlyerRowsTable(error);
+                    else if ((key === 'requestHistory' || key === 'flyerHistory') && isOptionalTableMissingError(error, definition.table)) rows = handleMissingOptionalHistoryTable(key, error);
                     else throw error;
                 }
                 if (shouldPauseInterruptibleRefresh(options)) {
@@ -12931,7 +13279,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return { required: [{ key: 'avOpen', mode: 'initial' }], background: [{ key: 'avOpen', mode: 'full' }], label: 'Loading AV open stock...' };
             }
             if (viewId === 'docks') return { required: [{ key: 'soc', mode: 'initial' }], background: [{ key: 'soc', mode: 'full' }], label: 'Loading dock rows...' };
-            if (viewId === 'request') return { required: [{ key: 'requests', mode: 'initial' }], background: [{ key: 'requests', mode: 'full' }], label: 'Loading requests...' };
+            if (viewId === 'request') return { required: [{ key: 'requests', mode: 'initial' }, { key: 'requestHistory', mode: 'initial' }], background: [{ key: 'requests', mode: 'full' }, { key: 'requestHistory', mode: 'full' }], label: 'Loading requests...' };
             if (viewId === 'chat') return { required: [], background: [], label: 'Loading chat...' };
             if (viewId === 'walkie') return { required: [], background: [], label: 'Loading walkie...' };
             if (viewId === 'reserves') {
@@ -12945,9 +13293,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (viewId === 'tasks') {
                 const isFlyerTaskView = activeTaskView === 'flyer';
                 const required = [{ key: 'master', mode: 'initial' }];
-                if (isFlyerTaskView) required.push({ key: 'flyerRows', mode: 'initial' });
+                if (isFlyerTaskView) required.push({ key: 'flyerRows', mode: 'initial' }, { key: 'flyerHistory', mode: 'initial' });
                 const background = isFlyerTaskView
-                    ? [{ key: 'master', mode: 'full' }, { key: 'flyerRows', mode: 'full' }, { key: 'avNotes', mode: 'full' }]
+                    ? [{ key: 'master', mode: 'full' }, { key: 'flyerRows', mode: 'full' }, { key: 'flyerHistory', mode: 'full' }, { key: 'avNotes', mode: 'full' }]
                     : [{ key: 'master', mode: 'full' }, { key: 'avNotes', mode: 'full' }];
                 const needsTaskHotPriceKeys = activeTaskView === 'hot-price';
                 if (needsTaskHotPriceKeys) {
@@ -12963,8 +13311,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (viewId === 'low-stock') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading NCR...' };
             if (viewId === 'review') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading review rows...' };
             if (viewId === 'move-up') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading Move Up rows...' };
-            if (viewId === 'advertisement') return { required: [{ key: 'master', mode: 'initial' }, { key: 'flyerRows', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }, { key: 'flyerRows', mode: 'full' }], label: 'Loading advertisement assets...' };
-            if (viewId === 'reports') return { required: [{ key: 'master', mode: 'initial' }, { key: 'requests', mode: 'initial' }, { key: 'reserves', mode: 'initial' }, { key: 'soc', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }, { key: 'requests', mode: 'full' }, { key: 'reserves', mode: 'full' }, { key: 'soc', mode: 'full' }], label: 'Loading reports...' };
+            if (viewId === 'advertisement') return { required: [{ key: 'master', mode: 'initial' }, { key: 'flyerRows', mode: 'initial' }, { key: 'flyerHistory', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }, { key: 'flyerRows', mode: 'full' }, { key: 'flyerHistory', mode: 'full' }], label: 'Loading advertisement assets...' };
+            if (viewId === 'reports') return { required: [{ key: 'master', mode: 'initial' }, { key: 'requests', mode: 'initial' }, { key: 'requestHistory', mode: 'initial' }, { key: 'reserves', mode: 'initial' }, { key: 'soc', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }, { key: 'requests', mode: 'full' }, { key: 'requestHistory', mode: 'full' }, { key: 'reserves', mode: 'full' }, { key: 'soc', mode: 'full' }], label: 'Loading reports...' };
             return null;
         }
 
@@ -13210,6 +13558,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 || moveUpInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
                 || salesOfficeInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
                 || flyerFolderInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
+                || flyerFolderHistoryInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
                 || null;
         }
 
@@ -13243,6 +13592,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             moveUpInventoryById = rebuildInventoryByIdMap(moveUpInventory);
             salesOfficeInventoryById = rebuildInventoryByIdMap(salesOfficeInventory);
             flyerFolderInventoryById = rebuildInventoryByIdMap(flyerFolderInventory);
+            requestHistoryInventoryById = rebuildInventoryByIdMap(requestHistoryInventory);
+            flyerFolderHistoryInventoryById = rebuildInventoryByIdMap(flyerFolderHistoryInventory);
             cavInventoryById = rebuildInventoryByIdMap(cavInventory);
             rebuildRequestInventoryIndexes();
         }
@@ -13251,6 +13602,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const safeTableName = String(tableName || '').trim();
             if (!safeTableName) return;
             if (safeTableName === 'v2_active_request') {
+                rebuildRequestInventoryIndexes();
+                return;
+            }
+            if (safeTableName === REQUEST_HISTORY_TABLE) {
+                requestHistoryInventoryById = rebuildInventoryByIdMap(requestHistoryInventory);
                 rebuildRequestInventoryIndexes();
                 return;
             }
@@ -13268,6 +13624,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             if (safeTableName === FLYER_FOLDER_ROWS_TABLE) {
                 flyerFolderInventoryById = rebuildInventoryByIdMap(flyerFolderInventory);
+                return;
+            }
+            if (safeTableName === FLYER_FOLDER_HISTORY_TABLE) {
+                flyerFolderHistoryInventoryById = rebuildInventoryByIdMap(flyerFolderHistoryInventory);
                 return;
             }
             if (safeTableName === 'v2_cav_import') {
@@ -14856,7 +15216,7 @@ let searchRenderToken = {};
         }
         function getPendingRequestCount() {
             let items = getScopedRequestItems(requestsInventory);
-            items = items.filter(i => i && !i.REQ_ARCHIVED && !isRequestComplete(i));
+            items = items.filter(i => i && !i.REQUEST_HISTORY && !i.REQ_ARCHIVED && !isRequestComplete(i));
             return items.length;
         }
 
@@ -15471,7 +15831,15 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getAllFlyerTaskItems() {
-            const snapshotItems = Array.isArray(flyerFolderInventory) ? flyerFolderInventory.filter(Boolean) : [];
+            const activeSnapshotItems = Array.isArray(flyerFolderInventory) ? flyerFolderInventory.filter(Boolean) : [];
+            const activeIds = new Set(activeSnapshotItems.map((item) => String(item && item.UNIQUE_ID || '').trim()).filter(Boolean));
+            const historySnapshotItems = (Array.isArray(flyerFolderHistoryInventory) ? flyerFolderHistoryInventory : [])
+                .filter(Boolean)
+                .filter((item) => {
+                    const uid = String(item && item.UNIQUE_ID || '').trim();
+                    return uid && !activeIds.has(uid);
+                });
+            const snapshotItems = activeSnapshotItems.concat(historySnapshotItems);
             const snapshotFolderKeys = new Set(snapshotItems.map(getFlyerFolderMembershipKey).filter(Boolean));
             const legacyItems = (Array.isArray(fullInventory) ? fullInventory : [])
                 .filter((item) => item && isFlyerTaskItem(item) && !isFlyerFolderRow(item))
@@ -15789,6 +16157,196 @@ function toggleDriveQuickRequestItem(domId) {
             return row;
         }
 
+        function normalizeFlyerFolderHistoryState(value = '', fallbackTab = 'active') {
+            const text = String(value || '').trim().toLowerCase();
+            if (text === 'removed') return 'removed';
+            if (text === 'archived' || text === 'archive') return 'archived';
+            if (text === 'completed' || text === 'complete') return 'completed';
+            return getFlyerFolderTabValue(fallbackTab) === 'archive' ? 'archived' : 'active';
+        }
+
+        function getFlyerFolderHistoryPhotoLink(item = null) {
+            return String(firstNonEmptyValue(
+                getFlyerVisiblePhotoLinkCsv(item, { includePending: false }),
+                item && item.FLYER_PHOTO_LINK,
+                item && item.flyer_photo_link,
+                item && item.PHOTO_LINK,
+                item && item.photo_link,
+                ''
+            ) || '').trim();
+        }
+
+        function getFlyerFolderHistoryPhotoName(item = null) {
+            return String(firstNonEmptyValue(
+                item && item.FLYER_PHOTO_NAME,
+                item && item.flyer_photo_name,
+                item && item.PHOTO_NAME,
+                item && item.photo_name,
+                ''
+            ) || '').trim();
+        }
+
+        function buildFlyerFolderHistorySnapshot(item = null, options = {}) {
+            const source = item || {};
+            const baseSnapshot = normalizeFlyerFolderSnapshot(firstNonEmptyValue(source.SNAPSHOT, source.snapshot, {}));
+            const currentSnapshot = buildFlyerFolderSnapshot(source, { includeCurrentAvData: true });
+            const folderTab = getFlyerFolderTabValue(firstNonEmptyValue(options.folderTab, source.FOLDER_TAB, source.folder_tab, isFlyerFolderArchived(source) ? 'archive' : 'active'));
+            const folderName = getFlyerFolderName(firstNonEmptyValue(options.folderName, source.FLYER_TITLE, source.flyer_title, baseSnapshot.FLYER_TITLE, ''));
+            const flyerPhotoLink = getFlyerFolderHistoryPhotoLink(source);
+            const flyerPhotoName = getFlyerFolderHistoryPhotoName(source);
+            return Object.assign({}, baseSnapshot, currentSnapshot, {
+                UNIQUE_ID: String(firstNonEmptyValue(source.UNIQUE_ID, source.unique_id, currentSnapshot.UNIQUE_ID, '') || '').trim(),
+                MASTER_UNIQUE_ID: String(firstNonEmptyValue(source.MASTER_UNIQUE_ID, source.master_unique_id, source.MASTER_ID, currentSnapshot.UNIQUE_ID, '') || '').trim(),
+                SOURCE_TABLE: String(firstNonEmptyValue(source.FLYER_SOURCE_TABLE, source.source_table, source.SOURCE_TABLE, currentSnapshot.SOURCE_TABLE, 'v2_master_inventory') || 'v2_master_inventory').trim(),
+                ITEMCODE: String(firstNonEmptyValue(source.ITEMCODE, source.itemcode, baseSnapshot.ITEMCODE, currentSnapshot.ITEMCODE, '') || '').trim(),
+                COMMONNAME: String(firstNonEmptyValue(source.COMMONNAME, source.commonname, baseSnapshot.COMMONNAME, currentSnapshot.COMMONNAME, 'Unknown') || 'Unknown').trim(),
+                CONTSIZE: String(firstNonEmptyValue(source.CONTSIZE, source.contsize, baseSnapshot.CONTSIZE, currentSnapshot.CONTSIZE, '') || '').trim(),
+                LOCATIONCODE: String(firstNonEmptyValue(source.LOCATIONCODE, source.locationcode, baseSnapshot.LOCATIONCODE, currentSnapshot.LOCATIONCODE, '') || '').trim(),
+                LOTCODE: String(firstNonEmptyValue(source.LOTCODE, source.lotcode, baseSnapshot.LOTCODE, currentSnapshot.LOTCODE, '') || '').trim(),
+                PRIORITY: String(firstNonEmptyValue(source.PRIORITY, source.priority, baseSnapshot.PRIORITY, currentSnapshot.PRIORITY, '') || '').trim(),
+                PTRAVAILABLE: String(firstNonEmptyValue(source.PTRAVAILABLE, source.ptravailable, baseSnapshot.PTRAVAILABLE, currentSnapshot.PTRAVAILABLE, '') || '').trim(),
+                S_LTS: String(firstNonEmptyValue(source.S_LTS, source.s_lts, baseSnapshot.S_LTS, currentSnapshot.S_LTS, '') || '').trim(),
+                HOLDSTOPCODE: String(firstNonEmptyValue(source.HOLDSTOPCODE, source.holdstopcode, baseSnapshot.HOLDSTOPCODE, currentSnapshot.HOLDSTOPCODE, '') || '').trim(),
+                PLANTGROUPCODE: String(firstNonEmptyValue(source.PLANTGROUPCODE, source.plantgroupcode, baseSnapshot.PLANTGROUPCODE, currentSnapshot.PLANTGROUPCODE, '') || '').trim(),
+                LOCATIONNOTE: String(firstNonEmptyValue(source.LOCATIONNOTE, source.locationnote, baseSnapshot.LOCATIONNOTE, currentSnapshot.LOCATIONNOTE, '') || '').trim(),
+                FLYER_TITLE: encodeFlyerFolderTitle(folderName, folderTab),
+                FLYER_ASSIGNED: String(firstNonEmptyValue(source.FLYER_ASSIGNED, source.flyer_assigned, source.ASSIGNEDTO, source.assignedto, '') || '').trim(),
+                FLYER_CAT: String(firstNonEmptyValue(source.FLYER_CAT, source.flyer_cat, '') || '').trim(),
+                FLYER_INST: String(firstNonEmptyValue(source.FLYER_INST, source.flyer_inst, '') || '').trim(),
+                FLYER_NOTES: String(firstNonEmptyValue(source.FLYER_NOTES, source.flyer_notes, '') || '').trim(),
+                FLYER_COMPLETED: String(firstNonEmptyValue(source.FLYER_COMPLETED, source.flyer_completed, source.DATE_COMPLETED, source.date_completed, '') || '').trim(),
+                ASSIGNEDTO: String(firstNonEmptyValue(source.ASSIGNEDTO, source.assignedto, '') || '').trim(),
+                DATE_COMPLETED: String(firstNonEmptyValue(source.DATE_COMPLETED, source.date_completed, source.FLYER_COMPLETED, source.flyer_completed, '') || '').trim(),
+                AV_NOTE: String(firstNonEmptyValue(source.AV_NOTE, source.av_note, source.FLYER_AV_NOTE, source.flyer_av_note, currentSnapshot.AV_NOTE, '') || '').trim(),
+                MATCH: firstNonEmptyValue(source.MATCH, source.match, source.FLYER_MATCH, source.flyer_match, currentSnapshot.MATCH, ''),
+                LOC_MATCH_QTY: firstNonEmptyValue(source.LOC_MATCH_QTY, source.loc_match_qty, source.FLYER_LOC_MATCH_QTY, source.flyer_loc_match_qty, currentSnapshot.LOC_MATCH_QTY, ''),
+                SPEC: String(firstNonEmptyValue(source.SPEC, source.spec, source.FLYER_SPEC, source.flyer_spec, currentSnapshot.SPEC, '') || '').trim(),
+                CALIPER: String(firstNonEmptyValue(source.CALIPER, source.caliper, source.FLYER_CALIPER, source.flyer_caliper, currentSnapshot.CALIPER, '') || '').trim(),
+                PICK: String(firstNonEmptyValue(source.PICK, source.pick, source.FLYER_PICK, source.flyer_pick, currentSnapshot.PICK, '') || '').trim(),
+                INITIAL_PTR: firstNonEmptyValue(source.INITIAL_PTR, source.initial_ptr, source.FLYER_INITIAL_PTR, source.flyer_initial_ptr, currentSnapshot.INITIAL_PTR, ''),
+                PHOTO_LINK: flyerPhotoLink,
+                PHOTO_NAME: flyerPhotoName
+            });
+        }
+
+        function buildFlyerFolderHistoryPayload(item = null, eventName = 'snapshot', options = {}) {
+            if (!item) return null;
+            const snapshot = buildFlyerFolderHistorySnapshot(item, options);
+            const uniqueId = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, snapshot.UNIQUE_ID, '') || '').trim();
+            if (!uniqueId) return null;
+            const folderTab = getFlyerFolderTabValue(firstNonEmptyValue(options.folderTab, item.FOLDER_TAB, item.folder_tab, isFlyerFolderArchived(item) ? 'archive' : 'active'));
+            const folderName = getFlyerFolderName(firstNonEmptyValue(options.folderName, item.FLYER_TITLE, item.flyer_title, snapshot.FLYER_TITLE, ''));
+            const historyState = normalizeFlyerFolderHistoryState(firstNonEmptyValue(options.historyState, item.HISTORY_STATE, item.history_state, ''), folderTab);
+            const matchNumber = parseAppNumber(firstNonEmptyValue(snapshot.MATCH, ''));
+            const locMatchQtyNumber = parseAppNumber(firstNonEmptyValue(snapshot.LOC_MATCH_QTY, ''));
+            const initialPtrNumber = parseAppNumber(firstNonEmptyValue(snapshot.INITIAL_PTR, ''));
+            const updatedAt = new Date().toISOString();
+            return {
+                unique_id: uniqueId,
+                master_unique_id: String(firstNonEmptyValue(item.MASTER_UNIQUE_ID, item.master_unique_id, item.MASTER_ID, snapshot.MASTER_UNIQUE_ID, snapshot.UNIQUE_ID, uniqueId) || uniqueId).trim(),
+                source_table: String(firstNonEmptyValue(item.FLYER_SOURCE_TABLE, item.source_table, snapshot.SOURCE_TABLE, 'v2_master_inventory') || 'v2_master_inventory').trim(),
+                flyer_title: encodeFlyerFolderTitle(folderName, folderTab),
+                folder_name: folderName || null,
+                folder_tab: folderTab,
+                history_state: historyState,
+                flyer_assigned: snapshot.FLYER_ASSIGNED || null,
+                flyer_cat: snapshot.FLYER_CAT || null,
+                flyer_inst: snapshot.FLYER_INST || null,
+                flyer_notes: snapshot.FLYER_NOTES || null,
+                flyer_completed: snapshot.FLYER_COMPLETED || null,
+                assignedto: snapshot.ASSIGNEDTO || null,
+                date_completed: snapshot.DATE_COMPLETED || null,
+                itemcode: snapshot.ITEMCODE || null,
+                commonname: snapshot.COMMONNAME || null,
+                contsize: snapshot.CONTSIZE || null,
+                locationcode: snapshot.LOCATIONCODE || null,
+                lotcode: snapshot.LOTCODE || null,
+                priority: snapshot.PRIORITY || null,
+                ptravailable: snapshot.PTRAVAILABLE || null,
+                s_lts: snapshot.S_LTS || null,
+                holdstopcode: snapshot.HOLDSTOPCODE || null,
+                plantgroupcode: snapshot.PLANTGROUPCODE || null,
+                locationnote: snapshot.LOCATIONNOTE || null,
+                av_note: snapshot.AV_NOTE || null,
+                match: matchNumber == null ? null : matchNumber,
+                loc_match_qty: locMatchQtyNumber == null ? null : locMatchQtyNumber,
+                spec: snapshot.SPEC || null,
+                caliper: snapshot.CALIPER || null,
+                pick: snapshot.PICK || null,
+                initial_ptr: initialPtrNumber == null ? null : initialPtrNumber,
+                flyer_av_note: snapshot.AV_NOTE || null,
+                flyer_match: matchNumber == null ? null : matchNumber,
+                flyer_loc_match_qty: locMatchQtyNumber == null ? null : locMatchQtyNumber,
+                flyer_spec: snapshot.SPEC || null,
+                flyer_caliper: snapshot.CALIPER || null,
+                flyer_pick: snapshot.PICK || null,
+                flyer_initial_ptr: initialPtrNumber == null ? null : initialPtrNumber,
+                flyer_photo_link: snapshot.PHOTO_LINK || null,
+                flyer_photo_name: snapshot.PHOTO_NAME || null,
+                snapshot,
+                last_event: String(eventName || 'snapshot').trim() || 'snapshot',
+                created_by_username: currentUser || null,
+                created_by_display: currentUserDisplay || currentUser || null,
+                updated_at: updatedAt
+            };
+        }
+
+        function normalizeFlyerFolderHistoryRow(rawRow = null, idx = 0) {
+            if (!rawRow || typeof rawRow !== 'object') return null;
+            const folderTab = getFlyerFolderTabValue(firstNonEmptyValue(rawRow.folder_tab, rawRow.FOLDER_TAB, isFlyerFolderArchived(rawRow) ? 'archive' : 'active'));
+            const folderName = getFlyerFolderName(firstNonEmptyValue(rawRow.folder_name, rawRow.FOLDER_NAME, rawRow.flyer_title, rawRow.FLYER_TITLE, ''));
+            const rawCopy = Object.assign({}, rawRow, {
+                flyer_title: encodeFlyerFolderTitle(folderName, folderTab),
+                FLYER_TITLE: encodeFlyerFolderTitle(folderName, folderTab)
+            });
+            const row = normalizeFlyerFolderRow(rawCopy, idx);
+            if (!row) return null;
+            row.FLYER_HISTORY = true;
+            row.FLYER_HISTORY_EVENT = String(firstNonEmptyValue(rawRow.last_event, rawRow.LAST_EVENT, '') || '').trim();
+            row.FLYER_HISTORY_STATE = normalizeFlyerFolderHistoryState(firstNonEmptyValue(rawRow.history_state, rawRow.HISTORY_STATE, ''), folderTab);
+            row.FLYER_HISTORY_TAB = folderTab;
+            row.DOM_ID = `flyerhist_${String(row.UNIQUE_ID || '').replace(/[^a-z0-9_-]+/gi, '_') || idx}`;
+            buildSearchIndex(row);
+            return row;
+        }
+
+        function cacheFlyerFolderHistoryRow(rawRow = null) {
+            const row = normalizeFlyerFolderHistoryRow(rawRow);
+            if (!row) return null;
+            const id = String(row.UNIQUE_ID || '').trim();
+            flyerFolderHistoryInventory = flyerFolderHistoryInventory.filter((entry) => String(entry && entry.UNIQUE_ID || '').trim() !== id);
+            flyerFolderHistoryInventory.push(row);
+            flyerFolderHistoryInventoryById.set(id, row);
+            return row;
+        }
+
+        async function upsertFlyerFolderHistoryRows(items = [], eventName = 'snapshot', options = {}) {
+            if (flyerFolderHistorySchemaReady === false) {
+                warnMissingFlyerHistorySchema();
+                return false;
+            }
+            const sourceItems = (Array.isArray(items) ? items : [items]).filter(Boolean);
+            const payloads = sourceItems.map((item) => buildFlyerFolderHistoryPayload(item, eventName, options)).filter(Boolean);
+            if (!payloads.length) return false;
+            payloads.forEach((payload) => cacheFlyerFolderHistoryRow(payload));
+            const state = getDatasetState('flyerHistory');
+            state.initialLoaded = true;
+            state.lastLoadedAt = new Date().toISOString();
+            try {
+                await supabaseFetch(FLYER_FOLDER_HISTORY_TABLE, 'POST', payloads, 'on_conflict=unique_id');
+                flyerFolderHistorySchemaReady = true;
+                flyerFolderHistorySchemaWarningShown = false;
+                return true;
+            } catch (error) {
+                if (isHistoryTableWriteMissing(error, FLYER_FOLDER_HISTORY_TABLE)) {
+                    warnMissingFlyerHistorySchema(error);
+                    return false;
+                }
+                console.warn('Flyer folder history save failed', error);
+                return false;
+            }
+        }
+
         function touchFlyerFolderRowsDatasetState() {
             const state = getDatasetState('flyerRows');
             state.initialLoaded = true;
@@ -15940,6 +16498,7 @@ function toggleDriveQuickRequestItem(domId) {
                 scheduleTasksRender(0);
                 return supabaseFetch(FLYER_FOLDER_ROWS_TABLE, 'POST', payloads, 'on_conflict=unique_id').then(() => emailItems);
             }).then((emailItems) => {
+                if (emailItems.length) upsertFlyerFolderHistoryRows(emailItems, 'created').catch(() => {});
                 if (!isAddingToExistingFolder) {
                     if (emailItems.length) sendFlyerCreatedEmail(flyerFolder, flyerAssignedTo, emailItems, currentUserDisplay || currentUser || '');
                 }
@@ -16010,6 +16569,7 @@ function toggleDriveQuickRequestItem(domId) {
                 scheduleTasksRender(0);
                 return supabaseFetch(FLYER_FOLDER_ROWS_TABLE, 'POST', payloads, 'on_conflict=unique_id').then(() => emailItems);
             }).then((emailItems) => {
+                if (emailItems.length) upsertFlyerFolderHistoryRows(emailItems, 'created').catch(() => {});
                 if (!isAddingToExistingFolder) {
                     if (emailItems.length) sendFlyerCreatedEmail(flyerFolder, flyerAssignedTo, emailItems, currentUserDisplay || currentUser || '');
                 }
@@ -18469,22 +19029,26 @@ function toggleDriveQuickRequestItem(domId) {
             const hasMaster = hasKey('data');
             const hasAvOpen = hasKey('avOpenData');
             const hasRequests = hasKey('requestsData');
+            const hasRequestHistory = hasKey('requestHistoryData');
             const hasReserves = hasKey('reservesData');
             const hasSoc = hasKey('socData');
             const hasSalesOffice = hasKey('salesOfficeData');
             const hasFlyerRows = hasKey('flyerFolderRowsData');
+            const hasFlyerHistory = hasKey('flyerFolderHistoryData');
             const hasCav = hasKey('cavData');
             const hasAvHotPrice = hasKey('avHotPriceKeysData');
             const hasAvNotes = hasKey('avNotesData');
-            const didStructuralDataChange = hasMaster || hasAvOpen || hasRequests || hasReserves || hasSoc || hasSalesOffice || hasFlyerRows || hasCav || hasAvHotPrice || hasAvNotes;
+            const didStructuralDataChange = hasMaster || hasAvOpen || hasRequests || hasRequestHistory || hasReserves || hasSoc || hasSalesOffice || hasFlyerRows || hasFlyerHistory || hasCav || hasAvHotPrice || hasAvNotes;
             const changedDatasetKeys = [];
             if (hasMaster) changedDatasetKeys.push('master');
             if (hasAvOpen) changedDatasetKeys.push('avOpen');
             if (hasRequests) changedDatasetKeys.push('requests');
+            if (hasRequestHistory) changedDatasetKeys.push('requestHistory');
             if (hasReserves) changedDatasetKeys.push('reserves');
             if (hasSoc) changedDatasetKeys.push('soc');
             if (hasSalesOffice) changedDatasetKeys.push('salesOffice');
             if (hasFlyerRows) changedDatasetKeys.push('flyerRows');
+            if (hasFlyerHistory) changedDatasetKeys.push('flyerHistory');
             if (hasCav) changedDatasetKeys.push('cav');
             if (hasAvHotPrice) changedDatasetKeys.push('avHotPriceKeys');
             let avRuleClearOps = [];
@@ -18530,12 +19094,25 @@ function toggleDriveQuickRequestItem(domId) {
                 avOpenInventory = avOpenSource.map((item,idx)=>{item.DOM_ID='avo_'+(item.UNIQUE_ID || idx);return buildSearchIndex(normalizeRowPhotoFields(item));});
                 if (shouldRebuildAvOpenFromMaster && !changedDatasetKeys.includes('avOpen')) changedDatasetKeys.push('avOpen');
             }
-            if (hasRequests || (hasMaster && requestsInventory.length)) {
-                const requestSource = hasRequests ? reconcileIncomingRequestRows(res.requestsData || []) : requestsInventory;
+            if (hasRequestHistory) {
+                requestHistoryInventory = (res.requestHistoryData || []).map((item, idx) => normalizeRequestHistoryRow(item, idx)).filter(Boolean);
+                requestHistoryInventoryById = rebuildInventoryByIdMap(requestHistoryInventory);
+            }
+
+            if (hasRequests || hasRequestHistory || (hasMaster && requestsInventory.length)) {
+                const activeRequestSource = hasRequests
+                    ? reconcileIncomingRequestRows(res.requestsData || [])
+                    : (requestsInventory || []).filter((item) => item && !item.REQUEST_HISTORY);
+                const requestSource = mergeRequestRowsWithHistory(activeRequestSource, requestHistoryInventory);
                 requestsInventory = requestSource.map((item) => {
                     if (!item.DOM_ID) item.DOM_ID = 'req_' + item.UNIQUE_ID;
                     item.REQ_STATUS = normalizeRequestStatus(firstNonEmptyValue(item.REQ_STATUS, item.req_status, item.STATUS, 'Pending')) || 'Pending';
-                    item.REQ_ARCHIVED = item.REQ_ARCHIVED === true || item.REQ_ARCHIVED === 1 || item.REQ_ARCHIVED === '1' || String(item.REQ_ARCHIVED || '').trim().toLowerCase() === 'true';
+                    item.REQ_ARCHIVED = item.REQUEST_HISTORY ? false : (item.REQ_ARCHIVED === true || item.REQ_ARCHIVED === 1 || item.REQ_ARCHIVED === '1' || String(item.REQ_ARCHIVED || '').trim().toLowerCase() === 'true');
+                    if (item.REQUEST_HISTORY) {
+                        normalizeRowPhotoFields(item);
+                        buildSearchIndex(item);
+                        return item;
+                    }
                     const masterItem = findLinkedMasterRow(item);
                     if (!masterItem) {
                         normalizeRowPhotoFields(item);
@@ -18571,6 +19148,11 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasFlyerRows) {
                 flyerFolderInventory = (res.flyerFolderRowsData || []).map((item, idx) => normalizeFlyerFolderRow(item, idx)).filter(Boolean);
                 flyerFolderInventoryById = rebuildInventoryByIdMap(flyerFolderInventory);
+            }
+
+            if (hasFlyerHistory) {
+                flyerFolderHistoryInventory = (res.flyerFolderHistoryData || []).map((item, idx) => normalizeFlyerFolderHistoryRow(item, idx)).filter(Boolean);
+                flyerFolderHistoryInventoryById = rebuildInventoryByIdMap(flyerFolderHistoryInventory);
             }
 
             if (hasSoc || (hasMaster && socInventory.length)) {
@@ -23945,10 +24527,10 @@ function toggleDriveQuickRequestItem(domId) {
                 const datasetKeys = [...(config.required || []), ...(config.background || [])].map((item) => item.key);
                 return datasetKeys.some((key) => changedSet.has(key));
             });
-            if ((changedSet.has('requests') || changedSet.has('salesOffice')) && !affectedViews.includes('tasks')) {
+            if ((changedSet.has('requests') || changedSet.has('requestHistory') || changedSet.has('salesOffice')) && !affectedViews.includes('tasks')) {
                 affectedViews.push('tasks');
             }
-            if (changedSet.has('flyerRows') && !affectedViews.includes('tasks')) {
+            if ((changedSet.has('flyerRows') || changedSet.has('flyerHistory')) && !affectedViews.includes('tasks')) {
                 affectedViews.push('tasks');
             }
             return affectedViews;
@@ -36031,7 +36613,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
         function getCurrentRequestDetailItems() {
             let items = getScopedRequestItems(requestsInventory);
             if (activeReqTab === 'pending') {
-                items = items.filter(i => !isRequestComplete(i) && !i.REQ_ARCHIVED);
+                items = items.filter(i => !i.REQUEST_HISTORY && !isRequestComplete(i) && !i.REQ_ARCHIVED);
             } else if (activeReqTab === 'reps') {
                 items = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
                 if (requestViewLevel >= 2 && selectedReqCustView) {
@@ -36127,6 +36709,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 clean(item.REQ_CUSTOMER),
                 clean(item.REQ_QTY),
                 clean(item.REQ_STATUS),
+                item.REQUEST_HISTORY ? '1' : '0',
                 item.REQ_ARCHIVED ? '1' : '0',
                 clean(item.REQ_RESERVE),
                 clean(item.REQ_REP_ACTION),
@@ -36181,7 +36764,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
 
             if (activeReqTab === 'pending') {
                 const crumbText = 'All Pending Requests';
-                let pendingItems = items.filter(i => !isRequestComplete(i) && !i.REQ_ARCHIVED);
+                let pendingItems = items.filter(i => !i.REQUEST_HISTORY && !isRequestComplete(i) && !i.REQ_ARCHIVED);
 
                 if (pendingItems.length === 0) {
                     applyRequestRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No pending requests.</div>`, 'request:pending:empty');
@@ -37668,6 +38251,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             }
             container.querySelectorAll('.item-row').forEach((row) => {
                 if (row.dataset.swipeEnhanced === 'true') return;
+                if (row.dataset.requestHistory === 'true') return;
                 const requestUid = resolveRequestSwipeUidFromRow(row);
                 if (!requestUid) return;
                 row.dataset.swipeEnhanced = 'true';
@@ -37738,6 +38322,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             if (!item) return;
             item.REQ_ARCHIVED = true;
             buildSearchIndex(item);
+            upsertRequestHistoryRows([item], 'archived').catch(() => {});
             queuePendingRequestArchive(item);
             closeAllRequestSwipes();
             refreshRequestViewAfterArchive();
@@ -37883,7 +38468,14 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             persistCurrentCache();
             scheduleTasksRender(0);
             showToast(targetTab === 'archive' ? 'Archiving' : 'Restoring', `${cleanFolderName} is updating...`, false);
-            const updates = matchingItems.map((item) => supabaseFetch(item.SOURCE_TABLE || 'v2_master_inventory', 'PATCH', { flyer_title: nextStoredTitle || null }, `unique_id=eq.${encodeURIComponent(item.UNIQUE_ID)}`));
+            upsertFlyerFolderHistoryRows(matchingItems, targetTab === 'archive' ? 'archived' : 'restored', {
+                folderName: cleanFolderName,
+                folderTab: targetTab,
+                historyState: targetTab === 'archive' ? 'archived' : 'active'
+            }).catch(() => {});
+            const updates = matchingItems
+                .filter((item) => !item.FLYER_HISTORY)
+                .map((item) => supabaseFetch(item.SOURCE_TABLE || 'v2_master_inventory', 'PATCH', { flyer_title: nextStoredTitle || null }, `unique_id=eq.${encodeURIComponent(item.UNIQUE_ID)}`));
             const results = await Promise.allSettled(updates);
             const failed = results.filter((result) => result.status === 'rejected');
             if (failed.length) {
@@ -37898,8 +38490,17 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
         async function removeFlyerRow(uid) {
             const item = findItemByUniqueId(uid) || getAllFlyerTaskItems().find((entry) => entry && entry.UNIQUE_ID === uid);
             if (!item) return false;
+            if (item.FLYER_HISTORY) {
+                showToast('History Row', 'This saved flyer history row stays in the folder.', true);
+                return false;
+            }
             const folderName = getFlyerFolderName(item);
             const folderTab = isFlyerFolderArchived(item) ? 'archive' : 'active';
+            upsertFlyerFolderHistoryRows([item], 'removed', {
+                folderName,
+                folderTab: 'archive',
+                historyState: 'removed'
+            }).catch(() => {});
             if (isFlyerFolderRow(item)) {
                 removeFlyerFolderRowFromCache(uid);
                 closeAllFlyerSwipes();
@@ -38033,6 +38634,11 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 if (row.dataset.flyerSwipeEnhanced === 'true') return;
                 const flyerUid = resolveFlyerSwipeUidFromRow(row);
                 if (!flyerUid || !row.parentElement) return;
+                const flyerItem = getAllFlyerTaskItems().find((entry) => String(entry && entry.UNIQUE_ID || '').trim() === flyerUid);
+                if (flyerItem && flyerItem.FLYER_HISTORY) {
+                    row.dataset.flyerSwipeEnhanced = 'true';
+                    return;
+                }
                 row.dataset.flyerSwipeEnhanced = 'true';
                 row.dataset.flyerUid = flyerUid;
                 row.classList.add('request-swipe-surface');
@@ -38826,8 +39432,11 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 const reserveBadge = reserve === 'YES'
                     ? `<span class="bg-red-100 text-red-700 px-1.5 py-0.5 rounded border border-red-200">Reserve: YES</span>`
                     : `<span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">Reserve: NO</span>`;
+                const historyBadge = item.REQUEST_HISTORY
+                    ? `<span class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">History</span>`
+                    : '';
                 let actionBadge = '';
-                if (requestDone && !item.REQ_ARCHIVED) {
+                if (requestDone && !item.REQ_ARCHIVED && !item.REQUEST_HISTORY) {
                     if (item.REQ_REP_ACTION === 'Approved') {
                         actionBadge = `<div class="mt-3 text-[10px] font-black text-green-700 bg-green-100 text-center py-2 rounded-lg border border-green-200 uppercase tracking-widest">APPROVED</div>`;
                     } else if (item.REQ_REP_ACTION === 'Rejected') {
@@ -38836,7 +39445,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                         actionBadge = `<div class="flex gap-2 mt-3"><button class="flex-1 bg-green-50 text-green-700 border border-green-200 font-bold py-2 rounded-lg shadow-sm hover:bg-green-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Approved')">APPROVE</button><button class="flex-1 bg-red-50 text-red-700 border border-red-200 font-bold py-2 rounded-lg shadow-sm hover:bg-red-100 active:scale-95 text-[10px] uppercase tracking-wider" onclick="event.stopPropagation(); setRepRequestAction('${safeUidJs}', 'Rejected')">REJECT</button></div>`;
                     }
                 }
-        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" data-request-uid="${esc(item.UNIQUE_ID)}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open request row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(loc, requestSource)}<div class="app-card-meta-grid grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${statusChip}${reserveBadge}<span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">QTY: ${reqQty}</span><span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">PTRAVAILABLE: ${item.PTRAVAILABLE||'0'}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${lot}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${priority}</span></div>${holdHtml}${requestSalesNoteHtml}</div>${inlineThumbHtml}</div>${actionBadge}</div></div>`;
+        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" data-request-uid="${esc(item.UNIQUE_ID)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open request row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(loc, requestSource)}<div class="app-card-meta-grid grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${historyBadge}${statusChip}${reserveBadge}<span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">QTY: ${reqQty}</span><span class="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded border border-gray-200">PTRAVAILABLE: ${item.PTRAVAILABLE||'0'}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${lot}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${priority}</span></div>${holdHtml}${requestSalesNoteHtml}</div>${inlineThumbHtml}</div>${actionBadge}</div></div>`;
             }
             if(sourceView === 'docks'){
                 const qty = formatDockDisplayQty(getDockDisplayQty(item));
@@ -39073,6 +39682,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
 
             supabaseFetch('v2_active_request', 'PATCH', { req_rep_action: action, req_archived: true }, `unique_id=eq.${uid}`)
             .then(() => {
+                upsertRequestHistoryRows([item], String(action || '').toLowerCase() || 'reviewed').catch(() => {});
                 showToast("Saved", `Item ${action}`);
                 scheduleUiRender(`request-folder-complete:${folderId}`, () => checkFolderCompletion(folderId), 24);
             }).catch(() => {
@@ -39765,6 +40375,8 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                     autoCompleteItem.date_completed = requestCreatedAt;
                     buildSearchIndex(autoCompleteItem);
                 });
+                const savedHistoryItems = getSavedRequestItems(savedRequestIds);
+                if (savedHistoryItems.length) upsertRequestHistoryRows(savedHistoryItems, 'created').catch(() => {});
                 const pendingNotificationIds = savedRequestIds.filter(id => !autoCompleteSavedIdSet.has(id));
                 const normalizedRequestCustomer = normalizeSearchValue(cust);
                 const savedNotificationItems = getSavedRequestItems(pendingNotificationIds).filter((item) => {
@@ -47158,6 +47770,16 @@ ${folderNote ? `Folder Note: ${folderNote}
                         : null;
                     if (productivityHistoryEntry) {
                         deferNonCriticalWork('productivity-history', () => appendProductivityHistoryEntries([productivityHistoryEntry]).catch(() => {}), 28);
+                    }
+
+                    if (prefix === 'req-' && !saveOptions.suppressRequestHistory) {
+                        const requestHistoryEvent = isComplete && !wasAlreadyComplete ? 'completed' : (trackedChangeFlags.photo ? 'photo-updated' : 'updated');
+                        deferNonCriticalWork('request-history', () => upsertRequestHistoryRows([itemToSave], requestHistoryEvent).catch(() => {}), 34);
+                    }
+
+                    if (prefix === 'flyer-' && !saveOptions.suppressFlyerHistory) {
+                        const flyerHistoryEvent = isComplete ? 'completed' : (trackedChangeFlags.photo ? 'photo-updated' : 'updated');
+                        deferNonCriticalWork('flyer-history', () => upsertFlyerFolderHistoryRows([itemToSave], flyerHistoryEvent).catch(() => {}), 46);
                     }
 
                     if (!isComplete && !artifacts.soPayload && ['ssn-','lsn-','na-'].includes(prefix)) {
