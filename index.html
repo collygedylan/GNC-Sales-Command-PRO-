@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.10.01';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -657,6 +657,341 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
 #main-scroll-area{scroll-behavior:auto}
 a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.drawer-item,.drill-item,.menu-btn{touch-action:manipulation}
 @media (pointer: coarse){.sticky-search,.freeze-panel,#global-header-search-row,.nav-header{box-shadow:none !important}.sticky-search{transform:none !important;-webkit-transform:none !important;backface-visibility:visible !important}#bottom-nav{backdrop-filter:none !important;-webkit-backdrop-filter:none !important;box-shadow:0 -6px 14px rgba(15,23,42,.08)!important}}
+
+.advertisement-editor-shell{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    padding-bottom:calc(var(--footer-nav-reserve) + env(safe-area-inset-bottom) + 14px);
+}
+
+.advertisement-editor-header{
+    position:sticky;
+    top:0;
+    z-index:46;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    border:1px solid #d1fae5;
+    border-radius:18px;
+    background:rgba(255,255,255,.96);
+    padding:12px;
+    box-shadow:0 12px 28px rgba(15,23,42,.08);
+    backdrop-filter:saturate(120%) blur(8px);
+}
+
+.advertisement-editor-eyebrow{
+    color:#007a4d;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+}
+
+.advertisement-title-input{
+    width:100%;
+    min-width:0;
+    border:0;
+    outline:0;
+    background:transparent;
+    color:#0f172a;
+    font-size:18px;
+    font-weight:900;
+    line-height:1.15;
+}
+
+.advertisement-primary-btn,
+.advertisement-secondary-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    min-height:42px;
+    border-radius:14px;
+    border:1px solid #007a4d;
+    padding:0 14px;
+    font-size:11px;
+    font-weight:900;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    touch-action:manipulation;
+    white-space:nowrap;
+}
+
+.advertisement-primary-btn{
+    background:#007a4d;
+    color:#fff;
+    box-shadow:0 12px 24px rgba(0,122,77,.18);
+}
+
+.advertisement-secondary-btn{
+    background:#ecfdf5;
+    color:#007a4d;
+}
+
+.advertisement-primary-btn:disabled,
+.advertisement-secondary-btn:disabled{
+    opacity:.55;
+    cursor:not-allowed;
+    box-shadow:none;
+}
+
+.advertisement-status{
+    border-radius:14px;
+    border:1px solid #d1fae5;
+    background:#ecfdf5;
+    color:#047857;
+    padding:10px 12px;
+    font-size:12px;
+    font-weight:800;
+}
+
+.advertisement-status.error{
+    border-color:#fecaca;
+    background:#fef2f2;
+    color:#dc2626;
+}
+
+.advertisement-canvas-stage{
+    position:relative;
+    width:100%;
+    max-width:min(100%,720px);
+    aspect-ratio:1/1;
+    margin:0 auto;
+    border-radius:22px;
+    border:1px solid #d1fae5;
+    background:#e5e7eb;
+    box-shadow:0 22px 48px rgba(15,23,42,.14);
+    overflow:hidden;
+    touch-action:none;
+}
+
+.advertisement-canvas-stage .canvas-container,
+.advertisement-canvas-stage canvas{
+    max-width:100%;
+    max-height:100%;
+    touch-action:none;
+}
+
+.advertisement-loading{
+    position:absolute;
+    inset:0;
+    z-index:4;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    background:rgba(255,255,255,.92);
+}
+
+.advertisement-panel{
+    border:1px solid #d1fae5;
+    border-radius:18px;
+    background:#fff;
+    padding:12px;
+    box-shadow:0 10px 24px rgba(15,23,42,.06);
+}
+
+.advertisement-panel-title{
+    margin-bottom:10px;
+    color:#007a4d;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+}
+
+.advertisement-control-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+}
+
+.advertisement-control{
+    display:flex;
+    min-width:0;
+    flex-direction:column;
+    gap:6px;
+    color:#64748b;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+}
+
+.advertisement-control-inline{
+    flex-direction:row;
+    align-items:center;
+    justify-content:space-between;
+}
+
+.advertisement-control input,
+.advertisement-control select,
+.advertisement-search-input{
+    min-height:42px;
+    width:100%;
+    min-width:0;
+    border:1px solid #d1fae5;
+    border-radius:14px;
+    background:#f8fafc;
+    color:#0f172a;
+    padding:0 10px;
+    font-size:14px;
+    font-weight:800;
+}
+
+.advertisement-control input[type="color"]{
+    padding:4px;
+}
+
+.advertisement-segment{
+    display:flex;
+    grid-column:1/-1;
+    gap:6px;
+    overflow-x:auto;
+}
+
+.advertisement-segment button{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:42px;
+    height:42px;
+    flex:0 0 auto;
+    border:1px solid #d1fae5;
+    border-radius:14px;
+    background:#f8fafc;
+    color:#007a4d;
+    font-size:18px;
+}
+
+.advertisement-segment button.active{
+    background:#007a4d;
+    color:#fff;
+}
+
+.advertisement-picker-actions{
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+
+.advertisement-plant-results{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:8px;
+    max-height:260px;
+    margin-top:10px;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+}
+
+.advertisement-plant-card{
+    display:grid;
+    grid-template-columns:58px minmax(0,1fr) auto;
+    align-items:center;
+    gap:10px;
+    border:1px solid #d1fae5;
+    border-radius:16px;
+    background:#f8fafc;
+    padding:8px;
+    text-align:left;
+}
+
+.advertisement-plant-card img{
+    width:58px;
+    height:58px;
+    border-radius:12px;
+    object-fit:cover;
+    background:#e5e7eb;
+}
+
+.advertisement-plant-title{
+    color:#0f172a;
+    font-size:13px;
+    font-weight:900;
+    line-height:1.15;
+}
+
+.advertisement-plant-meta{
+    margin-top:3px;
+    color:#64748b;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+}
+
+.advertisement-toolbar{
+    position:sticky;
+    bottom:calc(var(--footer-nav-reserve) + env(safe-area-inset-bottom) + 8px);
+    z-index:48;
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    padding:10px;
+    border:1px solid #d1fae5;
+    border-radius:20px;
+    background:rgba(255,255,255,.97);
+    box-shadow:0 16px 34px rgba(15,23,42,.16);
+    -webkit-overflow-scrolling:touch;
+}
+
+.advertisement-toolbar button{
+    display:flex;
+    min-width:74px;
+    min-height:54px;
+    flex:0 0 auto;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+    border:1px solid #d1fae5;
+    border-radius:16px;
+    background:#ecfdf5;
+    color:#007a4d;
+    padding:6px 8px;
+    font-size:9px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    touch-action:manipulation;
+}
+
+.advertisement-toolbar button i{
+    font-size:20px;
+    line-height:1;
+}
+
+.advertisement-toolbar .advertisement-toolbar-export{
+    background:#007a4d;
+    color:#fff;
+    border-color:#007a4d;
+}
+
+@media (min-width:760px){
+    .advertisement-editor-shell{
+        display:grid;
+        grid-template-columns:minmax(0,1fr) 280px;
+        align-items:start;
+    }
+
+    .advertisement-editor-header,
+    .advertisement-status,
+    .advertisement-toolbar{
+        grid-column:1/-1;
+    }
+
+    .advertisement-panel{
+        grid-column:2;
+    }
+
+    .advertisement-canvas-stage{
+        grid-column:1;
+        grid-row:3/span 4;
+    }
+}
         input,textarea,select{-webkit-user-select:text;user-select:text}
         #leaf-assistant-modal{position:fixed;inset:0;z-index:16000;display:flex;align-items:flex-end;justify-content:center;background:rgba(15,23,42,.42);padding:clamp(12px,3vw,24px)}
         #leaf-assistant-modal.hidden{display:none}
@@ -1130,8 +1465,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
-<div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.10.01').trim() || 'V2026.05.10.01';</script>
+ <div id="header-version" class="nav-version-pill"></div>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.01').trim() || 'V2026.05.11.01';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1173,6 +1508,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <div id="drawer-low-stock-btn" class="drawer-item text-red-600 font-bold role-access role-admin hidden" onclick="switchView('low-stock'); toggleMenu();"><i class="ph-bold ph-trend-down"></i> NCR</div>
             <div id="drawer-review-btn" class="drawer-item text-yellow-600 font-bold role-access role-admin hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> New Crop Release</div>
             <div id="drawer-move-up-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin hidden" onclick="switchView('move-up'); toggleMenu();"><i class="ph-bold ph-arrow-up"></i> Move Up</div>
+            <div id="drawer-advertisement-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin hidden" onclick="switchView('advertisement'); toggleMenu();"><i class="ph-bold ph-megaphone"></i> Advertisement</div>
             <hr class="my-3 border-gray-200">
             <div id="drawer-logout-btn" class="drawer-item text-red-600 bg-red-50 font-bold justify-center rounded-lg mx-4 mt-2 mb-8" onclick="performLogout()"><i class="ph-bold ph-sign-out text-xl"></i> Log Out</div>
         </div>
@@ -1238,6 +1574,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div id="home-tile-hours" onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
                                 <div id="home-tile-review" onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">New Crop Release</span></div>
                                 <div id="home-tile-move-up" onclick="switchView('move-up')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-arrow-up text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Move Up</span></div>
+                                <div id="home-tile-advertisement" onclick="switchView('advertisement')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-megaphone text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Advertisement</span></div>
                             </div>
                         </div>
                     </div>
@@ -1507,6 +1844,99 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div id="move-up-content"></div>
                 </div>
 
+                <div id="view-advertisement" class="hidden">
+                    <div class="advertisement-editor-shell">
+                        <div class="advertisement-editor-header">
+                            <div class="min-w-0">
+                                <div class="advertisement-editor-eyebrow">Marketing Studio</div>
+                                <input id="advertisement-title" class="advertisement-title-input" type="text" value="Greenleaf Advertisement" aria-label="Advertisement title" onchange="updateAdvertisementTitle(this.value)">
+                            </div>
+                            <button type="button" id="advertisement-export-top-btn" class="advertisement-primary-btn" onclick="return exportAdvertisementDesign()"><i class="ph-bold ph-download-simple"></i><span>Export Ad</span></button>
+                        </div>
+
+                        <div id="advertisement-status" class="advertisement-status hidden"></div>
+
+                        <div class="advertisement-canvas-stage" id="advertisement-canvas-stage">
+                            <div id="advertisement-loading" class="advertisement-loading">
+                                <div class="spinner !border-emerald-100 !border-t-[#007a4d]"></div>
+                                <div class="mt-3 text-xs font-black uppercase tracking-[0.16em] text-[#007a4d]">Loading editor</div>
+                            </div>
+                            <canvas id="advertisement-canvas" width="1080" height="1080"></canvas>
+                        </div>
+
+                        <div id="advertisement-selection-panel" class="advertisement-panel hidden">
+                            <div class="advertisement-panel-title">Selected Object</div>
+                            <div class="advertisement-control-grid">
+                                <label class="advertisement-control">
+                                    <span>Fill</span>
+                                    <input id="advertisement-object-color" type="color" value="#007a4d" oninput="setAdvertisementObjectFill(this.value)">
+                                </label>
+                                <label class="advertisement-control advertisement-text-control">
+                                    <span>Font</span>
+                                    <select id="advertisement-font-family" onchange="setAdvertisementTextFont(this.value)">
+                                        <option value="Arial">Arial</option>
+                                        <option value="Georgia">Georgia</option>
+                                        <option value="Impact">Impact</option>
+                                        <option value="Trebuchet MS">Trebuchet</option>
+                                        <option value="Verdana">Verdana</option>
+                                    </select>
+                                </label>
+                                <label class="advertisement-control advertisement-text-control">
+                                    <span>Size</span>
+                                    <input id="advertisement-font-size" type="number" min="12" max="220" step="2" value="72" oninput="setAdvertisementTextSize(this.value)">
+                                </label>
+                                <div class="advertisement-segment advertisement-text-control">
+                                    <button type="button" id="advertisement-bold-btn" onclick="return toggleAdvertisementTextBold()"><i class="ph-bold ph-text-b"></i></button>
+                                    <button type="button" id="advertisement-italic-btn" onclick="return toggleAdvertisementTextItalic()"><i class="ph-bold ph-text-italic"></i></button>
+                                    <button type="button" onclick="return setAdvertisementTextAlign('left')"><i class="ph-bold ph-text-align-left"></i></button>
+                                    <button type="button" onclick="return setAdvertisementTextAlign('center')"><i class="ph-bold ph-text-align-center"></i></button>
+                                    <button type="button" onclick="return setAdvertisementTextAlign('right')"><i class="ph-bold ph-text-align-right"></i></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="advertisement-plant-picker" class="advertisement-panel hidden">
+                            <div class="advertisement-panel-title">Plant Image</div>
+                            <div class="advertisement-picker-actions">
+                                <input id="advertisement-plant-search" type="text" class="advertisement-search-input" placeholder="Search inventory photos..." oninput="renderAdvertisementPlantPicker()">
+                                <label class="advertisement-secondary-btn">
+                                    <i class="ph-bold ph-upload-simple"></i><span>Upload</span>
+                                    <input id="advertisement-plant-upload" type="file" accept="image/*" class="hidden" onchange="handleAdvertisementPlantUpload(this)">
+                                </label>
+                            </div>
+                            <div id="advertisement-plant-results" class="advertisement-plant-results"></div>
+                        </div>
+
+                        <div class="advertisement-panel">
+                            <div class="advertisement-panel-title">Background</div>
+                            <div class="advertisement-picker-actions">
+                                <label class="advertisement-control advertisement-control-inline">
+                                    <span>Color</span>
+                                    <input id="advertisement-background-color" type="color" value="#ffffff" oninput="setAdvertisementBackgroundColor(this.value)">
+                                </label>
+                                <label class="advertisement-secondary-btn">
+                                    <i class="ph-bold ph-image-square"></i><span>Upload Background</span>
+                                    <input id="advertisement-background-upload" type="file" accept="image/*" class="hidden" onchange="handleAdvertisementBackgroundUpload(this)">
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="advertisement-toolbar" aria-label="Advertisement editor toolbar">
+                            <button type="button" onclick="return addAdvertisementText()"><i class="ph-bold ph-text-aa"></i><span>Text</span></button>
+                            <button type="button" onclick="return toggleAdvertisementPlantPicker()"><i class="ph-bold ph-flower"></i><span>Plant</span></button>
+                            <button type="button" onclick="return addAdvertisementShape('rect')"><i class="ph-bold ph-rectangle"></i><span>Banner</span></button>
+                            <button type="button" onclick="return addAdvertisementShape('circle')"><i class="ph-bold ph-circle"></i><span>Badge</span></button>
+                            <button type="button" onclick="return addAdvertisementShape('tag')"><i class="ph-bold ph-tag"></i><span>Tag</span></button>
+                            <button type="button" onclick="return bringAdvertisementObjectForward()"><i class="ph-bold ph-arrow-up"></i><span>Forward</span></button>
+                            <button type="button" onclick="return sendAdvertisementObjectBackward()"><i class="ph-bold ph-arrow-down"></i><span>Back</span></button>
+                            <button type="button" onclick="return deleteAdvertisementSelection()"><i class="ph-bold ph-trash"></i><span>Delete</span></button>
+                            <button type="button" onclick="return undoAdvertisementDesign()"><i class="ph-bold ph-arrow-counter-clockwise"></i><span>Undo</span></button>
+                            <button type="button" onclick="return redoAdvertisementDesign()"><i class="ph-bold ph-arrow-clockwise"></i><span>Redo</span></button>
+                            <button type="button" class="advertisement-toolbar-export" onclick="return exportAdvertisementDesign()"><i class="ph-bold ph-download-simple"></i><span>Export</span></button>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="view-detail" class="hidden">
                     <div class="freeze-panel">
                     <div class="back-btn" onclick="goBackFromDetail()"><i class="ph-bold ph-arrow-left"></i> Back</div>
@@ -1702,6 +2132,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 <button type="button" data-footer-view="drive" class="footer-nav-btn" aria-label="Drive Mode"><i class="ph-bold ph-car"></i><span>Drive</span></button>
                 <button type="button" data-footer-view="tasks" class="footer-nav-btn" aria-label="Tasks"><i class="ph-bold ph-clipboard-text"></i><span>Tasks</span></button>
                 <button type="button" data-footer-view="docks" class="footer-nav-btn" aria-label="Docks"><i class="ph-bold ph-truck"></i><span>Docks</span></button>
+                <button type="button" id="footer-advertisement-btn" data-footer-view="advertisement" class="footer-nav-btn hidden" aria-label="Advertisement"><i class="ph-bold ph-megaphone"></i><span>Ads</span></button>
                 <button type="button" id="footer-request-btn" data-footer-view="request" class="footer-nav-btn hidden" aria-label="Requests"><i class="ph-bold ph-chat-circle-text"></i><span>Reqs</span><span id="footer-request-badge" class="footer-nav-badge hidden">0</span></button>
                 <button type="button" id="footer-chat-btn" data-footer-view="chat" class="footer-nav-btn" aria-label="Chat"><i class="ph-bold ph-chats-circle"></i><span>Chat</span><span id="footer-chat-badge" class="footer-nav-badge hidden">0</span></button>
                 <button type="button" id="footer-walkie-btn" data-footer-view="walkie" class="footer-nav-btn hidden" aria-label="Walkie"><i class="ph-bold ph-radio"></i><span>Walkie</span><span id="footer-walkie-badge" class="footer-nav-badge hidden">0</span></button>
@@ -1754,8 +2185,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             'req-': 'request_photos',
             'dock-': 'dock_photos',
             'flyer-': 'flyer_photos',
+            'marketing-': 'marketing_materials',
             'default': 'flyer_photos'
         };
+        const MARKETING_MATERIALS_TABLE = 'marketing_materials';
+        const MARKETING_MATERIALS_BUCKET = PHOTO_BUCKETS['marketing-'] || 'marketing_materials';
         const NCR_PHOTO_BUCKET = PHOTO_BUCKETS['req-'] || 'request_photos';
         const NCR_PHOTO_PATH_PREFIX = 'ncr';
         const NCR_COMPLETION_FALLBACK_STORAGE_KEY = 'gnc_ncr_completed_rows_v1';
@@ -1775,7 +2209,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.10.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7934,6 +8368,7 @@ bindFastInvokeById('drawer-reserves-btn', 'openDrawerView', ['reserves'], 'Reser
             bindFastInvokeById('drawer-low-stock-btn', 'openDrawerView', ['low-stock'], 'NCR');
             bindFastInvokeById('drawer-review-btn', 'openDrawerView', ['review'], 'New Crop Release');
             bindFastInvokeById('drawer-move-up-btn', 'openDrawerView', ['move-up'], 'Move Up');
+            bindFastInvokeById('drawer-advertisement-btn', 'openDrawerView', ['advertisement'], 'Advertisement');
             bindFastInvokeById('drawer-logout-btn', 'logoutFromDrawer', [], 'Log Out');
             bindFastInvokeById('home-tile-drive', 'switchView', ['drive'], 'Drive Mode');
             bindFastInvokeById('home-tile-tasks', 'switchView', ['tasks'], 'Tasks');
@@ -7951,6 +8386,7 @@ bindFastInvokeById('home-tile-reserves', 'switchView', ['reserves'], 'Reserves')
             bindFastInvokeById('home-tile-hours', 'switchView', ['hours'], 'Labor Hours');
             bindFastInvokeById('home-tile-review', 'switchView', ['review'], 'New Crop Release');
             bindFastInvokeById('home-tile-move-up', 'switchView', ['move-up'], 'Move Up');
+            bindFastInvokeById('home-tile-advertisement', 'switchView', ['advertisement'], 'Advertisement');
 bindFastInvokeById('footer-menu-btn', 'toggleMenu', [], 'Menu');
 bindFastInvokeById('footer-request-btn', 'switchView', ['request'], 'Requests');
 bindFastInvokeById('footer-chat-btn', 'switchView', ['chat'], 'Chat');
@@ -10618,7 +11054,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.10.01').trim() || 'V2026.05.10.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.01').trim() || 'V2026.05.11.01';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -10692,6 +11128,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             moves: { eyebrow: 'Inventory Office', title: 'Moves' },
             review: { eyebrow: 'Amazon Filters', title: 'New Crop Release' },
             'move-up': { eyebrow: 'Amazon Filters', title: 'Move Up' },
+            advertisement: { eyebrow: 'Marketing Studio', title: 'Advertisement' },
             detail: { eyebrow: 'Amazon Actions', title: 'Item Detail' },
             hours: { eyebrow: 'Amazon Actions', title: 'Labor Hours' }
         };
@@ -11218,7 +11655,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             'low-stock': { container: 'low-stock-content', crumb: 'low-stock-crumb' },
             reports: { container: 'reports-content', crumb: 'reports-crumb' },
             review: { container: 'review-content', crumb: 'review-crumb' },
-            'move-up': { container: 'move-up-content', crumb: 'move-up-crumb' }
+            'move-up': { container: 'move-up-content', crumb: 'move-up-crumb' },
+            advertisement: { container: 'advertisement-status' }
         };
 
         function getContainerUiState(container) {
@@ -12218,6 +12656,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (viewId === 'low-stock') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading NCR...' };
             if (viewId === 'review') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading review rows...' };
             if (viewId === 'move-up') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading Move Up rows...' };
+            if (viewId === 'advertisement') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading advertisement assets...' };
             if (viewId === 'reports') return { required: [{ key: 'master', mode: 'initial' }, { key: 'requests', mode: 'initial' }, { key: 'reserves', mode: 'initial' }, { key: 'soc', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }, { key: 'requests', mode: 'full' }, { key: 'reserves', mode: 'full' }, { key: 'soc', mode: 'full' }], label: 'Loading reports...' };
             return null;
         }
@@ -19738,7 +20177,7 @@ function toggleDriveQuickRequestItem(domId) {
             return dockAssignableUsersPromise;
         }
 
-        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','av','request','reserves','sales-office','reports','hours','low-stock','review','move-up','chat'];
+        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','av','request','reserves','sales-office','reports','hours','low-stock','review','move-up','advertisement','chat'];
         const ROLE_VIEW_ELEMENT_IDS = Object.freeze({
             drive: ['drawer-drive-btn', 'home-tile-drive'],
             tasks: ['drawer-tasks-btn', 'home-tile-tasks'],
@@ -19754,6 +20193,7 @@ function toggleDriveQuickRequestItem(domId) {
             'low-stock': ['drawer-low-stock-btn'],
             review: ['drawer-review-btn', 'home-tile-review'],
             'move-up': ['drawer-move-up-btn', 'home-tile-move-up'],
+            advertisement: ['drawer-advertisement-btn', 'home-tile-advertisement', 'footer-advertisement-btn'],
             chat: ['drawer-chat-btn', 'home-tile-chat', 'footer-chat-btn'],
             walkie: ['drawer-walkie-btn', 'home-tile-walkie', 'footer-walkie-btn']
         });
@@ -23171,7 +23611,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (canAccessView(target)) switchView(target);
         }
 
-        const TRACKED_VIEW_IDS = ['drive','tasks','review','move-up','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
+        const TRACKED_VIEW_IDS = ['drive','tasks','review','move-up','advertisement','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
 
         function getAffectedViewsForDatasets(changedKeys = []) {
             const changedSet = new Set((changedKeys || []).filter(Boolean));
@@ -24539,6 +24979,8 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (viewId === 'move-up') {
                 if (forceReset || !state.initialized) resetMoveUpView(false);
                 renderMoveUp();
+            } else if (viewId === 'advertisement') {
+                renderAdvertisement();
             } else if (viewId === 'request') {
                 if (forceReset || !state.initialized) resetRequestView(false);
                 renderRequest();
@@ -43976,6 +44418,796 @@ ${folderNote ? `Folder Note: ${folderNote}
             reportsSummaryCacheHtml = html;
             reportsSummaryCacheCrumb = crumbText;
             setContainerHtmlWithSignature(container, html, reportRenderKey);
+        }
+
+        const ADVERTISEMENT_FABRIC_CDN_URL = 'https://cdn.jsdelivr.net/npm/fabric@6.7.1/dist/index.js';
+        const ADVERTISEMENT_CANVAS_SIZE = 1080;
+        const ADVERTISEMENT_HISTORY_LIMIT = 40;
+        let advertisementFabric = null;
+        let advertisementFabricPromise = null;
+        let advertisementCanvas = null;
+        let advertisementInitialized = false;
+        let advertisementResizeInstalled = false;
+        let advertisementHistory = [];
+        let advertisementHistoryIndex = -1;
+        let advertisementHistoryLocked = false;
+        let advertisementLastTitle = 'Greenleaf Advertisement';
+        let advertisementTouchPointers = new Map();
+        let advertisementGestureState = null;
+        let advertisementExportInFlight = false;
+
+        function getAdvertisementTitle() {
+            const input = document.getElementById('advertisement-title');
+            const value = String(input ? input.value : advertisementLastTitle || '').trim();
+            advertisementLastTitle = value || 'Greenleaf Advertisement';
+            return advertisementLastTitle;
+        }
+
+        function updateAdvertisementTitle(value = '') {
+            advertisementLastTitle = String(value || '').trim() || 'Greenleaf Advertisement';
+            const input = document.getElementById('advertisement-title');
+            if (input && input.value !== advertisementLastTitle) input.value = advertisementLastTitle;
+            return false;
+        }
+
+        function setAdvertisementStatus(message = '', isError = false) {
+            const status = document.getElementById('advertisement-status');
+            if (!status) return;
+            const text = String(message || '').trim();
+            status.classList.toggle('hidden', !text);
+            status.classList.toggle('error', !!isError);
+            status.innerText = text;
+        }
+
+        function setAdvertisementLoading(visible = false, message = 'Loading editor') {
+            const loading = document.getElementById('advertisement-loading');
+            if (!loading) return;
+            loading.classList.toggle('hidden', !visible);
+            const label = loading.querySelector('.text-xs');
+            if (label) label.innerText = String(message || 'Loading editor');
+        }
+
+        function resolveAdvertisementFabricNamespace(moduleValue = null) {
+            if (window.fabric && (window.fabric.Canvas || window.fabric.StaticCanvas)) return window.fabric;
+            if (moduleValue && moduleValue.fabric && moduleValue.fabric.Canvas) return moduleValue.fabric;
+            if (moduleValue && moduleValue.default && moduleValue.default.Canvas) return moduleValue.default;
+            if (moduleValue && moduleValue.Canvas) return moduleValue;
+            return null;
+        }
+
+        async function loadAdvertisementFabric() {
+            const existingFabric = resolveAdvertisementFabricNamespace();
+            if (existingFabric) return existingFabric;
+            if (advertisementFabricPromise) return advertisementFabricPromise;
+            advertisementFabricPromise = (async () => {
+                try {
+                    const importedFabric = await import(ADVERTISEMENT_FABRIC_CDN_URL);
+                    const fabricNamespace = resolveAdvertisementFabricNamespace(importedFabric);
+                    if (!fabricNamespace) throw new Error('Fabric.js loaded without a Canvas export.');
+                    window.fabric = fabricNamespace;
+                    return fabricNamespace;
+                } catch (error) {
+                    advertisementFabricPromise = null;
+                    throw error;
+                }
+            })();
+            return advertisementFabricPromise;
+        }
+
+        function resizeAdvertisementCanvasShell() {
+            const stage = document.getElementById('advertisement-canvas-stage');
+            if (!stage || !advertisementCanvas) return;
+            const availableWidth = Math.max(280, Math.floor(stage.clientWidth || stage.getBoundingClientRect().width || 0));
+            const displaySize = Math.min(availableWidth, 720);
+            const container = stage.querySelector('.canvas-container');
+            const lowerCanvas = stage.querySelector('canvas.lower-canvas') || document.getElementById('advertisement-canvas');
+            const upperCanvas = stage.querySelector('canvas.upper-canvas');
+            [container, lowerCanvas, upperCanvas].forEach((node) => {
+                if (!node) return;
+                node.style.width = `${displaySize}px`;
+                node.style.height = `${displaySize}px`;
+            });
+            stage.style.maxWidth = `${displaySize}px`;
+            advertisementCanvas.calcOffset();
+            advertisementCanvas.requestRenderAll();
+        }
+
+        function installAdvertisementResizeHandler() {
+            if (advertisementResizeInstalled) return;
+            advertisementResizeInstalled = true;
+            window.addEventListener('resize', () => {
+                requestAnimationFrame(resizeAdvertisementCanvasShell);
+            });
+            window.addEventListener('orientationchange', () => {
+                setTimeout(resizeAdvertisementCanvasShell, 240);
+            });
+        }
+
+        function getAdvertisementCanvasJson() {
+            if (!advertisementCanvas) return '';
+            try {
+                return JSON.stringify(advertisementCanvas.toJSON(['advertisementType', 'sourceUniqueId', 'sourcePhotoUrl']));
+            } catch (error) {
+                return '';
+            }
+        }
+
+        function saveAdvertisementHistorySnapshot() {
+            if (!advertisementCanvas || advertisementHistoryLocked) return;
+            const snapshot = getAdvertisementCanvasJson();
+            if (!snapshot) return;
+            if (advertisementHistory[advertisementHistoryIndex] === snapshot) return;
+            advertisementHistory = advertisementHistory.slice(0, advertisementHistoryIndex + 1);
+            advertisementHistory.push(snapshot);
+            if (advertisementHistory.length > ADVERTISEMENT_HISTORY_LIMIT) advertisementHistory.shift();
+            advertisementHistoryIndex = advertisementHistory.length - 1;
+        }
+
+        function loadAdvertisementCanvasJson(json = '') {
+            if (!advertisementCanvas || !json) return Promise.resolve(false);
+            return new Promise((resolve, reject) => {
+                try {
+                    const loadResult = advertisementCanvas.loadFromJSON(json, () => {
+                        advertisementCanvas.renderAll();
+                        resizeAdvertisementCanvasShell();
+                        resolve(true);
+                    });
+                    if (loadResult && typeof loadResult.then === 'function') {
+                        loadResult.then(() => {
+                            advertisementCanvas.renderAll();
+                            resizeAdvertisementCanvasShell();
+                            resolve(true);
+                        }).catch(reject);
+                    }
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+
+        async function undoAdvertisementDesign() {
+            if (!advertisementCanvas || advertisementHistoryIndex <= 0) return false;
+            advertisementHistoryIndex -= 1;
+            advertisementHistoryLocked = true;
+            try {
+                await loadAdvertisementCanvasJson(advertisementHistory[advertisementHistoryIndex]);
+            } catch (error) {
+                showToast('Undo Error', error && error.message ? error.message : 'Could not undo the last change.', true);
+            } finally {
+                advertisementHistoryLocked = false;
+                syncAdvertisementObjectControls();
+            }
+            return false;
+        }
+
+        async function redoAdvertisementDesign() {
+            if (!advertisementCanvas || advertisementHistoryIndex >= advertisementHistory.length - 1) return false;
+            advertisementHistoryIndex += 1;
+            advertisementHistoryLocked = true;
+            try {
+                await loadAdvertisementCanvasJson(advertisementHistory[advertisementHistoryIndex]);
+            } catch (error) {
+                showToast('Redo Error', error && error.message ? error.message : 'Could not redo the last change.', true);
+            } finally {
+                advertisementHistoryLocked = false;
+                syncAdvertisementObjectControls();
+            }
+            return false;
+        }
+
+        function syncAdvertisementObjectControls() {
+            const panel = document.getElementById('advertisement-selection-panel');
+            if (!panel || !advertisementCanvas) return;
+            const object = advertisementCanvas.getActiveObject();
+            panel.classList.toggle('hidden', !object);
+            if (!object) return;
+            const isTextObject = ['textbox', 'i-text', 'text'].includes(String(object.type || '').toLowerCase());
+            document.querySelectorAll('.advertisement-text-control').forEach((node) => {
+                node.classList.toggle('hidden', !isTextObject);
+            });
+            const fillInput = document.getElementById('advertisement-object-color');
+            if (fillInput && /^#[0-9a-f]{6}$/i.test(String(object.fill || ''))) fillInput.value = object.fill;
+            if (isTextObject) {
+                const fontFamily = document.getElementById('advertisement-font-family');
+                const fontSize = document.getElementById('advertisement-font-size');
+                const boldBtn = document.getElementById('advertisement-bold-btn');
+                const italicBtn = document.getElementById('advertisement-italic-btn');
+                if (fontFamily) fontFamily.value = String(object.fontFamily || 'Arial');
+                if (fontSize) fontSize.value = String(Math.round(Number(object.fontSize) || 72));
+                if (boldBtn) boldBtn.classList.toggle('active', String(object.fontWeight || '').toLowerCase() === 'bold' || Number(object.fontWeight) >= 700);
+                if (italicBtn) italicBtn.classList.toggle('active', String(object.fontStyle || '').toLowerCase() === 'italic');
+            }
+        }
+
+        function getAdvertisementActiveObjects() {
+            if (!advertisementCanvas) return [];
+            const activeObject = advertisementCanvas.getActiveObject();
+            if (!activeObject) return [];
+            if (activeObject.type === 'activeSelection' && typeof activeObject.getObjects === 'function') return activeObject.getObjects();
+            return [activeObject];
+        }
+
+        function updateAdvertisementObjects(updater) {
+            const objects = getAdvertisementActiveObjects();
+            if (!objects.length || typeof updater !== 'function') return false;
+            objects.forEach((object) => updater(object));
+            advertisementCanvas.requestRenderAll();
+            saveAdvertisementHistorySnapshot();
+            syncAdvertisementObjectControls();
+            return false;
+        }
+
+        function setAdvertisementObjectFill(color = '#007a4d') {
+            return updateAdvertisementObjects((object) => {
+                if ('fill' in object || typeof object.set === 'function') object.set('fill', String(color || '#007a4d'));
+            });
+        }
+
+        function setAdvertisementTextFont(fontFamily = 'Arial') {
+            return updateAdvertisementObjects((object) => {
+                if (['textbox', 'i-text', 'text'].includes(String(object.type || '').toLowerCase())) object.set('fontFamily', String(fontFamily || 'Arial'));
+            });
+        }
+
+        function setAdvertisementTextSize(fontSize = 72) {
+            const size = Math.min(220, Math.max(12, Number(fontSize) || 72));
+            return updateAdvertisementObjects((object) => {
+                if (['textbox', 'i-text', 'text'].includes(String(object.type || '').toLowerCase())) object.set('fontSize', size);
+            });
+        }
+
+        function toggleAdvertisementTextBold() {
+            return updateAdvertisementObjects((object) => {
+                if (!['textbox', 'i-text', 'text'].includes(String(object.type || '').toLowerCase())) return;
+                const isBold = String(object.fontWeight || '').toLowerCase() === 'bold' || Number(object.fontWeight) >= 700;
+                object.set('fontWeight', isBold ? 'normal' : 'bold');
+            });
+        }
+
+        function toggleAdvertisementTextItalic() {
+            return updateAdvertisementObjects((object) => {
+                if (!['textbox', 'i-text', 'text'].includes(String(object.type || '').toLowerCase())) return;
+                const isItalic = String(object.fontStyle || '').toLowerCase() === 'italic';
+                object.set('fontStyle', isItalic ? 'normal' : 'italic');
+            });
+        }
+
+        function setAdvertisementTextAlign(align = 'center') {
+            const safeAlign = ['left', 'center', 'right'].includes(String(align || '').trim()) ? String(align || '').trim() : 'center';
+            return updateAdvertisementObjects((object) => {
+                if (['textbox', 'i-text', 'text'].includes(String(object.type || '').toLowerCase())) object.set('textAlign', safeAlign);
+            });
+        }
+
+        function centerAdvertisementObject(object) {
+            if (!advertisementCanvas || !object) return object;
+            if (typeof advertisementCanvas.centerObject === 'function') advertisementCanvas.centerObject(object);
+            else object.set({ left: ADVERTISEMENT_CANVAS_SIZE / 2, top: ADVERTISEMENT_CANVAS_SIZE / 2, originX: 'center', originY: 'center' });
+            object.setCoords();
+            return object;
+        }
+
+        async function addAdvertisementText() {
+            if (!advertisementCanvas) await initializeAdvertisementEditor();
+            const fabricNamespace = advertisementFabric || await loadAdvertisementFabric();
+            const TextboxClass = fabricNamespace.Textbox || fabricNamespace.IText || fabricNamespace.Text;
+            const textObject = new TextboxClass('Spring Sale', {
+                width: 720,
+                fontFamily: 'Arial',
+                fontSize: 86,
+                fontWeight: 'bold',
+                fill: '#007a4d',
+                textAlign: 'center',
+                originX: 'center',
+                originY: 'center',
+                advertisementType: 'text'
+            });
+            centerAdvertisementObject(textObject);
+            advertisementCanvas.add(textObject);
+            advertisementCanvas.setActiveObject(textObject);
+            advertisementCanvas.requestRenderAll();
+            saveAdvertisementHistorySnapshot();
+            syncAdvertisementObjectControls();
+            return false;
+        }
+
+        async function addAdvertisementShape(shapeType = 'rect') {
+            if (!advertisementCanvas) await initializeAdvertisementEditor();
+            const fabricNamespace = advertisementFabric || await loadAdvertisementFabric();
+            const safeType = String(shapeType || 'rect').trim().toLowerCase();
+            let shape = null;
+            if (safeType === 'circle') {
+                shape = new fabricNamespace.Circle({
+                    radius: 170,
+                    fill: '#facc15',
+                    stroke: '#ffffff',
+                    strokeWidth: 12,
+                    originX: 'center',
+                    originY: 'center',
+                    advertisementType: 'badge'
+                });
+            } else if (safeType === 'tag') {
+                shape = new fabricNamespace.Polygon([
+                    { x: 0, y: 0 },
+                    { x: 420, y: 0 },
+                    { x: 510, y: 120 },
+                    { x: 420, y: 240 },
+                    { x: 0, y: 240 }
+                ], {
+                    fill: '#ef4444',
+                    stroke: '#ffffff',
+                    strokeWidth: 10,
+                    originX: 'center',
+                    originY: 'center',
+                    advertisementType: 'price-tag'
+                });
+            } else {
+                shape = new fabricNamespace.Rect({
+                    width: 760,
+                    height: 180,
+                    rx: 24,
+                    ry: 24,
+                    fill: '#007a4d',
+                    opacity: 0.92,
+                    originX: 'center',
+                    originY: 'center',
+                    advertisementType: 'banner'
+                });
+            }
+            centerAdvertisementObject(shape);
+            advertisementCanvas.add(shape);
+            advertisementCanvas.setActiveObject(shape);
+            advertisementCanvas.requestRenderAll();
+            saveAdvertisementHistorySnapshot();
+            syncAdvertisementObjectControls();
+            return false;
+        }
+
+        function toggleAdvertisementPlantPicker() {
+            const picker = document.getElementById('advertisement-plant-picker');
+            if (!picker) return false;
+            picker.classList.toggle('hidden');
+            if (!picker.classList.contains('hidden')) renderAdvertisementPlantPicker();
+            return false;
+        }
+
+        function getAdvertisementInventoryPhotoRows() {
+            const searchInput = document.getElementById('advertisement-plant-search');
+            const term = normalizeSearchValue(searchInput ? searchInput.value : '');
+            const rows = Array.isArray(fullInventory) ? fullInventory : [];
+            const seen = new Set();
+            const results = [];
+            rows.forEach((row) => {
+                if (!row || results.length >= 48) return;
+                const photoUrl = getPhotoUrlList(getRowPhotoLink(row, 'av')).find((url) => /^https?:\/\//i.test(url));
+                if (!photoUrl) return;
+                const uid = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, photoUrl) || '').trim();
+                if (seen.has(uid)) return;
+                const searchable = normalizeSearchValue([row.COMMONNAME, row.ITEMCODE, row.CONTSIZE, row.LOCATIONCODE, row.LOTCODE].map((value) => String(value || '').trim()).filter(Boolean).join(' '));
+                if (term && !searchable.includes(term)) return;
+                seen.add(uid);
+                results.push({ row, photoUrl });
+            });
+            return results;
+        }
+
+        function renderAdvertisementPlantPicker() {
+            const container = document.getElementById('advertisement-plant-results');
+            if (!container) return;
+            const results = getAdvertisementInventoryPhotoRows();
+            if (!results.length) {
+                container.innerHTML = `<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-xs font-bold text-slate-400">No inventory photos found. Use Upload to add a phone image.</div>`;
+                return;
+            }
+            container.innerHTML = results.map(({ row, photoUrl }) => {
+                const name = escapeHtml(firstNonEmptyValue(row.COMMONNAME, row.commonname, 'Plant'));
+                const itemCode = escapeHtml(firstNonEmptyValue(row.ITEMCODE, row.itemcode, row.ITEM, '-'));
+                const size = escapeHtml(firstNonEmptyValue(row.CONTSIZE, row.contsize, '-'));
+                const safePhotoUrl = escapeHtml(photoUrl);
+                return `<button type="button" class="advertisement-plant-card" data-ad-photo-url="${safePhotoUrl}" data-ad-source-uid="${escapeHtml(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, ''))}" onclick="return addAdvertisementImageFromUrl(this.getAttribute('data-ad-photo-url'), this.getAttribute('data-ad-source-uid'))"><img src="${safePhotoUrl}" alt=""><span class="min-w-0"><span class="advertisement-plant-title">${name}</span><span class="advertisement-plant-meta">${itemCode} / ${size}</span></span><i class="ph-bold ph-plus-circle text-2xl text-[#007a4d]"></i></button>`;
+            }).join('');
+        }
+
+        async function loadAdvertisementFabricImage(sourceUrl = '') {
+            const safeUrl = String(sourceUrl || '').trim();
+            if (!safeUrl) throw new Error('Image URL is missing.');
+            const fabricNamespace = advertisementFabric || await loadAdvertisementFabric();
+            const ImageClass = fabricNamespace.FabricImage || fabricNamespace.Image;
+            if (!ImageClass || typeof ImageClass.fromURL !== 'function') throw new Error('Fabric image support is unavailable.');
+            try {
+                if (ImageClass.fromURL.length <= 2) {
+                    const maybeImage = ImageClass.fromURL(safeUrl, { crossOrigin: 'anonymous' });
+                    const image = maybeImage && typeof maybeImage.then === 'function' ? await maybeImage : maybeImage;
+                    if (image) return image;
+                }
+            } catch (error) {
+            }
+            return new Promise((resolve, reject) => {
+                try {
+                    ImageClass.fromURL(safeUrl, (image) => {
+                        if (image) resolve(image);
+                        else reject(new Error('Could not load image into the advertisement canvas.'));
+                    }, { crossOrigin: 'anonymous' });
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+
+        function fitAdvertisementImageObject(imageObject, maxDimension = 760) {
+            const width = Number(imageObject.width || (imageObject.getScaledWidth && imageObject.getScaledWidth()) || 0);
+            const height = Number(imageObject.height || (imageObject.getScaledHeight && imageObject.getScaledHeight()) || 0);
+            const largest = Math.max(width, height);
+            const scale = largest > 0 ? Math.min(1, maxDimension / largest) : 1;
+            imageObject.set({
+                scaleX: scale,
+                scaleY: scale,
+                originX: 'center',
+                originY: 'center',
+                advertisementType: imageObject.advertisementType || 'image'
+            });
+            return centerAdvertisementObject(imageObject);
+        }
+
+        async function addAdvertisementImageFromUrl(photoUrl = '', sourceUniqueId = '') {
+            try {
+                if (!advertisementCanvas) await initializeAdvertisementEditor();
+                setAdvertisementStatus('Adding image...', false);
+                const imageObject = await loadAdvertisementFabricImage(photoUrl);
+                imageObject.set({
+                    sourceUniqueId: String(sourceUniqueId || '').trim(),
+                    sourcePhotoUrl: String(photoUrl || '').trim(),
+                    advertisementType: 'plant-image'
+                });
+                fitAdvertisementImageObject(imageObject);
+                advertisementCanvas.add(imageObject);
+                advertisementCanvas.setActiveObject(imageObject);
+                advertisementCanvas.requestRenderAll();
+                saveAdvertisementHistorySnapshot();
+                syncAdvertisementObjectControls();
+                setAdvertisementStatus('');
+            } catch (error) {
+                showToast('Image Error', error && error.message ? error.message : 'Could not add that image.', true);
+                setAdvertisementStatus(error && error.message ? error.message : 'Could not add that image.', true);
+            }
+            return false;
+        }
+
+        async function addAdvertisementImageFromFile(file = null) {
+            if (!file) return false;
+            const objectUrl = URL.createObjectURL(file);
+            try {
+                await addAdvertisementImageFromUrl(objectUrl, '');
+            } finally {
+                setTimeout(() => URL.revokeObjectURL(objectUrl), 4000);
+            }
+            return false;
+        }
+
+        function handleAdvertisementPlantUpload(input) {
+            const file = input && input.files && input.files[0] ? input.files[0] : null;
+            if (input) input.value = '';
+            if (!file) return false;
+            addAdvertisementImageFromFile(file).catch((error) => {
+                showToast('Upload Error', error && error.message ? error.message : 'Could not add the selected image.', true);
+            });
+            return false;
+        }
+
+        function scaleImageToCoverAdvertisementCanvas(imageObject) {
+            const width = Number(imageObject.width || 0);
+            const height = Number(imageObject.height || 0);
+            const scale = width && height ? Math.max(ADVERTISEMENT_CANVAS_SIZE / width, ADVERTISEMENT_CANVAS_SIZE / height) : 1;
+            imageObject.set({
+                left: ADVERTISEMENT_CANVAS_SIZE / 2,
+                top: ADVERTISEMENT_CANVAS_SIZE / 2,
+                originX: 'center',
+                originY: 'center',
+                scaleX: scale,
+                scaleY: scale,
+                selectable: false,
+                evented: false,
+                advertisementType: 'background-image'
+            });
+            return imageObject;
+        }
+
+        async function setAdvertisementBackgroundImageFromFile(file = null) {
+            if (!file) return false;
+            if (!advertisementCanvas) await initializeAdvertisementEditor();
+            const objectUrl = URL.createObjectURL(file);
+            try {
+                const imageObject = await loadAdvertisementFabricImage(objectUrl);
+                scaleImageToCoverAdvertisementCanvas(imageObject);
+                advertisementCanvas.set('backgroundImage', imageObject);
+                advertisementCanvas.requestRenderAll();
+                saveAdvertisementHistorySnapshot();
+            } catch (error) {
+                showToast('Background Error', error && error.message ? error.message : 'Could not set that background.', true);
+            } finally {
+                setTimeout(() => URL.revokeObjectURL(objectUrl), 4000);
+            }
+            return false;
+        }
+
+        function handleAdvertisementBackgroundUpload(input) {
+            const file = input && input.files && input.files[0] ? input.files[0] : null;
+            if (input) input.value = '';
+            if (!file) return false;
+            setAdvertisementBackgroundImageFromFile(file).catch((error) => {
+                showToast('Background Error', error && error.message ? error.message : 'Could not set that background.', true);
+            });
+            return false;
+        }
+
+        async function setAdvertisementBackgroundColor(color = '#ffffff') {
+            if (!advertisementCanvas) await initializeAdvertisementEditor();
+            advertisementCanvas.set('backgroundColor', String(color || '#ffffff'));
+            advertisementCanvas.requestRenderAll();
+            saveAdvertisementHistorySnapshot();
+            return false;
+        }
+
+        function bringAdvertisementObjectForward() {
+            const object = advertisementCanvas ? advertisementCanvas.getActiveObject() : null;
+            if (!advertisementCanvas || !object) return false;
+            if (typeof advertisementCanvas.bringObjectForward === 'function') advertisementCanvas.bringObjectForward(object);
+            else if (typeof advertisementCanvas.bringForward === 'function') advertisementCanvas.bringForward(object);
+            else if (typeof object.bringForward === 'function') object.bringForward();
+            advertisementCanvas.requestRenderAll();
+            saveAdvertisementHistorySnapshot();
+            return false;
+        }
+
+        function sendAdvertisementObjectBackward() {
+            const object = advertisementCanvas ? advertisementCanvas.getActiveObject() : null;
+            if (!advertisementCanvas || !object) return false;
+            if (typeof advertisementCanvas.sendObjectBackwards === 'function') advertisementCanvas.sendObjectBackwards(object);
+            else if (typeof advertisementCanvas.sendBackwards === 'function') advertisementCanvas.sendBackwards(object);
+            else if (typeof object.sendBackwards === 'function') object.sendBackwards();
+            advertisementCanvas.requestRenderAll();
+            saveAdvertisementHistorySnapshot();
+            return false;
+        }
+
+        function deleteAdvertisementSelection() {
+            if (!advertisementCanvas) return false;
+            const activeObject = advertisementCanvas.getActiveObject();
+            if (!activeObject) return false;
+            if (activeObject.type === 'activeSelection' && typeof activeObject.getObjects === 'function') {
+                activeObject.getObjects().forEach((object) => advertisementCanvas.remove(object));
+                advertisementCanvas.discardActiveObject();
+            } else {
+                advertisementCanvas.remove(activeObject);
+            }
+            advertisementCanvas.requestRenderAll();
+            saveAdvertisementHistorySnapshot();
+            syncAdvertisementObjectControls();
+            return false;
+        }
+
+        function getAdvertisementPointerDistance(a, b) {
+            return Math.hypot((a.clientX || 0) - (b.clientX || 0), (a.clientY || 0) - (b.clientY || 0));
+        }
+
+        function getAdvertisementPointerAngle(a, b) {
+            return Math.atan2((b.clientY || 0) - (a.clientY || 0), (b.clientX || 0) - (a.clientX || 0)) * 180 / Math.PI;
+        }
+
+        function beginAdvertisementCanvasPointer(event) {
+            if (!advertisementCanvas || !event || event.pointerId == null) return;
+            advertisementTouchPointers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY });
+            if (advertisementTouchPointers.size === 2) {
+                const object = advertisementCanvas.getActiveObject();
+                const pointers = Array.from(advertisementTouchPointers.values());
+                if (object && pointers.length === 2) {
+                    advertisementGestureState = {
+                        object,
+                        distance: getAdvertisementPointerDistance(pointers[0], pointers[1]) || 1,
+                        angle: getAdvertisementPointerAngle(pointers[0], pointers[1]),
+                        scaleX: Number(object.scaleX) || 1,
+                        scaleY: Number(object.scaleY) || 1,
+                        objectAngle: Number(object.angle) || 0
+                    };
+                }
+            }
+        }
+
+        function moveAdvertisementCanvasPointer(event) {
+            if (!advertisementCanvas || !event || event.pointerId == null || !advertisementTouchPointers.has(event.pointerId)) return;
+            advertisementTouchPointers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY });
+            if (advertisementTouchPointers.size === 2 && advertisementGestureState && advertisementGestureState.object) {
+                if (typeof event.preventDefault === 'function') event.preventDefault();
+                const pointers = Array.from(advertisementTouchPointers.values());
+                const distance = getAdvertisementPointerDistance(pointers[0], pointers[1]) || advertisementGestureState.distance;
+                const angle = getAdvertisementPointerAngle(pointers[0], pointers[1]);
+                const scaleRatio = Math.max(0.08, Math.min(8, distance / advertisementGestureState.distance));
+                advertisementGestureState.object.set({
+                    scaleX: advertisementGestureState.scaleX * scaleRatio,
+                    scaleY: advertisementGestureState.scaleY * scaleRatio,
+                    angle: advertisementGestureState.objectAngle + (angle - advertisementGestureState.angle)
+                });
+                advertisementGestureState.object.setCoords();
+                advertisementCanvas.requestRenderAll();
+            }
+        }
+
+        function endAdvertisementCanvasPointer(event) {
+            if (event && event.pointerId != null) advertisementTouchPointers.delete(event.pointerId);
+            if (advertisementGestureState && advertisementTouchPointers.size < 2) {
+                advertisementGestureState = null;
+                saveAdvertisementHistorySnapshot();
+            }
+        }
+
+        function installAdvertisementTouchGestures() {
+            if (!advertisementCanvas || !advertisementCanvas.upperCanvasEl || advertisementCanvas.upperCanvasEl.dataset.adGesturesInstalled === 'true') return;
+            const target = advertisementCanvas.upperCanvasEl;
+            target.dataset.adGesturesInstalled = 'true';
+            target.addEventListener('pointerdown', beginAdvertisementCanvasPointer, { passive: true });
+            target.addEventListener('pointermove', moveAdvertisementCanvasPointer, { passive: false });
+            target.addEventListener('pointerup', endAdvertisementCanvasPointer, { passive: true });
+            target.addEventListener('pointercancel', endAdvertisementCanvasPointer, { passive: true });
+            target.addEventListener('pointerleave', endAdvertisementCanvasPointer, { passive: true });
+        }
+
+        function advertisementDataUrlToBlob(dataUrl = '') {
+            const parts = String(dataUrl || '').split(',');
+            const header = parts[0] || '';
+            const body = parts[1] || '';
+            const mimeMatch = header.match(/data:([^;]+);base64/i);
+            const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+            const binary = atob(body);
+            const length = binary.length;
+            const bytes = new Uint8Array(length);
+            for (let i = 0; i < length; i += 1) bytes[i] = binary.charCodeAt(i);
+            return new Blob([bytes], { type: mimeType });
+        }
+
+        function buildAdvertisementExportFileName(format = 'png') {
+            const cleanTitle = getAdvertisementTitle().replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'greenleaf-ad';
+            const date = new Date().toISOString().slice(0, 10);
+            return `${cleanTitle}-${date}.${format}`;
+        }
+
+        async function deliverAdvertisementExport(blob, fileName = 'greenleaf-ad.png') {
+            const file = new File([blob], fileName, { type: blob.type || 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+                await navigator.share({ files: [file], title: getAdvertisementTitle(), text: 'Greenleaf advertisement export' });
+                return 'shared';
+            }
+            const objectUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 4000);
+            return 'downloaded';
+        }
+
+        async function saveAdvertisementExportToSupabase(blob, format = 'png') {
+            const uniqueId = `ad_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+            const cleanFormat = format === 'jpeg' || format === 'jpg' ? 'jpg' : 'png';
+            const datePath = new Date().toISOString().slice(0, 10);
+            const filePath = `${datePath}/${uniqueId}.${cleanFormat}`;
+            const uploadResult = await withTimeout(supabaseClient.storage.from(MARKETING_MATERIALS_BUCKET).upload(filePath, blob, {
+                contentType: blob.type || (cleanFormat === 'jpg' ? 'image/jpeg' : 'image/png'),
+                upsert: true
+            }), SUPABASE_UPLOAD_TIMEOUT_MS, 'Marketing material upload');
+            if (uploadResult && uploadResult.error) throw uploadResult.error;
+            const { data: publicUrlData } = supabaseClient.storage.from(MARKETING_MATERIALS_BUCKET).getPublicUrl(filePath);
+            const publicUrl = String(publicUrlData && publicUrlData.publicUrl || '').trim();
+            if (!publicUrl) throw new Error('Could not resolve the marketing material URL.');
+            const designJson = advertisementCanvas ? advertisementCanvas.toJSON(['advertisementType', 'sourceUniqueId', 'sourcePhotoUrl']) : {};
+            const payload = {
+                unique_id: uniqueId,
+                title: getAdvertisementTitle(),
+                format: cleanFormat,
+                image_url: publicUrl,
+                image_path: filePath,
+                design_json: designJson,
+                created_by_username: currentUser || '',
+                created_by_display: currentUserDisplay || currentUser || '',
+                updated_at: new Date().toISOString()
+            };
+            await supabaseFetch(MARKETING_MATERIALS_TABLE, 'POST', payload, 'on_conflict=unique_id', { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
+            return publicUrl;
+        }
+
+        async function exportAdvertisementDesign(format = 'png') {
+            if (!advertisementCanvas || advertisementExportInFlight) return false;
+            advertisementExportInFlight = true;
+            const buttons = [document.getElementById('advertisement-export-top-btn')].filter(Boolean);
+            buttons.forEach((button) => {
+                button.disabled = true;
+            });
+            setAdvertisementStatus('Preparing high-quality export...', false);
+            try {
+                advertisementCanvas.discardActiveObject();
+                advertisementCanvas.requestRenderAll();
+                const safeFormat = String(format || 'png').toLowerCase() === 'jpeg' ? 'jpeg' : 'png';
+                const dataUrl = advertisementCanvas.toDataURL({
+                    format: safeFormat,
+                    quality: 0.96,
+                    multiplier: 1,
+                    enableRetinaScaling: false
+                });
+                const blob = advertisementDataUrlToBlob(dataUrl);
+                const fileName = buildAdvertisementExportFileName(safeFormat === 'jpeg' ? 'jpg' : 'png');
+                const deliveryMode = await deliverAdvertisementExport(blob, fileName);
+                let savedUrl = '';
+                try {
+                    savedUrl = await saveAdvertisementExportToSupabase(blob, safeFormat);
+                } catch (saveError) {
+                    const message = saveError && saveError.message ? saveError.message : 'The image exported, but Supabase save failed.';
+                    showToast('Export Ready', `${deliveryMode === 'shared' ? 'Shared' : 'Downloaded'} to this phone. Save warning: ${message}`, true);
+                    setAdvertisementStatus(`Exported to this phone, but Supabase save failed: ${message}`, true);
+                    return false;
+                }
+                showToast('Export Ready', `${deliveryMode === 'shared' ? 'Shared' : 'Downloaded'} and saved to marketing materials.`);
+                setAdvertisementStatus(savedUrl ? `Saved to marketing materials: ${savedUrl}` : 'Saved to marketing materials.', false);
+            } catch (error) {
+                const message = error && error.message ? error.message : 'Could not export this advertisement.';
+                showToast('Export Error', message, true);
+                setAdvertisementStatus(message, true);
+            } finally {
+                advertisementExportInFlight = false;
+                buttons.forEach((button) => {
+                    button.disabled = false;
+                });
+            }
+            return false;
+        }
+
+        async function initializeAdvertisementEditor() {
+            if (advertisementInitialized && advertisementCanvas) {
+                requestAnimationFrame(resizeAdvertisementCanvasShell);
+                renderAdvertisementPlantPicker();
+                return advertisementCanvas;
+            }
+            setAdvertisementLoading(true, 'Loading editor');
+            setAdvertisementStatus('');
+            advertisementFabric = await loadAdvertisementFabric();
+            const canvasElement = document.getElementById('advertisement-canvas');
+            if (!canvasElement) throw new Error('Advertisement canvas is missing.');
+            advertisementCanvas = new advertisementFabric.Canvas(canvasElement, {
+                width: ADVERTISEMENT_CANVAS_SIZE,
+                height: ADVERTISEMENT_CANVAS_SIZE,
+                backgroundColor: '#ffffff',
+                preserveObjectStacking: true,
+                selection: true,
+                controlsAboveOverlay: true
+            });
+            advertisementCanvas.on('selection:created', syncAdvertisementObjectControls);
+            advertisementCanvas.on('selection:updated', syncAdvertisementObjectControls);
+            advertisementCanvas.on('selection:cleared', syncAdvertisementObjectControls);
+            advertisementCanvas.on('object:modified', () => {
+                saveAdvertisementHistorySnapshot();
+                syncAdvertisementObjectControls();
+            });
+            advertisementCanvas.on('object:added', saveAdvertisementHistorySnapshot);
+            advertisementCanvas.on('object:removed', saveAdvertisementHistorySnapshot);
+            installAdvertisementTouchGestures();
+            installAdvertisementResizeHandler();
+            advertisementInitialized = true;
+            saveAdvertisementHistorySnapshot();
+            setAdvertisementLoading(false);
+            requestAnimationFrame(resizeAdvertisementCanvasShell);
+            renderAdvertisementPlantPicker();
+            return advertisementCanvas;
+        }
+
+        function renderAdvertisement() {
+            if (ensureViewDataForRender('advertisement')) return;
+            updateAdvertisementTitle(advertisementLastTitle);
+            initializeAdvertisementEditor().catch((error) => {
+                const message = error && error.message ? error.message : 'Could not load the advertisement editor.';
+                setAdvertisementLoading(false);
+                setAdvertisementStatus(message, true);
+                showToast('Editor Error', message, true);
+            });
         }
 
         function renderReview() {
