@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.11.12';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.13';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1754,7 +1754,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.12').trim() || 'V2026.05.11.12';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.13').trim() || 'V2026.05.11.13';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2537,7 +2537,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.12';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.13';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11515,7 +11515,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.12').trim() || 'V2026.05.11.12';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.13').trim() || 'V2026.05.11.13';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -24693,21 +24693,66 @@ function toggleDriveQuickRequestItem(domId) {
             return formatFetchedRows(rows || [], 'v2_active_request');
         }
 
-        function mergeFormattedRequestRowsIntoLocal(rows = [], reason = 'request-remote-merge') {
+        function mergeFormattedRequestRowsIntoLocal(rows = [], reason = 'request-remote-merge', options = {}) {
+            const safeOptions = options && typeof options === 'object' ? options : {};
             const formattedRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
             if (!formattedRows.length) return false;
             let changed = false;
             formattedRows.forEach((row) => {
                 changed = upsertRealtimeRow(requestsInventory, row, 'v2_active_request') || changed;
             });
-            if (!changed) return false;
+            if (!changed && safeOptions.forceRefresh !== true) return false;
             rebuildRequestInventoryIndexes();
             requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
             refreshLocalRequestViewState(reason, {
                 forceRender: true,
                 preferImmediate: true,
                 userAction: true,
-                typingDelay: REQUEST_REALTIME_UI_DELAY_MS
+                typingDelay: Math.max(REQUEST_REALTIME_UI_DELAY_MS, Number(safeOptions.typingDelay) || 0),
+                renderHiddenRequest: safeOptions.renderHiddenRequest === true
+            });
+            return true;
+        }
+
+        function confirmCompletedRequestRowLocally(item = null, reason = 'request-complete-confirmed-local') {
+            if (!item) return false;
+            const uid = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim();
+            if (!uid) return false;
+            const completedAt = String(firstNonEmptyValue(item.DATE_COMPLETED, item.date_completed, item.completed_at, '') || '').trim() || new Date().toISOString();
+            const existingIndex = requestsInventory.findIndex((row) => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim() === uid);
+            const existingRow = existingIndex >= 0 ? requestsInventory[existingIndex] : {};
+            const completedRow = Object.assign({}, existingRow, item, {
+                UNIQUE_ID: uid,
+                unique_id: uid,
+                SOURCE_TABLE: 'v2_active_request',
+                REQ_STATUS: 'Complete',
+                req_status: 'Complete',
+                STATUS: 'Complete',
+                status: 'Complete',
+                DATE_COMPLETED: completedAt,
+                date_completed: completedAt
+            });
+            normalizeRowPhotoFields(completedRow);
+            repairDisplayFieldsOnRow(completedRow);
+            buildSearchIndex(completedRow);
+            if (existingIndex >= 0) {
+                Object.assign(requestsInventory[existingIndex], completedRow);
+            } else {
+                requestsInventory.push(completedRow);
+            }
+            Object.assign(item, completedRow);
+            if (activeItem && String(firstNonEmptyValue(activeItem.UNIQUE_ID, activeItem.unique_id, '') || '').trim() === uid) {
+                Object.assign(activeItem, completedRow);
+            }
+            rebuildRequestInventoryIndexes();
+            refreshRealtimeDetailLookupIndexes('v2_active_request');
+            requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+            refreshLocalRequestViewState(reason, {
+                forceRender: true,
+                preferImmediate: true,
+                userAction: true,
+                typingDelay: REQUEST_REALTIME_UI_DELAY_MS,
+                renderHiddenRequest: true
             });
             return true;
         }
@@ -24807,7 +24852,13 @@ function toggleDriveQuickRequestItem(domId) {
                 if (safeOptions.queueOnFailure !== false) queueRequestCompletionEmailRetry(entry, error);
                 return { ok: false, error };
             }
-            if (folderRows.length) mergeFormattedRequestRowsIntoLocal(folderRows, 'request-completion-email-folder-sync');
+            if (folderRows.length) {
+                mergeFormattedRequestRowsIntoLocal(folderRows, 'request-completion-email-folder-sync', {
+                    forceRefresh: true,
+                    renderHiddenRequest: true,
+                    typingDelay: REQUEST_REALTIME_UI_DELAY_MS
+                });
+            }
             const activeRows = (folderRows.length ? folderRows : getActiveRequestFolderItems(entry.folderId)).filter((item) => {
                 const archivedRaw = firstNonEmptyValue(item && item.REQ_ARCHIVED, item && item.req_archived, false);
                 return !(archivedRaw === true || archivedRaw === 1 || archivedRaw === '1' || String(archivedRaw || '').trim().toLowerCase() === 'true');
@@ -24854,6 +24905,30 @@ function toggleDriveQuickRequestItem(domId) {
                     if (safeOptions.queueOnFailure !== false) queueRequestCompletionEmailRetry(entry, error);
                 });
             }, delay);
+            return true;
+        }
+
+        function deliverRequestCompletionEmailNow(entryOrItem = null, options = {}) {
+            const safeOptions = options && typeof options === 'object' ? options : {};
+            const entry = normalizeRequestCompletionEmailQueueEntry(entryOrItem) || buildRequestCompletionEmailEntryFromItem(entryOrItem);
+            if (!entry) return false;
+            deliverRequestCompletionEmail(entry, {
+                ...safeOptions,
+                queueOnFailure: safeOptions.queueOnFailure !== false,
+                silent: true
+            }).then((result) => {
+                if (result && result.ok === true) return;
+                const skipped = String(firstNonEmptyValue(result && result.skipped, '') || '').trim();
+                if (skipped === 'folder-not-complete' || skipped === 'missing-folder') return;
+                if (safeOptions.warnOnFailure === true) {
+                    showToast('Email Warning', 'Completion email could not be sent yet. It will retry automatically.', true);
+                }
+            }).catch((error) => {
+                if (safeOptions.queueOnFailure !== false) queueRequestCompletionEmailRetry(entry, error);
+                if (safeOptions.warnOnFailure === true) {
+                    showToast('Email Warning', 'Completion email could not be sent yet. It will retry automatically.', true);
+                }
+            });
             return true;
         }
 
@@ -24912,7 +24987,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function notifyRequestEvent(type, folderId, repName, customer, itemsCount, details = null) {
             if (String(type || '').trim().toLowerCase() === 'request_complete') {
-                scheduleRequestCompletionEmailDelivery({ folderId, repName, customer }, { delay: 0, queueOnFailure: true });
+                deliverRequestCompletionEmailNow({ folderId, repName, customer }, { queueOnFailure: true, warnOnFailure: true });
                 return;
             }
             sendEmailNotification(type, folderId, repName, customer, itemsCount, details);
@@ -37623,7 +37698,8 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             clearRequestViewLiveSync();
             if (!shouldRunRequestViewLiveSync(safeOptions)) return;
             const pauseDelay = Math.max(0, requestViewLiveSyncPausedUntil - Date.now());
-            const interactionDelay = shouldDeferInteractiveBackgroundWork() ? INTERACTION_REFRESH_DEFER_MS : 0;
+            const allowInteractiveRequestSync = safeOptions.allowWhileInteractive === true || isPrimaryRequestLiveSyncContextVisible();
+            const interactionDelay = (!allowInteractiveRequestSync && shouldDeferInteractiveBackgroundWork()) ? INTERACTION_REFRESH_DEFER_MS : 0;
             const nextDelay = Math.max(Math.max(0, Number(delay) || 0), pauseDelay, interactionDelay);
             requestViewLiveSyncTimer = setTimeout(() => {
                 requestViewLiveSyncTimer = null;
@@ -48312,6 +48388,15 @@ ${folderNote ? `Folder Note: ${folderNote}
                     };
                     if (isCoordinatedAutoSave && savePayloadSignature) rememberAutoSaveSignature(rowSaveKey, savePayloadSignature);
 
+                    if (prefix === 'req-' && isComplete) {
+                        itemToSave.REQ_STATUS = 'Complete';
+                        itemToSave.req_status = 'Complete';
+                        itemToSave.DATE_COMPLETED = payload.date_completed;
+                        itemToSave.date_completed = payload.date_completed;
+                        confirmCompletedRequestRowLocally(itemToSave, 'request-complete-persisted');
+                        discardPendingLocalEdits([itemToSave.UNIQUE_ID], true);
+                    }
+
                     propagateCommittedEdit(targetTable, itemToSave, changedDatasetKeys, visibleAffectedViews, { prefix, delay: 0, typingDelay: 120, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
                     recordInternalPerfDuration('saveDurations', savePerfStartedAt, `${prefix}${isComplete ? ':complete' : (isSilentAutoSave ? ':autosave' : ':save')}`);
 
@@ -48453,7 +48538,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         itemToSave.DATE_COMPLETED = payload.date_completed;
                         itemToSave.date_completed = payload.date_completed;
                         if (isCurrentView && detailWasVisible) goBackFromDetail();
-                        queueRequestAwareSaveRefresh(16, 'request-complete-finalize');
+                        queueRequestAwareSaveRefresh(0, 'request-complete-finalize');
                     }
 
                     const shouldReopenCompletedDetail = isComplete && !['req-', 'ssn-', 'lsn-'].includes(prefix);
@@ -48466,9 +48551,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
 
                     if (prefix === 'req-' && isComplete && !wasAlreadyComplete && !saveOptions.suppressRequestCompletionEmail) {
-                        deferNonCriticalWork('request-complete-email', () => {
-                            scheduleRequestCompletionEmailDelivery(itemToSave, { delay: 0, queueOnFailure: true });
-                        }, 24);
+                        deliverRequestCompletionEmailNow(itemToSave, { queueOnFailure: true, warnOnFailure: true });
                     }
                     if (isComplete && !wasAlreadyComplete && !saveOptions.suppressNcrReleaseEmail && shouldOfferNcrReleaseEmailForSave(itemToSave, prefix, { requestMasterItem, completionArtifacts: artifacts })) {
                         deferNonCriticalWork('ncr-release-email', () => {
