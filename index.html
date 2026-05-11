@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.11.10';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.11';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1281,13 +1281,13 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
 <body class="bg-gray-50 overflow-hidden">
     <div id="top-loading-bar-container" class="hidden fixed top-0 left-0 w-full h-1 z-[99999] pointer-events-none"><div id="top-loading-bar" class="h-full bg-[#22c55e] w-0 transition-all duration-300 ease-out shadow-[0_0_10px_#22c55e]"></div></div>
     <div id="toast-notification"></div>
-    <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4">
+    <div id="photo-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-[15000] flex flex-col items-center justify-center p-4" onclick="if(event.target===this) closePhotoModal()">
         <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-start bg-gradient-to-b from-black/80 to-transparent z-50 pointer-events-none">
             <div class="min-w-0 pr-4 pointer-events-auto">
                 <div id="photo-modal-caption" class="text-white font-bold text-sm leading-tight drop-shadow-md uppercase tracking-wide"></div>
                 <div id="photo-modal-counter" class="text-white/75 text-[11px] font-black uppercase tracking-[0.18em] mt-1"></div>
             </div>
-            <i class="ph-bold ph-x text-white text-3xl cursor-pointer bg-black/50 p-2 rounded-full active:scale-95 pointer-events-auto" onclick="closePhotoModal()"></i>
+            <button type="button" class="inline-flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-white shadow-lg active:scale-95 pointer-events-auto" onclick="event.stopPropagation(); closePhotoModal()" aria-label="Close photo viewer"><i class="ph-bold ph-x text-3xl"></i></button>
         </div>
         <button id="photo-modal-prev" type="button" class="hidden absolute left-4 top-1/2 -translate-y-1/2 z-50 items-center justify-center w-12 h-12 rounded-full bg-black/45 text-white text-2xl shadow-lg active:scale-95" onclick="event.stopPropagation(); stepPhotoModal(-1)" aria-label="Previous photo"><i class="ph-bold ph-caret-left"></i></button>
         <div id="photo-modal-gallery" class="w-full max-h-[85vh] mt-10 overflow-x-auto overflow-y-hidden snap-x snap-mandatory scrollbar-none"></div>
@@ -1295,6 +1295,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         <div id="photo-modal-actions" class="absolute bottom-20 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 pointer-events-none">
             <a id="photo-modal-open-link" class="hidden pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-sm active:scale-95" href="#" target="_blank" rel="noopener noreferrer"><i class="ph-bold ph-link text-sm"></i>Open Link</a>
             <button id="photo-modal-copy-link" type="button" class="hidden pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-sm active:scale-95" onclick="return copyCurrentPhotoModalLink()"><i class="ph-bold ph-copy text-sm"></i>Copy Link</button>
+            <button id="photo-modal-close-link" type="button" class="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-sm active:scale-95" onclick="event.stopPropagation(); closePhotoModal(); return false;"><i class="ph-bold ph-x-circle text-sm"></i>Close</button>
         </div>
         <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe for more</div>
     </div>
@@ -1753,7 +1754,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.10').trim() || 'V2026.05.11.10';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.11').trim() || 'V2026.05.11.11';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2536,7 +2537,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.10';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.11';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -4615,32 +4616,52 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             textArea.value = text;
             textArea.setAttribute('readonly', '');
             textArea.style.position = 'fixed';
+            textArea.style.top = '0';
+            textArea.style.left = '-9999px';
             textArea.style.opacity = '0';
             textArea.style.pointerEvents = 'none';
+            textArea.style.fontSize = '16px';
             document.body.appendChild(textArea);
             textArea.focus();
             textArea.select();
-            const copied = document.execCommand('copy');
+            if (typeof textArea.setSelectionRange === 'function') textArea.setSelectionRange(0, textArea.value.length);
+            let copied = false;
+            try {
+                copied = document.execCommand('copy');
+            } catch (error) {
+                copied = false;
+            }
             document.body.removeChild(textArea);
             return copied;
         }
         async function copyTextWithFallback(text, html = '') {
+            const safeText = String(text == null ? '' : text);
+            const safeHtml = String(html == null ? '' : html);
+            const tryFallback = () => {
+                if (fallbackCopyText(safeText)) return true;
+                throw new Error('Clipboard copy failed');
+            };
             if (navigator.clipboard && window.isSecureContext) {
-                if (html && typeof ClipboardItem !== 'undefined' && navigator.clipboard.write) {
+                const shouldTryRichClipboard = !!safeHtml && typeof ClipboardItem !== 'undefined' && navigator.clipboard.write && !isTouchConstrainedDevice();
+                if (shouldTryRichClipboard) {
                     try {
                         await navigator.clipboard.write([
                             new ClipboardItem({
-                                'text/plain': new Blob([text], { type: 'text/plain' }),
-                                'text/html': new Blob([html], { type: 'text/html' })
+                                'text/plain': new Blob([safeText], { type: 'text/plain' }),
+                                'text/html': new Blob([safeHtml], { type: 'text/html' })
                             })
                         ]);
                         return true;
                     } catch (err) {}
                 }
-                await navigator.clipboard.writeText(text);
-                return true;
+                try {
+                    await navigator.clipboard.writeText(safeText);
+                    return true;
+                } catch (error) {
+                    return tryFallback();
+                }
             }
-            return fallbackCopyText(text);
+            return tryFallback();
         }
 
         async function handleMobileShare(action, subject, text) {
@@ -4745,6 +4766,11 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             keyHandler: null,
             primedKey: ''
         };
+
+        function isPhotoModalOpen() {
+            const modal = document.getElementById('photo-modal');
+            return !!(modal && !modal.classList.contains('hidden'));
+        }
 
 
         function blurActiveField() {
@@ -11488,7 +11514,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.10').trim() || 'V2026.05.11.10';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.11').trim() || 'V2026.05.11.11';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -18304,6 +18330,8 @@ function toggleDriveQuickRequestItem(domId) {
             document.getElementById('photo-modal-caption').innerText = caption || 'Photo Gallery';
             swipeHint.classList.toggle('hidden', urls.length <= 1);
             modal.classList.remove('hidden');
+            ensureNativeBackGuard();
+            updateGlobalBackButton();
             requestAnimationFrame(() => {
                 snapPhotoModalToIndex(0, false);
                 updatePhotoModalCounter();
@@ -18361,6 +18389,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (copyBtn) copyBtn.classList.add('hidden');
             if (modal) modal.classList.add('hidden');
+            updateGlobalBackButton();
         }
         async function restorePersistedSessionOnStartup() {
             const sessionRecord = getPersistedSessionRestoreRecord();
@@ -26555,6 +26584,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function hasOpenInteractiveSurfaceForBack() {
             const currentView = getCurrentVisibleViewId();
+            if (isPhotoModalOpen()) return true;
             if (bloomCropUpdateModalOpen || bloomShareMenuOpen || cartPanelOpen || driveQuickFiltersModalOpen || isDrawerOpen()) return true;
             if (currentView === 'tasks') return !!(taskTabDropdownOpen || taskSubviewDropdownOpen || taskReserveCustomerDropdownOpen || taskGenusFilterOpen || taskContSizeDropdownOpen);
             if (currentView === 'drive') return !!(driveViewDropdownOpen || driveSeasonDropdownOpen || driveGenusFilterOpen || driveContSizeFilterOpen);
@@ -26565,6 +26595,12 @@ function toggleDriveQuickRequestItem(domId) {
 
         function closeOpenInteractiveSurfaceForBack() {
             const currentView = getCurrentVisibleViewId();
+            if (isPhotoModalOpen()) {
+                closePhotoModal();
+                updateGlobalBackButton();
+                syncGlobalHeaderChrome({ reason: 'back:photo', force: true });
+                return true;
+            }
             if (bloomShareMenuOpen) {
                 closeBloomShareMenu();
                 updateGlobalBackButton();
@@ -27617,8 +27653,35 @@ function toggleDriveQuickRequestItem(domId) {
             }, { delay: 0, typingDelay: 32, forceRender: true, resetScrollTopAfterRender: true, scrollResetKey: `av-secondary:${nextTab}`, touchDelayMs: 8, interactionDelayMs: 8, scrollDelayMs: 48 });
         }
 
-        function clearAVSearch() { document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; selectedAvReserveDetailCustomerKey=null; avOpenLevel=0; scheduleAVRender(0); }
-        function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; selectedAvReserveDetailCustomerKey=null; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; selectedAvReserveDetailCustomerKey=null; avOpenLevel=0;} scheduleTrackedSearchViewRender('av', 'av', term); }
+        function resetAvSearchDrillState() {
+            avResLevel = 0;
+            selectedAvResDriveUid = null;
+            selectedAvResItemCode = null;
+            selectedAvResName = null;
+            selectedAvResSize = null;
+            selectedAvResCustomerKey = null;
+            selectedAvReserveDetailCustomerKey = null;
+            avOpenLevel = 0;
+        }
+
+        function clearAVSearch() {
+            document.getElementById('av-search').value = "";
+            document.getElementById('av-search-clear').classList.add('hidden');
+            resetAvSearchDrillState();
+            scheduleTrackedSearchViewRender('av', 'av', '', { force: true, debounceDelay: 0, typingDelay: 20 });
+        }
+
+        function handleAVSearch() {
+            const term = document.getElementById('av-search').value.toLowerCase();
+            const clearBtn = document.getElementById('av-search-clear');
+            if (term.length > 0) clearBtn.classList.remove('hidden');
+            else clearBtn.classList.add('hidden');
+            resetAvSearchDrillState();
+            scheduleTrackedSearchViewRender('av', 'av', term, {
+                debounceDelay: isTouchConstrainedDevice() ? 130 : 85,
+                typingDelay: isTouchConstrainedDevice() ? 90 : 48
+            });
+        }
 
         function resetAVView(shouldRender = true) {
             activeAVTab='open'; activeAvOpenTab='name'; activeAvHotPriceTab='all';
@@ -28690,7 +28753,7 @@ function toggleDriveQuickRequestItem(domId) {
                 }
             }
             const cornerThumbHtml = thumbHtml || `<div class="absolute top-3 right-3 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-1 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">No Photo</div>`;
-            const driveOrderHtml = getInventoryCardBottomRailHtml(item.DOM_ID);
+            const driveOrderHtml = getInventoryCardBottomRailHtml(item.DOM_ID, item);
             return `<div class="mb-3 app-card-shell app-smart-card app-smart-card--inventory ${driveOrderHtml ? 'app-card-with-bottom-rail' : ''} rounded-[20px] border border-slate-200 bg-white p-3 pr-[3.75rem] sm:pr-[4.25rem] shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden relative" ${buildFastInvokeAttrs('selectAvReserveDriveRow', [safeUidJs], 'Open Drive Mode row ' + String(item.COMMONNAME || 'Unknown'))}>${cornerThumbHtml}<div class="text-[9px] font-black uppercase tracking-[0.16em] text-sky-600">Drive Mode Row</div><div class="app-card-topline mt-1"><span class="app-card-topline-common">${esc(item.COMMONNAME || 'Unknown')}</span><span class="app-card-topline-size">${esc(item.CONTSIZE || '-')}</span></div><div class="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-mono font-bold text-slate-600"><i class="ph-bold ph-barcode text-slate-400"></i><span class="truncate">${item.ITEMCODE || '-'}</span></div><div class="mt-2 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-blue-700">Loc ${item.LOCATIONCODE || 'No Loc'}</span><span class="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-slate-700">Lot ${item.LOTCODE || '-'}</span><span class="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-1 text-emerald-700">Ava ${item.PTRAVAILABLE || '0'}</span><span class="rounded-full border border-purple-100 bg-purple-50 px-2 py-1 text-purple-700">s_LTS ${item.S_LTS || '0'}</span><span class="rounded-full border border-orange-100 bg-orange-50 px-2 py-1 text-orange-700">Pri ${item.PRIORITY || '-'}</span></div>${driveOrderHtml}</div>`;
         }
 
@@ -29013,7 +29076,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const inlineThumbHtml = thumbHtml || `<div class="ml-3 flex-shrink-0"><div class="app-smart-thumb w-16 h-16 rounded-md border border-gray-300 bg-slate-100 shadow-sm flex items-center justify-center text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div></div>`;
             const quickShareHtml = `<div class="mt-3 grid ${actionVisibility.showText ? 'grid-cols-3' : 'grid-cols-2'} gap-2"><button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-700 shadow-sm active:scale-[0.98]" onclick="event.stopPropagation(); return shareAvReserveRow('copy', '${safeDomIdJs}')"><i class="ph-bold ph-copy text-base"></i>Copy</button><button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700 shadow-sm active:scale-[0.98]" onclick="event.stopPropagation(); return shareAvReserveRow('email', '${safeDomIdJs}')"><i class="ph-bold ph-envelope-simple text-base"></i>Email</button>${actionVisibility.showText ? `<button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[0.98]" onclick="event.stopPropagation(); return shareAvReserveRow('text', '${safeDomIdJs}')"><i class="ph-bold ph-chat-circle-dots text-base"></i>Text</button>` : ''}</div>`;
-            const bottomRailHtml = getInventoryCardBottomRailHtml(item.DOM_ID);
+            const bottomRailHtml = getInventoryCardBottomRailHtml(item.DOM_ID, item);
         return `<div class="flex items-start w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-indigo-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${bottomRailHtml ? 'app-card-with-bottom-rail' : ''}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, 'av', 'Open AV row')}><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Item Code</div><div class="mt-1 font-mono font-black text-[16px] text-indigo-800 break-all">${esc(itemCode)}</div><div class="mt-3 font-black text-slate-900 text-[20px] leading-tight break-words">${esc(commonName)}</div><div class="mt-1 text-[14px] font-bold text-[#007a4d]">${esc(contSize)}</div><div class="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">${detailCell('Customer Name', customerName)}${detailCell('Consignee Name', consigneeName)}${detailCell('Sales Rep Name', salesRepName)}${detailCell('Location', locationCode)}${detailCell('Request Date', requestDate)}${detailCell('Lot Code', lotCode)}${detailCell('Quantity Ordered', qtyOrdered)}${detailCell('Quantity Shipped', qtyShipped)}${detailCell('LOC PHOTO MATCH', locPhotoMatch)}${showSpecFields ? detailCell('Spec', specText) : ''}${showSpecFields ? detailCell('Caliper', caliperText) : ''}${detailCell('AV Note', avNote)}</div>${quickShareHtml}</div>${inlineThumbHtml}</div>${bottomRailHtml}</div>`;
         }
 
@@ -29050,7 +29113,7 @@ function toggleDriveQuickRequestItem(domId) {
                 }
             }
             const cornerThumbHtml = thumbHtml || `<div class="absolute top-3 right-3 flex h-14 w-14 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-1 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">No Photo</div>`;
-            const bottomRailHtml = getInventoryCardBottomRailHtml(item.DOM_ID);
+            const bottomRailHtml = getInventoryCardBottomRailHtml(item.DOM_ID, item);
             return `<div class="mb-3 rounded-[22px] border border-sky-200 bg-white p-4 pr-[5.25rem] shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden relative ${bottomRailHtml ? 'app-card-with-bottom-rail' : ''}" ${buildCardActivationAttrs(item.DOM_ID || '', item.UNIQUE_ID || '', 'drive', 'Open drive location row')}>${cornerThumbHtml}<div class="text-[10px] font-black uppercase tracking-[0.16em] text-sky-600">Drive Mode Location</div><div class="mt-1 font-black text-[20px] text-slate-900 break-words">${esc(locationCode)}</div><div class="mt-3 font-black text-[18px] leading-tight text-slate-900 break-words">${esc(commonName)}</div><div class="mt-1 text-[14px] font-bold text-[#007a4d]">${esc(contSize)}</div><div class="mt-2 inline-flex max-w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-mono font-bold text-slate-600"><i class="ph-bold ph-barcode text-slate-400"></i><span class="truncate">${esc(itemCode)}</span></div><div class="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">${detailCell('Lot Code', lotCode)}${detailCell('Loc Avail', ptrAvailable)}${detailCell('s_LTS', sLts)}${detailCell('Priority', priority)}${detailCell('LOC PHOTO MATCH', locPhotoMatch)}${showSpecFields ? detailCell('Spec', specText) : ''}${showSpecFields ? detailCell('Caliper', caliperText) : ''}${detailCell('AV Note', avNote)}</div>${bottomRailHtml}</div>`;
         }
 
@@ -33013,10 +33076,10 @@ function toggleDriveQuickRequestItem(domId) {
             return;
         }
 
-        function getInventoryCardBottomRailHtml(domId = '') {
+        function getInventoryCardBottomRailHtml(domId = '', rowItem = null) {
             const safeDomId = String(domId || '').trim();
             if (!safeDomId) return '';
-            const item = findItemByDomId(safeDomId);
+            const item = rowItem || findItemByDomId(safeDomId);
             if (getRoleAccessState().isForeman && !canAddItemToBloomPicker(item)) return '';
             const inBag = selectedItems.has(safeDomId);
             return `<div class="app-card-bottom-rail" data-cart-rail="${esc(safeDomId)}" onclick="event.stopPropagation();"><button type="button" class="app-card-bottom-btn ${inBag ? 'app-card-bottom-btn--secondary' : ''}" data-cart-dom-id="${esc(safeDomId)}" aria-pressed="${inBag ? 'true' : 'false'}" onclick="return handleInventoryCardBottomCartAction(event, '${esc(safeDomId)}')"><i class="ph-bold ${inBag ? 'ph-check' : 'ph-package'} text-base"></i><span data-cart-label>${inBag ? 'Open Bloom Picker' : 'Add To Bloom Picker'}</span></button></div>`;
@@ -33039,6 +33102,7 @@ function toggleDriveQuickRequestItem(domId) {
             toggleGlobalItem(safeDomId, true);
             cartPanelOpen = true;
             updateGlobalActionBar();
+            refreshCartButtons();
             return false;
         }
 
@@ -39654,7 +39718,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                     }
                 }
                 const customerOutreachHtml = buildCustomerConsigneeOutreachCardAction(item, sourceView);
-                const bottomRailHtml = getInventoryCardBottomRailHtml(item.DOM_ID);
+                const bottomRailHtml = getInventoryCardBottomRailHtml(item.DOM_ID, item);
         return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av relative bg-white p-4 rounded-xl border-2 border-teal-100 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass} ${bottomRailHtml ? 'app-card-with-bottom-rail' : ''}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView === 'reserves_drill' ? 'av' : sourceView, 'Open item details')}><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-col w-full min-w-0"><div class="app-av-card-layout flex justify-between items-start w-full"><div class="app-card-main app-av-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(item.LOCATIONCODE || '-', firstNonEmptyValue(item.SOURCE, item.source, ''))}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[13px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[13px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[13px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">LOC AVA <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">OPEN STOCK <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-green-200 bg-green-50 px-3 py-1 text-green-700">LOC PHOTO MATCH <span class="text-green-900">${locPhotoMatchText}</span></span></div>${rowFourHtml}${rowFiveHtml}${customerOutreachHtml}</div>${thumbColumnHtml}</div>${bottomRailHtml}</div></div>`;
             };
 
@@ -39791,7 +39855,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 let extraData='';extraData=`<div class="mt-2 flex flex-wrap gap-2 text-[10px] font-bold text-gray-500 uppercase">${displaySpec?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${displaySpec}</span>`:''}${displayCaliper?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${displayCaliper}</span>`:''}${displayMatch?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">LOC MATCH %: ${displayMatch}%</span>`:''}</div>`;
                 let quickRequestBtn='';
                 if(canUseDriveBloomPickerForTakeBack()){
-                    quickRequestBtn=getInventoryCardBottomRailHtml(item.DOM_ID);
+                    quickRequestBtn=getInventoryCardBottomRailHtml(item.DOM_ID, item);
                 }
                 const customerOutreachHtml = buildCustomerConsigneeOutreachCardAction(item, sourceView);
         return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory ${seasonCardShellClass} ${quickRequestBtn ? 'app-card-with-bottom-rail' : ''} relative ${inventoryCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open drive row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow min-w-0 flex-col"><div class="flex items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(item.LOCATIONCODE || 'No Loc', displaySource, { locationSuffixHtml: buildDriveEarlyABadgeHtml(item) })}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">PTRAVAILABLE <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-700">HOLDSTOPCODE <span class="text-amber-900">${displayHoldStopCode}</span></span></div>${extraData}${noteHtml}${customerOutreachHtml}</div>${inlineThumbHtml}</div>${quickRequestBtn}</div></div>`;
@@ -39811,7 +39875,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 if(displayLocMatchQty&&String(displayLocMatchQty).trim()!==''&&Number(displayLocMatchQty)>0){noteHtml+=`<div class="mt-2 text-[12px] text-green-800 bg-green-100 p-2 rounded border border-green-200 shadow-sm whitespace-pre-wrap"><span class="font-black">LOC PHOTO MATCH:</span> ${displayLocMatchQty}</div>`}
                 if(displayAvNote&&String(displayAvNote).trim()!==''){noteHtml+=`<div class="mt-2 text-[12px] text-blue-800 bg-blue-100 p-2 rounded border border-blue-200 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${displayAvNote}</div>`}
                 let extraData='';extraData=`<div class="mt-2 flex gap-2 text-[10px] font-bold text-gray-500 uppercase">${displaySpec?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${displaySpec}</span>`:''}${displayCaliper?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${displayCaliper}</span>`:''}${displayMatch?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">LOC MATCH %: ${displayMatch}%</span>`:''}</div>`;
-                const taskBloomPickerBtn = getInventoryCardBottomRailHtml(item.DOM_ID);
+                const taskBloomPickerBtn = getInventoryCardBottomRailHtml(item.DOM_ID, item);
         return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory ${seasonCardShellClass} ${taskBloomPickerBtn ? 'app-card-with-bottom-rail' : ''} relative ${inventoryCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open item details')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow min-w-0 flex-col"><div class="flex items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-')}${buildInventorySecondarylineHtml(item.LOCATIONCODE || 'No Loc', firstNonEmptyValue(item.SOURCE, item.source, ''))}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">LOC AVA <span class="text-slate-900">${item.PTRAVAILABLE||'0'}</span></span><span class="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-blue-700">LOC <span class="text-blue-900">${item.LOCATIONCODE||'No Loc'}</span></span><span class="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">LOT <span class="text-slate-900">${item.LOTCODE||'-'}</span></span><span class="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-purple-700">S_LTS <span class="text-purple-900">${item.S_LTS||'0'}</span></span><span class="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-orange-700">PRI <span class="text-orange-900">${item.PRIORITY||'-'}</span></span></div>${extraData}${noteHtml}</div>${inlineThumbHtml}</div>${taskBloomPickerBtn}</div></div>`;
             }
 
