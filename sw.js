@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.05.11.15';
+const APP_SHELL_BUILD = 'V2026.05.11.08';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const CACHE_NAME = 'greenleaf-v4.2-rebuild-' + APP_SHELL_BUILD;
@@ -37,18 +37,6 @@ function getRequestedShellBuild(request) {
   const requestUrl = getRequestUrl(request);
   if (!requestUrl) return '';
   return normalizeShellBuild(requestUrl.searchParams.get(APP_SHELL_QUERY_PARAM) || '');
-}
-
-function shouldBypassRuntimeCache(request) {
-  const requestUrl = getRequestUrl(request);
-  if (!requestUrl) return false;
-  if (requestUrl.hostname === 'kzrnyjsosryejjejliii.supabase.co') {
-    return requestUrl.pathname.startsWith('/rest/')
-      || requestUrl.pathname.startsWith('/functions/v1/')
-      || requestUrl.pathname.startsWith('/auth/v1/')
-      || requestUrl.pathname.startsWith('/realtime/v1/');
-  }
-  return requestUrl.hostname === 'script.google.com' || requestUrl.hostname.endsWith('.googleusercontent.com');
 }
 
 async function cacheShellResponse(cache, requestedShellUrl, networkResponse) {
@@ -117,10 +105,6 @@ self.addEventListener('message', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
-  if (shouldBypassRuntimeCache(event.request)) {
-    event.respondWith(fetch(event.request, { cache: 'no-store' }));
-    return;
-  }
   if (event.request.mode === 'navigate') {
     event.respondWith(
       (async () => {
