@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.11.02';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1709,7 +1709,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.02').trim() || 'V2026.05.11.02';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.03').trim() || 'V2026.05.11.03';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2414,7 +2414,6 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 <button type="button" data-footer-view="drive" class="footer-nav-btn" aria-label="Drive Mode"><i class="ph-bold ph-car"></i><span>Drive</span></button>
                 <button type="button" data-footer-view="tasks" class="footer-nav-btn" aria-label="Tasks"><i class="ph-bold ph-clipboard-text"></i><span>Tasks</span></button>
                 <button type="button" data-footer-view="docks" class="footer-nav-btn" aria-label="Docks"><i class="ph-bold ph-truck"></i><span>Docks</span></button>
-                <button type="button" id="footer-advertisement-btn" data-footer-view="advertisement" class="footer-nav-btn hidden" aria-label="Advertisement"><i class="ph-bold ph-megaphone"></i><span>Ads</span></button>
                 <button type="button" id="footer-request-btn" data-footer-view="request" class="footer-nav-btn hidden" aria-label="Requests"><i class="ph-bold ph-chat-circle-text"></i><span>Reqs</span><span id="footer-request-badge" class="footer-nav-badge hidden">0</span></button>
                 <button type="button" id="footer-chat-btn" data-footer-view="chat" class="footer-nav-btn" aria-label="Chat"><i class="ph-bold ph-chats-circle"></i><span>Chat</span><span id="footer-chat-badge" class="footer-nav-badge hidden">0</span></button>
                 <button type="button" id="footer-walkie-btn" data-footer-view="walkie" class="footer-nav-btn hidden" aria-label="Walkie"><i class="ph-bold ph-radio"></i><span>Walkie</span><span id="footer-walkie-badge" class="footer-nav-badge hidden">0</span></button>
@@ -2491,7 +2490,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11340,7 +11339,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.02').trim() || 'V2026.05.11.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.03').trim() || 'V2026.05.11.03';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -20479,7 +20478,7 @@ function toggleDriveQuickRequestItem(domId) {
             'low-stock': ['drawer-low-stock-btn'],
             review: ['drawer-review-btn', 'home-tile-review'],
             'move-up': ['drawer-move-up-btn', 'home-tile-move-up'],
-            advertisement: ['drawer-advertisement-btn', 'home-tile-advertisement', 'footer-advertisement-btn'],
+            advertisement: ['drawer-advertisement-btn', 'home-tile-advertisement'],
             chat: ['drawer-chat-btn', 'home-tile-chat', 'footer-chat-btn'],
             walkie: ['drawer-walkie-btn', 'home-tile-walkie', 'footer-walkie-btn']
         });
