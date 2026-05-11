@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.11.11';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.12';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1754,7 +1754,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.11').trim() || 'V2026.05.11.11';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.12').trim() || 'V2026.05.11.12';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2537,7 +2537,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.11';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.12';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2591,6 +2591,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         const REQUEST_VIEW_ACTIVE_SIGNATURE_SYNC_MS = 2800;
         const REQUEST_VIEW_SECONDARY_SIGNATURE_SYNC_MS = 4500;
         const REQUEST_VIEW_BACKGROUND_SIGNATURE_SYNC_MS = 5500;
+        const REQUEST_COMPLETION_EMAIL_QUEUE_STORAGE_KEY = 'gnc_request_completion_email_queue_v1';
         const viewEnterRefreshAt = new Map();
         const REALTIME_STARTUP_GRACE_MS = 12000;
         const REALTIME_RECOVERY_GRACE_MS = 3200;
@@ -11514,7 +11515,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.11').trim() || 'V2026.05.11.11';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.12').trim() || 'V2026.05.11.12';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -12057,11 +12058,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         window.addEventListener('pageshow', () => {
             ensureLoginInteractionHealth();
             maybeForceLatestStandaloneShell('pageshow', { forceManifest: true }).catch(() => {});
+            if (currentUser) flushPendingRequestCompletionEmails().catch(() => {});
         });
         window.addEventListener('online', () => {
             maybeForceLatestStandaloneShell('online', { forceManifest: true }).catch(() => {});
             if (currentUser) {
                 flushPendingRequestArchives().catch(() => {});
+                flushPendingRequestCompletionEmails({ force: true }).catch(() => {});
                 schedulePendingRequestArchiveFlush(2800);
                 queueForegroundRefresh(80);
                 syncRequestViewLiveSync(120, { alwaysOn: true, allowHealthyRealtime: true });
@@ -12076,6 +12079,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden && currentUser) {
+                flushPendingRequestCompletionEmails().catch(() => {});
                 queueForegroundRefresh(isIOSDevice() ? 60 : 120);
                 syncRequestViewLiveSync(120, { alwaysOn: true, allowHealthyRealtime: true });
             } else {
@@ -18810,6 +18814,7 @@ function toggleDriveQuickRequestItem(domId) {
                         installPushEnrollmentListeners();
                         scheduleCellularPushEnrollment('login', cacheAvailable ? 650 : 1400);
                     }
+                    flushPendingRequestCompletionEmails().catch(() => {});
                     ensureChatBackgroundSync('login', cacheAvailable ? 1200 : 1800);
                 };
                 if (expectsLocalWarm) {
@@ -24673,6 +24678,203 @@ function toggleDriveQuickRequestItem(domId) {
             });
         }
 
+        async function fetchFormattedActiveRequestRowById(requestId = '') {
+            const id = String(requestId || '').trim();
+            if (!id || navigator.onLine === false) return null;
+            const rows = await fetchSupabasePage('v2_active_request', `select=*&unique_id=eq.${encodeURIComponent(id)}`, 1, 0);
+            const formattedRows = formatFetchedRows(rows || [], 'v2_active_request');
+            return formattedRows[0] || null;
+        }
+
+        async function fetchFormattedActiveRequestFolderRows(folderId = '') {
+            const safeFolderId = String(folderId || '').trim();
+            if (!safeFolderId || navigator.onLine === false) return [];
+            const rows = await fetchAllSupabaseRows('v2_active_request', `select=*&request_folder=eq.${encodeURIComponent(safeFolderId)}&order=unique_id.desc`);
+            return formatFetchedRows(rows || [], 'v2_active_request');
+        }
+
+        function mergeFormattedRequestRowsIntoLocal(rows = [], reason = 'request-remote-merge') {
+            const formattedRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
+            if (!formattedRows.length) return false;
+            let changed = false;
+            formattedRows.forEach((row) => {
+                changed = upsertRealtimeRow(requestsInventory, row, 'v2_active_request') || changed;
+            });
+            if (!changed) return false;
+            rebuildRequestInventoryIndexes();
+            requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+            refreshLocalRequestViewState(reason, {
+                forceRender: true,
+                preferImmediate: true,
+                userAction: true,
+                typingDelay: REQUEST_REALTIME_UI_DELAY_MS
+            });
+            return true;
+        }
+
+        function getRequestCompletionEmailQueue() {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(REQUEST_COMPLETION_EMAIL_QUEUE_STORAGE_KEY) || '[]');
+                return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+            } catch (error) {
+                return [];
+            }
+        }
+
+        function setRequestCompletionEmailQueue(entries = []) {
+            const safeEntries = Array.isArray(entries) ? entries.filter(Boolean) : [];
+            try {
+                if (safeEntries.length) localStorage.setItem(REQUEST_COMPLETION_EMAIL_QUEUE_STORAGE_KEY, JSON.stringify(safeEntries));
+                else localStorage.removeItem(REQUEST_COMPLETION_EMAIL_QUEUE_STORAGE_KEY);
+            } catch (error) {}
+        }
+
+        function normalizeRequestCompletionEmailQueueEntry(entry = {}) {
+            const source = entry && typeof entry === 'object' ? entry : {};
+            const folderId = String(firstNonEmptyValue(source.folderId, source.requestFolder, source.folder, '') || '').trim();
+            if (!folderId) return null;
+            return {
+                folderId,
+                repName: String(firstNonEmptyValue(source.repName, source.requestedBy, '') || '').trim(),
+                customer: String(firstNonEmptyValue(source.customer, source.requestCustomer, '') || '').trim(),
+                attempts: Math.max(0, Number(source.attempts) || 0),
+                nextAttemptAt: Math.max(0, Number(source.nextAttemptAt) || 0),
+                queuedAt: Math.max(0, Number(source.queuedAt) || Date.now()),
+                lastError: String(firstNonEmptyValue(source.lastError, '') || '').trim()
+            };
+        }
+
+        function queueRequestCompletionEmailRetry(entry = {}, error = null) {
+            const normalized = normalizeRequestCompletionEmailQueueEntry(entry);
+            if (!normalized) return false;
+            const attempts = Math.max(1, normalized.attempts + 1);
+            const retryDelay = Math.min(10 * 60 * 1000, Math.max(30000, attempts * attempts * 15000));
+            normalized.attempts = attempts;
+            normalized.nextAttemptAt = Date.now() + retryDelay;
+            normalized.lastError = error && error.message ? error.message : String(error || normalized.lastError || 'send-failed');
+            const queue = getRequestCompletionEmailQueue().filter((item) => {
+                const queued = normalizeRequestCompletionEmailQueueEntry(item);
+                return queued && queued.folderId !== normalized.folderId;
+            });
+            queue.push(normalized);
+            setRequestCompletionEmailQueue(queue);
+            return true;
+        }
+
+        function clearQueuedRequestCompletionEmail(folderId = '') {
+            const safeFolderId = String(folderId || '').trim();
+            if (!safeFolderId) return false;
+            const nextQueue = getRequestCompletionEmailQueue().filter((item) => {
+                const queued = normalizeRequestCompletionEmailQueueEntry(item);
+                return queued && queued.folderId !== safeFolderId;
+            });
+            setRequestCompletionEmailQueue(nextQueue);
+            return true;
+        }
+
+        async function hasRequestCompletionEmailAlreadySent(folderId = '') {
+            const safeFolderId = String(folderId || '').trim();
+            if (!safeFolderId) return false;
+            const threadRecord = await getRequestEmailThreadRecord(safeFolderId).catch(() => null);
+            if (!threadRecord) return false;
+            const status = String(firstNonEmptyValue(threadRecord.status, '') || '').trim().toLowerCase();
+            const lastReply = String(firstNonEmptyValue(threadRecord.last_reply_sent_at, '') || '').trim();
+            return status === 'completed' || !!lastReply;
+        }
+
+        function buildRequestCompletionEmailEntryFromItem(item = null) {
+            if (!item) return null;
+            const folderId = String(firstNonEmptyValue(item.REQUEST_FOLDER, item.request_folder, '') || '').trim();
+            if (!folderId) return null;
+            return {
+                folderId,
+                repName: String(firstNonEmptyValue(item.REQUESTED_BY, item.requested_by, selectedReqRepView, '') || '').trim(),
+                customer: String(firstNonEmptyValue(item.REQ_CUSTOMER, item.req_customer, getRequestDisplayCustomer(item), '') || '').trim(),
+                attempts: 0,
+                nextAttemptAt: 0,
+                queuedAt: Date.now()
+            };
+        }
+
+        async function deliverRequestCompletionEmail(entryOrItem = null, options = {}) {
+            const safeOptions = options && typeof options === 'object' ? options : {};
+            const entry = normalizeRequestCompletionEmailQueueEntry(entryOrItem) || buildRequestCompletionEmailEntryFromItem(entryOrItem);
+            if (!entry || !entry.folderId) return { ok: false, skipped: 'missing-folder' };
+            let folderRows = [];
+            try {
+                folderRows = await fetchFormattedActiveRequestFolderRows(entry.folderId);
+            } catch (error) {
+                if (safeOptions.queueOnFailure !== false) queueRequestCompletionEmailRetry(entry, error);
+                return { ok: false, error };
+            }
+            if (folderRows.length) mergeFormattedRequestRowsIntoLocal(folderRows, 'request-completion-email-folder-sync');
+            const activeRows = (folderRows.length ? folderRows : getActiveRequestFolderItems(entry.folderId)).filter((item) => {
+                const archivedRaw = firstNonEmptyValue(item && item.REQ_ARCHIVED, item && item.req_archived, false);
+                return !(archivedRaw === true || archivedRaw === 1 || archivedRaw === '1' || String(archivedRaw || '').trim().toLowerCase() === 'true');
+            });
+            if (!activeRows.length) {
+                clearQueuedRequestCompletionEmail(entry.folderId);
+                return { ok: true, skipped: 'empty-folder' };
+            }
+            if (!activeRows.every((item) => isRequestComplete(item))) {
+                return { ok: true, skipped: 'folder-not-complete' };
+            }
+            if (!safeOptions.force && await hasRequestCompletionEmailAlreadySent(entry.folderId)) {
+                clearQueuedRequestCompletionEmail(entry.folderId);
+                return { ok: true, skipped: 'already-sent' };
+            }
+            const lead = activeRows[0] || {};
+            const repName = String(firstNonEmptyValue(entry.repName, lead.REQUESTED_BY, lead.requested_by, '') || '').trim();
+            const customer = String(firstNonEmptyValue(entry.customer, lead.REQ_CUSTOMER, lead.req_customer, '') || '').trim();
+            const folderNote = getRequestFolderNote(entry.folderId, 'Complete', repName || selectedReqRepView);
+            const result = await sendEmailNotification('request_complete', entry.folderId, repName, customer, activeRows.length, {
+                items: activeRows,
+                folderNote
+            }, {
+                suppressFailureToast: true
+            });
+            if (result && result.ok === true) {
+                clearQueuedRequestCompletionEmail(entry.folderId);
+                sendPushNotification('request_complete', entry.folderId, repName, customer, activeRows.length);
+                return { ok: true, result };
+            }
+            const error = result && result.error ? result.error : new Error('Completion email send failed');
+            if (safeOptions.queueOnFailure !== false) queueRequestCompletionEmailRetry(entry, error);
+            if (!safeOptions.silent) showToast('Email Warning', 'Completion email could not be sent yet. It will retry automatically.', true);
+            return { ok: false, error, result };
+        }
+
+        function scheduleRequestCompletionEmailDelivery(entryOrItem = null, options = {}) {
+            const safeOptions = options && typeof options === 'object' ? options : {};
+            const entry = normalizeRequestCompletionEmailQueueEntry(entryOrItem) || buildRequestCompletionEmailEntryFromItem(entryOrItem);
+            if (!entry) return false;
+            const delay = Math.max(0, Number(safeOptions.delay) || 0);
+            scheduleUiRender(`request-complete-email:${entry.folderId}`, () => {
+                deliverRequestCompletionEmail(entry, safeOptions).catch((error) => {
+                    if (safeOptions.queueOnFailure !== false) queueRequestCompletionEmailRetry(entry, error);
+                });
+            }, delay);
+            return true;
+        }
+
+        async function flushPendingRequestCompletionEmails(options = {}) {
+            if (!currentUser || navigator.onLine === false) return false;
+            const safeOptions = options && typeof options === 'object' ? options : {};
+            const now = Date.now();
+            const queue = getRequestCompletionEmailQueue();
+            if (!queue.length) return false;
+            let didWork = false;
+            for (const rawEntry of queue) {
+                const entry = normalizeRequestCompletionEmailQueueEntry(rawEntry);
+                if (!entry || (entry.nextAttemptAt && entry.nextAttemptAt > now && safeOptions.force !== true)) continue;
+                didWork = true;
+                await deliverRequestCompletionEmail(entry, { silent: true, queueOnFailure: true }).catch((error) => {
+                    queueRequestCompletionEmailRetry(entry, error);
+                });
+            }
+            return didWork;
+        }
+
         function isAutoCompleteRequestSubmissionEligible(savedRequestIds = [], autoCompleteSavedIds = [], folderId = '') {
             const normalizedSavedIds = normalizeRequestIdList(savedRequestIds);
             if (!normalizedSavedIds.length) return false;
@@ -24701,12 +24903,18 @@ function toggleDriveQuickRequestItem(domId) {
                 });
                 if (!delayedReplyResult || delayedReplyResult.ok !== false) {
                     sendPushNotification('request_complete', folderId, repName, customer, completionItemsCount);
+                } else {
+                    queueRequestCompletionEmailRetry({ folderId, repName, customer }, delayedReplyResult.error || 'auto-complete-email-failed');
                 }
             }
             return { summaryEmailResult, delayedReplyResult };
         }
 
         function notifyRequestEvent(type, folderId, repName, customer, itemsCount, details = null) {
+            if (String(type || '').trim().toLowerCase() === 'request_complete') {
+                scheduleRequestCompletionEmailDelivery({ folderId, repName, customer }, { delay: 0, queueOnFailure: true });
+                return;
+            }
             sendEmailNotification(type, folderId, repName, customer, itemsCount, details);
             sendPushNotification(type, folderId, repName, customer, itemsCount);
         }
@@ -35366,6 +35574,23 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 skipStickySync: isTouchConstrainedDevice()
             });
             scheduleDeferredDetailHydration(currentDetailHydrationToken, isTouchConstrainedDevice() ? 128 : Math.max(20, DETAIL_HYDRATION_DELAY_MS - 10));
+            if (resolvedSourceView === 'request' && !isRequestComplete(nextItem)) {
+                const requestUid = String(firstNonEmptyValue(nextItem.UNIQUE_ID, nextItem.unique_id, '') || '').trim();
+                scheduleUiRender(`request-open-status-check:${requestUid}`, async () => {
+                    if (!requestUid || !activeItem || String(firstNonEmptyValue(activeItem.UNIQUE_ID, activeItem.unique_id, '') || '').trim() !== requestUid) return;
+                    const remoteRow = await fetchFormattedActiveRequestRowById(requestUid).catch(() => null);
+                    if (!remoteRow) return;
+                    mergeFormattedRequestRowsIntoLocal([remoteRow], 'request-open-status-check');
+                    if (!hasRequestCompletionState(remoteRow)) return;
+                    if (activeItem && String(firstNonEmptyValue(activeItem.UNIQUE_ID, activeItem.unique_id, '') || '').trim() === requestUid) {
+                        Object.assign(activeItem, remoteRow);
+                        normalizeRowPhotoFields(activeItem);
+                        buildSearchIndex(activeItem);
+                        showToast('Already Complete', 'That request was completed by another user and has been removed from Pending.');
+                        if (isViewVisible('detail')) goBackFromDetail();
+                    }
+                }, 80);
+            }
             recordInternalPerfDuration('detailOpenDurations', detailOpenStartedAt, resolvedSourceView || 'detail');
             return false;
         }
@@ -37306,7 +37531,8 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 if (!safeOptions.once) syncRequestViewLiveSync(pauseDelay + 120, safeOptions);
                 return false;
             }
-            if (shouldDeferInteractiveBackgroundWork()) {
+            const allowInteractiveRequestSync = safeOptions.allowWhileInteractive === true || isViewVisible('request') || (isViewVisible('detail') && lastView === 'request');
+            if (!allowInteractiveRequestSync && shouldDeferInteractiveBackgroundWork()) {
                 if (!safeOptions.once) syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS, safeOptions);
                 return false;
             }
@@ -37317,14 +37543,14 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             requestViewLiveSyncInFlight = true;
             try {
                 const signatureRows = await fetchAllSupabaseRows('v2_active_request', 'select=unique_id,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,date_completed,req_match,req_spec,req_caliper,req_pic_note,req_comments,av_note,req_photo_link,req_photo_name&order=unique_id.desc');
-                if (shouldDeferInteractiveBackgroundWork()) {
+                if (!allowInteractiveRequestSync && shouldDeferInteractiveBackgroundWork()) {
                     if (!safeOptions.once) syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS, safeOptions);
                     return false;
                 }
                 const nextSignature = buildRequestLiveSyncSignature(signatureRows);
                 if (nextSignature === requestViewLiveSyncSignature) return true;
                 const rows = await fetchAllSupabaseRows('v2_active_request', 'select=*&order=unique_id.desc');
-                if (shouldDeferInteractiveBackgroundWork()) {
+                if (!allowInteractiveRequestSync && shouldDeferInteractiveBackgroundWork()) {
                     if (!safeOptions.once) syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS, safeOptions);
                     return false;
                 }
@@ -47489,6 +47715,21 @@ ${folderNote ? `Folder Note: ${folderNote}
                     return;
                 }
 
+                if (prefix === 'req-' && isComplete) {
+                    const remoteRequestRow = await fetchFormattedActiveRequestRowById(firstNonEmptyValue(itemToSave.UNIQUE_ID, itemToSave.unique_id, ''))
+                        .catch(() => null);
+                    if (remoteRequestRow && hasRequestCompletionState(remoteRequestRow)) {
+                        Object.assign(itemToSave, remoteRequestRow);
+                        normalizeRowPhotoFields(itemToSave);
+                        buildSearchIndex(itemToSave);
+                        upsertRealtimeRow(requestsInventory, itemToSave, 'v2_active_request');
+                        refreshRealtimeDetailLookupIndexes('v2_active_request');
+                        requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+                        stopAlreadyCompletedRequestSave('That request was already completed by another user.');
+                        return;
+                    }
+                }
+
                 if (!specificItem) {
                     let avEl = document.getElementById(prefix + 'av-note');
                     if (avEl) { itemToSave.AV_NOTE = avEl.value.toUpperCase(); }
@@ -48226,13 +48467,8 @@ ${folderNote ? `Folder Note: ${folderNote}
 
                     if (prefix === 'req-' && isComplete && !wasAlreadyComplete && !saveOptions.suppressRequestCompletionEmail) {
                         deferNonCriticalWork('request-complete-email', () => {
-                            let folderItems = requestsInventory.filter(i => i.REQUEST_FOLDER === itemToSave.REQUEST_FOLDER && !i.REQ_ARCHIVED);
-                            let allComplete = folderItems.length > 0 && folderItems.every(i => isRequestComplete(i) || i.UNIQUE_ID === itemToSave.UNIQUE_ID);
-                            if (allComplete) {
-                                const folderNote = getRequestFolderNote(itemToSave.REQUEST_FOLDER, 'Complete', selectedReqRepView);
-                                notifyRequestEvent('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, folderItems.length, { items: folderItems, folderNote: folderNote });
-                            }
-                        }, 72);
+                            scheduleRequestCompletionEmailDelivery(itemToSave, { delay: 0, queueOnFailure: true });
+                        }, 24);
                     }
                     if (isComplete && !wasAlreadyComplete && !saveOptions.suppressNcrReleaseEmail && shouldOfferNcrReleaseEmailForSave(itemToSave, prefix, { requestMasterItem, completionArtifacts: artifacts })) {
                         deferNonCriticalWork('ncr-release-email', () => {
@@ -48276,34 +48512,38 @@ ${folderNote ? `Folder Note: ${folderNote}
                     pauseRequestViewLiveSync(REQUEST_LIVE_SYNC_PAUSE_AFTER_LOCAL_SAVE_MS);
                 }
 
+                const shouldWaitForRequestPersistBeforeCompletionUi = prefix === 'req-' && isComplete;
+
                 if (isComplete) {
                     completionArtifacts = buildCompletionArtifacts();
                     itemToSave.DATE_COMPLETED = payload.date_completed;
                     itemToSave.date_completed = payload.date_completed;
-                    if (canOptimisticallyCompleteQueueRow) {
+                    if (canOptimisticallyCompleteQueueRow && !shouldWaitForRequestPersistBeforeCompletionUi) {
                         trackOptimisticCompletedRows([itemToSave.UNIQUE_ID]);
                         if (prefix === 'req-') {
                             itemToSave.REQ_STATUS = 'Complete';
                             itemToSave.req_status = 'Complete';
                         }
                     }
-                    if (completionArtifacts && completionArtifacts.soPayload) applyOptimisticSalesOfficeArtifacts(completionArtifacts);
-                    if (completionArtifacts) applyOptimisticSalesOfficeDeletes(completionArtifacts);
-                    if (completionArtifacts && completionArtifacts.masterSyncPayload) applyOptimisticMasterSyncArtifacts(completionArtifacts, prefix);
-                    if (completionArtifacts) applyCompletionExtraMasterSyncPatches(completionArtifacts, prefix);
+                    if (!shouldWaitForRequestPersistBeforeCompletionUi && completionArtifacts && completionArtifacts.soPayload) applyOptimisticSalesOfficeArtifacts(completionArtifacts);
+                    if (!shouldWaitForRequestPersistBeforeCompletionUi && completionArtifacts) applyOptimisticSalesOfficeDeletes(completionArtifacts);
+                    if (!shouldWaitForRequestPersistBeforeCompletionUi && completionArtifacts && completionArtifacts.masterSyncPayload) applyOptimisticMasterSyncArtifacts(completionArtifacts, prefix);
+                    if (!shouldWaitForRequestPersistBeforeCompletionUi && completionArtifacts) applyCompletionExtraMasterSyncPatches(completionArtifacts, prefix);
                     const returningToRequestView = prefix === 'req-' && isCurrentView && detailWasVisible && lastView === 'request';
                     if (returningToRequestView) nextRequestId = getNextRequestDetailId(itemToSave.UNIQUE_ID);
                     if (canOptimisticallyCompleteQueueRow && isCurrentView && detailWasVisible && lastView === 'tasks') nextTaskId = getNextTaskDetailId(itemToSave.UNIQUE_ID);
-                    if (returningToRequestView) {
+                    if (!shouldWaitForRequestPersistBeforeCompletionUi && returningToRequestView) {
                         didPreRenderRequestReturn = true;
                         queueRequestAwareSaveRefresh(0, 'request-complete-before-return', { renderHiddenRequest: true });
                     }
-                    if (isCurrentView && detailWasVisible) {
+                    if (!shouldWaitForRequestPersistBeforeCompletionUi && isCurrentView && detailWasVisible) {
                         didOptimisticClose = true;
                         goBackFromDetail();
                         if (!didPreRenderRequestReturn) queueRequestAwareSaveRefresh(0, 'request-complete-return');
                     }
-                    if (!didOptimisticClose && isLagSensitiveDetailPrefix(prefix)) {
+                    if (shouldWaitForRequestPersistBeforeCompletionUi) {
+                        if (!isSilentAutoSave) showToast('Saving...', 'Completing request and preparing the email.', false);
+                    } else if (!didOptimisticClose && isLagSensitiveDetailPrefix(prefix)) {
                         didOptimisticRender = true;
                         queueRequestAwareSaveRefresh(canOptimisticallyCompleteQueueRow ? 0 : 24, 'request-complete-visible');
                     } else if (!didOptimisticClose) {
