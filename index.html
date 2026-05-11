@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.11.01';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -826,6 +826,10 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
     justify-content:space-between;
 }
 
+.advertisement-control-wide{
+    grid-column:1/-1;
+}
+
 .advertisement-control input,
 .advertisement-control select,
 .advertisement-search-input{
@@ -923,6 +927,245 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
     text-transform:uppercase;
 }
 
+.advertisement-folder-list{
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    padding-bottom:2px;
+    -webkit-overflow-scrolling:touch;
+}
+
+.advertisement-folder-card{
+    min-width:172px;
+    max-width:220px;
+    flex:0 0 auto;
+    border:1px solid #d1fae5;
+    border-radius:16px;
+    background:#f8fafc;
+    color:#0f172a;
+    padding:10px;
+    text-align:left;
+    box-shadow:0 8px 18px rgba(15,23,42,.05);
+}
+
+.advertisement-folder-card.active{
+    border-color:#007a4d;
+    background:#ecfdf5;
+    box-shadow:0 10px 24px rgba(0,122,77,.12);
+}
+
+.advertisement-folder-name{
+    display:block;
+    overflow:hidden;
+    color:#0f172a;
+    font-size:13px;
+    font-weight:900;
+    line-height:1.15;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+
+.advertisement-folder-meta{
+    display:block;
+    margin-top:5px;
+    color:#64748b;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+}
+
+.advertisement-folder-actions{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-top:10px;
+}
+
+.advertisement-folder-actions button{
+    min-height:34px;
+    border:1px solid #d1fae5;
+    border-radius:999px;
+    background:#fff;
+    color:#007a4d;
+    padding:0 12px;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+}
+
+.advertisement-folder-title{
+    min-width:0;
+    color:#0f172a;
+    font-size:14px;
+    font-weight:900;
+}
+
+.advertisement-flyer-rows{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+    max-height:390px;
+    margin-top:10px;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+}
+
+.advertisement-flyer-row-card{
+    border:1px solid #e2e8f0;
+    border-radius:16px;
+    background:#fff;
+    padding:10px;
+    box-shadow:0 8px 18px rgba(15,23,42,.05);
+}
+
+.advertisement-flyer-row-title{
+    color:#0f172a;
+    font-size:13px;
+    font-weight:900;
+    line-height:1.2;
+}
+
+.advertisement-flyer-row-meta{
+    margin-top:4px;
+    color:#64748b;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+}
+
+.advertisement-photo-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+    margin-top:10px;
+}
+
+.advertisement-photo-card{
+    position:relative;
+    display:flex;
+    min-height:128px;
+    flex-direction:column;
+    justify-content:space-between;
+    overflow:hidden;
+    border:1px solid #d1fae5;
+    border-radius:14px;
+    background:#f8fafc;
+}
+
+.advertisement-photo-card img{
+    width:100%;
+    aspect-ratio:1/1;
+    object-fit:cover;
+    background:#e5e7eb;
+}
+
+.advertisement-photo-card label{
+    position:absolute;
+    top:8px;
+    left:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:28px;
+    height:28px;
+    border-radius:999px;
+    background:rgba(255,255,255,.94);
+    box-shadow:0 8px 16px rgba(15,23,42,.12);
+}
+
+.advertisement-photo-card input{
+    width:16px;
+    height:16px;
+    accent-color:#007a4d;
+}
+
+.advertisement-photo-card button{
+    min-height:34px;
+    border:0;
+    background:#007a4d;
+    color:#fff;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+}
+
+.advertisement-recipient-list{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+    max-height:320px;
+    margin-top:10px;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+}
+
+.advertisement-recipient-group{
+    border:1px solid #d1fae5;
+    border-radius:16px;
+    background:#ecfdf5;
+    padding:10px;
+}
+
+.advertisement-recipient-group-title{
+    color:#047857;
+    font-size:12px;
+    font-weight:900;
+}
+
+.advertisement-recipient-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:7px;
+    margin-top:8px;
+}
+
+.advertisement-recipient-card{
+    display:flex;
+    min-height:40px;
+    align-items:center;
+    gap:9px;
+    border:1px solid #e2e8f0;
+    border-radius:12px;
+    background:#fff;
+    padding:8px 9px;
+    color:#0f172a;
+    font-size:12px;
+    font-weight:900;
+}
+
+.advertisement-recipient-card input{
+    width:18px;
+    height:18px;
+    flex:0 0 auto;
+    accent-color:#007a4d;
+}
+
+.advertisement-email-message{
+    min-height:82px;
+    width:100%;
+    border:1px solid #d1fae5;
+    border-radius:14px;
+    background:#f8fafc;
+    color:#0f172a;
+    padding:10px;
+    font-size:14px;
+    font-weight:800;
+    resize:vertical;
+}
+
+.advertisement-email-count{
+    min-height:18px;
+    color:#64748b;
+    font-size:11px;
+    font-weight:800;
+}
+
 .advertisement-toolbar{
     position:sticky;
     bottom:calc(var(--footer-nav-reserve) + env(safe-area-inset-bottom) + 8px);
@@ -989,7 +1232,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
 
     .advertisement-canvas-stage{
         grid-column:1;
-        grid-row:3/span 4;
+        grid-row:3/span 6;
     }
 }
         input,textarea,select{-webkit-user-select:text;user-select:text}
@@ -1466,7 +1709,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.01').trim() || 'V2026.05.11.01';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.02').trim() || 'V2026.05.11.02';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1895,6 +2138,20 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             </div>
                         </div>
 
+                        <div id="advertisement-flyer-panel" class="advertisement-panel">
+                            <div class="advertisement-panel-title">Flyer Folders</div>
+                            <div id="advertisement-flyer-folders" class="advertisement-folder-list"></div>
+                            <div id="advertisement-flyer-folder-actions" class="advertisement-folder-actions hidden">
+                                <div id="advertisement-flyer-folder-title" class="advertisement-folder-title"></div>
+                                <div class="flex flex-wrap gap-2">
+                                    <button type="button" onclick="return setAdvertisementFlyerPhotoSelection(true)">Select All</button>
+                                    <button type="button" onclick="return setAdvertisementFlyerPhotoSelection(false)">Clear</button>
+                                    <button type="button" onclick="return addAdvertisementSelectedFlyerPhotos()">Add Selected</button>
+                                </div>
+                            </div>
+                            <div id="advertisement-flyer-rows" class="advertisement-flyer-rows"></div>
+                        </div>
+
                         <div id="advertisement-plant-picker" class="advertisement-panel hidden">
                             <div class="advertisement-panel-title">Plant Image</div>
                             <div class="advertisement-picker-actions">
@@ -1921,9 +2178,33 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             </div>
                         </div>
 
+                        <div id="advertisement-email-panel" class="advertisement-panel">
+                            <div class="advertisement-panel-title">Email Advertisement</div>
+                            <div class="advertisement-control-grid">
+                                <label class="advertisement-control">
+                                    <span>Rep Group</span>
+                                    <select id="advertisement-recipient-preset" onchange="return applyAdvertisementRecipientPreset(this.value)">
+                                        <option value="">Choose Group</option>
+                                        <option value="OK">OK Reps</option>
+                                        <option value="NC">NC Reps</option>
+                                        <option value="TX">TX Reps</option>
+                                        <option value="ALL">All Reps</option>
+                                    </select>
+                                </label>
+                                <label class="advertisement-control advertisement-control-wide">
+                                    <span>Note</span>
+                                    <textarea id="advertisement-email-message" class="advertisement-email-message" placeholder="Add email note..."></textarea>
+                                </label>
+                            </div>
+                            <div id="advertisement-recipient-list" class="advertisement-recipient-list"></div>
+                            <div id="advertisement-email-count" class="advertisement-email-count mt-3"></div>
+                            <button type="button" id="advertisement-email-send-btn" class="advertisement-primary-btn mt-3 w-full" onclick="return sendAdvertisementEmail()"><i class="ph-bold ph-envelope-simple"></i><span>Send Advertisement</span></button>
+                        </div>
+
                         <div class="advertisement-toolbar" aria-label="Advertisement editor toolbar">
                             <button type="button" onclick="return addAdvertisementText()"><i class="ph-bold ph-text-aa"></i><span>Text</span></button>
                             <button type="button" onclick="return toggleAdvertisementPlantPicker()"><i class="ph-bold ph-flower"></i><span>Plant</span></button>
+                            <button type="button" onclick="return focusAdvertisementFlyerPanel()"><i class="ph-bold ph-folder-open"></i><span>Flyer</span></button>
                             <button type="button" onclick="return addAdvertisementShape('rect')"><i class="ph-bold ph-rectangle"></i><span>Banner</span></button>
                             <button type="button" onclick="return addAdvertisementShape('circle')"><i class="ph-bold ph-circle"></i><span>Badge</span></button>
                             <button type="button" onclick="return addAdvertisementShape('tag')"><i class="ph-bold ph-tag"></i><span>Tag</span></button>
@@ -1932,6 +2213,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <button type="button" onclick="return deleteAdvertisementSelection()"><i class="ph-bold ph-trash"></i><span>Delete</span></button>
                             <button type="button" onclick="return undoAdvertisementDesign()"><i class="ph-bold ph-arrow-counter-clockwise"></i><span>Undo</span></button>
                             <button type="button" onclick="return redoAdvertisementDesign()"><i class="ph-bold ph-arrow-clockwise"></i><span>Redo</span></button>
+                            <button type="button" onclick="return focusAdvertisementEmailPanel()"><i class="ph-bold ph-envelope-simple"></i><span>Email</span></button>
                             <button type="button" class="advertisement-toolbar-export" onclick="return exportAdvertisementDesign()"><i class="ph-bold ph-download-simple"></i><span>Export</span></button>
                         </div>
                     </div>
@@ -2209,7 +2491,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6732,7 +7014,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (tableName === 'v2_master_inventory') {
                 invalidateResolvedViewStateCaches();
                 refreshActiveMasterDetailFromRealtimeRow(nextRow || oldRow, eventType);
-                ['drive','tasks','av','review','move-up','low-stock','moves','reports'].forEach((viewId) => markViewDirty(viewId));
+                ['drive','tasks','av','review','move-up','advertisement','low-stock','moves','reports'].forEach((viewId) => markViewDirty(viewId));
                 if (!shouldDeferInteractiveBackgroundWork()) {
                     if (isViewVisible('drive')) queueInteractiveViewRender('drive', false, false, 0, 120);
                     if (isViewVisible('tasks')) queueInteractiveViewRender('tasks', false, false, 0, 140);
@@ -6751,7 +7033,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             } else if (tableName === FLYER_FOLDER_ROWS_TABLE) {
                 invalidateResolvedViewStateCaches();
                 markViewDirty('tasks');
+                markViewDirty('advertisement');
                 scheduleTasksRender(48);
+                if (isViewVisible('advertisement')) {
+                    renderAdvertisementFlyerFolders();
+                }
             }
             if (!deferVisualSync) flushRealtimeDatasetUpdates([tableName]);
             recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'unknown');
@@ -11054,7 +11340,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.01').trim() || 'V2026.05.11.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.02').trim() || 'V2026.05.11.02';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -12656,7 +12942,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (viewId === 'low-stock') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading NCR...' };
             if (viewId === 'review') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading review rows...' };
             if (viewId === 'move-up') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading Move Up rows...' };
-            if (viewId === 'advertisement') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading advertisement assets...' };
+            if (viewId === 'advertisement') return { required: [{ key: 'master', mode: 'initial' }, { key: 'flyerRows', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }, { key: 'flyerRows', mode: 'full' }], label: 'Loading advertisement assets...' };
             if (viewId === 'reports') return { required: [{ key: 'master', mode: 'initial' }, { key: 'requests', mode: 'initial' }, { key: 'reserves', mode: 'initial' }, { key: 'soc', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }, { key: 'requests', mode: 'full' }, { key: 'reserves', mode: 'full' }, { key: 'soc', mode: 'full' }], label: 'Loading reports...' };
             return null;
         }
@@ -44435,6 +44721,9 @@ ${folderNote ? `Folder Note: ${folderNote}
         let advertisementTouchPointers = new Map();
         let advertisementGestureState = null;
         let advertisementExportInFlight = false;
+        let advertisementSelectedFlyerFolder = '';
+        let advertisementSelectedFlyerPhotoKeys = new Set();
+        let advertisementEmailSendInFlight = false;
 
         function getAdvertisementTitle() {
             const input = document.getElementById('advertisement-title');
@@ -44808,6 +45097,194 @@ ${folderNote ? `Folder Note: ${folderNote}
             }).join('');
         }
 
+        function focusAdvertisementFlyerPanel() {
+            const panel = document.getElementById('advertisement-flyer-panel');
+            if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return false;
+        }
+
+        function focusAdvertisementEmailPanel() {
+            const panel = document.getElementById('advertisement-email-panel');
+            if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return false;
+        }
+
+        function getAdvertisementActiveFlyerFolders() {
+            const folders = new Map();
+            getAllFlyerTaskItems()
+                .filter((item) => item && isFlyerTaskItem(item) && !isFlyerFolderArchived(item))
+                .forEach((item) => {
+                    const folderName = getFlyerFolderName(item);
+                    if (!folderName) return;
+                    const entry = folders.get(folderName) || {
+                        folderName,
+                        items: [],
+                        assignees: new Set(),
+                        completed: 0,
+                        photoCount: 0
+                    };
+                    entry.items.push(item);
+                    if (String(firstNonEmptyValue(item.DATE_COMPLETED, item.FLYER_COMPLETED, '') || '').trim()) entry.completed += 1;
+                    getFlyerAssigneeList(firstNonEmptyValue(item.FLYER_ASSIGNED, item.ASSIGNEDTO, '')).forEach((name) => entry.assignees.add(name));
+                    entry.photoCount += getAdvertisementFlyerRowPhotoEntries(item).length;
+                    folders.set(folderName, entry);
+                });
+            return Array.from(folders.values()).map((folder) => {
+                folder.items = sortFlyerFolderTaskItems(folder.items);
+                folder.assigneeLabel = Array.from(folder.assignees).join(', ') || 'Unassigned';
+                return folder;
+            }).sort((a, b) => String(a.folderName || '').localeCompare(String(b.folderName || ''), undefined, { numeric: true, sensitivity: 'base' }));
+        }
+
+        function getAdvertisementSelectedFlyerFolderRows() {
+            const selectedFolder = getFlyerFolderName(advertisementSelectedFlyerFolder);
+            if (!selectedFolder) return [];
+            const folder = getAdvertisementActiveFlyerFolders().find((entry) => entry.folderName === selectedFolder);
+            return folder ? folder.items : [];
+        }
+
+        function getAdvertisementFlyerRowPhotoEntries(row = null) {
+            if (!row) return [];
+            const linkedRow = findLinkedMasterRow(row) || row;
+            const rowId = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, row.DOM_ID, '') || '').trim();
+            const photoCsv = mergePhotoCsvList([
+                getFlyerVisiblePhotoLinkCsv(row, { includePending: false }),
+                getRowPhotoLink(row, 'flyer'),
+                getSharedAppPhotoLinkCsv(linkedRow, { includePending: false })
+            ]);
+            const seen = new Set();
+            return parsePhotoCsvValues(photoCsv).filter((url) => {
+                const safeUrl = String(url || '').trim();
+                if (!/^https?:\/\//i.test(safeUrl) || seen.has(safeUrl)) return false;
+                seen.add(safeUrl);
+                return true;
+            }).map((url, index) => ({
+                key: `${rowId || 'row'}::${index}::${url}`,
+                rowId,
+                row,
+                url,
+                index
+            }));
+        }
+
+        function getAdvertisementCurrentFlyerPhotoEntries() {
+            return getAdvertisementSelectedFlyerFolderRows().flatMap((row) => getAdvertisementFlyerRowPhotoEntries(row));
+        }
+
+        function renderAdvertisementFlyerFolders() {
+            const folderContainer = document.getElementById('advertisement-flyer-folders');
+            const rowsContainer = document.getElementById('advertisement-flyer-rows');
+            const actionBar = document.getElementById('advertisement-flyer-folder-actions');
+            const titleEl = document.getElementById('advertisement-flyer-folder-title');
+            if (!folderContainer || !rowsContainer) return;
+            const folders = getAdvertisementActiveFlyerFolders();
+            const selectedStillExists = folders.some((folder) => folder.folderName === advertisementSelectedFlyerFolder);
+            if (!selectedStillExists) {
+                advertisementSelectedFlyerFolder = '';
+                advertisementSelectedFlyerPhotoKeys = new Set();
+            }
+            if (!folders.length) {
+                folderContainer.innerHTML = `<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-xs font-bold text-slate-400">No active flyer folders.</div>`;
+                rowsContainer.innerHTML = '';
+                if (actionBar) actionBar.classList.add('hidden');
+                if (titleEl) titleEl.innerText = '';
+                syncAdvertisementEmailSendButton();
+                return;
+            }
+            folderContainer.innerHTML = folders.map((folder) => {
+                const activeClass = folder.folderName === advertisementSelectedFlyerFolder ? ' active' : '';
+                return `<button type="button" class="advertisement-folder-card${activeClass}" data-ad-folder="${escapeHtml(folder.folderName)}" onclick="return selectAdvertisementFlyerFolder(this.getAttribute('data-ad-folder'))"><span class="advertisement-folder-name">${escapeHtml(folder.folderName)}</span><span class="advertisement-folder-meta">${folder.items.length} rows / ${folder.photoCount} photos</span><span class="advertisement-folder-meta">${escapeHtml(folder.assigneeLabel)}</span></button>`;
+            }).join('');
+            if (!advertisementSelectedFlyerFolder) {
+                rowsContainer.innerHTML = `<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-xs font-bold text-slate-400">No flyer folder selected.</div>`;
+                if (actionBar) actionBar.classList.add('hidden');
+                if (titleEl) titleEl.innerText = '';
+                syncAdvertisementEmailSendButton();
+                return;
+            }
+            const folderRows = getAdvertisementSelectedFlyerFolderRows();
+            const allPhotoEntries = getAdvertisementCurrentFlyerPhotoEntries();
+            const validPhotoKeys = new Set(allPhotoEntries.map((entry) => entry.key));
+            advertisementSelectedFlyerPhotoKeys = new Set(Array.from(advertisementSelectedFlyerPhotoKeys).filter((key) => validPhotoKeys.has(key)));
+            if (actionBar) actionBar.classList.remove('hidden');
+            if (titleEl) titleEl.innerText = `${advertisementSelectedFlyerFolder} / ${advertisementSelectedFlyerPhotoKeys.size} selected`;
+            if (!folderRows.length) {
+                rowsContainer.innerHTML = `<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-xs font-bold text-slate-400">No rows in this folder.</div>`;
+                syncAdvertisementEmailSendButton();
+                return;
+            }
+            rowsContainer.innerHTML = folderRows.map((row) => {
+                const rowName = escapeHtml(firstNonEmptyValue(row.COMMONNAME, row.DESCRIPTION, 'Plant'));
+                const itemCode = escapeHtml(firstNonEmptyValue(row.ITEMCODE, '-'));
+                const contSize = escapeHtml(firstNonEmptyValue(row.CONTSIZE, '-'));
+                const loc = escapeHtml(firstNonEmptyValue(row.LOCATIONCODE, 'No Loc'));
+                const lot = escapeHtml(firstNonEmptyValue(row.LOTCODE, ''));
+                const photos = getAdvertisementFlyerRowPhotoEntries(row);
+                const photosHtml = photos.length ? photos.map((photo) => {
+                    const checked = advertisementSelectedFlyerPhotoKeys.has(photo.key) ? 'checked' : '';
+                    const thumbUrl = escapeHtml(getDirectImageUrl(photo.url, 'gallery-tile') || photo.url);
+                    const safeKey = escapeHtml(photo.key);
+                    return `<div class="advertisement-photo-card"><label><input type="checkbox" ${checked} data-ad-photo-key="${safeKey}" onchange="return toggleAdvertisementFlyerPhoto(this.getAttribute('data-ad-photo-key'), this.checked)"></label><img src="${thumbUrl}" alt="" loading="lazy" decoding="async"><button type="button" data-ad-photo-key="${safeKey}" onclick="event.stopPropagation(); return addAdvertisementFlyerPhoto(this.getAttribute('data-ad-photo-key'))">Add</button></div>`;
+                }).join('') : `<div class="rounded-xl border border-dashed border-amber-200 bg-amber-50 px-3 py-4 text-center text-[11px] font-bold text-amber-700">No photos on this row.</div>`;
+                return `<div class="advertisement-flyer-row-card"><div class="advertisement-flyer-row-title">${rowName}</div><div class="advertisement-flyer-row-meta">${itemCode} / ${contSize} / ${loc}${lot ? ` / ${lot}` : ''}</div><div class="advertisement-photo-grid">${photosHtml}</div></div>`;
+            }).join('');
+            syncAdvertisementEmailSendButton();
+        }
+
+        function selectAdvertisementFlyerFolder(folderName = '') {
+            advertisementSelectedFlyerFolder = getFlyerFolderName(folderName);
+            advertisementSelectedFlyerPhotoKeys = new Set();
+            if (advertisementSelectedFlyerFolder) updateAdvertisementTitle(advertisementSelectedFlyerFolder);
+            renderAdvertisementFlyerFolders();
+            return false;
+        }
+
+        function toggleAdvertisementFlyerPhoto(photoKey = '', selected = true) {
+            const safeKey = String(photoKey || '').trim();
+            if (!safeKey) return false;
+            if (selected) advertisementSelectedFlyerPhotoKeys.add(safeKey);
+            else advertisementSelectedFlyerPhotoKeys.delete(safeKey);
+            renderAdvertisementFlyerFolders();
+            return false;
+        }
+
+        function setAdvertisementFlyerPhotoSelection(selected = true) {
+            const entries = getAdvertisementCurrentFlyerPhotoEntries();
+            advertisementSelectedFlyerPhotoKeys = selected ? new Set(entries.map((entry) => entry.key)) : new Set();
+            renderAdvertisementFlyerFolders();
+            return false;
+        }
+
+        function getAdvertisementFlyerPhotoEntryByKey(photoKey = '') {
+            const safeKey = String(photoKey || '').trim();
+            if (!safeKey) return null;
+            return getAdvertisementCurrentFlyerPhotoEntries().find((entry) => entry.key === safeKey) || null;
+        }
+
+        async function addAdvertisementFlyerPhoto(photoKey = '') {
+            const entry = getAdvertisementFlyerPhotoEntryByKey(photoKey);
+            if (!entry) {
+                showToast('Photo Missing', 'That flyer photo is no longer available.', true);
+                return false;
+            }
+            await addAdvertisementImageFromUrl(entry.url, entry.rowId);
+            return false;
+        }
+
+        async function addAdvertisementSelectedFlyerPhotos() {
+            const entries = getAdvertisementCurrentFlyerPhotoEntries().filter((entry) => advertisementSelectedFlyerPhotoKeys.has(entry.key));
+            if (!entries.length) {
+                showToast('Select Photos', 'Choose one or more flyer photos.', true);
+                return false;
+            }
+            setAdvertisementStatus(`Adding ${entries.length} flyer photo${entries.length === 1 ? '' : 's'}...`, false);
+            for (const entry of entries) {
+                await addAdvertisementImageFromUrl(entry.url, entry.rowId);
+            }
+            setAdvertisementStatus('');
+            return false;
+        }
+
         async function loadAdvertisementFabricImage(sourceUrl = '') {
             const safeUrl = String(sourceUrl || '').trim();
             if (!safeUrl) throw new Error('Image URL is missing.');
@@ -45070,6 +45547,22 @@ ${folderNote ? `Folder Note: ${folderNote}
             return `${cleanTitle}-${date}.${format}`;
         }
 
+        function createAdvertisementExportBlob(format = 'png') {
+            if (!advertisementCanvas) throw new Error('Advertisement canvas is not ready.');
+            advertisementCanvas.discardActiveObject();
+            advertisementCanvas.requestRenderAll();
+            const safeFormat = String(format || 'png').toLowerCase() === 'jpeg' ? 'jpeg' : 'png';
+            const dataUrl = advertisementCanvas.toDataURL({
+                format: safeFormat,
+                quality: 0.96,
+                multiplier: 1,
+                enableRetinaScaling: false
+            });
+            const blob = advertisementDataUrlToBlob(dataUrl);
+            const fileName = buildAdvertisementExportFileName(safeFormat === 'jpeg' ? 'jpg' : 'png');
+            return { blob, dataUrl, fileName, format: safeFormat };
+        }
+
         async function deliverAdvertisementExport(blob, fileName = 'greenleaf-ad.png') {
             const file = new File([blob], fileName, { type: blob.type || 'image/png' });
             if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
@@ -45116,6 +45609,172 @@ ${folderNote ? `Folder Note: ${folderNote}
             return publicUrl;
         }
 
+        function buildAdvertisementRecipientHtml() {
+            return BLOOM_CROP_UPDATE_REP_GROUPS.map((group) => {
+                const repsHtml = (group.reps || []).map((name) => {
+                    const email = getBloomCropUpdateRepEmail(name);
+                    return `<label class="advertisement-recipient-card"><input type="checkbox" data-advertisement-rep="true" data-advertisement-group="${escapeHtml(group.key)}" data-rep-name="${escapeHtml(name)}" data-rep-email="${escapeHtml(email)}" onchange="syncAdvertisementEmailSendButton()"><span class="min-w-0 flex-1">${escapeHtml(name)}</span></label>`;
+                }).join('');
+                return `<div class="advertisement-recipient-group"><div class="advertisement-recipient-group-title">${escapeHtml(group.label)}</div><div class="advertisement-recipient-grid">${repsHtml}</div></div>`;
+            }).join('');
+        }
+
+        function renderAdvertisementRecipientList() {
+            const container = document.getElementById('advertisement-recipient-list');
+            if (container && !container.innerHTML.trim()) container.innerHTML = buildAdvertisementRecipientHtml();
+            syncAdvertisementEmailSendButton();
+        }
+
+        function getAdvertisementSelectedReps() {
+            return Array.from(document.querySelectorAll('[data-advertisement-rep="true"]:checked')).map((input) => ({
+                name: String(input.getAttribute('data-rep-name') || '').trim(),
+                email: normalizeRequestEmailAddress(input.getAttribute('data-rep-email') || ''),
+                group: String(input.getAttribute('data-advertisement-group') || '').trim()
+            })).filter((rep) => rep.name && rep.email);
+        }
+
+        function applyAdvertisementRecipientPreset(preset = '') {
+            const safePreset = String(preset || '').trim().toUpperCase();
+            document.querySelectorAll('[data-advertisement-rep="true"]').forEach((input) => {
+                const groupKey = String(input.getAttribute('data-advertisement-group') || '').trim().toUpperCase();
+                input.checked = safePreset === 'ALL' || (!!safePreset && groupKey === safePreset);
+            });
+            syncAdvertisementEmailSendButton();
+            return false;
+        }
+
+        function syncAdvertisementEmailSendButton() {
+            const selectedReps = getAdvertisementSelectedReps();
+            const sendBtn = document.getElementById('advertisement-email-send-btn');
+            const countEl = document.getElementById('advertisement-email-count');
+            if (sendBtn) sendBtn.disabled = advertisementEmailSendInFlight || !selectedReps.length || !advertisementCanvas;
+            if (countEl) {
+                const folderRows = getAdvertisementSelectedFlyerFolderRows();
+                countEl.innerText = selectedReps.length
+                    ? `${selectedReps.length} sales rep${selectedReps.length === 1 ? '' : 's'} selected / ${folderRows.length} flyer row${folderRows.length === 1 ? '' : 's'} attached`
+                    : 'Choose a rep group.';
+            }
+        }
+
+        function getAdvertisementCanvasPhotoPayload() {
+            if (!advertisementCanvas || typeof advertisementCanvas.getObjects !== 'function') return [];
+            return advertisementCanvas.getObjects().map((object) => ({
+                type: String(object && object.advertisementType || object && object.type || '').trim(),
+                sourceUniqueId: String(object && object.sourceUniqueId || '').trim(),
+                sourcePhotoUrl: String(object && object.sourcePhotoUrl || '').trim()
+            })).filter((entry) => entry.sourcePhotoUrl);
+        }
+
+        function buildAdvertisementFlyerRowsPayload(rows = []) {
+            return (Array.isArray(rows) ? rows : []).map((row) => {
+                const photoEntries = getAdvertisementFlyerRowPhotoEntries(row);
+                return {
+                    unique_id: String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim(),
+                    commonname: firstNonEmptyValue(row && row.COMMONNAME, ''),
+                    contsize: firstNonEmptyValue(row && row.CONTSIZE, ''),
+                    itemcode: firstNonEmptyValue(row && row.ITEMCODE, ''),
+                    locationcode: firstNonEmptyValue(row && row.LOCATIONCODE, ''),
+                    lotcode: firstNonEmptyValue(row && row.LOTCODE, ''),
+                    priority: firstNonEmptyValue(row && row.PRIORITY, ''),
+                    ptravailable: firstNonEmptyValue(row && row.PTRAVAILABLE, ''),
+                    s_lts: firstNonEmptyValue(row && row.S_LTS, row && row.s_lts, ''),
+                    spec: firstNonEmptyValue(row && row.FLYER_SPEC, row && row.SPEC, ''),
+                    caliper: firstNonEmptyValue(row && row.FLYER_CALIPER, row && row.CALIPER, ''),
+                    av_note: firstNonEmptyValue(row && row.FLYER_AV_NOTE, row && row.AV_NOTE, ''),
+                    match: firstNonEmptyValue(row && row.FLYER_MATCH, row && row.MATCH, ''),
+                    loc_match_qty: firstNonEmptyValue(row && row.FLYER_LOC_MATCH_QTY, row && row.LOC_MATCH_QTY, ''),
+                    photo: photoEntries.map((entry) => entry.url).join(','),
+                    photos: photoEntries.map((entry) => entry.url)
+                };
+            });
+        }
+
+        function buildAdvertisementEmailText(imageUrl = '', rows = [], customMessage = '') {
+            const title = getAdvertisementTitle();
+            const folderName = getFlyerFolderName(advertisementSelectedFlyerFolder);
+            const lines = [
+                title,
+                customMessage ? `\n${customMessage}` : '',
+                imageUrl ? `\nAdvertisement Image: ${imageUrl}` : '',
+                folderName ? `Flyer Folder: ${folderName}` : ''
+            ].filter(Boolean);
+            const rowText = rows.length ? formatInventoryItemsText(rows, 'Flyer Folder Rows', { includeHeader: true, includePhotoUrls: true, omitFieldLabels: ['LOC MATCH %'] }) : '';
+            return [lines.join('\n'), rowText].filter(Boolean).join('\n\n').trim();
+        }
+
+        function buildAdvertisementEmailHtml(imageUrl = '', rows = [], customMessage = '') {
+            const title = escapeShareHtml(getAdvertisementTitle());
+            const folderName = escapeShareHtml(getFlyerFolderName(advertisementSelectedFlyerFolder));
+            const messageHtml = customMessage ? `<div style="margin:0 0 16px 0;line-height:1.45;">${escapeShareHtml(customMessage).replace(/\n/g, '<br>')}</div>` : '';
+            const imageHtml = imageUrl
+                ? `<div style="margin:0 0 18px 0;"><a href="${escapeShareHtml(imageUrl)}"><img src="${escapeShareHtml(imageUrl)}" alt="${title}" style="display:block;max-width:640px;width:100%;height:auto;border-radius:12px;border:1px solid #d7ded8;"></a></div>`
+                : '';
+            const folderHtml = folderName ? `<div style="font-weight:700;color:#047857;margin:0 0 14px 0;">Flyer Folder: ${folderName}</div>` : '';
+            const rowsHtml = rows.length ? formatInventoryItemsHtml(rows, 'Flyer Folder Rows', { omitFieldLabels: ['LOC MATCH %'] }) : '';
+            return `<div><div style="font-size:20px;font-weight:800;margin:0 0 12px 0;">${title}</div>${messageHtml}${imageHtml}${folderHtml}${rowsHtml}</div>`;
+        }
+
+        async function sendAdvertisementEmail() {
+            if (!advertisementCanvas) await initializeAdvertisementEditor();
+            if (advertisementEmailSendInFlight) return false;
+            const selectedReps = getAdvertisementSelectedReps();
+            if (!selectedReps.length) {
+                showToast('Select Reps', 'Choose at least one sales rep.', true);
+                return false;
+            }
+            advertisementEmailSendInFlight = true;
+            syncAdvertisementEmailSendButton();
+            const messageInput = document.getElementById('advertisement-email-message');
+            const customMessage = messageInput ? String(messageInput.value || '').trim() : '';
+            setAdvertisementStatus('Saving advertisement for email...', false);
+            showToast('Sending...', 'Sending advertisement email.', false);
+            try {
+                const exportData = createAdvertisementExportBlob('png');
+                const imageUrl = await saveAdvertisementExportToSupabase(exportData.blob, exportData.format);
+                const folderRows = getAdvertisementSelectedFlyerFolderRows();
+                const repRecipientEmails = selectedReps.map((rep) => rep.email);
+                const recipientEmails = dedupeRequestEmailRecipients([...BLOOM_CROP_UPDATE_INTERNAL_RECIPIENTS, ...repRecipientEmails]);
+                const flyerRowsPayload = buildAdvertisementFlyerRowsPayload(folderRows);
+                const payload = {
+                    type: 'email',
+                    emailType: 'bloom_crop_update',
+                    emailSubType: 'advertisement',
+                    subject: `GNC PH Advertisement - ${getAdvertisementTitle()}`,
+                    message: customMessage,
+                    userMessage: customMessage,
+                    itemsCount: folderRows.length,
+                    formattedItemsText: buildAdvertisementEmailText(imageUrl, folderRows, customMessage),
+                    formattedItemsHtml: buildAdvertisementEmailHtml(imageUrl, folderRows, customMessage),
+                    recipientEmails,
+                    internalRecipients: BLOOM_CROP_UPDATE_INTERNAL_RECIPIENTS.slice(),
+                    selectedRepRecipients: selectedReps,
+                    advertisementTitle: getAdvertisementTitle(),
+                    advertisementImageUrl: imageUrl,
+                    marketingMaterialUrl: imageUrl,
+                    flyerFolderName: getFlyerFolderName(advertisementSelectedFlyerFolder),
+                    sourceRows: flyerRowsPayload,
+                    items: flyerRowsPayload,
+                    advertisementPhotos: getAdvertisementCanvasPhotoPayload(),
+                    requestedBy: String(currentUser || '').trim(),
+                    requestedByDisplay: String(currentUserDisplay || currentUser || '').trim()
+                };
+                const responseData = await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Advertisement Email');
+                if (!responseData || responseData.ok === false) {
+                    throw new Error(String(firstNonEmptyValue(responseData && responseData.message, responseData && responseData.error, 'Could not send advertisement email.')));
+                }
+                showToast('Sent', `Advertisement sent to ${selectedReps.length} sales rep${selectedReps.length === 1 ? '' : 's'}.`);
+                setAdvertisementStatus(`Advertisement emailed to ${selectedReps.length} sales rep${selectedReps.length === 1 ? '' : 's'}.`, false);
+            } catch (error) {
+                const message = error && error.message ? error.message : 'Could not send advertisement email.';
+                showToast('Email Error', message, true);
+                setAdvertisementStatus(message, true);
+            } finally {
+                advertisementEmailSendInFlight = false;
+                syncAdvertisementEmailSendButton();
+            }
+            return false;
+        }
+
         async function exportAdvertisementDesign(format = 'png') {
             if (!advertisementCanvas || advertisementExportInFlight) return false;
             advertisementExportInFlight = true;
@@ -45125,21 +45784,11 @@ ${folderNote ? `Folder Note: ${folderNote}
             });
             setAdvertisementStatus('Preparing high-quality export...', false);
             try {
-                advertisementCanvas.discardActiveObject();
-                advertisementCanvas.requestRenderAll();
-                const safeFormat = String(format || 'png').toLowerCase() === 'jpeg' ? 'jpeg' : 'png';
-                const dataUrl = advertisementCanvas.toDataURL({
-                    format: safeFormat,
-                    quality: 0.96,
-                    multiplier: 1,
-                    enableRetinaScaling: false
-                });
-                const blob = advertisementDataUrlToBlob(dataUrl);
-                const fileName = buildAdvertisementExportFileName(safeFormat === 'jpeg' ? 'jpg' : 'png');
-                const deliveryMode = await deliverAdvertisementExport(blob, fileName);
+                const exportData = createAdvertisementExportBlob(format);
+                const deliveryMode = await deliverAdvertisementExport(exportData.blob, exportData.fileName);
                 let savedUrl = '';
                 try {
-                    savedUrl = await saveAdvertisementExportToSupabase(blob, safeFormat);
+                    savedUrl = await saveAdvertisementExportToSupabase(exportData.blob, exportData.format);
                 } catch (saveError) {
                     const message = saveError && saveError.message ? saveError.message : 'The image exported, but Supabase save failed.';
                     showToast('Export Ready', `${deliveryMode === 'shared' ? 'Shared' : 'Downloaded'} to this phone. Save warning: ${message}`, true);
@@ -45165,6 +45814,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (advertisementInitialized && advertisementCanvas) {
                 requestAnimationFrame(resizeAdvertisementCanvasShell);
                 renderAdvertisementPlantPicker();
+                renderAdvertisementFlyerFolders();
+                renderAdvertisementRecipientList();
                 return advertisementCanvas;
             }
             setAdvertisementLoading(true, 'Loading editor');
@@ -45196,12 +45847,16 @@ ${folderNote ? `Folder Note: ${folderNote}
             setAdvertisementLoading(false);
             requestAnimationFrame(resizeAdvertisementCanvasShell);
             renderAdvertisementPlantPicker();
+            renderAdvertisementFlyerFolders();
+            renderAdvertisementRecipientList();
             return advertisementCanvas;
         }
 
         function renderAdvertisement() {
             if (ensureViewDataForRender('advertisement')) return;
             updateAdvertisementTitle(advertisementLastTitle);
+            renderAdvertisementFlyerFolders();
+            renderAdvertisementRecipientList();
             initializeAdvertisementEditor().catch((error) => {
                 const message = error && error.message ? error.message : 'Could not load the advertisement editor.';
                 setAdvertisementLoading(false);
