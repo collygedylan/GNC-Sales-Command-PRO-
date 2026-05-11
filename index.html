@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.11.09';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1753,7 +1753,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.09').trim() || 'V2026.05.11.09';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.10').trim() || 'V2026.05.11.10';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2536,7 +2536,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8907,7 +8907,13 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
             try {
-                return await fetch(url, { ...options, signal: controller.signal });
+                const requestOptions = { ...options, signal: controller.signal };
+                const requestUrl = String(url || '');
+                const isFreshDataRequest = requestUrl.startsWith(`${SUPABASE_URL}/rest/`)
+                    || requestUrl.startsWith(`${SUPABASE_URL}/functions/v1/`)
+                    || requestUrl.startsWith(GOOGLE_SCRIPT_URL);
+                if (isFreshDataRequest) requestOptions.cache = 'no-store';
+                return await fetch(url, requestOptions);
             } catch (error) {
                 if (error && error.name === 'AbortError') {
                     throw new Error(`${label} timed out after ${Math.ceil(timeoutMs / 1000)}s`);
@@ -10858,9 +10864,23 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             return items.map((item) => stripTransientCacheFields(item));
         }
 
-        const CACHE_SCHEMA_VERSION = 12;
+        const CACHE_SCHEMA_VERSION = 13;
         const MIN_TRUSTED_MASTER_COMMON_NAME_CACHE_COUNT = 1200;
         const INLINE_CACHE_RESERVE_LIMIT = 180;
+        const CACHE_REQUIRES_NETWORK_FULL_REFRESH_KEYS = new Set([
+            'master',
+            'avOpen',
+            'requests',
+            'requestHistory',
+            'reserves',
+            'soc',
+            'salesOffice',
+            'flyerRows',
+            'flyerHistory',
+            'cav',
+            'avHotPriceKeys',
+            'avNotes'
+        ]);
         function buildCacheSnapshot() {
             const inlineReserveRows = buildCacheRows(reservesInventory.slice(0, INLINE_CACHE_RESERVE_LIMIT));
             return {
@@ -10936,10 +10956,11 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 const masterCacheLooksPartial = key === 'master'
                     && Array.isArray(cachedRes.data)
                     && countUniqueCacheCommonNames(cachedRes.data) < MIN_TRUSTED_MASTER_COMMON_NAME_CACHE_COUNT;
+                const mustNetworkRefreshAfterCache = CACHE_REQUIRES_NETWORK_FULL_REFRESH_KEYS.has(key);
                 next[key] = {
                     initialLoaded: !!(saved.initialLoaded || fallbackEntry.initialLoaded) && !(key === 'master' && masterCacheLooksPartial),
-                    fullLoaded: schemaVersion >= CACHE_SCHEMA_VERSION ? (!!saved.fullLoaded && !fullInlineCacheIsTruncated && !masterCacheLooksPartial) : false,
-                    lastLoadedAt: schemaVersion >= CACHE_SCHEMA_VERSION ? (saved.lastLoadedAt || '') : ''
+                    fullLoaded: schemaVersion >= CACHE_SCHEMA_VERSION ? (!!saved.fullLoaded && !fullInlineCacheIsTruncated && !masterCacheLooksPartial && !mustNetworkRefreshAfterCache) : false,
+                    lastLoadedAt: schemaVersion >= CACHE_SCHEMA_VERSION && !mustNetworkRefreshAfterCache ? (saved.lastLoadedAt || '') : ''
                 };
             });
             return next;
@@ -11029,7 +11050,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 const cachedLastLoadedAt = String(firstNonEmptyValue(reserveMeta.lastLoadedAt, reserveMeta.savedAt, '') || '').trim();
                 const isRepCache = !!getRoleAccessState().isRep;
                 const looksLikePartialAdminCache = !isRepCache && reserveRows.length <= 1000;
-                const canTrustAsFull = !!reserveMeta.fullLoaded && !looksLikePartialAdminCache;
+                const canTrustAsFull = false;
                 const shouldApply = reserveRows.length > reservesInventory.length || (!reserveState.initialLoaded && reserveRows.length > 0);
                 if (shouldApply) {
                     processAndLoadData({ reservesData: reserveRows, _fromCache: true });
@@ -11467,7 +11488,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.09').trim() || 'V2026.05.11.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.10').trim() || 'V2026.05.11.10';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
