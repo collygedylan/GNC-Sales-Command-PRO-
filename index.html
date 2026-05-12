@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.23';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.24';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1872,7 +1872,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.23').trim() || 'V2026.05.12.23';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.24').trim() || 'V2026.05.12.24';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2750,7 +2750,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.23';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.24';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12242,7 +12242,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.23').trim() || 'V2026.05.12.23';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.24').trim() || 'V2026.05.12.24';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -27183,8 +27183,10 @@ function toggleDriveQuickRequestItem(domId) {
             const currentUserEmail = resolveRequestRecipientEmail(currentUser || currentUserDisplay || '');
             const requestedByEmail = normalizeRequestEmailAddress(firstNonEmptyValue(safeOptions.requestedByEmail, currentUserEmail, ''));
             const recipients = safeStage === 'dylan'
-                ? [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER], requestedByEmail]
-                : [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER], NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_JD_USER], requestedByEmail];
+                ? [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER]]
+                : (safeStage === 'jd'
+                    ? [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_JD_USER]]
+                    : [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER], NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_JD_USER]]);
             const photoUrls = normalizeNcrEmailPhotoUrls(safeOptions.photoUrls || getNcrApprovalPhotoUrls(item));
             const requestStyleItem = buildNcrEmailShareItem(item, photoUrls);
             const itemPayload = {
@@ -27195,6 +27197,12 @@ function toggleDriveQuickRequestItem(domId) {
             };
             const rowLabel = [item && item.COMMONNAME, item && item.CONTSIZE, item && item.LOCATIONCODE].map((value) => String(value || '').trim()).filter(Boolean).join(' ');
             const stageLabel = safeStage === 'jd' ? 'JD approval needed' : (safeStage === 'inventory' ? 'Inventory Office handoff' : 'Dylan approval needed');
+            const taskViewLabel = getTaskTabLabel(getNcrApprovalTaskViewForType(type));
+            const appInstruction = safeStage === 'jd'
+                ? `JD: open the app and check Tasks > ${taskViewLabel}. Review the photos/data, enter the approved quantity, then approve.`
+                : (safeStage === 'inventory'
+                    ? `Inventory Office: open the app and check Inventory Office > ${typeLabel}.`
+                    : `Dylan: open the app and check Tasks > ${taskViewLabel}. Review the photos/data, then approve to send it to JD.`);
             const subject = `${typeLabel} Approval${rowLabel ? ': ' + rowLabel : ''}`;
             const folderId = `ncr-approval-${getNcrSourceUniqueId(item) || Date.now()}`;
             const payload = {
@@ -27208,6 +27216,8 @@ function toggleDriveQuickRequestItem(domId) {
                 completedBy: String(currentUserDisplay || currentUser || 'Unknown').trim(),
                 approvalStage: safeStage,
                 approvalStageLabel: stageLabel,
+                appInstruction,
+                taskViewLabel,
                 requestedByEmail,
                 recipientEmails: dedupeRequestEmailRecipients(recipients),
                 recipients: dedupeRequestEmailRecipients(recipients).map((email) => ({ email, role: 'internal' })),

@@ -3296,6 +3296,10 @@ function buildRequestEmailMessage_(payload) {
     const approvalTitle = escapeEmailHtml_(payload.customer || (emailType === 'hold_release_request' ? 'Take Off Hold' : 'Approval'));
     const approvalStage = escapeEmailHtml_(payload.approvalStageLabel || payload.approvalStage || 'Approval needed');
     const completedBy = escapeEmailHtml_(payload.completedBy || payload.completed_by || 'Unknown');
+    const appInstructionText = String(payload.appInstruction || payload.app_instruction || '').trim();
+    const appInstructionHtml = appInstructionText
+      ? '<p style="padding:12px 14px; border-radius:10px; background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46;"><strong>Next step:</strong> ' + escapeEmailHtml_(appInstructionText) + '</p>'
+      : '';
     const detailSection = itemsHtml
       ? [
           '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
@@ -3309,6 +3313,7 @@ function buildRequestEmailMessage_(payload) {
       textBody: [
         String(payload.customer || (emailType === 'hold_release_request' ? 'Take Off Hold' : 'Approval')) + ' Approval',
         'Stage: ' + String(payload.approvalStageLabel || payload.approvalStage || 'Approval needed'),
+        appInstructionText ? 'Next step: ' + appInstructionText : '',
         'Sent By: ' + String(payload.completedBy || payload.completed_by || 'Unknown'),
         'Source Row: ' + String(payload.folderId || payload.requestFolder || ''),
         itemsText
@@ -3317,6 +3322,7 @@ function buildRequestEmailMessage_(payload) {
         '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
         '<h2 style="color: #007a4d;">' + approvalTitle + ' Approval</h2>',
         '<p><strong>Stage:</strong> ' + approvalStage + '</p>',
+        appInstructionHtml,
         '<p><strong>Sent By:</strong> ' + completedBy + '</p>',
         '<p><strong>Source Row:</strong> ' + folderId + '</p>',
         detailSection,
