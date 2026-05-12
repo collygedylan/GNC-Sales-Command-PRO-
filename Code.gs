@@ -3112,6 +3112,39 @@ function buildRequestEmailMessage_(payload) {
     };
   }
 
+  if (emailType === 'ncr_approval' || emailType === 'hold_release_request') {
+    const approvalTitle = escapeEmailHtml_(payload.customer || (emailType === 'hold_release_request' ? 'Take Off Hold' : 'Approval'));
+    const approvalStage = escapeEmailHtml_(payload.approvalStageLabel || payload.approvalStage || 'Approval needed');
+    const completedBy = escapeEmailHtml_(payload.completedBy || payload.completed_by || 'Unknown');
+    const detailSection = itemsHtml
+      ? [
+          '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
+          '<p style="font-weight:700; margin-bottom:12px;">Approval Row Details</p>',
+          itemsHtml
+        ].join('')
+      : '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 12px; color: #777;">No approval row details were provided.</p>';
+
+    return {
+      subject: subject,
+      textBody: [
+        String(payload.customer || (emailType === 'hold_release_request' ? 'Take Off Hold' : 'Approval')) + ' Approval',
+        'Stage: ' + String(payload.approvalStageLabel || payload.approvalStage || 'Approval needed'),
+        'Sent By: ' + String(payload.completedBy || payload.completed_by || 'Unknown'),
+        'Source Row: ' + String(payload.folderId || payload.requestFolder || ''),
+        itemsText
+      ].filter(Boolean).join('\n\n'),
+      htmlBody: [
+        '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
+        '<h2 style="color: #007a4d;">' + approvalTitle + ' Approval</h2>',
+        '<p><strong>Stage:</strong> ' + approvalStage + '</p>',
+        '<p><strong>Sent By:</strong> ' + completedBy + '</p>',
+        '<p><strong>Source Row:</strong> ' + folderId + '</p>',
+        detailSection,
+        '</div>'
+      ].join('')
+    };
+  }
+
   throw new Error('Unsupported request email type: ' + emailType);
 }
 
@@ -3286,6 +3319,29 @@ function sendRequestEmailWithFallback_(payload) {
       };
     }
   }
+  if (safeType === 'ncr_approval' || safeType === 'hold_release_request') {
+    try {
+      GmailApp.sendEmail(recipients.toList, message.subject, message.textBody || message.subject, {
+        htmlBody: message.htmlBody,
+        name: 'GNC PH Approvals'
+      });
+      return {
+        ok: true,
+        status: 200,
+        recipients: recipients.toArray,
+        mode: 'gmailapp_named'
+      };
+    } catch (error) {
+      console.error('Approval email send failed', error);
+      return {
+        ok: false,
+        status: 500,
+        recipients: recipients.toArray,
+        mode: 'gmailapp_error',
+        message: error && error.message ? error.message : 'Approval email send failed.'
+      };
+    }
+  }
   const wantsThreadReply = safeType === 'request_complete';
   const threadId = String(payload.threadId || '').trim();
   const inReplyTo = String(payload.messageId || '').trim();
@@ -3364,7 +3420,7 @@ function doPost(e) {
     }
     
     if (payload.type === "email") {
-    if (payload.emailType === "new_request" || payload.emailType === "request_complete" || payload.emailType === "ncr_complete" || payload.emailType === "drive_customer_outreach" || payload.emailType === "bloom_crop_update") {
+    if (payload.emailType === "new_request" || payload.emailType === "request_complete" || payload.emailType === "ncr_complete" || payload.emailType === "ncr_approval" || payload.emailType === "hold_release_request" || payload.emailType === "drive_customer_outreach" || payload.emailType === "bloom_crop_update") {
       const emailType = String(payload.emailType || '').trim().toLowerCase();
       const shouldQueueDelayedReply = emailType === 'request_complete' && Math.max(0, Number(payload.delayMs) || 0) > 0;
       if (shouldQueueDelayedReply) {
