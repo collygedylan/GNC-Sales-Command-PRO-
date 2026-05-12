@@ -2638,6 +2638,18 @@ function collectRequestRecipients_(payload) {
   const sendToAllSalesReps = payload && payload.sendToAllSalesReps === true;
   const repName = String(payload.repName || payload.salesRepName || payload.requestedBy || '').trim();
   const repEmail = sendToAllSalesReps ? '' : normalizeEmailAddress_(resolveRequestRecipientEmail_(repName, payload.repEmail || payload.salesRepEmail || ''));
+  const emailType = String(payload && payload.emailType || '').trim().toLowerCase();
+  const approvalStage = String(payload && (payload.approvalStage || payload.approval_stage) || '').trim().toLowerCase();
+  const approvalFallbackRecipients = [];
+  if (emailType === 'ncr_approval' || emailType === 'hold_release_request') {
+    if (approvalStage === 'jd') {
+      approvalFallbackRecipients.push('jd_jones@greenleafnursery.com');
+    } else if (approvalStage === 'inventory') {
+      approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com');
+    } else {
+      approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com');
+    }
+  }
   const recipients = dedupeEmailAddresses_([
     payload.recipientEmails,
     payload.internalRecipients,
@@ -2646,7 +2658,8 @@ function collectRequestRecipients_(payload) {
     payload.recipients,
     payload.dylanEmail,
     payload.jdEmail,
-    repEmail
+    repEmail,
+    approvalFallbackRecipients
   ]);
 
   return {
@@ -3651,9 +3664,13 @@ function doPost(e) {
 
       if (recipient) {
         GmailApp.sendEmail(recipient, subject, textBody || subject, { htmlBody: htmlBody, name: "GNC PARK HILL" });
-        return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
+        return ContentService.createTextOutput(JSON.stringify({ ok: true, status: "success" })).setMimeType(ContentService.MimeType.JSON);
       } else {
-        return ContentService.createTextOutput(JSON.stringify({ status: "error" })).setMimeType(ContentService.MimeType.JSON);
+        return ContentService.createTextOutput(JSON.stringify({
+          ok: false,
+          status: "error",
+          message: "Unsupported email type or missing recipient."
+        })).setMimeType(ContentService.MimeType.JSON);
       }
     }
 

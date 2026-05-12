@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.24';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.25';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1872,7 +1872,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.24').trim() || 'V2026.05.12.24';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.25').trim() || 'V2026.05.12.25';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2750,7 +2750,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.24';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.25';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12242,7 +12242,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.24').trim() || 'V2026.05.12.24';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.25').trim() || 'V2026.05.12.25';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -27182,11 +27182,12 @@ function toggleDriveQuickRequestItem(domId) {
             const typeLabel = getNcrApprovalTypeLabel(type);
             const currentUserEmail = resolveRequestRecipientEmail(currentUser || currentUserDisplay || '');
             const requestedByEmail = normalizeRequestEmailAddress(firstNonEmptyValue(safeOptions.requestedByEmail, currentUserEmail, ''));
-            const recipients = safeStage === 'dylan'
+            const targetRecipients = safeStage === 'dylan'
                 ? [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER]]
                 : (safeStage === 'jd'
                     ? [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_JD_USER]]
                     : [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER], NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_JD_USER]]);
+            const recipientEmails = dedupeRequestEmailRecipients(targetRecipients);
             const photoUrls = normalizeNcrEmailPhotoUrls(safeOptions.photoUrls || getNcrApprovalPhotoUrls(item));
             const requestStyleItem = buildNcrEmailShareItem(item, photoUrls);
             const itemPayload = {
@@ -27219,17 +27220,17 @@ function toggleDriveQuickRequestItem(domId) {
                 appInstruction,
                 taskViewLabel,
                 requestedByEmail,
-                recipientEmails: dedupeRequestEmailRecipients(recipients),
-                recipients: dedupeRequestEmailRecipients(recipients).map((email) => ({ email, role: 'internal' })),
+                internalRecipients: recipientEmails,
+                recipientEmails,
+                dylanEmail: safeStage === 'dylan' || safeStage === 'inventory' ? NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER] : '',
+                jdEmail: safeStage === 'jd' || safeStage === 'inventory' ? NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_JD_USER] : '',
+                recipients: recipientEmails.map((email) => ({ email, role: 'internal' })),
                 formattedItemsHtml: formatRequestItemsHtml([requestStyleItem], typeLabel),
                 formattedItemsText: formatRequestItemsText([requestStyleItem], typeLabel, { includePhotoUrls: true }),
                 photoUrls,
                 requestItems: [itemPayload]
             };
-            const responseData = await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'NCR Approval Email');
-            if (responseData && responseData.ok === false) {
-                throw new Error(String(firstNonEmptyValue(responseData.message, 'NCR approval email failed.')).trim());
-            }
+            const responseData = await postGoogleScriptEmailPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'NCR Approval Email');
             return responseData;
         }
 
@@ -27257,12 +27258,7 @@ function toggleDriveQuickRequestItem(domId) {
                 sendNcrApprovalPush(item, type, safeStage, NCR_APPROVAL_DYLAN_USER);
                 sendNcrApprovalPush(item, type, safeStage, NCR_APPROVAL_JD_USER);
             }
-            try {
-                await sendNcrApprovalEmail(item, type, safeStage, options);
-            } catch (error) {
-                console.warn('NCR approval email failed', error);
-                showToast('Email Warning', 'The row was saved, but the approval email could not be sent.', true);
-            }
+            await sendNcrApprovalEmail(item, type, safeStage, options);
         }
 
         async function submitNcrApprovalToDylan(item = activeItem, type = 'new-crop', options = {}) {
@@ -28866,6 +28862,8 @@ function toggleDriveQuickRequestItem(domId) {
                 method: 'POST',
                 body: JSON.stringify(payload)
             }, timeoutMs, label);
+            const httpOk = !!(response && response.ok);
+            const httpStatus = response ? response.status : 0;
             let responseText = '';
             try { responseText = await response.text(); } catch (error) {}
             let parsed = {};
@@ -28876,7 +28874,78 @@ function toggleDriveQuickRequestItem(domId) {
                     parsed = { rawResponse: responseText };
                 }
             }
-            return { ok: !!(response && response.ok), status: response ? response.status : 0, ...parsed };
+            const parsedStatus = Object.prototype.hasOwnProperty.call(parsed, 'status') ? parsed.status : '';
+            const normalizedParsedStatus = String(parsedStatus || '').trim().toLowerCase();
+            const bodySaysError = parsed && (
+                parsed.ok === false
+                || normalizedParsedStatus === 'error'
+                || normalizedParsedStatus === 'failed'
+                || normalizedParsedStatus === 'failure'
+            );
+            const merged = {
+                ...parsed,
+                ok: httpOk && !bodySaysError,
+                httpOk,
+                httpStatus,
+                bodyStatus: parsedStatus,
+                status: parsedStatus || httpStatus
+            };
+            return merged;
+        }
+
+        function isGoogleScriptEmailResponseSuccessful(responseData = null) {
+            if (!responseData || responseData.ok === false || responseData.httpOk === false) return false;
+            const statusText = String(firstNonEmptyValue(responseData.bodyStatus, responseData.status, '') || '').trim().toLowerCase();
+            const modeText = String(responseData.mode || '').trim().toLowerCase();
+            if (statusText === 'error' || statusText === 'failed' || statusText === 'failure') return false;
+            if (modeText.includes('error') || modeText.includes('missing_recipients')) return false;
+            if (Number(responseData.status) >= 400 || Number(responseData.httpStatus) >= 400) return false;
+            return true;
+        }
+
+        function getGoogleScriptEmailFailureMessage(responseData = null, fallback = 'The approval email did not send.') {
+            const message = String(firstNonEmptyValue(
+                responseData && responseData.message,
+                responseData && responseData.error,
+                responseData && responseData.rawResponse,
+                ''
+            ) || '').trim();
+            if (message) return message;
+            const statusLabel = String(firstNonEmptyValue(responseData && responseData.bodyStatus, responseData && responseData.status, responseData && responseData.httpStatus, '') || '').trim();
+            return statusLabel ? `${fallback} Google Script returned ${statusLabel}.` : fallback;
+        }
+
+        async function postGoogleScriptEmailPayload(payload = {}, timeoutMs = REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, label = 'Email') {
+            let lastResponse = null;
+            let lastError = null;
+            const retryableHttpStatuses = new Set([0, 408, 429, 500, 502, 503, 504]);
+            for (let attempt = 0; attempt < 3; attempt += 1) {
+                try {
+                    const responseData = await postGoogleScriptJsonPayload(payload, timeoutMs, label);
+                    lastResponse = responseData;
+                    if (isGoogleScriptEmailResponseSuccessful(responseData)) return responseData;
+                    const statusCode = Number(firstNonEmptyValue(responseData && responseData.httpStatus, responseData && responseData.status, 0)) || 0;
+                    const responseMessage = String(firstNonEmptyValue(responseData && responseData.message, responseData && responseData.error, responseData && responseData.rawResponse, '') || '').toLowerCase();
+                    const shouldRetry = attempt < 2 && (
+                        retryableHttpStatuses.has(statusCode)
+                        || responseMessage.includes('timed out')
+                        || responseMessage.includes('service error')
+                        || responseMessage.includes('try again later')
+                        || responseMessage.includes('quota')
+                    );
+                    if (shouldRetry) {
+                        await new Promise((resolve) => setTimeout(resolve, 650 * (attempt + 1)));
+                        continue;
+                    }
+                    break;
+                } catch (error) {
+                    lastError = error;
+                    if (attempt >= 2) break;
+                    await new Promise((resolve) => setTimeout(resolve, 650 * (attempt + 1)));
+                }
+            }
+            if (lastError && !lastResponse) throw lastError;
+            throw new Error(getGoogleScriptEmailFailureMessage(lastResponse, `${label} did not send.`));
         }
 
         async function postRequestEmailPayload(payload = {}) {
@@ -28886,7 +28955,7 @@ function toggleDriveQuickRequestItem(domId) {
             for (let attempt = 0; attempt < 3; attempt += 1) {
                 try {
                     const response = await postGoogleScriptJsonPayload(safePayload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Request Email');
-                    const statusCode = Number(response && response.status || 0) || 0;
+                    const statusCode = Number(firstNonEmptyValue(response && response.httpStatus, response && response.status, 0)) || 0;
                     const responseMessage = String(firstNonEmptyValue(response && response.message, response && response.error, '') || '').toLowerCase();
                     const shouldRetry = attempt < 2 && (
                         retryableStatusCodes.has(statusCode)
