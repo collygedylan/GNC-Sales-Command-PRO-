@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.08';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.09';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1870,7 +1870,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.08').trim() || 'V2026.05.12.08';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.09').trim() || 'V2026.05.12.09';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2742,7 +2742,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.08';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.09';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -5417,6 +5417,51 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             });
             return normalizeRowPhotoFields(target);
         }
+
+        function mergeRequestPhotoFields(source, target) {
+            if (!source || !target || source === target) return normalizeRowPhotoFields(target || source);
+            const mergedLink = mergePhotoCsvList([
+                target.REQ_PHOTO_LINK,
+                target.REQUEST_PHOTO_LINK,
+                target.REQUESTPHOTO_LINK,
+                source.REQ_PHOTO_LINK,
+                source.REQUEST_PHOTO_LINK,
+                source.REQUESTPHOTO_LINK
+            ]);
+            const mergedName = mergePhotoCsvList([
+                target.REQ_PHOTO_NAME,
+                target.REQUEST_PHOTO_NAME,
+                target.REQUESTPHOTONAME,
+                source.REQ_PHOTO_NAME,
+                source.REQUEST_PHOTO_NAME,
+                source.REQUESTPHOTONAME
+            ]);
+            if (mergedLink) {
+                target.REQ_PHOTO_LINK = mergedLink;
+                target.REQUEST_PHOTO_LINK = mergedLink;
+                target.REQUESTPHOTO_LINK = mergedLink;
+            }
+            if (mergedName) {
+                target.REQ_PHOTO_NAME = mergedName;
+                target.REQUEST_PHOTO_NAME = mergedName;
+                target.REQUESTPHOTONAME = mergedName;
+            }
+            return normalizeRowPhotoFields(target);
+        }
+
+        function getRequestPhotoOwnerItem(item = null) {
+            if (!item) return null;
+            const uniqueId = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim();
+            const directRequestRow = uniqueId ? findRequestRowByUniqueId(uniqueId) : null;
+            if (directRequestRow) return directRequestRow;
+            const masterId = String(firstNonEmptyValue(item.MASTER_ID, item.MASTER_UNIQUE_ID, item.master_id, '') || '').trim();
+            const linkedByMaster = masterId ? findRequestRowByUniqueId(masterId) : null;
+            if (linkedByMaster) return linkedByMaster;
+            const linkedMaster = findLinkedMasterRow(item);
+            const linkedMasterId = String(firstNonEmptyValue(linkedMaster && linkedMaster.UNIQUE_ID, linkedMaster && linkedMaster.unique_id, '') || '').trim();
+            return linkedMasterId ? findRequestRowByUniqueId(linkedMasterId) : null;
+        }
+
         function syncSharedFlyerPhotoFields(item, prefix = '') {
             if (!item) return item;
             return normalizeRowPhotoFields(item);
@@ -11787,7 +11832,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.08').trim() || 'V2026.05.12.08';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.09').trim() || 'V2026.05.12.09';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -49701,10 +49746,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
             let itemToSave = specificItem || activeItem;
             if (!itemToSave) return;
+            const originalDetailSaveItem = itemToSave;
             if (prefix === 'req-') {
                 const requestSourceRow = findRequestRowByUniqueId(itemToSave.UNIQUE_ID)
                     || findRequestRowByUniqueId(firstNonEmptyValue(itemToSave.MASTER_ID, itemToSave.MASTER_UNIQUE_ID, itemToSave.master_id, ''));
                 if (requestSourceRow && requestSourceRow !== itemToSave) {
+                    mergeRequestPhotoFields(itemToSave, requestSourceRow);
                     itemToSave = requestSourceRow;
                     if (!specificItem) activeItem = requestSourceRow;
                 }
@@ -49731,6 +49778,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 clearScheduledPhotoFieldPersist(itemToSave, prefix);
                 isCurrentView = !!(activeItem && activeItem.UNIQUE_ID === itemToSave.UNIQUE_ID);
                 if (isComplete && isPhotoGuardedCompletionPrefix(prefix)) {
+                    if (prefix === 'req-' && originalDetailSaveItem && originalDetailSaveItem !== itemToSave) {
+                        mergeRequestPhotoFields(originalDetailSaveItem, itemToSave);
+                    }
                     const pendingScopedUploads = getPendingPhotoUploadsForItem(itemToSave, prefix);
                     if (pendingScopedUploads.length > 0) {
                         if (!isSilentAutoSave) showToast('Saving', 'Waiting for the photo to finish uploading before completing this row.', false);
@@ -49746,6 +49796,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                             }
                             if (!isSilentAutoSave) showToast('Row Not Completed', 'The photo failed to upload. Please upload the photo again before completing this row.', true);
                             return;
+                        }
+                        if (prefix === 'req-' && originalDetailSaveItem && originalDetailSaveItem !== itemToSave) {
+                            mergeRequestPhotoFields(originalDetailSaveItem, itemToSave);
                         }
                     }
                 }
@@ -50838,9 +50891,22 @@ ${folderNote ? `Folder Note: ${folderNote}
         function queueRowPhotoUpload(itemToUpload, prefix, file) {
             if (!itemToUpload || !file || !String(file.type || '').startsWith('image/')) return false;
 
+            const safePrefix = String(prefix || '').trim().toLowerCase();
+            const detailUploadItem = itemToUpload;
+            const requestPhotoOwner = safePrefix === 'req-' ? getRequestPhotoOwnerItem(itemToUpload) : null;
+            if (requestPhotoOwner && requestPhotoOwner !== itemToUpload) {
+                mergeRequestPhotoFields(itemToUpload, requestPhotoOwner);
+                itemToUpload = requestPhotoOwner;
+            }
+            const previewItems = [detailUploadItem, itemToUpload].filter((item, index, list) => (
+                item && list.findIndex((candidate) => candidate === item) === index
+            ));
             const previewUrl = URL.createObjectURL(file);
-            const previewEntry = createPendingPhotoPreview(itemToUpload, prefix, previewUrl, file.name || '');
-            refreshPendingPhotoUiForItem(itemToUpload, prefix);
+            const previewEntries = previewItems.map((previewItem) => ({
+                item: previewItem,
+                entry: createPendingPhotoPreview(previewItem, prefix, previewUrl, file.name || '')
+            })).filter((preview) => preview.entry);
+            previewItems.forEach((previewItem) => refreshPendingPhotoUiForItem(previewItem, prefix));
 
             const startUpload = () => {
                 markCameraActivity();
@@ -50866,8 +50932,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                         canvas = null;
                     };
                     const finishPreview = (revokeUrl = true) => {
-                        if (previewEntry && previewEntry.id) clearPendingPhotoPreview(itemToUpload, prefix, previewEntry.id, revokeUrl);
-                        refreshPendingPhotoUiForItem(itemToUpload, prefix);
+                        let didRevoke = false;
+                        previewEntries.forEach((preview) => {
+                            if (!preview || !preview.item || !preview.entry || !preview.entry.id) return;
+                            clearPendingPhotoPreview(preview.item, prefix, preview.entry.id, revokeUrl && !didRevoke);
+                            if (revokeUrl) didRevoke = true;
+                        });
+                        previewItems.forEach((previewItem) => refreshPendingPhotoUiForItem(previewItem, prefix));
                     };
                     const failUpload = (error) => {
                         cleanupUploadResources();
@@ -50920,6 +50991,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 const { data: publicUrlData } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
                                 const publicUrl = publicUrlData.publicUrl;
                                 applyUploadedPhotoEverywhere(itemToUpload, prefix, publicUrl, fileName);
+                                if (detailUploadItem && detailUploadItem !== itemToUpload) {
+                                    applyUploadedPhotoFieldsToItem(detailUploadItem, prefix, publicUrl, fileName);
+                                    mergeRequestPhotoFields(itemToUpload, detailUploadItem);
+                                    refreshPhotoAcrossViews(detailUploadItem, prefix);
+                                }
                                 queueMlImageJobForUploadedRowPhoto(itemToUpload, prefix, {
                                     imageBucket: bucketName,
                                     imagePath: filePath,
@@ -50956,6 +51032,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 });
 
                 registerPendingPhotoUpload(itemToUpload, prefix, uploadPromise);
+                if (detailUploadItem && detailUploadItem !== itemToUpload) registerPendingPhotoUpload(detailUploadItem, prefix, uploadPromise);
                 uploadPromise.catch((err) => {
                     showToast('Error', 'Upload failed: ' + (err && err.message ? err.message : 'Unknown error'), true);
                 });
