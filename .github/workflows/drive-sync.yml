@@ -1,0 +1,50 @@
+name: Sync Google Drive ML Models
+
+on:
+  schedule:
+    - cron: "15 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync-models:
+    name: Download Drive model files
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install sync dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install google-api-python-client google-auth
+
+      - name: Sync model files from Drive
+        env:
+          GDRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
+          GDRIVE_MODEL_FOLDER_ID: ${{ secrets.GDRIVE_MODEL_FOLDER_ID }}
+          GDRIVE_OUTPUT_DIR: models
+        run: python sync_script.py
+
+      - name: Commit synced model updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- models; then
+            echo "No model changes detected."
+            exit 0
+          fi
+          git add models
+          git commit -m "Sync ML models from Google Drive"
+          git push

@@ -1,0 +1,17 @@
+services:
+  gnc-ml-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.ml
+    image: gnc-ml-worker:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./models:/app/models:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import pathlib; assert pathlib.Path('/app/supabase_ml_worker.py').exists()"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s

@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.11.08';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.09';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1753,7 +1753,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.08').trim() || 'V2026.05.11.08';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.09').trim() || 'V2026.05.11.09';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -1796,6 +1796,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <div id="drawer-review-btn" class="drawer-item text-yellow-600 font-bold role-access role-admin hidden" onclick="switchView('review'); toggleMenu();"><i class="ph-bold ph-warning-circle"></i> New Crop Release</div>
             <div id="drawer-move-up-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin hidden" onclick="switchView('move-up'); toggleMenu();"><i class="ph-bold ph-arrow-up"></i> Move Up</div>
             <div id="drawer-advertisement-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin hidden" onclick="switchView('advertisement'); toggleMenu();"><i class="ph-bold ph-megaphone"></i> Advertisement</div>
+            <div id="drawer-diagnostics-btn" class="drawer-item text-blue-700 font-bold role-access hidden" onclick="switchView('diagnostics'); toggleMenu();"><i class="ph-bold ph-stethoscope"></i> Diagnostics</div>
             <hr class="my-3 border-gray-200">
             <div id="drawer-logout-btn" class="drawer-item text-red-600 bg-red-50 font-bold justify-center rounded-lg mx-4 mt-2 mb-8" onclick="performLogout()"><i class="ph-bold ph-sign-out text-xl"></i> Log Out</div>
         </div>
@@ -1862,6 +1863,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div id="home-tile-review" onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">New Crop Release</span></div>
                                 <div id="home-tile-move-up" onclick="switchView('move-up')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-arrow-up text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Move Up</span></div>
                                 <div id="home-tile-advertisement" onclick="switchView('advertisement')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-megaphone text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Advertisement</span></div>
+                                <div id="home-tile-diagnostics" onclick="switchView('diagnostics')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-stethoscope text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Diagnostics</span></div>
                             </div>
                         </div>
                     </div>
@@ -2263,6 +2265,19 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     </div>
                 </div>
 
+                <div id="view-diagnostics" class="hidden">
+                    <div class="freeze-panel">
+                        <div class="flex items-start justify-between gap-3 mb-3">
+                            <div class="min-w-0 flex-1">
+                                <div id="diagnostics-crumb" class="text-xs font-bold text-[#007a4d] uppercase tracking-[0.16em] mb-1">AI Diagnostics</div>
+                                <div class="text-xl font-black text-slate-900">Diagnostics</div>
+                            </div>
+                            <button type="button" class="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return refreshMlJobsNow()"><i class="ph-bold ph-arrows-clockwise text-base"></i><span>Refresh</span></button>
+                        </div>
+                    </div>
+                    <div id="diagnostics-content"></div>
+                </div>
+
                 <div id="view-detail" class="hidden">
                     <div class="freeze-panel">
                     <div class="back-btn" onclick="goBackFromDetail()"><i class="ph-bold ph-arrow-left"></i> Back</div>
@@ -2473,6 +2488,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const FLYER_FOLDER_ROWS_TABLE = 'v2_flyer_folder_rows';
         const REQUEST_HISTORY_TABLE = 'v2_request_history';
         const FLYER_FOLDER_HISTORY_TABLE = 'v2_flyer_folder_history';
+        const ML_IMAGE_JOBS_TABLE = 'v2_ml_image_jobs';
+        const ML_CAPTURE_PHOTO_BUCKET = 'ml_capture_photos';
         const APP_LIVE_EVENT_CLIENT_STORAGE_KEY = 'gnc_app_live_event_client_v1';
         const APP_LIVE_EVENT_PRUNE_STORAGE_KEY = 'gnc_app_live_event_pruned_v1';
         const APP_LIVE_EVENT_WRITE_COALESCE_MS = 280;
@@ -2513,6 +2530,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             'dock-': 'dock_photos',
             'flyer-': 'flyer_photos',
             'marketing-': 'marketing_materials',
+            'ml-': ML_CAPTURE_PHOTO_BUCKET,
             'default': 'flyer_photos'
         };
         const MARKETING_MATERIALS_TABLE = 'marketing_materials';
@@ -2536,7 +2554,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.08';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.09';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2560,7 +2578,7 @@ const QUOTA_SAFE_CHAT_HEALTHY_POLL_MS = 180000;
 const LIVE_SYNC_POLL_STANDALONE_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_POLL_STANDALONE_MS : 60000;
 const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_POLL_BROWSER_MS : 90000;
         const LIVE_SYNC_VIEW_POLICY = Object.freeze({
-            home: { realtimeTables: [], pollMs: 0 },
+            home: { realtimeTables: [ML_IMAGE_JOBS_TABLE], pollMs: 'visible-default' },
             chat: { realtimeTables: ['v2_chat_conversations', 'v2_chat_participants', 'v2_chat_messages'], pollMs: 60000 },
             drive: { realtimeTables: [], pollMs: 'visible-default' },
             tasks: { realtimeTables: ['v2_active_request', 'v2_sales_office', FLYER_FOLDER_ROWS_TABLE, FLYER_FOLDER_HISTORY_TABLE], pollMs: 'visible-default' },
@@ -2573,6 +2591,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             reports: { realtimeTables: ['v2_active_request', REQUEST_HISTORY_TABLE], pollMs: 'visible-default' },
             review: { realtimeTables: [], pollMs: 'visible-default' },
             'move-up': { realtimeTables: [], pollMs: 'visible-default' },
+            diagnostics: { realtimeTables: [ML_IMAGE_JOBS_TABLE], pollMs: 'visible-default' },
             'low-stock': { realtimeTables: [], pollMs: 'visible-default' },
             hours: { realtimeTables: [], pollMs: 0 }
         });
@@ -3474,6 +3493,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             if (safeTable === 'v2_take_back_queue') return 'take-back';
             if (safeTable === FLYER_FOLDER_ROWS_TABLE) return 'tasks';
             if (safeTable === FLYER_FOLDER_HISTORY_TABLE) return 'tasks';
+            if (safeTable === ML_IMAGE_JOBS_TABLE) return 'diagnostics';
             if (safeTable === 'v2_master_inventory') return 'inventory';
             if (safeTable === 'v2_reserves') return 'reserves';
             if (safeTable === 'v2_soc_master') return 'docks';
@@ -6234,6 +6254,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (tableName === 'v2_sales_office') return ['salesOffice'];
             if (tableName === FLYER_FOLDER_ROWS_TABLE) return ['flyerRows'];
             if (tableName === FLYER_FOLDER_HISTORY_TABLE) return ['flyerHistory'];
+            if (tableName === ML_IMAGE_JOBS_TABLE) return ['mlJobs'];
             if (tableName === 'v2_cav_import') return ['cav'];
             if (tableName === 'v2_view_av_hot_price_keys') return ['avHotPriceKeys'];
             if (tableName === 'v2_av_notes') return ['avNotes'];
@@ -7072,6 +7093,13 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     const historyRow = normalizeFlyerFolderHistoryRow(payload.new || nextRow);
                     if (historyRow) changed = !!cacheFlyerFolderHistoryRow(historyRow);
                 }
+            } else if (tableName === ML_IMAGE_JOBS_TABLE) {
+                if (eventType === 'DELETE') {
+                    changed = removeRealtimeRow(mlImageJobsInventory, uniqueId);
+                } else if (nextRow) {
+                    changed = upsertRealtimeRow(mlImageJobsInventory, normalizeMlImageJobRow(nextRow), tableName);
+                }
+                rebuildMlImageJobIndexes();
             } else if (tableName === 'v2_cav_import') {
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(cavInventory, uniqueId)
@@ -7134,6 +7162,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (isViewVisible('advertisement')) {
                     renderAdvertisementFlyerFolders();
                 }
+            } else if (tableName === ML_IMAGE_JOBS_TABLE) {
+                markViewDirty('home');
+                markViewDirty('diagnostics');
+                if (getCurrentVisibleViewId() === 'home' && activeHomeTab === 'grading') scheduleHomeRender(true);
+                if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 160);
             }
             if (!deferVisualSync) flushRealtimeDatasetUpdates([tableName]);
             recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'unknown');
@@ -10853,6 +10886,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 salesOfficeData: buildCacheRows(salesOfficeInventory),
                 flyerFolderRowsData: buildCacheRows(flyerFolderInventory),
                 flyerFolderHistoryData: buildCacheRows(flyerFolderHistoryInventory),
+                mlJobsData: buildCacheRows(mlImageJobsInventory),
                 cavData: buildCacheRows(cavInventory),
                 avHotPriceKeysData: buildCacheRows(avHotPriceKeysInventory),
                 avNotesData: buildCacheRows(avNotesDb),
@@ -10884,6 +10918,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 salesOffice: { initialLoaded: hasRows(cachedRes.salesOfficeData), fullLoaded: false },
                 flyerRows: { initialLoaded: hasRows(cachedRes.flyerFolderRowsData), fullLoaded: false },
                 flyerHistory: { initialLoaded: hasRows(cachedRes.flyerFolderHistoryData), fullLoaded: false },
+                mlJobs: { initialLoaded: hasRows(cachedRes.mlJobsData), fullLoaded: false },
                 cav: { initialLoaded: hasRows(cachedRes.cavData), fullLoaded: false },
                 avHotPriceKeys: { initialLoaded: hasRows(cachedRes.avHotPriceKeysData), fullLoaded: false },
                 avNotes: { initialLoaded: hasRows(cachedRes.avNotesData), fullLoaded: false }
@@ -11038,16 +11073,17 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 salesOffice: createDatasetLoadEntry(),
                 flyerRows: createDatasetLoadEntry(),
                 flyerHistory: createDatasetLoadEntry(),
+                mlJobs: createDatasetLoadEntry(),
                 cav: createDatasetLoadEntry(),
                 avHotPriceKeys: createDatasetLoadEntry(),
                 avNotes: createDatasetLoadEntry()
             };
         }
 
-        let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
+        let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let mlImageJobsInventory=[]; let cavInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
 let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null; let chatVoiceHoldPointerId=''; let chatVoiceHoldForComposer=false; let chatVoiceHoldFinishPending=''; let chatVoiceHoldStartPromise=null;
 let walkieChannels=[]; let walkieChannelMembers=[]; let walkieCalls=[]; let walkieCallMembers=[]; let walkieUsers=[]; let walkieSignalsSeen=new Set(); let walkieDataLoaded=false; let walkieLoadPromise=null; let walkieSchemaReady=null; let walkieSchemaProbePromise=null; let walkieSchemaWarningShown=false; let activeWalkieChannelId=''; let pendingWalkieOpenChannelId=''; let pendingWalkieOpenCallId=''; let walkieComposeOpen=false; let walkieUserSearchTerm=''; let walkieComposeTitle=''; let walkieSelectedUsers=new Set(); let walkieLastRenderSignature=''; let walkieDeviceId=''; let activeWalkieCallId=''; let walkieJoinedCallId=''; let walkieActiveMembershipId=''; let walkiePeerConnections=new Map(); let walkieRemoteAudioElements=new Map(); let walkieLocalStream=null; let walkieHeartbeatTimer=null; let walkieSpeakerHeartbeatTimer=null; let walkieReconnectTimer=null; let walkieActiveSpeakerIntent=false; let walkiePressedPointerId=''; let walkieForegroundNoticeShown=false;
-        let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let requestHistoryInventoryById=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let flyerFolderHistoryInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map();
+        let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let requestHistoryInventoryById=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let flyerFolderHistoryInventoryById=new Map(); let mlImageJobsInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map();
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
 let reviewSearchTerm=''; let moveUpSearchTerm=''; let reviewBrowseMode='item'; let moveUpBrowseMode='item'; let selectedReviewBlockAlpha=null; let selectedReviewLocationCode=null; let selectedMoveUpBlockAlpha=null; let selectedMoveUpLocationCode=null; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set();
 const ncrFilterStateByView = {
@@ -11446,7 +11482,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.08').trim() || 'V2026.05.11.08';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.09').trim() || 'V2026.05.11.09';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -11521,6 +11557,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             review: { eyebrow: 'Amazon Filters', title: 'New Crop Release' },
             'move-up': { eyebrow: 'Amazon Filters', title: 'Move Up' },
             advertisement: { eyebrow: 'Marketing Studio', title: 'Advertisement' },
+            diagnostics: { eyebrow: 'AI Diagnostics', title: 'Diagnostics' },
             detail: { eyebrow: 'Amazon Actions', title: 'Item Detail' },
             hours: { eyebrow: 'Amazon Actions', title: 'Labor Hours' }
         };
@@ -12031,6 +12068,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             salesOffice: { table: 'v2_sales_office', sourceTable: 'v2_sales_office', initialQuery: 'select=*', fullQuery: 'select=*' },
             flyerRows: { table: FLYER_FOLDER_ROWS_TABLE, sourceTable: FLYER_FOLDER_ROWS_TABLE, initialQuery: () => `select=${FLYER_FOLDER_ROW_SELECT_FIELDS}&order=created_at.desc`, fullQuery: () => `select=${FLYER_FOLDER_ROW_SELECT_FIELDS}&order=created_at.desc` },
             flyerHistory: { table: FLYER_FOLDER_HISTORY_TABLE, sourceTable: FLYER_FOLDER_ROWS_TABLE, initialQuery: () => `select=${FLYER_FOLDER_HISTORY_SELECT_FIELDS}&order=updated_at.desc`, fullQuery: () => `select=${FLYER_FOLDER_HISTORY_SELECT_FIELDS}&order=updated_at.desc` },
+            mlJobs: { table: ML_IMAGE_JOBS_TABLE, sourceTable: ML_IMAGE_JOBS_TABLE, initialQuery: 'select=*&order=created_at.desc', fullQuery: 'select=*&order=created_at.desc' },
             cav: { table: 'v2_cav_import', sourceTable: 'v2_cav_import', initialQuery: 'select=*', fullQuery: 'select=*' },
             avHotPriceKeys: { table: 'v2_view_av_hot_price_keys', sourceTable: 'v2_view_av_hot_price_keys', initialQuery: 'select=*', fullQuery: 'select=*' },
             avNotes: { table: 'v2_av_notes', sourceTable: 'v2_av_notes', initialQuery: 'select=*', fullQuery: 'select=*' }
@@ -12050,6 +12088,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             reports: { container: 'reports-content', crumb: 'reports-crumb' },
             review: { container: 'review-content', crumb: 'review-crumb' },
             'move-up': { container: 'move-up-content', crumb: 'move-up-crumb' },
+            diagnostics: { container: 'diagnostics-content', crumb: 'diagnostics-crumb' },
             advertisement: { container: 'advertisement-status' }
         };
 
@@ -12953,6 +12992,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (key === 'salesOffice') return { salesOfficeData: formatted };
             if (key === 'flyerRows') return { flyerFolderRowsData: formatted };
             if (key === 'flyerHistory') return { flyerFolderHistoryData: formatted };
+            if (key === 'mlJobs') return { mlJobsData: formatted };
             if (key === 'cav') return { cavData: formatted };
             if (key === 'avHotPriceKeys') return { avHotPriceKeysData: formatted };
             if (key === 'avNotes') return { avNotesData: formatted };
@@ -13336,6 +13376,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (viewId === 'review') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading review rows...' };
             if (viewId === 'move-up') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading Move Up rows...' };
             if (viewId === 'advertisement') return { required: [{ key: 'master', mode: 'initial' }, { key: 'flyerRows', mode: 'initial' }, { key: 'flyerHistory', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }, { key: 'flyerRows', mode: 'full' }, { key: 'flyerHistory', mode: 'full' }], label: 'Loading advertisement assets...' };
+            if (viewId === 'diagnostics') return { required: [{ key: 'mlJobs', mode: 'initial' }], background: [{ key: 'mlJobs', mode: 'full' }], label: 'Loading diagnostics...' };
             if (viewId === 'reports') return { required: [{ key: 'master', mode: 'initial' }, { key: 'requests', mode: 'initial' }, { key: 'requestHistory', mode: 'initial' }, { key: 'reserves', mode: 'initial' }, { key: 'soc', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }, { key: 'requests', mode: 'full' }, { key: 'requestHistory', mode: 'full' }, { key: 'reserves', mode: 'full' }, { key: 'soc', mode: 'full' }], label: 'Loading reports...' };
             return null;
         }
@@ -19203,10 +19244,11 @@ function toggleDriveQuickRequestItem(domId) {
             const hasSalesOffice = hasKey('salesOfficeData');
             const hasFlyerRows = hasKey('flyerFolderRowsData');
             const hasFlyerHistory = hasKey('flyerFolderHistoryData');
+            const hasMlJobs = hasKey('mlJobsData');
             const hasCav = hasKey('cavData');
             const hasAvHotPrice = hasKey('avHotPriceKeysData');
             const hasAvNotes = hasKey('avNotesData');
-            const didStructuralDataChange = hasMaster || hasAvOpen || hasRequests || hasRequestHistory || hasReserves || hasSoc || hasSalesOffice || hasFlyerRows || hasFlyerHistory || hasCav || hasAvHotPrice || hasAvNotes;
+            const didStructuralDataChange = hasMaster || hasAvOpen || hasRequests || hasRequestHistory || hasReserves || hasSoc || hasSalesOffice || hasFlyerRows || hasFlyerHistory || hasMlJobs || hasCav || hasAvHotPrice || hasAvNotes;
             const changedDatasetKeys = [];
             if (hasMaster) changedDatasetKeys.push('master');
             if (hasAvOpen) changedDatasetKeys.push('avOpen');
@@ -19217,6 +19259,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasSalesOffice) changedDatasetKeys.push('salesOffice');
             if (hasFlyerRows) changedDatasetKeys.push('flyerRows');
             if (hasFlyerHistory) changedDatasetKeys.push('flyerHistory');
+            if (hasMlJobs) changedDatasetKeys.push('mlJobs');
             if (hasCav) changedDatasetKeys.push('cav');
             if (hasAvHotPrice) changedDatasetKeys.push('avHotPriceKeys');
             let avRuleClearOps = [];
@@ -19265,6 +19308,11 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasRequestHistory) {
                 requestHistoryInventory = (res.requestHistoryData || []).map((item, idx) => normalizeRequestHistoryRow(item, idx)).filter(Boolean);
                 requestHistoryInventoryById = rebuildInventoryByIdMap(requestHistoryInventory);
+            }
+
+            if (hasMlJobs) {
+                mlImageJobsInventory = (res.mlJobsData || []).map((item, idx) => normalizeMlImageJobRow(item, idx)).filter(Boolean);
+                rebuildMlImageJobIndexes();
             }
 
             if (hasRequests || hasRequestHistory || (hasMaster && requestsInventory.length)) {
@@ -21250,7 +21298,7 @@ function toggleDriveQuickRequestItem(domId) {
             return dockAssignableUsersPromise;
         }
 
-        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','av','request','reserves','sales-office','reports','hours','low-stock','review','move-up','advertisement','chat'];
+        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','av','request','reserves','sales-office','reports','hours','low-stock','review','move-up','advertisement','diagnostics','chat'];
         const ROLE_VIEW_ELEMENT_IDS = Object.freeze({
             drive: ['drawer-drive-btn', 'home-tile-drive'],
             tasks: ['drawer-tasks-btn', 'home-tile-tasks'],
@@ -21267,6 +21315,7 @@ function toggleDriveQuickRequestItem(domId) {
             review: ['drawer-review-btn', 'home-tile-review'],
             'move-up': ['drawer-move-up-btn', 'home-tile-move-up'],
             advertisement: ['drawer-advertisement-btn', 'home-tile-advertisement'],
+            diagnostics: ['drawer-diagnostics-btn', 'home-tile-diagnostics'],
             chat: ['drawer-chat-btn', 'home-tile-chat', 'footer-chat-btn'],
             walkie: ['drawer-walkie-btn', 'home-tile-walkie', 'footer-walkie-btn']
         });
@@ -21323,6 +21372,7 @@ function toggleDriveQuickRequestItem(domId) {
             const targetView = String(viewId || '').trim();
             if (!targetView || targetView === 'home' || targetView === 'detail') return true;
             if (targetView === 'walkie') return false;
+            if (targetView === 'diagnostics') return isStrictDylanCollygeUser();
             const access = getRoleAccessState();
             if (targetView === 'moves') return canUseMovesModule();
             if (targetView === 'request' && !access.isForeman && !access.isTakeBackOnly && access.isRequestRepScopedUser) return true;
@@ -21418,7 +21468,7 @@ function toggleDriveQuickRequestItem(domId) {
         function syncRoleAccessUi(access = getRoleAccessState()) {
             const allowedViews = access && access.allowedViews instanceof Set ? access.allowedViews : new Set();
             Object.keys(ROLE_VIEW_ELEMENT_IDS).forEach((viewId) => {
-                const isAllowed = (viewId === 'request' || viewId === 'moves') ? canAccessView(viewId) : allowedViews.has(viewId);
+                const isAllowed = (viewId === 'request' || viewId === 'moves' || viewId === 'diagnostics') ? canAccessView(viewId) : allowedViews.has(viewId);
                 ROLE_VIEW_ELEMENT_IDS[viewId].forEach((elementId) => {
                     const el = document.getElementById(elementId);
                     if (!el) return;
@@ -24684,7 +24734,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (canAccessView(target)) switchView(target);
         }
 
-        const TRACKED_VIEW_IDS = ['drive','tasks','review','move-up','advertisement','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
+        const TRACKED_VIEW_IDS = ['drive','tasks','review','move-up','advertisement','diagnostics','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
 
         function getAffectedViewsForDatasets(changedKeys = []) {
             const changedSet = new Set((changedKeys || []).filter(Boolean));
@@ -24700,6 +24750,9 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if ((changedSet.has('flyerRows') || changedSet.has('flyerHistory')) && !affectedViews.includes('tasks')) {
                 affectedViews.push('tasks');
+            }
+            if (changedSet.has('mlJobs') && !affectedViews.includes('home')) {
+                affectedViews.push('home');
             }
             return affectedViews;
         }
@@ -26416,6 +26469,8 @@ function toggleDriveQuickRequestItem(domId) {
                 renderMoveUp();
             } else if (viewId === 'advertisement') {
                 renderAdvertisement();
+            } else if (viewId === 'diagnostics') {
+                renderDiagnostics();
             } else if (viewId === 'request') {
                 if (forceReset || !state.initialized) resetRequestView(false);
                 renderRequest();
@@ -37924,13 +37979,19 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
         }
 
         function setHomeTab(tab = 'dashboard') {
-            const nextTab = (tab === 'productivity' && canViewProductivityHome()) ? 'productivity' : 'dashboard';
+            const requestedTab = String(tab || 'dashboard').trim().toLowerCase();
+            let nextTab = 'dashboard';
+            if (requestedTab === 'productivity' && canViewProductivityHome()) nextTab = 'productivity';
+            else if (requestedTab === 'ai-capture' && currentUser) nextTab = 'ai-capture';
+            else if (requestedTab === 'grading' && canUseMlAdminViews()) nextTab = 'grading';
             activeHomeTab = nextTab;
             if (nextTab !== 'productivity') selectedProductivityUser = '';
             if (nextTab === 'productivity') {
                 ensureProductivityHistorySchemaReady().catch(() => {});
                 if (selectedProductivityUser) loadProductivityHistoryForUser(selectedProductivityUser).catch(() => {});
             }
+            if (nextTab === 'ai-capture') ensureDatasetLoaded('master', 'initial').then(() => scheduleHomeRender(true)).catch(() => {});
+            if (nextTab === 'grading') ensureDatasetLoaded('mlJobs', 'initial').then(() => scheduleHomeRender(true)).catch(() => {});
             scheduleHomeRender(true);
             return false;
         }
@@ -38033,18 +38094,507 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             }).join('');
         }
 
+        function canUseMlAdminViews() {
+            return isStrictDylanCollygeUser();
+        }
+
+        function normalizeMlStatus(value = '') {
+            const text = String(value || '').trim().toLowerCase().replace(/\s+/g, '_');
+            if (['pending_ml','processing','pending_approval','approved','ml_failed'].includes(text)) return text;
+            return text || 'pending_ml';
+        }
+
+        function normalizeMlImageJobRow(row = null, idx = 0) {
+            if (!row || typeof row !== 'object') return null;
+            const item = Object.assign({}, row);
+            item.SOURCE_TABLE = ML_IMAGE_JOBS_TABLE;
+            item.UNIQUE_ID = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, item.ID, item.id, `ml_${idx}`)).trim();
+            item.DOM_ID = String(firstNonEmptyValue(item.DOM_ID, item.dom_id, `ml_${item.UNIQUE_ID}`)).trim();
+            item.STATUS = normalizeMlStatus(firstNonEmptyValue(item.STATUS, item.status, 'pending_ml'));
+            item.IMAGE_BUCKET = String(firstNonEmptyValue(item.IMAGE_BUCKET, item.image_bucket, ML_CAPTURE_PHOTO_BUCKET)).trim() || ML_CAPTURE_PHOTO_BUCKET;
+            item.IMAGE_PATH = String(firstNonEmptyValue(item.IMAGE_PATH, item.image_path, '')).trim();
+            item.IMAGE_URL = String(firstNonEmptyValue(item.IMAGE_URL, item.image_url, '')).trim();
+            item.SEASON = String(firstNonEmptyValue(item.SEASON, item.season, '')).trim().toUpperCase();
+            item.BLOCK = String(firstNonEmptyValue(item.BLOCK, item.block, '')).trim();
+            item.ITEMCODE = String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, '')).trim();
+            item.GENUS = String(firstNonEmptyValue(item.GENUS, item.genus, '')).trim();
+            item.COMMONNAME = String(firstNonEmptyValue(item.COMMONNAME, item.COMMON_NAME, item.common_name, item.ML_COMMON_NAME, item.ml_common_name, 'AI Capture')).trim();
+            item.CONTSIZE = String(firstNonEmptyValue(item.CONTSIZE, item.contsize, '')).trim();
+            item.LOCATIONCODE = String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, '')).trim();
+            item.LOTCODE = String(firstNonEmptyValue(item.LOTCODE, item.lotcode, '')).trim();
+            item.PTRAVAILABLE = firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, '0');
+            item.ML_GENUS = String(firstNonEmptyValue(item.ML_GENUS, item.ml_genus, '')).trim();
+            item.ML_COMMON_NAME = String(firstNonEmptyValue(item.ML_COMMON_NAME, item.ml_common_name, '')).trim();
+            item.ML_GRADE = String(firstNonEmptyValue(item.ML_GRADE, item.ml_grade, '')).trim().toUpperCase();
+            item.ML_GRADE_RAW = String(firstNonEmptyValue(item.ML_GRADE_RAW, item.ml_grade_raw, '')).trim().toUpperCase();
+            item.ML_CONFIDENCE = firstNonEmptyValue(item.ML_CONFIDENCE, item.ml_confidence, '');
+            item.DIAGNOSIS = String(firstNonEmptyValue(item.DIAGNOSIS, item.diagnosis, '')).trim();
+            item.RECOMMENDED_TREATMENT = String(firstNonEmptyValue(item.RECOMMENDED_TREATMENT, item.recommended_treatment, '')).trim();
+            item.MANUAL_REVIEW = item.MANUAL_REVIEW === true || item.manual_review === true || String(firstNonEmptyValue(item.MANUAL_REVIEW, item.manual_review, '')).toLowerCase() === 'true';
+            item.APPROVED_S1 = firstNonEmptyValue(item.APPROVED_S1, item.approved_s1, '0');
+            item.APPROVED_F1 = firstNonEmptyValue(item.APPROVED_F1, item.approved_f1, '0');
+            item.APPROVED_U1 = firstNonEmptyValue(item.APPROVED_U1, item.approved_u1, '0');
+            item.APPROVED_U2 = firstNonEmptyValue(item.APPROVED_U2, item.approved_u2, '0');
+            item.APPROVED_U3 = firstNonEmptyValue(item.APPROVED_U3, item.approved_u3, '0');
+            item.APPROVED_X = firstNonEmptyValue(item.APPROVED_X, item.approved_x, '0');
+            item.APPROVED_BY_USERNAME = String(firstNonEmptyValue(item.APPROVED_BY_USERNAME, item.approved_by_username, '')).trim();
+            item.APPROVED_BY_DISPLAY = String(firstNonEmptyValue(item.APPROVED_BY_DISPLAY, item.approved_by_display, '')).trim();
+            item.CREATED_AT = String(firstNonEmptyValue(item.CREATED_AT, item.created_at, '')).trim();
+            item.UPDATED_AT = String(firstNonEmptyValue(item.UPDATED_AT, item.updated_at, '')).trim();
+            item.ML_COMPLETED_AT = String(firstNonEmptyValue(item.ML_COMPLETED_AT, item.ml_completed_at, '')).trim();
+            item.APPROVED_AT = String(firstNonEmptyValue(item.APPROVED_AT, item.approved_at, '')).trim();
+            return item;
+        }
+
+        function rebuildMlImageJobIndexes() {
+            mlImageJobsInventoryById = new Map();
+            (Array.isArray(mlImageJobsInventory) ? mlImageJobsInventory : []).forEach((row, idx) => {
+                const normalized = normalizeMlImageJobRow(row, idx);
+                if (!normalized || !normalized.UNIQUE_ID) return;
+                mlImageJobsInventoryById.set(normalized.UNIQUE_ID, normalized);
+            });
+        }
+
+        function getMlImageJobById(uniqueId = '') {
+            const safeId = String(uniqueId || '').trim();
+            if (!safeId) return null;
+            return mlImageJobsInventoryById.get(safeId) || (Array.isArray(mlImageJobsInventory) ? mlImageJobsInventory.find((row) => String(row && row.UNIQUE_ID || '').trim() === safeId) : null) || null;
+        }
+
+        function getMlJobsByStatus(statuses = []) {
+            const statusSet = new Set((Array.isArray(statuses) ? statuses : [statuses]).map((value) => normalizeMlStatus(value)).filter(Boolean));
+            return (Array.isArray(mlImageJobsInventory) ? mlImageJobsInventory : [])
+                .map((row, idx) => normalizeMlImageJobRow(row, idx))
+                .filter(Boolean)
+                .filter((row) => !statusSet.size || statusSet.has(normalizeMlStatus(row.STATUS)))
+                .sort((a, b) => String(firstNonEmptyValue(b.UPDATED_AT, b.CREATED_AT, '')).localeCompare(String(firstNonEmptyValue(a.UPDATED_AT, a.CREATED_AT, ''))));
+        }
+
+        function getMlJobImageUrl(row = null) {
+            const imageUrl = String(firstNonEmptyValue(row && row.IMAGE_URL, row && row.image_url, '')).trim();
+            if (imageUrl) return imageUrl;
+            const imagePath = String(firstNonEmptyValue(row && row.IMAGE_PATH, row && row.image_path, '')).trim();
+            const imageBucket = String(firstNonEmptyValue(row && row.IMAGE_BUCKET, row && row.image_bucket, ML_CAPTURE_PHOTO_BUCKET)).trim() || ML_CAPTURE_PHOTO_BUCKET;
+            if (!imagePath || !supabaseClient || !supabaseClient.storage) return '';
+            try {
+                const { data } = supabaseClient.storage.from(imageBucket).getPublicUrl(imagePath);
+                return data && data.publicUrl ? data.publicUrl : '';
+            } catch (error) {
+                return '';
+            }
+        }
+
+        function formatMlConfidence(value = '') {
+            const num = Number(value);
+            if (!Number.isFinite(num) || num <= 0) return 'Manual';
+            return `${Math.round(num * 100)}%`;
+        }
+
+        function formatMlTimestamp(value = '') {
+            const text = String(value || '').trim();
+            if (!text) return '';
+            const parsed = new Date(text);
+            if (Number.isNaN(parsed.getTime())) return text;
+            return parsed.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        }
+
+        function getDefaultMlCaptureSeason() {
+            const now = new Date();
+            const month = now.getMonth() + 1;
+            const day = now.getDate();
+            if (month > 7 || (month === 7 && day >= 15)) {
+                if (month < 12 || (month === 12 && day < 15)) return 'F1';
+            }
+            return 'S1';
+        }
+
+        function getMlCaptureBlockOptions() {
+            const values = new Set();
+            (Array.isArray(fullInventory) ? fullInventory : []).forEach((row) => {
+                const block = String(firstNonEmptyValue(row && row.BLOCKALPHA, row && row.blockalpha, '')).trim();
+                if (block) values.add(block);
+            });
+            return Array.from(values).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+        }
+
+        function renderMlHomeTabs(activeTab = 'dashboard', canViewProductivity = false, canViewCapture = false, canViewGrading = false) {
+            const tabs = [{ id: 'dashboard', label: 'Dashboard' }];
+            if (canViewCapture) tabs.push({ id: 'ai-capture', label: 'AI Capture' });
+            if (canViewGrading) tabs.push({ id: 'grading', label: 'Grading' });
+            if (canViewProductivity) tabs.push({ id: 'productivity', label: 'Productivity' });
+            if (tabs.length <= 1) return '';
+            const tabButtonClass = (isActive) => isActive ? 'rounded-full border border-[#007a4d] bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm' : 'rounded-full border border-emerald-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm';
+            return `<div class="bg-white rounded-2xl border border-emerald-100 shadow-sm p-3 flex flex-wrap gap-2">${tabs.map((tab) => `<button type="button" class="${tabButtonClass(activeTab === tab.id)}" ${buildFastInvokeAttrs('setHomeTab', [tab.id], tab.label)}>${esc(tab.label)}</button>`).join('')}</div>`;
+        }
+
+        function renderMlCaptureHomePanel() {
+            const blocks = getMlCaptureBlockOptions();
+            const defaultSeason = getDefaultMlCaptureSeason();
+            const blockOptions = blocks.length
+                ? blocks.map((block) => `<option value="${esc(block)}">${esc(block)}</option>`).join('')
+                : '<option value="">No block list loaded</option>';
+            const loadingNotice = !isDatasetLoaded('master', 'initial')
+                ? '<div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-[12px] font-bold text-amber-800">Loading Drive Mode blocks. You can upload after the block list appears.</div>'
+                : '';
+            if (!isDatasetLoaded('master', 'initial')) queueDatasetLoad('master', 'initial', 0);
+            return `<div class="bg-white rounded-2xl border border-emerald-100 shadow-sm p-5 space-y-4">
+                <div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">AI Capture</div><div class="mt-1 text-xl font-black text-slate-900">Upload a plant photo</div></div>
+                ${loadingNotice}
+                <form id="ml-capture-form" class="space-y-4" onsubmit="return submitMlCaptureJob(event)">
+                    <label class="block"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Photo</span><input id="ml-capture-file" type="file" accept="image/*" capture="environment" class="mt-1 block w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-bold text-slate-700" required></label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label class="block"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Season</span><select id="ml-capture-season" class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-800"><option value="S1" ${defaultSeason === 'S1' ? 'selected' : ''}>S1</option><option value="F1" ${defaultSeason === 'F1' ? 'selected' : ''}>F1</option></select></label>
+                        <label class="block"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Block</span><select id="ml-capture-block" class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-800">${blockOptions}</select></label>
+                    </div>
+                    <button id="ml-capture-upload-btn" type="submit" class="w-full rounded-xl bg-[#007a4d] px-4 py-4 text-[12px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-[0.99]"><i class="ph-bold ph-upload-simple align-middle text-base"></i><span class="align-middle ml-2">Upload For ML</span></button>
+                </form>
+            </div>`;
+        }
+
+        function getMlApprovalDefaultQuantities(row = null) {
+            const grade = String(firstNonEmptyValue(row && row.ML_GRADE, row && row.ml_grade, '')).trim().toUpperCase();
+            return {
+                s1: grade === 'S1' ? 1 : 0,
+                f1: grade === 'F1' ? 1 : 0,
+                u1: grade === 'U1' ? 1 : 0,
+                u2: grade === 'U2' ? 1 : 0,
+                u3: grade === 'U3' ? 1 : 0,
+                x: grade === 'X' ? 1 : 0
+            };
+        }
+
+        function getMlApprovalInputId(uniqueId = '', key = '') {
+            return `ml-approve-${String(key || '').replace(/[^a-zA-Z0-9_-]+/g, '-')}-${String(uniqueId || '').replace(/[^a-zA-Z0-9_-]+/g, '-')}`;
+        }
+
+        function renderMlApprovalQuantityInput(uniqueId = '', key = '', label = '', value = 0) {
+            const inputId = getMlApprovalInputId(uniqueId, key);
+            return `<label class="min-w-0 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">${esc(label)}<input id="${esc(inputId)}" type="number" min="0" step="1" inputmode="numeric" value="${esc(String(value == null ? 0 : value))}" class="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-right text-sm font-black text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100"></label>`;
+        }
+
+        function renderMlApprovalCard(row = null, mode = 'pending') {
+            const item = normalizeMlImageJobRow(row);
+            if (!item) return '';
+            const uid = item.UNIQUE_ID;
+            const imageUrl = getMlJobImageUrl(item);
+            const title = firstNonEmptyValue(item.ML_COMMON_NAME, item.COMMONNAME, 'AI Capture');
+            const genus = firstNonEmptyValue(item.ML_GENUS, item.GENUS, '');
+            const grade = firstNonEmptyValue(item.ML_GRADE, item.ML_GRADE_RAW, 'Manual');
+            const defaults = mode === 'approved'
+                ? { s1: item.APPROVED_S1, f1: item.APPROVED_F1, u1: item.APPROVED_U1, u2: item.APPROVED_U2, u3: item.APPROVED_U3, x: item.APPROVED_X }
+                : getMlApprovalDefaultQuantities(item);
+            const photoHtml = imageUrl ? `<img src="${esc(imageUrl)}" alt="" class="h-24 w-24 rounded-xl object-cover border border-slate-200 bg-slate-100 flex-shrink-0" loading="lazy">` : '<div class="h-24 w-24 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 flex items-center justify-center text-center flex-shrink-0">No Photo</div>';
+            const statusTone = item.STATUS === 'ml_failed' ? 'border-red-200 bg-red-50 text-red-700' : (item.MANUAL_REVIEW ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700');
+            const actionHtml = mode === 'approved'
+                ? `<div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-[11px] font-bold text-slate-500">Approved ${esc(formatMlTimestamp(item.APPROVED_AT) || 'recently')} by ${esc(firstNonEmptyValue(item.APPROVED_BY_DISPLAY, item.APPROVED_BY_USERNAME, 'Unknown'))}</div>`
+                : `<div class="mt-3 grid grid-cols-3 sm:grid-cols-6 gap-2">${renderMlApprovalQuantityInput(uid, 's1', 'S1', defaults.s1)}${renderMlApprovalQuantityInput(uid, 'f1', 'F1', defaults.f1)}${renderMlApprovalQuantityInput(uid, 'u1', 'U1', defaults.u1)}${renderMlApprovalQuantityInput(uid, 'u2', 'U2', defaults.u2)}${renderMlApprovalQuantityInput(uid, 'u3', 'U3', defaults.u3)}${renderMlApprovalQuantityInput(uid, 'x', 'X', defaults.x)}</div><button type="button" class="mt-3 w-full rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-[0.99]" onclick="return approveMlImageJob('${escJsAttrValue(uid)}', this)">Approve &amp; Log</button>`;
+            return `<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="flex items-start gap-3">
+                    ${photoHtml}
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap gap-2 mb-2"><span class="rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${statusTone}">${esc(item.MANUAL_REVIEW ? 'Manual Review' : item.STATUS.replace(/_/g, ' '))}</span><span class="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">${esc(String(grade || 'Manual'))}</span></div>
+                        <div class="text-base font-black text-slate-900 leading-tight break-words">${esc(title)}</div>
+                        <div class="mt-1 text-[12px] font-bold text-slate-500 break-words">${esc([genus, item.CONTSIZE, item.BLOCK ? 'Block ' + item.BLOCK : '', item.SEASON].filter(Boolean).join(' | '))}</div>
+                        <div class="mt-2 text-[11px] font-bold text-slate-500">Confidence ${esc(formatMlConfidence(item.ML_CONFIDENCE))}</div>
+                    </div>
+                </div>
+                <div class="mt-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-[12px] font-semibold text-slate-600">
+                    <div><span class="font-black text-slate-800">Issue:</span> ${esc(firstNonEmptyValue(item.DIAGNOSIS, 'Waiting for diagnostics'))}</div>
+                    <div class="mt-1"><span class="font-black text-slate-800">Treatment:</span> ${esc(firstNonEmptyValue(item.RECOMMENDED_TREATMENT, 'Review before logging.'))}</div>
+                </div>
+                ${actionHtml}
+            </div>`;
+        }
+
+        function renderMlGradingHomePanel() {
+            if (!canUseMlAdminViews()) return '';
+            if (!isDatasetLoaded('mlJobs', 'initial')) {
+                queueDatasetLoad('mlJobs', 'initial', 0);
+                return '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-[12px] font-semibold text-slate-400">Loading grading jobs...</div>';
+            }
+            const pendingRows = getMlJobsByStatus(['pending_approval']);
+            const completedRows = getMlJobsByStatus(['approved']).slice(0, 25);
+            const pendingHtml = pendingRows.length ? pendingRows.map((row) => renderMlApprovalCard(row, 'pending')).join('') : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-[12px] font-semibold text-slate-400">No pending ML approvals.</div>';
+            const completedHtml = completedRows.length ? completedRows.map((row) => renderMlApprovalCard(row, 'approved')).join('') : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-[12px] font-semibold text-slate-400">No completed approvals yet.</div>';
+            return `<div class="space-y-5">
+                <div class="flex items-center justify-between gap-3">
+                    <div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Grading</div><div class="text-xl font-black text-slate-900">Pending Approvals</div></div>
+                    <button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return refreshMlJobsNow()"><i class="ph-bold ph-arrows-clockwise align-middle"></i><span class="align-middle ml-1">Refresh</span></button>
+                </div>
+                <div class="space-y-3">${pendingHtml}</div>
+                <div class="pt-2"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 mb-3">Complete Approvals</div><div class="space-y-3">${completedHtml}</div></div>
+            </div>`;
+        }
+
+        async function prepareMlCaptureBlob(file) {
+            if (!file || !String(file.type || '').startsWith('image/')) throw new Error('Please choose an image file.');
+            const previewUrl = URL.createObjectURL(file);
+            return new Promise((resolve, reject) => {
+                let img = null;
+                let bitmap = null;
+                let canvas = null;
+                const cleanup = () => {
+                    URL.revokeObjectURL(previewUrl);
+                    if (bitmap && typeof bitmap.close === 'function') {
+                        try { bitmap.close(); } catch (error) {}
+                    }
+                    if (img) {
+                        img.onload = null;
+                        img.onerror = null;
+                    }
+                    if (canvas) {
+                        canvas.width = 1;
+                        canvas.height = 1;
+                    }
+                };
+                const fail = (error) => {
+                    cleanup();
+                    reject(error instanceof Error ? error : new Error(String(error || 'Could not process image.')));
+                };
+                const drawImage = (sourceImage) => {
+                    try {
+                        const sourceWidth = Number(sourceImage.width || sourceImage.naturalWidth || 0);
+                        const sourceHeight = Number(sourceImage.height || sourceImage.naturalHeight || 0);
+                        if (!sourceWidth || !sourceHeight) throw new Error('Could not read image dimensions.');
+                        const sourceMax = Math.max(sourceWidth, sourceHeight);
+                        const scale = sourceMax > PHOTO_MAX_WIDTH ? PHOTO_MAX_WIDTH / sourceMax : 1;
+                        canvas = document.createElement('canvas');
+                        canvas.width = Math.max(1, Math.round(sourceWidth * scale));
+                        canvas.height = Math.max(1, Math.round(sourceHeight * scale));
+                        const ctx = canvas.getContext('2d', { alpha: false });
+                        if (!ctx) throw new Error('Could not prepare image.');
+                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingQuality = 'medium';
+                        ctx.drawImage(sourceImage, 0, 0, canvas.width, canvas.height);
+                        canvas.toBlob((blob) => {
+                            if (!blob) {
+                                fail(new Error('Could not compress image.'));
+                                return;
+                            }
+                            cleanup();
+                            resolve(blob);
+                        }, 'image/jpeg', PHOTO_JPEG_QUALITY);
+                    } catch (error) {
+                        fail(error);
+                    }
+                };
+                if (window.createImageBitmap) {
+                    createImageBitmap(file).then((imageBitmap) => {
+                        bitmap = imageBitmap;
+                        drawImage(imageBitmap);
+                    }).catch(() => {
+                        img = new Image();
+                        img.onload = () => drawImage(img);
+                        img.onerror = () => fail(new Error('Could not load image.'));
+                        img.src = previewUrl;
+                    });
+                } else {
+                    img = new Image();
+                    img.onload = () => drawImage(img);
+                    img.onerror = () => fail(new Error('Could not load image.'));
+                    img.src = previewUrl;
+                }
+            });
+        }
+
+        async function submitMlCaptureJob(event = null) {
+            if (event && typeof event.preventDefault === 'function') event.preventDefault();
+            if (!currentUser) {
+                showToast('Login Required', 'Please log in before uploading AI Capture photos.', true);
+                return false;
+            }
+            const fileInput = document.getElementById('ml-capture-file');
+            const seasonInput = document.getElementById('ml-capture-season');
+            const blockInput = document.getElementById('ml-capture-block');
+            const button = document.getElementById('ml-capture-upload-btn');
+            const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+            if (!file) {
+                showToast('Photo Required', 'Choose a photo before uploading.', true);
+                return false;
+            }
+            const previousLabel = button ? button.innerHTML : '';
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin align-middle"></i><span class="align-middle ml-2">Uploading...</span>';
+            }
+            try {
+                const blob = await prepareMlCaptureBlob(file);
+                const uniqueId = `ml_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+                const clean = (value) => String(value || 'capture').replace(/[^a-zA-Z0-9_-]+/g, '').slice(0, 48) || 'capture';
+                const filePath = `${new Date().toISOString().split('T')[0]}/${clean(currentUser)}-${uniqueId}.jpg`;
+                const uploadResult = await withTimeout(supabaseClient.storage.from(ML_CAPTURE_PHOTO_BUCKET).upload(filePath, blob, {
+                    contentType: 'image/jpeg',
+                    upsert: true
+                }), SUPABASE_UPLOAD_TIMEOUT_MS, 'ML photo upload');
+                if (uploadResult && uploadResult.error) throw uploadResult.error;
+                const { data: publicUrlData } = supabaseClient.storage.from(ML_CAPTURE_PHOTO_BUCKET).getPublicUrl(filePath);
+                const payload = {
+                    unique_id: uniqueId,
+                    status: 'pending_ml',
+                    image_bucket: ML_CAPTURE_PHOTO_BUCKET,
+                    image_path: filePath,
+                    image_url: publicUrlData && publicUrlData.publicUrl ? publicUrlData.publicUrl : '',
+                    source_table: 'mobile_ai_capture',
+                    season: String(seasonInput && seasonInput.value || getDefaultMlCaptureSeason()).trim().toUpperCase(),
+                    block: String(blockInput && blockInput.value || '').trim(),
+                    created_by_username: String(currentUser || '').trim(),
+                    created_by_display: String(currentUserDisplay || currentUser || '').trim()
+                };
+                await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'POST', payload, 'on_conflict=unique_id', { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
+                const localRow = normalizeMlImageJobRow(payload);
+                if (localRow) {
+                    upsertRealtimeRow(mlImageJobsInventory, localRow, ML_IMAGE_JOBS_TABLE);
+                    rebuildMlImageJobIndexes();
+                }
+                markViewDirty('home');
+                markViewDirty('diagnostics');
+                if (fileInput) fileInput.value = '';
+                showToast('Uploaded', 'Photo sent to the ML worker.');
+                scheduleHomeRender(true);
+            } catch (error) {
+                showToast('Upload Failed', error && error.message ? error.message : 'Could not upload the ML photo.', true);
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = previousLabel || '<i class="ph-bold ph-upload-simple align-middle text-base"></i><span class="align-middle ml-2">Upload For ML</span>';
+                }
+            }
+            return false;
+        }
+
+        function readMlApprovalQuantity(uniqueId = '', key = '') {
+            const input = document.getElementById(getMlApprovalInputId(uniqueId, key));
+            const value = input ? parseAppNumber(input.value) : 0;
+            return Math.max(0, Number.isFinite(value) ? value : 0);
+        }
+
+        async function refreshMlJobsNow() {
+            await ensureDatasetLoaded('mlJobs', 'full', { force: true }).catch(() => false);
+            markViewDirty('home');
+            markViewDirty('diagnostics');
+            if (getCurrentVisibleViewId() === 'home') scheduleHomeRender(true);
+            if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 120);
+            return false;
+        }
+
+        async function approveMlImageJob(uniqueId = '', button = null) {
+            if (!canUseMlAdminViews()) {
+                showToast('Restricted', 'Only Dylan can approve ML grading rows.', true);
+                return false;
+            }
+            const safeId = String(uniqueId || '').trim();
+            const row = getMlImageJobById(safeId);
+            if (!row) {
+                showToast('Not Found', 'That ML job could not be found.', true);
+                return false;
+            }
+            const previousLabel = button ? button.innerText : '';
+            if (button) {
+                button.disabled = true;
+                button.innerText = 'Saving...';
+            }
+            const payload = {
+                status: 'approved',
+                approved_s1: readMlApprovalQuantity(safeId, 's1'),
+                approved_f1: readMlApprovalQuantity(safeId, 'f1'),
+                approved_u1: readMlApprovalQuantity(safeId, 'u1'),
+                approved_u2: readMlApprovalQuantity(safeId, 'u2'),
+                approved_u3: readMlApprovalQuantity(safeId, 'u3'),
+                approved_x: readMlApprovalQuantity(safeId, 'x'),
+                approved_by_username: String(currentUser || '').trim(),
+                approved_by_display: String(currentUserDisplay || currentUser || '').trim(),
+                approved_at: new Date().toISOString()
+            };
+            try {
+                await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(safeId)}`);
+                Object.assign(row, normalizeMlImageJobRow({ ...row, ...payload }));
+                rebuildMlImageJobIndexes();
+                markViewDirty('home');
+                markViewDirty('diagnostics');
+                showToast('Approved', 'ML grading row approved and logged.');
+                scheduleHomeRender(true);
+                if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 120);
+            } catch (error) {
+                showToast('Save Failed', error && error.message ? error.message : 'Could not approve this ML job.', true);
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.innerText = previousLabel || 'Approve & Log';
+                }
+            }
+            return false;
+        }
+
+        function renderDiagnosticCard(row = null) {
+            const item = normalizeMlImageJobRow(row);
+            if (!item) return '';
+            const imageUrl = getMlJobImageUrl(item);
+            const photoHtml = imageUrl ? `<img src="${esc(imageUrl)}" alt="" class="h-20 w-20 rounded-xl object-cover border border-slate-200 bg-slate-100 flex-shrink-0" loading="lazy">` : '<div class="h-20 w-20 rounded-xl border border-dashed border-slate-300 bg-slate-50 flex-shrink-0"></div>';
+            const statusClass = item.STATUS === 'ml_failed' ? 'border-red-200 bg-red-50 text-red-700' : (item.STATUS === 'approved' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-blue-200 bg-blue-50 text-blue-700');
+            const title = firstNonEmptyValue(item.ML_COMMON_NAME, item.COMMONNAME, 'AI Capture');
+            return `<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="flex items-start gap-3">
+                    ${photoHtml}
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap gap-2 mb-2"><span class="rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${statusClass}">${esc(item.STATUS.replace(/_/g, ' '))}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${esc(formatMlTimestamp(firstNonEmptyValue(item.ML_COMPLETED_AT, item.UPDATED_AT, item.CREATED_AT)))}</span></div>
+                        <div class="text-base font-black text-slate-900 leading-tight break-words">${esc(title)}</div>
+                        <div class="mt-1 text-[12px] font-bold text-slate-500 break-words">${esc([item.ML_GENUS, item.BLOCK ? 'Block ' + item.BLOCK : '', item.SEASON, item.ML_GRADE].filter(Boolean).join(' | '))}</div>
+                    </div>
+                </div>
+                <div class="mt-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-[12px] font-semibold text-slate-600">
+                    <div><span class="font-black text-slate-800">Issue:</span> ${esc(firstNonEmptyValue(item.DIAGNOSIS, item.STATUS === 'pending_ml' ? 'Waiting for ML worker' : 'No diagnosis returned'))}</div>
+                    <div class="mt-1"><span class="font-black text-slate-800">Treatment:</span> ${esc(firstNonEmptyValue(item.RECOMMENDED_TREATMENT, item.STATUS === 'pending_ml' ? 'Worker has not processed this image yet.' : 'Review manually.'))}</div>
+                </div>
+            </div>`;
+        }
+
+        function renderDiagnostics() {
+            if (!canUseMlAdminViews()) {
+                switchView('home');
+                return;
+            }
+            if (ensureViewDataForRender('diagnostics')) return;
+            const container = document.getElementById('diagnostics-content');
+            const crumb = document.getElementById('diagnostics-crumb');
+            if (!container) return;
+            const pendingRows = getMlJobsByStatus(['pending_ml', 'processing']);
+            const finishedRows = getMlJobsByStatus(['pending_approval', 'approved', 'ml_failed']).slice(0, 60);
+            if (crumb) crumb.innerText = `AI Diagnostics | ${pendingRows.length} Pending`;
+            const pendingHtml = pendingRows.length ? pendingRows.map(renderDiagnosticCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-[12px] font-semibold text-slate-400">No pending diagnostic jobs.</div>';
+            const finishedHtml = finishedRows.length ? finishedRows.map(renderDiagnosticCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-[12px] font-semibold text-slate-400">No completed diagnostic reports.</div>';
+            const signature = `diagnostics:${getDatasetLoadSignature('mlJobs')}:${pendingRows.length}:${finishedRows.length}:${finishedRows.map((row) => `${row.UNIQUE_ID}:${row.STATUS}:${row.UPDATED_AT}`).join('|')}`;
+            const html = `<div class="space-y-5">
+                <section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Pending Diagnostics</div>${pendingHtml}</section>
+                <section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Approved Diagnostics</div>${finishedHtml}</section>
+            </div>`;
+            setContainerHtmlWithSignature(container, html, signature);
+        }
+
         function renderHome() {
             const dynamicContent = document.getElementById('home-dynamic-content');
             const dashboardContent = document.getElementById('home-dashboard-content');
             if (!dynamicContent || !dashboardContent) return;
             const canViewProductivity = canViewProductivityHome();
-            if (!canViewProductivity && activeHomeTab === 'productivity') { activeHomeTab = 'dashboard'; selectedProductivityUser = ''; }
-            const activeTab = canViewProductivity ? activeHomeTab : 'dashboard';
+            const canViewCapture = !!currentUser;
+            const canViewGrading = canUseMlAdminViews();
+            const allowedHomeTabs = new Set(['dashboard']);
+            if (canViewCapture) allowedHomeTabs.add('ai-capture');
+            if (canViewGrading) allowedHomeTabs.add('grading');
+            if (canViewProductivity) allowedHomeTabs.add('productivity');
+            if (!allowedHomeTabs.has(activeHomeTab)) {
+                activeHomeTab = 'dashboard';
+                selectedProductivityUser = '';
+            }
+            if (activeHomeTab !== 'productivity') selectedProductivityUser = '';
+            const activeTab = activeHomeTab;
             dashboardContent.classList.toggle('hidden', activeTab !== 'dashboard');
-            const tabButtonClass = (isActive) => isActive ? 'rounded-full border border-[#007a4d] bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm' : 'rounded-full border border-emerald-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm';
             let html = '';
-            if (canViewProductivity) html += `<div class="bg-white rounded-2xl border border-emerald-100 shadow-sm p-3 flex flex-wrap gap-2"><button type="button" class="${tabButtonClass(activeTab === 'dashboard')}" ${buildFastInvokeAttrs('setHomeTab', ['dashboard'], 'Dashboard')}>Dashboard</button><button type="button" class="${tabButtonClass(activeTab === 'productivity')}" ${buildFastInvokeAttrs('setHomeTab', ['productivity'], 'Productivity')}>Productivity</button></div>`;
-            if (activeTab === 'productivity') {
+            html += renderMlHomeTabs(activeTab, canViewProductivity, canViewCapture, canViewGrading);
+            if (activeTab === 'ai-capture') {
+                html += renderMlCaptureHomePanel();
+            } else if (activeTab === 'grading') {
+                html += renderMlGradingHomePanel();
+            } else if (activeTab === 'productivity') {
                 if (!selectedProductivityUser) {
                     html += `<div class="bg-white rounded-2xl border border-emerald-100 shadow-sm p-5"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Productivity</div><div class="mt-2 text-sm font-semibold text-slate-500">Select a team member to see durable completion history grouped by date.</div><div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">${getTrackedProductivityUsers().map((entry) => `<button type="button" class="rounded-2xl border border-emerald-100 bg-[#f6fffb] px-4 py-4 text-left shadow-sm active:scale-[0.99] transition-transform" ${buildFastInvokeAttrs('openProductivityUserHistory', [entry.username], 'Open ' + entry.display)}><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">View History</div><div class="mt-1 text-base font-black text-slate-900 break-words">${esc(entry.display)}</div></button>`).join('')}</div></div>`;
                 } else {
