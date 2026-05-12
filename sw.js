@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.05.11.15';
+const APP_SHELL_BUILD = 'V2026.05.12.01';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const CACHE_NAME = 'greenleaf-v4.2-rebuild-' + APP_SHELL_BUILD;
@@ -110,7 +110,7 @@ self.addEventListener('fetch', (event) => {
       (async () => {
         const requestedBuild = getRequestedShellBuild(event.request);
         const requestedShellUrl = buildShellUrl(requestedBuild || APP_SHELL_BUILD);
-        const primaryShellUrl = !requestedBuild || requestedBuild === APP_SHELL_BUILD ? requestedShellUrl : APP_SHELL_URL;
+        const primaryShellUrl = requestedShellUrl;
         const cache = await caches.open(CACHE_NAME).catch(() => null);
         try {
           const networkResponse = await fetch(primaryShellUrl, { cache: 'reload' });
