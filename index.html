@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.10';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.11';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1870,7 +1870,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.10').trim() || 'V2026.05.12.10';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.11').trim() || 'V2026.05.12.11';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2742,7 +2742,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.10';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.11';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11838,7 +11838,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.10').trim() || 'V2026.05.12.10';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.11').trim() || 'V2026.05.12.11';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -28091,11 +28091,33 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function setReqTab(tab) {
-            beginDirectNavigationActivity();
-            activeReqTab = tab === 'reps' ? 'reps' : 'pending';
-            syncRequestTabButtons();
-            requestViewLevel = 0; selectedReqFolder = null; selectedReqRepView = null; selectedReqCustView = null; selectedReqFolderView = null; requestFolderSearchTerm = ''; requestRepSearchTerm = ''; requestCustomerSearchTerm = ''; requestFolderDateFilter = ''; clearSelection(); scheduleRequestRender();
+            lastViewSwitchAt = Date.now();
+            const nextTab = tab === 'reps' ? 'reps' : 'pending';
+            const scheduled = runDirectTrackedNavigation('request', `request-tab:${nextTab}`, () => {
+                activeReqTab = nextTab;
+                syncRequestTabButtons();
+                requestViewLevel = 0;
+                selectedReqFolder = null;
+                selectedReqRepView = null;
+                selectedReqCustView = null;
+                selectedReqFolderView = null;
+                requestFolderSearchTerm = '';
+                requestRepSearchTerm = '';
+                requestCustomerSearchTerm = '';
+                requestFolderDateFilter = '';
+                clearSelection();
+            }, {
+                delay: 0,
+                typingDelay: 32,
+                forceRender: true,
+                resetScrollTopAfterRender: true,
+                scrollResetKey: `request-tab:${nextTab}`,
+                touchDelayMs: 8,
+                interactionDelayMs: 8,
+                scrollDelayMs: 40
+            });
             forceRefreshRequestsForView('request-tab', { force: true, minIntervalMs: 0 }).catch(() => {});
+            return scheduled;
         }
 
         function resolveRequestRecipientEmail(repName = '') {
@@ -37694,7 +37716,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             if (activeReqTab !== 'reps') return '';
             if (requestViewLevel === 0) return 'reps';
             if (requestViewLevel === 1) return 'customers';
-            if (requestViewLevel === 2) return 'folderDate';
+            if (requestViewLevel === 2) return 'folders';
             return '';
         }
 
@@ -37706,11 +37728,14 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const input = document.getElementById('request-search');
             const clearBtn = document.getElementById('request-search-clear');
             const visible = !!mode;
-            const value = mode === 'folderDate' ? requestFolderDateFilter : (mode === 'customers' ? requestCustomerSearchTerm : (mode === 'reps' ? requestRepSearchTerm : ''));
-            const placeholder = mode === 'folderDate' ? 'Filter folders by date' : (mode === 'customers' ? 'Search customers...' : 'Search sales reps...');
+            const value = mode === 'folders' ? requestFolderSearchTerm : (mode === 'folderDate' ? requestFolderDateFilter : (mode === 'customers' ? requestCustomerSearchTerm : (mode === 'reps' ? requestRepSearchTerm : '')));
+            const placeholder = mode === 'folders' ? 'Search folders...' : (mode === 'folderDate' ? 'Filter folders by date' : (mode === 'customers' ? 'Search customers...' : 'Search sales reps...'));
             const inputType = mode === 'folderDate' ? 'date' : 'text';
             if (container) container.classList.toggle('hidden', !visible);
             if (input) {
+                if (document.activeElement === input && previousMode !== mode && (previousMode === 'folderDate' || mode === 'folderDate')) {
+                    try { input.blur(); } catch (error) {}
+                }
                 if (input.getAttribute('type') !== inputType) input.setAttribute('type', inputType);
                 if (document.activeElement !== input && input.value !== value) input.value = value;
                 input.placeholder = placeholder;
@@ -37728,6 +37753,14 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 requestCustomerSearchTerm = value;
             } else if (mode === 'reps') {
                 requestRepSearchTerm = value;
+            } else if (mode === 'folders') {
+                requestFolderSearchTerm = String(value || '').trim();
+                const folderSearchInput = document.getElementById('request-folder-search-input');
+                if (folderSearchInput && folderSearchInput.value !== requestFolderSearchTerm) folderSearchInput.value = requestFolderSearchTerm;
+                const visibleCount = applyRequestFolderFilters();
+                const clearBtn = document.getElementById('request-search-clear');
+                if (clearBtn) clearBtn.classList.toggle('hidden', !String(value || '').trim());
+                return visibleCount;
             } else if (mode === 'folderDate') {
                 requestFolderDateFilter = value;
                 const dateInput = document.getElementById('request-folder-date-filter');
@@ -37748,11 +37781,18 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const mode = getRequestHeaderSearchMode();
             if (mode === 'customers') requestCustomerSearchTerm = '';
             else if (mode === 'reps') requestRepSearchTerm = '';
+            else if (mode === 'folders') requestFolderSearchTerm = '';
             else if (mode === 'folderDate') requestFolderDateFilter = '';
             const input = document.getElementById('request-search');
             const clearBtn = document.getElementById('request-search-clear');
             if (input) input.value = '';
             if (clearBtn) clearBtn.classList.add('hidden');
+            if (mode === 'folders') {
+                const searchInput = document.getElementById('request-folder-search-input');
+                if (searchInput) searchInput.value = requestFolderSearchTerm;
+                applyRequestFolderFilters();
+                return false;
+            }
             if (mode === 'folderDate') {
                 const dateInput = document.getElementById('request-folder-date-filter');
                 if (dateInput) dateInput.value = '';
@@ -37819,7 +37859,8 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const dateInput = document.getElementById('request-folder-date-filter');
             if (searchInput) searchInput.value = '';
             if (dateInput) dateInput.value = '';
-            if (getRequestHeaderSearchMode() === 'folderDate') {
+            const headerMode = getRequestHeaderSearchMode();
+            if (headerMode === 'folders' || headerMode === 'folderDate') {
                 const headerInput = document.getElementById('request-search');
                 const headerClear = document.getElementById('request-search-clear');
                 if (headerInput) headerInput.value = '';
@@ -37929,10 +37970,19 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
         }
 
         function backToRequestFolderList() {
-            requestViewLevel = 2;
-            selectedReqFolderView = null;
-            scheduleRequestRender(0);
-            return false;
+            return runDirectTrackedNavigation('request', `request-folder-list:${selectedReqRepView || ''}:${selectedReqCustView || ''}`, () => {
+                requestViewLevel = 2;
+                selectedReqFolderView = null;
+            }, {
+                delay: 0,
+                typingDelay: 32,
+                forceRender: true,
+                resetScrollTopAfterRender: true,
+                scrollResetKey: `request-folder-list:${selectedReqRepView || ''}:${selectedReqCustView || ''}`,
+                touchDelayMs: 8,
+                interactionDelayMs: 8,
+                scrollDelayMs: 40
+            });
         }
 
         function getCurrentRequestDetailItems() {
