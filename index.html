@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.19';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.20';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1870,7 +1870,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.19').trim() || 'V2026.05.12.19';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.20').trim() || 'V2026.05.12.20';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2748,7 +2748,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.19';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.20';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -4915,30 +4915,52 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             if (keyboard) return keyboard;
             keyboard = document.createElement('div');
             keyboard.id = 'detail-measurement-keyboard';
-            keyboard.className = 'hidden fixed left-0 right-0 bottom-0 z-[13000] border-t border-zinc-800 bg-[#111412] px-2 pt-3 shadow-2xl';
-            keyboard.style.paddingBottom = 'calc(12px + env(safe-area-inset-bottom))';
+            keyboard.className = 'hidden fixed left-0 right-0 bottom-0 z-[13000] border-t border-zinc-800 bg-[#111412] px-2 pt-2 shadow-2xl';
+            keyboard.style.paddingBottom = 'calc(8px + env(safe-area-inset-bottom))';
             document.body.appendChild(keyboard);
             return keyboard;
         }
 
         function getDetailMeasurementKeyboardKeys(type = 'spec') {
-            const numberKeys = ['0','1','2','3','4','5','6','7','8','9'].map((value) => ({ value, token: value, label: value }));
-            const measurementKeys = type === 'caliper'
-                ? [
-                    { value: '.', token: '.', label: '.' },
-                    { value: '"', token: 'double_quote', label: '"' }
-                ]
-                : [
-                    { value: '.', token: '.', label: '.' },
-                    { value: '-', token: '-', label: '-' },
+            if (type === 'caliper') {
+                return [
+                    { value: '1', token: '1', label: '1' },
+                    { value: '2', token: '2', label: '2' },
+                    { value: '3', token: '3', label: '3' },
                     { value: '"', token: 'double_quote', label: '"' },
-                    { value: "'", token: 'apostrophe', label: "'", labelHtml: '&#39;' },
-                    { value: 'H', token: 'H', label: 'H' },
-                    { value: 'W', token: 'W', label: 'W' },
-                    { value: 'x', token: 'x', label: 'x' },
-                    { value: ' ', token: 'space', label: 'SPACE' }
+                    { value: '4', token: '4', label: '4' },
+                    { value: '5', token: '5', label: '5' },
+                    { value: '6', token: '6', label: '6' },
+                    { value: '.', token: '.', label: '.' },
+                    { value: '7', token: '7', label: '7' },
+                    { value: '8', token: '8', label: '8' },
+                    { value: '9', token: '9', label: '9' },
+                    { blank: true },
+                    { blank: true },
+                    { value: '0', token: '0', label: '0', span: 2 },
+                    { blank: true }
                 ];
-            return numberKeys.concat(measurementKeys);
+            }
+            return [
+                { value: '1', token: '1', label: '1' },
+                { value: '2', token: '2', label: '2' },
+                { value: '3', token: '3', label: '3' },
+                { value: '-', token: '-', label: '-' },
+                { value: '4', token: '4', label: '4' },
+                { value: '5', token: '5', label: '5' },
+                { value: '6', token: '6', label: '6' },
+                { value: '"', token: 'double_quote', label: '"' },
+                { value: '7', token: '7', label: '7' },
+                { value: '8', token: '8', label: '8' },
+                { value: '9', token: '9', label: '9' },
+                { value: "'", token: 'apostrophe', label: "'", labelHtml: '&#39;' },
+                { value: '.', token: '.', label: '.' },
+                { value: '0', token: '0', label: '0' },
+                { value: 'H', token: 'H', label: 'H' },
+                { value: 'W', token: 'W', label: 'W' },
+                { value: 'x', token: 'x', label: 'x' },
+                { value: ' ', token: 'space', label: 'SPACE', span: 3 }
+            ];
         }
 
         function resolveDetailMeasurementKeyboardToken(token = '') {
@@ -4958,23 +4980,24 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             const type = detailMeasurementKeyboardType === 'caliper' ? 'caliper' : 'spec';
             const title = type === 'caliper' ? 'Caliper Keyboard' : 'Spec Keyboard';
             const keysHtml = getDetailMeasurementKeyboardKeys(type).map((key) => {
-                const isWide = key.value === ' ';
+                if (key.blank) return '<div aria-hidden="true"></div>';
+                const spanStyle = key.span ? ` style="grid-column: span ${Number(key.span) || 1} / span ${Number(key.span) || 1};"` : '';
                 const isOperator = ['.','-','double_quote','apostrophe','H','W','x'].includes(key.token);
                 const toneClass = isOperator ? 'bg-[#3b403d] text-white' : 'bg-[#282d2a] text-white';
                 const labelHtml = key.labelHtml || esc(key.label);
-                return `<button type="button" data-key-token="${esc(key.token)}" class="${isWide ? 'col-span-2 ' : ''}min-h-[58px] rounded-full border border-black/20 px-2 text-2xl font-medium shadow-sm active:scale-95 active:bg-[#4b524e] ${toneClass}" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardToken(this.dataset.keyToken)">${labelHtml}</button>`;
+                return `<button type="button" data-key-token="${esc(key.token)}"${spanStyle} class="min-h-[42px] rounded-full border border-black/20 px-2 text-xl font-medium shadow-sm active:scale-95 active:bg-[#4b524e] ${toneClass}" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardToken(this.dataset.keyToken)">${labelHtml}</button>`;
             }).join('');
             keyboard.innerHTML = [
-                '<div class="mx-auto max-w-xl">',
-                '<div class="mb-2 flex items-center justify-between gap-3">',
+                '<div class="mx-auto max-w-md">',
+                '<div class="mb-1.5 flex items-center justify-between gap-3">',
                 `<div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">${esc(title)}</div>`,
-                '<button type="button" class="rounded-full border border-zinc-700 bg-[#252a27] px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-white active:scale-95" onpointerdown="event.preventDefault()" onclick="return closeDetailMeasurementKeyboard(true)">Done</button>',
+                '<button type="button" class="rounded-full border border-zinc-700 bg-[#252a27] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white active:scale-95" onpointerdown="event.preventDefault()" onclick="return completeDetailMeasurementKeyboard()">Done</button>',
                 '</div>',
-                `<div class="grid grid-cols-4 gap-2">${keysHtml}</div>`,
-                '<div class="mt-2 grid grid-cols-3 gap-2">',
-                '<button type="button" class="min-h-[48px] rounded-full border border-zinc-700 bg-[#252a27] px-3 text-[11px] font-black uppercase tracking-[0.12em] text-white active:scale-95" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardKey(\'__backspace\')"><i class="ph-bold ph-backspace"></i> Back</button>',
-                '<button type="button" class="min-h-[48px] rounded-full border border-zinc-700 bg-[#252a27] px-3 text-[11px] font-black uppercase tracking-[0.12em] text-red-300 active:scale-95" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardKey(\'__clear\')">Clear</button>',
-                '<button type="button" class="min-h-[48px] rounded-full border border-emerald-500 bg-[#007a4d] px-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onpointerdown="event.preventDefault()" onclick="return closeDetailMeasurementKeyboard(true)">Done</button>',
+                `<div class="grid grid-cols-4 gap-1.5">${keysHtml}</div>`,
+                '<div class="mt-1.5 grid grid-cols-3 gap-1.5">',
+                '<button type="button" class="min-h-[38px] rounded-full border border-zinc-700 bg-[#252a27] px-3 text-[10px] font-black uppercase tracking-[0.12em] text-white active:scale-95" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardKey(\'__backspace\')"><i class="ph-bold ph-backspace"></i> Back</button>',
+                '<button type="button" class="min-h-[38px] rounded-full border border-zinc-700 bg-[#252a27] px-3 text-[10px] font-black uppercase tracking-[0.12em] text-red-300 active:scale-95" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardKey(\'__clear\')">Clear</button>',
+                '<button type="button" class="min-h-[38px] rounded-full border border-emerald-500 bg-[#007a4d] px-3 text-[10px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onpointerdown="event.preventDefault()" onclick="return completeDetailMeasurementKeyboard()">Done</button>',
                 '</div>',
                 '</div>'
             ].join('');
@@ -5033,6 +5056,55 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             return false;
         }
 
+        function isDetailMeasurementKeyboardNextFieldVisible(element = null) {
+            if (!element || element.disabled) return false;
+            if (element.closest && element.closest('.hidden')) return false;
+            const type = String(element.getAttribute && element.getAttribute('type') || '').trim().toLowerCase();
+            if (type === 'file' || type === 'hidden') return false;
+            const style = typeof window !== 'undefined' && window.getComputedStyle ? window.getComputedStyle(element) : null;
+            if (style && (style.display === 'none' || style.visibility === 'hidden')) return false;
+            const rect = element.getBoundingClientRect ? element.getBoundingClientRect() : null;
+            return !rect || (rect.width > 0 && rect.height > 0);
+        }
+
+        function getNextDetailMeasurementField(input = null) {
+            if (!input) return null;
+            const root = document.getElementById('view-detail');
+            if (!root) return null;
+            const fields = Array.from(root.querySelectorAll('input:not([type="file"]):not([type="hidden"]), textarea, select'))
+                .filter(isDetailMeasurementKeyboardNextFieldVisible);
+            const index = fields.indexOf(input);
+            return index >= 0 ? (fields[index + 1] || null) : null;
+        }
+
+        function focusDetailMeasurementNextField(input = null) {
+            const nextField = getNextDetailMeasurementField(input);
+            if (!nextField) return false;
+            try {
+                nextField.focus({ preventScroll: false });
+            } catch (error) {
+                try { nextField.focus(); } catch (focusError) {}
+            }
+            if (isDetailMeasurementKeyboardInput(nextField)) {
+                openDetailMeasurementKeyboard(nextField, getDetailMeasurementKeyboardTypeForInput(nextField));
+            }
+            return true;
+        }
+
+        function completeDetailMeasurementKeyboard() {
+            const input = detailMeasurementKeyboardTarget;
+            if (input) input.dispatchEvent(new Event('change', { bubbles: true }));
+            restoreDetailMeasurementInputReadonly(input);
+            detailMeasurementKeyboardTarget = null;
+            detailMeasurementKeyboardType = '';
+            const keyboard = document.getElementById('detail-measurement-keyboard');
+            if (keyboard) keyboard.classList.add('hidden');
+            if (!focusDetailMeasurementNextField(input) && input) {
+                try { input.blur(); } catch (error) {}
+            }
+            return false;
+        }
+
         function updateDetailMeasurementKeyboardTargetValue(nextValue = '', nextCursor = null) {
             const input = detailMeasurementKeyboardTarget;
             if (!input) return false;
@@ -5077,7 +5149,11 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             }
             const keyboard = document.getElementById('detail-measurement-keyboard');
             if (keyboard && keyboard.contains(target)) return;
-            if (detailMeasurementKeyboardTarget) closeDetailMeasurementKeyboard(true);
+            if (detailMeasurementKeyboardTarget) {
+                const editableTarget = target && target.closest ? target.closest('input, textarea, select, [contenteditable="true"]') : null;
+                const commandTarget = target && target.closest ? target.closest('button, a, [role="button"], .task-tab, .detail-tab, .drawer-item') : null;
+                if (editableTarget || commandTarget) closeDetailMeasurementKeyboard(true);
+            }
         }, { passive: false });
 
         function fallbackCopyText(text) {
@@ -12068,7 +12144,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.19').trim() || 'V2026.05.12.19';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.20').trim() || 'V2026.05.12.20';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
