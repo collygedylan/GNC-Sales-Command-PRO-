@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.27';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.28';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1872,7 +1872,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.27').trim() || 'V2026.05.12.27';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.28').trim() || 'V2026.05.12.28';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2750,7 +2750,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.27';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.28';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -3023,6 +3023,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         let taskResolvedStateKey = '';
         let taskResolvedStateCache = null;
         let taskScopedQueueItemsCache = new Map();
+        let ncrApprovalTaskQueueCacheKey = '';
+        let ncrApprovalTaskQueueCacheByView = new Map();
         let taskHotStateCache = new Map();
         let taskFilteredItemsCache = new Map();
         let taskHotPriceSubsetCacheKey = '';
@@ -3159,6 +3161,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             taskResolvedStateKey = '';
             taskResolvedStateCache = null;
             taskScopedQueueItemsCache.clear();
+            ncrApprovalTaskQueueCacheKey = '';
+            ncrApprovalTaskQueueCacheByView.clear();
             taskHotStateCache.clear();
             taskTeamSelectorCacheKey = '';
             taskTeamSelectorCacheHtml = '';
@@ -12242,7 +12246,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.27').trim() || 'V2026.05.12.27';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.28').trim() || 'V2026.05.12.28';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -27099,6 +27103,8 @@ function toggleDriveQuickRequestItem(domId) {
             moveUpInventoryDirty = true;
             movesRecordsCacheKey = '';
             movesRecordsCache = [];
+            ncrApprovalTaskQueueCacheKey = '';
+            ncrApprovalTaskQueueCacheByView.clear();
             invalidateResolvedViewStateCaches();
             ['review','move-up','tasks','moves','drive','av','sales-office'].forEach((viewId) => markViewDirty(viewId));
             if (isViewVisible('review')) queueInteractiveViewRender('review', false, true, 0, 120);
@@ -27267,6 +27273,42 @@ function toggleDriveQuickRequestItem(domId) {
             await sendNcrApprovalEmail(item, type, safeStage, options);
         }
 
+        function clearNcrApprovalTaskViewCaches() {
+            ncrApprovalTaskQueueCacheKey = '';
+            ncrApprovalTaskQueueCacheByView.clear();
+            taskScopedQueueItemsCache.clear();
+            taskHotStateCache.clear();
+            taskFilteredItemsCache.clear();
+            taskResolvedStateKey = '';
+            taskResolvedStateCache = null;
+        }
+
+        function removeNcrApprovalCardFromCurrentTaskView(uniqueId = '') {
+            const uid = String(uniqueId || '').trim();
+            if (!uid) return false;
+            clearNcrApprovalTaskViewCaches();
+            const container = document.getElementById('task-content');
+            const card = container ? container.querySelector(`[data-ncr-approval-uid="${escapeRequestCssValue(uid)}"]`) : null;
+            if (card) {
+                card.style.opacity = '0';
+                card.style.transform = 'scale(0.985)';
+                card.style.transition = 'opacity 120ms ease, transform 120ms ease';
+                setTimeout(() => {
+                    if (card && card.parentNode) card.parentNode.removeChild(card);
+                }, 130);
+            }
+            if (isViewVisible('tasks') && isNcrApprovalTaskView(activeTaskTab)) scheduleTasksRender(0, 0, true);
+            return !!card;
+        }
+
+        function buildNcrApprovalDecisionNote(item = null, decision = 'Approval updated') {
+            const existing = String(firstNonEmptyValue(item && item.SALES_NOTE, item && item.sales_note, '') || '').trim();
+            const stamp = new Date().toISOString();
+            const userLabel = String(firstNonEmptyValue(currentUserDisplay, currentUser, 'Unknown') || 'Unknown').trim();
+            const note = `${decision} by ${userLabel} at ${stamp}`;
+            return [existing, note].filter(Boolean).join('\n');
+        }
+
         async function resendNcrApprovalStageEmail(uniqueId = '', button = null) {
             const uid = String(uniqueId || '').trim();
             const item = uid ? findItemByUniqueId(uid) : null;
@@ -27330,6 +27372,7 @@ function toggleDriveQuickRequestItem(domId) {
                     date_completed: null
                 };
                 const masterItem = await writeNcrApprovalMasterPayload(item, payload, 'ncr-approval-dylan');
+                removeNcrApprovalCardFromCurrentTaskView(uid);
                 await notifyNcrApprovalStage(masterItem || item, type, 'jd');
                 showToast('Sent To JD', `${getNcrApprovalTypeLabel(type)} row sent to JD.`);
             } catch (error) {
@@ -27352,9 +27395,9 @@ function toggleDriveQuickRequestItem(domId) {
             const rawQty = input ? input.value : '';
             const qtyValue = parseAppNumber(rawQty);
             const ptrValue = getNcrPtrAvailableNumber(item);
-            if (qtyValue == null || qtyValue < 0 || Math.floor(qtyValue) !== qtyValue) {
+            if (qtyValue == null || qtyValue <= 0 || Math.floor(qtyValue) !== qtyValue) {
                 if (input) input.focus();
-                showToast('Invalid Quantity', 'Enter a whole number for the approved quantity.', true);
+                showToast('Invalid Quantity', 'Enter a whole approved NCR quantity greater than zero.', true);
                 return false;
             }
             if (ptrValue != null && qtyValue > ptrValue) {
@@ -27377,13 +27420,52 @@ function toggleDriveQuickRequestItem(domId) {
                     date_completed: null
                 };
                 const masterItem = await writeNcrApprovalMasterPayload(item, payload, 'ncr-approval-jd');
+                removeNcrApprovalCardFromCurrentTaskView(uid);
                 await notifyNcrApprovalStage(masterItem || item, type, 'inventory', { approvedQty: qtyValue });
                 showToast('Inventory Office', `${getNcrApprovalTypeLabel(type)} row sent to Inventory Office.`);
             } catch (error) {
                 console.error('JD NCR approval failed', error);
                 showToast('Could Not Send', error && error.message ? error.message : 'Could not send this row to Inventory Office.', true);
             } finally {
-                if (button) button.innerText = 'Approve Photo';
+                if (button) button.innerText = 'Approve Qty To NCR';
+            }
+            return false;
+        }
+
+        async function denyNcrApproval(uniqueId = '', button = null) {
+            const uid = String(uniqueId || '').trim();
+            const item = uid ? findItemByUniqueId(uid) : null;
+            if (!item) {
+                showToast('Not Found', 'That approval row could not be found.', true);
+                return false;
+            }
+            const type = getNcrApprovalTypeForItem(item);
+            const typeLabel = getNcrApprovalTypeLabel(type);
+            const ok = window.confirm ? window.confirm(`Deny this ${typeLabel} approval? It will leave the approval view and will not go to Inventory Office.`) : true;
+            if (!ok) return false;
+            const originalText = button ? button.innerText : '';
+            if (button) {
+                button.disabled = true;
+                button.innerText = 'DENYING...';
+            }
+            try {
+                const payload = {
+                    app_tab_assignment: getNcrApprovalAssignment(type, 'complete'),
+                    assignedto: '',
+                    date_completed: new Date().toISOString(),
+                    sales_note: buildNcrApprovalDecisionNote(item, `${typeLabel} approval denied`)
+                };
+                await writeNcrApprovalMasterPayload(item, payload, 'ncr-approval-denied');
+                removeNcrApprovalCardFromCurrentTaskView(uid);
+                showToast('Denied', `${typeLabel} row removed from approvals.`);
+            } catch (error) {
+                console.error('NCR approval deny failed', error);
+                showToast('Could Not Deny', error && error.message ? error.message : 'Could not deny this approval row.', true);
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.innerText = originalText || 'Deny';
+                }
             }
             return false;
         }
@@ -28186,6 +28268,17 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (!shouldShowTaskInlineDetailFilters(normalizedView, taskViewLevel)) {
                 resetTaskLocationDetailFilters();
+            }
+            if (isNcrApprovalTaskView(normalizedView)) {
+                selectedTaskGenusNames = new Set();
+                selectedTaskContSizes = new Set();
+                taskGenusSearchTerm = '';
+                taskContSizeSearchTerm = '';
+                taskGenusFilterOpen = false;
+                taskContSizeDropdownOpen = false;
+                taskViewLevel = 0;
+                scheduleTasksRender(0, 0, true);
+                return false;
             }
             scheduleTasksRender(0, 8, true);
             scheduleTaskHotCacheWarmup('task-tab', 1500);
@@ -33983,6 +34076,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const uid = getNcrSourceUniqueId(row) || `ncr-inventory-${nextIndex++}`;
                 const ptrValue = getNcrPtrAvailableNumber(row);
                 const approvedQty = parseAppNumber(firstNonEmptyValue(row.LOC_MATCH_QTY, row.loc_match_qty, ''));
+                const approvedQtyText = approvedQty == null ? '' : String(approvedQty);
                 records.push({
                     id: `ncr_inventory_${uid}`.replace(/[^a-z0-9_-]+/gi, '_'),
                     source_unique_id: uid,
@@ -33992,14 +34086,17 @@ function toggleDriveQuickRequestItem(domId) {
                     contsize: String(firstNonEmptyValue(row.CONTSIZE, row.contsize, '') || '').trim(),
                     from_blockalpha: String(firstNonEmptyValue(row.BLOCKALPHA, row.blockalpha, 'No Block') || 'No Block').trim(),
                     from_locationcode: String(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, '') || '').trim(),
-                    to_locationcode: 'Inventory Office',
+                    to_locationcode: type === 'new-crop' ? 'NCR' : getNcrApprovalTypeLabel(type),
                     ptravailable: ptrValue == null ? String(firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, '') || '') : ptrValue,
-                    quantity_available: ptrValue == null ? String(firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, '') || '') : ptrValue,
+                    quantity_available: approvedQtyText || (ptrValue == null ? String(firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, '') || '') : ptrValue),
+                    quantity: approvedQtyText,
+                    approved_qty: approvedQtyText,
+                    actual_moved: approvedQtyText,
                     to_ptravailable: '',
                     threshold: 0,
                     ncr_inventory_office: true,
                     ncr_approval_type: type,
-                    ncr_approved_qty: approvedQty == null ? '' : approvedQty,
+                    ncr_approved_qty: approvedQtyText,
                     photo_link: mergePhotoCsvList([getSharedAppPhotoLinkCsv(row, { includePending: false }), getRowPhotoLink(row, 'tasks')])
                 });
                 return records;
@@ -34521,6 +34618,8 @@ function toggleDriveQuickRequestItem(domId) {
                 if (record.itemcode) items.add(record.itemcode);
                 if (record && record.inventory_office_queue) {
                     if (String(firstNonEmptyValue(record.actual_moved, record.ta_qty, '') || '').trim()) enteredCount += 1;
+                } else if (record && record.ncr_inventory_office) {
+                    if (String(firstNonEmptyValue(record.ncr_approved_qty, record.actual_moved, '') || '').trim()) enteredCount += 1;
                 } else if (getMoveActualMovedValue(record.id) || getMoveTaValue(record.id)) enteredCount += 1;
             });
             return `<div class="grid grid-cols-2 gap-3 mb-4">
@@ -34539,13 +34638,13 @@ function toggleDriveQuickRequestItem(domId) {
             if (isInventoryOfficeQueueRecord) actualMovedValue = String(firstNonEmptyValue(record.actual_moved, actualMovedValue, '0') || '0').trim();
             if (isNcrOfficeRecord && !String(actualMovedValue || '').trim()) actualMovedValue = String(firstNonEmptyValue(record.ncr_approved_qty, '') || '');
             const actualInputId = getMoveActualMovedInputId(record.id);
-            const taValue = isInventoryOfficeQueueRecord ? String(firstNonEmptyValue(record.ta_qty, '0') || '0').trim() : getMoveTaValue(record.id);
+            const taValue = isNcrOfficeRecord ? '0' : (isInventoryOfficeQueueRecord ? String(firstNonEmptyValue(record.ta_qty, '0') || '0').trim() : getMoveTaValue(record.id));
             const taInputId = getMoveTaInputId(record.id);
             const ptrAvailableValue = firstNonEmptyValue(record.ptravailable, record.quantity_available, '0');
             const recordEyebrow = isNcrOfficeRecord ? `${getNcrApprovalTypeLabel(record.ncr_approval_type || 'new-crop')} Approval` : (isInventoryOfficeQueueRecord ? 'Inventory Office Queue' : 'Consolidate Inventory');
             const approvedQtyHtml = isNcrOfficeRecord ? `<span class="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">Approved Qty ${esc(String(firstNonEmptyValue(record.ncr_approved_qty, actualMovedValue, '0') || '0'))}</span>` : '';
-            const actualInputHandlers = isInventoryOfficeQueueRecord ? 'readonly' : `oninput="setMoveActualMoved('${safeMoveId}', this.value)" onchange="setMoveActualMoved('${safeMoveId}', this.value)"`;
-            const taInputHandlers = isInventoryOfficeQueueRecord ? 'readonly' : `oninput="setMoveTa('${safeMoveId}', this.value)" onchange="setMoveTa('${safeMoveId}', this.value)"`;
+            const actualInputHandlers = (isInventoryOfficeQueueRecord || isNcrOfficeRecord) ? 'readonly' : `oninput="setMoveActualMoved('${safeMoveId}', this.value)" onchange="setMoveActualMoved('${safeMoveId}', this.value)"`;
+            const taInputHandlers = (isInventoryOfficeQueueRecord || isNcrOfficeRecord) ? 'readonly' : `oninput="setMoveTa('${safeMoveId}', this.value)" onchange="setMoveTa('${safeMoveId}', this.value)"`;
             const doneAction = isInventoryOfficeQueueRecord
                 ? `return completeInventoryOfficeMoveRecord('${escJsAttrValue(record.sales_office_unique_id)}', this)`
                 : `return completeMoveRecord('${safeMoveId}')`;
@@ -34576,7 +34675,7 @@ function toggleDriveQuickRequestItem(domId) {
                 </div>
                 <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
                     <div class="sm:w-40">
-                        <label class="ml-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Actual Moved</label>
+                        <label class="ml-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">${isNcrOfficeRecord ? 'Approved Qty' : 'Actual Moved'}</label>
                         <input id="${esc(actualInputId)}" type="number" min="0" step="1" inputmode="numeric" class="mt-1 w-full rounded-lg border border-emerald-200 bg-white px-3 py-3 text-right text-sm font-black text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" placeholder="Qty" value="${esc(actualMovedValue)}" ${actualInputHandlers}>
                     </div>
                     <div class="sm:w-40">
@@ -46255,24 +46354,46 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function getNcrApprovalTaskQueueItems(view = activeTaskView) {
             if (!canUseNcrApprovalTaskView()) return [];
-            const safeType = getNcrApprovalTypeForTaskView(view);
+            const safeView = normalizeTaskViewValue(view);
             const normalizedUser = normalizePushUsername(currentUser || currentUserDisplay || '');
+            const cacheKey = [
+                resolvedViewStateEpoch,
+                getDatasetLoadSignature('master'),
+                Array.isArray(fullInventory) ? fullInventory.length : 0,
+                normalizedUser
+            ].join('::');
+            if (ncrApprovalTaskQueueCacheKey === cacheKey && ncrApprovalTaskQueueCacheByView.has(safeView)) {
+                const cachedRows = ncrApprovalTaskQueueCacheByView.get(safeView) || [];
+                incrementInternalPerfCounter('taskScopedQueueCacheHits');
+                return cachedRows.slice();
+            }
+            if (ncrApprovalTaskQueueCacheKey !== cacheKey) {
+                ncrApprovalTaskQueueCacheKey = cacheKey;
+                ncrApprovalTaskQueueCacheByView = new Map([
+                    [NCR_APPROVAL_NEW_CROP_VIEW, []],
+                    [NCR_APPROVAL_MOVE_UP_VIEW, []],
+                    [NCR_APPROVAL_HOLD_RELEASE_VIEW, []]
+                ]);
+            }
             let nextIndex = 0;
-            return (Array.isArray(fullInventory) ? fullInventory : []).reduce((rows, item) => {
-                if (!item) return rows;
+            (Array.isArray(fullInventory) ? fullInventory : []).forEach((item) => {
+                if (!item) return;
                 const assignment = getNcrApprovalAssignmentValue(item);
-                if (!assignment || !isNcrApprovalAssignmentValue(assignment)) return rows;
-                if (getNcrApprovalTypeFromAssignment(assignment) !== safeType) return rows;
+                if (!assignment || !isNcrApprovalAssignmentValue(assignment)) return;
+                const type = getNcrApprovalTypeFromAssignment(assignment);
+                const viewForType = getNcrApprovalTaskViewForType(type);
+                if (!ncrApprovalTaskQueueCacheByView.has(viewForType)) return;
                 const stage = getNcrApprovalStageFromAssignment(assignment);
-                if (stage !== 'dylan' && stage !== 'jd') return rows;
-                if (stage === 'dylan' && normalizedUser !== NCR_APPROVAL_DYLAN_USER) return rows;
-                if (stage === 'jd' && normalizedUser !== NCR_APPROVAL_JD_USER) return rows;
+                if (stage !== 'dylan' && stage !== 'jd') return;
+                if (stage === 'dylan' && normalizedUser !== NCR_APPROVAL_DYLAN_USER) return;
+                if (stage === 'jd' && normalizedUser !== NCR_APPROVAL_JD_USER) return;
+                const rows = ncrApprovalTaskQueueCacheByView.get(viewForType);
                 rows.push({
                     ...item,
-                    DOM_ID: String(firstNonEmptyValue(item && item.DOM_ID, '') || '').trim() || `ncr_approval_${safeType.replace(/[^a-z0-9]+/g, '_')}_${nextIndex++}`
+                    DOM_ID: String(firstNonEmptyValue(item && item.DOM_ID, '') || '').trim() || `ncr_approval_${type.replace(/[^a-z0-9]+/g, '_')}_${nextIndex++}`
                 });
-                return rows;
-            }, []);
+            });
+            return (ncrApprovalTaskQueueCacheByView.get(safeView) || []).slice();
         }
 
         function getScopedTaskQueueItems(tab = activeTaskView, targetUser = currentUser) {
@@ -46516,10 +46637,12 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function shouldShowTaskInlineGenusFilter(tab = activeTaskView, level = taskViewLevel) {
+            if (isNcrApprovalTaskView(tab)) return false;
             return true;
         }
 
         function shouldShowTaskInlineContSizeFilter(tab = activeTaskView, level = taskViewLevel) {
+            if (isNcrApprovalTaskView(tab)) return false;
             return true;
         }
 
@@ -47308,6 +47431,13 @@ ${folderNote ? `Folder Note: ${folderNote}
         function renderTaskGenusFilter(items = [], scopeKey = '') {
             const container = document.getElementById('task-genus-filters');
             if (!container) return;
+            if (!shouldShowTaskInlineGenusFilter(activeTaskTab, taskViewLevel)) {
+                container.classList.add('hidden');
+                container.innerHTML = '';
+                delete container.dataset.genusReady;
+                lastTaskGenusRenderSignature = 'hidden';
+                return;
+            }
             taskGenusFilterItemsCache = Array.isArray(items) ? items : [];
             taskGenusFilterScopeKey = String(firstNonEmptyValue(scopeKey, taskGenusFilterScopeKey, '') || '').trim() || `task-genus:${resolvedViewStateEpoch}:${taskGenusFilterItemsCache.length}`;
             if (!container.dataset.genusReady) {
@@ -47488,6 +47618,13 @@ ${folderNote ? `Folder Note: ${folderNote}
         function renderTaskContSizeFilter(items = [], scopeKey = '') {
             const container = document.getElementById('task-contsize-filters');
             if (!container) return;
+            if (!shouldShowTaskInlineContSizeFilter(activeTaskTab, taskViewLevel)) {
+                container.classList.add('hidden');
+                container.innerHTML = '';
+                delete container.dataset.contsizeReady;
+                lastTaskContSizeRenderSignature = 'hidden';
+                return;
+            }
             taskContSizeFilterItemsCache = Array.isArray(items) ? items : [];
             taskContSizeFilterScopeKey = String(firstNonEmptyValue(scopeKey, taskContSizeFilterScopeKey, '') || '').trim() || `task-contsize:${resolvedViewStateEpoch}:${taskContSizeFilterItemsCache.length}`;
             const state = buildTaskContSizeFilterState(taskContSizeFilterItemsCache, taskContSizeFilterScopeKey);
@@ -48040,6 +48177,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function buildResolvedTaskState(options = {}) {
             const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             if (!nextOptions.skipSelectorSync) syncTaskSelectorState();
+            const buildStartedAt = beginInternalPerfMeasure();
             const useBlockDrill = taskTabUsesBlockDrill(activeTaskTab);
             const useSharedTaskQueue = shouldUseSharedTaskQueue(activeTaskTab);
             const targetUser = getTaskViewTargetUser(activeTaskTab);
@@ -48062,6 +48200,51 @@ ${folderNote ? `Folder Note: ${folderNote}
                     .filter((option) => resolvedReserveCustomerValues.includes(option.value));
                 if (customerOptions.length === 1) notesTitle += ` > ${customerOptions[0].label}`;
                 else if (customerOptions.length > 1) notesTitle += ` > ${customerOptions.length} Customers`;
+            }
+
+            if (isNcrApprovalTaskView(activeTaskTab)) {
+                const approvalSearchTerm = String(taskLocationDetailSearchTerm || '').trim();
+                const tabItems = approvalSearchTerm
+                    ? filterBySearch(hotState.tabItems || [], approvalSearchTerm, 'tasks')
+                    : (Array.isArray(hotState.tabItems) ? hotState.tabItems : []);
+                const resolvedStateKey = [
+                    hotState.key,
+                    'approval',
+                    approvalSearchTerm.toLowerCase()
+                ].join('::');
+                if (taskResolvedStateKey === resolvedStateKey && taskResolvedStateCache) {
+                    incrementInternalPerfCounter('viewStateCacheHits');
+                    return taskResolvedStateCache;
+                }
+                taskResolvedStateKey = resolvedStateKey;
+                taskResolvedStateCache = {
+                    hotState,
+                    useBlockDrill: false,
+                    useSharedTaskQueue,
+                    targetUser,
+                    baseNotesTitle,
+                    notesTitle,
+                    flyerFolderTabLabel,
+                    scopedItems: hotState.scopedItems,
+                    seasonTaskItems: hotState.seasonTaskItems,
+                    seasonSubviewItems: hotState.seasonSubviewItems,
+                    tabItems,
+                    taskGenusBaseItems: [],
+                    taskContSizeBaseItems: [],
+                    blockRows: [],
+                    locationRowsByBlock: new Map(),
+                    itemsByLocation: new Map(),
+                    itemsByFlyerFolder: new Map(),
+                    flyerFolderRows: [],
+                    itemsByEndCapFolder: new Map(),
+                    endCapFolderRows: [],
+                    taskFilterScopeKey: resolvedStateKey,
+                    taskGenusScopeKey: `${resolvedStateKey}:genus:hidden`,
+                    taskContSizeScopeKey: `${resolvedStateKey}:contsize:hidden`,
+                    taskLocationDetailScopeKey: `${resolvedStateKey}:search`
+                };
+                recordInternalPerfDuration('taskStateBuildDurations', buildStartedAt, `${activeTaskTab}:approval:resolved`);
+                return taskResolvedStateCache;
             }
 
             if (taskTabUsesBlockDrill(activeTaskTab)) {
@@ -48093,7 +48276,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                 selectedEndCapFolder = null;
             }
 
-            const buildStartedAt = beginInternalPerfMeasure();
             const computeFilteredTaskState = () => {
                 const filteredStateKey = [
                     hotState.key,
@@ -48363,11 +48545,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 ? '<span class="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">JD Review</span>'
                 : '<span class="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Dylan Review</span>';
             const resendButtonHtml = `<button type="button" class="min-h-[44px] rounded-lg border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-slate-700 shadow-sm active:scale-95 disabled:opacity-60" onclick="event.stopPropagation(); return resendNcrApprovalStageEmail('${safeUidJs}', this)">Resend Email</button>`;
+            const denyButtonHtml = `<button type="button" class="min-h-[44px] rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-red-700 shadow-sm active:scale-95 disabled:opacity-60" onclick="event.stopPropagation(); return denyNcrApproval('${safeUidJs}', this)">Deny</button>`;
             const actionHtml = stage === 'jd'
-                ? `<div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"><label class="min-w-0 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Approved Qty<input id="${esc(qtyInputId)}" type="number" min="0" max="${esc(String(ptrValue == null ? '' : ptrValue))}" step="1" inputmode="numeric" class="mt-1 w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 text-right text-sm font-black text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="0-${esc(String(ptrLabel))}" value="${esc(String(firstNonEmptyValue(item.LOC_MATCH_QTY, item.loc_match_qty, '') || ''))}" onclick="event.stopPropagation()"></label><button type="button" class="min-h-[44px] self-end rounded-lg bg-blue-600 px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="event.stopPropagation(); return approveNcrApprovalAsJd('${safeUidJs}','${escJsAttrValue(qtyInputId)}', this)">Approve Photo</button></div><div class="mt-2">${resendButtonHtml}</div>`
-                : `<div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"><button type="button" class="min-h-[44px] rounded-lg bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="event.stopPropagation(); return approveNcrApprovalAsDylan('${safeUidJs}', this)">Approve And Send To JD</button>${resendButtonHtml}</div>`;
+                ? `<div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"><label class="min-w-0 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Approved NCR Qty<input id="${esc(qtyInputId)}" type="number" min="1" max="${esc(String(ptrValue == null ? '' : ptrValue))}" step="1" inputmode="numeric" class="mt-1 w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 text-right text-sm font-black text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="1-${esc(String(ptrLabel))}" value="${esc(String(firstNonEmptyValue(item.LOC_MATCH_QTY, item.loc_match_qty, '') || ''))}" onclick="event.stopPropagation()"></label><button type="button" class="min-h-[44px] self-end rounded-lg bg-blue-600 px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="event.stopPropagation(); return approveNcrApprovalAsJd('${safeUidJs}','${escJsAttrValue(qtyInputId)}', this)">Approve Qty To NCR</button></div><div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">${denyButtonHtml}${resendButtonHtml}</div>`
+                : `<div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3"><button type="button" class="min-h-[44px] rounded-lg bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="event.stopPropagation(); return approveNcrApprovalAsDylan('${safeUidJs}', this)">Approve And Send To JD</button>${denyButtonHtml}${resendButtonHtml}</div>`;
             const borderClass = type === 'move-up' ? 'border-emerald-200' : (type === 'hold-release' ? 'border-red-200' : 'border-yellow-200');
-            return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border ${borderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${esc(domId)}" ${buildCardActivationAttrs(domId, uid, 'tasks', 'Open approval row')}><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="mb-2 flex flex-wrap gap-2">${stageBadge}<span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${esc(typeLabel)}</span></div><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words mb-1">${commonName}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${contSize}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-white text-slate-700 px-2 py-1 rounded border border-slate-200">Item ${itemCode}</span><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">Loc ${locationCode}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">Lot ${lotCode}</span><span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">PTR ${esc(String(ptrLabel))}</span><span class="bg-slate-50 text-slate-600 px-2 py-1 rounded border border-slate-200">SY ${salesYear} ${seasonCode}</span></div></div>${photoHtml}</div>${actionHtml}</div></div>`;
+            return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border ${borderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${esc(domId)}" data-ncr-approval-uid="${esc(uid)}" ${buildCardActivationAttrs(domId, uid, 'tasks', 'Open approval row')}><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="mb-2 flex flex-wrap gap-2">${stageBadge}<span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${esc(typeLabel)}</span></div><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words mb-1">${commonName}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${contSize}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-white text-slate-700 px-2 py-1 rounded border border-slate-200">Item ${itemCode}</span><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">Loc ${locationCode}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">Lot ${lotCode}</span><span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">PTR ${esc(String(ptrLabel))}</span><span class="bg-slate-50 text-slate-600 px-2 py-1 rounded border border-slate-200">SY ${salesYear} ${seasonCode}</span></div></div>${photoHtml}</div>${actionHtml}</div></div>`;
         }
 
         function renderTasks(options = {}) {
