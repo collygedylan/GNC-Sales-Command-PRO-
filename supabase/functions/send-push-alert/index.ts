@@ -134,6 +134,8 @@ function buildNotification(eventType: string, payload: Record<string, unknown>) 
       body: `${createdBy} created ${folderName}. ${itemsCount} row${itemsCount === 1 ? "" : "s"} assigned to ${assignedTo}.`,
       tag: `flyer-created-${folderName || "folder"}`,
       viewId: "tasks",
+      taskView: "flyer",
+      folderName,
       url: "./"
     };
   }

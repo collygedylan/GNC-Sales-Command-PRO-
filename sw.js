@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.05.11.12';
+const APP_SHELL_BUILD = 'V2026.05.11.13';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const CACHE_NAME = 'greenleaf-v4.2-rebuild-' + APP_SHELL_BUILD;
@@ -164,7 +164,7 @@ self.addEventListener('push', (event) => {
     body: data.body || 'You have a new message.',
     icon: iconUrl,
     badge: iconUrl,
-    data: { url: targetUrl, viewId: data.viewId || 'request', conversationId: data.conversationId || '', messageId: data.messageId || '', channelId: data.channelId || '', callId: data.callId || '' },
+    data: { url: targetUrl, viewId: data.viewId || 'request', taskView: data.taskView || '', folderName: data.folderName || '', conversationId: data.conversationId || '', messageId: data.messageId || '', channelId: data.channelId || '', callId: data.callId || '' },
     vibrate: [200, 100, 200],
     silent: false,
     requireInteraction: true,
@@ -185,14 +185,14 @@ self.addEventListener('notificationclick', (event) => {
       for (const client of clientList) {
         if ('focus' in client) {
           await client.focus();
-          try { client.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '' }); } catch (error) {}
+          try { client.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '' }); } catch (error) {}
           return client;
         }
       }
       if (clients.openWindow) {
         const opened = await clients.openWindow(targetUrl);
         if (opened) {
-          try { opened.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '' }); } catch (error) {}
+          try { opened.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '' }); } catch (error) {}
         }
         return opened;
       }

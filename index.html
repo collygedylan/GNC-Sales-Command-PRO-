@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.11.12';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.13';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -934,11 +934,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
 }
 
 .advertisement-folder-list{
-    display:flex;
+    display:grid;
+    grid-template-columns:1fr;
     gap:8px;
-    overflow-x:auto;
-    padding-bottom:2px;
-    -webkit-overflow-scrolling:touch;
+    overflow:visible;
+    padding-bottom:0;
 }
 
 .advertisement-folder-card{
@@ -977,6 +977,44 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
     color:#64748b;
     font-size:10px;
     font-weight:900;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+}
+
+.advertisement-folder-select-wrap{
+    display:flex;
+    min-width:0;
+    flex-direction:column;
+    gap:6px;
+    color:#64748b;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+}
+
+.advertisement-folder-select{
+    min-height:46px;
+    width:100%;
+    min-width:0;
+    border:1px solid #d1fae5;
+    border-radius:14px;
+    background:#f8fafc;
+    color:#0f172a;
+    padding:0 12px;
+    font-size:13px;
+    font-weight:900;
+}
+
+.advertisement-folder-selected-meta{
+    border:1px dashed #d1fae5;
+    border-radius:14px;
+    background:#f8fafc;
+    color:#64748b;
+    padding:10px;
+    font-size:10px;
+    font-weight:900;
+    line-height:1.4;
     letter-spacing:.08em;
     text-transform:uppercase;
 }
@@ -1251,23 +1289,47 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
 @media (min-width:760px){
     .advertisement-editor-shell{
         display:grid;
-        grid-template-columns:minmax(0,1fr) 280px;
+        grid-template-columns:82px minmax(360px,1fr) 320px;
         align-items:start;
+        gap:14px;
     }
 
     .advertisement-editor-header,
-    .advertisement-status,
-    .advertisement-toolbar{
+    .advertisement-status{
         grid-column:1/-1;
     }
 
+    .advertisement-toolbar{
+        position:sticky;
+        top:90px;
+        bottom:auto;
+        grid-column:1;
+        grid-row:3/span 8;
+        max-height:calc(100vh - 120px);
+        flex-direction:column;
+        align-self:start;
+        overflow-x:hidden;
+        overflow-y:auto;
+        border-radius:18px;
+        padding:8px;
+    }
+
+    .advertisement-toolbar button{
+        width:64px;
+        min-width:64px;
+        min-height:62px;
+        padding:6px;
+    }
+
     .advertisement-panel{
-        grid-column:2;
+        grid-column:3;
     }
 
     .advertisement-canvas-stage{
-        grid-column:1;
-        grid-row:3/span 6;
+        grid-column:2;
+        grid-row:3/span 8;
+        align-self:start;
+        margin-top:0;
     }
 
     .advertisement-layout-actions{
@@ -1792,7 +1854,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.12').trim() || 'V2026.05.11.12';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.13').trim() || 'V2026.05.11.13';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2664,7 +2726,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.12';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.13';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11610,7 +11672,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.12').trim() || 'V2026.05.11.12';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.13').trim() || 'V2026.05.11.13';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -16818,16 +16880,25 @@ function toggleDriveQuickRequestItem(domId) {
                 markViewDirty('tasks');
                 scheduleTasksRender(0);
                 return supabaseFetch(FLYER_FOLDER_ROWS_TABLE, 'POST', payloads, 'on_conflict=unique_id').then(() => emailItems);
-            }).then((emailItems) => {
+            }).then(async (emailItems) => {
                 if (emailItems.length) upsertFlyerFolderHistoryRows(emailItems, 'created').catch(() => {});
+                let notificationResult = null;
                 if (!isAddingToExistingFolder && emailItems.length) {
-                    sendFlyerCreatedEmail(flyerFolder, flyerAssignedTo, emailItems, currentUserDisplay || currentUser || '', {
+                    notificationResult = await sendFlyerCreatedEmail(flyerFolder, flyerAssignedTo, emailItems, currentUserDisplay || currentUser || '', {
                         assigneeUsernames: selectedAssignees.map(normalizePushUsername).filter(Boolean)
                     });
                 }
                 if (safeOptions.clearSelection) clearSelection();
                 finalizeFlyerFolderNavigation(flyerFolder);
-                showToast('Success', `${payloads.length} row${payloads.length === 1 ? '' : 's'} added to ${flyerFolder}.`);
+                const successMessage = `${payloads.length} row${payloads.length === 1 ? '' : 's'} added to ${flyerFolder}.`;
+                if (notificationResult && notificationResult.ok) {
+                    showToast('Success', `${successMessage} Email sent and push queued.`);
+                } else if (notificationResult && notificationResult.ok === false) {
+                    const warning = notificationResult.message || 'Flyer notification could not be confirmed.';
+                    showToast('Saved - Notification Warning', `${successMessage} ${warning}`, true);
+                } else {
+                    showToast('Success', successMessage);
+                }
             }).catch((err) => {
                 payloads.forEach((payload) => removeFlyerFolderRowFromCache(payload.unique_id));
                 showToast('Error', err && err.message ? err.message : 'Flyer creation failed.', true);
@@ -24837,6 +24908,14 @@ function toggleDriveQuickRequestItem(domId) {
                     selectedTaskBlock = null;
                     selectedTaskLoc = null;
                     resetTaskLocationDetailFilters();
+                    if (requestedTaskView === 'flyer') {
+                        activeFlyerFolderTab = 'active';
+                        const pushedFolderName = getFlyerFolderName(firstNonEmptyValue(safePayload.folderName, safePayload.folder_name, safePayload.folderId, ''));
+                        if (pushedFolderName) {
+                            selectedFlyerFolder = pushedFolderName;
+                            taskViewLevel = 1;
+                        }
+                    }
                 }
                 switchView('tasks');
                 return;
@@ -28178,7 +28257,7 @@ function toggleDriveQuickRequestItem(domId) {
                 .filter((email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))];
         }
 
-        function sendFlyerCreatedEmail(folderName, assignedTo, items = [], createdBy = '', options = {}) {
+        async function sendFlyerCreatedEmail(folderName, assignedTo, items = [], createdBy = '', options = {}) {
             const safeOptions = options && typeof options === 'object' ? options : {};
             const assigneeNames = getFlyerAssigneeList(assignedTo);
             const assigneeUsernames = safeOptions.assigneeUsernames && Array.isArray(safeOptions.assigneeUsernames)
@@ -28201,19 +28280,53 @@ function toggleDriveQuickRequestItem(domId) {
                 assigneeNames,
                 assigneeUsernames,
                 recipientEmails,
+                emailRecipients: recipientEmails,
+                targetUsers: assigneeUsernames,
+                recipients: assigneeUsernames,
                 createdBy: createdBy || currentUserDisplay || currentUser || '',
                 instructions: 'Open the app, go to Tasks > Flyer, open the folder, complete the flyer work for each row, and mark the row done when finished.',
                 items: safeItems
             };
-            fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) }).catch((e) => console.log(e));
             sendPushNotification('flyer_created', folderName, assignedTo, folderName, safeItems.length, {
                 folderName: String(folderName || '').trim(),
                 assignedTo: String(assignedTo || '').trim(),
                 assigneeUsernames,
                 targetUsers: assigneeUsernames,
                 recipients: assigneeUsernames,
+                taskView: 'flyer',
                 createdBy: String(createdBy || currentUserDisplay || currentUser || '').trim()
             });
+            if (!recipientEmails.length) {
+                return {
+                    ok: false,
+                    payload,
+                    message: 'No email address was found for the selected flyer worker.'
+                };
+            }
+            try {
+                const responseData = await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Flyer Created Email');
+                if (responseData && responseData.ok === false) {
+                    return {
+                        ok: false,
+                        responseData,
+                        payload,
+                        message: responseData.message || responseData.error || 'Flyer created email was rejected by Apps Script.'
+                    };
+                }
+                return {
+                    ok: true,
+                    responseData,
+                    payload
+                };
+            } catch (error) {
+                console.error('Flyer created email send failed', error);
+                return {
+                    ok: false,
+                    payload,
+                    error,
+                    message: error && error.message ? error.message : 'Flyer created email could not be sent.'
+                };
+            }
         }
 
         function getDefaultRequestRepName() {
@@ -47613,10 +47726,22 @@ ${folderNote ? `Folder Note: ${folderNote}
                 syncAdvertisementEmailSendButton();
                 return;
             }
-            folderContainer.innerHTML = folders.map((folder) => {
-                const activeClass = folder.folderName === advertisementSelectedFlyerFolder ? ' active' : '';
-                return `<button type="button" class="advertisement-folder-card${activeClass}" data-ad-folder="${escapeHtml(folder.folderName)}" onclick="return selectAdvertisementFlyerFolder(this.getAttribute('data-ad-folder'))"><span class="advertisement-folder-name">${escapeHtml(folder.folderName)}</span><span class="advertisement-folder-meta">${folder.items.length} rows / ${folder.photoCount} photos</span><span class="advertisement-folder-meta">${escapeHtml(folder.assigneeLabel)}</span></button>`;
+            const selectedFolder = folders.find((folder) => folder.folderName === advertisementSelectedFlyerFolder) || null;
+            const optionsHtml = folders.map((folder) => {
+                const selected = folder.folderName === advertisementSelectedFlyerFolder ? ' selected' : '';
+                const label = `${folder.folderName} - ${folder.items.length} row${folder.items.length === 1 ? '' : 's'} / ${folder.photoCount} photo${folder.photoCount === 1 ? '' : 's'}`;
+                return `<option value="${escapeHtml(folder.folderName)}"${selected}>${escapeHtml(label)}</option>`;
             }).join('');
+            folderContainer.innerHTML = [
+                '<label class="advertisement-folder-select-wrap">',
+                '<span>Active Flyer Folder</span>',
+                '<select id="advertisement-flyer-folder-select" class="advertisement-folder-select" onchange="return selectAdvertisementFlyerFolder(this.value)">',
+                '<option value="">Choose Active Flyer Folder</option>',
+                optionsHtml,
+                '</select>',
+                '</label>',
+                `<div class="advertisement-folder-selected-meta">${selectedFolder ? `${selectedFolder.items.length} row${selectedFolder.items.length === 1 ? '' : 's'} / ${selectedFolder.photoCount} photo${selectedFolder.photoCount === 1 ? '' : 's'} / ${escapeHtml(selectedFolder.assigneeLabel)}` : 'Pick a folder from the Flyer module Active tab to pull its rows and photos into this design.'}</div>`
+            ].join('');
             if (!advertisementSelectedFlyerFolder) {
                 rowsContainer.innerHTML = `<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-xs font-bold text-slate-400">No flyer folder selected.</div>`;
                 if (actionBar) actionBar.classList.add('hidden');
