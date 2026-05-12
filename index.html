@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.15';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.16';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1870,7 +1870,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.15').trim() || 'V2026.05.12.15';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.16').trim() || 'V2026.05.12.16';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2204,6 +2204,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div id="task-crumb" class="text-xs font-bold text-[#007a4d] mb-3"></div>
                     <div id="team-selector" class="hidden mb-4 grid grid-cols-1 gap-3"></div>
                     <div class="freeze-panel task-controls-sticky">
+                    <div id="task-approval-mode-toggles" class="hidden mb-2"></div>
                     <div id="task-tabs-container" class="mb-3 grid grid-cols-1 gap-2 md:grid-cols-2">
                         <div id="task-tab-dropdown-host" class="min-w-0"></div>
                         <div id="task-subtabs-container" class="hidden min-w-0"></div>
@@ -2747,7 +2748,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.15';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.16';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -4846,26 +4847,214 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             const values = getAvNoteSpecCaliperValues(normalizedPrefix);
             const specText = String(values.spec || '').trim();
             const caliperText = String(values.caliper || '').trim();
-            const additions = [];
-            if (specText) additions.push(`SPEC ${specText}`);
-            if (caliperText && shouldAvNoteIncludeCaliper(normalizedPrefix, values)) additions.push(`CALIPER ${caliperText}`);
-            const additionText = additions.join(' / ').trim().toUpperCase();
-            if (!additionText) {
+            const labeledAdditions = [];
+            if (specText) labeledAdditions.push({ raw: specText, label: `SPEC - ${specText}` });
+            if (caliperText && shouldAvNoteIncludeCaliper(normalizedPrefix, values)) labeledAdditions.push({ raw: caliperText, label: `CALIPER - ${caliperText}` });
+            if (!labeledAdditions.length) {
                 showToast('Nothing To Add', 'Spec and caliper are blank for this row.', true);
                 return;
             }
 
-            const existingText = String(avInput.value || '').trim();
-            if (existingText.toUpperCase().includes(additionText)) {
+            let existingParts = String(avInput.value || '').split('/').map((part) => String(part || '').trim()).filter(Boolean);
+            let changed = false;
+            labeledAdditions.forEach((addition) => {
+                const rawUpper = String(addition.raw || '').trim().toUpperCase();
+                const labelUpper = String(addition.label || '').trim().toUpperCase();
+                let found = false;
+                existingParts = existingParts.map((part) => {
+                    const partUpper = String(part || '').trim().toUpperCase();
+                    if (partUpper === labelUpper) {
+                        found = true;
+                        return labelUpper;
+                    }
+                    if (rawUpper && partUpper === rawUpper) {
+                        found = true;
+                        changed = true;
+                        return labelUpper;
+                    }
+                    return partUpper;
+                });
+                if (!found) {
+                    existingParts.push(labelUpper);
+                    changed = true;
+                }
+            });
+
+            if (!changed) {
                 showToast('Already Added', 'Spec and caliper are already in AV Note.', false);
                 return;
             }
 
-            avInput.value = existingText ? `${existingText} / ${additionText}`.toUpperCase() : additionText;
+            avInput.value = existingParts.join(' / ').toUpperCase();
             if (normalizedPrefix === 'global-') filterAvNotes();
             else filterAvNotes(normalizedPrefix);
             saveData(false, normalizedPrefix, true);
         }
+
+        const DETAIL_MEASUREMENT_KEYBOARD_SELECTOR = '#view-detail input[id$="-spec"], #view-detail input[id$="-caliper"]';
+        let detailMeasurementKeyboardTarget = null;
+        let detailMeasurementKeyboardType = '';
+
+        function isDetailMeasurementKeyboardInput(element = null) {
+            return !!(element && element.matches && element.matches(DETAIL_MEASUREMENT_KEYBOARD_SELECTOR));
+        }
+
+        function getDetailMeasurementKeyboardTypeForInput(input = null) {
+            const id = String(input && input.id || '').trim().toLowerCase();
+            return id.endsWith('-caliper') ? 'caliper' : 'spec';
+        }
+
+        function shouldPreferDetailMeasurementKeyboard() {
+            const isCompact = typeof window !== 'undefined' && Number(window.innerWidth || 0) <= 900;
+            const isCoarsePointer = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+            return !!(isCompact || isCoarsePointer);
+        }
+
+        function ensureDetailMeasurementKeyboardElement() {
+            let keyboard = document.getElementById('detail-measurement-keyboard');
+            if (keyboard) return keyboard;
+            keyboard = document.createElement('div');
+            keyboard.id = 'detail-measurement-keyboard';
+            keyboard.className = 'hidden fixed left-0 right-0 bottom-0 z-[13000] border-t border-emerald-200 bg-white/95 px-3 pt-3 shadow-2xl backdrop-blur-md';
+            keyboard.style.paddingBottom = 'calc(12px + env(safe-area-inset-bottom))';
+            document.body.appendChild(keyboard);
+            return keyboard;
+        }
+
+        function getDetailMeasurementKeyboardKeys(type = 'spec') {
+            const numberKeys = ['1','2','3','4','5','6','7','8','9','0'];
+            const measurementKeys = type === 'caliper'
+                ? ['.','"']
+                : ['-','"',"'",'H','W','x',' '];
+            return numberKeys.concat(measurementKeys).map((value) => ({
+                value,
+                label: value === ' ' ? 'SPACE' : value
+            }));
+        }
+
+        function renderDetailMeasurementKeyboard() {
+            const keyboard = ensureDetailMeasurementKeyboardElement();
+            const type = detailMeasurementKeyboardType === 'caliper' ? 'caliper' : 'spec';
+            const title = type === 'caliper' ? 'Caliper Keyboard' : 'Spec Keyboard';
+            const keysHtml = getDetailMeasurementKeyboardKeys(type).map((key) => {
+                const isWide = key.value === ' ';
+                return `<button type="button" data-key="${esc(key.value)}" class="${isWide ? 'col-span-2 ' : ''}min-h-[46px] rounded-xl border border-emerald-200 bg-white px-2 text-lg font-black text-slate-900 shadow-sm active:scale-95" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardKey(this.dataset.key)">${esc(key.label)}</button>`;
+            }).join('');
+            keyboard.innerHTML = [
+                '<div class="mx-auto max-w-xl">',
+                '<div class="mb-2 flex items-center justify-between gap-3">',
+                `<div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">${esc(title)}</div>`,
+                '<button type="button" class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 active:scale-95" onpointerdown="event.preventDefault()" onclick="return closeDetailMeasurementKeyboard(true)">Done</button>',
+                '</div>',
+                `<div class="grid grid-cols-5 gap-2">${keysHtml}</div>`,
+                '<div class="mt-2 grid grid-cols-3 gap-2">',
+                '<button type="button" class="min-h-[42px] rounded-xl border border-slate-200 bg-slate-50 px-3 text-[11px] font-black uppercase tracking-[0.12em] text-slate-700 active:scale-95" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardKey(\'__backspace\')"><i class="ph-bold ph-backspace"></i> Back</button>',
+                '<button type="button" class="min-h-[42px] rounded-xl border border-red-200 bg-red-50 px-3 text-[11px] font-black uppercase tracking-[0.12em] text-red-600 active:scale-95" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardKey(\'__clear\')">Clear</button>',
+                '<button type="button" class="min-h-[42px] rounded-xl border border-[#007a4d] bg-[#007a4d] px-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onpointerdown="event.preventDefault()" onclick="return closeDetailMeasurementKeyboard(true)">Done</button>',
+                '</div>',
+                '</div>'
+            ].join('');
+            keyboard.classList.remove('hidden');
+        }
+
+        function restoreDetailMeasurementInputReadonly(input = detailMeasurementKeyboardTarget) {
+            if (!input || !input.dataset) return;
+            if (input.dataset.detailKeypadWasReadonly === '1') input.readOnly = true;
+            else input.readOnly = false;
+            delete input.dataset.detailKeypadWasReadonly;
+            delete input.dataset.detailKeypadReadonlyApplied;
+        }
+
+        function openDetailMeasurementKeyboard(input = null, type = '') {
+            if (!isDetailMeasurementKeyboardInput(input)) return false;
+            if (detailMeasurementKeyboardTarget && detailMeasurementKeyboardTarget !== input) {
+                restoreDetailMeasurementInputReadonly(detailMeasurementKeyboardTarget);
+            }
+            detailMeasurementKeyboardTarget = input;
+            detailMeasurementKeyboardType = type || getDetailMeasurementKeyboardTypeForInput(input);
+            input.setAttribute('inputmode', 'none');
+            input.setAttribute('autocomplete', 'off');
+            input.setAttribute('autocapitalize', 'characters');
+            if (shouldPreferDetailMeasurementKeyboard() && !input.dataset.detailKeypadReadonlyApplied) {
+                input.dataset.detailKeypadWasReadonly = input.readOnly ? '1' : '0';
+                input.dataset.detailKeypadReadonlyApplied = '1';
+                input.readOnly = true;
+            }
+            try {
+                input.focus({ preventScroll: true });
+            } catch (error) {
+                try { input.focus(); } catch (focusError) {}
+            }
+            if (typeof input.setSelectionRange === 'function') {
+                const cursorEnd = String(input.value || '').length;
+                try { input.setSelectionRange(cursorEnd, cursorEnd); } catch (selectionError) {}
+            }
+            renderDetailMeasurementKeyboard();
+            return false;
+        }
+
+        function closeDetailMeasurementKeyboard(commitChange = false) {
+            const input = detailMeasurementKeyboardTarget;
+            if (input && commitChange) {
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            restoreDetailMeasurementInputReadonly(input);
+            detailMeasurementKeyboardTarget = null;
+            detailMeasurementKeyboardType = '';
+            const keyboard = document.getElementById('detail-measurement-keyboard');
+            if (keyboard) keyboard.classList.add('hidden');
+            if (input && commitChange) {
+                try { input.blur(); } catch (error) {}
+            }
+            return false;
+        }
+
+        function updateDetailMeasurementKeyboardTargetValue(nextValue = '', nextCursor = null) {
+            const input = detailMeasurementKeyboardTarget;
+            if (!input) return false;
+            input.value = String(nextValue || '');
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            if (typeof nextCursor === 'number' && typeof input.setSelectionRange === 'function') {
+                try { input.setSelectionRange(nextCursor, nextCursor); } catch (error) {}
+            }
+            return false;
+        }
+
+        function pressDetailMeasurementKeyboardKey(key = '') {
+            const input = detailMeasurementKeyboardTarget;
+            if (!input) return false;
+            const value = String(input.value || '');
+            const start = typeof input.selectionStart === 'number' ? input.selectionStart : value.length;
+            const end = typeof input.selectionEnd === 'number' ? input.selectionEnd : start;
+            if (key === '__backspace') {
+                if (start !== end) return updateDetailMeasurementKeyboardTargetValue(value.slice(0, start) + value.slice(end), start);
+                if (start <= 0) return false;
+                return updateDetailMeasurementKeyboardTargetValue(value.slice(0, start - 1) + value.slice(end), start - 1);
+            }
+            if (key === '__clear') return updateDetailMeasurementKeyboardTargetValue('', 0);
+            const inserted = String(key || '');
+            const nextValue = value.slice(0, start) + inserted + value.slice(end);
+            return updateDetailMeasurementKeyboardTargetValue(nextValue, start + inserted.length);
+        }
+
+        document.addEventListener('focusin', (event) => {
+            const input = event && event.target;
+            if (!isDetailMeasurementKeyboardInput(input)) return;
+            openDetailMeasurementKeyboard(input, getDetailMeasurementKeyboardTypeForInput(input));
+        });
+
+        document.addEventListener('pointerdown', (event) => {
+            const target = event && event.target;
+            const input = target && target.closest ? target.closest(DETAIL_MEASUREMENT_KEYBOARD_SELECTOR) : null;
+            if (input) {
+                if (shouldPreferDetailMeasurementKeyboard()) event.preventDefault();
+                openDetailMeasurementKeyboard(input, getDetailMeasurementKeyboardTypeForInput(input));
+                return;
+            }
+            const keyboard = document.getElementById('detail-measurement-keyboard');
+            if (keyboard && keyboard.contains(target)) return;
+            if (detailMeasurementKeyboardTarget) closeDetailMeasurementKeyboard(true);
+        }, { passive: false });
 
         function fallbackCopyText(text) {
             const textArea = document.createElement('textarea');
@@ -11712,6 +11901,7 @@ let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; le
 
 const DEFAULT_TASK_VIEW="av-blanks"; const DEFAULT_TASK_FILTER="season";
 let activeTaskView=DEFAULT_TASK_VIEW; let activeTaskFilter=DEFAULT_TASK_FILTER; let activeTaskCustomerFilter="all"; let activeTaskReserveRepFilter="all"; let activeTaskReserveCustomerFilter="all"; let activeTaskReserveCustomerFilters=new Set(); let activeTaskReserveRowStatusMode="all"; let activeTaskReservePhotoMode="all"; let activeTaskSeasonReviewMode="winner"; let activeTaskTab=activeTaskView; let activeTaskSubview=activeTaskFilter; let taskViewTargetUser=null; let taskViewLevel=0; let selectedTaskBlock=null; let selectedTaskLoc=null; let selectedEndCapFolder=null; let selectedFlyerFolder=null; let activeFlyerFolderTab="active"; let selectedColorWalkSearchTerm=""; let selectedTaskGenusNames=new Set(); let taskGenusSearchTerm=""; let taskGenusFilterOpen=false; let taskGenusFilterItemsCache=[]; let selectedTaskContSizes=new Set(); let taskContSizeSearchTerm=""; let taskContSizeDropdownOpen=false; let taskContSizeFilterItemsCache=[]; let taskLocationDetailSearchTerm=""; let selectedTaskLocationDetailGenus=""; let selectedTaskLocationDetailLotCode=""; let taskTabDropdownOpen=false; let taskSubviewDropdownOpen=false; let taskModeSearchTerm=""; let taskSubviewSearchTerm=""; let pendingFlyerFolderTarget=null; let pendingFlyerFolderAssignees=""; let taskReserveCustomerSearchTerm=''; let taskReserveCustomerDropdownOpen=false; let taskReserveCustomerDraftFilters=new Set(); let lastTaskReserveCustomerRenderSignature='';
+let lastNonApprovalTaskView=DEFAULT_TASK_VIEW;
 let detailReturnState = { viewId: '', scrollTop: 0 };
 let viewHistoryStack = [];
 let nativeBackNavigationInitialized = false;
@@ -11854,7 +12044,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.15').trim() || 'V2026.05.12.15';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.16').trim() || 'V2026.05.12.16';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -27593,6 +27783,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (normalizedView === previousTaskView && activeTaskTab === normalizedView) {
                 taskTabDropdownOpen = false;
                 taskModeSearchTerm = '';
+                syncTaskApprovalModeToggles(normalizedView);
                 syncTaskModeControls(normalizedView);
                 syncTaskSubviewControls(normalizedView);
                 syncTaskSharedFilterArea();
@@ -27604,6 +27795,7 @@ function toggleDriveQuickRequestItem(domId) {
             beginDirectNavigationActivity();
             activeTaskView = normalizedView;
             activeTaskTab = normalizedView;
+            if (!isNcrApprovalTaskView(normalizedView)) lastNonApprovalTaskView = normalizedView;
             taskTabDropdownOpen = false;
             taskSubviewDropdownOpen = false;
             taskModeSearchTerm = '';
@@ -27628,6 +27820,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (normalizedView !== 'colorwalk' && previousTaskView === 'colorwalk') {
                 selectedColorWalkSearchTerm='';
             }
+            syncTaskApprovalModeToggles(normalizedView);
             syncTaskModeControls(normalizedView);
             syncTaskSubviewControls(normalizedView);
             if (!nextUsesBlockDrill) {
@@ -45505,6 +45698,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             activeTaskFilter = normalizeTaskFilterValue(activeTaskFilter);
             activeTaskCustomerFilter = normalizeTaskCustomerFilterValue(activeTaskCustomerFilter);
             activeTaskTab = activeTaskView;
+            if (!isNcrApprovalTaskView(activeTaskView)) lastNonApprovalTaskView = activeTaskView;
             if (activeTaskView === 'reserves') {
                 const previousReserveRepFilter = normalizeTaskReserveFilterValue(activeTaskReserveRepFilter);
                 const previousReserveCustomerFilter = getTaskReserveCustomerSelectionKey(activeTaskReserveCustomerFilters, activeTaskReserveRepFilter);
@@ -45671,9 +45865,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (safeView === 'hold') return 'HOLD';
             if (safeView === 'av-blanks') return 'AV BLANKS';
             if (safeView === 'ncr') return 'NCR';
-            if (safeView === NCR_APPROVAL_NEW_CROP_VIEW) return 'NEW CROP APPROVALS';
+            if (safeView === NCR_APPROVAL_NEW_CROP_VIEW) return 'NCR APPROVALS';
             if (safeView === NCR_APPROVAL_MOVE_UP_VIEW) return 'MOVE UP APPROVALS';
-            if (safeView === NCR_APPROVAL_HOLD_RELEASE_VIEW) return 'HOLD APPROVALS';
+            if (safeView === NCR_APPROVAL_HOLD_RELEASE_VIEW) return 'OFF HOLD APPROVAL';
             if (safeView === 'colorwalk') return 'COLOR WALK';
             if (safeView === 'endcap') return 'END CAP';
             if (safeView === 'flyer') return 'FLYER';
@@ -45828,7 +46022,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function getTaskModeDropdownOptions() {
-            return getAvailableTaskViewValues().map((value) => ({
+            return getAvailableTaskViewValues().filter((value) => !isNcrApprovalTaskView(value)).map((value) => ({
                 value,
                 label: getTaskTabLabel(value)
             }));
@@ -45941,12 +46135,13 @@ ${folderNote ? `Folder Note: ${folderNote}
         function syncTaskSelectorRowLayout(tab = activeTaskTab) {
             const container = document.getElementById('task-tabs-container');
             if (!container) return;
+            const shouldShowTaskMode = !isNcrApprovalTaskView(tab);
             const shouldShowSubview = shouldShowTaskSubviewDropdown(tab);
             const shouldShowGenus = shouldShowTaskInlineGenusFilter(tab, taskViewLevel);
             const shouldShowContSize = shouldShowTaskInlineContSizeFilter(tab, taskViewLevel);
             const shouldShowDetailFilters = shouldShowTaskInlineDetailFilters(tab, taskViewLevel);
             const wasHidden = container.classList.contains('hidden');
-            const visibleCount = 1 + (shouldShowSubview ? 1 : 0) + (shouldShowGenus ? 1 : 0) + (shouldShowContSize ? 1 : 0) + (shouldShowDetailFilters ? 1 : 0);
+            const visibleCount = (shouldShowTaskMode ? 1 : 0) + (shouldShowSubview ? 1 : 0) + (shouldShowGenus ? 1 : 0) + (shouldShowContSize ? 1 : 0) + (shouldShowDetailFilters ? 1 : 0);
             const inlineTopControls = !shouldShowDetailFilters && visibleCount > 1 && visibleCount <= 4;
             const isCompactViewport = !!(document.body && document.body.classList.contains('viewport-compact'));
             const nextClasses = ['mb-3', 'grid', 'gap-2'];
@@ -45992,6 +46187,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
 
             setHostClasses('task-tab-dropdown-host');
+            if (!shouldShowTaskMode) {
+                const taskModeHost = document.getElementById('task-tab-dropdown-host');
+                if (taskModeHost) taskModeHost.classList.add('hidden');
+            }
             setHostClasses('task-subtabs-container');
             setHostClasses('task-contsize-filters', contSizeExtra);
             setHostClasses('task-genus-filters', genusExtra);
@@ -46145,10 +46344,63 @@ ${folderNote ? `Folder Note: ${folderNote}
             handleSearchEnterApply(event, applyVisibleTaskSubviewResult);
         }
 
+        function getTaskApprovalModeOptions() {
+            return [
+                { value: 'task', label: 'Task', icon: 'ph-clipboard-text' },
+                { value: NCR_APPROVAL_NEW_CROP_VIEW, label: 'NCR Approvals', icon: 'ph-seal-check' },
+                { value: NCR_APPROVAL_MOVE_UP_VIEW, label: 'Move Up Approvals', icon: 'ph-arrow-fat-up' },
+                { value: NCR_APPROVAL_HOLD_RELEASE_VIEW, label: 'Off Hold Approval', icon: 'ph-lock-open' }
+            ];
+        }
+
+        function getActiveTaskApprovalModeValue(tab = activeTaskTab) {
+            const safeTab = normalizeTaskViewValue(tab);
+            return isNcrApprovalTaskView(safeTab) ? safeTab : 'task';
+        }
+
+        function syncTaskApprovalModeToggles(tab = activeTaskTab) {
+            const container = document.getElementById('task-approval-mode-toggles');
+            if (!container) return;
+            if (!canUseNcrApprovalTaskView()) {
+                container.classList.add('hidden');
+                setContainerHtmlWithSignature(container, '', 'task-approval-mode:hidden');
+                return;
+            }
+            const activeMode = getActiveTaskApprovalModeValue(tab);
+            const buttonsHtml = getTaskApprovalModeOptions().map((option) => {
+                const isActive = option.value === activeMode;
+                const activeClass = isActive
+                    ? 'border-[#007a4d] bg-[#007a4d] text-white shadow-md'
+                    : 'border-emerald-200 bg-white text-[#007a4d] shadow-sm';
+                return `<button type="button" class="min-h-[44px] rounded-xl border px-2.5 py-2 text-[10px] font-black uppercase tracking-[0.11em] active:scale-95 ${activeClass}" onclick="return setTaskApprovalMode('${esc(option.value)}')"><span class="inline-flex items-center justify-center gap-1.5"><i class="ph-bold ${esc(option.icon)} text-sm"></i><span>${esc(option.label)}</span></span></button>`;
+            }).join('');
+            container.classList.remove('hidden');
+            const html = `<div class="rounded-[1.05rem] border border-emerald-100 bg-white/95 p-2 shadow-sm"><div class="grid grid-cols-2 gap-2 sm:grid-cols-4">${buttonsHtml}</div></div>`;
+            setContainerHtmlWithSignature(container, html, `task-approval-mode:${activeMode}`);
+        }
+
+        function setTaskApprovalMode(mode = 'task') {
+            const normalizedMode = String(mode || 'task').trim().toLowerCase();
+            if (normalizedMode === 'task') {
+                const fallbackView = !isNcrApprovalTaskView(lastNonApprovalTaskView) ? lastNonApprovalTaskView : DEFAULT_TASK_VIEW;
+                return setTaskView(fallbackView || DEFAULT_TASK_VIEW);
+            }
+            if (!isNcrApprovalTaskView(normalizedMode)) return false;
+            return setTaskView(normalizedMode);
+        }
+
         function syncTaskModeControls(tab = activeTaskTab) {
             const host = document.getElementById('task-tab-dropdown-host');
             if (!host) return;
             const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
+            if (isNcrApprovalTaskView(safeTab)) {
+                taskTabDropdownOpen = false;
+                host.classList.add('hidden');
+                setContainerHtmlWithSignature(host, '', `task-mode:hidden:${safeTab}`);
+                scheduleCompactTaskTopControlPanelSync('task-mode');
+                return;
+            }
+            host.classList.remove('hidden');
             syncTaskSelectorRowLayout(safeTab);
             const currentLabel = getTaskTabLabel(safeTab);
             const filteredOptions = filterExcelOptionValues(getTaskModeDropdownOptions(), taskModeSearchTerm);
@@ -47661,6 +47913,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             syncTaskSelectorState();
             const tabs = document.getElementById('task-tabs-container');
             if (tabs) tabs.classList.remove('hidden');
+            syncTaskApprovalModeToggles(activeTaskTab);
             syncTaskModeControls(activeTaskTab);
             syncTaskSubviewControls(activeTaskTab);
 
