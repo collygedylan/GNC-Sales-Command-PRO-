@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.11.11';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.12';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1792,7 +1792,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.11').trim() || 'V2026.05.11.11';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.12').trim() || 'V2026.05.11.12';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2664,7 +2664,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.11';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.12';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2695,6 +2695,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             tasks: { realtimeTables: ['v2_active_request', 'v2_sales_office', FLYER_FOLDER_ROWS_TABLE, FLYER_FOLDER_HISTORY_TABLE], pollMs: 'visible-default' },
             request: { realtimeTables: ['v2_active_request', REQUEST_HISTORY_TABLE], pollMs: 'visible-default' },
             'sales-office': { realtimeTables: ['v2_sales_office'], pollMs: 'visible-default' },
+            moves: { realtimeTables: ['v2_sales_office'], pollMs: 'visible-default' },
             'take-back': { realtimeTables: ['v2_take_back_queue'], pollMs: 'visible-default' },
             av: { realtimeTables: [], pollMs: 'visible-default' },
             reserves: { realtimeTables: [], pollMs: 'visible-default' },
@@ -5507,6 +5508,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (!masterItem || !row) return false;
             const salesOfficeSource = String(firstNonEmptyValue(row.SO_SOURCE, row.so_source, 'season') || '').trim().toLowerCase();
             if (salesOfficeSource === 'bloom_picker') return false;
+            if (salesOfficeSource === 'moves' || salesOfficeSource === 'move') return false;
             const preserved = captureSalesOfficeOwnedState(row);
             const changedFlags = { avNote: false, spec: false, match: false, caliper: false, photo: false };
             let changed = false;
@@ -6533,7 +6535,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const scopedIds = masterIdSet instanceof Set && masterIdSet.size ? masterIdSet : null;
             const adoptedMasters = [];
             salesOfficeInventory = (Array.isArray(salesOfficeInventory) ? salesOfficeInventory : [])
-                .filter((item) => item && !isSalesOfficeComplete(item))
+                .filter((item) => item && (!isSalesOfficeComplete(item) || isSalesOfficeMoveSource(item)))
                 .map((item, idx) => {
                     const uniqueId = String(item.UNIQUE_ID || '').trim();
                     const masterId = String(item.MASTER_ID || item.master_id || item.MASTER_UNIQUE_ID || item.UNIQUE_ID || '').trim();
@@ -6559,7 +6561,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     syncRowDataAcrossViews(masterItem);
                 });
                 invalidateResolvedViewStateCaches();
-                ['drive','tasks','av','request','sales-office','low-stock','move-up'].forEach((viewId) => markViewDirty(viewId));
+                ['drive','tasks','av','request','sales-office','low-stock','move-up','moves'].forEach((viewId) => markViewDirty(viewId));
             }
         }
 
@@ -11466,6 +11468,8 @@ let activeHomeTab='dashboard'; let selectedProductivityUser=''; let productivity
         const MOVES_COMPLETED_STORAGE_PREFIX = 'gnc_moves_completed_v1';
         const MOVES_ACTUAL_MOVED_STORAGE_PREFIX = 'gnc_moves_actual_moved_v1';
         const MOVES_TA_STORAGE_PREFIX = 'gnc_moves_ta_v1';
+        const MOVES_INVENTORY_OFFICE_STATUS = 'Inventory Office';
+        const MOVES_INVENTORY_OFFICE_DONE_STATUS = 'Inventory Office Done';
         const MOVES_THRESHOLD_BY_CONTSIZE = Object.freeze({ '#1': 300, '#1D': 300, '8IN': 300, '8DP': 300, '1GP': 300, '1G': 300, '#2': 200, '2DP': 200, '2GP': 200, '2G': 200, '#3': 150, '3DP': 150, '3GP': 150, '3G': 150, '#5': 120, '5DP': 120, '5GP': 120, '5G': 120 });
         const MOVES_PAIR_SEASONS = new Set(['F1', 'S1']);
         const MOVES_UNIVERSAL_SEASONS = new Set(['U1', 'U2', 'U3']);
@@ -11606,7 +11610,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.11').trim() || 'V2026.05.11.11';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.12').trim() || 'V2026.05.11.12';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -13477,7 +13481,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return { required: [{ key: 'reserves', mode: 'full' }], background: [], label: 'Loading all reserve rows...' };
             }
             if (viewId === 'sales-office') return { required: [{ key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }, { key: 'master', mode: 'initial' }], label: 'Loading sales office...' };
-            if (viewId === 'moves') return { required: [{ key: 'master', mode: 'full' }], background: [], label: 'Loading move candidates from v2_master_inventory...' };
+            if (viewId === 'moves') return { required: [{ key: 'master', mode: 'full' }, { key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }], label: 'Loading move candidates and office queue...' };
             if (viewId === 'tasks') {
                 const isFlyerTaskView = activeTaskView === 'flyer';
                 const required = [{ key: 'master', mode: 'initial' }];
@@ -32553,13 +32557,57 @@ function toggleDriveQuickRequestItem(domId) {
             const cacheKey = `${getDatasetLoadSignature('master')}::${Array.isArray(fullInventory) ? fullInventory.length : 0}`;
             if (movesRecordsCacheKey === cacheKey && Array.isArray(movesRecordsCache)) return movesRecordsCache;
             movesRecordsCacheKey = cacheKey;
-            movesRecordsCache = evaluateMovesFromInventory(fullInventory).concat(getNcrInventoryOfficeMoveRecords());
+            movesRecordsCache = evaluateMovesFromInventory(fullInventory);
             return movesRecordsCache;
         }
 
+        function getMoveCandidateRecords() {
+            return getMovesRecords().filter((record) => !hasSalesOfficeMoveRecordForMove(record.id));
+        }
+
+        function stripMoveToPrefix(value = '') {
+            return String(value || '').replace(/^Move To:\s*/i, '').trim();
+        }
+
+        function buildInventoryOfficeMoveRecordFromSalesOffice(row = null) {
+            if (!row || !isInventoryOfficeMoveRow(row)) return null;
+            const uniqueId = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
+            if (!uniqueId) return null;
+            const actualMoved = String(firstNonEmptyValue(row.MOVE_ACTUAL_MOVED, row.move_actual_moved, row.ORDER_QTY, row.order_qty, '0') || '0').trim() || '0';
+            const taQty = String(firstNonEmptyValue(row.MOVE_TA_QTY, row.move_ta_qty, row.ORDER_RESERVE, row.order_reserve, '0') || '0').trim() || '0';
+            return {
+                id: uniqueId,
+                sales_office_unique_id: uniqueId,
+                inventory_office_queue: true,
+                source_unique_id: String(firstNonEmptyValue(row.MASTER_ID, row.MASTER_UNIQUE_ID, row.master_id, '') || '').trim(),
+                itemcode: String(firstNonEmptyValue(row.ITEMCODE, row.itemcode, '') || '').trim(),
+                commonname: String(firstNonEmptyValue(row.COMMONNAME, row.commonname, '') || '').trim(),
+                lotcode: String(firstNonEmptyValue(row.LOTCODE, row.lotcode, '') || '').trim(),
+                contsize: String(firstNonEmptyValue(row.CONTSIZE, row.contsize, '') || '').trim(),
+                from_blockalpha: String(firstNonEmptyValue(row.MOVE_BLOCKALPHA, row.move_blockalpha, 'No Block') || 'No Block').trim(),
+                from_locationcode: String(firstNonEmptyValue(row.MOVE_FROM_LOCATION, row.move_from_location, row.LOCATIONCODE, row.locationcode, '') || '').trim(),
+                to_locationcode: stripMoveToPrefix(firstNonEmptyValue(row.MOVE_TO_LOCATION, row.move_to_location, row.SPEC, row.spec, 'Inventory Office')) || 'Inventory Office',
+                ptravailable: String(firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, '') || '').trim(),
+                quantity_available: String(firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, '') || '').trim(),
+                to_ptravailable: '',
+                threshold: 0,
+                actual_moved: actualMoved,
+                ta_qty: taQty,
+                submitted_by: String(firstNonEmptyValue(row.ORDER_SUBMITTED_BY, row.order_submitted_by, row.COMPLETED_BY, row.completed_by, '') || '').trim(),
+                submitted_at: String(firstNonEmptyValue(row.ORDER_SUBMITTED_AT, row.order_submitted_at, row.COMPLETED_AT, row.completed_at, '') || '').trim(),
+                photo_link: String(firstNonEmptyValue(row.PHOTO_LINK, row.photo_link, '') || '').trim()
+            };
+        }
+
+        function getInventoryOfficeMoveRecords() {
+            const queuedMoves = (Array.isArray(salesOfficeInventory) ? salesOfficeInventory : [])
+                .map((row) => buildInventoryOfficeMoveRecordFromSalesOffice(row))
+                .filter(Boolean);
+            return queuedMoves.concat(getNcrInventoryOfficeMoveRecords());
+        }
+
         function getOpenMoveRecords() {
-            const completedIds = getCompletedMoveIds();
-            return getMovesRecords().filter((record) => !completedIds.has(record.id) && !hasSalesOfficeMoveRecordForMove(record.id));
+            return activeMovesTab === 'office' ? getInventoryOfficeMoveRecords() : getMoveCandidateRecords();
         }
 
         function syncMovesTabs() {
@@ -32605,7 +32653,7 @@ function toggleDriveQuickRequestItem(domId) {
         function getMoveRecordById(moveId = '') {
             const safeId = String(moveId || '').trim();
             if (!safeId) return null;
-            return getMovesRecords().find((record) => String(record && record.id || '').trim() === safeId) || null;
+            return getMovesRecords().concat(getNcrInventoryOfficeMoveRecords()).find((record) => String(record && record.id || '').trim() === safeId) || null;
         }
 
         function buildMovesSalesOfficeRowId(moveId = '') {
@@ -32670,7 +32718,7 @@ function toggleDriveQuickRequestItem(domId) {
                 order_reserve: String(taQty || '0').trim() || '0',
                 order_submitted_by: completedBy,
                 order_submitted_at: completedAt,
-                order_status: 'Pending Review',
+                order_status: MOVES_INVENTORY_OFFICE_STATUS,
                 photo_link: String(firstNonEmptyValue(record.photo_link, '') || ''),
                 completed_by: completedBy,
                 completed_at: completedAt
@@ -32686,6 +32734,8 @@ function toggleDriveQuickRequestItem(domId) {
             clone.MOVE_ACTUAL_MOVED = String(actualMoved || '0').trim() || '0';
             clone.MOVE_TA_QTY = String(taQty || '0').trim() || '0';
             clone.MOVE_BLOCKALPHA = record.from_blockalpha || 'No Block';
+            clone.ORDER_STATUS = MOVES_INVENTORY_OFFICE_STATUS;
+            clone.order_status = MOVES_INVENTORY_OFFICE_STATUS;
             normalizeRowPhotoFields(clone);
             buildSearchIndex(clone);
             return { rowId, payload, clone };
@@ -32693,7 +32743,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         async function publishMoveRecordToSalesOffice(record = {}, actualMoved = '', taQty = '') {
             const artifacts = buildMoveSalesOfficeArtifacts(record, actualMoved, taQty);
-            if (!artifacts) throw new Error('Could not build Sales Office row.');
+            if (!artifacts) throw new Error('Could not build Inventory Office row.');
             const encodedUid = encodeURIComponent(artifacts.rowId);
             const existingRows = await supabaseFetch('v2_sales_office', 'GET', null, `select=unique_id&unique_id=eq.${encodedUid}`).catch(() => []);
             if (Array.isArray(existingRows) && existingRows.length) {
@@ -32752,21 +32802,76 @@ function toggleDriveQuickRequestItem(domId) {
             }
             setMoveActualMoved(safeId, normalizedActualMoved || '0');
             setMoveTa(safeId, normalizedTa || '0');
-            showToast('Processing...', 'Sending move row to Sales Office...');
+            if (record && record.ncr_inventory_office) {
+                showToast('Processing...', 'Completing Inventory Office approval...');
+                try {
+                    await finalizeNcrInventoryOfficeRecord(record, normalizedActualMoved || '0');
+                    markViewDirty('moves');
+                    if (isViewVisible('moves')) renderViewContent('moves', false, true);
+                    showToast('Done', 'Inventory Office approval completed.');
+                } catch (error) {
+                    console.error('NCR inventory completion sync failed', error);
+                    showToast('Could Not Save', 'Inventory Office approval was not marked done.', true);
+                }
+                return false;
+            }
+            showToast('Processing...', 'Sending move row to Inventory Office...');
             try {
                 await publishMoveRecordToSalesOffice(record, normalizedActualMoved || '0', normalizedTa || '0');
-                if (record && record.ncr_inventory_office) await finalizeNcrInventoryOfficeRecord(record, normalizedActualMoved || '0').catch((error) => console.warn('NCR inventory completion sync failed', error));
-                const completedIds = getCompletedMoveIds();
-                completedIds.add(safeId);
-                saveCompletedMoveIds(completedIds);
-                activeSalesOfficeTab = 'season';
                 markViewDirty('moves');
                 markViewDirty('sales-office');
                 if (isViewVisible('moves')) renderViewContent('moves', false, true);
-                showToast('Move Sent', `Moved ${normalizedActualMoved || '0'} | TA ${normalizedTa || '0'}.`);
+                showToast('Move Sent', `Inventory Office received ${normalizedActualMoved || '0'} moved | TA ${normalizedTa || '0'}.`);
             } catch (error) {
-                console.error('Move Sales Office publish failed', error);
-                showToast('Could Not Send', 'Move row was not sent to Sales Office.', true);
+                console.error('Move Inventory Office publish failed', error);
+                showToast('Could Not Send', 'Move row was not sent to Inventory Office.', true);
+            }
+            return false;
+        }
+
+        async function completeInventoryOfficeMoveRecord(uniqueId = '', button = null) {
+            const uid = String(uniqueId || '').trim();
+            if (!uid) return false;
+            const existingRow = (Array.isArray(salesOfficeInventory) ? salesOfficeInventory : []).find((row) => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim() === uid);
+            if (!existingRow || !isInventoryOfficeMoveRow(existingRow)) {
+                showToast('Not Found', 'That Inventory Office move row could not be found.', true);
+                return false;
+            }
+            if (button) {
+                button.disabled = true;
+                button.classList.add('opacity-70', 'pointer-events-none');
+            }
+            const previousSnapshot = { ...existingRow };
+            const completedAt = new Date().toISOString();
+            const completedBy = String(firstNonEmptyValue(currentUserDisplay, currentUser, 'Unknown User') || '').trim() || 'Unknown User';
+            existingRow.ORDER_STATUS = MOVES_INVENTORY_OFFICE_DONE_STATUS;
+            existingRow.order_status = MOVES_INVENTORY_OFFICE_DONE_STATUS;
+            existingRow.COMPLETED_BY = completedBy;
+            existingRow.completed_by = completedBy;
+            existingRow.COMPLETED_AT = completedAt;
+            existingRow.completed_at = completedAt;
+            markViewDirty('moves');
+            markViewDirty('sales-office');
+            if (isViewVisible('moves')) renderViewContent('moves', false, true);
+            try {
+                await runDetailWriteWithRetry('v2_sales_office', 'PATCH', {
+                    order_status: MOVES_INVENTORY_OFFICE_DONE_STATUS,
+                    completed_by: completedBy,
+                    completed_at: completedAt
+                }, `unique_id=eq.${encodeURIComponent(uid)}`);
+                showToast('Done', 'Move removed from Inventory Office.');
+            } catch (error) {
+                Object.keys(existingRow).forEach((key) => delete existingRow[key]);
+                Object.assign(existingRow, previousSnapshot);
+                markViewDirty('moves');
+                markViewDirty('sales-office');
+                if (isViewVisible('moves')) renderViewContent('moves', false, true);
+                if (button) {
+                    button.disabled = false;
+                    button.classList.remove('opacity-70', 'pointer-events-none');
+                }
+                console.error('Inventory Office move completion failed', error);
+                showToast('Could Not Save', 'Inventory Office row was not marked done.', true);
             }
             return false;
         }
@@ -32778,7 +32883,7 @@ function toggleDriveQuickRequestItem(domId) {
             selectedMovesBlock = null;
             selectedMovesLocation = null;
             markViewDirty('moves');
-            loadDatasetTargetsWithLimit([{ key: 'master', mode: 'full' }], {
+            loadDatasetTargetsWithLimit([{ key: 'master', mode: 'full' }, { key: 'salesOffice', mode: 'full' }], {
                 force: true,
                 preserveRequestedMode: true,
                 retryReason: 'moves-refresh'
@@ -32905,7 +33010,9 @@ function toggleDriveQuickRequestItem(domId) {
             records.forEach((record) => {
                 if (record.from_locationcode) locations.add(record.from_locationcode);
                 if (record.itemcode) items.add(record.itemcode);
-                if (getMoveActualMovedValue(record.id) || getMoveTaValue(record.id)) enteredCount += 1;
+                if (record && record.inventory_office_queue) {
+                    if (String(firstNonEmptyValue(record.actual_moved, record.ta_qty, '') || '').trim()) enteredCount += 1;
+                } else if (getMoveActualMovedValue(record.id) || getMoveTaValue(record.id)) enteredCount += 1;
             });
             return `<div class="grid grid-cols-2 gap-3 mb-4">
                 <div class="rounded-xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Open Moves</div><div class="mt-1 text-3xl font-black text-[#007a4d]">${records.length}</div></div>
@@ -32918,14 +33025,21 @@ function toggleDriveQuickRequestItem(domId) {
         function renderMovesOfficeRecordCard(record = {}) {
             const safeMoveId = escJsAttrValue(record.id);
             const isNcrOfficeRecord = !!(record && record.ncr_inventory_office);
+            const isInventoryOfficeQueueRecord = !!(record && record.inventory_office_queue && record.sales_office_unique_id);
             let actualMovedValue = getMoveActualMovedValue(record.id);
+            if (isInventoryOfficeQueueRecord) actualMovedValue = String(firstNonEmptyValue(record.actual_moved, actualMovedValue, '0') || '0').trim();
             if (isNcrOfficeRecord && !String(actualMovedValue || '').trim()) actualMovedValue = String(firstNonEmptyValue(record.ncr_approved_qty, '') || '');
             const actualInputId = getMoveActualMovedInputId(record.id);
-            const taValue = getMoveTaValue(record.id);
+            const taValue = isInventoryOfficeQueueRecord ? String(firstNonEmptyValue(record.ta_qty, '0') || '0').trim() : getMoveTaValue(record.id);
             const taInputId = getMoveTaInputId(record.id);
             const ptrAvailableValue = firstNonEmptyValue(record.ptravailable, record.quantity_available, '0');
-            const recordEyebrow = isNcrOfficeRecord ? `${getNcrApprovalTypeLabel(record.ncr_approval_type || 'new-crop')} Approval` : 'Consolidate Inventory';
+            const recordEyebrow = isNcrOfficeRecord ? `${getNcrApprovalTypeLabel(record.ncr_approval_type || 'new-crop')} Approval` : (isInventoryOfficeQueueRecord ? 'Inventory Office Queue' : 'Consolidate Inventory');
             const approvedQtyHtml = isNcrOfficeRecord ? `<span class="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">Approved Qty ${esc(String(firstNonEmptyValue(record.ncr_approved_qty, actualMovedValue, '0') || '0'))}</span>` : '';
+            const actualInputHandlers = isInventoryOfficeQueueRecord ? 'readonly' : `oninput="setMoveActualMoved('${safeMoveId}', this.value)" onchange="setMoveActualMoved('${safeMoveId}', this.value)"`;
+            const taInputHandlers = isInventoryOfficeQueueRecord ? 'readonly' : `oninput="setMoveTa('${safeMoveId}', this.value)" onchange="setMoveTa('${safeMoveId}', this.value)"`;
+            const doneAction = isInventoryOfficeQueueRecord
+                ? `return completeInventoryOfficeMoveRecord('${escJsAttrValue(record.sales_office_unique_id)}', this)`
+                : `return completeMoveRecord('${safeMoveId}')`;
             return `<div class="mb-3 rounded-xl border border-emerald-100 bg-white p-4 shadow-sm">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0 flex-1">
@@ -32954,13 +33068,13 @@ function toggleDriveQuickRequestItem(domId) {
                 <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
                     <div class="sm:w-40">
                         <label class="ml-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Actual Moved</label>
-                        <input id="${esc(actualInputId)}" type="number" min="0" step="1" inputmode="numeric" class="mt-1 w-full rounded-lg border border-emerald-200 bg-white px-3 py-3 text-right text-sm font-black text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" placeholder="Qty" value="${esc(actualMovedValue)}" oninput="setMoveActualMoved('${safeMoveId}', this.value)" onchange="setMoveActualMoved('${safeMoveId}', this.value)">
+                        <input id="${esc(actualInputId)}" type="number" min="0" step="1" inputmode="numeric" class="mt-1 w-full rounded-lg border border-emerald-200 bg-white px-3 py-3 text-right text-sm font-black text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" placeholder="Qty" value="${esc(actualMovedValue)}" ${actualInputHandlers}>
                     </div>
                     <div class="sm:w-40">
                         <label class="ml-1 text-[9px] font-black uppercase tracking-[0.12em] text-red-500">TA ThrowAway</label>
-                        <input id="${esc(taInputId)}" type="number" min="0" step="1" inputmode="numeric" class="mt-1 w-full rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-right text-sm font-black text-red-700 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100" placeholder="Qty" value="${esc(taValue)}" oninput="setMoveTa('${safeMoveId}', this.value)" onchange="setMoveTa('${safeMoveId}', this.value)">
+                        <input id="${esc(taInputId)}" type="number" min="0" step="1" inputmode="numeric" class="mt-1 w-full rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-right text-sm font-black text-red-700 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100" placeholder="Qty" value="${esc(taValue)}" ${taInputHandlers}>
                     </div>
-                    <button type="button" class="min-h-[44px] flex-1 rounded-lg bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="return completeMoveRecord('${safeMoveId}')">Done</button>
+                    <button type="button" class="min-h-[44px] flex-1 rounded-lg bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="${doneAction}">Done</button>
                 </div>
             </div>`;
         }
@@ -36038,9 +36152,28 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             return false;
         }
 
+        function isSalesOfficeMoveSource(item) {
+            const source = String(firstNonEmptyValue(item && item.SO_SOURCE, item && item.so_source, '') || '').trim().toLowerCase();
+            return source === 'moves' || source === 'move';
+        }
+
+        function getSalesOfficeMoveStatus(item) {
+            return String(firstNonEmptyValue(item && item.ORDER_STATUS, item && item.order_status, item && item.STATUS, item && item.status, '') || '').trim();
+        }
+
+        function isInventoryOfficeMoveRow(item) {
+            if (!item || !isSalesOfficeMoveSource(item)) return false;
+            const status = getSalesOfficeMoveStatus(item).toLowerCase();
+            return status === MOVES_INVENTORY_OFFICE_STATUS.toLowerCase() || status === 'pending review' || status === 'pending';
+        }
+
         function isSalesOfficeComplete(item) {
-            if (hasCompletionDateValue(item)) return true;
             const status = String(firstNonEmptyValue(item && item.ORDER_STATUS, item && item.order_status, item && item.STATUS, item && item.status, '') || '').trim().toLowerCase();
+            if (isSalesOfficeMoveSource(item)) {
+                if (!status) return false;
+                return status.includes('done') || status.includes('complete') || status.includes('closed') || status.includes('removed') || status.includes('archived');
+            }
+            if (hasCompletionDateValue(item)) return true;
             if (!status) return false;
             return status.includes('done') || status.includes('complete') || status.includes('closed') || status.includes('removed') || status.includes('archived');
         }
@@ -36049,9 +36182,10 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             if (!item || isBloomPickerSalesOfficeItem(item) || isSalesOfficeComplete(item)) return false;
             const salesOfficeSource = String(firstNonEmptyValue(item.SO_SOURCE, item.so_source, 'season')).toLowerCase().trim();
             if (salesOfficeSource === 'season') return true;
-            if (salesOfficeSource === 'moves' || salesOfficeSource === 'move') return true;
+            if (salesOfficeSource === 'moves' || salesOfficeSource === 'move') return false;
             const assignment = String(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, '')).toLowerCase().trim();
-            if (assignment === 'season' || assignment === 'moves' || assignment === 'move') return true;
+            if (assignment === 'season') return true;
+            if (assignment === 'moves' || assignment === 'move') return false;
             const masterId = String(firstNonEmptyValue(item.MASTER_ID, item.MASTER_UNIQUE_ID, item.master_id, item.UNIQUE_ID, '')).trim();
             if (!masterId) return false;
             const masterRow = findItemByUniqueId(masterId);
@@ -39797,9 +39931,11 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             refreshCartButtons();
             invalidateResolvedViewStateCaches();
             markViewDirty('sales-office');
+            markViewDirty('moves');
             const renderDelay = Number.isFinite(Number(opts.renderDelay)) ? Math.max(0, Number(opts.renderDelay)) : 16;
             const typingDelay = Number.isFinite(Number(opts.typingDelay)) ? Math.max(120, Number(opts.typingDelay)) : 180;
             if (isViewVisible('sales-office') && !opts.skipRender) queueInteractiveViewRender('sales-office', false, true, renderDelay, typingDelay);
+            if (isViewVisible('moves') && !opts.skipRender) queueInteractiveViewRender('moves', false, true, renderDelay, typingDelay);
             if (!opts.silent) showToast("Complete", opts.message || "Removed from Sales Office.");
             if (opts.skipRemote) return;
             supabaseFetch('v2_sales_office','DELETE',null,`unique_id=eq.${encodeURIComponent(uid)}`).catch(() => {
@@ -39813,8 +39949,12 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
         function invalidateSalesOfficeLocalState(delay = 16, typingDelay = 160) {
             invalidateResolvedViewStateCaches();
             markViewDirty('sales-office');
+            markViewDirty('moves');
             if (isViewVisible('sales-office')) {
                 queueInteractiveViewRender('sales-office', false, true, Math.max(0, Number(delay) || 0), Math.max(120, Number(typingDelay) || 0));
+            }
+            if (isViewVisible('moves')) {
+                queueInteractiveViewRender('moves', false, true, Math.max(0, Number(delay) || 0), Math.max(120, Number(typingDelay) || 0));
             }
         }
 
