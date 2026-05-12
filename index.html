@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.11.10';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.11';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -849,6 +849,12 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
     padding:4px;
 }
 
+.advertisement-control input[type="range"]{
+    min-height:34px;
+    padding:0;
+    accent-color:#007a4d;
+}
+
 .advertisement-segment{
     display:flex;
     grid-column:1/-1;
@@ -995,6 +1001,35 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
     font-weight:900;
     letter-spacing:.1em;
     text-transform:uppercase;
+}
+
+.advertisement-layout-actions{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
+    margin-top:10px;
+}
+
+.advertisement-layout-actions button{
+    display:flex;
+    min-height:44px;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    border:1px solid #d1fae5;
+    border-radius:14px;
+    background:#ecfdf5;
+    color:#007a4d;
+    padding:0 8px;
+    font-size:9px;
+    font-weight:900;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    touch-action:manipulation;
+}
+
+.advertisement-layout-actions button i{
+    font-size:16px;
 }
 
 .advertisement-folder-title{
@@ -1233,6 +1268,10 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
     .advertisement-canvas-stage{
         grid-column:1;
         grid-row:3/span 6;
+    }
+
+    .advertisement-layout-actions{
+        grid-template-columns:1fr;
     }
 }
         input,textarea,select{-webkit-user-select:text;user-select:text}
@@ -1753,7 +1792,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.10').trim() || 'V2026.05.11.10';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.11').trim() || 'V2026.05.11.11';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2153,6 +2192,51 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <canvas id="advertisement-canvas" width="1080" height="1080"></canvas>
                         </div>
 
+                        <div class="advertisement-panel">
+                            <div class="advertisement-panel-title">Page & Layout</div>
+                            <div class="advertisement-control-grid">
+                                <label class="advertisement-control">
+                                    <span>Page</span>
+                                    <select id="advertisement-page-format" onchange="return setAdvertisementCanvasFormat(this.value)">
+                                        <option value="square">Square Post</option>
+                                        <option value="portrait">Portrait Post</option>
+                                        <option value="story">Story/Reel</option>
+                                        <option value="landscape">Landscape</option>
+                                        <option value="letter">Letter Flyer</option>
+                                    </select>
+                                </label>
+                                <label class="advertisement-control">
+                                    <span>Photos</span>
+                                    <input id="advertisement-layout-count" type="number" min="1" max="9" step="1" value="4">
+                                </label>
+                                <label class="advertisement-control">
+                                    <span>Layout</span>
+                                    <select id="advertisement-layout-mode">
+                                        <option value="grid">Grid</option>
+                                        <option value="hero">Hero</option>
+                                        <option value="collage">Collage</option>
+                                    </select>
+                                </label>
+                                <label class="advertisement-control">
+                                    <span>Gap</span>
+                                    <input id="advertisement-layout-gap" type="range" min="0" max="56" step="2" value="18">
+                                </label>
+                                <label class="advertisement-control">
+                                    <span>Margin</span>
+                                    <input id="advertisement-layout-margin" type="range" min="20" max="120" step="5" value="56">
+                                </label>
+                                <label class="advertisement-control">
+                                    <span>Round</span>
+                                    <input id="advertisement-layout-radius" type="range" min="0" max="72" step="2" value="28">
+                                </label>
+                            </div>
+                            <div class="advertisement-layout-actions">
+                                <button type="button" onclick="return addAdvertisementSelectedFlyerPhotosAsLayout()"><i class="ph-bold ph-grid-four"></i><span>Place Selected</span></button>
+                                <button type="button" onclick="return autoFillAdvertisementLayoutFromFolder()"><i class="ph-bold ph-sparkle"></i><span>Auto Fill</span></button>
+                                <button type="button" onclick="return clearAdvertisementPhotoObjects()"><i class="ph-bold ph-eraser"></i><span>Clear Photos</span></button>
+                            </div>
+                        </div>
+
                         <div id="advertisement-selection-panel" class="advertisement-panel hidden">
                             <div class="advertisement-panel-title">Selected Object</div>
                             <div class="advertisement-control-grid">
@@ -2174,12 +2258,38 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                     <span>Size</span>
                                     <input id="advertisement-font-size" type="number" min="12" max="220" step="2" value="72" oninput="setAdvertisementTextSize(this.value)">
                                 </label>
+                                <label class="advertisement-control">
+                                    <span>Opacity</span>
+                                    <input id="advertisement-object-opacity" type="range" min="0.1" max="1" step="0.05" value="1" oninput="setAdvertisementObjectOpacity(this.value)">
+                                </label>
+                                <label class="advertisement-control advertisement-image-control hidden">
+                                    <span>Brightness</span>
+                                    <input id="advertisement-image-brightness" type="range" min="-1" max="1" step="0.02" value="0" oninput="setAdvertisementImageAdjustment('brightness', this.value)">
+                                </label>
+                                <label class="advertisement-control advertisement-image-control hidden">
+                                    <span>Contrast</span>
+                                    <input id="advertisement-image-contrast" type="range" min="-1" max="1" step="0.02" value="0" oninput="setAdvertisementImageAdjustment('contrast', this.value)">
+                                </label>
+                                <label class="advertisement-control advertisement-image-control hidden">
+                                    <span>Saturation</span>
+                                    <input id="advertisement-image-saturation" type="range" min="-1" max="1" step="0.02" value="0" oninput="setAdvertisementImageAdjustment('saturation', this.value)">
+                                </label>
+                                <label class="advertisement-control advertisement-image-control hidden">
+                                    <span>Blur</span>
+                                    <input id="advertisement-image-blur" type="range" min="0" max="0.55" step="0.01" value="0" oninput="setAdvertisementImageAdjustment('blur', this.value)">
+                                </label>
                                 <div class="advertisement-segment advertisement-text-control">
                                     <button type="button" id="advertisement-bold-btn" onclick="return toggleAdvertisementTextBold()"><i class="ph-bold ph-text-b"></i></button>
                                     <button type="button" id="advertisement-italic-btn" onclick="return toggleAdvertisementTextItalic()"><i class="ph-bold ph-text-italic"></i></button>
                                     <button type="button" onclick="return setAdvertisementTextAlign('left')"><i class="ph-bold ph-text-align-left"></i></button>
                                     <button type="button" onclick="return setAdvertisementTextAlign('center')"><i class="ph-bold ph-text-align-center"></i></button>
                                     <button type="button" onclick="return setAdvertisementTextAlign('right')"><i class="ph-bold ph-text-align-right"></i></button>
+                                </div>
+                                <div class="advertisement-segment advertisement-image-control hidden">
+                                    <button type="button" onclick="return resetAdvertisementImageAdjustments()"><i class="ph-bold ph-arrow-counter-clockwise"></i></button>
+                                    <button type="button" onclick="return makeAdvertisementBlurredBackgroundFromSelection()"><i class="ph-bold ph-drop-half-bottom"></i></button>
+                                    <button type="button" onclick="return duplicateAdvertisementSelection()"><i class="ph-bold ph-copy"></i></button>
+                                    <button type="button" onclick="return fitAdvertisementSelectionToPage()"><i class="ph-bold ph-frame-corners"></i></button>
                                 </div>
                             </div>
                         </div>
@@ -2554,7 +2664,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.10';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.11';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11496,7 +11606,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.10').trim() || 'V2026.05.11.10';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.11').trim() || 'V2026.05.11.11';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -46479,10 +46589,31 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         const ADVERTISEMENT_FABRIC_CDN_URL = 'https://cdn.jsdelivr.net/npm/fabric@6.7.1/dist/index.js';
         const ADVERTISEMENT_CANVAS_SIZE = 1080;
+        const ADVERTISEMENT_CANVAS_FORMATS = Object.freeze({
+            square: { label: 'Square Post', width: 1080, height: 1080 },
+            portrait: { label: 'Portrait Post', width: 1080, height: 1350 },
+            story: { label: 'Story/Reel', width: 1080, height: 1920 },
+            landscape: { label: 'Landscape', width: 1200, height: 628 },
+            letter: { label: 'Letter Flyer', width: 1275, height: 1650 }
+        });
+        const ADVERTISEMENT_CUSTOM_PROPS = [
+            'advertisementType',
+            'sourceUniqueId',
+            'sourcePhotoUrl',
+            'advertisementBrightness',
+            'advertisementContrast',
+            'advertisementSaturation',
+            'advertisementBlur',
+            'advertisementFrameId',
+            'advertisementLayoutRole'
+        ];
         const ADVERTISEMENT_HISTORY_LIMIT = 40;
         let advertisementFabric = null;
         let advertisementFabricPromise = null;
         let advertisementCanvas = null;
+        let advertisementCanvasFormat = 'square';
+        let advertisementCanvasLogicalWidth = ADVERTISEMENT_CANVAS_SIZE;
+        let advertisementCanvasLogicalHeight = ADVERTISEMENT_CANVAS_SIZE;
         let advertisementInitialized = false;
         let advertisementResizeInstalled = false;
         let advertisementHistory = [];
@@ -46495,6 +46626,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         let advertisementSelectedFlyerFolder = '';
         let advertisementSelectedFlyerPhotoKeys = new Set();
         let advertisementEmailSendInFlight = false;
+        let advertisementAdjustmentHistoryTimer = null;
 
         function getAdvertisementTitle() {
             const input = document.getElementById('advertisement-title');
@@ -46554,20 +46686,39 @@ ${folderNote ? `Folder Note: ${folderNote}
             return advertisementFabricPromise;
         }
 
+        function getAdvertisementCanvasWidth() {
+            return Math.max(320, Number(advertisementCanvasLogicalWidth) || ADVERTISEMENT_CANVAS_SIZE);
+        }
+
+        function getAdvertisementCanvasHeight() {
+            return Math.max(320, Number(advertisementCanvasLogicalHeight) || ADVERTISEMENT_CANVAS_SIZE);
+        }
+
+        function getAdvertisementCanvasCenter() {
+            return {
+                x: getAdvertisementCanvasWidth() / 2,
+                y: getAdvertisementCanvasHeight() / 2
+            };
+        }
+
         function resizeAdvertisementCanvasShell() {
             const stage = document.getElementById('advertisement-canvas-stage');
             if (!stage || !advertisementCanvas) return;
             const availableWidth = Math.max(280, Math.floor(stage.clientWidth || stage.getBoundingClientRect().width || 0));
-            const displaySize = Math.min(availableWidth, 720);
+            const canvasWidth = getAdvertisementCanvasWidth();
+            const canvasHeight = getAdvertisementCanvasHeight();
+            const displayWidth = Math.min(availableWidth, 720);
+            const displayHeight = Math.max(220, Math.round(displayWidth * (canvasHeight / canvasWidth)));
             const container = stage.querySelector('.canvas-container');
             const lowerCanvas = stage.querySelector('canvas.lower-canvas') || document.getElementById('advertisement-canvas');
             const upperCanvas = stage.querySelector('canvas.upper-canvas');
             [container, lowerCanvas, upperCanvas].forEach((node) => {
                 if (!node) return;
-                node.style.width = `${displaySize}px`;
-                node.style.height = `${displaySize}px`;
+                node.style.width = `${displayWidth}px`;
+                node.style.height = `${displayHeight}px`;
             });
-            stage.style.maxWidth = `${displaySize}px`;
+            stage.style.maxWidth = `${displayWidth}px`;
+            stage.style.aspectRatio = `${canvasWidth} / ${canvasHeight}`;
             advertisementCanvas.calcOffset();
             advertisementCanvas.requestRenderAll();
         }
@@ -46586,7 +46737,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function getAdvertisementCanvasJson() {
             if (!advertisementCanvas) return '';
             try {
-                return JSON.stringify(advertisementCanvas.toJSON(['advertisementType', 'sourceUniqueId', 'sourcePhotoUrl']));
+                return JSON.stringify(advertisementCanvas.toJSON(ADVERTISEMENT_CUSTOM_PROPS));
             } catch (error) {
                 return '';
             }
@@ -46606,18 +46757,21 @@ ${folderNote ? `Folder Note: ${folderNote}
         function loadAdvertisementCanvasJson(json = '') {
             if (!advertisementCanvas || !json) return Promise.resolve(false);
             return new Promise((resolve, reject) => {
+                const finishLoad = () => {
+                    advertisementCanvas.getObjects().forEach((object) => {
+                        if (isAdvertisementImageObject(object)) applyAdvertisementImageFilters(object);
+                    });
+                    if (advertisementCanvas.backgroundImage && isAdvertisementImageObject(advertisementCanvas.backgroundImage)) applyAdvertisementImageFilters(advertisementCanvas.backgroundImage);
+                    advertisementCanvas.renderAll();
+                    resizeAdvertisementCanvasShell();
+                    resolve(true);
+                };
                 try {
                     const loadResult = advertisementCanvas.loadFromJSON(json, () => {
-                        advertisementCanvas.renderAll();
-                        resizeAdvertisementCanvasShell();
-                        resolve(true);
+                        finishLoad();
                     });
                     if (loadResult && typeof loadResult.then === 'function') {
-                        loadResult.then(() => {
-                            advertisementCanvas.renderAll();
-                            resizeAdvertisementCanvasShell();
-                            resolve(true);
-                        }).catch(reject);
+                        loadResult.then(finishLoad).catch(reject);
                     }
                 } catch (error) {
                     reject(error);
@@ -46662,11 +46816,17 @@ ${folderNote ? `Folder Note: ${folderNote}
             panel.classList.toggle('hidden', !object);
             if (!object) return;
             const isTextObject = ['textbox', 'i-text', 'text'].includes(String(object.type || '').toLowerCase());
+            const isImageObject = isAdvertisementImageObject(object);
             document.querySelectorAll('.advertisement-text-control').forEach((node) => {
                 node.classList.toggle('hidden', !isTextObject);
             });
+            document.querySelectorAll('.advertisement-image-control').forEach((node) => {
+                node.classList.toggle('hidden', !isImageObject);
+            });
             const fillInput = document.getElementById('advertisement-object-color');
             if (fillInput && /^#[0-9a-f]{6}$/i.test(String(object.fill || ''))) fillInput.value = object.fill;
+            const opacityInput = document.getElementById('advertisement-object-opacity');
+            if (opacityInput) opacityInput.value = String(Math.max(0.1, Math.min(1, Number(object.opacity) || 1)));
             if (isTextObject) {
                 const fontFamily = document.getElementById('advertisement-font-family');
                 const fontSize = document.getElementById('advertisement-font-size');
@@ -46676,6 +46836,17 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (fontSize) fontSize.value = String(Math.round(Number(object.fontSize) || 72));
                 if (boldBtn) boldBtn.classList.toggle('active', String(object.fontWeight || '').toLowerCase() === 'bold' || Number(object.fontWeight) >= 700);
                 if (italicBtn) italicBtn.classList.toggle('active', String(object.fontStyle || '').toLowerCase() === 'italic');
+            }
+            if (isImageObject) {
+                const values = getAdvertisementImageAdjustmentValues(object);
+                const brightness = document.getElementById('advertisement-image-brightness');
+                const contrast = document.getElementById('advertisement-image-contrast');
+                const saturation = document.getElementById('advertisement-image-saturation');
+                const blur = document.getElementById('advertisement-image-blur');
+                if (brightness) brightness.value = String(values.brightness);
+                if (contrast) contrast.value = String(values.contrast);
+                if (saturation) saturation.value = String(values.saturation);
+                if (blur) blur.value = String(values.blur);
             }
         }
 
@@ -46697,9 +46868,105 @@ ${folderNote ? `Folder Note: ${folderNote}
             return false;
         }
 
+        function isAdvertisementImageObject(object = null) {
+            const type = String(object && object.type || '').toLowerCase();
+            return !!(object && (type === 'image' || type === 'fabricimage' || object.getElement));
+        }
+
+        function getAdvertisementImageAdjustmentValues(object = null) {
+            return {
+                brightness: Number(object && object.advertisementBrightness) || 0,
+                contrast: Number(object && object.advertisementContrast) || 0,
+                saturation: Number(object && object.advertisementSaturation) || 0,
+                blur: Number(object && object.advertisementBlur) || 0
+            };
+        }
+
+        function createAdvertisementImageFilter(filterName = '', value = 0) {
+            const fabricNamespace = advertisementFabric || window.fabric || {};
+            const filters = fabricNamespace.filters || {};
+            const numeric = Number(value) || 0;
+            try {
+                if (filterName === 'brightness' && filters.Brightness && numeric !== 0) return new filters.Brightness({ brightness: numeric });
+                if (filterName === 'contrast' && filters.Contrast && numeric !== 0) return new filters.Contrast({ contrast: numeric });
+                if (filterName === 'saturation' && filters.Saturation && numeric !== 0) return new filters.Saturation({ saturation: numeric });
+                if (filterName === 'blur' && filters.Blur && numeric > 0) return new filters.Blur({ blur: numeric });
+            } catch (error) {
+                console.warn('Advertisement filter unavailable', filterName, error);
+            }
+            return null;
+        }
+
+        function applyAdvertisementImageFilters(object = null) {
+            if (!object || !isAdvertisementImageObject(object)) return false;
+            const values = getAdvertisementImageAdjustmentValues(object);
+            const filters = [
+                createAdvertisementImageFilter('brightness', values.brightness),
+                createAdvertisementImageFilter('contrast', values.contrast),
+                createAdvertisementImageFilter('saturation', values.saturation),
+                createAdvertisementImageFilter('blur', values.blur)
+            ].filter(Boolean);
+            object.filters = filters;
+            if (typeof object.applyFilters === 'function') {
+                try { object.applyFilters(); } catch (error) { console.warn('Advertisement filter apply failed', error); }
+            }
+            object.dirty = true;
+            object.setCoords();
+            return true;
+        }
+
+        function setAdvertisementImageAdjustment(adjustment = '', value = 0) {
+            const key = String(adjustment || '').trim().toLowerCase();
+            const propertyMap = {
+                brightness: 'advertisementBrightness',
+                contrast: 'advertisementContrast',
+                saturation: 'advertisementSaturation',
+                blur: 'advertisementBlur'
+            };
+            const property = propertyMap[key];
+            if (!property) return false;
+            const numeric = key === 'blur'
+                ? Math.max(0, Math.min(0.55, Number(value) || 0))
+                : Math.max(-1, Math.min(1, Number(value) || 0));
+            const objects = getAdvertisementActiveObjects().filter((object) => isAdvertisementImageObject(object));
+            if (!objects.length) return false;
+            objects.forEach((object) => {
+                if (!isAdvertisementImageObject(object)) return;
+                object.set(property, numeric);
+                applyAdvertisementImageFilters(object);
+            });
+            advertisementCanvas.requestRenderAll();
+            if (advertisementAdjustmentHistoryTimer) clearTimeout(advertisementAdjustmentHistoryTimer);
+            advertisementAdjustmentHistoryTimer = setTimeout(() => {
+                advertisementAdjustmentHistoryTimer = null;
+                saveAdvertisementHistorySnapshot();
+            }, 240);
+            return false;
+        }
+
+        function resetAdvertisementImageAdjustments() {
+            return updateAdvertisementObjects((object) => {
+                if (!isAdvertisementImageObject(object)) return;
+                object.set({
+                    advertisementBrightness: 0,
+                    advertisementContrast: 0,
+                    advertisementSaturation: 0,
+                    advertisementBlur: 0
+                });
+                applyAdvertisementImageFilters(object);
+            });
+        }
+
         function setAdvertisementObjectFill(color = '#007a4d') {
             return updateAdvertisementObjects((object) => {
                 if ('fill' in object || typeof object.set === 'function') object.set('fill', String(color || '#007a4d'));
+            });
+        }
+
+        function setAdvertisementObjectOpacity(opacity = 1) {
+            const safeOpacity = Math.max(0.1, Math.min(1, Number(opacity) || 1));
+            return updateAdvertisementObjects((object) => {
+                object.set('opacity', safeOpacity);
             });
         }
 
@@ -46739,10 +47006,36 @@ ${folderNote ? `Folder Note: ${folderNote}
             });
         }
 
+        function setAdvertisementCanvasFormat(formatKey = 'square') {
+            const safeKey = ADVERTISEMENT_CANVAS_FORMATS[formatKey] ? String(formatKey) : 'square';
+            const format = ADVERTISEMENT_CANVAS_FORMATS[safeKey] || ADVERTISEMENT_CANVAS_FORMATS.square;
+            advertisementCanvasFormat = safeKey;
+            advertisementCanvasLogicalWidth = format.width;
+            advertisementCanvasLogicalHeight = format.height;
+            const select = document.getElementById('advertisement-page-format');
+            if (select && select.value !== safeKey) select.value = safeKey;
+            if (advertisementCanvas) {
+                advertisementCanvas.setWidth(format.width);
+                advertisementCanvas.setHeight(format.height);
+                const canvasEl = document.getElementById('advertisement-canvas');
+                if (canvasEl) {
+                    canvasEl.width = format.width;
+                    canvasEl.height = format.height;
+                }
+                resizeAdvertisementCanvasShell();
+                advertisementCanvas.requestRenderAll();
+                saveAdvertisementHistorySnapshot();
+            }
+            return false;
+        }
+
         function centerAdvertisementObject(object) {
             if (!advertisementCanvas || !object) return object;
             if (typeof advertisementCanvas.centerObject === 'function') advertisementCanvas.centerObject(object);
-            else object.set({ left: ADVERTISEMENT_CANVAS_SIZE / 2, top: ADVERTISEMENT_CANVAS_SIZE / 2, originX: 'center', originY: 'center' });
+            else {
+                const center = getAdvertisementCanvasCenter();
+                object.set({ left: center.x, top: center.y, originX: 'center', originY: 'center' });
+            }
             object.setCoords();
             return object;
         }
@@ -46942,6 +47235,224 @@ ${folderNote ? `Folder Note: ${folderNote}
             return getAdvertisementSelectedFlyerFolderRows().flatMap((row) => getAdvertisementFlyerRowPhotoEntries(row));
         }
 
+        function getAdvertisementLayoutSettings() {
+            const countInput = document.getElementById('advertisement-layout-count');
+            const modeInput = document.getElementById('advertisement-layout-mode');
+            const gapInput = document.getElementById('advertisement-layout-gap');
+            const marginInput = document.getElementById('advertisement-layout-margin');
+            const radiusInput = document.getElementById('advertisement-layout-radius');
+            return {
+                count: Math.max(1, Math.min(9, Math.round(Number(countInput && countInput.value) || 4))),
+                mode: ['grid', 'hero', 'collage'].includes(String(modeInput && modeInput.value || '').trim()) ? String(modeInput.value).trim() : 'grid',
+                gap: Math.max(0, Math.min(56, Number(gapInput && gapInput.value) || 18)),
+                margin: Math.max(20, Math.min(120, Number(marginInput && marginInput.value) || 56)),
+                radius: Math.max(0, Math.min(72, Number(radiusInput && radiusInput.value) || 28))
+            };
+        }
+
+        function buildAdvertisementGridFrames(count = 4, settings = {}) {
+            const total = Math.max(1, Math.min(9, Number(count) || 1));
+            const gap = Number(settings.gap) || 0;
+            const margin = Number(settings.margin) || 56;
+            const canvasWidth = getAdvertisementCanvasWidth();
+            const canvasHeight = getAdvertisementCanvasHeight();
+            const usableWidth = Math.max(120, canvasWidth - (margin * 2));
+            const usableHeight = Math.max(120, canvasHeight - (margin * 2));
+            const columns = Math.ceil(Math.sqrt(total * (usableWidth / usableHeight)));
+            const safeColumns = Math.max(1, Math.min(total, columns));
+            const rows = Math.ceil(total / safeColumns);
+            const frameWidth = (usableWidth - (gap * (safeColumns - 1))) / safeColumns;
+            const frameHeight = (usableHeight - (gap * (rows - 1))) / rows;
+            const frames = [];
+            for (let index = 0; index < total; index += 1) {
+                const column = index % safeColumns;
+                const row = Math.floor(index / safeColumns);
+                frames.push({
+                    left: margin + column * (frameWidth + gap),
+                    top: margin + row * (frameHeight + gap),
+                    width: frameWidth,
+                    height: frameHeight
+                });
+            }
+            return frames;
+        }
+
+        function buildAdvertisementHeroFrames(count = 4, settings = {}) {
+            const total = Math.max(1, Math.min(9, Number(count) || 1));
+            if (total === 1) return buildAdvertisementGridFrames(total, settings);
+            const gap = Number(settings.gap) || 0;
+            const margin = Number(settings.margin) || 56;
+            const canvasWidth = getAdvertisementCanvasWidth();
+            const canvasHeight = getAdvertisementCanvasHeight();
+            const usableWidth = Math.max(120, canvasWidth - (margin * 2));
+            const usableHeight = Math.max(120, canvasHeight - (margin * 2));
+            const portrait = canvasHeight >= canvasWidth;
+            const frames = [];
+            if (portrait) {
+                const heroHeight = Math.max(usableHeight * 0.46, usableHeight - 2 * ((usableHeight - gap * 2) / 3));
+                frames.push({ left: margin, top: margin, width: usableWidth, height: heroHeight });
+                const remaining = total - 1;
+                const bottomTop = margin + heroHeight + gap;
+                const bottomHeight = usableHeight - heroHeight - gap;
+                const bottomColumns = Math.ceil(Math.sqrt(remaining * (usableWidth / bottomHeight)));
+                const columns = Math.max(1, Math.min(remaining, bottomColumns));
+                const rows = Math.ceil(remaining / columns);
+                const frameWidth = (usableWidth - gap * (columns - 1)) / columns;
+                const frameHeight = (bottomHeight - gap * (rows - 1)) / rows;
+                for (let index = 0; index < remaining; index += 1) {
+                    frames.push({
+                        left: margin + (index % columns) * (frameWidth + gap),
+                        top: bottomTop + Math.floor(index / columns) * (frameHeight + gap),
+                        width: frameWidth,
+                        height: frameHeight
+                    });
+                }
+            } else {
+                const heroWidth = usableWidth * 0.56;
+                frames.push({ left: margin, top: margin, width: heroWidth, height: usableHeight });
+                const remaining = total - 1;
+                const sideLeft = margin + heroWidth + gap;
+                const sideWidth = usableWidth - heroWidth - gap;
+                const rows = remaining;
+                const frameHeight = (usableHeight - gap * (rows - 1)) / rows;
+                for (let index = 0; index < remaining; index += 1) {
+                    frames.push({ left: sideLeft, top: margin + index * (frameHeight + gap), width: sideWidth, height: frameHeight });
+                }
+            }
+            return frames;
+        }
+
+        function buildAdvertisementCollageFrames(count = 4, settings = {}) {
+            const total = Math.max(1, Math.min(9, Number(count) || 1));
+            const baseFrames = buildAdvertisementGridFrames(total, settings);
+            return baseFrames.map((frame, index) => {
+                const inset = index % 2 === 0 ? -8 : 8;
+                return {
+                    left: frame.left + inset,
+                    top: frame.top + (index % 3 === 0 ? -10 : 6),
+                    width: frame.width,
+                    height: frame.height,
+                    angle: ((index % 5) - 2) * 2.5
+                };
+            });
+        }
+
+        function buildAdvertisementLayoutFrames(count = 4, settings = {}) {
+            if (settings.mode === 'hero') return buildAdvertisementHeroFrames(count, settings);
+            if (settings.mode === 'collage') return buildAdvertisementCollageFrames(count, settings);
+            return buildAdvertisementGridFrames(count, settings);
+        }
+
+        function clearAdvertisementPhotoObjects() {
+            if (!advertisementCanvas) return false;
+            const objects = advertisementCanvas.getObjects().slice();
+            objects.forEach((object) => {
+                const role = String(object && object.advertisementLayoutRole || '').trim();
+                const type = String(object && object.advertisementType || '').trim();
+                if (role === 'frame-border' || type === 'plant-image') advertisementCanvas.remove(object);
+            });
+            advertisementCanvas.discardActiveObject();
+            advertisementCanvas.requestRenderAll();
+            saveAdvertisementHistorySnapshot();
+            syncAdvertisementObjectControls();
+            return false;
+        }
+
+        async function addAdvertisementImageToFrame(entry = null, frame = null, settings = {}) {
+            if (!entry || !entry.url || !frame) return null;
+            const fabricNamespace = advertisementFabric || await loadAdvertisementFabric();
+            const imageObject = await loadAdvertisementFabricImage(entry.url);
+            const width = Number(imageObject.width || 0);
+            const height = Number(imageObject.height || 0);
+            const scale = width && height ? Math.max(frame.width / width, frame.height / height) : 1;
+            const centerX = frame.left + (frame.width / 2);
+            const centerY = frame.top + (frame.height / 2);
+            const frameId = `frame_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+            const clipRect = new fabricNamespace.Rect({
+                left: frame.left,
+                top: frame.top,
+                width: frame.width,
+                height: frame.height,
+                rx: settings.radius,
+                ry: settings.radius,
+                originX: 'left',
+                originY: 'top',
+                absolutePositioned: true
+            });
+            imageObject.set({
+                left: centerX,
+                top: centerY,
+                originX: 'center',
+                originY: 'center',
+                scaleX: scale,
+                scaleY: scale,
+                angle: Number(frame.angle) || 0,
+                clipPath: clipRect,
+                sourceUniqueId: String(entry.rowId || entry.sourceUniqueId || '').trim(),
+                sourcePhotoUrl: String(entry.url || '').trim(),
+                advertisementType: 'plant-image',
+                advertisementFrameId: frameId,
+                advertisementLayoutRole: 'photo'
+            });
+            applyAdvertisementImageFilters(imageObject);
+            advertisementCanvas.add(imageObject);
+            const border = new fabricNamespace.Rect({
+                left: frame.left,
+                top: frame.top,
+                width: frame.width,
+                height: frame.height,
+                rx: settings.radius,
+                ry: settings.radius,
+                fill: 'rgba(255,255,255,0)',
+                stroke: 'rgba(255,255,255,.92)',
+                strokeWidth: 8,
+                selectable: false,
+                evented: false,
+                advertisementType: 'layout-frame',
+                advertisementFrameId: frameId,
+                advertisementLayoutRole: 'frame-border'
+            });
+            advertisementCanvas.add(border);
+            return imageObject;
+        }
+
+        async function placeAdvertisementPhotoLayout(entries = [], options = {}) {
+            const selectedEntries = (Array.isArray(entries) ? entries : []).filter((entry) => entry && entry.url);
+            if (!selectedEntries.length) {
+                showToast('Select Photos', 'Choose one or more photos before placing a layout.', true);
+                return false;
+            }
+            if (!advertisementCanvas) await initializeAdvertisementEditor();
+            const settings = getAdvertisementLayoutSettings();
+            if (options && options.count) settings.count = Math.max(1, Math.min(9, Number(options.count) || settings.count));
+            const chosenEntries = selectedEntries.slice(0, settings.count);
+            const frames = buildAdvertisementLayoutFrames(chosenEntries.length, settings);
+            setAdvertisementStatus(`Placing ${chosenEntries.length} photo${chosenEntries.length === 1 ? '' : 's'}...`, false);
+            let lastObject = null;
+            for (let index = 0; index < chosenEntries.length; index += 1) {
+                lastObject = await addAdvertisementImageToFrame(chosenEntries[index], frames[index], settings);
+                await yieldToUiFrame();
+            }
+            if (lastObject) advertisementCanvas.setActiveObject(lastObject);
+            advertisementCanvas.requestRenderAll();
+            saveAdvertisementHistorySnapshot();
+            syncAdvertisementObjectControls();
+            setAdvertisementStatus('');
+            return false;
+        }
+
+        async function addAdvertisementSelectedFlyerPhotosAsLayout() {
+            const entries = getAdvertisementCurrentFlyerPhotoEntries().filter((entry) => advertisementSelectedFlyerPhotoKeys.has(entry.key));
+            return placeAdvertisementPhotoLayout(entries);
+        }
+
+        async function autoFillAdvertisementLayoutFromFolder() {
+            const settings = getAdvertisementLayoutSettings();
+            const selected = getAdvertisementCurrentFlyerPhotoEntries().filter((entry) => advertisementSelectedFlyerPhotoKeys.has(entry.key));
+            const entries = selected.length ? selected : getAdvertisementCurrentFlyerPhotoEntries().slice(0, settings.count);
+            return placeAdvertisementPhotoLayout(entries, { count: settings.count });
+        }
+
         function renderAdvertisementFlyerFolders() {
             const folderContainer = document.getElementById('advertisement-flyer-folders');
             const rowsContainer = document.getElementById('advertisement-flyer-rows');
@@ -47105,7 +47616,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 imageObject.set({
                     sourceUniqueId: String(sourceUniqueId || '').trim(),
                     sourcePhotoUrl: String(photoUrl || '').trim(),
-                    advertisementType: 'plant-image'
+                    advertisementType: 'plant-image',
+                    advertisementBrightness: 0,
+                    advertisementContrast: 0,
+                    advertisementSaturation: 0,
+                    advertisementBlur: 0
                 });
                 fitAdvertisementImageObject(imageObject);
                 advertisementCanvas.add(imageObject);
@@ -47145,10 +47660,13 @@ ${folderNote ? `Folder Note: ${folderNote}
         function scaleImageToCoverAdvertisementCanvas(imageObject) {
             const width = Number(imageObject.width || 0);
             const height = Number(imageObject.height || 0);
-            const scale = width && height ? Math.max(ADVERTISEMENT_CANVAS_SIZE / width, ADVERTISEMENT_CANVAS_SIZE / height) : 1;
+            const canvasWidth = getAdvertisementCanvasWidth();
+            const canvasHeight = getAdvertisementCanvasHeight();
+            const scale = width && height ? Math.max(canvasWidth / width, canvasHeight / height) : 1;
+            const center = getAdvertisementCanvasCenter();
             imageObject.set({
-                left: ADVERTISEMENT_CANVAS_SIZE / 2,
-                top: ADVERTISEMENT_CANVAS_SIZE / 2,
+                left: center.x,
+                top: center.y,
                 originX: 'center',
                 originY: 'center',
                 scaleX: scale,
@@ -47158,6 +47676,88 @@ ${folderNote ? `Folder Note: ${folderNote}
                 advertisementType: 'background-image'
             });
             return imageObject;
+        }
+
+        function fitAdvertisementSelectionToPage() {
+            return updateAdvertisementObjects((object) => {
+                if (!isAdvertisementImageObject(object)) return;
+                const width = Number(object.width || 0);
+                const height = Number(object.height || 0);
+                const canvasWidth = getAdvertisementCanvasWidth();
+                const canvasHeight = getAdvertisementCanvasHeight();
+                const scale = width && height ? Math.max(canvasWidth / width, canvasHeight / height) : 1;
+                const center = getAdvertisementCanvasCenter();
+                object.set({
+                    left: center.x,
+                    top: center.y,
+                    originX: 'center',
+                    originY: 'center',
+                    scaleX: scale,
+                    scaleY: scale,
+                    angle: 0,
+                    clipPath: null
+                });
+                object.setCoords();
+            });
+        }
+
+        async function duplicateAdvertisementSelection() {
+            if (!advertisementCanvas) return false;
+            const activeObject = advertisementCanvas.getActiveObject();
+            if (!activeObject || typeof activeObject.clone !== 'function') return false;
+            try {
+                const maybeClone = activeObject.clone(ADVERTISEMENT_CUSTOM_PROPS);
+                const clone = maybeClone && typeof maybeClone.then === 'function' ? await maybeClone : maybeClone;
+                if (!clone) return false;
+                clone.set({
+                    left: (Number(clone.left) || 0) + 36,
+                    top: (Number(clone.top) || 0) + 36
+                });
+                if (isAdvertisementImageObject(clone)) applyAdvertisementImageFilters(clone);
+                advertisementCanvas.add(clone);
+                advertisementCanvas.setActiveObject(clone);
+                advertisementCanvas.requestRenderAll();
+                saveAdvertisementHistorySnapshot();
+                syncAdvertisementObjectControls();
+            } catch (error) {
+                showToast('Duplicate Error', error && error.message ? error.message : 'Could not duplicate this object.', true);
+            }
+            return false;
+        }
+
+        async function makeAdvertisementBlurredBackgroundFromSelection() {
+            if (!advertisementCanvas) return false;
+            const object = advertisementCanvas.getActiveObject();
+            if (!object || !isAdvertisementImageObject(object)) {
+                showToast('Select Image', 'Choose a photo first, then tap the blur background control.', true);
+                return false;
+            }
+            try {
+                let backgroundObject = null;
+                const sourceUrl = String(object.sourcePhotoUrl || '').trim();
+                if (sourceUrl) {
+                    backgroundObject = await loadAdvertisementFabricImage(sourceUrl);
+                } else if (typeof object.clone === 'function') {
+                    const maybeClone = object.clone(ADVERTISEMENT_CUSTOM_PROPS);
+                    backgroundObject = maybeClone && typeof maybeClone.then === 'function' ? await maybeClone : maybeClone;
+                }
+                if (!backgroundObject) throw new Error('Could not copy the selected photo.');
+                backgroundObject.set({
+                    advertisementBrightness: -0.12,
+                    advertisementContrast: 0.08,
+                    advertisementSaturation: -0.08,
+                    advertisementBlur: 0.32
+                });
+                applyAdvertisementImageFilters(backgroundObject);
+                scaleImageToCoverAdvertisementCanvas(backgroundObject);
+                advertisementCanvas.set('backgroundImage', backgroundObject);
+                advertisementCanvas.requestRenderAll();
+                saveAdvertisementHistorySnapshot();
+                setAdvertisementStatus('Blurred background added from selected photo.', false);
+            } catch (error) {
+                showToast('Background Error', error && error.message ? error.message : 'Could not create the blurred background.', true);
+            }
+            return false;
         }
 
         async function setAdvertisementBackgroundImageFromFile(file = null) {
@@ -47318,6 +47918,15 @@ ${folderNote ? `Folder Note: ${folderNote}
             return `${cleanTitle}-${date}.${format}`;
         }
 
+        function getAdvertisementExportMultiplier() {
+            const width = getAdvertisementCanvasWidth();
+            const height = getAdvertisementCanvasHeight();
+            const canvasPixels = Math.max(1, width * height);
+            const maxExportPixels = 8000000;
+            const pixelSafeMultiplier = Math.sqrt(maxExportPixels / canvasPixels);
+            return Math.max(1, Math.min(2, pixelSafeMultiplier));
+        }
+
         function createAdvertisementExportBlob(format = 'png') {
             if (!advertisementCanvas) throw new Error('Advertisement canvas is not ready.');
             advertisementCanvas.discardActiveObject();
@@ -47325,8 +47934,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             const safeFormat = String(format || 'png').toLowerCase() === 'jpeg' ? 'jpeg' : 'png';
             const dataUrl = advertisementCanvas.toDataURL({
                 format: safeFormat,
-                quality: 0.96,
-                multiplier: 1,
+                quality: 0.98,
+                multiplier: getAdvertisementExportMultiplier(),
                 enableRetinaScaling: false
             });
             const blob = advertisementDataUrlToBlob(dataUrl);
@@ -47365,7 +47974,14 @@ ${folderNote ? `Folder Note: ${folderNote}
             const { data: publicUrlData } = supabaseClient.storage.from(MARKETING_MATERIALS_BUCKET).getPublicUrl(filePath);
             const publicUrl = String(publicUrlData && publicUrlData.publicUrl || '').trim();
             if (!publicUrl) throw new Error('Could not resolve the marketing material URL.');
-            const designJson = advertisementCanvas ? advertisementCanvas.toJSON(['advertisementType', 'sourceUniqueId', 'sourcePhotoUrl']) : {};
+            const designJson = advertisementCanvas ? advertisementCanvas.toJSON(ADVERTISEMENT_CUSTOM_PROPS) : {};
+            designJson.gncAdvertisement = {
+                title: getAdvertisementTitle(),
+                format: advertisementCanvasFormat,
+                width: getAdvertisementCanvasWidth(),
+                height: getAdvertisementCanvasHeight(),
+                exported_at: new Date().toISOString()
+            };
             const payload = {
                 unique_id: uniqueId,
                 title: getAdvertisementTitle(),
@@ -47596,8 +48212,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             const canvasElement = document.getElementById('advertisement-canvas');
             if (!canvasElement) throw new Error('Advertisement canvas is missing.');
             advertisementCanvas = new advertisementFabric.Canvas(canvasElement, {
-                width: ADVERTISEMENT_CANVAS_SIZE,
-                height: ADVERTISEMENT_CANVAS_SIZE,
+                width: getAdvertisementCanvasWidth(),
+                height: getAdvertisementCanvasHeight(),
                 backgroundColor: '#ffffff',
                 preserveObjectStacking: true,
                 selection: true,
