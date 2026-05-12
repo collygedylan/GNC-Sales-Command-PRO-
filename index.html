@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.03';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1874,7 +1874,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.03').trim() || 'V2026.05.12.03';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.04').trim() || 'V2026.05.12.04';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2746,7 +2746,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11728,7 +11728,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.03').trim() || 'V2026.05.12.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.04').trim() || 'V2026.05.12.04';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -39040,6 +39040,109 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             return 'S1';
         }
 
+        function getMlJobSourceTableForRowPhoto(item = null, prefix = '') {
+            const safePrefix = String(prefix || '').trim().toLowerCase();
+            const explicitTable = String(firstNonEmptyValue(item && item.SOURCE_TABLE, item && item.source_table, '') || '').trim();
+            if (explicitTable) return explicitTable;
+            if (safePrefix === 'req-') return 'v2_active_request';
+            if (safePrefix === 'dock-') return 'v2_soc_master';
+            return 'v2_master_inventory';
+        }
+
+        function buildMlImageJobPayloadFromRowPhoto(item = null, prefix = '', photoMeta = {}) {
+            if (!item || !photoMeta) return null;
+            const imageBucket = String(firstNonEmptyValue(photoMeta.imageBucket, photoMeta.bucketName, '') || '').trim();
+            const imagePath = String(firstNonEmptyValue(photoMeta.imagePath, photoMeta.filePath, '') || '').trim();
+            const imageUrl = String(firstNonEmptyValue(photoMeta.imageUrl, photoMeta.publicUrl, '') || '').trim();
+            if (!imageBucket || !imagePath) return null;
+            const uploadToken = String(firstNonEmptyValue(photoMeta.uploadToken, '') || '').replace(/[^a-zA-Z0-9_-]+/g, '').slice(0, 64) || Math.random().toString(36).slice(2, 10);
+            const sourceUniqueId = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, item.MASTER_UNIQUE_ID, item.MASTER_ID, '') || '').trim();
+            const sourceTable = getMlJobSourceTableForRowPhoto(item, prefix);
+            const rawSeason = String(firstNonEmptyValue(item.SEASON, item.season, getDefaultMlCaptureSeason()) || '').trim().toUpperCase();
+            const season = rawSeason === 'F1' ? 'F1' : rawSeason === 'S1' ? 'S1' : getDefaultMlCaptureSeason();
+            const block = String(firstNonEmptyValue(
+                item.BLOCKALPHA,
+                item.blockalpha,
+                item.BLOCK,
+                item.block,
+                typeof getTaskBlockAlpha === 'function' ? getTaskBlockAlpha(item) : ''
+            ) || '').trim();
+            const commonName = String(firstNonEmptyValue(
+                typeof getDrivePlantCommonName === 'function' ? getDrivePlantCommonName(item) : '',
+                item.COMMONNAME,
+                item.commonname,
+                item.DESCRIPTION,
+                item.description,
+                item.PLANT_NAME,
+                item.plant_name,
+                'Row Photo'
+            ) || '').trim();
+            const contSize = String(firstNonEmptyValue(
+                typeof getDrivePlantContSize === 'function' ? getDrivePlantContSize(item) : '',
+                item.CONTSIZE,
+                item.contsize,
+                item.CONTAINER_SIZE,
+                item.container_size,
+                ''
+            ) || '').trim();
+            const uniqueIdSeed = [sourceUniqueId, sourceTable, imagePath, uploadToken].filter(Boolean).join('_');
+            const uniqueId = `mlrow_${uniqueIdSeed || Date.now()}`
+                .replace(/[^a-zA-Z0-9_-]+/g, '_')
+                .slice(0, 180);
+            return {
+                unique_id: uniqueId,
+                status: 'pending_ml',
+                image_bucket: imageBucket,
+                image_path: imagePath,
+                image_url: imageUrl,
+                source_table: sourceTable,
+                source_unique_id: sourceUniqueId || null,
+                season,
+                block: block || null,
+                itemcode: String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, '') || '').trim() || null,
+                genus: String(firstNonEmptyValue(
+                    typeof getDrivePlantGenusValue === 'function' ? getDrivePlantGenusValue(item) : '',
+                    item.GENUS,
+                    item.GENUSNAME,
+                    item.genus,
+                    item.genusname,
+                    ''
+                ) || '').trim() || null,
+                common_name: commonName || null,
+                contsize: contSize || null,
+                locationcode: String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, item.LOCATION, item.location, '') || '').trim() || null,
+                lotcode: String(firstNonEmptyValue(item.LOTCODE, item.lotcode, '') || '').trim() || null,
+                ptravailable: parseAppNumber(firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, '0')) || 0,
+                created_by_username: String(currentUser || '').trim(),
+                created_by_display: String(currentUserDisplay || currentUser || '').trim()
+            };
+        }
+
+        async function queueMlImageJobForUploadedRowPhoto(item = null, prefix = '', photoMeta = {}) {
+            if (!currentUser || navigator.onLine === false) return false;
+            const payload = buildMlImageJobPayloadFromRowPhoto(item, prefix, photoMeta);
+            if (!payload) return false;
+            try {
+                await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'POST', payload, 'on_conflict=unique_id', { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
+                const localRow = normalizeMlImageJobRow(payload);
+                if (localRow) {
+                    upsertRealtimeRow(mlImageJobsInventory, localRow, ML_IMAGE_JOBS_TABLE);
+                    rebuildMlImageJobIndexes();
+                    markViewDirty('diagnostics');
+                    markViewDirty('home');
+                    if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 160);
+                    if (typeof getCurrentVisibleViewId === 'function' && getCurrentVisibleViewId() === 'home') scheduleHomeRender(true);
+                }
+                return true;
+            } catch (error) {
+                console.warn('ML image job queue failed for uploaded row photo.', error);
+                if (typeof canUseMlAdminViews === 'function' && canUseMlAdminViews()) {
+                    showToast('ML Queue Skipped', 'Photo saved, but the ML job table was not available.', true);
+                }
+                return false;
+            }
+        }
+
         function getMlCaptureBlockOptions() {
             const values = new Set();
             (Array.isArray(fullInventory) ? fullInventory : []).forEach((row) => {
@@ -50378,6 +50481,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 const { data: publicUrlData } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
                                 const publicUrl = publicUrlData.publicUrl;
                                 applyUploadedPhotoEverywhere(itemToUpload, prefix, publicUrl, fileName);
+                                queueMlImageJobForUploadedRowPhoto(itemToUpload, prefix, {
+                                    imageBucket: bucketName,
+                                    imagePath: filePath,
+                                    imageUrl: publicUrl,
+                                    uploadToken
+                                }).catch((error) => console.warn('ML queue background task failed.', error));
                                 markPhotoPersistActivity();
                                 cleanupUploadResources();
                                 finishPreview(true);
