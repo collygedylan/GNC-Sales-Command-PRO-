@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.11.13';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.14';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1854,7 +1854,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.13').trim() || 'V2026.05.11.13';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.14').trim() || 'V2026.05.11.14';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2145,12 +2145,12 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div class="flex items-start justify-between gap-3 mb-3">
                             <div class="min-w-0 flex-1">
                                 <div id="moves-crumb" class="text-xs font-bold text-[#007a4d] uppercase tracking-[0.16em] mb-2">Move Evaluation</div>
-                                <div class="flex gap-2 overflow-x-auto scrollbar-none pb-1">
+                                <div id="moves-tab-strip" class="flex gap-2 overflow-x-auto scrollbar-none pb-1">
                                     <button type="button" id="moves-tab-main" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] bg-[#007a4d] text-white border-[#007a4d] shadow-sm" onclick="setMovesTab('main')">Main</button>
                                     <button type="button" id="moves-tab-office" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] bg-white text-[#007a4d] border-green-200 shadow-sm" onclick="setMovesTab('office')">Inventory Office</button>
                                 </div>
                             </div>
-                            <button type="button" class="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return refreshMovesView()"><i class="ph-bold ph-arrows-clockwise text-base"></i><span>Refresh</span></button>
+                            <button type="button" id="moves-refresh-btn" class="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return refreshMovesView()"><i class="ph-bold ph-arrows-clockwise text-base"></i><span>Refresh</span></button>
                         </div>
                     </div>
                     <div id="moves-content"></div>
@@ -2726,7 +2726,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.13';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.14';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11672,7 +11672,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.13').trim() || 'V2026.05.11.13';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.14').trim() || 'V2026.05.11.14';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -13543,7 +13543,16 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return { required: [{ key: 'reserves', mode: 'full' }], background: [], label: 'Loading all reserve rows...' };
             }
             if (viewId === 'sales-office') return { required: [{ key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }, { key: 'master', mode: 'initial' }], label: 'Loading sales office...' };
-            if (viewId === 'moves') return { required: [{ key: 'master', mode: 'full' }, { key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }], label: 'Loading move candidates and office queue...' };
+            if (viewId === 'moves') {
+                if (activeMovesTab === 'office') {
+                    return {
+                        required: [{ key: 'salesOffice', mode: 'initial' }],
+                        background: [{ key: 'salesOffice', mode: 'full' }, { key: 'master', mode: 'initial' }],
+                        label: 'Loading inventory office queue...'
+                    };
+                }
+                return { required: [{ key: 'master', mode: 'full' }, { key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }], label: 'Loading move candidates and office queue...' };
+            }
             if (viewId === 'tasks') {
                 const isFlyerTaskView = activeTaskView === 'flyer';
                 const required = [{ key: 'master', mode: 'initial' }];
@@ -32724,6 +32733,11 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function syncMovesTabs() {
+            const tabStrip = document.getElementById('moves-tab-strip');
+            const refreshButton = document.getElementById('moves-refresh-btn');
+            const isInventoryOffice = activeMovesTab === 'office';
+            if (tabStrip) tabStrip.classList.toggle('hidden', isInventoryOffice);
+            if (refreshButton) refreshButton.classList.toggle('hidden', isInventoryOffice);
             const mainTab = document.getElementById('moves-tab-main');
             const officeTab = document.getElementById('moves-tab-office');
             if (mainTab) {
@@ -32747,6 +32761,9 @@ function toggleDriveQuickRequestItem(domId) {
         function openInventoryOfficeView() {
             if (!canAccessView('moves')) return switchView('home');
             activeMovesTab = 'office';
+            movesViewLevel = 0;
+            selectedMovesBlock = null;
+            selectedMovesLocation = null;
             markViewDirty('moves');
             return switchView('moves');
         }
@@ -32858,13 +32875,17 @@ function toggleDriveQuickRequestItem(domId) {
             const artifacts = buildMoveSalesOfficeArtifacts(record, actualMoved, taQty);
             if (!artifacts) throw new Error('Could not build Inventory Office row.');
             const encodedUid = encodeURIComponent(artifacts.rowId);
-            const existingRows = await supabaseFetch('v2_sales_office', 'GET', null, `select=unique_id&unique_id=eq.${encodedUid}`).catch(() => []);
+            const existingRows = await supabaseFetch('v2_sales_office', 'GET', null, `select=*&unique_id=eq.${encodedUid}`).catch(() => []);
             if (Array.isArray(existingRows) && existingRows.length) {
-                await runDetailWriteWithRetry('v2_sales_office', 'PATCH', artifacts.payload, `unique_id=eq.${encodedUid}`);
+                const existingRow = existingRows[0] || {};
+                const isCompleted = isSalesOfficeComplete(existingRow);
+                upsertLocalSalesOfficeRow(existingRow, { delay: 0, typingDelay: 140 });
+                return { ...artifacts, alreadyQueued: true, completed: isCompleted };
             } else {
                 await runDetailWriteWithRetry('v2_sales_office', 'POST', artifacts.payload);
             }
             upsertLocalSalesOfficeRow(artifacts.clone, { delay: 0, typingDelay: 140 });
+            flushQueuedAppLiveEvents().catch(() => {});
             return artifacts;
         }
 
@@ -32919,6 +32940,7 @@ function toggleDriveQuickRequestItem(domId) {
                 showToast('Processing...', 'Completing Inventory Office approval...');
                 try {
                     await finalizeNcrInventoryOfficeRecord(record, normalizedActualMoved || '0');
+                    flushQueuedAppLiveEvents().catch(() => {});
                     markViewDirty('moves');
                     if (isViewVisible('moves')) renderViewContent('moves', false, true);
                     showToast('Done', 'Inventory Office approval completed.');
@@ -32930,10 +32952,14 @@ function toggleDriveQuickRequestItem(domId) {
             }
             showToast('Processing...', 'Sending move row to Inventory Office...');
             try {
-                await publishMoveRecordToSalesOffice(record, normalizedActualMoved || '0', normalizedTa || '0');
+                const publishResult = await publishMoveRecordToSalesOffice(record, normalizedActualMoved || '0', normalizedTa || '0');
                 markViewDirty('moves');
                 markViewDirty('sales-office');
                 if (isViewVisible('moves')) renderViewContent('moves', false, true);
+                if (publishResult && publishResult.alreadyQueued) {
+                    showToast(publishResult.completed ? 'Already Complete' : 'Already Sent', publishResult.completed ? 'This move was already completed by another user.' : 'This move is already in Inventory Office.');
+                    return false;
+                }
                 showToast('Move Sent', `Inventory Office received ${normalizedActualMoved || '0'} moved | TA ${normalizedTa || '0'}.`);
             } catch (error) {
                 console.error('Move Inventory Office publish failed', error);
@@ -32972,6 +32998,7 @@ function toggleDriveQuickRequestItem(domId) {
                     completed_by: completedBy,
                     completed_at: completedAt
                 }, `unique_id=eq.${encodeURIComponent(uid)}`);
+                flushQueuedAppLiveEvents().catch(() => {});
                 showToast('Done', 'Move removed from Inventory Office.');
             } catch (error) {
                 Object.keys(existingRow).forEach((key) => delete existingRow[key]);
