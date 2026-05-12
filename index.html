@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.11';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.12';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1870,7 +1870,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.11').trim() || 'V2026.05.12.11';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.12').trim() || 'V2026.05.12.12';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2742,7 +2742,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.11';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.12';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11838,7 +11838,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.11').trim() || 'V2026.05.12.11';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.12').trim() || 'V2026.05.12.12';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -35322,6 +35322,31 @@ function toggleDriveQuickRequestItem(domId) {
             return String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, row && row.DOM_ID, row && row.dom_id, '') || '').trim();
         }
 
+        function getDriveCustomerOutreachReserveQty(row = null) {
+            const qtyValue = parseAppNumber(firstNonEmptyValue(
+                row && row.QUANTITYORDERED,
+                row && row.quantityordered,
+                row && row.QUANTITY_ORDERED,
+                row && row.quantity_ordered,
+                row && row.QUANITYORDERED,
+                row && row.quanityordered,
+                row && row.QTY_ORDERED,
+                row && row.qty_ordered,
+                row && row.QUANTITY,
+                row && row.quantity,
+                row && row.QTY,
+                row && row.qty,
+                ''
+            ));
+            return qtyValue == null ? null : Math.max(0, qtyValue);
+        }
+
+        function getDriveCustomerOutreachCustomerQtyLabel(card = null) {
+            const rowCount = Number(card && card.rows && card.rows.length || 0);
+            if (card && card.hasQty) return `Qty ${formatDockDisplayQty(card.qty)}`;
+            return `${rowCount} row${rowCount === 1 ? '' : 's'}`;
+        }
+
         function getDriveCustomerOutreachPhotoCsv(row = null) {
             return String(getSharedAppPhotoLinkCsv(row, { includePending: false }) || '').trim();
         }
@@ -35351,10 +35376,15 @@ function toggleDriveQuickRequestItem(domId) {
                     consigneeName,
                     label,
                     rows: [],
-                    qty: 0
+                    qty: 0,
+                    hasQty: false
                 };
                 entry.rows.push(row);
-                entry.qty += Number(firstNonEmptyValue(row && row.QTY, row && row.QUANTITY, row && row.quantity, 0)) || 0;
+                const reserveQty = getDriveCustomerOutreachReserveQty(row);
+                if (reserveQty !== null) {
+                    entry.qty += reserveQty;
+                    entry.hasQty = true;
+                }
                 cards.set(key, entry);
             });
             return Array.from(cards.values()).sort((a, b) => {
@@ -35440,7 +35470,7 @@ function toggleDriveQuickRequestItem(domId) {
                 : '';
             const customerHtml = cards.length ? cards.map((card) => {
                 const checked = driveCustomerOutreachSelectedCustomerKeys.has(card.key) ? 'checked' : '';
-                const qtyLabel = card.qty ? `Qty ${card.qty}` : `${card.rows.length} row${card.rows.length === 1 ? '' : 's'}`;
+                const qtyLabel = getDriveCustomerOutreachCustomerQtyLabel(card);
                 return `<label class="flex items-start gap-3 rounded-xl border border-emerald-100 bg-white px-3 py-3 shadow-sm"><input type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-emerald-600" ${checked} onclick='event.stopPropagation(); return toggleDriveCustomerOutreachCustomer(${JSON.stringify(card.key)})'><span class="min-w-0 flex-1"><span class="block break-words text-[12px] font-black text-slate-800">${esc(card.label)}</span><span class="mt-1 block text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${esc(card.repName)} &bull; ${esc(qtyLabel)}</span></span></label>`;
             }).join('') : '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[11px] font-bold text-slate-400">No customer / consignee rows found in v2_reserves for this itemcode.</div>';
             const sourceHtml = sourceRows.length ? sourceRows.map((row) => {
@@ -35540,7 +35570,7 @@ function toggleDriveQuickRequestItem(domId) {
         function buildDriveCustomerOutreachEmailText(customers = [], sourceRows = [], item = activeItem, options = {}) {
             const audienceLabel = String(options && options.audienceLabel || '').trim();
             const customerLines = customers.length
-                ? customers.map((card) => `- ${card.label} (${card.repName})`).join('\n')
+                ? customers.map((card) => `- ${card.label} (${card.repName}) - ${getDriveCustomerOutreachCustomerQtyLabel(card)}`).join('\n')
                 : (audienceLabel ? `- ${audienceLabel}` : '- No customer / consignee rows selected');
             const itemHeader = [
                 firstNonEmptyValue(item && item.COMMONNAME, 'Item'),
@@ -35554,7 +35584,7 @@ function toggleDriveQuickRequestItem(domId) {
         function buildDriveCustomerOutreachEmailHtml(customers = [], sourceRows = [], item = activeItem, options = {}) {
             const audienceLabel = String(options && options.audienceLabel || '').trim();
             const customerHtml = customers.length
-                ? customers.map((card) => `<li>${escapeShareHtml(card.label)} <span style="color:#64748b;">(${escapeShareHtml(card.repName)})</span></li>`).join('')
+                ? customers.map((card) => `<li>${escapeShareHtml(card.label)} <span style="color:#64748b;">(${escapeShareHtml(card.repName)} - ${escapeShareHtml(getDriveCustomerOutreachCustomerQtyLabel(card))})</span></li>`).join('')
                 : `<li>${escapeShareHtml(audienceLabel || 'No customer / consignee rows selected')}</li>`;
             const itemHeader = [
                 firstNonEmptyValue(item && item.COMMONNAME, 'Item'),
@@ -35611,7 +35641,9 @@ function toggleDriveQuickRequestItem(domId) {
                         consigneename: card.consigneeName,
                         label: card.label,
                         rows: card.rows.length,
-                        qty: card.qty
+                        qty: card.qty,
+                        has_qty: !!card.hasQty,
+                        qty_label: getDriveCustomerOutreachCustomerQtyLabel(card)
                     }));
                     const itemPayload = buildDriveCustomerOutreachItemsPayload(state.sourceRows);
                     const subject = `Customer Photos/Specs - ${[commonName, itemCode, season, sourceLabel].filter(Boolean).join(' ')}`;
@@ -35660,7 +35692,9 @@ function toggleDriveQuickRequestItem(domId) {
                         consigneename: card.consigneeName,
                         label: card.label,
                         rows: card.rows.length,
-                        qty: card.qty
+                        qty: card.qty,
+                        has_qty: !!card.hasQty,
+                        qty_label: getDriveCustomerOutreachCustomerQtyLabel(card)
                     }));
                     const itemPayload = buildDriveCustomerOutreachItemsPayload(state.sourceRows);
                     const payload = {
