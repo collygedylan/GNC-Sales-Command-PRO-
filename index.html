@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.11.16';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.17';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1863,7 +1863,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.16').trim() || 'V2026.05.11.16';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.17').trim() || 'V2026.05.11.17';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2735,7 +2735,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.16';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.17';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6119,15 +6119,27 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
 
         function getMasterAvOpenLtsValue(item) {
-            return parseFloat(String(firstNonEmptyValue(item && item.S_LTS, '0')).replace(/,/g,'')) || 0;
+            return parseFloat(String(firstNonEmptyValue(
+                item && item.S_LTS,
+                item && item.s_lts,
+                item && item.SLTS,
+                item && item.slts,
+                item && item['S LTS'],
+                item && item['s lts'],
+                '0'
+            )).replace(/,/g,'')) || 0;
+        }
+
+        function shouldIncludeMasterItemInAvOpenStock(item) {
+            return getMasterAvOpenLtsValue(item) > 0;
         }
 
         function shouldIncludeMasterItemInAvOpen(item) {
-            return getMasterAvOpenLtsValue(item) > 0 && !getMasterAvInvalidationReasons(item).length;
+            return shouldIncludeMasterItemInAvOpenStock(item) && !getMasterAvInvalidationReasons(item).length;
         }
 
         function shouldIncludeMasterItemInAvOpenView(item) {
-            if (!shouldIncludeMasterItemInAvOpen(item)) return false;
+            if (!shouldIncludeMasterItemInAvOpenStock(item)) return false;
             const season = String(firstNonEmptyValue(item && item.SEASON, item && item.season, '')).toUpperCase();
             return !season.includes('Y') && !season.includes('Z');
         }
@@ -6381,7 +6393,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const avOpenIndex = avOpenInventory.findIndex((row) => sameMasterRow(row));
             const canonicalSourceTable = String(firstNonEmptyValue(canonicalMaster.SOURCE_TABLE, canonicalMaster.source_table, 'v2_master_inventory')).trim().toLowerCase();
             if (canonicalSourceTable === 'v2_master_inventory') {
-                if (shouldIncludeMasterItemInAvOpen(canonicalMaster)) {
+                if (shouldIncludeMasterItemInAvOpenView(canonicalMaster)) {
                     if (avOpenIndex >= 0) {
                         applyExactRowData(avOpenInventory[avOpenIndex]);
                     } else {
@@ -6737,7 +6749,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             dirtyIds.forEach((uid) => {
                 const masterItem = uid ? findItemByUniqueId(uid) : null;
                 if (!masterItem) return;
-                const includeInAv = shouldIncludeMasterItemInAvOpen(masterItem);
+                const includeInAv = shouldIncludeMasterItemInAvOpenView(masterItem);
                 if (!includeInAv) return;
                 const nextItem = { ...masterItem, DOM_ID: 'avo_' + uid };
                 normalizeRowPhotoFields(nextItem);
@@ -7252,7 +7264,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     changed = removeRealtimeRow(avOpenInventory, uniqueId) || changed;
                 } else if (nextRow) {
                     changed = upsertRealtimeRow(fullInventory, nextRow, tableName) || changed;
-                    if (shouldIncludeMasterItemInAvOpen(nextRow)) changed = upsertRealtimeRow(avOpenInventory, nextRow, tableName) || changed;
+                    if (shouldIncludeMasterItemInAvOpenView(nextRow)) changed = upsertRealtimeRow(avOpenInventory, nextRow, tableName) || changed;
                     else changed = removeRealtimeRow(avOpenInventory, uniqueId) || changed;
                 }
             } else if (tableName === 'v2_active_request') {
@@ -11705,7 +11717,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.16').trim() || 'V2026.05.11.16';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.17').trim() || 'V2026.05.11.17';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -13567,7 +13579,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     }
                     return { required: [{ key: 'reserves', mode: 'initial' }], background: [{ key: 'reserves', mode: 'full' }], label: 'Loading reserve rows...' };
                 }
-                return { required: [{ key: 'avOpen', mode: 'initial' }], background: [{ key: 'avOpen', mode: 'full' }], label: 'Loading AV open stock...' };
+                return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading AV open stock from Drive Mode rows...' };
             }
             if (viewId === 'docks') return { required: [{ key: 'soc', mode: 'initial' }], background: [{ key: 'soc', mode: 'full' }], label: 'Loading dock rows...' };
             if (viewId === 'request') return { required: [{ key: 'requests', mode: 'initial' }, { key: 'requestHistory', mode: 'initial' }], background: [{ key: 'requests', mode: 'full' }, { key: 'requestHistory', mode: 'full' }], label: 'Loading requests...' };
@@ -19423,7 +19435,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function buildAvOpenInventoryFromMasterItems(items = []) {
-            return items.filter((item) => shouldIncludeMasterItemInAvOpen(item));
+            return items.filter((item) => shouldIncludeMasterItemInAvOpenView(item));
         }
 
         function collectMasterAvRuleClearOps(items = []) {
@@ -19545,7 +19557,7 @@ function toggleDriveQuickRequestItem(domId) {
                     .filter((item) => {
                         const sourceTable = String(firstNonEmptyValue(item && item.SOURCE_TABLE, item && item.source_table, 'v2_master_inventory')).toLowerCase();
                         if (sourceTable !== 'v2_master_inventory') return true;
-                        return shouldIncludeMasterItemInAvOpen(item);
+                        return shouldIncludeMasterItemInAvOpenView(item);
                     });
                 avOpenInventory = avOpenSource.map((item,idx)=>{item.DOM_ID='avo_'+(item.UNIQUE_ID || idx);return buildSearchIndex(normalizeRowPhotoFields(item));});
                 if (shouldRebuildAvOpenFromMaster && !changedDatasetKeys.includes('avOpen')) changedDatasetKeys.push('avOpen');
@@ -28713,7 +28725,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getAvReserveOpenStockBaseItems() {
-            return (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => shouldIncludeMasterItemInAvOpenView(i));
+            return getAvOpenRowsForView();
         }
 
         function getNormalizedAvReserveItemCode(value = '') {
@@ -29415,6 +29427,17 @@ function toggleDriveQuickRequestItem(domId) {
             queueScrollMainAreaToTop(`av-reserve-drive:${uniqueId}`);
         }
         function avItemHasPhotos(item) { return getPhotoUrlList(getRowPhotoLink(item, 'av')).length > 0; }
+        function getAvOpenRowsForView() {
+            const masterRows = Array.isArray(fullInventory) ? fullInventory : [];
+            const avRows = Array.isArray(avOpenInventory) ? avOpenInventory : [];
+            const masterReady = masterRows.length > 0 && (
+                isDatasetLoaded('master', 'full')
+                || masterRows.length > avRows.length
+                || !avRows.length
+            );
+            const sourceRows = masterReady ? masterRows : (avRows.length ? avRows : masterRows);
+            return sourceRows.filter((item) => shouldIncludeMasterItemInAvOpenView(item));
+        }
         function getAvOpenTabLabel(tab=activeAvOpenTab) {
             if (tab === 'photos') return 'Photos';
             return 'ALL Open Stock';
@@ -30365,7 +30388,7 @@ function toggleDriveQuickRequestItem(domId) {
             const ignoreSecondaryTab = !!(options && options.ignoreSecondaryTab);
             let items = [];
             if (safeTab === 'open') {
-                items = (isDatasetLoaded('avOpen', 'initial') ? avOpenInventory : fullInventory).filter(i => shouldIncludeMasterItemInAvOpenView(i));
+                items = getAvOpenRowsForView();
                 if (!ignoreSecondaryTab && activeAvOpenTab === 'photos') items = items.filter(avItemHasPhotos);
             } else if (safeTab === 'hotprice') {
                 items = getAvHotPriceRows();
@@ -31384,8 +31407,8 @@ function toggleDriveQuickRequestItem(domId) {
             if (ensureViewDataForRender('av')) return;
             syncAvSecondaryTabs();
             ensureAvDefaultSeasonSelection();
-            if (activeAVTab === 'open' && !isDatasetLoaded('avOpen', 'full')) {
-                ensureDatasetLoaded('avOpen', 'full').then(() => {
+            if (activeAVTab === 'open' && !isDatasetLoaded('master', 'full')) {
+                ensureDatasetLoaded('master', 'full').then(() => {
                     if (isViewVisible('av') && activeAVTab === 'open') {
                         avResolvedBaseStateKey = '';
                         queueInteractiveViewRender('av', false, true, 18, 220);
