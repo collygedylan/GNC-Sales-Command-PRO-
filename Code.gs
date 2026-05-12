@@ -84,7 +84,7 @@ const ALLOWED_DB_COLUMNS = new Set([
 ]);
 
 function runSOCOnly() { return processLatestFileOnlyFolder(FOLDERS.SOC_DROP, FOLDERS.SOC_PROCESSED, 'v2_soc_master', buildStandardPayload, { deltaMode: true }); }
-function runDriveAroundOnly() { return processSnapshotBatchFolder(FOLDERS.MASTER_DROP, FOLDERS.MASTER_PROCESSED, 'v2_master_inventory', buildMasterPayload); }
+function runDriveAroundOnly() { return processLatestFileOnlyFolder(FOLDERS.MASTER_DROP, FOLDERS.MASTER_PROCESSED, 'v2_master_inventory', buildMasterPayload, { deltaMode: true }); }
 function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, 'v2_reserves', buildStandardPayload, { deltaMode: true }); }
 function runCavOnly() { return processLatestFileOnlyFolder(FOLDERS.CAV_DROP, FOLDERS.CAV_PROCESSED, 'v2_cav_import', buildCavPayload, { deltaMode: true }); }
 
@@ -93,6 +93,8 @@ const MANUAL_SYNC_TRIGGER_HANDLER = 'runQueuedManualSyncStage_';
 const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'cav']);
 const MANUAL_SYNC_EXECUTION_BUDGET_MS = 285000;
 const MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS = 120000;
+const MANUAL_SYNC_QUEUED_STALE_MS = 5 * 60 * 1000;
+const MANUAL_SYNC_ACTIVE_STALE_MS = 12 * 60 * 1000;
 const SUPABASE_DELETE_URL_MAX_LENGTH = 1800;
 const SUPABASE_FETCH_PAGE_SIZE = 1000;
 const SUPABASE_PAGED_READ_FETCH_BATCH_SIZE = 8;
@@ -212,7 +214,7 @@ function runDriveSocReservesSequence() {
 }
 
 function showManualSyncStatus() {
-  const status = loadManualSyncStatus_();
+  const status = getManualSyncStatusForClient_();
   if (!status) {
     console.log('[MANUAL SYNC] No manual sync is queued or running.');
     return null;
@@ -241,6 +243,47 @@ function loadManualSyncStatus_() {
 
 function saveManualSyncStatus_(status) {
   PropertiesService.getScriptProperties().setProperty(MANUAL_SYNC_STATUS_KEY, JSON.stringify(status || {}));
+}
+
+function parseManualSyncTimestampMs_(value) {
+  const ms = value ? new Date(value).getTime() : 0;
+  return isNaN(ms) ? 0 : ms;
+}
+
+function isManualSyncStatusStale_(status, nowMs) {
+  if (!status || !status.active) return false;
+  const now = Number(nowMs) || Date.now();
+  const currentStage = String(status.currentStage || status.current_stage || '').trim().toLowerCase();
+  const startedAtMs = parseManualSyncTimestampMs_(status.startedAt || status.started_at || status.updatedAt || status.updated_at);
+  const updatedAtMs = parseManualSyncTimestampMs_(status.updatedAt || status.updated_at || status.startedAt || status.started_at);
+  if (currentStage === 'queued') return startedAtMs > 0 && (now - startedAtMs) > MANUAL_SYNC_QUEUED_STALE_MS;
+  return updatedAtMs > 0 && (now - updatedAtMs) > MANUAL_SYNC_ACTIVE_STALE_MS;
+}
+
+function markManualSyncStatusStale_(status, reason) {
+  const next = status && typeof status === 'object' ? status : {};
+  const staleStageLabel = String(next.currentStageLabel || next.currentStage || 'manual sync');
+  const nowIso = new Date().toISOString();
+  next.active = false;
+  next.currentStage = 'stale_failed';
+  next.currentStageLabel = 'Timed Out';
+  next.updatedAt = nowIso;
+  next.finishedAt = nowIso;
+  next.error = String(reason || 'Manual sync timed out before Apps Script reported completion.');
+  next.message = `Manual sync timed out during ${staleStageLabel}. ${next.error} It is safe to press Run Script again.`;
+  saveManualSyncStatus_(next);
+  removeManualSyncStageTriggers_();
+  return next;
+}
+
+function getManualSyncStatusForClient_() {
+  const status = loadManualSyncStatus_();
+  if (!status) return null;
+  if (isManualSyncStatusStale_(status)) {
+    const stageLabel = String(status.currentStageLabel || status.currentStage || 'manual sync');
+    return markManualSyncStatusStale_(status, `${stageLabel} did not update before the safety timeout.`);
+  }
+  return status;
 }
 
 function removeManualSyncStageTriggers_() {
@@ -273,13 +316,20 @@ function queueManualSyncRequest_(options) {
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
-    const existing = loadManualSyncStatus_();
+    let existing = loadManualSyncStatus_();
+    if (existing && existing.active && isManualSyncStatusStale_(existing)) {
+      const staleStageLabel = String(existing.currentStageLabel || existing.currentStage || 'manual sync');
+      existing = markManualSyncStatusStale_(existing, `${staleStageLabel} did not update before the safety timeout.`);
+    }
     if (existing && existing.active) {
       console.warn(`[MANUAL SYNC][${existing.runId || 'active'}] A manual sync is already running.`);
       return {
         status: 'busy',
         runId: existing.runId || '',
         currentStage: existing.currentStage || '',
+        currentStageLabel: existing.currentStageLabel || '',
+        stageOrder: Array.isArray(existing.stageOrder) ? existing.stageOrder : [],
+        stageIndex: Number(existing.stageIndex || 0),
         message: existing.message || 'A manual sync is already running.'
       };
     }
@@ -311,7 +361,20 @@ function queueManualSyncRequest_(options) {
     };
 
     saveManualSyncStatus_(status);
-    scheduleManualSyncStageTrigger_();
+    try {
+      scheduleManualSyncStageTrigger_();
+    } catch (triggerError) {
+      status.active = false;
+      status.currentStage = 'trigger_failed';
+      status.currentStageLabel = 'Trigger Failed';
+      status.updatedAt = new Date().toISOString();
+      status.finishedAt = status.updatedAt;
+      status.error = triggerError && triggerError.message ? triggerError.message : String(triggerError);
+      status.message = `Could not start the manual sync trigger: ${status.error}`;
+      saveManualSyncStatus_(status);
+      removeManualSyncStageTriggers_();
+      throw triggerError;
+    }
     console.log(`[MANUAL SYNC][${runId}] Queued ${stageLabels.join(' -> ')} from ${status.source} by ${status.requestedBy}.`);
     return {
       status: 'queued',
@@ -334,6 +397,12 @@ function runQueuedManualSyncStage_() {
     if (!status || !status.active) {
       removeManualSyncStageTriggers_();
       console.log('[MANUAL SYNC] No queued manual sync found.');
+      return;
+    }
+    if (isManualSyncStatusStale_(status)) {
+      const staleStageLabel = String(status.currentStageLabel || status.currentStage || 'manual sync');
+      markManualSyncStatusStale_(status, `${staleStageLabel} did not update before the safety timeout.`);
+      console.warn(`[MANUAL SYNC][${status.runId || 'unknown'}] Stale manual sync stopped before running another stage.`);
       return;
     }
 
@@ -3513,7 +3582,7 @@ function doPost(e) {
     }
 
     if (payload.type === 'manual_status') {
-      const status = loadManualSyncStatus_();
+      const status = getManualSyncStatusForClient_();
       return jsonOutput_(status || {
         active: false,
         currentStage: '',
@@ -3613,6 +3682,10 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify({ status: "success", url: file.getUrl() })).setMimeType(ContentService.MimeType.JSON);
     }
   } catch (err) { 
-    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.message })).setMimeType(ContentService.MimeType.JSON); 
+    return ContentService.createTextOutput(JSON.stringify({
+      ok: false,
+      status: "error",
+      message: err && err.message ? err.message : String(err)
+    })).setMimeType(ContentService.MimeType.JSON);
   }
 }

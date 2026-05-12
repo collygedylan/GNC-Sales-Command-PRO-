@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.20';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.21';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1870,7 +1870,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.20').trim() || 'V2026.05.12.20';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.21').trim() || 'V2026.05.12.21';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2748,7 +2748,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.20';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.21';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2812,6 +2812,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         const HEAVY_DATASET_KEYS = new Set(['master', 'avOpen', 'reserves', 'soc', 'salesOffice', 'cav', 'cavAvBlankKeys', 'avHotPriceKeys', 'avNotes']);
         const MANUAL_SYNC_STATUS_POLL_MS = 2500;
         const MANUAL_SYNC_STATUS_STALE_MS = 12000;
+        const MANUAL_SYNC_QUEUED_STALE_MS = 5 * 60 * 1000;
+        const MANUAL_SYNC_ACTIVE_STALE_MS = 12 * 60 * 1000;
         const MANUAL_SYNC_COMPLETION_REFRESH_DELAY_MS = 300;
         const MANUAL_SYNC_COMPLETION_CATCHUP_DELAY_MS = 18000;
         const MANUAL_SYNC_FROZEN_DATASET_KEYS = new Set(['master', 'avOpen', 'soc', 'reserves', 'cav', 'cavAvBlankKeys', 'salesOffice', 'avHotPriceKeys']);
@@ -12144,7 +12146,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.20').trim() || 'V2026.05.12.20';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.21').trim() || 'V2026.05.12.21';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -12327,6 +12329,37 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             };
         }
 
+        function getManualSyncStatusTimestampMs(value = '') {
+            const ms = value ? new Date(value).getTime() : 0;
+            return Number.isFinite(ms) ? ms : 0;
+        }
+
+        function isManualSyncStatusClientStale(status = manualSyncStatusState) {
+            const state = normalizeManualSyncStatusPayload(status);
+            if (!state.active) return false;
+            const now = Date.now();
+            const startedAtMs = getManualSyncStatusTimestampMs(state.startedAt || state.updatedAt);
+            const updatedAtMs = getManualSyncStatusTimestampMs(state.updatedAt || state.startedAt);
+            if (state.currentStage === 'queued') return startedAtMs > 0 && (now - startedAtMs) > MANUAL_SYNC_QUEUED_STALE_MS;
+            return updatedAtMs > 0 && (now - updatedAtMs) > MANUAL_SYNC_ACTIVE_STALE_MS;
+        }
+
+        function markManualSyncStatusClientStale(status = manualSyncStatusState) {
+            const state = normalizeManualSyncStatusPayload(status);
+            const staleStageLabel = String(firstNonEmptyValue(state.currentStageLabel, state.currentStage, 'manual sync')).trim();
+            const nowIso = new Date().toISOString();
+            return {
+                ...state,
+                active: false,
+                currentStage: 'stale_failed',
+                currentStageLabel: 'Timed Out',
+                updatedAt: nowIso,
+                finishedAt: nowIso,
+                error: state.error || `${staleStageLabel} did not update before the safety timeout.`,
+                message: `Manual sync timed out during ${staleStageLabel}. It is safe to press Run Script again.`
+            };
+        }
+
         function hasActiveManualSync() {
             return !!(manualSyncStatusState && manualSyncStatusState.active);
         }
@@ -12335,10 +12368,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const state = normalizeManualSyncStatusPayload(status);
             const total = Math.max(0, Array.isArray(state.stageOrder) ? state.stageOrder.length : 0);
             const completed = Math.min(total || state.stageIndex, Math.max(0, Number(state.stageIndex) || 0));
+            const runningStageVisible = !!(state.active && total && state.currentStage && state.currentStage !== 'queued');
+            const displayCompleted = runningStageVisible ? Math.min(total, completed + 1) : completed;
             return {
                 completed,
                 total,
-                text: total ? `${completed}/${total}` : ''
+                displayCompleted,
+                text: total ? `${displayCompleted}/${total}` : ''
             };
         }
 
@@ -12435,7 +12471,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function applyManualSyncStatus(status = null, options = {}) {
             const opts = options || {};
             const previous = normalizeManualSyncStatusPayload(manualSyncStatusState);
-            const next = normalizeManualSyncStatusPayload(status);
+            let next = normalizeManualSyncStatusPayload(status);
+            if (isManualSyncStatusClientStale(next)) {
+                next = markManualSyncStatusClientStale(next);
+            }
             const wasActive = !!previous.active;
             const isActive = !!next.active;
             manualSyncStatusState = next;
@@ -12516,6 +12555,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     type: 'manual_run',
                     job: 'all',
                     trigger: 'header_button',
+                    force_if_stale: true,
                     requested_by: currentUserDisplay || currentUser || 'Unknown',
                     requested_at: new Date().toISOString()
                 };
