@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.26';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.27';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1872,7 +1872,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.26').trim() || 'V2026.05.12.26';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.27').trim() || 'V2026.05.12.27';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2750,7 +2750,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.26';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.27';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12242,7 +12242,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.26').trim() || 'V2026.05.12.26';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.27').trim() || 'V2026.05.12.27';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -27230,8 +27230,14 @@ function toggleDriveQuickRequestItem(domId) {
                 photoUrls,
                 requestItems: [itemPayload]
             };
-            const responseData = await postGoogleScriptEmailPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'NCR Approval Email');
-            return responseData;
+            try {
+                return await postGoogleScriptEmailPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'NCR Approval Email');
+            } catch (error) {
+                if (!shouldTryLegacyNcrApprovalEmailFallback(error)) throw error;
+                console.warn('NCR approval email failed; retrying through legacy NCR email type', error);
+                const legacyPayload = buildLegacyNcrApprovalEmailPayload(payload);
+                return await postGoogleScriptEmailPayload(legacyPayload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'NCR Approval Email Fallback');
+            }
         }
 
         function sendNcrApprovalPush(item = activeItem, type = 'new-crop', stage = 'dylan', targetUser = NCR_APPROVAL_DYLAN_USER) {
@@ -28979,6 +28985,40 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (lastError && !lastResponse) throw lastError;
             throw new Error(getGoogleScriptEmailFailureMessage(lastResponse, `${label} did not send.`));
+        }
+
+        function shouldTryLegacyNcrApprovalEmailFallback(error = null) {
+            const message = String(error && error.message ? error.message : error || '').toLowerCase();
+            if (!message) return true;
+            return message.includes('google script returned error')
+                || message.includes('unsupported email type')
+                || message.includes('missing recipient')
+                || message.includes('ncr approval email did not send')
+                || message.includes('approval email did not send')
+                || message.includes('google apps script failed');
+        }
+
+        function buildLegacyNcrApprovalEmailPayload(payload = {}) {
+            const safePayload = payload && typeof payload === 'object' ? payload : {};
+            const instructionText = String(firstNonEmptyValue(safePayload.appInstruction, safePayload.app_instruction, '') || '').trim();
+            const instructionHtml = instructionText
+                ? `<p style="padding:12px 14px; border-radius:10px; background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46;"><strong>Next step:</strong> ${esc(instructionText)}</p>`
+                : '';
+            const formattedHtml = String(firstNonEmptyValue(safePayload.formattedItemsHtml, '') || '').trim();
+            const formattedText = String(firstNonEmptyValue(safePayload.formattedItemsText, '') || '').trim();
+            const stageLabel = String(firstNonEmptyValue(safePayload.approvalStageLabel, safePayload.approvalStage, 'Approval needed') || '').trim();
+            const legacyTextIntro = [
+                'Approval needed',
+                stageLabel ? `Stage: ${stageLabel}` : '',
+                instructionText ? `Next step: ${instructionText}` : ''
+            ].filter(Boolean).join('\n');
+            return {
+                ...safePayload,
+                emailType: 'ncr_complete',
+                customer: String(firstNonEmptyValue(safePayload.customer, 'Approval') || 'Approval').trim(),
+                formattedItemsHtml: [instructionHtml, formattedHtml].filter(Boolean).join(''),
+                formattedItemsText: [legacyTextIntro, formattedText].filter(Boolean).join('\n\n')
+            };
         }
 
         async function postRequestEmailPayload(payload = {}) {
