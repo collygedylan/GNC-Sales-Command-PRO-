@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.18';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.19';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1870,7 +1870,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.18').trim() || 'V2026.05.12.18';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.19').trim() || 'V2026.05.12.19';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2748,7 +2748,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.18';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.19';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -4915,21 +4915,42 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             if (keyboard) return keyboard;
             keyboard = document.createElement('div');
             keyboard.id = 'detail-measurement-keyboard';
-            keyboard.className = 'hidden fixed left-0 right-0 bottom-0 z-[13000] border-t border-emerald-200 bg-white/95 px-3 pt-3 shadow-2xl backdrop-blur-md';
+            keyboard.className = 'hidden fixed left-0 right-0 bottom-0 z-[13000] border-t border-zinc-800 bg-[#111412] px-2 pt-3 shadow-2xl';
             keyboard.style.paddingBottom = 'calc(12px + env(safe-area-inset-bottom))';
             document.body.appendChild(keyboard);
             return keyboard;
         }
 
         function getDetailMeasurementKeyboardKeys(type = 'spec') {
-            const numberKeys = ['0','1','2','3','4','5','6','7','8','9'];
+            const numberKeys = ['0','1','2','3','4','5','6','7','8','9'].map((value) => ({ value, token: value, label: value }));
             const measurementKeys = type === 'caliper'
-                ? ['.','"']
-                : ['.','-','"','APOSTROPHE','H','W','x',' '];
-            return numberKeys.concat(measurementKeys).map((value) => ({
-                value: value === 'APOSTROPHE' ? "'" : value,
-                label: value === 'APOSTROPHE' ? "'" : (value === ' ' ? 'SPACE' : value)
-            }));
+                ? [
+                    { value: '.', token: '.', label: '.' },
+                    { value: '"', token: 'double_quote', label: '"' }
+                ]
+                : [
+                    { value: '.', token: '.', label: '.' },
+                    { value: '-', token: '-', label: '-' },
+                    { value: '"', token: 'double_quote', label: '"' },
+                    { value: "'", token: 'apostrophe', label: "'", labelHtml: '&#39;' },
+                    { value: 'H', token: 'H', label: 'H' },
+                    { value: 'W', token: 'W', label: 'W' },
+                    { value: 'x', token: 'x', label: 'x' },
+                    { value: ' ', token: 'space', label: 'SPACE' }
+                ];
+            return numberKeys.concat(measurementKeys);
+        }
+
+        function resolveDetailMeasurementKeyboardToken(token = '') {
+            const safeToken = String(token || '');
+            if (safeToken === 'apostrophe') return "'";
+            if (safeToken === 'double_quote') return '"';
+            if (safeToken === 'space') return ' ';
+            return safeToken;
+        }
+
+        function pressDetailMeasurementKeyboardToken(token = '') {
+            return pressDetailMeasurementKeyboardKey(resolveDetailMeasurementKeyboardToken(token));
         }
 
         function renderDetailMeasurementKeyboard() {
@@ -4938,21 +4959,22 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             const title = type === 'caliper' ? 'Caliper Keyboard' : 'Spec Keyboard';
             const keysHtml = getDetailMeasurementKeyboardKeys(type).map((key) => {
                 const isWide = key.value === ' ';
-                const isOperator = ['.','-','"', "'", 'H', 'W', 'x'].includes(key.value);
-                const toneClass = isOperator ? 'border-emerald-300 bg-emerald-50 text-[#007a4d]' : 'border-emerald-200 bg-white text-slate-900';
-                return `<button type="button" data-key="${esc(key.value)}" class="${isWide ? 'col-span-2 ' : ''}min-h-[46px] rounded-xl border px-2 text-lg font-black shadow-sm active:scale-95 ${toneClass}" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardKey(this.dataset.key)">${esc(key.label)}</button>`;
+                const isOperator = ['.','-','double_quote','apostrophe','H','W','x'].includes(key.token);
+                const toneClass = isOperator ? 'bg-[#3b403d] text-white' : 'bg-[#282d2a] text-white';
+                const labelHtml = key.labelHtml || esc(key.label);
+                return `<button type="button" data-key-token="${esc(key.token)}" class="${isWide ? 'col-span-2 ' : ''}min-h-[58px] rounded-full border border-black/20 px-2 text-2xl font-medium shadow-sm active:scale-95 active:bg-[#4b524e] ${toneClass}" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardToken(this.dataset.keyToken)">${labelHtml}</button>`;
             }).join('');
             keyboard.innerHTML = [
                 '<div class="mx-auto max-w-xl">',
                 '<div class="mb-2 flex items-center justify-between gap-3">',
-                `<div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">${esc(title)}</div>`,
-                '<button type="button" class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 active:scale-95" onpointerdown="event.preventDefault()" onclick="return closeDetailMeasurementKeyboard(true)">Done</button>',
+                `<div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">${esc(title)}</div>`,
+                '<button type="button" class="rounded-full border border-zinc-700 bg-[#252a27] px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-white active:scale-95" onpointerdown="event.preventDefault()" onclick="return closeDetailMeasurementKeyboard(true)">Done</button>',
                 '</div>',
                 `<div class="grid grid-cols-4 gap-2">${keysHtml}</div>`,
                 '<div class="mt-2 grid grid-cols-3 gap-2">',
-                '<button type="button" class="min-h-[42px] rounded-xl border border-slate-200 bg-slate-50 px-3 text-[11px] font-black uppercase tracking-[0.12em] text-slate-700 active:scale-95" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardKey(\'__backspace\')"><i class="ph-bold ph-backspace"></i> Back</button>',
-                '<button type="button" class="min-h-[42px] rounded-xl border border-red-200 bg-red-50 px-3 text-[11px] font-black uppercase tracking-[0.12em] text-red-600 active:scale-95" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardKey(\'__clear\')">Clear</button>',
-                '<button type="button" class="min-h-[42px] rounded-xl border border-[#007a4d] bg-[#007a4d] px-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onpointerdown="event.preventDefault()" onclick="return closeDetailMeasurementKeyboard(true)">Done</button>',
+                '<button type="button" class="min-h-[48px] rounded-full border border-zinc-700 bg-[#252a27] px-3 text-[11px] font-black uppercase tracking-[0.12em] text-white active:scale-95" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardKey(\'__backspace\')"><i class="ph-bold ph-backspace"></i> Back</button>',
+                '<button type="button" class="min-h-[48px] rounded-full border border-zinc-700 bg-[#252a27] px-3 text-[11px] font-black uppercase tracking-[0.12em] text-red-300 active:scale-95" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardKey(\'__clear\')">Clear</button>',
+                '<button type="button" class="min-h-[48px] rounded-full border border-emerald-500 bg-[#007a4d] px-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onpointerdown="event.preventDefault()" onclick="return closeDetailMeasurementKeyboard(true)">Done</button>',
                 '</div>',
                 '</div>'
             ].join('');
@@ -12046,7 +12068,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.18').trim() || 'V2026.05.12.18';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.19').trim() || 'V2026.05.12.19';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
