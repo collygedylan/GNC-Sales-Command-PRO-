@@ -2543,7 +2543,13 @@ function resolveRequestRecipientEmail_(repName, fallbackEmail) {
     benmaschino: 'ben_maschino@greenleafnursery.com',
     ben_maschino: 'ben_maschino@greenleafnursery.com',
     benmachino: 'ben_maschino@greenleafnursery.com',
-    ben_machino: 'ben_maschino@greenleafnursery.com'
+    ben_machino: 'ben_maschino@greenleafnursery.com',
+    abbey: 'abbey_burka@greenleafnursery.com',
+    abbeyburka: 'abbey_burka@greenleafnursery.com',
+    abbey_burka: 'abbey_burka@greenleafnursery.com',
+    molly: 'molly_dixon@greenleafnursery.com',
+    mollydixon: 'molly_dixon@greenleafnursery.com',
+    molly_dixon: 'molly_dixon@greenleafnursery.com'
   };
 
   if (aliasMap[compact]) return aliasMap[compact];
@@ -2566,6 +2572,8 @@ function collectRequestRecipients_(payload) {
   const recipients = dedupeEmailAddresses_([
     payload.recipientEmails,
     payload.internalRecipients,
+    payload.linkedRepEmails,
+    payload.assistantEmails,
     payload.recipients,
     payload.dylanEmail,
     payload.jdEmail,

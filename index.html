@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.09';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1870,7 +1870,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.09').trim() || 'V2026.05.12.09';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.10').trim() || 'V2026.05.12.10';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2742,7 +2742,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11737,7 +11737,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let pendingEditsPersistTimer = null;
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
-        const salesRepList=["Abbey Burka","Alyssa Beitz","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Nate Douglas","Toby Brown","Tony Bono","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
+        const salesRepList=["Abbey Burka","Alyssa Beitz","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Molly Dixon","Nate Douglas","Toby Brown","Tony Bono","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
         const REQUEST_REP_ENABLED_TOKENS = new Set(['alyssa_beitz','alyssa beitz','alyssabeitz','tony_bono','tony bono','tonybono']);
         const REQUEST_MODAL_REP_OPTIONS = Object.freeze(
             [...new Set(salesRepList.map((rep) => String(rep || '').trim()).filter(Boolean))]
@@ -11774,6 +11774,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_EMAIL_THREAD_SELECT_FIELDS = 'request_folder,request_customer,sales_rep_name,sales_rep_email,recipients,initial_thread_id,initial_message_id,initial_email_sent_at,last_reply_sent_at,status,metadata';
         const REQUEST_HISTORY_SELECT_FIELDS = 'unique_id,master_id,master_unique_id,source_table,request_folder,request_customer,requested_by,req_status,req_archived,req_rep_action,req_qty,req_reserve,req_match,req_spec,req_caliper,req_pic_note,req_comments,av_note,date_completed,itemcode,commonname,contsize,locationcode,lotcode,priority,ptravailable,s_lts,holdstopcode,season,photo_link,photo_name,snapshot,last_event,created_by_username,created_by_display,created_at,updated_at';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com']);
+        const REQUEST_EMAIL_LINKED_REP_RECIPIENTS = Object.freeze({
+            mollydixon: ['abbey_burka@greenleafnursery.com'],
+            molly_dixon: ['abbey_burka@greenleafnursery.com'],
+            abbeyburka: ['molly_dixon@greenleafnursery.com'],
+            abbey_burka: ['molly_dixon@greenleafnursery.com']
+        });
         const HOLD_RELEASE_EMAIL_RECIPIENTS = Object.freeze(REQUEST_EMAIL_INTERNAL_RECIPIENTS.slice());
         const NCR_APPROVAL_DYLAN_USER = 'dylan_collyge';
         const NCR_APPROVAL_JD_USER = 'jd_jones';
@@ -11832,7 +11838,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.09').trim() || 'V2026.05.12.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.10').trim() || 'V2026.05.12.10';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -28113,7 +28119,13 @@ function toggleDriveQuickRequestItem(domId) {
                 'benmaschino': 'ben_maschino@greenleafnursery.com',
                 'ben_maschino': 'ben_maschino@greenleafnursery.com',
                 'benmachino': 'ben_maschino@greenleafnursery.com',
-                'ben_machino': 'ben_maschino@greenleafnursery.com'
+                'ben_machino': 'ben_maschino@greenleafnursery.com',
+                'abbey': 'abbey_burka@greenleafnursery.com',
+                'abbeyburka': 'abbey_burka@greenleafnursery.com',
+                'abbey_burka': 'abbey_burka@greenleafnursery.com',
+                'molly': 'molly_dixon@greenleafnursery.com',
+                'mollydixon': 'molly_dixon@greenleafnursery.com',
+                'molly_dixon': 'molly_dixon@greenleafnursery.com'
             };
             if (aliasMap[compact]) return aliasMap[compact];
             if (aliasMap[underscored]) return aliasMap[underscored];
@@ -28135,6 +28147,32 @@ function toggleDriveQuickRequestItem(domId) {
             });
         }
 
+        function getRequestRepRecipientKeys(repName = '', repEmail = '') {
+            const rawValues = [
+                repName,
+                resolveCanonicalRequestRepName(repName),
+                repEmail,
+                String(repEmail || '').split('@')[0] || ''
+            ];
+            const keys = new Set();
+            rawValues.forEach((value) => {
+                const normalized = normalizeRepMatchToken(value);
+                if (!normalized) return;
+                keys.add(normalized.replace(/\s+/g, ''));
+                keys.add(normalized.replace(/\s+/g, '_'));
+            });
+            return Array.from(keys);
+        }
+
+        function getLinkedRequestRepEmails(repName = '', repEmail = '') {
+            const linkedEmails = [];
+            getRequestRepRecipientKeys(repName, repEmail).forEach((key) => {
+                const mapped = REQUEST_EMAIL_LINKED_REP_RECIPIENTS[key];
+                if (Array.isArray(mapped)) linkedEmails.push(...mapped);
+            });
+            return dedupeRequestEmailRecipients(linkedEmails);
+        }
+
         function resolveRequestEmailThreadId(source = null) {
             return String(firstNonEmptyValue(source && source.threadId, source && source.thread_id, source && source.threadID, source && source.gmailThreadId, '')).trim();
         }
@@ -28146,11 +28184,13 @@ function toggleDriveQuickRequestItem(domId) {
         function buildRequestEmailRecipients(repName = '', details = null) {
             const safeDetails = details || {};
             const repEmail = normalizeRequestEmailAddress(firstNonEmptyValue(safeDetails.repEmail, resolveRequestRecipientEmail(repName), ''));
-            const recipientEmails = dedupeRequestEmailRecipients([...REQUEST_EMAIL_INTERNAL_RECIPIENTS, repEmail]);
+            const linkedRepEmails = getLinkedRequestRepEmails(repName, repEmail);
+            const recipientEmails = dedupeRequestEmailRecipients([...REQUEST_EMAIL_INTERNAL_RECIPIENTS, repEmail, ...linkedRepEmails]);
             return {
                 repEmail,
+                linkedRepEmails,
                 recipientEmails,
-                recipientDetails: recipientEmails.map((email) => ({ email, role: email === repEmail ? 'sales-rep' : 'internal' }))
+                recipientDetails: recipientEmails.map((email) => ({ email, role: email === repEmail ? 'sales-rep' : (linkedRepEmails.includes(email) ? 'linked-rep' : 'internal') }))
             };
         }
 
@@ -28347,11 +28387,11 @@ function toggleDriveQuickRequestItem(domId) {
                 ? requestSubjectDateSource.toISOString()
                 : String(requestSubjectDateSource || '').trim();
             const requestSubject = buildRequestEmailSubjectLine(requestSubjectCustomer, requestSubjectDateSource);
-            const { repEmail, recipientEmails } = buildRequestEmailRecipients(repName, safeDetails);
+            const { repEmail, linkedRepEmails, recipientEmails } = buildRequestEmailRecipients(repName, safeDetails);
             const finalRecipientEmails = (safeType === 'request_complete' && existingThreadRecord && Array.isArray(existingThreadRecord.recipients) && existingThreadRecord.recipients.length)
-                ? dedupeRequestEmailRecipients(existingThreadRecord.recipients)
+                ? dedupeRequestEmailRecipients([...existingThreadRecord.recipients, ...linkedRepEmails])
                 : recipientEmails;
-            const recipientDetails = finalRecipientEmails.map((email) => ({ email, role: email === repEmail ? 'sales-rep' : 'internal' }));
+            const recipientDetails = finalRecipientEmails.map((email) => ({ email, role: email === repEmail ? 'sales-rep' : (linkedRepEmails.includes(email) ? 'linked-rep' : 'internal') }));
             let payload = {
                 type: 'email',
                 emailType: safeType,
@@ -28370,6 +28410,8 @@ function toggleDriveQuickRequestItem(domId) {
                 dylanEmail: REQUEST_EMAIL_INTERNAL_RECIPIENTS[0],
                 jdEmail: REQUEST_EMAIL_INTERNAL_RECIPIENTS[1],
                 internalRecipients: REQUEST_EMAIL_INTERNAL_RECIPIENTS.slice(),
+                linkedRepEmails: linkedRepEmails.slice(),
+                assistantEmails: linkedRepEmails.slice(),
                 recipientEmails: finalRecipientEmails,
                 recipients: recipientDetails
             };
