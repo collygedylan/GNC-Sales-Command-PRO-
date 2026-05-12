@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.11.14';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.15';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1854,7 +1854,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.14').trim() || 'V2026.05.11.14';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.15').trim() || 'V2026.05.11.15';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2726,7 +2726,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.14';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.15';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6829,9 +6829,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 scheduleDeferredVisibleDirtyViewRefresh('realtime:request-ui', Math.max(24, nextDelay), Math.max(160, REQUEST_REALTIME_UI_DELAY_MS));
                 return;
             }
-            if (isViewVisible('request')) queueInteractiveViewRender('request', false, false, nextDelay, Math.max(160, REQUEST_REALTIME_UI_DELAY_MS));
-            if (isViewVisible('reports')) queueInteractiveViewRender('reports', false, false, nextDelay, Math.max(160, REQUEST_REALTIME_UI_DELAY_MS));
-            if (isViewVisible('tasks')) queueInteractiveViewRender('tasks', false, false, nextDelay, Math.max(160, REQUEST_REALTIME_UI_DELAY_MS));
+            if (isViewVisible('request')) queueInteractiveViewRender('request', false, true, nextDelay, Math.max(120, REQUEST_REALTIME_UI_DELAY_MS));
+            if (isViewVisible('reports')) queueInteractiveViewRender('reports', false, true, nextDelay, Math.max(120, REQUEST_REALTIME_UI_DELAY_MS));
+            if (isViewVisible('tasks')) queueInteractiveViewRender('tasks', false, true, nextDelay, Math.max(120, REQUEST_REALTIME_UI_DELAY_MS));
         }
 
         function refreshActiveRequestDetailFromRealtimeRow(row = null, eventType = '') {
@@ -6881,10 +6881,25 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 markViewDirty('av');
                 return true;
             }
+            const wasCompleteBeforeLiveUpdate = hasCompletionDateValue(activeItem);
             if (rowId === activeId) Object.assign(activeItem, row);
             else syncMasterFieldsToRow(row, activeItem, LINKED_ROW_SYNC_KEYS, { attachMasterLink: true, exactPhotoClone: false });
             normalizeRowPhotoFields(activeItem);
             buildSearchIndex(activeItem);
+            const completedTaskByAnotherUser = !wasCompleteBeforeLiveUpdate && hasCompletionDateValue(activeItem) && String(lastView || '').trim() === 'tasks';
+            if (completedTaskByAnotherUser) {
+                discardPendingLocalEdits([rowId, activeId], true);
+                scheduleUiRender(`task-detail-completed-live-${rowId}`, () => {
+                    if (!isViewVisible('detail') || !activeItem) return;
+                    const currentActiveId = String(firstNonEmptyValue(activeItem.UNIQUE_ID, activeItem.unique_id, '') || '').trim();
+                    if (currentActiveId !== activeId || !hasCompletionDateValue(activeItem)) return;
+                    showToast('Already Complete', 'That task was completed by another user.');
+                    goBackFromDetail();
+                    markViewDirty('tasks');
+                    queueInteractiveViewRender('tasks', false, true, 0, 120);
+                }, 16);
+                return true;
+            }
             scheduleUiRender(`master-detail-live-${rowId}`, () => {
                 if (!isViewVisible('detail') || !activeItem) return;
                 if (!hasActiveTextEntryFocus()) {
@@ -7316,13 +7331,14 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 refreshActiveMasterDetailFromRealtimeRow(nextRow || oldRow, eventType);
                 ['drive','tasks','av','review','move-up','advertisement','low-stock','moves','reports'].forEach((viewId) => markViewDirty(viewId));
                 if (!shouldDeferInteractiveBackgroundWork()) {
+                    const forceCompletionRender = !!(nextRow && hasCompletionDateValue(nextRow));
                     if (isViewVisible('drive')) queueInteractiveViewRender('drive', false, false, 0, 120);
-                    if (isViewVisible('tasks')) queueInteractiveViewRender('tasks', false, false, 0, 140);
+                    if (isViewVisible('tasks')) queueInteractiveViewRender('tasks', false, forceCompletionRender, 0, 120);
                     if (isViewVisible('av')) queueInteractiveViewRender('av', false, false, 0, 140);
                     if (isViewVisible('review')) queueInteractiveViewRender('review', false, false, 0, 160);
                     if (isViewVisible('move-up')) queueInteractiveViewRender('move-up', false, false, 0, 160);
                     if (isViewVisible('low-stock')) queueInteractiveViewRender('low-stock', false, false, 0, 160);
-                    if (isViewVisible('moves')) queueInteractiveViewRender('moves', false, false, 0, 160);
+                    if (isViewVisible('moves')) queueInteractiveViewRender('moves', false, forceCompletionRender, 0, 120);
                     if (isViewVisible('reports')) queueInteractiveViewRender('reports', false, false, 0, 180);
                 }
             } else if (tableName === 'v2_active_request') {
@@ -7334,6 +7350,14 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 invalidateResolvedViewStateCaches();
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
                 triggerRequestRealtimeUiRefresh(0);
+            } else if (tableName === 'v2_sales_office') {
+                invalidateResolvedViewStateCaches();
+                markViewDirty('sales-office');
+                markViewDirty('moves');
+                if (!shouldDeferInteractiveBackgroundWork()) {
+                    if (isViewVisible('sales-office')) queueInteractiveViewRender('sales-office', false, true, 0, 120);
+                    if (isViewVisible('moves')) queueInteractiveViewRender('moves', false, true, 0, 120);
+                }
             } else if (tableName === FLYER_FOLDER_ROWS_TABLE) {
                 invalidateResolvedViewStateCaches();
                 markViewDirty('tasks');
@@ -11672,7 +11696,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.14').trim() || 'V2026.05.11.14';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.15').trim() || 'V2026.05.11.15';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -49614,6 +49638,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     try {
                         if (await stopIfRemoteRequestAlreadyComplete()) return;
                         await runDetailWriteWithRetry(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`, saveRequestOptions);
+                        if (isComplete) flushQueuedAppLiveEvents().catch(() => {});
                         const finalizeSave = () => handleSaveSuccess(completionArtifacts || buildCompletionArtifacts());
                         if (isLagSensitiveDetailPrefix(prefix)) setTimeout(finalizeSave, 0);
                         else finalizeSave();
