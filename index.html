@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.12';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.13';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1870,7 +1870,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.12').trim() || 'V2026.05.12.12';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.13').trim() || 'V2026.05.12.13';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2742,7 +2742,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.12';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.13';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -11838,7 +11838,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.12').trim() || 'V2026.05.12.12';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.13').trim() || 'V2026.05.12.13';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -50129,6 +50129,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 itemToSave.MASTER_UNIQUE_ID = requestMasterId;
                                 itemToSave.MASTER_ID = requestMasterId;
                                 itemToSave.master_id = requestMasterId;
+                                itemToSave.APP_TAB_ASSIGNMENT = 'season';
+                                itemToSave.app_tab_assignment = 'season';
                             }
                         }
                     }
@@ -50349,7 +50351,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const artifacts = { soPayload: null, cloneSO: null, masterSyncId: null, masterSyncItem: null, masterSyncPayload: null, applyAvSync: false, masterSyncMissing: false, skipRemoteMasterSync: false, extraMasterSyncPatches: [], extraSalesOfficeDeleteIds: [] };
                     if (!isComplete) return artifacts;
 
-                    const linkedMasterItem = findLinkedMasterRow(itemToSave) || requestMasterItem || null;
+                    const requestOverrideTargetItem = prefix === 'req-' && requestSeasonOverride && requestSeasonOverride.targetItem
+                        ? requestSeasonOverride.targetItem
+                        : null;
+                    const linkedMasterItem = requestOverrideTargetItem || findLinkedMasterRow(itemToSave) || requestMasterItem || null;
                     const salesRuleItem = linkedMasterItem || itemToSave;
                     const isFlyerFolderCompletion = prefix === 'flyer-' && isFlyerFolderRowSave;
                     const salesRuleId = String(firstNonEmptyValue(
@@ -50464,10 +50469,25 @@ ${folderNote ? `Folder Note: ${folderNote}
                         const previousSeasonId = String(firstNonEmptyValue(requestSeasonOverride.previousSeasonItem.UNIQUE_ID, requestSeasonOverride.previousSeasonItem.unique_id, '') || '').trim();
                         const targetSeasonId = String(firstNonEmptyValue(requestSeasonOverride.targetItem && requestSeasonOverride.targetItem.UNIQUE_ID, artifacts.masterSyncId, '') || '').trim();
                         if (previousSeasonId && previousSeasonId !== targetSeasonId) {
+                            const previousClearPayload = {
+                                app_tab_assignment: 'location',
+                                match: null,
+                                loc_match_qty: null,
+                                initial_ptr: null,
+                                date_completed: null
+                            };
+                            if (avRuleColumnsReady === true) {
+                                const clearedAt = new Date().toISOString();
+                                previousClearPayload.av_rule_priority_snapshot = getPrioritySnapshotFromItem(requestSeasonOverride.previousSeasonItem) || null;
+                                previousClearPayload.av_rule_holdstop_snapshot = getHoldStopSnapshotFromItem(requestSeasonOverride.previousSeasonItem) || null;
+                                previousClearPayload.av_rule_last_clear_reason = 'season_sales_note_moved_to_larger_ptr';
+                                previousClearPayload.av_rule_last_cleared_at = clearedAt;
+                                previousClearPayload.av_rule_match_updated_at = null;
+                            }
                             artifacts.extraMasterSyncPatches.push({
                                 masterSyncId: previousSeasonId,
                                 item: requestSeasonOverride.previousSeasonItem,
-                                payload: { app_tab_assignment: 'location' }
+                                payload: previousClearPayload
                             });
                             artifacts.extraSalesOfficeDeleteIds.push(previousSeasonId);
                         }
