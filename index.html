@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.21';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.22';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -620,8 +620,10 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
         #view-detail textarea.input-field{min-height:120px;padding-top:14px;padding-bottom:14px;line-height:1.45;resize:vertical}
         #view-detail [id^='camera-btn-']{min-height:92px;border-radius:18px}
         #view-detail #req-comments{min-height:132px}
+        :root{--detail-keyboard-height:0px}
         body.detail-field-active #bottom-nav,body.detail-field-active #global-action-bar{opacity:0;pointer-events:none;transform:translateY(120%);transition:transform .18s ease,opacity .18s ease}
-        body.detail-field-active #main-scroll-area{padding-bottom:calc(4rem + env(safe-area-inset-bottom))}
+        body.detail-field-active #main-scroll-area{padding-bottom:calc(4rem + var(--detail-keyboard-height, 0px) + env(safe-area-inset-bottom));scroll-padding-bottom:calc(5rem + var(--detail-keyboard-height, 0px) + env(safe-area-inset-bottom))}
+        body.measurement-keyboard-open #main-scroll-area{padding-bottom:calc(5rem + var(--detail-keyboard-height, 0px) + env(safe-area-inset-bottom));scroll-padding-bottom:calc(6rem + var(--detail-keyboard-height, 0px) + env(safe-area-inset-bottom))}
         #view-login,#view-change-password{pointer-events:auto;isolation:isolate}
         #view-login .login-card,#view-change-password .login-card{position:relative;z-index:1;pointer-events:auto}
         #login-inputs,#loading-spinner{position:relative;z-index:2;pointer-events:auto}
@@ -1870,7 +1872,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.21').trim() || 'V2026.05.12.21';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.22').trim() || 'V2026.05.12.22';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2748,7 +2750,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.21';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.22';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -4292,6 +4294,51 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             document.body.classList.toggle('detail-field-active', !!isActive);
         }
 
+        function getDetailMeasurementKeyboardVisibleHeight() {
+            const keyboard = document.getElementById('detail-measurement-keyboard');
+            if (!keyboard || keyboard.classList.contains('hidden')) return 0;
+            const rect = keyboard.getBoundingClientRect ? keyboard.getBoundingClientRect() : null;
+            return rect ? Math.max(0, Math.round(rect.height || 0)) : 0;
+        }
+
+        function syncDetailMeasurementKeyboardLayout() {
+            const keyboardHeight = getDetailMeasurementKeyboardVisibleHeight();
+            document.documentElement.style.setProperty('--detail-keyboard-height', keyboardHeight ? `${keyboardHeight}px` : '0px');
+            document.body.classList.toggle('measurement-keyboard-open', keyboardHeight > 0);
+            scheduleStickyRailOffsetSync('measurement-keyboard');
+            return keyboardHeight;
+        }
+
+        function clearDetailMeasurementKeyboardLayout() {
+            document.documentElement.style.setProperty('--detail-keyboard-height', '0px');
+            document.body.classList.remove('measurement-keyboard-open');
+            scheduleStickyRailOffsetSync('measurement-keyboard-close');
+        }
+
+        function scrollDetailFieldWithinMainArea(target, topOffset, visibleBottom) {
+            const mainScrollArea = document.getElementById('main-scroll-area');
+            const rect = target && target.getBoundingClientRect ? target.getBoundingClientRect() : null;
+            if (!rect) return false;
+            const bottomPadding = 28;
+            const topPadding = 12;
+            let delta = 0;
+            if (rect.bottom > (visibleBottom - bottomPadding)) {
+                delta = rect.bottom - (visibleBottom - bottomPadding);
+            } else if (rect.top < (topOffset + topPadding)) {
+                delta = rect.top - (topOffset + topPadding);
+            }
+            if (Math.abs(delta) < 2) return false;
+            if (mainScrollArea && typeof mainScrollArea.scrollTo === 'function') {
+                mainScrollArea.scrollTo({
+                    top: Math.max(0, mainScrollArea.scrollTop + delta),
+                    behavior: 'smooth'
+                });
+                return true;
+            }
+            window.scrollBy({ top: delta, left: 0, behavior: 'smooth' });
+            return true;
+        }
+
         function bringDetailFieldIntoView(target) {
             if (!isDetailEditableField(target)) return;
             const freezePanel = document.querySelector('#view-detail .freeze-panel');
@@ -4300,8 +4347,13 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                 if (!isDetailEditableField(target)) return;
                 const rect = target.getBoundingClientRect();
                 const viewport = window.visualViewport;
-                const visibleBottom = Math.max(220, Math.round(viewport ? viewport.height : window.innerHeight));
+                const visualBottom = viewport
+                    ? Math.round((viewport.height || window.innerHeight || 0) + (viewport.offsetTop || 0))
+                    : Math.round(window.innerHeight || document.documentElement.clientHeight || 0);
+                const keyboardHeight = getDetailMeasurementKeyboardVisibleHeight();
+                const visibleBottom = Math.max(220, visualBottom - keyboardHeight);
                 if (rect.top < topOffset || rect.bottom > (visibleBottom - 28)) {
+                    if (scrollDetailFieldWithinMainArea(target, topOffset, visibleBottom)) return;
                     try {
                         target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
                     } catch (err) {
@@ -4310,6 +4362,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                 }
             };
             requestAnimationFrame(run);
+            setTimeout(run, 80);
             setTimeout(run, 300);
         }
 
@@ -4937,7 +4990,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                     { value: '7', token: '7', label: '7' },
                     { value: '8', token: '8', label: '8' },
                     { value: '9', token: '9', label: '9' },
-                    { blank: true },
+                    { value: '-', token: '-', label: '-' },
                     { blank: true },
                     { value: '0', token: '0', label: '0', span: 2 },
                     { blank: true }
@@ -5004,6 +5057,10 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                 '</div>'
             ].join('');
             keyboard.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                syncDetailMeasurementKeyboardLayout();
+                if (detailMeasurementKeyboardTarget) bringDetailFieldIntoView(detailMeasurementKeyboardTarget);
+            });
         }
 
         function restoreDetailMeasurementInputReadonly(input = detailMeasurementKeyboardTarget) {
@@ -5039,6 +5096,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                 try { input.setSelectionRange(cursorEnd, cursorEnd); } catch (selectionError) {}
             }
             renderDetailMeasurementKeyboard();
+            bringDetailFieldIntoView(input);
+            setTimeout(() => bringDetailFieldIntoView(input), 120);
             return false;
         }
 
@@ -5052,6 +5111,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             detailMeasurementKeyboardType = '';
             const keyboard = document.getElementById('detail-measurement-keyboard');
             if (keyboard) keyboard.classList.add('hidden');
+            clearDetailMeasurementKeyboardLayout();
             if (input && commitChange) {
                 try { input.blur(); } catch (error) {}
             }
@@ -5101,6 +5161,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             detailMeasurementKeyboardType = '';
             const keyboard = document.getElementById('detail-measurement-keyboard');
             if (keyboard) keyboard.classList.add('hidden');
+            clearDetailMeasurementKeyboardLayout();
             if (!focusDetailMeasurementNextField(input) && input) {
                 try { input.blur(); } catch (error) {}
             }
@@ -5115,6 +5176,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             if (typeof nextCursor === 'number' && typeof input.setSelectionRange === 'function') {
                 try { input.setSelectionRange(nextCursor, nextCursor); } catch (error) {}
             }
+            bringDetailFieldIntoView(input);
             return false;
         }
 
@@ -12146,7 +12208,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.21').trim() || 'V2026.05.12.21';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.22').trim() || 'V2026.05.12.22';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
