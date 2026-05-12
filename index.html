@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.14';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.15';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1870,7 +1870,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.14').trim() || 'V2026.05.12.14';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.15').trim() || 'V2026.05.12.15';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2747,7 +2747,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.14';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.15';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -4821,6 +4821,18 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             };
         }
 
+        function shouldAvNoteIncludeCaliper(prefix = '', values = {}) {
+            if (!String(values && values.caliper || '').trim()) return false;
+            const normalizedPrefix = String(prefix || '').trim();
+            const caliperWrap = normalizedPrefix ? document.getElementById(normalizedPrefix + 'container-caliper') : null;
+            if (caliperWrap) return !caliperWrap.classList.contains('hidden');
+
+            const currentItem = activeItem || {};
+            const plantGroup = String(firstNonEmptyValue(currentItem.PLANTGROUPCODE, currentItem.plantgroupcode, '') || '').trim().toUpperCase();
+            const contSize = String(firstNonEmptyValue(currentItem.CONTSIZE, currentItem.contsize, '') || '').trim().toUpperCase();
+            return plantGroup.includes('330_TREES') && ['#7', '#10', '#15', '#25', '#45'].includes(contSize);
+        }
+
         function appendSpecCaliperToAvNote(prefix = '') {
             const normalizedPrefix = String(prefix || '').trim();
             if (!canEditRowDetails(normalizedPrefix)) {
@@ -4832,30 +4844,24 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             if (!avInput) return;
 
             const values = getAvNoteSpecCaliperValues(normalizedPrefix);
-            const additions = [values.spec, values.caliper].map((value) => String(value || '').trim()).filter(Boolean);
-            if (!additions.length) {
+            const specText = String(values.spec || '').trim();
+            const caliperText = String(values.caliper || '').trim();
+            const additions = [];
+            if (specText) additions.push(`SPEC ${specText}`);
+            if (caliperText && shouldAvNoteIncludeCaliper(normalizedPrefix, values)) additions.push(`CALIPER ${caliperText}`);
+            const additionText = additions.join(' / ').trim().toUpperCase();
+            if (!additionText) {
                 showToast('Nothing To Add', 'Spec and caliper are blank for this row.', true);
                 return;
             }
 
-            const existingParts = String(avInput.value || '').split('/').map((part) => String(part || '').trim()).filter(Boolean);
-            const existingSet = new Set(existingParts.map((part) => part.toUpperCase()));
-            let addedCount = 0;
-
-            additions.forEach((part) => {
-                const normalizedPart = part.toUpperCase();
-                if (existingSet.has(normalizedPart)) return;
-                existingParts.push(normalizedPart);
-                existingSet.add(normalizedPart);
-                addedCount++;
-            });
-
-            if (!addedCount) {
+            const existingText = String(avInput.value || '').trim();
+            if (existingText.toUpperCase().includes(additionText)) {
                 showToast('Already Added', 'Spec and caliper are already in AV Note.', false);
                 return;
             }
 
-            avInput.value = existingParts.join(' / ').toUpperCase();
+            avInput.value = existingText ? `${existingText} / ${additionText}`.toUpperCase() : additionText;
             if (normalizedPrefix === 'global-') filterAvNotes();
             else filterAvNotes(normalizedPrefix);
             saveData(false, normalizedPrefix, true);
@@ -11848,7 +11854,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.14').trim() || 'V2026.05.12.14';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.15').trim() || 'V2026.05.12.15';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -26310,7 +26316,9 @@ function toggleDriveQuickRequestItem(domId) {
                 String(firstNonEmptyValue(item.LOCATIONCODE, '')).trim()
             ].filter(Boolean).join(' - ');
             const holdCode = getHoldReleaseHoldCode(item);
-            return holdCode ? `${rowLabel} | Hold ${holdCode}` : rowLabel;
+            const holdReason = getHoldReleaseHoldReason(item);
+            const holdLabel = holdCode ? `${rowLabel} | Hold ${holdCode}` : rowLabel;
+            return holdReason ? `${holdLabel} | Reason: ${holdReason}` : holdLabel;
         }
 
         function closeHoldReleaseModal(choice = 'no') {

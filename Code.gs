@@ -2924,6 +2924,113 @@ function buildRequestItemsText_(payload) {
   }).join('\n');
 }
 
+function getRequestSelectionSummaryGroups_(payload) {
+  const items = Array.isArray(payload.requestItems) ? payload.requestItems
+    : (Array.isArray(payload.items) ? payload.items
+      : (Array.isArray(payload.sourceRows) ? payload.sourceRows : []));
+  if (!items.length) return [];
+
+  const groupsByKey = {};
+  const order = [];
+
+  items.forEach(function(item) {
+    if (!item) return;
+    const itemCode = String(firstNonEmptyRequestValue_(
+      item.itemcode,
+      item.ITEMCODE,
+      item.itemCode,
+      item.ITEM_CODE,
+      ''
+    ) || '').trim();
+    const commonName = String(firstNonEmptyRequestValue_(
+      item.commonname,
+      item.COMMONNAME,
+      item.commonName,
+      item.COMMON_NAME,
+      ''
+    ) || '').trim();
+    const contSize = String(firstNonEmptyRequestValue_(
+      item.contsize,
+      item.CONTSIZE,
+      item.contSize,
+      item.CONT_SIZE,
+      ''
+    ) || '').trim();
+    if (!itemCode && !commonName && !contSize) return;
+
+    const groupKey = itemCode
+      ? 'ITEMCODE:' + itemCode.toUpperCase()
+      : ['NOITEMCODE', commonName.toUpperCase(), contSize.toUpperCase()].join('|');
+
+    if (!groupsByKey[groupKey]) {
+      groupsByKey[groupKey] = {
+        itemcode: itemCode || 'N/A',
+        commonname: commonName || 'Unknown Item',
+        contsize: contSize || '-',
+        rowsSelected: 0
+      };
+      order.push(groupKey);
+    }
+    groupsByKey[groupKey].rowsSelected += 1;
+  });
+
+  return order.map(function(key) {
+    return groupsByKey[key];
+  });
+}
+
+function buildRequestSelectionSummaryHtml_(payload) {
+  const groups = getRequestSelectionSummaryGroups_(payload);
+  if (!groups.length) return '';
+
+  const rowsHtml = groups.map(function(group) {
+    return [
+      '<tr>',
+      '<td style="padding:8px; border-bottom:1px solid #eee;"><strong>' + escapeEmailHtml_(group.itemcode) + '</strong></td>',
+      '<td style="padding:8px; border-bottom:1px solid #eee;">' + escapeEmailHtml_(group.commonname) + '</td>',
+      '<td style="padding:8px; border-bottom:1px solid #eee;">' + escapeEmailHtml_(group.contsize) + '</td>',
+      '<td style="padding:8px; border-bottom:1px solid #eee; text-align:center;">' + escapeEmailHtml_(group.rowsSelected) + '</td>',
+      '</tr>'
+    ].join('');
+  }).join('');
+
+  return [
+    '<div style="margin:18px 0;">',
+    '<p style="font-weight:700; margin:0 0 10px 0;">Selected Request Rows</p>',
+    '<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; font-size:13px;">',
+    '<thead>',
+    '<tr style="background:#f3f7f5;">',
+    '<th align="left" style="padding:8px; border-bottom:1px solid #ddd;">ITEMCODE</th>',
+    '<th align="left" style="padding:8px; border-bottom:1px solid #ddd;">COMMONNAME</th>',
+    '<th align="left" style="padding:8px; border-bottom:1px solid #ddd;">CONTSIZE</th>',
+    '<th align="center" style="padding:8px; border-bottom:1px solid #ddd;">ROWS SELECTED</th>',
+    '</tr>',
+    '</thead>',
+    '<tbody>',
+    rowsHtml,
+    '</tbody>',
+    '</table>',
+    '</div>'
+  ].join('');
+}
+
+function buildRequestSelectionSummaryText_(payload) {
+  const groups = getRequestSelectionSummaryGroups_(payload);
+  if (!groups.length) return '';
+
+  return [
+    'Selected Request Rows',
+    groups.map(function(group) {
+      return [
+        'ITEMCODE: ' + group.itemcode,
+        'COMMONNAME: ' + group.commonname,
+        'CONTSIZE: ' + group.contsize,
+        'Rows Selected For Itemcode: ' + group.rowsSelected
+      ].join('\n');
+    }).join('\n\n')
+  ].join('\n\n');
+}
+
 function buildRequestEmailMessage_(payload) {
   const emailType = String(payload.emailType || '').trim().toLowerCase();
   const repName = escapeEmailHtml_(payload.repName || payload.salesRepName || '');
@@ -2932,6 +3039,8 @@ function buildRequestEmailMessage_(payload) {
   const itemsCount = escapeEmailHtml_(payload.itemsCount || 0);
   const itemsHtml = buildRequestItemsHtml_(payload);
   const itemsText = buildRequestItemsText_(payload);
+  const selectionSummaryHtml = buildRequestSelectionSummaryHtml_(payload);
+  const selectionSummaryText = buildRequestSelectionSummaryText_(payload);
   const subject = buildRequestEmailSubject_(payload);
 
   if (emailType === 'new_request') {
@@ -2943,6 +3052,7 @@ function buildRequestEmailMessage_(payload) {
         'Customer: ' + String(payload.customer || 'N/A'),
         'Folder ID: ' + String(payload.folderId || payload.requestFolder || ''),
         'Items Requested: ' + String(payload.itemsCount || 0),
+        selectionSummaryText,
         'Please check the app under Requests > Pending to fulfill this request.'
       ].filter(Boolean).join('\n\n'),
       htmlBody: [
@@ -2952,6 +3062,7 @@ function buildRequestEmailMessage_(payload) {
         '<p><strong>Customer:</strong> ' + customer + '</p>',
         '<p><strong>Folder ID:</strong> ' + folderId + '</p>',
         '<p><strong>Items Requested:</strong> ' + itemsCount + '</p>',
+        selectionSummaryHtml,
         '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
         '<p style="font-size: 12px; color: #777;">Please check the app under <strong>Requests &gt; Pending</strong> to fulfill this request.</p>',
         '</div>'
