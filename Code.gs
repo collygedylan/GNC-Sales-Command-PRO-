@@ -38,7 +38,7 @@ function sendHoursReminderEmail() {
 const SUPABASE_URL = 'https://kzrnyjsosryejjejliii.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0';
 const APP_LIVE_EVENTS_TABLE = 'v2_app_live_events';
-const EMIT_APP_LIVE_EVENTS = false;
+const EMIT_APP_LIVE_EVENTS = true;
 
 const FOLDERS = {
   MASTER_DROP: '1MWLYsQJ41bZVcg1SzDIw93uNmQpzPn48',
@@ -179,6 +179,19 @@ function emitTableSyncLiveEvent_(tableName, summary) {
     totalRows: Number(safeSummary.totalRows || 0),
     runId: String(safeSummary.runId || ''),
     coalesced: true
+  });
+}
+
+function emitManualSyncLiveEvent_(status) {
+  const safeStatus = status || {};
+  return emitAppLiveEvent_('inventory', 'manual_sync:complete', 'manual_sync', [], {
+    method: 'SYNC',
+    table: 'manual_sync',
+    runId: String(safeStatus.runId || ''),
+    completedStages: Array.isArray(safeStatus.completedStages) ? safeStatus.completedStages : [],
+    stageResults: Array.isArray(safeStatus.stageResults) ? safeStatus.stageResults : [],
+    message: String(safeStatus.message || 'Manual sync complete.'),
+    finishedAt: String(safeStatus.finishedAt || new Date().toISOString())
   });
 }
 
@@ -392,6 +405,7 @@ function runQueuedManualSyncStage_() {
         status.finishedAt = completedAt;
         status.message = `Finished ${stageDef.label}: ${fileSummary}${tempSummary}. Manual sync complete.`;
         saveManualSyncStatus_(status);
+        emitManualSyncLiveEvent_(status);
         removeManualSyncStageTriggers_();
         console.log(`[MANUAL SYNC][${status.runId}] ${status.message}`);
         break;

@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.11.09';
+window.__APP_SHELL_VERSION__ = 'V2026.05.11.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1753,7 +1753,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.09').trim() || 'V2026.05.11.09';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.11.10').trim() || 'V2026.05.11.10';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2492,11 +2492,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const ML_CAPTURE_PHOTO_BUCKET = 'ml_capture_photos';
         const APP_LIVE_EVENT_CLIENT_STORAGE_KEY = 'gnc_app_live_event_client_v1';
         const APP_LIVE_EVENT_PRUNE_STORAGE_KEY = 'gnc_app_live_event_pruned_v1';
-        const APP_LIVE_EVENT_WRITE_COALESCE_MS = 280;
+        const APP_LIVE_EVENT_WRITE_COALESCE_MS = 900;
         const APP_LIVE_EVENT_REFRESH_BATCH_MS = 90;
         const APP_LIVE_EVENT_REFRESH_JITTER_MS = 220;
         const APP_LIVE_EVENT_ROW_ID_LIMIT = 80;
-        const APP_LIVE_EVENT_RETENTION_DAYS = 10;
+        const APP_LIVE_EVENT_RETENTION_DAYS = 3;
         const CHAT_CONVERSATIONS_TABLE = 'v2_chat_conversations';
         const CHAT_PARTICIPANTS_TABLE = 'v2_chat_participants';
         const CHAT_MESSAGES_TABLE = 'v2_chat_messages';
@@ -2554,7 +2554,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.11.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2575,6 +2575,7 @@ const QUOTA_SAFE_VISIBLE_POLL_STANDALONE_MS = 240000;
 const QUOTA_SAFE_VISIBLE_POLL_BROWSER_MS = 360000;
 const QUOTA_SAFE_HEALTHY_REALTIME_POLL_MS = 600000;
 const QUOTA_SAFE_CHAT_HEALTHY_POLL_MS = 180000;
+const QUOTA_SAFE_DIRECT_REALTIME_VIEW_IDS = new Set(['chat']);
 const LIVE_SYNC_POLL_STANDALONE_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_POLL_STANDALONE_MS : 60000;
 const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_POLL_BROWSER_MS : 90000;
         const LIVE_SYNC_VIEW_POLICY = Object.freeze({
@@ -2666,8 +2667,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         const CACHE_PERSIST_REALTIME_VISIBLE_MIN_INTERVAL_MS = 180000;
         const CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS = 12000;
         const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
-        const PHOTO_MAX_WIDTH = 1600;
-        const PHOTO_JPEG_QUALITY = 0.86;
+        const PHOTO_MAX_WIDTH = 1280;
+        const PHOTO_JPEG_QUALITY = 0.82;
         const PHOTO_FIELD_PERSIST_DEBOUNCE_MS = 350;
         const PHOTO_MASTER_PERSIST_DEBOUNCE_MS = 450;
         const INTERACTION_REFRESH_DEFER_MS = 1400;
@@ -3415,7 +3416,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
 
         function isRealtimeRequiredTableForCurrentView(tableName = '') {
             const safeTable = String(tableName || '').trim();
-            if (!safeTable || safeTable === APP_LIVE_EVENTS_TABLE) return false;
+            if (!safeTable) return false;
+            if (safeTable === APP_LIVE_EVENTS_TABLE) return shouldUseAppLiveEventsRealtime(activeRealtimeContextViewId || activeRealtimeViewId || 'home');
             return activeRealtimeTables.includes(safeTable);
         }
 
@@ -3645,7 +3647,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                     appLiveEventSchemaUnavailable = true;
                     if (!appLiveEventSchemaWarningShown) {
                         appLiveEventSchemaWarningShown = true;
-                        console.warn('Live event table is not installed yet. Run app_live_events_migration.sql to enable quota-safe live updates.');
+                        console.warn('Live event table is not installed yet. Run quota_safe_live_sync_migration.sql to enable quota-safe live updates.');
                     }
                 } else {
                     console.warn('Live event write skipped', error);
@@ -3677,12 +3679,20 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             return !!QUOTA_SAFE_REALTIME_MODE;
         }
 
-        function shouldUseAppLiveEventsRealtime() {
-            return !isQuotaSafeRealtimeMode();
+        function shouldUseDirectTableRealtimeForView(viewId = '') {
+            const safeViewId = resolveRealtimeContextViewId(viewId || activeRealtimeContextViewId || activeRealtimeViewId || 'home');
+            if (!isQuotaSafeRealtimeMode()) return true;
+            return QUOTA_SAFE_DIRECT_REALTIME_VIEW_IDS.has(safeViewId);
+        }
+
+        function shouldUseAppLiveEventsRealtime(viewId = '') {
+            if (!isQuotaSafeRealtimeMode()) return false;
+            const safeViewId = resolveRealtimeContextViewId(viewId || activeRealtimeContextViewId || activeRealtimeViewId || 'home');
+            return !QUOTA_SAFE_DIRECT_REALTIME_VIEW_IDS.has(safeViewId);
         }
 
         function shouldWriteAppLiveEvents() {
-            return !isQuotaSafeRealtimeMode();
+            return isQuotaSafeRealtimeMode();
         }
 
         function getLiveSyncPollIntervalMs(pollMs = 0) {
@@ -3725,9 +3735,13 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         function getLiveSyncPolicy(viewId = '') {
             const resolvedViewId = resolveRealtimeContextViewId(viewId);
             const policy = LIVE_SYNC_VIEW_POLICY[resolvedViewId] || LIVE_SYNC_VIEW_POLICY.home || { realtimeTables: [], pollMs: 0 };
+            const alwaysOnRealtimeTables = isQuotaSafeRealtimeMode() ? [] : getAlwaysOnRealtimeTablesForView(resolvedViewId);
+            const directRealtimeTables = shouldUseDirectTableRealtimeForView(resolvedViewId)
+                ? normalizeRealtimeTableList([...(policy.realtimeTables || []), ...alwaysOnRealtimeTables])
+                : [];
             return {
                 viewId: resolvedViewId,
-                realtimeTables: normalizeRealtimeTableList([...(policy.realtimeTables || []), ...getAlwaysOnRealtimeTablesForView(resolvedViewId)]),
+                realtimeTables: directRealtimeTables,
                 pollMs: getLiveSyncPollIntervalMs(policy.pollMs)
             };
         }
@@ -3735,7 +3749,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         function getRealtimeSubscriptionTablesForView(viewId = '') {
             const policy = getLiveSyncPolicy(viewId);
             const includeChatRealtime = policy.viewId === 'chat';
-            return normalizeRealtimeTableList([...(shouldUseAppLiveEventsRealtime() ? [APP_LIVE_EVENTS_TABLE] : []), ...(policy.realtimeTables || []), ...(includeChatRealtime ? CHAT_REALTIME_TABLES : [])]);
+            return normalizeRealtimeTableList([...(shouldUseAppLiveEventsRealtime(policy.viewId) ? [APP_LIVE_EVENTS_TABLE] : []), ...(policy.realtimeTables || []), ...(includeChatRealtime ? CHAT_REALTIME_TABLES : [])]);
         }
 
         function hasHealthyRealtimeSubscriptions(tables = null) {
@@ -3746,7 +3760,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
 
         function hasHealthyCoreRealtimeSubscriptions(viewId = '') {
             const policy = getLiveSyncPolicy(viewId || activeRealtimeContextViewId || activeRealtimeViewId || 'home');
-            if (!policy.realtimeTables.length) return false;
+            if (!policy.realtimeTables.length) return shouldUseAppLiveEventsRealtime(policy.viewId) && hasHealthyAppLiveEventsRealtime();
             return hasHealthyRealtimeSubscriptions(policy.realtimeTables);
         }
 
@@ -11482,7 +11496,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.09').trim() || 'V2026.05.11.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.11.10').trim() || 'V2026.05.11.10';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -15031,8 +15045,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function getDirectImageUrl(url, sizeOrPreset = 'card-inline') {
             if(!url)return"";
             const baseWidth = getThumbnailBaseWidth(sizeOrPreset);
-            const deviceScale = Math.max(1, Math.min(4, Number(window.devicePixelRatio) || 1));
-            const thumbWidth = Math.max(240, Math.min(4096, Math.round(baseWidth * deviceScale)));
+            const deviceScale = Math.max(1, Math.min(2, Number(window.devicePixelRatio) || 1));
+            const thumbWidth = Math.max(220, Math.min(1280, Math.round(baseWidth * deviceScale)));
             const driveId = getDriveImageId(url);
             if(driveId){ return `https://drive.google.com/thumbnail?id=${driveId}&sz=w${thumbWidth}`; }
             return applySizedImageUrl(String(url), thumbWidth);
@@ -38424,6 +38438,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 const filePath = `${new Date().toISOString().split('T')[0]}/${clean(currentUser)}-${uniqueId}.jpg`;
                 const uploadResult = await withTimeout(supabaseClient.storage.from(ML_CAPTURE_PHOTO_BUCKET).upload(filePath, blob, {
                     contentType: 'image/jpeg',
+                    cacheControl: '31536000',
                     upsert: true
                 }), SUPABASE_UPLOAD_TIMEOUT_MS, 'ML photo upload');
                 if (uploadResult && uploadResult.error) throw uploadResult.error;
@@ -47343,6 +47358,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const filePath = `${datePath}/${uniqueId}.${cleanFormat}`;
             const uploadResult = await withTimeout(supabaseClient.storage.from(MARKETING_MATERIALS_BUCKET).upload(filePath, blob, {
                 contentType: blob.type || (cleanFormat === 'jpg' ? 'image/jpeg' : 'image/png'),
+                cacheControl: '31536000',
                 upsert: true
             }), SUPABASE_UPLOAD_TIMEOUT_MS, 'Marketing material upload');
             if (uploadResult && uploadResult.error) throw uploadResult.error;
@@ -49008,6 +49024,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 const uploadResult = await withTimeout(
                                     supabaseClient.storage.from(bucketName).upload(filePath, blob, {
                                         contentType: 'image/jpeg',
+                                        cacheControl: '31536000',
                                         upsert: true
                                     }),
                                     SUPABASE_UPLOAD_TIMEOUT_MS,

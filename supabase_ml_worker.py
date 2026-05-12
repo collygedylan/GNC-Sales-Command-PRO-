@@ -23,6 +23,7 @@ LOGGER = logging.getLogger("gnc.supabase_ml_worker")
 DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
 DEFAULT_JOB_TABLE = "v2_ml_image_jobs"
 DEFAULT_PHOTO_BUCKET = "ml_capture_photos"
+DEFAULT_LIVE_EVENT_TABLE = "v2_app_live_events"
 DEFAULT_MODELS_DIR = pathlib.Path("models")
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
@@ -162,6 +163,7 @@ class WorkerConfig:
     drive_service_account_json: str
     job_table: str = DEFAULT_JOB_TABLE
     photo_bucket: str = DEFAULT_PHOTO_BUCKET
+    app_live_events_table: str = DEFAULT_LIVE_EVENT_TABLE
     poll_seconds: float = 10.0
     batch_size: int = 3
     stale_processing_minutes: int = 30
@@ -182,6 +184,7 @@ class WorkerConfig:
             drive_service_account_json=first_non_empty(os.environ.get("GDRIVE_SERVICE_ACCOUNT_JSON"), os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")),
             job_table=first_non_empty(os.environ.get("ML_JOB_TABLE"), default=DEFAULT_JOB_TABLE),
             photo_bucket=first_non_empty(os.environ.get("ML_PHOTO_BUCKET"), default=DEFAULT_PHOTO_BUCKET),
+            app_live_events_table=first_non_empty(os.environ.get("APP_LIVE_EVENTS_TABLE"), default=DEFAULT_LIVE_EVENT_TABLE),
             poll_seconds=float(first_non_empty(os.environ.get("ML_POLL_SECONDS"), default="10")),
             batch_size=int(first_non_empty(os.environ.get("ML_BATCH_SIZE"), default="3")),
             stale_processing_minutes=int(first_non_empty(os.environ.get("ML_STALE_PROCESSING_MINUTES"), default="30")),
@@ -544,6 +547,34 @@ class SupabaseMlWorker:
         target_path.write_bytes(image_bytes)
         return target_path
 
+    def emit_live_event(self, source_table: str, row_id: str, event_type: str, payload: Optional[Dict[str, Any]] = None) -> None:
+        live_table = first_non_empty(self.config.app_live_events_table)
+        safe_source_table = first_non_empty(source_table)
+        safe_row_id = first_non_empty(row_id)
+        safe_event_type = first_non_empty(event_type)
+        if not live_table or not safe_source_table or not safe_event_type:
+            return
+        event_payload = {
+            "event_key": f"{safe_source_table}:{safe_event_type}:{uuid.uuid4().hex}",
+            "event_type": safe_event_type,
+            "area": "diagnostics" if safe_source_table == self.config.job_table else "inventory",
+            "source_table": safe_source_table,
+            "row_ids": [safe_row_id] if safe_row_id else [],
+            "payload": {
+                **(payload or {}),
+                "method": "ML",
+                "worker_id": self.worker_id,
+            },
+            "actor_username": "ml_worker",
+            "actor_display": "ML Worker",
+            "client_id": self.worker_id,
+            "created_at": iso_now(),
+        }
+        try:
+            self.supabase.table(live_table).insert(event_payload).execute()
+        except Exception as exc:
+            LOGGER.warning("Could not emit app live event for %s: %s", safe_row_id or safe_source_table, exc)
+
     def build_result_payload(self, job: Dict[str, Any], image_path: pathlib.Path) -> Dict[str, Any]:
         plant_prediction = self.models.plant.predict(image_path)
         diagnostics_prediction = self.models.diagnostics.predict(image_path) if self.models.diagnostics else Prediction(
@@ -603,6 +634,12 @@ class SupabaseMlWorker:
             "last_error": str(error),
         }
         self.supabase.table(self.config.job_table).update(payload).eq("unique_id", job_id).execute()
+        self.emit_live_event(
+            self.config.job_table,
+            job_id,
+            "diagnostics:ml_failed",
+            {"status": "ml_failed", "error": str(error)},
+        )
 
     def process_job(self, job: Dict[str, Any]) -> bool:
         claimed = self.claim_job(job)
@@ -616,6 +653,12 @@ class SupabaseMlWorker:
                 image_path = self.download_job_image(claimed, pathlib.Path(temp_dir))
                 payload = self.build_result_payload(claimed, image_path)
                 self.supabase.table(self.config.job_table).update(payload).eq("unique_id", job_id).execute()
+                self.emit_live_event(
+                    self.config.job_table,
+                    job_id,
+                    "diagnostics:ml_complete",
+                    {"status": payload.get("status"), "ml_grade": payload.get("ml_grade")},
+                )
             LOGGER.info("Completed ML job %s", job_id)
             return True
         except Exception as exc:
