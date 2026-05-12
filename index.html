@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.22';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.23';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1872,7 +1872,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.22').trim() || 'V2026.05.12.22';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.23').trim() || 'V2026.05.12.23';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2750,7 +2750,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.22';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.23';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -3685,6 +3685,29 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             return normalizeAppLiveEventRowIds(ids);
         }
 
+        function buildRequestWriteStatusHint(tableName = '', method = '', body = null) {
+            const safeTable = String(tableName || '').trim();
+            const safeMethod = String(method || '').trim().toUpperCase();
+            if (safeTable !== 'v2_active_request' || (safeMethod !== 'PATCH' && safeMethod !== 'POST')) return null;
+            const rows = Array.isArray(body) ? body : (body && typeof body === 'object' ? [body] : []);
+            let hint = null;
+            rows.some((row) => {
+                if (!row || typeof row !== 'object') return false;
+                const status = normalizeRequestStatus(firstNonEmptyValue(row.req_status, row.REQ_STATUS, row.status, row.STATUS, ''));
+                const dateCompleted = String(firstNonEmptyValue(row.date_completed, row.DATE_COMPLETED, '') || '').trim();
+                const archivedRaw = firstNonEmptyValue(row.req_archived, row.REQ_ARCHIVED, null);
+                const archived = archivedRaw === true || archivedRaw === 1 || archivedRaw === '1' || String(archivedRaw || '').trim().toLowerCase() === 'true';
+                if (status !== 'Complete' && !dateCompleted && !archived) return false;
+                hint = {
+                    req_status: status || (dateCompleted ? 'Complete' : ''),
+                    date_completed: dateCompleted,
+                    req_archived: archived
+                };
+                return true;
+            });
+            return hint;
+        }
+
         function getAppLiveEventAreaForTable(tableName = '') {
             const safeTable = String(tableName || '').trim();
             if (!safeTable || safeTable === APP_LIVE_EVENTS_TABLE) return '';
@@ -3797,9 +3820,11 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                 ...extractAppLiveEventRowIdsFromQuery(query)
             ]);
             const eventType = `${area}:${safeMethod.toLowerCase()}`;
+            const requestStatusHint = buildRequestWriteStatusHint(safeTable, safeMethod, body);
             return queueAppLiveEvent(buildAppLiveEventEntry(area, eventType, safeTable, rowIds, {
                 method: safeMethod,
-                row_count: Array.isArray(body) ? body.length : (body && typeof body === 'object' ? 1 : 0)
+                row_count: Array.isArray(body) ? body.length : (body && typeof body === 'object' ? 1 : 0),
+                ...(requestStatusHint ? { request_status_hint: requestStatusHint } : {})
             }));
         }
 
@@ -7526,6 +7551,15 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const methods = Array.from(entry.methods || []).map((value) => String(value || '').trim().toUpperCase()).filter(Boolean);
             const isDelete = methods.includes('DELETE');
             const isBulk = !!entry.bulk || !rowIds.length;
+            const statusHint = entry.lastEvent && entry.lastEvent.payload && entry.lastEvent.payload.request_status_hint
+                ? entry.lastEvent.payload.request_status_hint
+                : null;
+            const appliedStatusHint = !!(statusHint && rowIds.length && applyRequestStatusHintsToLocalRows(rowIds.map((id) => ({
+                unique_id: id,
+                req_status: statusHint.req_status,
+                date_completed: statusHint.date_completed,
+                req_archived: statusHint.req_archived
+            })), { reason: 'request-live-status-hint' }));
             markAppLiveEventDatasetsDirty('v2_active_request', entry.lastEvent);
             if (isDelete) {
                 rowIds.forEach((id) => applyRealtimeChange('v2_active_request', { eventType: 'DELETE', old: { unique_id: id, UNIQUE_ID: id } }, true));
@@ -7545,7 +7579,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     forceRefreshRequestsForView('request-live-miss', { force: true, minIntervalMs: 0, allowWhileInteractive: true }).catch(() => {});
                     return true;
                 }
-                return false;
+                return appliedStatusHint;
             }
             rows.forEach((row) => {
                 applyRealtimeChange('v2_active_request', { eventType: 'UPDATE', new: row }, true);
@@ -12208,7 +12242,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.22').trim() || 'V2026.05.12.22';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.23').trim() || 'V2026.05.12.23';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -12976,6 +13010,77 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function isRequestComplete(item) {
             if (isOptimisticallyCompletedRow(item)) return true;
             return hasRequestCompletionState(item);
+        }
+
+        function isRequestPendingVisible(item) {
+            return !!(item && !item.REQUEST_HISTORY && !item.REQ_ARCHIVED && !isRequestComplete(item));
+        }
+
+        function applyRequestStatusHintsToLocalRows(rows = [], options = {}) {
+            const safeRows = Array.isArray(rows) ? rows : [];
+            if (!safeRows.length || !Array.isArray(requestsInventory)) return false;
+            const hintsById = new Map();
+            safeRows.forEach((row) => {
+                if (!row || typeof row !== 'object') return;
+                const uniqueId = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
+                if (!uniqueId) return;
+                hintsById.set(uniqueId, row);
+            });
+            if (!hintsById.size) return false;
+            let changed = false;
+            const changedIds = [];
+            const applyHint = (target) => {
+                if (!target) return false;
+                const uniqueId = String(firstNonEmptyValue(target.UNIQUE_ID, target.unique_id, '') || '').trim();
+                const hint = hintsById.get(uniqueId);
+                if (!hint) return false;
+                let rowChanged = false;
+                const nextStatus = normalizeRequestStatus(firstNonEmptyValue(hint.REQ_STATUS, hint.req_status, hint.STATUS, hint.status, ''));
+                const nextCompletedAt = String(firstNonEmptyValue(hint.DATE_COMPLETED, hint.date_completed, '') || '').trim();
+                const archivedRaw = firstNonEmptyValue(hint.REQ_ARCHIVED, hint.req_archived, null);
+                const hasArchivedHint = archivedRaw !== null && archivedRaw !== undefined && String(archivedRaw).trim() !== '';
+                const nextArchived = archivedRaw === true || archivedRaw === 1 || archivedRaw === '1' || String(archivedRaw || '').trim().toLowerCase() === 'true';
+                if (nextStatus === 'Complete' && normalizeRequestStatus(firstNonEmptyValue(target.REQ_STATUS, target.req_status, '')) !== 'Complete') {
+                    target.REQ_STATUS = 'Complete';
+                    target.req_status = 'Complete';
+                    rowChanged = true;
+                }
+                if (nextCompletedAt && String(firstNonEmptyValue(target.DATE_COMPLETED, target.date_completed, '') || '').trim() !== nextCompletedAt) {
+                    target.DATE_COMPLETED = nextCompletedAt;
+                    target.date_completed = nextCompletedAt;
+                    rowChanged = true;
+                }
+                if (hasArchivedHint && !!target.REQ_ARCHIVED !== nextArchived) {
+                    target.REQ_ARCHIVED = nextArchived;
+                    target.req_archived = nextArchived;
+                    rowChanged = true;
+                }
+                if (rowChanged) {
+                    normalizeRowPhotoFields(target);
+                    buildSearchIndex(target);
+                    changedIds.push(uniqueId);
+                }
+                return rowChanged;
+            };
+            requestsInventory.forEach((item) => {
+                if (applyHint(item)) changed = true;
+            });
+            if (activeItem && applyHint(activeItem)) changed = true;
+            if (!changed) return false;
+            const uniqueChangedIds = Array.from(new Set(changedIds));
+            discardPendingLocalEdits(uniqueChangedIds, true);
+            clearOptimisticCompletedRows(uniqueChangedIds);
+            requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+            invalidateResolvedViewStateCaches();
+            if (!(options && options.skipRefresh)) {
+                refreshLocalRequestViewState(String(firstNonEmptyValue(options && options.reason, 'request-status-hint')), {
+                    forceRender: true,
+                    preferImmediate: true,
+                    userAction: false,
+                    typingDelay: REQUEST_REALTIME_UI_DELAY_MS
+                });
+            }
+            return true;
         }
 
         function buildRequestLiveSyncSignature(rows = []) {
@@ -16072,7 +16177,7 @@ let searchRenderToken = {};
         }
         function getPendingRequestCount() {
             let items = getScopedRequestItems(requestsInventory);
-            items = items.filter(i => i && !i.REQUEST_HISTORY && !i.REQ_ARCHIVED && !isRequestComplete(i));
+            items = items.filter(isRequestPendingVisible);
             return items.length;
         }
 
@@ -38500,7 +38605,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
         function getCurrentRequestDetailItems() {
             let items = getScopedRequestItems(requestsInventory);
             if (activeReqTab === 'pending') {
-                items = items.filter(i => !i.REQUEST_HISTORY && !isRequestComplete(i) && !i.REQ_ARCHIVED);
+                items = items.filter(isRequestPendingVisible);
             } else if (activeReqTab === 'reps') {
                 items = items.filter(i => getRequestAssignedRep(i) === selectedReqRepView && !i.REQ_ARCHIVED);
                 if (requestViewLevel >= 2 && selectedReqCustView) {
@@ -38651,7 +38756,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
 
             if (activeReqTab === 'pending') {
                 const crumbText = 'All Pending Requests';
-                let pendingItems = items.filter(i => !i.REQUEST_HISTORY && !isRequestComplete(i) && !i.REQ_ARCHIVED);
+                let pendingItems = items.filter(isRequestPendingVisible);
 
                 if (pendingItems.length === 0) {
                     applyRequestRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No pending requests.</div>`, 'request:pending:empty');
@@ -38888,6 +38993,11 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 }
                 const nextSignature = buildRequestLiveSyncSignature(signatureRows);
                 if (nextSignature === requestViewLiveSyncSignature) return true;
+                const formattedSignatureRows = formatFetchedRows(signatureRows || [], 'v2_active_request');
+                applyRequestStatusHintsToLocalRows(formattedSignatureRows.filter((row) => hasRequestCompletionState(row) || !!row.REQ_ARCHIVED), {
+                    reason: 'request-signature-status-hint',
+                    skipRefresh: false
+                });
                 const rows = await fetchAllSupabaseRows('v2_active_request', 'select=*&order=unique_id.desc');
                 if (shouldDeferInteractiveBackgroundWork()) {
                     if (!safeOptions.once) syncRequestViewLiveSync(INTERACTION_REFRESH_DEFER_MS, safeOptions);
@@ -51329,6 +51439,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                     try {
                         if (await stopIfRemoteRequestAlreadyComplete()) return;
                         await runDetailWriteWithRetry(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`, saveRequestOptions);
+                        if (prefix === 'req-' && isComplete) {
+                            runDetailWriteWithRetry('v2_active_request', 'PATCH', {
+                                req_status: 'Complete',
+                                date_completed: payload.date_completed
+                            }, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`, saveRequestOptions).catch((error) => {
+                                console.warn('Request completion confirmation write skipped', error);
+                            });
+                        }
                         if (isComplete) flushQueuedAppLiveEvents().catch(() => {});
                         const finalizeSave = () => handleSaveSuccess(completionArtifacts || buildCompletionArtifacts());
                         if (isLagSensitiveDetailPrefix(prefix)) setTimeout(finalizeSave, 0);
