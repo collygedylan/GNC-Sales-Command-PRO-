@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.31';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.32';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1872,7 +1872,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.31').trim() || 'V2026.05.12.31';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.32').trim() || 'V2026.05.12.32';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2031,6 +2031,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div id="av-crumb" class="text-xs font-bold text-[#007a4d] mb-0 mt-0 empty:hidden flex-1 min-w-0">Open Stock</div>
                         <button type="button" id="av-export-btn" class="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="exportCurrentAVToExcel()"><i class="ph-bold ph-download-simple text-base"></i><span id="av-export-btn-label">Export Excel</span></button>
                     </div>
+                    <div id="av-photo-outreach-panel" class="hidden"></div>
                     </div>
                     </div>
                     <div id="av-content"></div>
@@ -2750,7 +2751,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.31';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.32';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -5011,18 +5012,19 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                     { value: '1', token: '1', label: '1' },
                     { value: '2', token: '2', label: '2' },
                     { value: '3', token: '3', label: '3' },
-                    { value: '"', token: 'double_quote', label: '"' },
+                    { value: '-', token: '-', label: '-' },
                     { value: '4', token: '4', label: '4' },
                     { value: '5', token: '5', label: '5' },
                     { value: '6', token: '6', label: '6' },
-                    { value: '.', token: '.', label: '.' },
+                    { value: '"', token: 'double_quote', label: '"' },
                     { value: '7', token: '7', label: '7' },
                     { value: '8', token: '8', label: '8' },
                     { value: '9', token: '9', label: '9' },
-                    { value: '-', token: '-', label: '-' },
-                    { blank: true },
-                    { value: '0', token: '0', label: '0', span: 2 },
-                    { blank: true }
+                    { token: '__backspace', labelHtml: '<i class="ph-bold ph-backspace"></i>', action: 'backspace' },
+                    { value: "'", token: 'apostrophe', label: "'", labelHtml: '&#39;' },
+                    { value: '0', token: '0', label: '0' },
+                    { value: '.', token: '.', label: '.' },
+                    { token: '__done', labelHtml: '<i class="ph-bold ph-arrow-right"></i>', action: 'done' }
                 ];
             }
             return [
@@ -5037,13 +5039,15 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                 { value: '7', token: '7', label: '7' },
                 { value: '8', token: '8', label: '8' },
                 { value: '9', token: '9', label: '9' },
+                { token: '__backspace', labelHtml: '<i class="ph-bold ph-backspace"></i>', action: 'backspace' },
                 { value: "'", token: 'apostrophe', label: "'", labelHtml: '&#39;' },
-                { value: '.', token: '.', label: '.' },
                 { value: '0', token: '0', label: '0' },
+                { value: '.', token: '.', label: '.' },
+                { token: '__done', labelHtml: '<i class="ph-bold ph-arrow-right"></i>', action: 'done' },
                 { value: 'H', token: 'H', label: 'H' },
                 { value: 'W', token: 'W', label: 'W' },
                 { value: 'x', token: 'x', label: 'x' },
-                { value: ' ', token: 'space', label: 'SPACE', span: 3 }
+                { value: ' ', token: 'space', label: 'SPACE' }
             ];
         }
 
@@ -5066,23 +5070,27 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             const keysHtml = getDetailMeasurementKeyboardKeys(type).map((key) => {
                 if (key.blank) return '<div aria-hidden="true"></div>';
                 const spanStyle = key.span ? ` style="grid-column: span ${Number(key.span) || 1} / span ${Number(key.span) || 1};"` : '';
-                const isOperator = ['.','-','double_quote','apostrophe','H','W','x'].includes(key.token);
-                const toneClass = isOperator ? 'bg-[#3b403d] text-white' : 'bg-[#282d2a] text-white';
+                const isOperator = ['.','-','double_quote','apostrophe','H','W','x','space','__backspace','__done'].includes(key.token);
+                const toneClass = isOperator ? 'bg-[#3b403d] text-zinc-100' : 'bg-[#272c29] text-zinc-100';
                 const labelHtml = key.labelHtml || esc(key.label);
-                return `<button type="button" data-key-token="${esc(key.token)}"${spanStyle} class="min-h-[42px] rounded-full border border-black/20 px-2 text-xl font-medium shadow-sm active:scale-95 active:bg-[#4b524e] ${toneClass}" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardToken(this.dataset.keyToken)">${labelHtml}</button>`;
+                const action = key.action === 'done'
+                    ? 'return completeDetailMeasurementKeyboard()'
+                    : `return pressDetailMeasurementKeyboardToken(this.dataset.keyToken)`;
+                return `<button type="button" data-key-token="${esc(key.token)}"${spanStyle} class="min-h-[50px] rounded-[28px] border border-black/20 px-2 text-[24px] font-medium leading-none shadow-sm active:scale-95 active:bg-[#535955] sm:min-h-[54px] ${toneClass}" onpointerdown="event.preventDefault()" onclick="${action}">${labelHtml}</button>`;
             }).join('');
             keyboard.innerHTML = [
                 '<div class="mx-auto max-w-md">',
-                '<div class="mb-1.5 flex items-center justify-between gap-3">',
-                `<div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-300">${esc(title)}</div>`,
-                '<button type="button" class="rounded-full border border-zinc-700 bg-[#252a27] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white active:scale-95" onpointerdown="event.preventDefault()" onclick="return completeDetailMeasurementKeyboard()">Done</button>',
+                '<div class="mb-2 flex items-center justify-between gap-3 px-2 text-zinc-300">',
+                '<button type="button" class="grid h-8 w-8 place-items-center rounded-xl bg-transparent text-lg text-zinc-200 active:scale-95" aria-label="Keyboard tools" onpointerdown="event.preventDefault()"><i class="ph-bold ph-squares-four"></i></button>',
+                '<div class="flex items-center gap-5 text-xl text-zinc-200">',
+                '<i class="ph-bold ph-key"></i>',
+                '<i class="ph-bold ph-cardholder"></i>',
+                '<i class="ph-bold ph-map-pin"></i>',
                 '</div>',
-                `<div class="grid grid-cols-4 gap-1.5">${keysHtml}</div>`,
-                '<div class="mt-1.5 grid grid-cols-3 gap-1.5">',
-                '<button type="button" class="min-h-[38px] rounded-full border border-zinc-700 bg-[#252a27] px-3 text-[10px] font-black uppercase tracking-[0.12em] text-white active:scale-95" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardKey(\'__backspace\')"><i class="ph-bold ph-backspace"></i> Back</button>',
-                '<button type="button" class="min-h-[38px] rounded-full border border-zinc-700 bg-[#252a27] px-3 text-[10px] font-black uppercase tracking-[0.12em] text-red-300 active:scale-95" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardKey(\'__clear\')">Clear</button>',
-                '<button type="button" class="min-h-[38px] rounded-full border border-emerald-500 bg-[#007a4d] px-3 text-[10px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onpointerdown="event.preventDefault()" onclick="return completeDetailMeasurementKeyboard()">Done</button>',
+                '<button type="button" class="grid h-8 w-8 place-items-center rounded-xl bg-transparent text-lg text-zinc-200 active:scale-95" aria-label="Close keyboard" onpointerdown="event.preventDefault()" onclick="return completeDetailMeasurementKeyboard()"><i class="ph-bold ph-caret-down"></i></button>',
                 '</div>',
+                `<div class="grid grid-cols-4 gap-2">${keysHtml}</div>`,
+                `<div class="mt-2 flex items-center justify-between px-5 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-400"><span>${esc(title)}</span><button type="button" class="rounded-full px-3 py-1 text-zinc-300 active:scale-95" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardKey('__clear')">Clear</button></div>`,
                 '</div>'
             ].join('');
             keyboard.classList.remove('hidden');
@@ -12116,7 +12124,7 @@ const FIELD_SAVE_GRACE_MS = 1400;
         const VIEW_SWITCH_GRACE_MS = 480;
 
 let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='all'; let activeAvReserveDetailTab='customer'; let selectedAvReserveDetailCustomerKey=null;
-let selectedAvSeasons=new Set(['S1']); let avSeasonDefaultsInitialized=false; let avSourceDropdownOpen=false; let avSeasonDropdownOpen=false; let avGenusFilterOpen=false; let avContSizeFilterOpen=false; let avHoldDropdownOpen=false; let avPhotoDropdownOpen=false; let avSeasonSearchTerm=''; let selectedAvGenusNames=new Set(); let avGenusSearchTerm=''; let avGenusSelectionMode='all'; let selectedAvContSizes=new Set(); let avContSizeSearchTerm=''; let avContSizeSelectionMode='all'; let avHoldFilterMode='all'; let avHoldStopOnly=false; let avFilterItemsCache=[]; let avFilterGenusOptions=[]; let avFilterContSizeOptions=[];
+let selectedAvSeasons=new Set(['S1']); let avSeasonDefaultsInitialized=false; let avSourceDropdownOpen=false; let avSeasonDropdownOpen=false; let avGenusFilterOpen=false; let avContSizeFilterOpen=false; let avHoldDropdownOpen=false; let avPhotoDropdownOpen=false; let avSeasonSearchTerm=''; let selectedAvGenusNames=new Set(); let avGenusSearchTerm=''; let avGenusSelectionMode='all'; let selectedAvContSizes=new Set(); let avContSizeSearchTerm=''; let avContSizeSelectionMode='all'; let avHoldFilterMode='all'; let avHoldStopOnly=false; let avFilterItemsCache=[]; let avFilterGenusOptions=[]; let avFilterContSizeOptions=[]; let avPhotoOutreachMinSLts=''; let avPhotoOutreachSelectedRepKeys=new Set(); let avPhotoOutreachRepStateKey=''; let avPhotoOutreachSendBusy=false;
 let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKeys=new Set(); let driveCustomerOutreachSelectedSourceRowIds=new Set(); let driveCustomerOutreachStateKey=''; let driveCustomerOutreachRecipientMode='selected'; let driveCustomerOutreachSelectedAllRepKeys=new Set(); let driveCustomerOutreachAllRepStateKey=''; let driveCustomerOutreachSendBusy=false; let driveCustomerOutreachReserveRows=[]; let driveCustomerOutreachReserveRowsKey=''; let driveCustomerOutreachReserveRowsLoadedKey=''; let driveCustomerOutreachReserveRowsLoading=false; let driveCustomerOutreachReserveRowsError=''; let driveCustomerOutreachReserveFetchToken=0;
         let taskTeamSelectorCacheKey=''; let taskTeamSelectorCacheHtml=''; let taskTeamSelectorEmptyHtml='';
 
@@ -12247,7 +12255,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.31').trim() || 'V2026.05.12.31';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.32').trim() || 'V2026.05.12.32';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -31054,6 +31062,238 @@ function toggleDriveQuickRequestItem(domId) {
             return getAvPhotoMode() === 'photos' ? 'Photos' : 'All';
         }
 
+        function isAvPhotoOutreachAvailable() {
+            return !!(canUseCustomerConsigneeOutreach()
+                && (activeAVTab === 'open' || activeAVTab === 'hotprice')
+                && getAvPhotoMode() === 'photos');
+        }
+
+        function getAvPhotoOutreachBrandLabel() {
+            return activeAVTab === 'hotprice' ? 'GNC PH HOT PRICE' : 'GNC PH Open Stock';
+        }
+
+        function getAvPhotoOutreachRepKey(repName = '', repEmail = '') {
+            const email = normalizeRequestEmailAddress(repEmail || getBloomCropUpdateRepEmail(repName) || resolveRequestRecipientEmail(repName));
+            const token = normalizeRepMatchToken(repName).replace(/\s+/g, '');
+            return email || token || String(repName || '').trim().toLowerCase();
+        }
+
+        function getAvPhotoOutreachRepOptions() {
+            const entries = new Map();
+            BLOOM_CROP_UPDATE_REP_GROUPS.forEach((group) => {
+                (group.reps || []).forEach((repName) => {
+                    const email = getBloomCropUpdateRepEmail(repName);
+                    const key = getAvPhotoOutreachRepKey(repName, email);
+                    if (!key || !email) return;
+                    const existing = entries.get(key) || {
+                        key,
+                        repName,
+                        email,
+                        groups: [],
+                        groupLabels: []
+                    };
+                    if (!existing.groups.includes(group.key)) existing.groups.push(group.key);
+                    if (!existing.groupLabels.includes(group.label)) existing.groupLabels.push(group.label);
+                    entries.set(key, existing);
+                });
+            });
+            return Array.from(entries.values()).sort((a, b) => String(a.repName || '').localeCompare(String(b.repName || ''), undefined, { sensitivity: 'base' }));
+        }
+
+        function syncAvPhotoOutreachRepDefaults() {
+            const reps = getAvPhotoOutreachRepOptions();
+            const stateKey = reps.map((rep) => rep.key).join('|');
+            if (avPhotoOutreachRepStateKey === stateKey) return reps;
+            avPhotoOutreachRepStateKey = stateKey;
+            avPhotoOutreachSelectedRepKeys = new Set(reps.map((rep) => rep.key));
+            return reps;
+        }
+
+        function getAvPhotoOutreachSelectedReps() {
+            return getAvPhotoOutreachRepOptions().filter((rep) => avPhotoOutreachSelectedRepKeys.has(rep.key) && rep.email);
+        }
+
+        function toggleAvPhotoOutreachRep(repKey = '') {
+            const safeKey = String(repKey || '').trim();
+            if (!safeKey) return false;
+            syncAvPhotoOutreachRepDefaults();
+            if (avPhotoOutreachSelectedRepKeys.has(safeKey)) avPhotoOutreachSelectedRepKeys.delete(safeKey);
+            else avPhotoOutreachSelectedRepKeys.add(safeKey);
+            return refreshAvPhotoOutreachPanel();
+        }
+
+        function setAvPhotoOutreachAllRepsSelected(selected = true) {
+            const reps = getAvPhotoOutreachRepOptions();
+            avPhotoOutreachSelectedRepKeys = selected ? new Set(reps.map((rep) => rep.key)) : new Set();
+            return refreshAvPhotoOutreachPanel();
+        }
+
+        function setAvPhotoOutreachGroupSelected(groupKey = '', selected = null) {
+            const safeGroupKey = String(groupKey || '').trim().toUpperCase();
+            if (!safeGroupKey) return false;
+            const reps = getAvPhotoOutreachRepOptions().filter((rep) => (rep.groups || []).includes(safeGroupKey));
+            if (!reps.length) return false;
+            syncAvPhotoOutreachRepDefaults();
+            const shouldSelect = selected === null
+                ? !reps.every((rep) => avPhotoOutreachSelectedRepKeys.has(rep.key))
+                : !!selected;
+            reps.forEach((rep) => {
+                if (shouldSelect) avPhotoOutreachSelectedRepKeys.add(rep.key);
+                else avPhotoOutreachSelectedRepKeys.delete(rep.key);
+            });
+            return refreshAvPhotoOutreachPanel();
+        }
+
+        function getAvPhotoOutreachMinSLtsValue() {
+            const input = document.getElementById('av-photo-outreach-min-slts');
+            if (input) avPhotoOutreachMinSLts = String(input.value || '').trim();
+            return parseAppNumber(avPhotoOutreachMinSLts);
+        }
+
+        function getAvPhotoOutreachRows(rows = []) {
+            const minSLts = getAvPhotoOutreachMinSLtsValue();
+            return (Array.isArray(rows) ? rows : [])
+                .filter((row) => hasDriveCustomerOutreachPhotoSpec(row))
+                .filter((row) => {
+                    if (minSLts == null) return true;
+                    const rowSLts = parseAppNumber(firstNonEmptyValue(row && row.S_LTS, row && row.s_lts, ''));
+                    return rowSLts != null && rowSLts > minSLts;
+                });
+        }
+
+        function refreshAvPhotoOutreachPanel() {
+            const avState = getCurrentAVBaseItems();
+            const exportContext = buildAVExportContext(avState.items || [], avState.term || '');
+            renderAvPhotoOutreachPanel(exportContext.rows || []);
+            return false;
+        }
+
+        function renderAvPhotoOutreachPanel(rows = []) {
+            const panel = document.getElementById('av-photo-outreach-panel');
+            if (!panel) return false;
+            if (!isAvPhotoOutreachAvailable()) {
+                panel.classList.add('hidden');
+                panel.innerHTML = '';
+                clearContainerRenderSignature(panel);
+                return false;
+            }
+            const visibleRows = Array.isArray(rows) ? rows : [];
+            const validPhotoSpecRows = visibleRows.filter((row) => hasDriveCustomerOutreachPhotoSpec(row));
+            const sendRows = getAvPhotoOutreachRows(visibleRows);
+            const repOptions = syncAvPhotoOutreachRepDefaults();
+            const selectedReps = getAvPhotoOutreachSelectedReps();
+            const brandLabel = getAvPhotoOutreachBrandLabel();
+            const minValueText = String(avPhotoOutreachMinSLts || '').trim();
+            const groupHtml = BLOOM_CROP_UPDATE_REP_GROUPS.map((group) => {
+                const groupReps = repOptions.filter((rep) => (rep.groups || []).includes(group.key));
+                const selectedInGroup = groupReps.filter((rep) => avPhotoOutreachSelectedRepKeys.has(rep.key)).length;
+                const repsHtml = groupReps.map((rep) => {
+                    const checked = avPhotoOutreachSelectedRepKeys.has(rep.key) ? 'checked' : '';
+                    return `<label class="flex min-h-[42px] items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[11px] font-bold text-slate-700 shadow-sm"><input type="checkbox" class="h-4 w-4 shrink-0 accent-[#007a4d]" ${checked} onclick='event.stopPropagation(); return toggleAvPhotoOutreachRep(${JSON.stringify(rep.key)})'><span class="min-w-0 flex-1 truncate">${esc(rep.repName)}</span></label>`;
+                }).join('');
+                return `<div class="rounded-xl border border-emerald-100 bg-white/80 p-3"><div class="flex items-center justify-between gap-2"><div><div class="text-[11px] font-black text-emerald-900">${esc(group.label)}</div><div class="text-[9px] font-black uppercase tracking-[0.12em] text-emerald-600">${selectedInGroup}/${groupReps.length} selected</div></div><button type="button" class="rounded-full border border-emerald-200 bg-white px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setAvPhotoOutreachGroupSelected('${escJsAttrValue(group.key)}')">Toggle</button></div><div class="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">${repsHtml}</div></div>`;
+            }).join('');
+            const sendDisabled = avPhotoOutreachSendBusy || !sendRows.length || !selectedReps.length;
+            const signature = buildRowsRenderSignature(`av-photo-outreach|${activeAVTab}|${brandLabel}|${minValueText}|${selectedReps.map((rep) => rep.key).join('|')}|${avPhotoOutreachSendBusy ? '1' : '0'}`, sendRows, ['S_LTS','SPEC','CALIPER','ROW_PHOTO_LINK','PHOTO_LINK','SAVED_PHOTO_LINK','CAV_HOT_PRICE']);
+            const html = `<div class="mb-3 rounded-[22px] border border-emerald-200 bg-emerald-50/80 p-3 shadow-sm"><div class="flex flex-col gap-3"><div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">${esc(brandLabel)}</div><div class="mt-1 text-[12px] font-bold text-slate-600">${sendRows.length} rows ready from ${validPhotoSpecRows.length} visible rows with valid photos/specs.</div></div><div class="flex shrink-0 flex-wrap gap-1.5"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setAvPhotoOutreachAllRepsSelected(true)">All Reps</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-slate-600" onclick="return setAvPhotoOutreachAllRepsSelected(false)">Clear</button></div></div><div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2"><label class="min-w-0"><span class="ml-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Minimum s_LTS</span><input id="av-photo-outreach-min-slts" type="number" inputmode="decimal" step="1" class="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-[13px] font-black text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" value="${esc(minValueText)}" placeholder="e.g. 10" oninput="avPhotoOutreachMinSLts=this.value"></label><button type="button" class="self-end rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-95" onclick="return refreshAvPhotoOutreachPanel()">Apply</button></div><div class="space-y-2">${groupHtml}</div><button type="button" class="w-full rounded-2xl px-4 py-3 text-[12px] font-black uppercase tracking-[0.14em] shadow-sm ${sendDisabled ? 'pointer-events-none bg-slate-200 text-slate-400' : 'bg-emerald-700 text-white active:scale-[0.99]'}" onclick="return sendAvPhotoOutreachEmail()">${avPhotoOutreachSendBusy ? 'Sending...' : `Send ${sendRows.length} Rows To ${selectedReps.length} Reps`}</button></div></div>`;
+            panel.classList.remove('hidden');
+            setContainerHtmlWithSignature(panel, html, signature);
+            return false;
+        }
+
+        async function sendAvPhotoOutreachEmail() {
+            if (!isAvPhotoOutreachAvailable()) {
+                showToast('Photos View Needed', 'Open AV > Open Stock Photos or Hot Price Photos first.', true);
+                return false;
+            }
+            if (avPhotoOutreachSendBusy) return false;
+            const avState = getCurrentAVBaseItems();
+            const exportContext = buildAVExportContext(avState.items || [], avState.term || '');
+            const rows = getAvPhotoOutreachRows(exportContext.rows || []);
+            if (!rows.length) {
+                showToast('No Rows', 'No visible rows have valid photos, specs, and an s_LTS above the minimum.', true);
+                renderAvPhotoOutreachPanel(exportContext.rows || []);
+                return false;
+            }
+            const selectedReps = getAvPhotoOutreachSelectedReps();
+            if (!selectedReps.length) {
+                showToast('Select Reps', 'Pick at least one OK, NC, or TX rep.', true);
+                return false;
+            }
+            avPhotoOutreachSendBusy = true;
+            renderAvPhotoOutreachPanel(exportContext.rows || []);
+            try {
+                const brandLabel = getAvPhotoOutreachBrandLabel();
+                const minSLts = getAvPhotoOutreachMinSLtsValue();
+                const selectedGroupLabels = BLOOM_CROP_UPDATE_REP_GROUPS
+                    .filter((group) => selectedReps.some((rep) => (rep.groups || []).includes(group.key)))
+                    .map((group) => group.label);
+                const audienceLabel = selectedGroupLabels.length
+                    ? `${selectedGroupLabels.join(', ')} (${selectedReps.length} rep${selectedReps.length === 1 ? '' : 's'})`
+                    : `${selectedReps.length} selected rep${selectedReps.length === 1 ? '' : 's'}`;
+                const salesRepEmails = dedupeRequestEmailRecipients(selectedReps.map((rep) => rep.email).filter(Boolean));
+                const recipientEmails = dedupeRequestEmailRecipients([...salesRepEmails, ...REQUEST_EMAIL_INTERNAL_RECIPIENTS]);
+                const minLabel = minSLts == null ? 'No minimum' : `s_LTS > ${minSLts}`;
+                const subject = `${brandLabel} - ${rows.length} Photo/Spec Row${rows.length === 1 ? '' : 's'} - ${minLabel}`;
+                const rowText = formatInventoryItemsText(rows, `${brandLabel} Rows`, { includeHeader: true, includePhotoUrls: true, omitFieldLabels: ['LOC MATCH %'] });
+                const rowHtml = formatInventoryItemsHtml(rows, `${brandLabel} Rows`, { omitFieldLabels: ['LOC MATCH %'] });
+                const metaText = [
+                    `Audience: ${audienceLabel}`,
+                    `Rows Sent: ${rows.length}`,
+                    `Minimum s_LTS: ${minSLts == null ? 'None' : minSLts}`,
+                    `Visible Photo/Spec Rows: ${(exportContext.rows || []).filter((row) => hasDriveCustomerOutreachPhotoSpec(row)).length}`
+                ].join('\n');
+                const metaHtml = `<div style="margin:0 0 16px 0; padding:12px 14px; border-radius:10px; background:#f0fdf4; border:1px solid #a7f3d0;"><div><strong>Audience:</strong> ${escapeShareHtml(audienceLabel)}</div><div><strong>Rows Sent:</strong> ${rows.length}</div><div><strong>Minimum s_LTS:</strong> ${escapeShareHtml(minSLts == null ? 'None' : String(minSLts))}</div></div>`;
+                const itemPayload = buildDriveCustomerOutreachItemsPayload(rows);
+                const payload = {
+                    type: 'email',
+                    emailType: 'drive_customer_outreach',
+                    sendToAllSalesReps: true,
+                    brandLabel,
+                    fromName: brandLabel,
+                    hideItemHeader: true,
+                    audienceLabel,
+                    subject,
+                    repName: '',
+                    salesRepName: '',
+                    repEmail: '',
+                    salesRepEmail: '',
+                    dylanEmail: REQUEST_EMAIL_INTERNAL_RECIPIENTS[0],
+                    jdEmail: REQUEST_EMAIL_INTERNAL_RECIPIENTS[1],
+                    internalRecipients: REQUEST_EMAIL_INTERNAL_RECIPIENTS.slice(),
+                    recipientEmails,
+                    recipients: recipientEmails.map((email) => ({ email, role: salesRepEmails.includes(email) ? 'sales-rep' : 'internal' })),
+                    selectedRepGroups: selectedGroupLabels,
+                    selectedSalesReps: selectedReps.map((rep) => ({ name: rep.repName, email: rep.email, groups: rep.groupLabels || [] })),
+                    sourceLabel: brandLabel,
+                    sLtsMin: minSLts,
+                    commonname: brandLabel,
+                    itemcode: '',
+                    season: getAvSeasonSummaryLabel(),
+                    customers: [],
+                    customerConsigneeRows: [],
+                    sourceRows: itemPayload,
+                    items: itemPayload,
+                    formattedItemsText: `${brandLabel}\n${metaText}\n\n${rowText}`,
+                    formattedItemsHtml: `${metaHtml}${rowHtml}`
+                };
+                const responseData = await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, `${brandLabel} Email`);
+                if (responseData && responseData.ok === false) {
+                    const error = new Error(`Email failed (${responseData.status || 0})`);
+                    error.responseData = responseData;
+                    throw error;
+                }
+                showToast('Sent', `${brandLabel} email sent with ${rows.length} row${rows.length === 1 ? '' : 's'} to ${salesRepEmails.length} rep${salesRepEmails.length === 1 ? '' : 's'}.`);
+            } catch (error) {
+                console.error('AV photo outreach email failed', error);
+                showToast('Email Error', 'The AV photo/spec email could not be sent.', true);
+            } finally {
+                avPhotoOutreachSendBusy = false;
+                refreshAvPhotoOutreachPanel();
+            }
+            return false;
+        }
+
         function syncAvSeasonControlQuick() {
             const container = document.getElementById('av-top-filters');
             if (!container) return;
@@ -32580,6 +32820,7 @@ function toggleDriveQuickRequestItem(domId) {
                         ? (activeAvHotPriceTab === 'photos' ? 'hot price photos' : 'hot price rows')
                         : (activeAvReserveMode === 'photos' ? 'reserve location photos' : 'reserve locations'));
                 updateAVExportButton(0);
+                renderAvPhotoOutreachPanel([]);
                 const emptySignature = buildRowsRenderSignature(`av-empty|${activeAVTab}|${activeAvOpenTab}|${activeAvHotPriceTab}|${activeAvReserveMode}|${term}|${emptyLabel}`, []);
                 setContainerHtmlWithSignature(container, `<div class="p-8 text-center text-gray-400">${activeAVTab === 'hotprice' ? (activeAvHotPriceTab === 'photos' ? 'No hot price photos found.' : 'No hot price rows found.') : `No ${emptyLabel} found.`}</div>`, emptySignature);
                 crumb.innerText = activeAVTab === 'hotprice'
@@ -32599,6 +32840,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const crumbText = activeAvOpenTab === 'photos'
                     ? (term.length > 0 ? `Search Results (${openRows.length})` : `Open Stock Photos (${openRows.length} items)`)
                     : (term.length > 0 ? `Search Results (${openRows.length})` : `Open Stock (${openRows.length} items)`);
+                renderAvPhotoOutreachPanel(openRows);
                 const renderSignature = buildRowsRenderSignature(`av-open|${sourceView}|${activeAvOpenTab}|${term}|${crumbText}`, openRows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY']);
                 if (shouldUseChunkedAVOpenRender(openRows)) {
                     renderAVOpenCardsChunked(container, crumb, openRows, sourceView, crumbText);
@@ -32615,6 +32857,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const crumbText = activeAvHotPriceTab === 'photos'
                     ? (term.length > 0 ? `Search Results (${hotPriceRows.length})` : `HOT PRICE Photos (${hotPriceRows.length} items)`)
                     : (term.length > 0 ? `Search Results (${hotPriceRows.length})` : `HOT PRICE (${hotPriceRows.length} items)`);
+                renderAvPhotoOutreachPanel(hotPriceRows);
                 const renderSignature = buildRowsRenderSignature(`av-hotprice|${sourceView}|${activeAvHotPriceTab}|${term}|${crumbText}`, hotPriceRows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY']);
                 if (shouldUseChunkedAVOpenRender(hotPriceRows)) {
                     renderAVOpenCardsChunked(container, crumb, hotPriceRows, sourceView, crumbText);
@@ -32630,6 +32873,7 @@ function toggleDriveQuickRequestItem(domId) {
                 : (term.length > 0 ? `Search Results (${reserveRows.length})` : `All Reserve Locations (${reserveRows.length} items)`);
             const reserveSourceView = activeAvReserveMode === 'photos' ? 'av-photo' : 'av';
             const renderSignature = buildRowsRenderSignature(`av-reserves|${reserveSourceView}|${activeAvReserveMode}|${term}|${crumbText}`, reserveRows, ['ITEMCODE','LOTCODE','LOCATIONCODE']);
+            renderAvPhotoOutreachPanel([]);
             if (shouldUseChunkedAVOpenRender(reserveRows)) {
                 renderAVOpenCardsChunked(container, crumb, reserveRows, reserveSourceView, crumbText);
                 return;
@@ -36032,7 +36276,11 @@ function toggleDriveQuickRequestItem(domId) {
             if (!canUseCustomerConsigneeOutreach() || !isCustomerConsigneeOutreachSource(sourceView, item)) return false;
             const safeSource = normalizeCustomerConsigneeOutreachSourceView(sourceView);
             const rawSource = String(sourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
-            if (safeSource === 'av') return rawSource !== 'av-photo' && ['open', 'hotprice', 'reserves'].includes(String(activeAVTab || '').trim()) && isCustomerConsigneeOutreachAvAllView();
+            if (safeSource === 'av') {
+                const tab = String(activeAVTab || '').trim();
+                if (tab === 'open' || tab === 'hotprice') return true;
+                return rawSource !== 'av-photo' && tab === 'reserves' && isCustomerConsigneeOutreachAvAllView();
+            }
             if (safeSource === 'drive') return true;
             return false;
         }
@@ -36651,6 +36899,10 @@ function toggleDriveQuickRequestItem(domId) {
             return `<div><div style="font-weight:700;margin:0 0 12px 0;">${escapeShareHtml(itemHeader)}</div><div style="font-weight:700;margin:0 0 6px 0;">Customer / Consignee</div><ul style="margin:0 0 16px 18px;padding:0;">${customerHtml}</ul>${formatInventoryItemsHtml(sourceRows, 'Photo / Spec Rows')}</div>`;
         }
 
+        function getDriveCustomerOutreachEmailBrandLabel() {
+            return 'GNC PH Reserves';
+        }
+
         async function sendDriveCustomerOutreachEmails(options = {}) {
             if (!canUseCustomerConsigneeOutreach()) {
                 showToast('Restricted', 'Only Dylan, JD, or Kayla can send Customer / Consignee emails.', true);
@@ -36690,6 +36942,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const season = getDriveCustomerOutreachSeason(activeItem);
                 const commonName = String(firstNonEmptyValue(activeItem && activeItem.COMMONNAME, 'Item') || 'Item').trim();
                 const sourceLabel = getCustomerConsigneeOutreachSourceLabel(activeDetailSourceView || lastView || '', activeItem);
+                const brandLabel = getDriveCustomerOutreachEmailBrandLabel();
                 if (sendToAllSalesReps) {
                     const salesRepEmails = dedupeRequestEmailRecipients(selectedAllSalesReps.map((rep) => rep.email).filter(Boolean));
                     if (!salesRepEmails.length) {
@@ -36714,11 +36967,13 @@ function toggleDriveQuickRequestItem(domId) {
                         qty_label: getDriveCustomerOutreachCustomerQtyLabel(card)
                     }));
                     const itemPayload = buildDriveCustomerOutreachItemsPayload(state.sourceRows);
-                    const subject = `Customer Photos/Specs - ${[commonName, itemCode, season, sourceLabel].filter(Boolean).join(' ')}`;
+                    const subject = `${brandLabel} - ${[commonName, itemCode, season, sourceLabel].filter(Boolean).join(' ')}`;
                     const payload = {
                         type: 'email',
                         emailType: 'drive_customer_outreach',
                         sendToAllSalesReps: true,
+                        brandLabel,
+                        fromName: brandLabel,
                         audienceLabel,
                         subject,
                         repName: '',
@@ -36760,7 +37015,7 @@ function toggleDriveQuickRequestItem(domId) {
                 for (const [repName, customers] of groupedByRep.entries()) {
                     const repEmail = resolveRequestRecipientEmail(repName);
                     const recipientEmails = dedupeRequestEmailRecipients([repEmail, ...REQUEST_EMAIL_INTERNAL_RECIPIENTS]);
-                    const subject = `Customer Photos/Specs - ${[commonName, itemCode, season].filter(Boolean).join(' ')}`;
+                    const subject = `${brandLabel} - ${[commonName, itemCode, season].filter(Boolean).join(' ')}`;
                     const customerPayload = customers.map((card) => ({
                         customername: card.customerName,
                         consigneename: card.consigneeName,
@@ -36774,6 +37029,8 @@ function toggleDriveQuickRequestItem(domId) {
                     const payload = {
                         type: 'email',
                         emailType: 'drive_customer_outreach',
+                        brandLabel,
+                        fromName: brandLabel,
                         subject,
                         repName,
                         salesRepName: repName,

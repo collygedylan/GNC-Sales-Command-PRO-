@@ -3292,11 +3292,14 @@ function buildRequestEmailMessage_(payload) {
   }
 
   if (emailType === 'drive_customer_outreach') {
+    const brandLabelPlain = String(payload.brandLabel || payload.fromName || payload.emailDisplayName || 'GNC PH Reserves').trim() || 'GNC PH Reserves';
+    const brandLabel = escapeEmailHtml_(brandLabelPlain);
     const audienceLabel = escapeEmailHtml_(payload.audienceLabel || payload.audience || payload.repName || payload.salesRepName || '');
     const plainAudienceLabel = String(payload.audienceLabel || payload.audience || payload.repName || payload.salesRepName || '').trim();
     const commonName = escapeEmailHtml_(payload.commonname || payload.commonName || 'Item');
     const itemCode = escapeEmailHtml_(payload.itemcode || payload.itemCode || '');
     const season = escapeEmailHtml_(payload.season || '');
+    const hideItemHeader = payload.hideItemHeader === true;
     const plainItem = [
       String(payload.commonname || payload.commonName || 'Item'),
       String(payload.itemcode || payload.itemCode || ''),
@@ -3313,16 +3316,16 @@ function buildRequestEmailMessage_(payload) {
     return {
       subject: subject,
       textBody: [
-        'Customer Photos/Specs',
+        brandLabelPlain,
         plainAudienceLabel ? 'Hello ' + plainAudienceLabel + ',' : '',
-        'Item: ' + plainItem,
+        hideItemHeader ? '' : 'Item: ' + plainItem,
         itemsText
       ].filter(Boolean).join('\n\n'),
       htmlBody: [
         '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
-        '<h2 style="color: #007a4d;">Customer Photos/Specs</h2>',
+        '<h2 style="color: #007a4d;">' + brandLabel + '</h2>',
         audienceLabel ? '<p>Hello ' + audienceLabel + ',</p>' : '',
-        '<p><strong>Item:</strong> ' + htmlItem + '</p>',
+        hideItemHeader ? '' : '<p><strong>Item:</strong> ' + htmlItem + '</p>',
         detailSection,
         '</div>'
       ].join('')
@@ -3635,6 +3638,30 @@ function sendRequestEmailWithFallback_(payload) {
         recipients: recipients.toArray,
         mode: 'gmailapp_error',
         message: error && error.message ? error.message : 'Approval email send failed.'
+      };
+    }
+  }
+  if (safeType === 'drive_customer_outreach') {
+    const driveOutreachName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || 'GNC PH Reserves').trim() || 'GNC PH Reserves';
+    try {
+      GmailApp.sendEmail(recipients.toList, message.subject, message.textBody || message.subject, {
+        htmlBody: message.htmlBody,
+        name: driveOutreachName
+      });
+      return {
+        ok: true,
+        status: 200,
+        recipients: recipients.toArray,
+        mode: 'gmailapp_named'
+      };
+    } catch (error) {
+      console.error('Drive customer outreach email send failed', error);
+      return {
+        ok: false,
+        status: 500,
+        recipients: recipients.toArray,
+        mode: 'gmailapp_error',
+        message: error && error.message ? error.message : 'Drive customer outreach email send failed.'
       };
     }
   }
