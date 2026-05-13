@@ -2790,12 +2790,17 @@ function collectRequestRecipients_(payload) {
   const repEmail = sendToAllSalesReps ? '' : normalizeEmailAddress_(resolveRequestRecipientEmail_(repName, payload.repEmail || payload.salesRepEmail || ''));
   const emailType = String(payload && payload.emailType || '').trim().toLowerCase();
   const approvalStage = String(payload && (payload.approvalStage || payload.approval_stage) || '').trim().toLowerCase();
+  const approvalType = String(payload && (payload.approvalType || payload.approval_type) || '').trim().toLowerCase().replace(/_/g, '-');
   const approvalFallbackRecipients = [];
   if (emailType === 'ncr_approval' || emailType === 'hold_release_request') {
     if (approvalStage === 'jd') {
       approvalFallbackRecipients.push('jd_jones@greenleafnursery.com');
     } else if (approvalStage === 'inventory') {
-      approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com');
+      if (approvalType.indexOf('hold-release') !== -1 || approvalType.indexOf('hold') !== -1) {
+        approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com');
+      } else {
+        approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com');
+      }
     } else {
       approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com');
     }
@@ -3461,7 +3466,8 @@ function buildRequestEmailMessage_(payload) {
   }
 
   if (emailType === 'ncr_approval' || emailType === 'hold_release_request') {
-    const approvalTitle = escapeEmailHtml_(payload.customer || (emailType === 'hold_release_request' ? 'Take Off Hold' : 'Approval'));
+    const approvalTitleText = String(payload.approvalLabel || payload.approval_label || payload.customer || (emailType === 'hold_release_request' ? 'Take Off Hold' : 'Approval')).trim();
+    const approvalTitle = escapeEmailHtml_(approvalTitleText);
     const approvalStage = escapeEmailHtml_(payload.approvalStageLabel || payload.approvalStage || 'Approval needed');
     const completedBy = escapeEmailHtml_(payload.completedBy || payload.completed_by || 'Unknown');
     const appInstructionText = String(payload.appInstruction || payload.app_instruction || '').trim();
@@ -3479,7 +3485,7 @@ function buildRequestEmailMessage_(payload) {
     return {
       subject: subject,
       textBody: [
-        String(payload.customer || (emailType === 'hold_release_request' ? 'Take Off Hold' : 'Approval')) + ' Approval',
+        approvalTitleText + ' Approval',
         'Stage: ' + String(payload.approvalStageLabel || payload.approvalStage || 'Approval needed'),
         appInstructionText ? 'Next step: ' + appInstructionText : '',
         'Sent By: ' + String(payload.completedBy || payload.completed_by || 'Unknown'),

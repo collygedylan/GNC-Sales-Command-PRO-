@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.13.03';
+window.__APP_SHELL_VERSION__ = 'V2026.05.13.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1930,7 +1930,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.03').trim() || 'V2026.05.13.03';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.04').trim() || 'V2026.05.13.04';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2809,7 +2809,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12498,7 +12498,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.03').trim() || 'V2026.05.13.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.04').trim() || 'V2026.05.13.04';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -15552,8 +15552,26 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function getNcrApprovalTypeForItem(item = null, fallbackView = '') {
             const assignmentType = getNcrApprovalTypeFromAssignment(getNcrApprovalAssignmentValue(item));
             if (assignmentType) return assignmentType;
+            const explicitTypeText = String(firstNonEmptyValue(
+                item && item.NCR_APPROVAL_TYPE,
+                item && item.ncr_approval_type,
+                item && item.APPROVAL_TYPE,
+                item && item.approval_type,
+                item && item.APPROVALTYPE,
+                item && item.approvalType,
+                item && item.REQUEST_FOLDER,
+                item && item.requestFolder,
+                item && item.request_folder,
+                item && item.REQ_CUSTOMER,
+                item && item.req_customer,
+                ''
+            ) || '').trim().toLowerCase().replace(/_/g, '-');
+            if (explicitTypeText.includes('hold-release') || explicitTypeText.includes('take off hold') || explicitTypeText.includes('take-off-hold') || explicitTypeText.includes('off hold')) return 'hold-release';
+            if (explicitTypeText.includes('move-up') || explicitTypeText.includes('move up')) return 'move-up';
+            if (explicitTypeText.includes('new-crop') || explicitTypeText.includes('new crop')) return 'new-crop';
             const sourceView = String(firstNonEmptyValue(fallbackView, activeDetailSourceView, lastView, '') || '').trim().toLowerCase();
             if (sourceView === NCR_APPROVAL_HOLD_RELEASE_VIEW) return 'hold-release';
+            if (sourceView.includes('hold-release') || sourceView.includes('off-hold')) return 'hold-release';
             if (sourceView === 'move-up') return 'move-up';
             if (isNcrMoveUpCandidateRow(item)) return 'move-up';
             return 'new-crop';
@@ -26813,13 +26831,18 @@ function toggleDriveQuickRequestItem(domId) {
             return true;
         }
 
-        function buildNcrEmailShareItem(item = activeItem, photoUrls = []) {
+        function buildNcrEmailShareItem(item = activeItem, photoUrls = [], type = 'new-crop') {
             const payload = buildNcrEmailItemPayload(item, photoUrls);
             const photoCsv = normalizeNcrEmailPhotoUrls(photoUrls).join(',');
+            const safeType = normalizeNcrApprovalType(type);
+            const typeLabel = getNcrApprovalTypeLabel(safeType);
+            const customerLabel = safeType === 'new-crop' ? 'JD Jones' : typeLabel;
             return {
                 SOURCE_TABLE: 'v2_active_request',
-                REQUEST_FOLDER: 'New Crop Release',
-                REQ_CUSTOMER: 'JD Jones',
+                REQUEST_FOLDER: typeLabel,
+                REQ_CUSTOMER: customerLabel,
+                NCR_APPROVAL_TYPE: safeType,
+                APPROVAL_TYPE: safeType,
                 COMMONNAME: payload.commonname,
                 CONTSIZE: payload.contsize,
                 ITEMCODE: payload.itemcode,
@@ -27529,31 +27552,36 @@ function toggleDriveQuickRequestItem(domId) {
         async function sendNcrApprovalEmail(item = activeItem, type = 'new-crop', stage = 'dylan', options = {}) {
             const safeOptions = options || {};
             const safeStage = String(stage || 'dylan').trim().toLowerCase();
-            const typeLabel = getNcrApprovalTypeLabel(type);
+            const safeType = normalizeNcrApprovalType(type);
+            const typeLabel = getNcrApprovalTypeLabel(safeType);
             const currentUserEmail = resolveRequestRecipientEmail(currentUser || currentUserDisplay || '');
             const requestedByEmail = normalizeRequestEmailAddress(firstNonEmptyValue(safeOptions.requestedByEmail, currentUserEmail, ''));
             const targetRecipients = safeStage === 'dylan'
                 ? [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER]]
                 : (safeStage === 'jd'
                     ? [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_JD_USER]]
-                    : [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER], NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_JD_USER]]);
+                    : (safeType === 'hold-release'
+                        ? [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER]]
+                        : [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER], NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_JD_USER]]));
             const recipientEmails = dedupeRequestEmailRecipients(targetRecipients);
             const photoUrls = normalizeNcrEmailPhotoUrls(safeOptions.photoUrls || getNcrApprovalPhotoUrls(item));
-            const requestStyleItem = buildNcrEmailShareItem(item, photoUrls);
+            const requestStyleItem = buildNcrEmailShareItem(item, photoUrls, safeType);
             const itemPayload = {
                 ...buildNcrEmailItemPayload(item, photoUrls),
-                approval_type: normalizeNcrApprovalType(type),
+                approval_type: safeType,
                 approval_stage: safeStage,
                 approved_qty: String(firstNonEmptyValue(safeOptions.approvedQty, '') || '').trim()
             };
             const rowLabel = [item && item.COMMONNAME, item && item.CONTSIZE, item && item.LOCATIONCODE].map((value) => String(value || '').trim()).filter(Boolean).join(' ');
             const stageLabel = safeStage === 'jd' ? 'JD approval needed' : (safeStage === 'inventory' ? 'Inventory Office handoff' : 'Dylan approval needed');
-            const taskViewLabel = getTaskTabLabel(getNcrApprovalTaskViewForType(type));
-            const inventoryOfficeTabLabel = getInventoryOfficeApprovalTabLabel(type);
+            const taskViewLabel = getTaskTabLabel(getNcrApprovalTaskViewForType(safeType));
+            const inventoryOfficeTabLabel = getInventoryOfficeApprovalTabLabel(safeType);
             const appInstruction = safeStage === 'jd'
                 ? `JD: open the app and check Tasks > ${taskViewLabel}. Review the photos/data, enter the approved quantity, then approve.`
                 : (safeStage === 'inventory'
-                    ? `Inventory Office: open the app and check Inventory Office > ${inventoryOfficeTabLabel}.`
+                    ? (safeType === 'hold-release'
+                        ? `JD approved this Take Off Hold row. It is now approved to come off hold and is waiting in Inventory Office > ${inventoryOfficeTabLabel}.`
+                        : `Inventory Office: open the app and check Inventory Office > ${inventoryOfficeTabLabel}.`)
                     : `Dylan: open the app and check Tasks > ${taskViewLabel}. Review the photos/data, then approve to send it to JD.`);
             const subject = `${typeLabel} Approval${rowLabel ? ': ' + rowLabel : ''}`;
             const folderId = `ncr-approval-${getNcrSourceUniqueId(item) || Date.now()}`;
@@ -27564,17 +27592,21 @@ function toggleDriveQuickRequestItem(domId) {
                 folderId,
                 requestFolder: folderId,
                 customer: typeLabel,
+                approvalType: safeType,
+                approval_type: safeType,
+                approvalLabel: typeLabel,
                 itemsCount: 1,
                 completedBy: String(currentUserDisplay || currentUser || 'Unknown').trim(),
                 approvalStage: safeStage,
                 approvalStageLabel: stageLabel,
                 appInstruction,
                 taskViewLabel,
+                taskViewId: getNcrApprovalTaskViewForType(safeType),
                 requestedByEmail,
                 internalRecipients: recipientEmails,
                 recipientEmails,
-                dylanEmail: safeStage === 'dylan' || safeStage === 'inventory' ? NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER] : '',
-                jdEmail: safeStage === 'jd' || safeStage === 'inventory' ? NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_JD_USER] : '',
+                dylanEmail: recipientEmails.includes(NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER]) ? NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER] : '',
+                jdEmail: recipientEmails.includes(NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_JD_USER]) ? NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_JD_USER] : '',
                 recipients: recipientEmails.map((email) => ({ email, role: 'internal' })),
                 formattedItemsHtml: formatRequestItemsHtml([requestStyleItem], typeLabel),
                 formattedItemsText: formatRequestItemsText([requestStyleItem], typeLabel, { includePhotoUrls: true }),
@@ -27609,13 +27641,14 @@ function toggleDriveQuickRequestItem(domId) {
 
         async function notifyNcrApprovalStage(item = activeItem, type = 'new-crop', stage = 'dylan', options = {}) {
             const safeStage = String(stage || 'dylan').trim().toLowerCase();
-            if (safeStage === 'dylan') sendNcrApprovalPush(item, type, safeStage, NCR_APPROVAL_DYLAN_USER);
-            else if (safeStage === 'jd') sendNcrApprovalPush(item, type, safeStage, NCR_APPROVAL_JD_USER);
+            const safeType = normalizeNcrApprovalType(type);
+            if (safeStage === 'dylan') sendNcrApprovalPush(item, safeType, safeStage, NCR_APPROVAL_DYLAN_USER);
+            else if (safeStage === 'jd') sendNcrApprovalPush(item, safeType, safeStage, NCR_APPROVAL_JD_USER);
             else if (safeStage === 'inventory') {
-                sendNcrApprovalPush(item, type, safeStage, NCR_APPROVAL_DYLAN_USER);
-                sendNcrApprovalPush(item, type, safeStage, NCR_APPROVAL_JD_USER);
+                sendNcrApprovalPush(item, safeType, safeStage, NCR_APPROVAL_DYLAN_USER);
+                if (safeType !== 'hold-release') sendNcrApprovalPush(item, safeType, safeStage, NCR_APPROVAL_JD_USER);
             }
-            await sendNcrApprovalEmail(item, type, safeStage, options);
+            await sendNcrApprovalEmail(item, safeType, safeStage, options);
         }
 
         function clearNcrApprovalTaskViewCaches() {
