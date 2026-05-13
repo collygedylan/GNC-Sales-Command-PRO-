@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.13.07';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.13.08';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -619,7 +619,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
         #view-detail .input-field{min-height:54px;padding:14px 16px;border-radius:14px;font-size:16px;line-height:1.4;margin-bottom:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
         #view-detail .detail-measurement-field-wrap{display:grid;grid-template-columns:minmax(0,1fr) 82px;gap:8px;align-items:stretch}
         #view-detail .detail-measurement-field-wrap .input-field{min-width:0}
-        #view-detail .detail-measurement-na-select{min-height:54px;width:100%;border:1px solid #a7f3d0;border-radius:14px;background:#ecfdf5;color:#007a4d;font-size:13px;font-weight:900;text-align:center;text-transform:uppercase;letter-spacing:.04em;padding:0 8px;box-shadow:0 8px 18px rgba(7,94,63,.08)}
+        #view-detail .detail-measurement-na-button{min-height:54px;width:100%;display:inline-flex;align-items:center;justify-content:center;gap:4px;border:1px solid #a7f3d0;border-radius:14px;background:#ecfdf5;color:#007a4d;font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;padding:0 8px;box-shadow:0 8px 18px rgba(7,94,63,.08);touch-action:manipulation}
         #view-detail textarea.input-field{min-height:120px;padding-top:14px;padding-bottom:14px;line-height:1.45;resize:vertical}
         #view-detail [id^='camera-btn-']{min-height:92px;border-radius:18px}
         #view-detail #req-comments{min-height:132px}
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.07').trim() || 'V2026.05.13.07';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.08').trim() || 'V2026.05.13.08';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2812,7 +2812,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.07';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.08';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -5338,15 +5338,16 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                 input.parentNode.insertBefore(wrapper, input);
                 wrapper.appendChild(input);
 
-                const select = document.createElement('select');
-                select.className = 'detail-measurement-na-select';
-                select.setAttribute('aria-label', `Set ${getDetailMeasurementKeyboardTypeForInput(input)} to N/A`);
-                select.innerHTML = '<option value="">Option</option><option value="N/A">N/A</option>';
-                select.addEventListener('change', () => {
-                    if (select.value === 'N/A') setDetailMeasurementFieldPreset(input, 'N/A');
-                    select.value = '';
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'detail-measurement-na-button';
+                button.setAttribute('aria-label', `Set ${getDetailMeasurementKeyboardTypeForInput(input)} to N/A`);
+                button.innerHTML = '<span aria-hidden="true">+</span><span>N/A</span>';
+                button.addEventListener('pointerdown', (event) => {
+                    if (event && typeof event.preventDefault === 'function') event.preventDefault();
                 });
-                wrapper.appendChild(select);
+                button.addEventListener('click', () => setDetailMeasurementFieldPreset(input, 'N/A'));
+                wrapper.appendChild(button);
                 input.dataset.detailNaEnhanced = '1';
             });
         }
@@ -5391,7 +5392,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             if (!input) return null;
             const root = document.getElementById('view-detail');
             if (!root) return null;
-            const fields = Array.from(root.querySelectorAll('input:not([type="file"]):not([type="hidden"]), textarea, select:not(.detail-measurement-na-select)'))
+            const fields = Array.from(root.querySelectorAll('input:not([type="file"]):not([type="hidden"]), textarea, select'))
                 .filter(isDetailMeasurementKeyboardNextFieldVisible);
             const index = fields.indexOf(input);
             return index >= 0 ? (fields[index + 1] || null) : null;
@@ -12559,7 +12560,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.07').trim() || 'V2026.05.13.07';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.08').trim() || 'V2026.05.13.08';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
