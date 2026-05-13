@@ -317,6 +317,40 @@ function getManualSyncStageOrder_(jobName) {
   return MANUAL_SYNC_STAGE_ORDER_DEFAULT.slice();
 }
 
+function normalizeManualSyncFailedFileEntries_(stageResult) {
+  const safeResult = stageResult || {};
+  const names = Array.isArray(safeResult.failedFileNames) ? safeResult.failedFileNames : [];
+  const errors = Array.isArray(safeResult.failedFileErrors) ? safeResult.failedFileErrors : [];
+  if (errors.length) {
+    return errors.map(function(entry, index) {
+      return {
+        name: String(entry && entry.name || names[index] || '').trim(),
+        error: String(entry && entry.error || safeResult.error || '').trim()
+      };
+    }).filter(function(entry) { return entry.name || entry.error; });
+  }
+  return names.map(function(name) {
+    return { name: String(name || '').trim(), error: String(safeResult.error || '').trim() };
+  }).filter(function(entry) { return entry.name || entry.error; });
+}
+
+function buildManualSyncStageFailureMessage_(stageDef, stageResult) {
+  const safeResult = stageResult || {};
+  const label = String(stageDef && stageDef.label || safeResult.tableName || 'manual sync stage').trim();
+  const failedFiles = Number(safeResult.failedFiles || 0);
+  const failedEntries = normalizeManualSyncFailedFileEntries_(safeResult);
+  const fileNames = failedEntries.map(function(entry) { return entry.name; }).filter(Boolean);
+  const firstError = String(
+    (failedEntries[0] && failedEntries[0].error) ||
+    safeResult.error ||
+    'The file was left in the drop folder for retry.'
+  ).trim();
+  const fileText = fileNames.length
+    ? fileNames.slice(0, 4).join(', ') + (fileNames.length > 4 ? `, +${fileNames.length - 4} more` : '')
+    : `${failedFiles || 1} file${failedFiles === 1 ? '' : 's'}`;
+  return `${label} failed for ${fileText}. ${firstError}`;
+}
+
 function queueManualSyncRequest_(options) {
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -453,18 +487,34 @@ function runQueuedManualSyncStage_(options) {
       const stageResult = stageDef.run() || {};
       const filesProcessed = Number(stageResult.filesProcessed || 0);
       const tempFilesRemoved = Number(stageResult.tempFilesRemoved || 0);
+      const failedFiles = Number(stageResult.failedFiles || 0);
+      const failedFileNames = Array.isArray(stageResult.failedFileNames) ? stageResult.failedFileNames : [];
+      const failedFileErrors = normalizeManualSyncFailedFileEntries_(stageResult);
       const completedAt = new Date().toISOString();
 
       if (!Array.isArray(status.completedStages)) status.completedStages = [];
       if (!Array.isArray(status.stageResults)) status.stageResults = [];
-      status.completedStages.push(stageKey);
       status.stageResults.push({
         key: stageKey,
         label: stageDef.label,
         filesProcessed: filesProcessed,
         tempFilesRemoved: tempFilesRemoved,
+        failedFiles: failedFiles,
+        failedFileNames: failedFileNames,
+        failedFileErrors: failedFileErrors,
+        error: String(stageResult.error || '').trim(),
         completedAt: completedAt
       });
+
+      if (failedFiles > 0 || failedFileErrors.length || stageResult.error) {
+        status.updatedAt = completedAt;
+        status.error = buildManualSyncStageFailureMessage_(stageDef, stageResult);
+        status.message = `Failed during ${stageDef.label}: ${status.error}`;
+        saveManualSyncStatus_(status);
+        throw new Error(status.error);
+      }
+
+      status.completedStages.push(stageKey);
 
       status.stageIndex = currentStageIndex + 1;
       const hasMoreStages = status.stageIndex < stageOrder.length;
@@ -1487,7 +1537,8 @@ function processFolder(dropFolderId, processedFolderId, tableName, payloadBuilde
     filesProcessed: filesProcessed,
     tempFilesRemoved: tempFilesRemoved,
     failedFiles: failedFiles.length,
-    failedFileNames: failedFiles.map(function(entry) { return entry.name; })
+    failedFileNames: failedFiles.map(function(entry) { return entry.name; }),
+    failedFileErrors: failedFiles
   };
 }
 
@@ -1628,6 +1679,7 @@ function processLatestFileOnlyFolder(dropFolderId, processedFolderId, tableName,
     skippedFilesArchived: skippedFilesArchived,
     failedFiles: failedFiles.length,
     failedFileNames: failedFiles.map(function(entry) { return entry.name; }),
+    failedFileErrors: failedFiles,
     upsertCount: upsertCount,
     deleteCount: deleteCount,
     totalRows: totalRows,
@@ -1876,6 +1928,7 @@ function processSnapshotBatchFolder(dropFolderId, processedFolderId, tableName, 
     tempFilesRemoved: tempFilesRemoved,
     failedFiles: failedFiles.length,
     failedFileNames: failedFiles.map(function(entry) { return entry.name; }),
+    failedFileErrors: failedFiles,
     upsertCount: upsertCount,
     deleteCount: deleteCount,
     diagnostics: combinedStats
