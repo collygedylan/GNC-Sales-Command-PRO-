@@ -33,6 +33,9 @@ create table if not exists public.v2_request_history (
     season text,
     photo_link text,
     photo_name text,
+    completed_by_username text,
+    completed_by_display text,
+    completed_by_email text,
     snapshot jsonb not null default '{}'::jsonb,
     last_event text,
     created_by_username text,
@@ -43,6 +46,7 @@ create table if not exists public.v2_request_history (
 
 create index if not exists idx_v2_request_history_folder on public.v2_request_history (request_folder);
 create index if not exists idx_v2_request_history_requested_by on public.v2_request_history (requested_by);
+create index if not exists idx_v2_request_history_completed_by_username on public.v2_request_history (completed_by_username);
 create index if not exists idx_v2_request_history_updated_at on public.v2_request_history (updated_at desc);
 create index if not exists idx_v2_request_history_date_completed on public.v2_request_history (date_completed desc);
 

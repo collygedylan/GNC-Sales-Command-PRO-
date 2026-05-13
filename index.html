@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.13.09';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.13.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.09').trim() || 'V2026.05.13.09';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.10').trim() || 'V2026.05.13.10';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2812,7 +2812,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10549,6 +10549,145 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             throw lastError;
         }
 
+        function maybeWarnRequestCompletionUserSchemaMissing(error = null) {
+            requestCompletionUserColumnsReady = false;
+            if (requestCompletionUserSchemaWarningShown || !currentUser) return;
+            requestCompletionUserSchemaWarningShown = true;
+            console.warn('Request completion user columns are not installed. Run request_completion_users_migration.sql in Supabase so completed request rows keep the completing username/email.', error);
+        }
+
+        async function ensureRequestCompletionUserColumnsReady(force = false) {
+            if (requestCompletionUserColumnsReady === true && !force) return true;
+            if (requestCompletionUserColumnsReady === false && !force) return false;
+            if (requestCompletionUserColumnsProbePromise && !force) return requestCompletionUserColumnsProbePromise;
+            requestCompletionUserColumnsProbePromise = (async () => {
+                if (navigator.onLine === false) return false;
+                try {
+                    const url = `${SUPABASE_URL}/rest/v1/v2_active_request?select=completed_by_username,completed_by_display,completed_by_email&limit=1`;
+                    const response = await fetchWithTimeout(url, {
+                        method: 'GET',
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
+                    }, SUPABASE_READ_TIMEOUT_MS, 'Request Completion User Schema');
+                    if (!response.ok) {
+                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
+                        const normalizedError = String(errorText || '').toLowerCase();
+                        if (normalizedError.includes('completed_by_') || normalizedError.includes('column')) {
+                            maybeWarnRequestCompletionUserSchemaMissing(errorText);
+                            return false;
+                        }
+                        return false;
+                    }
+                    requestCompletionUserColumnsReady = true;
+                    requestCompletionUserSchemaWarningShown = false;
+                    return true;
+                } catch (error) {
+                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
+                    if (normalizedError.includes('completed_by_') || normalizedError.includes('column')) {
+                        maybeWarnRequestCompletionUserSchemaMissing(error);
+                        return false;
+                    }
+                    return false;
+                } finally {
+                    requestCompletionUserColumnsProbePromise = null;
+                }
+            })();
+            return requestCompletionUserColumnsProbePromise;
+        }
+
+        function normalizeRequestCompletionUserEntry(entry = null) {
+            let username = '';
+            let display = '';
+            let email = '';
+            if (typeof entry === 'string') {
+                const raw = String(entry || '').trim();
+                if (!raw) return null;
+                if (raw.includes('@')) {
+                    email = normalizeRequestEmailAddress(raw);
+                    username = normalizePushUsername(raw.split('@')[0] || raw);
+                    display = username;
+                } else {
+                    username = normalizePushUsername(raw);
+                    display = raw;
+                }
+            } else if (entry && typeof entry === 'object') {
+                username = normalizePushUsername(firstNonEmptyValue(entry.username, entry.user, entry.completed_by_username, entry.completedByUsername, entry.COMPLETED_BY_USERNAME, entry.REQUEST_COMPLETED_BY_USERNAME, ''));
+                display = String(firstNonEmptyValue(entry.display, entry.displayName, entry.completed_by_display, entry.completedByDisplay, entry.COMPLETED_BY_DISPLAY, entry.REQUEST_COMPLETED_BY_DISPLAY, entry.completed_by, entry.completedBy, entry.COMPLETED_BY, username, '') || '').trim();
+                email = normalizeRequestEmailAddress(firstNonEmptyValue(entry.email, entry.completed_by_email, entry.completedByEmail, entry.COMPLETED_BY_EMAIL, entry.REQUEST_COMPLETED_BY_EMAIL, ''));
+            }
+            if (!username && email) username = normalizePushUsername(email.split('@')[0] || email);
+            if (!display) display = username || email;
+            if (!email && (username || display)) email = normalizeRequestEmailAddress(resolveRequestRecipientEmail(username || display));
+            if (!username && display) username = normalizePushUsername(display);
+            if (!username && !display && !email) return null;
+            return { username, display, email };
+        }
+
+        function getCurrentRequestCompletionUserEntry() {
+            return normalizeRequestCompletionUserEntry({
+                username: currentUser || currentUserDisplay || '',
+                display: currentUserDisplay || currentUser || '',
+                email: resolveRequestRecipientEmail(currentUser || currentUserDisplay || '')
+            });
+        }
+
+        function getRequestCompletionUserEntryFromItem(item = null) {
+            if (!item || typeof item !== 'object') return null;
+            return normalizeRequestCompletionUserEntry({
+                username: firstNonEmptyValue(item.COMPLETED_BY_USERNAME, item.completed_by_username, item.completedByUsername, item.REQUEST_COMPLETED_BY_USERNAME, item.request_completed_by_username, ''),
+                display: firstNonEmptyValue(item.COMPLETED_BY_DISPLAY, item.completed_by_display, item.completedByDisplay, item.COMPLETED_BY, item.completed_by, item.REQUEST_COMPLETED_BY_DISPLAY, item.request_completed_by_display, ''),
+                email: firstNonEmptyValue(item.COMPLETED_BY_EMAIL, item.completed_by_email, item.completedByEmail, item.REQUEST_COMPLETED_BY_EMAIL, item.request_completed_by_email, '')
+            });
+        }
+
+        function formatRequestCompletionUserEntryLabel(entry = null) {
+            const normalized = normalizeRequestCompletionUserEntry(entry);
+            if (!normalized) return '';
+            const display = String(normalized.display || '').trim();
+            const username = String(normalized.username || '').trim();
+            if (display && username && normalizePushUsername(display) !== username) return `${display} (${username})`;
+            return display || username || String(normalized.email || '').trim();
+        }
+
+        function formatRequestCompletionUserLabel(item = null) {
+            return formatRequestCompletionUserEntryLabel(getRequestCompletionUserEntryFromItem(item));
+        }
+
+        function applyRequestCompletionUserFields(item = null, entry = null) {
+            if (!item || typeof item !== 'object') return null;
+            const normalized = normalizeRequestCompletionUserEntry(entry) || getCurrentRequestCompletionUserEntry();
+            if (!normalized) return null;
+            item.COMPLETED_BY_USERNAME = normalized.username || '';
+            item.completed_by_username = normalized.username || '';
+            item.REQUEST_COMPLETED_BY_USERNAME = normalized.username || '';
+            item.COMPLETED_BY_DISPLAY = normalized.display || normalized.username || '';
+            item.completed_by_display = normalized.display || normalized.username || '';
+            item.REQUEST_COMPLETED_BY_DISPLAY = normalized.display || normalized.username || '';
+            item.COMPLETED_BY_EMAIL = normalized.email || '';
+            item.completed_by_email = normalized.email || '';
+            item.REQUEST_COMPLETED_BY_EMAIL = normalized.email || '';
+            item.COMPLETED_BY = normalized.display || normalized.username || '';
+            item.completed_by = normalized.display || normalized.username || '';
+            return normalized;
+        }
+
+        function collectRequestCompletionUsers(items = [], extraUsers = []) {
+            const sourceItems = Array.isArray(items) ? items : [items].filter(Boolean);
+            const extraEntries = Array.isArray(extraUsers) ? extraUsers : [extraUsers].filter(Boolean);
+            const users = [];
+            const seen = new Set();
+            const addUser = (entry) => {
+                const normalized = normalizeRequestCompletionUserEntry(entry);
+                if (!normalized) return;
+                const key = normalized.email || normalized.username || normalizePushUsername(normalized.display || '');
+                if (!key || seen.has(key)) return;
+                seen.add(key);
+                users.push(normalized);
+            };
+            extraEntries.forEach(addUser);
+            sourceItems.forEach((item) => addUser(getRequestCompletionUserEntryFromItem(item)));
+            return users;
+        }
+
         function maybeWarnAvRuleSchemaMissing() {
             if (avRuleSchemaWarningShown || !currentUser) return;
             avRuleSchemaWarningShown = true;
@@ -12171,7 +12310,7 @@ let bloomCropUpdateRecipientMode='reps'; let bloomCropUpdateReserveEmailGroups=[
         let dockIssueStatusByUid=new Map(); let dockIssueAllocationsBySourceUid=new Map(); let dockIssueAllocationsById=new Map(); let dockIssueDataPromise=null; let dockIssueDataLoaded=false; let dockIssueStatusSchemaReady=null; let dockIssueStatusSchemaPromise=null; let dockIssueAllocationSchemaReady=null; let dockIssueAllocationSchemaPromise=null; let dockIssueSchemaWarningShown=false; let dockViewMode='docks'; let selectedDockIssueUid=null; let dockResolvedStateCacheKey=''; let dockResolvedStateCache=null; let dockDisplayInventory=[]; let dockDisplayInventoryById=new Map(); let dockDisplayInventoryBySourceUid=new Map(); let dockIssueSourceRowsCacheKey=''; let dockIssueSourceRowsById=new Map(); let dockIssueSourceRowsByCurrentUid=new Map(); let dockIssueSourceRowsByMatchKey=new Map();
         let takeBackRows=[]; let takeBackRowsById=new Map(); let takeBackSchemaReady=null; let takeBackSchemaPromise=null; let takeBackSchemaWarningShown=false; let takeBackDataLoaded=false; let takeBackDataPromise=null; let takeBackOptimisticDoneIds=new Set(); let takeBackDoneConfirmResolve=null;
         let detailRequestSourceDomIds=[];
-        let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false; let flyerFolderRowsSchemaReady=null; let flyerFolderRowsSchemaPromise=null; let flyerFolderRowsSchemaWarningShown=false; let requestHistorySchemaReady=null; let requestHistorySchemaWarningShown=false; let flyerFolderHistorySchemaReady=null; let flyerFolderHistorySchemaWarningShown=false;
+        let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false; let flyerFolderRowsSchemaReady=null; let flyerFolderRowsSchemaPromise=null; let flyerFolderRowsSchemaWarningShown=false; let requestHistorySchemaReady=null; let requestHistorySchemaWarningShown=false; let flyerFolderHistorySchemaReady=null; let flyerFolderHistorySchemaWarningShown=false; let requestCompletionUserColumnsReady=null; let requestCompletionUserColumnsProbePromise=null; let requestCompletionUserSchemaWarningShown=false;
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
 let activeHomeTab='dashboard'; let selectedProductivityUser=''; let productivityViewMode='cards'; let productivityHistoryByUser=new Map(); let productivityHistoryLoadState=new Map(); let productivityHistorySchemaReady=null; let productivityHistorySchemaPromise=null; let productivityHistorySchemaWarningShown=false; let productivityHistoryBackfillPromise=null;
 
@@ -12560,7 +12699,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.09').trim() || 'V2026.05.13.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.10').trim() || 'V2026.05.13.10';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -13568,6 +13707,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 AV_NOTE: String(firstNonEmptyValue(source.AV_NOTE, source.av_note, '') || '').trim(),
                 REQ_PHOTO_LINK: photoLink,
                 REQ_PHOTO_NAME: photoName,
+                COMPLETED_BY_USERNAME: String(firstNonEmptyValue(source.COMPLETED_BY_USERNAME, source.completed_by_username, source.REQUEST_COMPLETED_BY_USERNAME, '') || '').trim(),
+                COMPLETED_BY_DISPLAY: String(firstNonEmptyValue(source.COMPLETED_BY_DISPLAY, source.completed_by_display, source.COMPLETED_BY, source.completed_by, source.REQUEST_COMPLETED_BY_DISPLAY, '') || '').trim(),
+                COMPLETED_BY_EMAIL: String(firstNonEmptyValue(source.COMPLETED_BY_EMAIL, source.completed_by_email, source.REQUEST_COMPLETED_BY_EMAIL, '') || '').trim(),
                 ITEMCODE: String(firstNonEmptyValue(source.ITEMCODE, source.itemcode, master && master.ITEMCODE, '') || '').trim(),
                 COMMONNAME: String(firstNonEmptyValue(source.COMMONNAME, source.commonname, master && master.COMMONNAME, master && master.DESCRIPTION, 'Unknown') || 'Unknown').trim(),
                 CONTSIZE: String(firstNonEmptyValue(source.CONTSIZE, source.contsize, master && master.CONTSIZE, master && master.ITEMSPEC, '') || '').trim(),
@@ -13658,6 +13800,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             item.AV_NOTE = String(firstNonEmptyValue(rawRow.AV_NOTE, rawRow.av_note, snapshot.AV_NOTE, '') || '').trim();
             item.REQ_PHOTO_LINK = String(firstNonEmptyValue(rawRow.PHOTO_LINK, rawRow.photo_link, rawRow.REQ_PHOTO_LINK, rawRow.req_photo_link, snapshot.REQ_PHOTO_LINK, '') || '').trim();
             item.REQ_PHOTO_NAME = String(firstNonEmptyValue(rawRow.PHOTO_NAME, rawRow.photo_name, rawRow.REQ_PHOTO_NAME, rawRow.req_photo_name, snapshot.REQ_PHOTO_NAME, '') || '').trim();
+            item.COMPLETED_BY_USERNAME = String(firstNonEmptyValue(rawRow.COMPLETED_BY_USERNAME, rawRow.completed_by_username, snapshot.COMPLETED_BY_USERNAME, snapshot.completed_by_username, '') || '').trim();
+            item.completed_by_username = item.COMPLETED_BY_USERNAME;
+            item.COMPLETED_BY_DISPLAY = String(firstNonEmptyValue(rawRow.COMPLETED_BY_DISPLAY, rawRow.completed_by_display, rawRow.COMPLETED_BY, rawRow.completed_by, snapshot.COMPLETED_BY_DISPLAY, snapshot.completed_by_display, '') || '').trim();
+            item.completed_by_display = item.COMPLETED_BY_DISPLAY;
+            item.COMPLETED_BY_EMAIL = String(firstNonEmptyValue(rawRow.COMPLETED_BY_EMAIL, rawRow.completed_by_email, snapshot.COMPLETED_BY_EMAIL, snapshot.completed_by_email, '') || '').trim();
+            item.completed_by_email = item.COMPLETED_BY_EMAIL;
             item.ITEMCODE = String(firstNonEmptyValue(rawRow.ITEMCODE, rawRow.itemcode, snapshot.ITEMCODE, '') || '').trim();
             item.COMMONNAME = String(firstNonEmptyValue(rawRow.COMMONNAME, rawRow.commonname, snapshot.COMMONNAME, 'Unknown') || 'Unknown').trim() || 'Unknown';
             item.CONTSIZE = String(firstNonEmptyValue(rawRow.CONTSIZE, rawRow.contsize, snapshot.CONTSIZE, '') || '').trim();
@@ -29704,6 +29852,9 @@ function toggleDriveQuickRequestItem(domId) {
             const targetFolderId = String(folderId || '').trim();
             const targetCustomer = normalizeSearchValue(customer);
             const existingThreadRecord = targetFolderId ? await getRequestEmailThreadRecord(targetFolderId) : null;
+            if (safeType === 'request_complete' && existingThreadRecord && String(existingThreadRecord.status || '').trim().toLowerCase() === 'completed' && !safeDetails.forceResend && !safeOptions.forceResend) {
+                return { ok: true, skipped: true, reason: 'already_completed', payload: null };
+            }
             const requestSubjectCustomer = safeType === 'request_complete'
                 ? String(firstNonEmptyValue(existingThreadRecord && existingThreadRecord.request_customer, customer, '')).trim()
                 : String(customer || '').trim();
@@ -29716,10 +29867,10 @@ function toggleDriveQuickRequestItem(domId) {
                 : String(requestSubjectDateSource || '').trim();
             const requestSubject = buildRequestEmailSubjectLine(requestSubjectCustomer, requestSubjectDateSource);
             const { repEmail, linkedRepEmails, recipientEmails } = buildRequestEmailRecipients(repName, safeDetails);
-            const finalRecipientEmails = (safeType === 'request_complete' && existingThreadRecord && Array.isArray(existingThreadRecord.recipients) && existingThreadRecord.recipients.length)
+            let finalRecipientEmails = (safeType === 'request_complete' && existingThreadRecord && Array.isArray(existingThreadRecord.recipients) && existingThreadRecord.recipients.length)
                 ? dedupeRequestEmailRecipients([...existingThreadRecord.recipients, ...linkedRepEmails])
                 : recipientEmails;
-            const recipientDetails = finalRecipientEmails.map((email) => ({ email, role: email === repEmail ? 'sales-rep' : (linkedRepEmails.includes(email) ? 'linked-rep' : 'internal') }));
+            let recipientDetails = finalRecipientEmails.map((email) => ({ email, role: email === repEmail ? 'sales-rep' : (linkedRepEmails.includes(email) ? 'linked-rep' : 'internal') }));
             let payload = {
                 type: 'email',
                 emailType: safeType,
@@ -29778,8 +29929,28 @@ function toggleDriveQuickRequestItem(domId) {
                     caliper: firstNonEmptyValue(item && item.REQ_CALIPER, item && item.req_caliper, getItemDisplayValue(item, 'CALIPER', 'request'), ''),
                     match: firstNonEmptyValue(item && item.REQ_MATCH, item && item.req_match, getItemDisplayValue(item, 'MATCH', 'request'), ''),
                     loc_match_qty: firstNonEmptyValue(getDisplayLocMatchQtyValue(item, 'request'), ''),
+                    completed_by_username: firstNonEmptyValue(item && item.COMPLETED_BY_USERNAME, item && item.completed_by_username, item && item.REQUEST_COMPLETED_BY_USERNAME, ''),
+                    completed_by_display: firstNonEmptyValue(item && item.COMPLETED_BY_DISPLAY, item && item.completed_by_display, item && item.COMPLETED_BY, item && item.completed_by, item && item.REQUEST_COMPLETED_BY_DISPLAY, ''),
+                    completed_by_email: firstNonEmptyValue(item && item.COMPLETED_BY_EMAIL, item && item.completed_by_email, item && item.REQUEST_COMPLETED_BY_EMAIL, ''),
                     photo: getRequestPhotoLinkCsv(item, { includePending: false })
                 })).filter((item) => item.unique_id || item.commonname || item.itemcode);
+            }
+            if (safeType === 'request_complete') {
+                const completedByUsers = collectRequestCompletionUsers(requestItems, safeDetails.completedByUsers || safeDetails.completed_by_users || []);
+                const completedByEmails = completedByUsers.map((user) => normalizeRequestEmailAddress(user && user.email)).filter(Boolean);
+                payload.completedByUsers = completedByUsers;
+                payload.completed_by_users = completedByUsers;
+                payload.completedByEmails = completedByEmails;
+                payload.completed_by_emails = completedByEmails;
+                if (completedByEmails.length) {
+                    finalRecipientEmails = dedupeRequestEmailRecipients([...finalRecipientEmails, ...completedByEmails]);
+                    recipientDetails = finalRecipientEmails.map((email) => ({
+                        email,
+                        role: completedByEmails.includes(email) ? 'completed-by' : (email === repEmail ? 'sales-rep' : (linkedRepEmails.includes(email) ? 'linked-rep' : 'internal'))
+                    }));
+                    payload.recipientEmails = finalRecipientEmails;
+                    payload.recipients = recipientDetails;
+                }
             }
             if (requestIdSet.size) payload.requestIds = Array.from(requestIdSet);
             else if (safeType === 'request_complete' && derivedRequestIds.length) payload.requestIds = derivedRequestIds;
@@ -44751,6 +44922,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 { label: 'Item Code', value: firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '-'), force: true },
                 { label: 'Priority', value: firstNonEmptyValue(item && item.PRIORITY, ''), force: true },
                 { label: 'Requested Qty', value: firstNonEmptyValue(item && item.REQ_QTY, ''), force: false },
+                { label: 'Completed By', value: formatRequestCompletionUserLabel(item), force: false },
                 { label: 'Spec', value: firstNonEmptyValue(item && item.REQ_SPEC, getItemDisplayValue(item, 'SPEC', requestSourceView), item && item.REQ_DESIRED_SPEC, ''), force: true },
                 { label: 'Caliper', value: firstNonEmptyValue(item && item.REQ_CALIPER, getItemDisplayValue(item, 'CALIPER', requestSourceView), item && item.REQ_DESIRED_CALIPER, ''), force: false },
                 { label: 'AV Note', value: firstNonEmptyValue(item && item.AV_NOTE, ''), force: true },
@@ -44765,6 +44937,35 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
 
         function getRequestSharePhotoEntries(item) {
             return extractSharePhotoUrls(getRequestPhotoLinkCsv(item), item);
+        }
+
+        async function getRequestFolderItemsForCompletionEmail(folderName, completedItem = null) {
+            const safeFolderName = String(folderName || '').trim();
+            const completedId = String(firstNonEmptyValue(completedItem && completedItem.UNIQUE_ID, completedItem && completedItem.unique_id, '') || '').trim();
+            const fallbackItems = (Array.isArray(requestsInventory) ? requestsInventory : [])
+                .filter((item) => item && String(firstNonEmptyValue(item.REQUEST_FOLDER, item.request_folder, '') || '').trim() === safeFolderName && !item.REQ_ARCHIVED)
+                .map((item) => completedId && String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim() === completedId ? completedItem : item)
+                .filter(Boolean);
+            if (!safeFolderName || navigator.onLine === false) return fallbackItems;
+            try {
+                const rows = await fetchSupabasePage('v2_active_request', `select=*&request_folder=eq.${encodeURIComponent(safeFolderName)}&order=unique_id.asc`, 1000, 0);
+                const formattedRows = formatFetchedRows(rows || [], 'v2_active_request')
+                    .filter((item) => item && !item.REQ_ARCHIVED);
+                if (completedItem && completedId && !formattedRows.some((item) => String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim() === completedId)) {
+                    formattedRows.push(completedItem);
+                }
+                if (formattedRows.length) {
+                    formattedRows.forEach((item) => {
+                        upsertRealtimeRow(requestsInventory, item, 'v2_active_request');
+                    });
+                    refreshRealtimeDetailLookupIndexes('v2_active_request');
+                    requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+                    return formattedRows;
+                }
+            } catch (error) {
+                console.warn('Could not refresh request folder before completion email', error);
+            }
+            return fallbackItems;
         }
 
         function formatRequestItemsText(items, headerLabel = '', options = {}) {
@@ -44919,7 +45120,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const threadId = String(firstNonEmptyValue(threadRecord && threadRecord.initial_thread_id, '')).trim();
                 const messageId = String(firstNonEmptyValue(threadRecord && threadRecord.initial_message_id, '')).trim();
                 const lead = items[0] || {};
-                const resendDetails = { items, folderNote };
+                const resendDetails = { items, folderNote, forceResend: true };
                 if (threadId && messageId) {
                     resendDetails.threadId = threadId;
                     resendDetails.messageId = messageId;
@@ -44931,7 +45132,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     String(firstNonEmptyValue(lead.REQ_CUSTOMER, lead.req_customer, '')).trim(),
                     items.length,
                     resendDetails,
-                    { suppressFailureToast: true }
+                    { suppressFailureToast: true, forceResend: true }
                 );
                 if (!resendResult || resendResult.ok !== true) {
                     showToast('Email Warning', 'Completion email could not be resent.', true);
@@ -52402,6 +52603,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                         payload.req_status = 'Complete';
                         itemToSave.REQ_STATUS = 'Complete';
                         itemToSave.req_status = 'Complete';
+                        const requestCompletionUser = applyRequestCompletionUserFields(itemToSave);
+                        const canPersistRequestCompletionUser = await ensureRequestCompletionUserColumnsReady().catch(() => false);
+                        if (requestCompletionUser && canPersistRequestCompletionUser) {
+                            payload.completed_by_username = requestCompletionUser.username || null;
+                            payload.completed_by_display = requestCompletionUser.display || requestCompletionUser.username || null;
+                            payload.completed_by_email = requestCompletionUser.email || null;
+                        }
                     }
                 } else if (prefix === 'dock-') {
                     payload.dock_spec = setVal(itemToSave.DOCK_SPEC);
@@ -52931,18 +53139,24 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
 
                     if (prefix === 'req-' && isComplete && !wasAlreadyComplete && !saveOptions.suppressRequestCompletionEmail) {
-                        const completedFolderItems = requestsInventory
-                            .filter(i => i && i.REQUEST_FOLDER === itemToSave.REQUEST_FOLDER && !i.REQ_ARCHIVED)
-                            .map((row) => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim() === String(firstNonEmptyValue(itemToSave.UNIQUE_ID, itemToSave.unique_id, '') || '').trim() ? itemToSave : row);
-                        const allRequestFolderRowsComplete = completedFolderItems.length > 0 && completedFolderItems.every(i => isRequestComplete(i) || String(firstNonEmptyValue(i && i.UNIQUE_ID, i && i.unique_id, '') || '').trim() === String(firstNonEmptyValue(itemToSave.UNIQUE_ID, itemToSave.unique_id, '') || '').trim());
-                        const completedFolderItemsSnapshot = allRequestFolderRowsComplete
-                            ? completedFolderItems.map((row) => normalizeRowPhotoFields(Object.assign({}, row)))
-                            : [];
-                        const completedFolderNote = allRequestFolderRowsComplete ? getRequestFolderNote(itemToSave.REQUEST_FOLDER, 'Complete', selectedReqRepView) : '';
+                        const completionFolderName = String(itemToSave.REQUEST_FOLDER || '').trim();
+                        const completedFolderNote = getRequestFolderNote(completionFolderName, 'Complete', selectedReqRepView);
                         deferNonCriticalWork('request-complete-email', () => {
-                            if (allRequestFolderRowsComplete) {
-                                notifyRequestEvent('request_complete', itemToSave.REQUEST_FOLDER, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, completedFolderItemsSnapshot.length, { items: completedFolderItemsSnapshot, folderNote: completedFolderNote });
-                            }
+                            getRequestFolderItemsForCompletionEmail(completionFolderName, itemToSave).then((latestFolderItems) => {
+                                const completedFolderItems = (Array.isArray(latestFolderItems) ? latestFolderItems : [])
+                                    .filter(i => i && !i.REQ_ARCHIVED);
+                                const allRequestFolderRowsComplete = completedFolderItems.length > 0 && completedFolderItems.every(i => isRequestComplete(i));
+                                if (!allRequestFolderRowsComplete) return;
+                                const completedFolderItemsSnapshot = completedFolderItems.map((row) => normalizeRowPhotoFields(Object.assign({}, row)));
+                                const completedByUsers = collectRequestCompletionUsers(completedFolderItemsSnapshot);
+                                notifyRequestEvent('request_complete', completionFolderName, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, completedFolderItemsSnapshot.length, {
+                                    items: completedFolderItemsSnapshot,
+                                    folderNote: completedFolderNote,
+                                    completedByUsers
+                                });
+                            }).catch((error) => {
+                                console.warn('Request completion email check failed', error);
+                            });
                         }, 72);
                     }
                     if (isComplete && !wasAlreadyComplete && !saveOptions.suppressNcrReleaseEmail && shouldOfferNcrReleaseEmailForSave(itemToSave, prefix, { requestMasterItem, completionArtifacts: artifacts })) {
@@ -52976,10 +53190,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                         if (await stopIfRemoteRequestAlreadyComplete()) return;
                         await runDetailWriteWithRetry(targetTable, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`, saveRequestOptions);
                         if (prefix === 'req-' && isComplete) {
-                            runDetailWriteWithRetry('v2_active_request', 'PATCH', {
+                            const requestConfirmationPayload = {
                                 req_status: 'Complete',
                                 date_completed: payload.date_completed
-                            }, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`, saveRequestOptions).catch((error) => {
+                            };
+                            if (Object.prototype.hasOwnProperty.call(payload, 'completed_by_username')) requestConfirmationPayload.completed_by_username = payload.completed_by_username;
+                            if (Object.prototype.hasOwnProperty.call(payload, 'completed_by_display')) requestConfirmationPayload.completed_by_display = payload.completed_by_display;
+                            if (Object.prototype.hasOwnProperty.call(payload, 'completed_by_email')) requestConfirmationPayload.completed_by_email = payload.completed_by_email;
+                            runDetailWriteWithRetry('v2_active_request', 'PATCH', requestConfirmationPayload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`, saveRequestOptions).catch((error) => {
                                 console.warn('Request completion confirmation write skipped', error);
                             });
                         }

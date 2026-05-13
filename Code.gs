@@ -2647,6 +2647,7 @@ function buildRequestItemFieldRowsText_(item) {
     ['S_LTS', firstNonEmptyRequestValue_(item && item.s_lts, item && item.S_LTS, '')],
     ['PTR Available', firstNonEmptyRequestValue_(item && item.ptravailable, item && item.PTRAVAILABLE, '')],
     ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
+    ['Completed By', formatRequestCompletionUserLabel_(item)],
     ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, '')],
     ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
     ['LOC MATCH %', formatRequestPercentForEmail_(firstNonEmptyRequestValue_(item && item.match, item && item.req_match, item && item.MATCH, item && item.REQ_MATCH, ''))],
@@ -2678,6 +2679,7 @@ function buildRequestItemFieldRowsHtml_(item) {
     ['S_LTS', firstNonEmptyRequestValue_(item && item.s_lts, item && item.S_LTS, '')],
     ['PTR Available', firstNonEmptyRequestValue_(item && item.ptravailable, item && item.PTRAVAILABLE, '')],
     ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
+    ['Completed By', formatRequestCompletionUserLabel_(item)],
     ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, '')],
     ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
     ['LOC MATCH %', formatRequestPercentForEmail_(firstNonEmptyRequestValue_(item && item.match, item && item.req_match, item && item.MATCH, item && item.REQ_MATCH, ''))],
@@ -2784,6 +2786,124 @@ function resolveRequestRecipientEmail_(repName, fallbackEmail) {
   return underscored ? underscored + '@greenleafnursery.com' : '';
 }
 
+function normalizeRequestCompletionUsername_(value) {
+  return String(value || '').trim().toLowerCase().replace(/@.*$/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+function normalizeRequestCompletionUserEntry_(entry) {
+  let username = '';
+  let display = '';
+  let email = '';
+  if (typeof entry === 'string') {
+    const raw = String(entry || '').trim();
+    if (!raw) return null;
+    if (raw.indexOf('@') !== -1) {
+      email = normalizeEmailAddress_(raw);
+      username = normalizeRequestCompletionUsername_(raw.split('@')[0] || raw);
+      display = username;
+    } else {
+      username = normalizeRequestCompletionUsername_(raw);
+      display = raw;
+    }
+  } else if (entry && typeof entry === 'object') {
+    username = normalizeRequestCompletionUsername_(firstNonEmptyRequestValue_(
+      entry.username,
+      entry.user,
+      entry.completed_by_username,
+      entry.completedByUsername,
+      entry.COMPLETED_BY_USERNAME,
+      entry.REQUEST_COMPLETED_BY_USERNAME,
+      ''
+    ));
+    display = String(firstNonEmptyRequestValue_(
+      entry.display,
+      entry.displayName,
+      entry.completed_by_display,
+      entry.completedByDisplay,
+      entry.COMPLETED_BY_DISPLAY,
+      entry.REQUEST_COMPLETED_BY_DISPLAY,
+      entry.completed_by,
+      entry.completedBy,
+      entry.COMPLETED_BY,
+      username,
+      ''
+    ) || '').trim();
+    email = normalizeEmailAddress_(firstNonEmptyRequestValue_(
+      entry.email,
+      entry.completed_by_email,
+      entry.completedByEmail,
+      entry.COMPLETED_BY_EMAIL,
+      entry.REQUEST_COMPLETED_BY_EMAIL,
+      ''
+    ));
+  }
+  if (!username && email) username = normalizeRequestCompletionUsername_(email.split('@')[0] || email);
+  if (!display) display = username || email;
+  if (!email && (username || display)) email = normalizeEmailAddress_(resolveRequestRecipientEmail_(username || display, ''));
+  if (!username && display) username = normalizeRequestCompletionUsername_(display);
+  if (!username && !display && !email) return null;
+  return {
+    username: username,
+    display: display,
+    email: email
+  };
+}
+
+function getRequestCompletionUserEntryFromItem_(item) {
+  if (!item || typeof item !== 'object') return null;
+  return normalizeRequestCompletionUserEntry_({
+    username: firstNonEmptyRequestValue_(item.COMPLETED_BY_USERNAME, item.completed_by_username, item.completedByUsername, item.REQUEST_COMPLETED_BY_USERNAME, ''),
+    display: firstNonEmptyRequestValue_(item.COMPLETED_BY_DISPLAY, item.completed_by_display, item.completedByDisplay, item.COMPLETED_BY, item.completed_by, item.REQUEST_COMPLETED_BY_DISPLAY, ''),
+    email: firstNonEmptyRequestValue_(item.COMPLETED_BY_EMAIL, item.completed_by_email, item.completedByEmail, item.REQUEST_COMPLETED_BY_EMAIL, '')
+  });
+}
+
+function formatRequestCompletionUserLabel_(item) {
+  const entry = getRequestCompletionUserEntryFromItem_(item);
+  if (!entry) return '';
+  if (entry.display && entry.username && normalizeRequestCompletionUsername_(entry.display) !== entry.username) {
+    return entry.display + ' (' + entry.username + ')';
+  }
+  return entry.display || entry.username || entry.email || '';
+}
+
+function collectRequestCompletionUsers_(payload) {
+  const seen = {};
+  const users = [];
+  const addUser = function(entry) {
+    const normalized = normalizeRequestCompletionUserEntry_(entry);
+    if (!normalized) return;
+    const key = normalized.email || normalized.username || normalizeRequestCompletionUsername_(normalized.display);
+    if (!key || seen[key]) return;
+    seen[key] = true;
+    users.push(normalized);
+  };
+  const directUsers = Array.isArray(payload && payload.completedByUsers) ? payload.completedByUsers
+    : (Array.isArray(payload && payload.completed_by_users) ? payload.completed_by_users : []);
+  directUsers.forEach(addUser);
+  const directEmails = dedupeEmailAddresses_([
+    payload && payload.completedByEmails,
+    payload && payload.completed_by_emails,
+    payload && payload.completerEmails,
+    payload && payload.requestCompletedByEmails
+  ]);
+  directEmails.forEach(addUser);
+  const items = Array.isArray(payload && payload.requestItems) ? payload.requestItems
+    : (Array.isArray(payload && payload.items) ? payload.items
+      : (Array.isArray(payload && payload.sourceRows) ? payload.sourceRows : []));
+  items.forEach(function(item) {
+    addUser(getRequestCompletionUserEntryFromItem_(item));
+  });
+  return users;
+}
+
+function buildRequestCompletedBySummary_(payload) {
+  return collectRequestCompletionUsers_(payload).map(function(user) {
+    if (user.display && user.username && normalizeRequestCompletionUsername_(user.display) !== user.username) return user.display + ' (' + user.username + ')';
+    return user.display || user.username || user.email || '';
+  }).filter(Boolean).join(', ');
+}
+
 function collectRequestRecipients_(payload) {
   const sendToAllSalesReps = payload && payload.sendToAllSalesReps === true;
   const repName = String(payload.repName || payload.salesRepName || payload.requestedBy || '').trim();
@@ -2810,6 +2930,11 @@ function collectRequestRecipients_(payload) {
     payload.internalRecipients,
     payload.linkedRepEmails,
     payload.assistantEmails,
+    payload.completedByEmails,
+    payload.completed_by_emails,
+    payload.completerEmails,
+    payload.requestCompletedByEmails,
+    collectRequestCompletionUsers_(payload).map(function(user) { return user.email; }),
     payload.recipients,
     payload.dylanEmail,
     payload.jdEmail,
@@ -3023,26 +3148,44 @@ function isArchivedRequestRow_(row) {
 function fetchRequestRowsForEmailFolder_(folderId) {
   const safeFolderId = String(folderId || '').trim();
   if (!safeFolderId) return [];
-  const url = `${SUPABASE_URL}/rest/v1/v2_active_request?select=unique_id,request_folder,req_customer,commonname,contsize,itemcode,req_qty,locationcode,av_note,req_spec,req_caliper,req_match,loc_match_qty,req_photo_link,req_photo_name,req_archived&request_folder=eq.${encodeURIComponent(safeFolderId)}`;
-  const response = UrlFetchApp.fetch(url, {
-    method: 'get',
-    muteHttpExceptions: true,
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY
+  const baseFields = 'unique_id,request_folder,req_customer,commonname,contsize,itemcode,req_qty,locationcode,av_note,req_spec,req_caliper,req_match,loc_match_qty,req_photo_link,req_photo_name,req_archived';
+  const fieldsWithCompleter = baseFields + ',completed_by_username,completed_by_display,completed_by_email';
+  let response = null;
+  let status = 0;
+  let bodyText = '';
+  const loadRows = function(selectFields) {
+    const url = `${SUPABASE_URL}/rest/v1/v2_active_request?select=${selectFields}&request_folder=eq.${encodeURIComponent(safeFolderId)}`;
+    const result = UrlFetchApp.fetch(url, {
+      method: 'get',
+      muteHttpExceptions: true,
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      }
+    });
+    return result;
+  };
+  response = loadRows(fieldsWithCompleter);
+  status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
+  bodyText = response && response.getContentText ? response.getContentText() : '';
+  if (status < 200 || status >= 300) {
+    const normalizedBody = String(bodyText || '').toLowerCase();
+    if (normalizedBody.indexOf('completed_by_') !== -1 || normalizedBody.indexOf('column') !== -1) {
+      response = loadRows(baseFields);
+      status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
+      bodyText = response && response.getContentText ? response.getContentText() : '';
     }
-  });
-  const status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
+  }
   if (status < 200 || status >= 300) {
     console.error('[REQUEST EMAIL] Could not load request rows for delayed reply', {
       folderId: safeFolderId,
       status: status,
-      body: response && response.getContentText ? response.getContentText() : ''
+      body: bodyText
     });
     return [];
   }
   try {
-    const parsed = JSON.parse(response.getContentText() || '[]');
+    const parsed = JSON.parse(bodyText || '[]');
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
     console.error('[REQUEST EMAIL] Could not parse delayed request rows', { folderId: safeFolderId, error: error && error.message ? error.message : error });
@@ -3069,6 +3212,9 @@ function buildRequestEmailItemsFromRows_(rows, payload) {
       caliper: firstNonEmptyRequestValue_(item && item.req_caliper, item && item.REQ_CALIPER, item && item.caliper, item && item.CALIPER, ''),
       match: firstNonEmptyRequestValue_(item && item.req_match, item && item.REQ_MATCH, item && item.match, item && item.MATCH, ''),
       loc_match_qty: firstNonEmptyRequestValue_(item && item.loc_match_qty, item && item.LOC_MATCH_QTY, ''),
+      completed_by_username: firstNonEmptyRequestValue_(item && item.completed_by_username, item && item.COMPLETED_BY_USERNAME, ''),
+      completed_by_display: firstNonEmptyRequestValue_(item && item.completed_by_display, item && item.COMPLETED_BY_DISPLAY, item && item.completed_by, item && item.COMPLETED_BY, ''),
+      completed_by_email: firstNonEmptyRequestValue_(item && item.completed_by_email, item && item.COMPLETED_BY_EMAIL, ''),
       photo: firstNonEmptyRequestValue_(item && item.req_photo_link, item && item.REQ_PHOTO_LINK, item && item.photo_link, '')
     };
   }).filter(function(item) {
@@ -3310,16 +3456,20 @@ function buildRequestEmailMessage_(payload) {
   if (emailType === 'request_complete') {
     const folderNote = String(payload.folderNote || '').trim();
     const folderNoteHtml = folderNote ? '<p><strong>Folder Note:</strong> ' + escapeEmailHtml_(folderNote) + '</p>' : '';
+    const completedBySummary = buildRequestCompletedBySummary_(payload);
+    const completedBySummaryHtml = completedBySummary ? '<p><strong>Completed By:</strong> ' + escapeEmailHtml_(completedBySummary) + '</p>' : '';
     const detailSection = itemsHtml
       ? [
           '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
           folderNoteHtml,
+          completedBySummaryHtml,
           '<p style="font-weight:700; margin-bottom:12px;">Completed Items</p>',
           itemsHtml
         ].join('')
       : [
           '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
           folderNoteHtml,
+          completedBySummaryHtml,
           '<p style="font-size: 12px; color: #777;">Please log into the app, go to <strong>Requests &gt; Sales Reps</strong> to Approve or Reject these items.</p>'
         ].join('');
 
@@ -3333,6 +3483,7 @@ function buildRequestEmailMessage_(payload) {
         'Folder ID: ' + String(payload.folderId || payload.requestFolder || ''),
         'Total Items Fulfilled: ' + String(payload.itemsCount || 0),
         folderNote ? 'Folder Note: ' + folderNote : '',
+        completedBySummary ? 'Completed By: ' + completedBySummary : '',
         itemsText
       ].filter(Boolean).join('\n\n'),
       htmlBody: [
