@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.13.11';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.13.12';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -629,7 +629,7 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
         body.measurement-keyboard-open #main-scroll-area{padding-bottom:calc(5rem + var(--detail-keyboard-height, 0px) + env(safe-area-inset-bottom));scroll-padding-bottom:calc(6rem + var(--detail-keyboard-height, 0px) + env(safe-area-inset-bottom))}
         #detail-measurement-keyboard{max-height:min(46vh,340px);overflow-y:auto;overscroll-behavior:contain;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-overflow-scrolling:touch}
         body.ios-device #detail-measurement-keyboard{max-height:min(44vh,320px);transform:translate3d(0,0,0);-webkit-transform:translate3d(0,0,0);backface-visibility:hidden;-webkit-backface-visibility:hidden}
-        #view-detail input.detail-measurement-input-active{border-color:#007a4d!important;box-shadow:0 0 0 3px rgba(0,122,77,.16),inset 0 1px 0 rgba(255,255,255,.8)!important}
+        #view-detail input.detail-measurement-input-active{border-color:#007a4d!important;box-shadow:0 0 0 3px rgba(0,122,77,.16),inset 0 1px 0 rgba(255,255,255,.8)!important;caret-color:#007a4d!important;cursor:text!important;-webkit-user-select:text!important;user-select:text!important}
         #view-login,#view-change-password{pointer-events:auto;isolation:isolate}
         #view-login .login-card,#view-change-password .login-card{position:relative;z-index:1;pointer-events:auto}
         #login-inputs,#loading-spinner{position:relative;z-index:2;pointer-events:auto}
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.11').trim() || 'V2026.05.13.11';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.12').trim() || 'V2026.05.13.12';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2812,7 +2812,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.11';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.12';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -5157,11 +5157,11 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                     { value: '7', token: '7', label: '7' },
                     { value: '8', token: '8', label: '8' },
                     { value: '9', token: '9', label: '9' },
-                    { token: '__backspace', labelHtml: '<i class="ph-bold ph-backspace"></i>', action: 'backspace' },
                     { value: "'", token: 'apostrophe', label: "'", labelHtml: '&#39;' },
                     { value: '0', token: '0', label: '0' },
                     { value: '.', token: '.', label: '.' },
-                    { token: '__done', labelHtml: '<i class="ph-bold ph-arrow-right"></i>', action: 'done' }
+                    { token: '__backspace', labelHtml: '<i class="ph-bold ph-backspace"></i>', action: 'backspace' },
+                    { token: '__done', labelHtml: '<span class="text-[12px] font-black uppercase tracking-[0.12em]">Enter</span>', action: 'done' }
                 ];
             }
             return [
@@ -5176,15 +5176,15 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                 { value: '7', token: '7', label: '7' },
                 { value: '8', token: '8', label: '8' },
                 { value: '9', token: '9', label: '9' },
-                { token: '__backspace', labelHtml: '<i class="ph-bold ph-backspace"></i>', action: 'backspace' },
                 { value: "'", token: 'apostrophe', label: "'", labelHtml: '&#39;' },
+                { value: 'H', token: 'H', label: 'H' },
+                { value: 'x', token: 'x', label: 'x' },
+                { value: 'W', token: 'W', label: 'W' },
+                { token: '__backspace', labelHtml: '<i class="ph-bold ph-backspace"></i>', action: 'backspace' },
                 { value: '0', token: '0', label: '0' },
                 { value: '.', token: '.', label: '.' },
-                { token: '__done', labelHtml: '<i class="ph-bold ph-arrow-right"></i>', action: 'done' },
-                { value: 'H', token: 'H', label: 'H' },
-                { value: 'W', token: 'W', label: 'W' },
-                { value: 'x', token: 'x', label: 'x' },
-                { value: ' ', token: 'space', label: 'SPACE' }
+                { token: '__done', labelHtml: '<span class="text-[12px] font-black uppercase tracking-[0.12em]">Enter</span>', action: 'done', span: 2 },
+                { value: ' ', token: 'space', label: 'SPACE', span: 4 }
             ];
         }
 
@@ -5256,20 +5256,14 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
 
         function applyDetailMeasurementKeyboardInputState(input = null) {
             if (!input || !input.dataset) return;
-            ['inputmode', 'autocomplete', 'autocapitalize', 'enterkeyhint'].forEach((attrName) => rememberDetailMeasurementInputAttribute(input, attrName));
+            ['inputmode', 'autocomplete', 'autocapitalize', 'enterkeyhint', 'virtualkeyboardpolicy'].forEach((attrName) => rememberDetailMeasurementInputAttribute(input, attrName));
             input.setAttribute('inputmode', 'none');
             input.setAttribute('autocomplete', 'off');
             input.setAttribute('autocapitalize', 'characters');
             input.setAttribute('enterkeyhint', 'next');
+            input.setAttribute('virtualkeyboardpolicy', 'manual');
             input.setAttribute('data-detail-measurement-keyboard', 'true');
             input.classList.add('detail-measurement-input-active');
-            if (shouldPreferDetailMeasurementKeyboard() && !input.dataset.detailKeypadReadonlyApplied) {
-                input.dataset.detailKeypadWasReadonly = input.readOnly ? '1' : '0';
-                input.dataset.detailKeypadReadonlyApplied = '1';
-                input.readOnly = true;
-            } else if (shouldPreferDetailMeasurementKeyboard()) {
-                input.readOnly = true;
-            }
         }
 
         function restoreDetailMeasurementInputReadonly(input = detailMeasurementKeyboardTarget) {
@@ -5278,7 +5272,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             else input.readOnly = false;
             delete input.dataset.detailKeypadWasReadonly;
             delete input.dataset.detailKeypadReadonlyApplied;
-            ['inputmode', 'autocomplete', 'autocapitalize', 'enterkeyhint'].forEach((attrName) => restoreDetailMeasurementInputAttribute(input, attrName));
+            ['inputmode', 'autocomplete', 'autocapitalize', 'enterkeyhint', 'virtualkeyboardpolicy'].forEach((attrName) => restoreDetailMeasurementInputAttribute(input, attrName));
             input.removeAttribute('data-detail-measurement-keyboard');
             input.classList.remove('detail-measurement-input-active');
         }
@@ -5290,8 +5284,11 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             });
         }
 
-        function openDetailMeasurementKeyboard(input = null, type = '') {
+        function openDetailMeasurementKeyboard(input = null, type = '', options = {}) {
             if (!isDetailMeasurementKeyboardInput(input)) return false;
+            const safeOptions = options && typeof options === 'object' ? options : {};
+            const wasFocused = document.activeElement === input;
+            const shouldPreserveSelection = safeOptions.preserveSelection === true || wasFocused;
             if (detailMeasurementKeyboardTarget && detailMeasurementKeyboardTarget !== input) {
                 restoreDetailMeasurementInputReadonly(detailMeasurementKeyboardTarget);
             }
@@ -5305,7 +5302,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             } catch (error) {
                 try { input.focus(); } catch (focusError) {}
             }
-            if (typeof input.setSelectionRange === 'function') {
+            if (!shouldPreserveSelection && typeof input.setSelectionRange === 'function') {
                 const cursorEnd = String(input.value || '').length;
                 try { input.setSelectionRange(cursorEnd, cursorEnd); } catch (selectionError) {}
             }
@@ -5469,8 +5466,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             if (!input) return false;
             if (source === 'pointer' && Date.now() - detailMeasurementKeyboardLastTouchStartAt < 450) return true;
             if (source === 'touch') detailMeasurementKeyboardLastTouchStartAt = Date.now();
-            if (shouldPreferDetailMeasurementKeyboard() && event && typeof event.preventDefault === 'function') event.preventDefault();
-            openDetailMeasurementKeyboard(input, getDetailMeasurementKeyboardTypeForInput(input));
+            openDetailMeasurementKeyboard(input, getDetailMeasurementKeyboardTypeForInput(input), { preserveSelection: true });
             return true;
         }
 
@@ -12794,7 +12790,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.11').trim() || 'V2026.05.13.11';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.12').trim() || 'V2026.05.13.12';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
