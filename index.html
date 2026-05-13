@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.13.13';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.13.14';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.13').trim() || 'V2026.05.13.13';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.14').trim() || 'V2026.05.13.14';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2812,7 +2812,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.13';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.14';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12688,8 +12688,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let pendingEditsPersistTimer = null;
         const PENDING_EDITS_STORAGE_KEY = 'gnc_pending_edits';
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
-        const salesRepList=["Abbey Burka","Alyssa Beitz","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kevin Effinger","Molly Dixon","Nate Douglas","Toby Brown","Tony Bono","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
-        const REQUEST_REP_ENABLED_TOKENS = new Set(['alyssa_beitz','alyssa beitz','alyssabeitz','tony_bono','tony bono','tonybono']);
+        const salesRepList=["Abbey Burka","Alyssa Beitz","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kayla Knepp","Kevin Effinger","Molly Dixon","Nate Douglas","Toby Brown","Tony Bono","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
+        const REQUEST_REP_ENABLED_TOKENS = new Set(['alyssa_beitz','alyssa beitz','alyssabeitz','tony_bono','tony bono','tonybono','kayla_knepp','kayla knepp','kaylaknepp']);
+        const REQUEST_REP_CUSTOMER_OVERRIDES = Object.freeze([
+            { repNames: ['Kayla Knepp', 'kayla_knepp'], customerName: 'Earl May', consigneeName: '' }
+        ]);
         const REQUEST_MODAL_REP_OPTIONS = Object.freeze(
             [...new Set(salesRepList.map((rep) => String(rep || '').trim()).filter(Boolean))]
                 .sort((a, b) => a.localeCompare(b))
@@ -12796,7 +12799,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.13').trim() || 'V2026.05.13.13';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.14').trim() || 'V2026.05.13.14';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -18396,6 +18399,26 @@ function toggleDriveQuickRequestItem(domId) {
             };
         }
 
+        function getRequestModalCustomerOverrideOptionsForRep(repName = '') {
+            const canonicalRepName = resolveCanonicalRequestRepName(repName);
+            return (REQUEST_REP_CUSTOMER_OVERRIDES || []).filter((entry) => {
+                const names = Array.isArray(entry && entry.repNames) ? entry.repNames : [];
+                return names.some((name) => doesRequestRepMatchValue(name, canonicalRepName) || doesRequestRepMatchValue(canonicalRepName, name));
+            }).map((entry) => buildRequestModalCustomerSearchOption(entry.customerName, entry.consigneeName)).filter(Boolean);
+        }
+
+        function mergeRequestModalCustomerOptions() {
+            const optionMap = new Map();
+            Array.from(arguments).forEach((optionList) => {
+                (Array.isArray(optionList) ? optionList : []).forEach((option) => {
+                    if (!option) return;
+                    const optionKey = `${normalizeRepMatchToken(option.customerName)}|||${normalizeRepMatchToken(option.consigneeName)}|||${normalizeRepMatchToken(option.label)}`;
+                    if (optionKey && !optionMap.has(optionKey)) optionMap.set(optionKey, option);
+                });
+            });
+            return Array.from(optionMap.values()).sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+        }
+
         function buildRequestModalCustomerOptionsCache(force = false) {
             const nextCacheKey = getRequestModalCustomerOptionsCacheSignature();
             if (!force && requestModalCustomerOptionsCacheKey === nextCacheKey && requestModalCustomerOptionsByRepCache instanceof Map) {
@@ -18466,8 +18489,9 @@ function toggleDriveQuickRequestItem(domId) {
             const repKey = normalizeRepMatchToken(canonicalRepName);
             if (!repKey) return [];
             const cache = buildRequestModalCustomerOptionsCache();
+            const overrideOptions = getRequestModalCustomerOverrideOptionsForRep(canonicalRepName);
             const cachedOptions = Array.isArray(cache.get(repKey)) ? cache.get(repKey) : null;
-            if (cachedOptions && cachedOptions.length) return cachedOptions.slice();
+            if (cachedOptions && cachedOptions.length) return mergeRequestModalCustomerOptions(cachedOptions, overrideOptions);
             const optionMap = new Map();
             (reservesInventory || []).forEach((item) => {
                 const repValue = firstNonEmptyValue(item && item.SALESREPNAME, item && item.SALESREP, item && item.SALES_REP, item && item.SALESREPID, '');
@@ -18481,11 +18505,11 @@ function toggleDriveQuickRequestItem(domId) {
                 if (optionKey && !optionMap.has(optionKey)) optionMap.set(optionKey, option);
             });
             if (optionMap.size) {
-                const options = Array.from(optionMap.values()).sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+                const options = mergeRequestModalCustomerOptions(Array.from(optionMap.values()), overrideOptions);
                 cache.set(repKey, options);
                 return options.slice();
             }
-            return cachedOptions ? cachedOptions.slice() : [];
+            return mergeRequestModalCustomerOptions(cachedOptions || [], overrideOptions);
         }
 
         function scheduleRequestModalSearchRender(searchKey = 'rep', term = '', renderFn = null, options = {}) {
