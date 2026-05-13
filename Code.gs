@@ -3333,6 +3333,8 @@ function buildRequestEmailMessage_(payload) {
   }
 
   if (emailType === 'bloom_crop_update') {
+    const brandLabelPlain = String(payload.brandLabel || payload.fromName || payload.emailDisplayName || 'GNC PH Crop Update').trim() || 'GNC PH Crop Update';
+    const brandLabel = escapeEmailHtml_(brandLabelPlain);
     const userMessage = String(payload.message || payload.userMessage || '').trim();
     const requestedBy = String(payload.requestedByDisplay || payload.requestedBy || '').trim();
     const requestedByHtml = requestedBy ? '<p><strong>Sent By:</strong> ' + escapeEmailHtml_(requestedBy) + '</p>' : '';
@@ -3360,14 +3362,14 @@ function buildRequestEmailMessage_(payload) {
     return {
       subject: subject,
       textBody: [
-        'GNC PH Crop Update',
+        brandLabelPlain,
         requestedBy ? 'Sent By: ' + requestedBy : '',
         userMessage,
         cropItemsText
       ].filter(Boolean).join('\n\n'),
       htmlBody: [
         '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
-        '<h2 style="color: #007a4d;">GNC PH Crop Update</h2>',
+        '<h2 style="color: #007a4d;">' + brandLabel + '</h2>',
         requestedByHtml,
         messageHtml,
         detailSection,
@@ -3596,10 +3598,11 @@ function sendRequestEmailWithFallback_(payload) {
     }
   }
   if (safeType === 'bloom_crop_update') {
+    const bloomCropUpdateName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || 'GNC PH Crop Update').trim() || 'GNC PH Crop Update';
     try {
       GmailApp.sendEmail(recipients.toList, message.subject, message.textBody || message.subject, {
         htmlBody: message.htmlBody,
-        name: 'GNC PH Crop Update'
+        name: bloomCropUpdateName
       });
       return {
         ok: true,

@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.33';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.34';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1694,6 +1694,26 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             </div>
         </div>
     </div>
+    <div id="ncr-rep-outreach-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4" onclick="if(event.target===this) closeNcrRepOutreachModal('no')">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg text-left">
+            <div class="flex items-start justify-between gap-3 mb-4 border-b border-gray-100 pb-3">
+                <div>
+                    <div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700"><i class="ph-bold ph-users-three text-sm"></i>Rep Email</div>
+                    <h3 id="ncr-rep-outreach-title" class="mt-3 text-lg font-black text-slate-900">Send to reps?</h3>
+                    <div id="ncr-rep-outreach-label" class="mt-1 text-[11px] font-semibold text-slate-500"></div>
+                </div>
+                <button type="button" class="text-gray-500 font-bold py-2 px-3" onclick="closeNcrRepOutreachModal('no')">Close</button>
+            </div>
+            <p class="text-sm leading-6 text-slate-600">
+                Choose <span class="font-black text-[#007a4d]">Yes, Select Reps</span> to open the flexible OK, NC, and TX rep selector.
+                Choose <span class="font-black text-slate-700">No</span> to leave the approval in Inventory Office without sending the extra rep email.
+            </p>
+            <div class="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-sm active:scale-95" onclick="closeNcrRepOutreachModal('no')">No</button>
+                <button type="button" id="ncr-rep-outreach-yes-btn" class="rounded-xl border border-emerald-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="closeNcrRepOutreachModal('yes')">Yes, Select Reps</button>
+            </div>
+        </div>
+    </div>
     <div id="request-rep-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center flex flex-col max-h-[90vh] overflow-hidden">
             <div id="step-1-rep" class="flex flex-col min-h-0">
@@ -1748,8 +1768,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         <div class="my-4 flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
             <div class="flex items-start justify-between gap-3 border-b border-emerald-100 px-5 py-4">
                 <div class="min-w-0">
-                    <div class="text-[10px] font-black uppercase tracking-[0.18em] text-[#007a4d]">Bloom Picker</div>
-                    <div class="mt-1 text-lg font-black text-slate-900">GNC PH Crop Update</div>
+                    <div id="bloom-crop-update-eyebrow" class="text-[10px] font-black uppercase tracking-[0.18em] text-[#007a4d]">Bloom Picker</div>
+                    <div id="bloom-crop-update-title" class="mt-1 text-lg font-black text-slate-900">GNC PH Crop Update</div>
                     <div id="bloom-crop-update-row-count" class="mt-1 text-xs font-bold text-slate-500"></div>
                 </div>
                 <button type="button" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm" onclick="return closeBloomCropUpdateModal()">Close</button>
@@ -1872,7 +1892,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.33').trim() || 'V2026.05.12.33';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.34').trim() || 'V2026.05.12.34';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2751,7 +2771,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.33';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.34';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -5442,7 +5462,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         function closeLoginBlockingLayers() {
             try { closePhotoModal(); } catch (e) {}
             try { toggleMenu(false); } catch (e) {}
-            ['tab-select-modal', 'assign-modal', 'flyer-assignee-modal', 'endcap-modal', 'dock-mistake-modal', 'dock-allocation-modal', 'dock-info-modal', 'sales-office-av-modal', 'request-publish-modal', 'ncr-email-modal', 'hold-release-modal', 'request-rep-modal', 'bloom-share-modal', 'bloom-crop-update-modal', 'bloom-picker-modal', 'take-back-done-confirm-modal', 'drawer-overlay', 'side-drawer'].forEach(forceHideUiLayer);
+            ['tab-select-modal', 'assign-modal', 'flyer-assignee-modal', 'endcap-modal', 'dock-mistake-modal', 'dock-allocation-modal', 'dock-info-modal', 'sales-office-av-modal', 'request-publish-modal', 'ncr-email-modal', 'hold-release-modal', 'ncr-rep-outreach-modal', 'request-rep-modal', 'bloom-share-modal', 'bloom-crop-update-modal', 'bloom-picker-modal', 'take-back-done-confirm-modal', 'drawer-overlay', 'side-drawer'].forEach(forceHideUiLayer);
         }
 
         function resetLoginUiState() {
@@ -11853,6 +11873,7 @@ const ncrFilterStateByView = {
         let ncrCompletionSchemaReady=null; let ncrCompletionSchemaPromise=null; let ncrCompletionSchemaWarningShown=false; let ncrCompletionLoadPromise=null; let ncrCompletionsLoaded=false;
         let ncrEmailPromptResolver=null;
         let holdReleasePromptResolver=null;
+        let ncrRepOutreachPromptResolver=null;
         let loginPrefetchPromise=null;
         let loginPrefetchMode='';
         let datasetLoadState=createDatasetLoadState();
@@ -11861,7 +11882,7 @@ const ncrFilterStateByView = {
         let lastBackgroundRefreshAt=0;
         let cacheWarmPromise=null;
         let cachePersistTimer=null; let cachePersistIdleHandle=null; let lastCachePersistAt=0; let pendingCachePersist=false;
-let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let currentPrimaryViewId="home"; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let bloomCropUpdateModalOpen=false; let bloomCropUpdatePendingItems=[]; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0; let leafVoiceRecognition=null; let leafVoiceListening=false; let leafVoiceSpeaking=false; let leafVoiceAbortRequested=false; let leafVoiceSubmitPending=false; let leafVoiceInterimText=''; let leafVoiceFinalText=''; let leafVoiceStatusOverride=''; let leafLastSpokenAnswer=''; let leafVoiceUtterance=null; let leafVoiceFinalizeTimer=null; let leafVoiceLastSpeechAt=0;
+let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let currentPrimaryViewId="home"; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let bloomCropUpdateModalOpen=false; let bloomCropUpdatePendingItems=[]; let bloomCropUpdateEmailContext=null; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0; let leafVoiceRecognition=null; let leafVoiceListening=false; let leafVoiceSpeaking=false; let leafVoiceAbortRequested=false; let leafVoiceSubmitPending=false; let leafVoiceInterimText=''; let leafVoiceFinalText=''; let leafVoiceStatusOverride=''; let leafLastSpokenAnswer=''; let leafVoiceUtterance=null; let leafVoiceFinalizeTimer=null; let leafVoiceLastSpeechAt=0;
 let bloomCropUpdateRecipientMode='reps'; let bloomCropUpdateReserveEmailGroups=[]; let bloomCropUpdateReserveRowsLoading=false; let bloomCropUpdateReserveRowsError=''; let bloomCropUpdateReserveFetchToken=0;
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
@@ -12258,7 +12279,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.33').trim() || 'V2026.05.12.33';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.34').trim() || 'V2026.05.12.34';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -26937,6 +26958,46 @@ function toggleDriveQuickRequestItem(domId) {
             });
         }
 
+        function getNcrRepOutreachModalRowLabel(item = null, type = 'new-crop', approvedQty = '') {
+            const rowLabel = [
+                String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '') || '').trim(),
+                String(firstNonEmptyValue(item && item.COMMONNAME, item && item.commonname, 'Unknown Item') || '').trim(),
+                String(firstNonEmptyValue(item && item.CONTSIZE, item && item.contsize, item && item.ITEMSPEC, '') || '').trim(),
+                String(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, item && item.LOCATION, '') || '').trim()
+            ].filter(Boolean).join(' - ');
+            const qtyLabel = approvedQty !== '' && approvedQty !== null && approvedQty !== undefined ? `Qty ${approvedQty}` : '';
+            return [getNcrApprovalTypeLabel(type), rowLabel, qtyLabel].filter(Boolean).join(' | ');
+        }
+
+        function closeNcrRepOutreachModal(choice = 'no') {
+            const modal = document.getElementById('ncr-rep-outreach-modal');
+            if (modal) modal.classList.add('hidden');
+            const resolver = ncrRepOutreachPromptResolver;
+            ncrRepOutreachPromptResolver = null;
+            if (resolver) resolver(String(choice || 'no').trim().toLowerCase() || 'no');
+        }
+
+        function openNcrRepOutreachModal(item = null, type = 'new-crop', approvedQty = '') {
+            const modal = document.getElementById('ncr-rep-outreach-modal');
+            if (!modal) return Promise.resolve('no');
+            const labelText = getNcrRepOutreachModalRowLabel(item, type, approvedQty);
+            const title = document.getElementById('ncr-rep-outreach-title');
+            const label = document.getElementById('ncr-rep-outreach-label');
+            if (title) title.textContent = `Send ${getNcrApprovalTypeLabel(type)} to reps?`;
+            if (label) label.textContent = labelText;
+            if (ncrRepOutreachPromptResolver) {
+                const previousResolver = ncrRepOutreachPromptResolver;
+                ncrRepOutreachPromptResolver = null;
+                previousResolver('no');
+            }
+            modal.classList.remove('hidden');
+            return new Promise((resolve) => {
+                ncrRepOutreachPromptResolver = resolve;
+                const yesBtn = document.getElementById('ncr-rep-outreach-yes-btn');
+                if (yesBtn) setTimeout(() => yesBtn.focus(), 0);
+            });
+        }
+
         function getHoldReleaseCompletionSourceLabel(prefix = '') {
             const safePrefix = String(prefix || '').trim().toLowerCase();
             if (safePrefix === 'req-') return 'Request';
@@ -27450,6 +27511,73 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
+        function shouldPromptNcrRepOutreachAfterJdApproval(type = '') {
+            const normalizedUser = normalizePushUsername(currentUser || currentUserDisplay || '');
+            const normalizedType = normalizeNcrApprovalType(type);
+            return normalizedUser === NCR_APPROVAL_JD_USER && (normalizedType === 'new-crop' || normalizedType === 'hold-release');
+        }
+
+        function buildNcrRepOutreachSummaryLine(item = null, approvedQty = '') {
+            return [
+                firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, ''),
+                firstNonEmptyValue(item && item.COMMONNAME, item && item.commonname, ''),
+                firstNonEmptyValue(item && item.CONTSIZE, item && item.contsize, item && item.ITEMSPEC, ''),
+                firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, item && item.LOCATION, ''),
+                approvedQty !== '' && approvedQty !== null && approvedQty !== undefined ? `Qty ${approvedQty}` : ''
+            ].map((value) => String(value || '').trim()).filter(Boolean).join(' | ');
+        }
+
+        function buildNcrRepOutreachRow(item = null, type = 'new-crop', approvedQty = '') {
+            const label = getNcrApprovalTypeLabel(type);
+            const summary = buildNcrRepOutreachSummaryLine(item, approvedQty);
+            const row = { ...(item || {}) };
+            row.NCR_APPROVED_QTY = approvedQty;
+            row.APPROVED_QTY = approvedQty;
+            row.LOC_MATCH_QTY = firstNonEmptyValue(approvedQty, row.LOC_MATCH_QTY, row.loc_match_qty, '');
+            row.loc_match_qty = row.LOC_MATCH_QTY;
+            row.SALES_NOTE = firstNonEmptyValue(row.SALES_NOTE, row.sales_note, `${label} approved by JD Jones`);
+            row.NOTES = [
+                `${label} approved by JD Jones${summary ? `: ${summary}` : ''}.`,
+                firstNonEmptyValue(row.NOTES, row.notes, '')
+            ].map((value) => String(value || '').trim()).filter(Boolean).join('\n');
+            return row;
+        }
+
+        function buildNcrRepOutreachEmailContext(item = null, type = 'new-crop', approvedQty = '') {
+            const label = getNcrApprovalTypeLabel(type);
+            const shortLabel = getNcrApprovalShortLabel(type);
+            const summary = buildNcrRepOutreachSummaryLine(item, approvedQty) || label;
+            const defaultMessage = [
+                `${label} approved by JD Jones.`,
+                summary,
+                'Please review the attached row details and photos.'
+            ].filter(Boolean).join('\n');
+            return {
+                source: 'ncr_jd_approval_rep_outreach',
+                sourceLabel: `GNC PH ${label}`,
+                approvalType: normalizeNcrApprovalType(type),
+                approvedQty,
+                eyebrow: 'JD Approval',
+                title: `${label} Rep Send`,
+                rowCountLabel: `${shortLabel} approved | ${summary}`,
+                subject: `GNC PH ${label} - ${summary}`,
+                brandLabel: `GNC PH ${label}`,
+                defaultMessage,
+                emailIntroText: defaultMessage,
+                sendButtonLabel: 'Send To Selected Reps'
+            };
+        }
+
+        async function promptNcrRepOutreachAfterJdApproval(item = null, type = 'new-crop', approvedQty = '') {
+            if (!shouldPromptNcrRepOutreachAfterJdApproval(type)) return false;
+            const choice = await openNcrRepOutreachModal(item, type, approvedQty);
+            if (String(choice || '').trim().toLowerCase() !== 'yes') return false;
+            const outreachRow = buildNcrRepOutreachRow(item, type, approvedQty);
+            return openBloomCropUpdateModal([outreachRow], {
+                emailContext: buildNcrRepOutreachEmailContext(outreachRow, type, approvedQty)
+            });
+        }
+
         async function approveNcrApprovalAsJd(uniqueId = '', inputId = '', button = null) {
             const uid = String(uniqueId || '').trim();
             const item = uid ? findItemByUniqueId(uid) : null;
@@ -27490,6 +27618,12 @@ function toggleDriveQuickRequestItem(domId) {
                 removeNcrApprovalCardFromCurrentTaskView(uid);
                 await notifyNcrApprovalStage(masterItem || item, type, 'inventory', { approvedQty: qtyValue });
                 showToast('Inventory Office', `${getNcrApprovalTypeLabel(type)} row sent to Inventory Office.`);
+                setTimeout(() => {
+                    Promise.resolve(promptNcrRepOutreachAfterJdApproval(masterItem || item, type, qtyValue)).catch((promptError) => {
+                        console.error('JD rep outreach prompt failed', promptError);
+                        showToast('Rep Send Prompt Failed', promptError && promptError.message ? promptError.message : 'Could not open the rep send prompt.', true);
+                    });
+                }, 160);
             } catch (error) {
                 console.error('JD NCR approval failed', error);
                 showToast('Could Not Send', error && error.message ? error.message : 'Could not send this row to Inventory Office.', true);
@@ -35251,6 +35385,12 @@ function toggleDriveQuickRequestItem(domId) {
             return !!(allowedUser && rows.length && rows.every((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item)));
         }
 
+        function getBloomCropUpdateEmailContext() {
+            return bloomCropUpdateEmailContext && typeof bloomCropUpdateEmailContext === 'object'
+                ? bloomCropUpdateEmailContext
+                : {};
+        }
+
         function getBloomCropUpdateRepEmail(repName = '') {
             const token = normalizeRepMatchToken(repName);
             const compact = token.replace(/\s+/g, '');
@@ -35612,12 +35752,17 @@ function toggleDriveQuickRequestItem(domId) {
             return bloomCropUpdateReserveEmailGroups;
         }
 
-        function openBloomCropUpdateModal(items = getCartSelectedItems()) {
+        function openBloomCropUpdateModal(items = getCartSelectedItems(), options = {}) {
             const rows = (Array.isArray(items) ? items : []).filter(Boolean);
             if (!canUseBloomCropUpdateEmail(rows)) {
                 showToast('Restricted', 'Crop update emails are only available for Dylan and JD.', true);
                 return false;
             }
+            const safeOptions = options && typeof options === 'object' ? options : {};
+            bloomCropUpdateEmailContext = safeOptions.emailContext && typeof safeOptions.emailContext === 'object'
+                ? { ...safeOptions.emailContext }
+                : null;
+            const context = getBloomCropUpdateEmailContext();
             bloomCropUpdatePendingItems = rows.slice();
             bloomCropUpdateModalOpen = true;
             bloomShareMenuOpen = false;
@@ -35625,12 +35770,18 @@ function toggleDriveQuickRequestItem(domId) {
             syncBloomShareMenuUi();
             updateGlobalActionBar();
             const modal = document.getElementById('bloom-crop-update-modal');
+            const eyebrow = document.getElementById('bloom-crop-update-eyebrow');
+            const title = document.getElementById('bloom-crop-update-title');
             const rowCount = document.getElementById('bloom-crop-update-row-count');
             const messageInput = document.getElementById('bloom-crop-update-message');
             const recipientList = document.getElementById('bloom-crop-update-recipient-list');
-            if (rowCount) rowCount.innerText = `${rows.length} selected row${rows.length === 1 ? '' : 's'}`;
-            if (messageInput) messageInput.value = '';
+            const sendBtn = document.getElementById('bloom-crop-update-send-btn');
+            if (eyebrow) eyebrow.innerText = String(firstNonEmptyValue(context.eyebrow, 'Bloom Picker') || 'Bloom Picker');
+            if (title) title.innerText = String(firstNonEmptyValue(context.title, 'GNC PH Crop Update') || 'GNC PH Crop Update');
+            if (rowCount) rowCount.innerText = String(firstNonEmptyValue(context.rowCountLabel, `${rows.length} selected row${rows.length === 1 ? '' : 's'}`) || '');
+            if (messageInput) messageInput.value = String(firstNonEmptyValue(context.defaultMessage, '') || '');
             if (recipientList) recipientList.innerHTML = buildBloomCropUpdateRecipientHtml();
+            if (sendBtn) sendBtn.innerText = String(firstNonEmptyValue(context.sendButtonLabel, 'Send Crop Update') || 'Send Crop Update');
             bloomCropUpdateRecipientMode = 'reps';
             resetBloomCropUpdateReserveState();
             renderBloomCropUpdateReservePreview();
@@ -35648,6 +35799,7 @@ function toggleDriveQuickRequestItem(domId) {
         function closeBloomCropUpdateModal() {
             bloomCropUpdateModalOpen = false;
             bloomCropUpdatePendingItems = [];
+            bloomCropUpdateEmailContext = null;
             bloomCropUpdateRecipientMode = 'reps';
             resetBloomCropUpdateReserveState();
             const modal = document.getElementById('bloom-crop-update-modal');
@@ -35691,6 +35843,9 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const messageInput = document.getElementById('bloom-crop-update-message');
             const customMessage = messageInput ? messageInput.value.trim() : '';
+            const emailContext = getBloomCropUpdateEmailContext();
+            const subjectBase = String(firstNonEmptyValue(emailContext.subject, 'GNC PH Crop Update') || 'GNC PH Crop Update').trim();
+            const brandLabel = String(firstNonEmptyValue(emailContext.brandLabel, subjectBase) || subjectBase).trim();
             const sendBtn = document.getElementById('bloom-crop-update-send-btn');
             if (sendBtn) sendBtn.disabled = true;
             showToast('Sending...', `Sending ${groups.length} reserve crop update email${groups.length === 1 ? '' : 's'}.`, false);
@@ -35712,7 +35867,12 @@ function toggleDriveQuickRequestItem(domId) {
                     const payload = {
                         type: 'email',
                         emailType: 'bloom_crop_update',
-                        subject: `GNC PH Crop Update - ${group.repName}`,
+                        subject: `${subjectBase} - ${group.repName}`,
+                        brandLabel,
+                        fromName: brandLabel,
+                        sourceLabel: String(firstNonEmptyValue(emailContext.sourceLabel, brandLabel) || brandLabel),
+                        approvalType: String(firstNonEmptyValue(emailContext.approvalType, '') || ''),
+                        approvedQty: firstNonEmptyValue(emailContext.approvedQty, ''),
                         message: customMessage,
                         userMessage: customMessage,
                         itemsCount: (group.sourceRows || []).length,
@@ -35764,17 +35924,27 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const messageInput = document.getElementById('bloom-crop-update-message');
             const customMessage = messageInput ? messageInput.value.trim() : '';
+            const emailContext = getBloomCropUpdateEmailContext();
+            const subject = String(firstNonEmptyValue(emailContext.subject, 'GNC PH Crop Update') || 'GNC PH Crop Update').trim();
+            const brandLabel = String(firstNonEmptyValue(emailContext.brandLabel, subject) || subject).trim();
             const repRecipientEmails = selectedReps.map((rep) => rep.email);
             const recipientEmails = dedupeRequestEmailRecipients([...BLOOM_CROP_UPDATE_INTERNAL_RECIPIENTS, ...repRecipientEmails]);
+            const formattedItemsText = formatInventoryItemsText(rows, '', { includeHeader: false, includePhotoUrls: true, omitFieldLabels: ['LOC MATCH %'] });
+            const formattedItemsHtml = formatInventoryItemsHtml(rows, '', { omitFieldLabels: ['LOC MATCH %'] });
             const payload = {
                 type: 'email',
                 emailType: 'bloom_crop_update',
-                subject: 'GNC PH Crop Update',
+                subject,
+                brandLabel,
+                fromName: brandLabel,
+                sourceLabel: String(firstNonEmptyValue(emailContext.sourceLabel, brandLabel) || brandLabel),
+                approvalType: String(firstNonEmptyValue(emailContext.approvalType, '') || ''),
+                approvedQty: firstNonEmptyValue(emailContext.approvedQty, ''),
                 message: customMessage,
                 userMessage: customMessage,
                 itemsCount: rows.length,
-                formattedItemsText: formatInventoryItemsText(rows, '', { includeHeader: false, includePhotoUrls: true, omitFieldLabels: ['LOC MATCH %'] }),
-                formattedItemsHtml: formatInventoryItemsHtml(rows, '', { omitFieldLabels: ['LOC MATCH %'] }),
+                formattedItemsText,
+                formattedItemsHtml,
                 recipientEmails,
                 internalRecipients: BLOOM_CROP_UPDATE_INTERNAL_RECIPIENTS.slice(),
                 selectedRepRecipients: selectedReps,
