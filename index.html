@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.34';
+window.__APP_SHELL_VERSION__ = 'V2026.05.13.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -624,6 +624,9 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
         body.detail-field-active #bottom-nav,body.detail-field-active #global-action-bar{opacity:0;pointer-events:none;transform:translateY(120%);transition:transform .18s ease,opacity .18s ease}
         body.detail-field-active #main-scroll-area{padding-bottom:calc(4rem + var(--detail-keyboard-height, 0px) + env(safe-area-inset-bottom));scroll-padding-bottom:calc(5rem + var(--detail-keyboard-height, 0px) + env(safe-area-inset-bottom))}
         body.measurement-keyboard-open #main-scroll-area{padding-bottom:calc(5rem + var(--detail-keyboard-height, 0px) + env(safe-area-inset-bottom));scroll-padding-bottom:calc(6rem + var(--detail-keyboard-height, 0px) + env(safe-area-inset-bottom))}
+        #detail-measurement-keyboard{max-height:min(46vh,340px);overflow-y:auto;overscroll-behavior:contain;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-overflow-scrolling:touch}
+        body.ios-device #detail-measurement-keyboard{max-height:min(44vh,320px);transform:translate3d(0,0,0);-webkit-transform:translate3d(0,0,0);backface-visibility:hidden;-webkit-backface-visibility:hidden}
+        #view-detail input.detail-measurement-input-active{border-color:#007a4d!important;box-shadow:0 0 0 3px rgba(0,122,77,.16),inset 0 1px 0 rgba(255,255,255,.8)!important}
         #view-login,#view-change-password{pointer-events:auto;isolation:isolate}
         #view-login .login-card,#view-change-password .login-card{position:relative;z-index:1;pointer-events:auto}
         #login-inputs,#loading-spinner{position:relative;z-index:2;pointer-events:auto}
@@ -1892,7 +1895,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.34').trim() || 'V2026.05.12.34';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.01').trim() || 'V2026.05.13.01';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2771,7 +2774,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.34';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -4378,14 +4381,15 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                 delta = rect.top - (topOffset + topPadding);
             }
             if (Math.abs(delta) < 2) return false;
+            const scrollBehavior = (isIOSDevice() || document.body.classList.contains('measurement-keyboard-open')) ? 'auto' : 'smooth';
             if (mainScrollArea && typeof mainScrollArea.scrollTo === 'function') {
                 mainScrollArea.scrollTo({
                     top: Math.max(0, mainScrollArea.scrollTop + delta),
-                    behavior: 'smooth'
+                    behavior: scrollBehavior
                 });
                 return true;
             }
-            window.scrollBy({ top: delta, left: 0, behavior: 'smooth' });
+            window.scrollBy({ top: delta, left: 0, behavior: scrollBehavior });
             return true;
         }
 
@@ -4405,7 +4409,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                 if (rect.top < topOffset || rect.bottom > (visibleBottom - 28)) {
                     if (scrollDetailFieldWithinMainArea(target, topOffset, visibleBottom)) return;
                     try {
-                        target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+                        target.scrollIntoView({ behavior: isIOSDevice() ? 'auto' : 'smooth', block: 'center', inline: 'nearest' });
                     } catch (err) {
                         target.scrollIntoView();
                     }
@@ -4999,6 +5003,9 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         const DETAIL_MEASUREMENT_KEYBOARD_SELECTOR = '#view-detail input[id$="-spec"], #view-detail input[id$="-caliper"]';
         let detailMeasurementKeyboardTarget = null;
         let detailMeasurementKeyboardType = '';
+        let detailMeasurementKeyboardResumeId = '';
+        let detailMeasurementKeyboardLifecycleTimer = null;
+        let detailMeasurementKeyboardLastTouchStartAt = 0;
 
         function isDetailMeasurementKeyboardInput(element = null) {
             return !!(element && element.matches && element.matches(DETAIL_MEASUREMENT_KEYBOARD_SELECTOR));
@@ -5120,12 +5127,57 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             });
         }
 
+        function rememberDetailMeasurementInputAttribute(input = null, attrName = '') {
+            if (!input || !input.dataset || !attrName) return;
+            const dataKey = `detailKeypadPrev${attrName.charAt(0).toUpperCase()}${attrName.slice(1)}`;
+            if (input.dataset[dataKey] !== undefined) return;
+            input.dataset[dataKey] = input.hasAttribute(attrName) ? String(input.getAttribute(attrName) || '') : '__missing__';
+        }
+
+        function restoreDetailMeasurementInputAttribute(input = null, attrName = '') {
+            if (!input || !input.dataset || !attrName) return;
+            const dataKey = `detailKeypadPrev${attrName.charAt(0).toUpperCase()}${attrName.slice(1)}`;
+            if (input.dataset[dataKey] === undefined) return;
+            const previousValue = input.dataset[dataKey];
+            if (previousValue === '__missing__') input.removeAttribute(attrName);
+            else input.setAttribute(attrName, previousValue);
+            delete input.dataset[dataKey];
+        }
+
+        function applyDetailMeasurementKeyboardInputState(input = null) {
+            if (!input || !input.dataset) return;
+            ['inputmode', 'autocomplete', 'autocapitalize', 'enterkeyhint'].forEach((attrName) => rememberDetailMeasurementInputAttribute(input, attrName));
+            input.setAttribute('inputmode', 'none');
+            input.setAttribute('autocomplete', 'off');
+            input.setAttribute('autocapitalize', 'characters');
+            input.setAttribute('enterkeyhint', 'next');
+            input.setAttribute('data-detail-measurement-keyboard', 'true');
+            input.classList.add('detail-measurement-input-active');
+            if (shouldPreferDetailMeasurementKeyboard() && !input.dataset.detailKeypadReadonlyApplied) {
+                input.dataset.detailKeypadWasReadonly = input.readOnly ? '1' : '0';
+                input.dataset.detailKeypadReadonlyApplied = '1';
+                input.readOnly = true;
+            } else if (shouldPreferDetailMeasurementKeyboard()) {
+                input.readOnly = true;
+            }
+        }
+
         function restoreDetailMeasurementInputReadonly(input = detailMeasurementKeyboardTarget) {
             if (!input || !input.dataset) return;
             if (input.dataset.detailKeypadWasReadonly === '1') input.readOnly = true;
             else input.readOnly = false;
             delete input.dataset.detailKeypadWasReadonly;
             delete input.dataset.detailKeypadReadonlyApplied;
+            ['inputmode', 'autocomplete', 'autocapitalize', 'enterkeyhint'].forEach((attrName) => restoreDetailMeasurementInputAttribute(input, attrName));
+            input.removeAttribute('data-detail-measurement-keyboard');
+            input.classList.remove('detail-measurement-input-active');
+        }
+
+        function cleanupStaleDetailMeasurementKeyboardInputs(keepInput = null) {
+            document.querySelectorAll('#view-detail input[data-detail-keypad-readonly-applied="1"], #view-detail input[data-detail-measurement-keyboard="true"]').forEach((input) => {
+                if (keepInput && input === keepInput) return;
+                restoreDetailMeasurementInputReadonly(input);
+            });
         }
 
         function openDetailMeasurementKeyboard(input = null, type = '') {
@@ -5133,16 +5185,11 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             if (detailMeasurementKeyboardTarget && detailMeasurementKeyboardTarget !== input) {
                 restoreDetailMeasurementInputReadonly(detailMeasurementKeyboardTarget);
             }
+            cleanupStaleDetailMeasurementKeyboardInputs(input);
             detailMeasurementKeyboardTarget = input;
             detailMeasurementKeyboardType = type || getDetailMeasurementKeyboardTypeForInput(input);
-            input.setAttribute('inputmode', 'none');
-            input.setAttribute('autocomplete', 'off');
-            input.setAttribute('autocapitalize', 'characters');
-            if (shouldPreferDetailMeasurementKeyboard() && !input.dataset.detailKeypadReadonlyApplied) {
-                input.dataset.detailKeypadWasReadonly = input.readOnly ? '1' : '0';
-                input.dataset.detailKeypadReadonlyApplied = '1';
-                input.readOnly = true;
-            }
+            detailMeasurementKeyboardResumeId = String(input.id || '').trim();
+            applyDetailMeasurementKeyboardInputState(input);
             try {
                 input.focus({ preventScroll: true });
             } catch (error) {
@@ -5155,10 +5202,12 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             renderDetailMeasurementKeyboard();
             bringDetailFieldIntoView(input);
             setTimeout(() => bringDetailFieldIntoView(input), 120);
+            setTimeout(() => bringDetailFieldIntoView(input), isIOSDevice() ? 360 : 260);
             return false;
         }
 
-        function closeDetailMeasurementKeyboard(commitChange = false) {
+        function closeDetailMeasurementKeyboard(commitChange = false, options = {}) {
+            const safeOptions = options && typeof options === 'object' ? options : {};
             const input = detailMeasurementKeyboardTarget;
             if (input && commitChange) {
                 input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -5169,9 +5218,10 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             const keyboard = document.getElementById('detail-measurement-keyboard');
             if (keyboard) keyboard.classList.add('hidden');
             clearDetailMeasurementKeyboardLayout();
-            if (input && commitChange) {
+            if (input && (commitChange || safeOptions.blur === true)) {
                 try { input.blur(); } catch (error) {}
             }
+            if (safeOptions.clearResume !== false) detailMeasurementKeyboardResumeId = '';
             return false;
         }
 
@@ -5199,13 +5249,15 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         function focusDetailMeasurementNextField(input = null) {
             const nextField = getNextDetailMeasurementField(input);
             if (!nextField) return false;
+            if (isDetailMeasurementKeyboardInput(nextField)) {
+                openDetailMeasurementKeyboard(nextField, getDetailMeasurementKeyboardTypeForInput(nextField));
+                return true;
+            }
+            detailMeasurementKeyboardResumeId = '';
             try {
                 nextField.focus({ preventScroll: false });
             } catch (error) {
                 try { nextField.focus(); } catch (focusError) {}
-            }
-            if (isDetailMeasurementKeyboardInput(nextField)) {
-                openDetailMeasurementKeyboard(nextField, getDetailMeasurementKeyboardTypeForInput(nextField));
             }
             return true;
         }
@@ -5221,6 +5273,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             clearDetailMeasurementKeyboardLayout();
             if (!focusDetailMeasurementNextField(input) && input) {
                 try { input.blur(); } catch (error) {}
+                detailMeasurementKeyboardResumeId = '';
             }
             return false;
         }
@@ -5254,6 +5307,55 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             return updateDetailMeasurementKeyboardTargetValue(nextValue, start + inserted.length);
         }
 
+        function getDetailMeasurementKeyboardInputFromTarget(target = null) {
+            return target && target.closest ? target.closest(DETAIL_MEASUREMENT_KEYBOARD_SELECTOR) : null;
+        }
+
+        function handleDetailMeasurementKeyboardPressStart(event = null, source = 'pointer') {
+            const target = event && event.target;
+            const input = getDetailMeasurementKeyboardInputFromTarget(target);
+            if (!input) return false;
+            if (source === 'pointer' && Date.now() - detailMeasurementKeyboardLastTouchStartAt < 450) return true;
+            if (source === 'touch') detailMeasurementKeyboardLastTouchStartAt = Date.now();
+            if (shouldPreferDetailMeasurementKeyboard() && event && typeof event.preventDefault === 'function') event.preventDefault();
+            openDetailMeasurementKeyboard(input, getDetailMeasurementKeyboardTypeForInput(input));
+            return true;
+        }
+
+        function suspendDetailMeasurementKeyboardForLifecycle(reason = 'lifecycle') {
+            clearTimeout(detailMeasurementKeyboardLifecycleTimer);
+            const input = detailMeasurementKeyboardTarget
+                || (isDetailMeasurementKeyboardInput(document.activeElement) ? document.activeElement : null);
+            if (input) {
+                detailMeasurementKeyboardResumeId = String(input.id || '').trim();
+                closeDetailMeasurementKeyboard(true, { blur: true, clearResume: false });
+            } else {
+                const keyboard = document.getElementById('detail-measurement-keyboard');
+                if (keyboard) keyboard.classList.add('hidden');
+                cleanupStaleDetailMeasurementKeyboardInputs();
+                clearDetailMeasurementKeyboardLayout();
+            }
+            syncViewportHeight({ reason: `measurement-keyboard-${reason}`, force: true });
+        }
+
+        function resumeDetailMeasurementKeyboardForLifecycle(reason = 'lifecycle') {
+            clearTimeout(detailMeasurementKeyboardLifecycleTimer);
+            if (document.hidden || !detailMeasurementKeyboardResumeId) return;
+            const delay = isIOSDevice() ? 280 : 100;
+            detailMeasurementKeyboardLifecycleTimer = setTimeout(() => {
+                const input = document.getElementById(detailMeasurementKeyboardResumeId);
+                const detailView = document.getElementById('view-detail');
+                if (!input || !isDetailMeasurementKeyboardInput(input) || !detailView || detailView.classList.contains('hidden')) {
+                    detailMeasurementKeyboardResumeId = '';
+                    cleanupStaleDetailMeasurementKeyboardInputs();
+                    clearDetailMeasurementKeyboardLayout();
+                    return;
+                }
+                openDetailMeasurementKeyboard(input, getDetailMeasurementKeyboardTypeForInput(input));
+                syncViewportHeight({ reason: `measurement-keyboard-resume-${reason}`, force: true });
+            }, delay);
+        }
+
         document.addEventListener('focusin', (event) => {
             const input = event && event.target;
             if (!isDetailMeasurementKeyboardInput(input)) return;
@@ -5262,12 +5364,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
 
         document.addEventListener('pointerdown', (event) => {
             const target = event && event.target;
-            const input = target && target.closest ? target.closest(DETAIL_MEASUREMENT_KEYBOARD_SELECTOR) : null;
-            if (input) {
-                if (shouldPreferDetailMeasurementKeyboard()) event.preventDefault();
-                openDetailMeasurementKeyboard(input, getDetailMeasurementKeyboardTypeForInput(input));
-                return;
-            }
+            if (handleDetailMeasurementKeyboardPressStart(event, 'pointer')) return;
             const keyboard = document.getElementById('detail-measurement-keyboard');
             if (keyboard && keyboard.contains(target)) return;
             if (detailMeasurementKeyboardTarget) {
@@ -5276,6 +5373,21 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                 if (editableTarget || commandTarget) closeDetailMeasurementKeyboard(true);
             }
         }, { passive: false });
+
+        document.addEventListener('touchstart', (event) => {
+            handleDetailMeasurementKeyboardPressStart(event, 'touch');
+        }, { passive: false });
+
+        window.addEventListener('pagehide', () => suspendDetailMeasurementKeyboardForLifecycle('pagehide'), { passive: true });
+        window.addEventListener('blur', () => {
+            if (detailMeasurementKeyboardTarget) suspendDetailMeasurementKeyboardForLifecycle('blur');
+        }, true);
+        window.addEventListener('pageshow', () => resumeDetailMeasurementKeyboardForLifecycle('pageshow'), { passive: true });
+        window.addEventListener('focus', () => resumeDetailMeasurementKeyboardForLifecycle('focus'), { passive: true });
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) suspendDetailMeasurementKeyboardForLifecycle('hidden');
+            else resumeDetailMeasurementKeyboardForLifecycle('visible');
+        });
 
         function fallbackCopyText(text) {
             const textArea = document.createElement('textarea');
@@ -12279,7 +12391,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.34').trim() || 'V2026.05.12.34';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.01').trim() || 'V2026.05.13.01';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
