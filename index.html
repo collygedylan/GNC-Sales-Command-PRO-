@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.28';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.29';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1872,7 +1872,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.28').trim() || 'V2026.05.12.28';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.29').trim() || 'V2026.05.12.29';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2170,7 +2170,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div id="moves-office-tab-strip" class="hidden flex gap-2 overflow-x-auto scrollbar-none pb-1">
                                     <button type="button" id="moves-office-tab-move-up" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] bg-[#007a4d] text-white border-[#007a4d] shadow-sm" onclick="setInventoryOfficeApprovalTab('move-up')">Move Up</button>
                                     <button type="button" id="moves-office-tab-new-crop" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] bg-white text-[#007a4d] border-green-200 shadow-sm" onclick="setInventoryOfficeApprovalTab('new-crop')">NCR</button>
-                                    <button type="button" id="moves-office-tab-hold-release" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] bg-white text-[#007a4d] border-green-200 shadow-sm" onclick="setInventoryOfficeApprovalTab('hold-release')">Hold</button>
+                                    <button type="button" id="moves-office-tab-hold-release" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] bg-white text-[#007a4d] border-green-200 shadow-sm" onclick="setInventoryOfficeApprovalTab('hold-release')">Off Hold</button>
                                 </div>
                             </div>
                             <button type="button" id="moves-refresh-btn" class="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return refreshMovesView()"><i class="ph-bold ph-arrows-clockwise text-base"></i><span>Refresh</span></button>
@@ -2750,7 +2750,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.28';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.29';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12246,7 +12246,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.28').trim() || 'V2026.05.12.28';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.29').trim() || 'V2026.05.12.29';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -15195,6 +15195,21 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (normalized === 'move-up') return 'Move Up';
             if (normalized === 'hold-release') return 'Take Off Hold';
             return 'New Crop Release';
+        }
+
+        function getNcrApprovalShortLabel(type = 'new-crop') {
+            const normalized = normalizeNcrApprovalType(type);
+            if (normalized === 'move-up') return 'Move Up';
+            if (normalized === 'hold-release') return 'Off Hold';
+            return 'NCR';
+        }
+
+        function getInventoryOfficeApprovalTabLabel(type = 'move-up') {
+            return getNcrApprovalShortLabel(type);
+        }
+
+        function getNcrApprovalQuantityTargetLabel(type = 'new-crop') {
+            return getNcrApprovalShortLabel(type);
         }
 
         function getNcrApprovalTaskViewForType(type = 'new-crop') {
@@ -27205,10 +27220,11 @@ function toggleDriveQuickRequestItem(domId) {
             const rowLabel = [item && item.COMMONNAME, item && item.CONTSIZE, item && item.LOCATIONCODE].map((value) => String(value || '').trim()).filter(Boolean).join(' ');
             const stageLabel = safeStage === 'jd' ? 'JD approval needed' : (safeStage === 'inventory' ? 'Inventory Office handoff' : 'Dylan approval needed');
             const taskViewLabel = getTaskTabLabel(getNcrApprovalTaskViewForType(type));
+            const inventoryOfficeTabLabel = getInventoryOfficeApprovalTabLabel(type);
             const appInstruction = safeStage === 'jd'
                 ? `JD: open the app and check Tasks > ${taskViewLabel}. Review the photos/data, enter the approved quantity, then approve.`
                 : (safeStage === 'inventory'
-                    ? `Inventory Office: open the app and check Inventory Office > ${typeLabel}.`
+                    ? `Inventory Office: open the app and check Inventory Office > ${inventoryOfficeTabLabel}.`
                     : `Dylan: open the app and check Tasks > ${taskViewLabel}. Review the photos/data, then approve to send it to JD.`);
             const subject = `${typeLabel} Approval${rowLabel ? ': ' + rowLabel : ''}`;
             const folderId = `ncr-approval-${getNcrSourceUniqueId(item) || Date.now()}`;
@@ -27395,9 +27411,11 @@ function toggleDriveQuickRequestItem(domId) {
             const rawQty = input ? input.value : '';
             const qtyValue = parseAppNumber(rawQty);
             const ptrValue = getNcrPtrAvailableNumber(item);
+            const type = getNcrApprovalTypeForItem(item);
+            const qtyTargetLabel = getNcrApprovalQuantityTargetLabel(type);
             if (qtyValue == null || qtyValue <= 0 || Math.floor(qtyValue) !== qtyValue) {
                 if (input) input.focus();
-                showToast('Invalid Quantity', 'Enter a whole approved NCR quantity greater than zero.', true);
+                showToast('Invalid Quantity', `Enter a whole approved ${qtyTargetLabel} quantity greater than zero.`, true);
                 return false;
             }
             if (ptrValue != null && qtyValue > ptrValue) {
@@ -27409,7 +27427,6 @@ function toggleDriveQuickRequestItem(domId) {
                 showToast('Photo Required', 'A photo is required before sending this row to Inventory Office.', true);
                 return false;
             }
-            const type = getNcrApprovalTypeForItem(item);
             if (button) button.innerText = 'SENDING...';
             try {
                 const payload = {
@@ -27427,7 +27444,7 @@ function toggleDriveQuickRequestItem(domId) {
                 console.error('JD NCR approval failed', error);
                 showToast('Could Not Send', error && error.message ? error.message : 'Could not send this row to Inventory Office.', true);
             } finally {
-                if (button) button.innerText = 'Approve Qty To NCR';
+                if (button) button.innerText = `Approve Qty To ${qtyTargetLabel}`;
             }
             return false;
         }
@@ -34086,7 +34103,7 @@ function toggleDriveQuickRequestItem(domId) {
                     contsize: String(firstNonEmptyValue(row.CONTSIZE, row.contsize, '') || '').trim(),
                     from_blockalpha: String(firstNonEmptyValue(row.BLOCKALPHA, row.blockalpha, 'No Block') || 'No Block').trim(),
                     from_locationcode: String(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, '') || '').trim(),
-                    to_locationcode: type === 'new-crop' ? 'NCR' : getNcrApprovalTypeLabel(type),
+                    to_locationcode: getInventoryOfficeApprovalTabLabel(type),
                     ptravailable: ptrValue == null ? String(firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, '') || '') : ptrValue,
                     quantity_available: approvedQtyText || (ptrValue == null ? String(firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, '') || '') : ptrValue),
                     quantity: approvedQtyText,
@@ -34198,6 +34215,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const button = document.getElementById(`moves-office-tab-${type}`);
                 if (!button) return;
                 const active = normalizeInventoryOfficeApprovalType(activeInventoryOfficeApprovalType) === type;
+                button.textContent = getInventoryOfficeApprovalTabLabel(type);
                 button.className = `rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] ${active ? 'bg-[#007a4d] text-white border-[#007a4d]' : 'bg-white text-[#007a4d] border-green-200'} shadow-sm`;
             });
         }
@@ -34694,7 +34712,7 @@ function toggleDriveQuickRequestItem(domId) {
             const container = document.getElementById('moves-content');
             if (!container) return;
             const records = getOpenMoveRecords();
-            const officeTabLabel = activeMovesTab === 'office' ? getNcrApprovalTypeLabel(activeInventoryOfficeApprovalType) : '';
+            const officeTabLabel = activeMovesTab === 'office' ? getInventoryOfficeApprovalTabLabel(activeInventoryOfficeApprovalType) : '';
             let crumbText = activeMovesTab === 'office' ? `Inventory Office > ${officeTabLabel} (${records.length})` : `Move Evaluation (${records.length})`;
             if (activeMovesTab === 'main' && movesViewLevel === 1) crumbText = `Move Evaluation > ${normalizeMovesDrillValue(selectedMovesBlock)}`;
             if (activeMovesTab === 'main' && movesViewLevel >= 2) crumbText = `Move Evaluation > ${normalizeMovesDrillValue(selectedMovesBlock)} > ${String(selectedMovesLocation || '').trim() || 'No Loc'}`;
@@ -48532,6 +48550,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const ptrValue = getNcrPtrAvailableNumber(item);
             const ptrLabel = ptrValue == null ? String(firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, '0') || '0') : ptrValue.toLocaleString();
             const qtyInputId = `ncr-approval-qty-${String(uid || domId || Date.now()).replace(/[^a-z0-9_-]+/gi, '-')}`;
+            const qtyTargetLabel = getNcrApprovalQuantityTargetLabel(type);
             const photoCsv = mergePhotoCsvList([
                 getSharedAppPhotoLinkCsv(item, { includePending: false }),
                 getRowPhotoLink(item, 'tasks')
@@ -48547,7 +48566,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const resendButtonHtml = `<button type="button" class="min-h-[44px] rounded-lg border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-slate-700 shadow-sm active:scale-95 disabled:opacity-60" onclick="event.stopPropagation(); return resendNcrApprovalStageEmail('${safeUidJs}', this)">Resend Email</button>`;
             const denyButtonHtml = `<button type="button" class="min-h-[44px] rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-red-700 shadow-sm active:scale-95 disabled:opacity-60" onclick="event.stopPropagation(); return denyNcrApproval('${safeUidJs}', this)">Deny</button>`;
             const actionHtml = stage === 'jd'
-                ? `<div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"><label class="min-w-0 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Approved NCR Qty<input id="${esc(qtyInputId)}" type="number" min="1" max="${esc(String(ptrValue == null ? '' : ptrValue))}" step="1" inputmode="numeric" class="mt-1 w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 text-right text-sm font-black text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="1-${esc(String(ptrLabel))}" value="${esc(String(firstNonEmptyValue(item.LOC_MATCH_QTY, item.loc_match_qty, '') || ''))}" onclick="event.stopPropagation()"></label><button type="button" class="min-h-[44px] self-end rounded-lg bg-blue-600 px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="event.stopPropagation(); return approveNcrApprovalAsJd('${safeUidJs}','${escJsAttrValue(qtyInputId)}', this)">Approve Qty To NCR</button></div><div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">${denyButtonHtml}${resendButtonHtml}</div>`
+                ? `<div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"><label class="min-w-0 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Approved ${esc(qtyTargetLabel)} Qty<input id="${esc(qtyInputId)}" type="number" min="1" max="${esc(String(ptrValue == null ? '' : ptrValue))}" step="1" inputmode="numeric" class="mt-1 w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 text-right text-sm font-black text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="1-${esc(String(ptrLabel))}" value="${esc(String(firstNonEmptyValue(item.LOC_MATCH_QTY, item.loc_match_qty, '') || ''))}" onclick="event.stopPropagation()"></label><button type="button" class="min-h-[44px] self-end rounded-lg bg-blue-600 px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="event.stopPropagation(); return approveNcrApprovalAsJd('${safeUidJs}','${escJsAttrValue(qtyInputId)}', this)">Approve Qty To ${esc(qtyTargetLabel)}</button></div><div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">${denyButtonHtml}${resendButtonHtml}</div>`
                 : `<div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3"><button type="button" class="min-h-[44px] rounded-lg bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="event.stopPropagation(); return approveNcrApprovalAsDylan('${safeUidJs}', this)">Approve And Send To JD</button>${denyButtonHtml}${resendButtonHtml}</div>`;
             const borderClass = type === 'move-up' ? 'border-emerald-200' : (type === 'hold-release' ? 'border-red-200' : 'border-yellow-200');
             return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border ${borderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${esc(domId)}" data-ncr-approval-uid="${esc(uid)}" ${buildCardActivationAttrs(domId, uid, 'tasks', 'Open approval row')}><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="mb-2 flex flex-wrap gap-2">${stageBadge}<span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${esc(typeLabel)}</span></div><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words mb-1">${commonName}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${contSize}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-white text-slate-700 px-2 py-1 rounded border border-slate-200">Item ${itemCode}</span><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">Loc ${locationCode}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">Lot ${lotCode}</span><span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">PTR ${esc(String(ptrLabel))}</span><span class="bg-slate-50 text-slate-600 px-2 py-1 rounded border border-slate-200">SY ${salesYear} ${seasonCode}</span></div></div>${photoHtml}</div>${actionHtml}</div></div>`;
