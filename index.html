@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.13.18';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.13.19';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.18').trim() || 'V2026.05.13.18';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.19').trim() || 'V2026.05.13.19';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2813,7 +2813,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.18';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.19';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12412,6 +12412,7 @@ const ncrFilterStateByView = {
         let cachePersistTimer=null; let cachePersistIdleHandle=null; let lastCachePersistAt=0; let pendingCachePersist=false;
 let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let currentPrimaryViewId="home"; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let bloomCropUpdateModalOpen=false; let bloomCropUpdatePendingItems=[]; let bloomCropUpdateEmailContext=null; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0; let leafVoiceRecognition=null; let leafVoiceListening=false; let leafVoiceSpeaking=false; let leafVoiceAbortRequested=false; let leafVoiceSubmitPending=false; let leafVoiceInterimText=''; let leafVoiceFinalText=''; let leafVoiceStatusOverride=''; let leafLastSpokenAnswer=''; let leafVoiceUtterance=null; let leafVoiceFinalizeTimer=null; let leafVoiceLastSpeechAt=0;
 let bloomCropUpdateRecipientMode='reps'; let bloomCropUpdateReserveEmailGroups=[]; let bloomCropUpdateReserveRowsLoading=false; let bloomCropUpdateReserveRowsError=''; let bloomCropUpdateReserveFetchToken=0;
+let appAdminRecipientUsers=[]; let appAdminRecipientUsersPromise=null; let appAdminRecipientUsersLoaded=false; let appAdminRecipientUsersSignature=''; let appAdminRecipientEmailByToken=new Map();
         let dockAssignableUsers=[]; let dockAssignableUsersPromise=null;
         let dockTeamStatusByDock=new Map(); let dockTeamStatusPromise=null; let dockTeamStatusLoaded=false; let dockTeamSchemaReady=null; let dockTeamSchemaPromise=null; let dockTeamSchemaWarningShown=false;
         let dockItemProgressByUid=new Map(); let dockItemProgressPromise=null; let dockItemProgressLoaded=false; let dockItemSchemaReady=null; let dockItemSchemaPromise=null; let dockItemSchemaWarningShown=false;
@@ -12782,7 +12783,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             { key: 'NC', label: 'NC Reps', reps: ['Abbey Burka', 'Chris Farrow', 'Chris Gaydos', 'Ellen Deely'] },
             { key: 'OK', label: 'OK Reps', reps: ['Annette Hancock', 'Tony Bono', 'Ben Brown', 'Ben Maschino', 'Brian Hatfield', 'Casey Rufener', 'David Brandt', 'Doug Baker', 'Kevin Effinger', 'Nate Douglas', 'Troy Lee', 'Wes Lugas'] },
             { key: 'TX', label: 'TX Reps', reps: ['Ben Harveson', 'Chance Alldredge', 'Jessica Robertson', 'Josh Ringleb', 'Rudy Martinez', 'Tobu Brown', 'Tracey Tapscott', 'Traci Earle'] },
-            { key: 'ADMIN', label: 'Admin Users', reps: ['Dylan Collyge', 'JD Jones', 'Kayla Knepp', 'Morgan Anderson'] }
+            { key: 'ADMIN', label: 'Admin Users', reps: [] }
         ]);
         const NCR_COMPLETIONS_TABLE = 'v2_ncr_completions';
         const NCR_COMPLETION_SELECT_FIELDS = 'source_unique_id,itemcode,locationcode,completed_by,completed_at,emailed_jd';
@@ -12811,7 +12812,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.18').trim() || 'V2026.05.13.18';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.19').trim() || 'V2026.05.13.19';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -29703,6 +29704,148 @@ function toggleDriveQuickRequestItem(domId) {
             return String(email || '').trim().toLowerCase();
         }
 
+        function formatAppUserDisplayName(value = '') {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+            const clean = raw.includes('@') ? raw.split('@')[0] : raw;
+            return clean
+                .replace(/[._-]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .split(' ')
+                .map((part) => part ? part.charAt(0).toUpperCase() + part.slice(1).toLowerCase() : '')
+                .join(' ');
+        }
+
+        function isAdminRoleValue(value = '') {
+            const normalized = String(value || '').trim().toUpperCase();
+            if (!normalized) return false;
+            return normalized.split(/[^A-Z0-9]+/).filter(Boolean).includes('ADMIN');
+        }
+
+        function normalizeAdminRecipientUserEntry(row = null) {
+            if (!row || typeof row !== 'object') return null;
+            const role = String(firstNonEmptyValue(row.role, row.ROLE, '') || '').trim();
+            if (!isAdminRoleValue(role)) return null;
+            const username = normalizePushUsername(firstNonEmptyValue(row.username, row.USERNAME, row.user_name, row.USER_NAME, ''));
+            const email = normalizeRequestEmailAddress(firstNonEmptyValue(row.email, row.EMAIL, row.user_email, row.USER_EMAIL, row.work_email, row.WORK_EMAIL, ''));
+            const display = String(firstNonEmptyValue(
+                row.display_name,
+                row.DISPLAY_NAME,
+                row.displayName,
+                row.name,
+                row.NAME,
+                row.full_name,
+                row.FULL_NAME,
+                row.display,
+                row.DISPLAY,
+                formatAppUserDisplayName(username || email),
+                username,
+                email
+            ) || '').trim();
+            const resolvedEmail = email || normalizeRequestEmailAddress(resolveRequestRecipientEmail(username || display || email));
+            if (!resolvedEmail) return null;
+            return {
+                username,
+                display: display || formatAppUserDisplayName(username || resolvedEmail) || username || resolvedEmail,
+                email: resolvedEmail,
+                role
+            };
+        }
+
+        function addAdminRecipientEmailToken(map, tokenSource = '', email = '') {
+            const safeEmail = normalizeRequestEmailAddress(email);
+            if (!safeEmail) return;
+            const normalized = normalizeRepMatchToken(tokenSource);
+            if (!normalized) return;
+            map.set(normalized, safeEmail);
+            map.set(normalized.replace(/\s+/g, ''), safeEmail);
+            map.set(normalized.replace(/\s+/g, '_'), safeEmail);
+        }
+
+        function applyAdminRecipientUsersToRepGroups(entries = []) {
+            const byEmail = new Map();
+            (Array.isArray(entries) ? entries : []).forEach((entry) => {
+                const normalized = normalizeAdminRecipientUserEntry(entry) || entry;
+                const email = normalizeRequestEmailAddress(normalized && normalized.email);
+                if (!email) return;
+                const display = String(firstNonEmptyValue(normalized.display, normalized.username, email.split('@')[0], email) || '').trim();
+                byEmail.set(email, {
+                    username: normalizePushUsername(firstNonEmptyValue(normalized.username, email.split('@')[0], '')),
+                    display,
+                    email,
+                    role: String(firstNonEmptyValue(normalized.role, 'ADMIN') || 'ADMIN').trim()
+                });
+            });
+            const sorted = Array.from(byEmail.values()).sort((a, b) => String(a.display || a.username || '').localeCompare(String(b.display || b.username || ''), undefined, { sensitivity: 'base' }));
+            const emailByToken = new Map();
+            sorted.forEach((entry) => {
+                addAdminRecipientEmailToken(emailByToken, entry.display, entry.email);
+                addAdminRecipientEmailToken(emailByToken, entry.username, entry.email);
+                addAdminRecipientEmailToken(emailByToken, entry.email.split('@')[0], entry.email);
+            });
+            appAdminRecipientEmailByToken = emailByToken;
+            const adminGroup = BLOOM_CROP_UPDATE_REP_GROUPS.find((group) => String(group && group.key || '').trim().toUpperCase() === 'ADMIN');
+            if (adminGroup) adminGroup.reps = sorted.map((entry) => entry.display || entry.username || entry.email).filter(Boolean);
+            appAdminRecipientUsers = sorted;
+            appAdminRecipientUsersSignature = sorted.map((entry) => `${entry.email}:${entry.display}`).join('|');
+            return sorted;
+        }
+
+        function getAdminRecipientEmailForName(name = '') {
+            const normalized = normalizeRepMatchToken(name);
+            if (!normalized || !appAdminRecipientEmailByToken || typeof appAdminRecipientEmailByToken.get !== 'function') return '';
+            return appAdminRecipientEmailByToken.get(normalized)
+                || appAdminRecipientEmailByToken.get(normalized.replace(/\s+/g, ''))
+                || appAdminRecipientEmailByToken.get(normalized.replace(/\s+/g, '_'))
+                || '';
+        }
+
+        async function ensureAdminRecipientUsers(forceRefresh = false) {
+            if (!forceRefresh && appAdminRecipientUsersLoaded) return appAdminRecipientUsers.slice();
+            if (!forceRefresh && appAdminRecipientUsersPromise) return appAdminRecipientUsersPromise;
+            const previousUsers = appAdminRecipientUsers.slice();
+            appAdminRecipientUsersPromise = (async () => {
+                const rows = await supabaseFetch('v2_app_users', 'GET', null, 'select=*&order=username.asc');
+                const adminRows = (Array.isArray(rows) ? rows : []).map(normalizeAdminRecipientUserEntry).filter(Boolean);
+                appAdminRecipientUsersLoaded = true;
+                return applyAdminRecipientUsersToRepGroups(adminRows);
+            })().catch((error) => {
+                console.warn('Admin recipient list load failed', error);
+                applyAdminRecipientUsersToRepGroups(previousUsers);
+                return appAdminRecipientUsers.slice();
+            }).finally(() => {
+                appAdminRecipientUsersPromise = null;
+            });
+            return appAdminRecipientUsersPromise;
+        }
+
+        function refreshAdminRecipientDependentUi(previousSignature = '') {
+            if (previousSignature && previousSignature === appAdminRecipientUsersSignature) return;
+            const bloomRecipientList = document.getElementById('bloom-crop-update-recipient-list');
+            if (bloomCropUpdateModalOpen && bloomRecipientList) {
+                const selectedEmails = new Set(getBloomCropUpdateSelectedReps().map((rep) => rep.email).filter(Boolean));
+                bloomRecipientList.innerHTML = buildBloomCropUpdateRecipientHtml();
+                getBloomCropUpdateAllRepInputs().forEach((input) => {
+                    const email = normalizeRequestEmailAddress(input.getAttribute('data-rep-email') || '');
+                    if (selectedEmails.has(email)) input.checked = true;
+                });
+                syncBloomCropUpdateSendButton();
+            }
+            if (isAvPhotoOutreachAvailable()) refreshAvPhotoOutreachPanel();
+            if (driveCustomerOutreachOpen && driveCustomerOutreachRecipientMode === 'all') renderDriveCustomerOutreachPanel(activeItem);
+            const advertisementRecipientList = document.getElementById('advertisement-recipient-list');
+            if (advertisementRecipientList) renderAdvertisementRecipientList({ force: true, preserveSelection: true });
+        }
+
+        function requestAdminRecipientUsersForSelector() {
+            if (appAdminRecipientUsersLoaded) return;
+            const previousSignature = appAdminRecipientUsersSignature;
+            ensureAdminRecipientUsers(false).then(() => {
+                refreshAdminRecipientDependentUi(previousSignature);
+            }).catch(() => {});
+        }
+
         function dedupeRequestEmailRecipients(recipients = []) {
             const seen = new Set();
             return (Array.isArray(recipients) ? recipients : []).map((value) => {
@@ -31912,6 +32055,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getAvPhotoOutreachRepOptions() {
+            requestAdminRecipientUsersForSelector();
             const entries = new Map();
             BLOOM_CROP_UPDATE_REP_GROUPS.forEach((group) => {
                 (group.reps || []).forEach((repName) => {
@@ -36083,12 +36227,15 @@ function toggleDriveQuickRequestItem(domId) {
         function getBloomCropUpdateRepEmail(repName = '') {
             const token = normalizeRepMatchToken(repName);
             const compact = token.replace(/\s+/g, '');
-            return BLOOM_CROP_UPDATE_REP_EMAIL_OVERRIDES[compact]
+            const dynamicAdminEmail = getAdminRecipientEmailForName(repName);
+            return dynamicAdminEmail
+                || BLOOM_CROP_UPDATE_REP_EMAIL_OVERRIDES[compact]
                 || BLOOM_CROP_UPDATE_REP_EMAIL_OVERRIDES[token]
                 || resolveRequestRecipientEmail(repName);
         }
 
         function buildBloomCropUpdateRecipientHtml() {
+            requestAdminRecipientUsersForSelector();
             return BLOOM_CROP_UPDATE_REP_GROUPS.map((group) => {
                 const repsHtml = (group.reps || []).map((name) => {
                     const email = getBloomCropUpdateRepEmail(name);
@@ -37496,6 +37643,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getDriveCustomerOutreachAllRepOptions() {
+            requestAdminRecipientUsersForSelector();
             const entries = new Map();
             BLOOM_CROP_UPDATE_REP_GROUPS.forEach((group) => {
                 (group.reps || []).forEach((repName) => {
@@ -52116,6 +52264,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function buildAdvertisementRecipientHtml() {
+            requestAdminRecipientUsersForSelector();
             return BLOOM_CROP_UPDATE_REP_GROUPS.map((group) => {
                 const repsHtml = (group.reps || []).map((name) => {
                     const email = getBloomCropUpdateRepEmail(name);
@@ -52125,9 +52274,20 @@ ${folderNote ? `Folder Note: ${folderNote}
             }).join('');
         }
 
-        function renderAdvertisementRecipientList() {
+        function renderAdvertisementRecipientList(options = {}) {
             const container = document.getElementById('advertisement-recipient-list');
-            if (container && !container.innerHTML.trim()) container.innerHTML = buildAdvertisementRecipientHtml();
+            const force = !!(options && options.force);
+            const preserveSelection = !!(options && options.preserveSelection);
+            const selectedEmails = preserveSelection ? new Set(getAdvertisementSelectedReps().map((rep) => rep.email).filter(Boolean)) : new Set();
+            if (container && (force || !container.innerHTML.trim())) {
+                container.innerHTML = buildAdvertisementRecipientHtml();
+                if (selectedEmails.size) {
+                    document.querySelectorAll('[data-advertisement-rep="true"]').forEach((input) => {
+                        const email = normalizeRequestEmailAddress(input.getAttribute('data-rep-email') || '');
+                        if (selectedEmails.has(email)) input.checked = true;
+                    });
+                }
+            }
             syncAdvertisementEmailSendButton();
         }
 
