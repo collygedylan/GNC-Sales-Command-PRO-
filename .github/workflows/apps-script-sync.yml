@@ -1,0 +1,44 @@
+name: Sync Code.gs to Apps Script
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - Code.gs
+      - scripts/sync-codegs-to-apps-script.js
+      - .github/workflows/apps-script-sync.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apps-script-codegs-sync
+  cancel-in-progress: true
+
+jobs:
+  sync-codegs:
+    name: Update Apps Script Code.gs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Google API client
+        run: npm install --no-save googleapis@144.0.0
+
+      - name: Sync Code.gs into Apps Script
+        env:
+          APPS_SCRIPT_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_SCRIPT_ID }}
+          APPS_SCRIPT_CLASPRC_JSON: ${{ secrets.APPS_SCRIPT_CLASPRC_JSON }}
+          APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: node scripts/sync-codegs-to-apps-script.js
