@@ -366,19 +366,22 @@ function queueManualSyncRequest_(options) {
     };
 
     saveManualSyncStatus_(status);
-    try {
-      scheduleManualSyncStageTrigger_();
-    } catch (triggerError) {
-      status.active = false;
-      status.currentStage = 'trigger_failed';
-      status.currentStageLabel = 'Trigger Failed';
-      status.updatedAt = new Date().toISOString();
-      status.finishedAt = status.updatedAt;
-      status.error = triggerError && triggerError.message ? triggerError.message : String(triggerError);
-      status.message = `Could not start the manual sync trigger: ${status.error}`;
-      saveManualSyncStatus_(status);
-      removeManualSyncStageTriggers_();
-      throw triggerError;
+    const deferStart = !(options && options.deferStart === false);
+    if (deferStart) {
+      try {
+        scheduleManualSyncStageTrigger_();
+      } catch (triggerError) {
+        status.active = false;
+        status.currentStage = 'trigger_failed';
+        status.currentStageLabel = 'Trigger Failed';
+        status.updatedAt = new Date().toISOString();
+        status.finishedAt = status.updatedAt;
+        status.error = triggerError && triggerError.message ? triggerError.message : String(triggerError);
+        status.message = `Could not start the manual sync trigger: ${status.error}`;
+        saveManualSyncStatus_(status);
+        removeManualSyncStageTriggers_();
+        throw triggerError;
+      }
     }
     console.log(`[MANUAL SYNC][${runId}] Queued ${stageLabels.join(' -> ')} from ${status.source} by ${status.requestedBy}.`);
     return {
@@ -392,7 +395,10 @@ function queueManualSyncRequest_(options) {
   }
 }
 
-function runQueuedManualSyncStage_() {
+function runQueuedManualSyncStage_(options) {
+  const runOptions = options || {};
+  const executionBudgetMs = Math.max(60000, Number(runOptions.executionBudgetMs) || MANUAL_SYNC_EXECUTION_BUDGET_MS);
+  const nextStageStartCutoffMs = Math.max(1000, Number(runOptions.nextStageStartCutoffMs) || MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS);
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   let status = null;
@@ -486,7 +492,7 @@ function runQueuedManualSyncStage_() {
       }
 
       const elapsedMs = Date.now() - invocationStartedAt;
-      const shouldContinueInline = elapsedMs < MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS && elapsedMs < MANUAL_SYNC_EXECUTION_BUDGET_MS;
+      const shouldContinueInline = elapsedMs < nextStageStartCutoffMs && elapsedMs < executionBudgetMs;
       status.message = shouldContinueInline
         ? `Finished ${stageDef.label}: ${fileSummary}${tempSummary}. Continuing to ${nextStageDef ? nextStageDef.label : nextStageKey}...`
         : `Finished ${stageDef.label}: ${fileSummary}${tempSummary}. Queueing ${nextStageDef ? nextStageDef.label : nextStageKey}...`;
@@ -3683,11 +3689,21 @@ function doPost(e) {
     const payload = JSON.parse(e.postData.contents);
     
     if (payload.type === 'manual_run') {
+      const runInline = payload.run_inline === true || payload.runInline === true || payload.fast === true;
       const result = queueManualSyncRequest_({
         job: payload.job || 'all',
         source: payload.trigger || 'webhook',
-        requestedBy: payload.requested_by || payload.requestedBy || 'Unknown'
+        requestedBy: payload.requested_by || payload.requestedBy || 'Unknown',
+        deferStart: !runInline
       });
+      if (runInline && result && result.status === 'queued') {
+        runQueuedManualSyncStage_({
+          executionBudgetMs: 330000,
+          nextStageStartCutoffMs: 300000
+        });
+        const finalStatus = getManualSyncStatusForClient_();
+        return jsonOutput_(finalStatus || result);
+      }
       return jsonOutput_(result);
     }
 

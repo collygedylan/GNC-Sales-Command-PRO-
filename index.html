@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.29';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.30';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1872,7 +1872,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.29').trim() || 'V2026.05.12.29';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.30').trim() || 'V2026.05.12.30';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2750,7 +2750,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.29';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.30';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12243,10 +12243,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             'dylan_collyge@greenleafnursery.com'
         ]);
         const REQUEST_EMAIL_SCRIPT_TIMEOUT_MS = 30000;
+        const MANUAL_SYNC_SCRIPT_TIMEOUT_MS = 330000;
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.29').trim() || 'V2026.05.12.29';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.30').trim() || 'V2026.05.12.30';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -12655,11 +12656,22 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     type: 'manual_run',
                     job: 'all',
                     trigger: 'header_button',
+                    run_inline: true,
+                    fast: true,
                     force_if_stale: true,
                     requested_by: currentUserDisplay || currentUser || 'Unknown',
                     requested_at: new Date().toISOString()
                 };
-                const responseData = await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Manual Sync');
+                applyManualSyncStatus({
+                    active: true,
+                    runId: '',
+                    stageOrder: ['drive','soc','reserves','cav'],
+                    stageIndex: 0,
+                    currentStage: 'queued',
+                    currentStageLabel: 'Starting',
+                    message: 'Running sync now...'
+                }, { delayMs: 1800, suppressToast: true });
+                const responseData = await postGoogleScriptJsonPayload(payload, MANUAL_SYNC_SCRIPT_TIMEOUT_MS, 'Manual Sync');
                 const responseStatus = String(firstNonEmptyValue(responseData && responseData.status, '')).trim().toLowerCase();
                 const responseMessage = String(firstNonEmptyValue(responseData && responseData.message, '')).trim();
                 if (responseData && responseData.ok === false) {
@@ -12685,6 +12697,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         message: responseMessage || 'Manual sync queued.'
                     }, { delayMs: 700, suppressToast: true });
                     showToast('Started', responseMessage || 'Google Apps Script queued successfully.');
+                } else if (responseData && typeof responseData === 'object' && ('active' in responseData || responseData.currentStage || responseData.finishedAt)) {
+                    const finalStatus = applyManualSyncStatus(responseData, { suppressToast: false });
+                    if (!finalStatus.active && !finalStatus.error) {
+                        showToast('Sync Complete', finalStatus.message || 'Manual sync complete.');
+                    }
                 } else {
                     applyManualSyncStatus({
                         active: true,
@@ -12697,6 +12714,18 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 }
             } catch (err) {
                 console.error(err);
+                try {
+                    await refreshManualSyncStatus(true);
+                } catch (statusError) {
+                    applyManualSyncStatus({
+                        active: false,
+                        currentStage: 'request_failed',
+                        currentStageLabel: 'Request Failed',
+                        message: err && err.message ? err.message : 'Could not send the Google Apps Script request.',
+                        error: err && err.message ? err.message : 'Could not send the Google Apps Script request.',
+                        finishedAt: new Date().toISOString()
+                    }, { suppressToast: true });
+                }
                 showToast('Error', err && err.message ? err.message : 'Could not send the Google Apps Script request.', true);
             } finally {
                 window.googleScriptRunInFlight = false;
