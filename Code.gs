@@ -84,7 +84,7 @@ const ALLOWED_DB_COLUMNS = new Set([
 ]);
 
 function runSOCOnly() { return processLatestFileOnlyFolder(FOLDERS.SOC_DROP, FOLDERS.SOC_PROCESSED, 'v2_soc_master', buildStandardPayload, { deltaMode: true }); }
-function runDriveAroundOnly() { return processLatestFileOnlyFolder(FOLDERS.MASTER_DROP, FOLDERS.MASTER_PROCESSED, 'v2_master_inventory', buildMasterPayload, { deltaMode: true }); }
+function runDriveAroundOnly() { return processSnapshotBatchFolder(FOLDERS.MASTER_DROP, FOLDERS.MASTER_PROCESSED, 'v2_master_inventory', buildMasterPayload); }
 function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, 'v2_reserves', buildStandardPayload, { deltaMode: true }); }
 function runCavOnly() { return processLatestFileOnlyFolder(FOLDERS.CAV_DROP, FOLDERS.CAV_PROCESSED, 'v2_cav_import', buildCavPayload, { deltaMode: true }); }
 
@@ -228,6 +228,11 @@ function clearManualSyncStatus() {
   PropertiesService.getScriptProperties().deleteProperty(MANUAL_SYNC_STATUS_KEY);
   removeManualSyncStageTriggers_();
   console.log('[MANUAL SYNC] Stored status cleared.');
+}
+
+function resetAndRunFullManualSync() {
+  clearManualSyncStatus();
+  return runDriveSocReservesSequence();
 }
 
 function loadManualSyncStatus_() {
@@ -1274,7 +1279,7 @@ function pushToSupabaseLegacy_(tableName, payloadArray) {
 }
 
 // Override the legacy upsert helper so failed Supabase responses stop the sync immediately.
-function pushToSupabase(tableName, payloadArray) {
+function buildSupabaseUpsertRequests_(tableName, payloadArray) {
   const chunkSize = 1000;
   let requests = [];
   for (let i = 0; i < payloadArray.length; i += chunkSize) {
@@ -1292,7 +1297,46 @@ function pushToSupabase(tableName, payloadArray) {
       muteHttpExceptions: true
     });
   }
-  if (!requests.length) return;
+  return requests;
+}
+
+function extractMissingSupabaseColumnNames_(body) {
+  const text = String(body || '');
+  const missing = {};
+  const patterns = [
+    /Could not find the ['"]([^'"]+)['"] column/gi,
+    /column ['"]([^'"]+)['"] of relation/gi,
+    /column ['"]([^'"]+)['"] does not exist/gi,
+    /['"]column['"]\s*:\s*['"]([^'"]+)['"]/gi
+  ];
+  patterns.forEach(function(pattern) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const col = String(match[1] || '').trim().toLowerCase();
+      if (col) missing[col] = true;
+    }
+  });
+  return Object.keys(missing);
+}
+
+function removeSupabaseColumnsFromPayload_(payloadArray, columns) {
+  const removeSet = {};
+  (columns || []).forEach(function(column) {
+    const safeColumn = String(column || '').trim().toLowerCase();
+    if (safeColumn) removeSet[safeColumn] = true;
+  });
+  return (payloadArray || []).map(function(row) {
+    const next = {};
+    Object.keys(row || {}).forEach(function(key) {
+      if (!removeSet[String(key || '').trim().toLowerCase()]) next[key] = row[key];
+    });
+    return next;
+  });
+}
+
+function executeSupabaseUpsert_(tableName, payloadArray) {
+  const requests = buildSupabaseUpsertRequests_(tableName, payloadArray);
+  if (!requests.length) return [];
   let responses = executeFetchAllBatches(requests, SUPABASE_UPSERT_FETCH_BATCH_SIZE);
   let failures = [];
   responses.forEach(function(res) {
@@ -1303,7 +1347,54 @@ function pushToSupabase(tableName, payloadArray) {
       failures.push({ code: code, body: body });
     }
   });
-  if (failures.length) {
+  return failures;
+}
+
+function pushToSupabase(tableName, payloadArray) {
+  if (!payloadArray || !payloadArray.length) return;
+  let nextPayload = payloadArray;
+  let ignoredMissingColumns = [];
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    const failures = executeSupabaseUpsert_(tableName, nextPayload);
+    if (!failures.length) {
+      if (ignoredMissingColumns.length) {
+        console.warn(`[WARN] Supabase import for ${tableName} ignored missing table columns: ${ignoredMissingColumns.join(', ')}`);
+      }
+      return;
+    }
+    const missingColumnMap = {};
+    failures.forEach(function(failure) {
+      extractMissingSupabaseColumnNames_(failure.body).forEach(function(column) {
+        if (column && column !== 'unique_id') missingColumnMap[column] = true;
+      });
+    });
+    const missingColumns = Object.keys(missingColumnMap).filter(function(column) {
+      return ignoredMissingColumns.indexOf(column) === -1;
+    });
+    if (!missingColumns.length) {
+      const firstFailure = failures[0];
+      throw new Error(`Supabase upsert failed for ${tableName} (${firstFailure.code}): ${firstFailure.body}`);
+    }
+    ignoredMissingColumns = ignoredMissingColumns.concat(missingColumns);
+    console.warn(`[WARN] Supabase schema is missing ${tableName} column(s): ${missingColumns.join(', ')}. Retrying import without those non-key fields.`);
+    nextPayload = removeSupabaseColumnsFromPayload_(nextPayload, missingColumns);
+  }
+  try {
+    const failures = executeSupabaseUpsert_(tableName, nextPayload);
+    if (failures.length) {
+      const firstFailure = failures[0];
+      throw new Error(`Supabase upsert failed for ${tableName} (${firstFailure.code}): ${firstFailure.body}`);
+    }
+    if (ignoredMissingColumns.length) {
+      console.warn(`[WARN] Supabase import for ${tableName} ignored missing table columns: ${ignoredMissingColumns.join(', ')}`);
+    }
+  } catch (error) {
+    throw error;
+  }
+}
+
+function throwSupabaseUpsertFailures_(tableName, failures) {
+  if (failures && failures.length) {
     const firstFailure = failures[0];
     throw new Error(`Supabase upsert failed for ${tableName} (${firstFailure.code}): ${firstFailure.body}`);
   }
