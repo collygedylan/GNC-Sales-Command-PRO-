@@ -1,0 +1,61 @@
+name: Run Supabase ML Worker
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-ml-worker
+  cancel-in-progress: false
+
+jobs:
+  process-pending-ml-jobs:
+    name: Process pending ML image jobs
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install worker dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-ml.txt
+
+      - name: Verify model files are present
+        shell: bash
+        run: |
+          if [ ! -s "${ML_MODEL_PATH:-models/plant_classifier.pt}" ]; then
+            echo "::warning::Plant model file is missing. The worker can only produce manual-review results until models are synced."
+          fi
+          if [ ! -s "${ML_LABELS_PATH:-models/labels.json}" ]; then
+            echo "::warning::Label metadata is missing. The worker can only produce manual-review results until labels are synced."
+          fi
+
+      - name: Process Supabase ML queue once
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GDRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
+          GDRIVE_INVENTORY_FILE_ID: ${{ secrets.GDRIVE_INVENTORY_FILE_ID }}
+          ML_JOB_TABLE: v2_ml_image_jobs
+          ML_PHOTO_BUCKET: ml_capture_photos
+          APP_LIVE_EVENTS_TABLE: v2_app_live_events
+          ML_MODELS_DIR: models
+          ML_MODEL_PATH: models/plant_classifier.pt
+          ML_LABELS_PATH: models/labels.json
+          ML_DIAGNOSTICS_MODEL_PATH: models/diagnostics_classifier.pt
+          ML_DIAGNOSTICS_LABELS_PATH: models/diagnostics_labels.json
+          ML_BATCH_SIZE: "25"
+          ML_POLL_SECONDS: "0"
+          ML_RUN_ONCE: "true"
+          LOG_LEVEL: INFO
+        run: python supabase_ml_worker.py

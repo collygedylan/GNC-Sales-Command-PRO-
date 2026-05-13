@@ -709,6 +709,11 @@ def main() -> int:
     configure_logging()
     config = WorkerConfig.from_env()
     worker = SupabaseMlWorker(config)
+    run_once = str(os.environ.get("ML_RUN_ONCE") or "").strip().lower() in {"1", "true", "yes", "y"}
+    if run_once:
+        processed = worker.run_once()
+        LOGGER.info("ML run-once processed %s job(s).", processed)
+        return 0
     worker.run_forever()
     return 0
 
