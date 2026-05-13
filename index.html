@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.13.17';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.13.18';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.17').trim() || 'V2026.05.13.17';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.18').trim() || 'V2026.05.13.18';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2813,7 +2813,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.17';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.18';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -3092,6 +3092,9 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         let taskScopedQueueItemsCache = new Map();
         let ncrApprovalTaskQueueCacheKey = '';
         let ncrApprovalTaskQueueCacheByView = new Map();
+        let ncrApprovalTaskRefreshPromiseByKey = new Map();
+        let ncrApprovalTaskRefreshLastAtByKey = new Map();
+        const NCR_APPROVAL_TASK_REFRESH_THROTTLE_MS = 12000;
         let taskHotStateCache = new Map();
         let taskFilteredItemsCache = new Map();
         let taskHotPriceSubsetCacheKey = '';
@@ -12808,7 +12811,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.17').trim() || 'V2026.05.13.17';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.18').trim() || 'V2026.05.13.18';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -15863,6 +15866,25 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (normalized.endsWith('_jd') || normalized.includes('_jd_')) return 'jd';
             if (normalized.endsWith('_dylan') || normalized.includes('_dylan_')) return 'dylan';
             return '';
+        }
+
+        function getNcrApprovalStageForCurrentUser() {
+            const normalizedUser = normalizePushUsername(currentUser || currentUserDisplay || '');
+            if (normalizedUser === NCR_APPROVAL_DYLAN_USER) return 'dylan';
+            if (normalizedUser === NCR_APPROVAL_JD_USER) return 'jd';
+            return '';
+        }
+
+        function getNcrApprovalAssignedUser(item = null) {
+            return normalizePushUsername(firstNonEmptyValue(item && item.ASSIGNEDTO, item && item.assignedto, ''));
+        }
+
+        function getNcrApprovalStageForItem(item = null) {
+            const assignmentStage = getNcrApprovalStageFromAssignment(getNcrApprovalAssignmentValue(item));
+            const assignedUser = getNcrApprovalAssignedUser(item);
+            if (assignedUser === NCR_APPROVAL_JD_USER && (assignmentStage === 'dylan' || !assignmentStage)) return 'jd';
+            if (assignedUser === NCR_APPROVAL_DYLAN_USER && (assignmentStage === 'jd' || !assignmentStage)) return 'dylan';
+            return assignmentStage;
         }
 
         function isNcrApprovalAssignmentValue(value = '') {
@@ -28042,6 +28064,7 @@ function toggleDriveQuickRequestItem(domId) {
         function clearNcrApprovalTaskViewCaches() {
             ncrApprovalTaskQueueCacheKey = '';
             ncrApprovalTaskQueueCacheByView.clear();
+            ncrApprovalTaskRefreshLastAtByKey.clear();
             taskScopedQueueItemsCache.clear();
             taskHotStateCache.clear();
             taskFilteredItemsCache.clear();
@@ -28082,7 +28105,7 @@ function toggleDriveQuickRequestItem(domId) {
                 showToast('Not Found', 'That approval row could not be found.', true);
                 return false;
             }
-            const stage = getNcrApprovalStageFromAssignment(getNcrApprovalAssignmentValue(item));
+            const stage = getNcrApprovalStageForItem(item);
             if (stage !== 'dylan' && stage !== 'jd') {
                 showToast('No Approval Email', 'This row is not waiting on Dylan or JD approval.', true);
                 return false;
@@ -29117,6 +29140,7 @@ function toggleDriveQuickRequestItem(domId) {
                 taskGenusFilterOpen = false;
                 taskContSizeDropdownOpen = false;
                 taskViewLevel = 0;
+                if (isNcrApprovalTaskView(normalizedView)) scheduleNcrApprovalTaskRowsRefresh(normalizedView, { force: true });
                 scheduleTasksRender(0, 0, true);
                 return false;
             }
@@ -47977,7 +48001,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const type = getNcrApprovalTypeFromAssignment(assignment);
                 const viewForType = getNcrApprovalTaskViewForType(type);
                 if (!ncrApprovalTaskQueueCacheByView.has(viewForType)) return;
-                const stage = getNcrApprovalStageFromAssignment(assignment);
+                const stage = getNcrApprovalStageForItem(item);
                 if (stage !== 'dylan' && stage !== 'jd') return;
                 if (stage === 'dylan' && normalizedUser !== NCR_APPROVAL_DYLAN_USER) return;
                 if (stage === 'jd' && normalizedUser !== NCR_APPROVAL_JD_USER) return;
@@ -47988,6 +48012,70 @@ ${folderNote ? `Folder Note: ${folderNote}
                 });
             });
             return (ncrApprovalTaskQueueCacheByView.get(safeView) || []).slice();
+        }
+
+        function getNcrApprovalAssignmentForCurrentTaskUser(view = activeTaskTab) {
+            const safeView = normalizeTaskViewValue(view);
+            if (!isNcrApprovalTaskView(safeView)) return '';
+            const stage = getNcrApprovalStageForCurrentUser();
+            if (stage !== 'dylan' && stage !== 'jd') return '';
+            return getNcrApprovalAssignment(getNcrApprovalTypeForTaskView(safeView), stage);
+        }
+
+        async function refreshNcrApprovalTaskRows(view = activeTaskTab, options = {}) {
+            const safeView = normalizeTaskViewValue(view);
+            const force = !!(options && options.force);
+            if (!isNcrApprovalTaskView(safeView) || !canUseNcrApprovalTaskView() || navigator.onLine === false) return false;
+            const assignment = getNcrApprovalAssignmentForCurrentTaskUser(safeView);
+            if (!assignment) return false;
+            const refreshKey = `${safeView}:${assignment}`;
+            const now = Date.now();
+            const lastRefreshAt = Number(ncrApprovalTaskRefreshLastAtByKey.get(refreshKey) || 0) || 0;
+            if (!force && lastRefreshAt && (now - lastRefreshAt) < NCR_APPROVAL_TASK_REFRESH_THROTTLE_MS) return false;
+            if (ncrApprovalTaskRefreshPromiseByKey.has(refreshKey)) return ncrApprovalTaskRefreshPromiseByKey.get(refreshKey);
+            ncrApprovalTaskRefreshLastAtByKey.set(refreshKey, now);
+            const promise = (async () => {
+                try {
+                    const query = `select=${MASTER_INITIAL_SELECT_FIELDS}&app_tab_assignment=eq.${encodeURIComponent(assignment)}&order=unique_id.asc`;
+                    const rows = await fetchSupabasePage('v2_master_inventory', query, 250, 0);
+                    const formattedRows = formatFetchedRows(rows || [], 'v2_master_inventory');
+                    let changed = false;
+                    formattedRows.forEach((row) => {
+                        const uid = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
+                        if (!uid) return;
+                        changed = upsertRealtimeRow(fullInventory, row, 'v2_master_inventory') || changed;
+                        if (shouldIncludeMasterItemInAvOpenView(row)) {
+                            changed = upsertRealtimeRow(avOpenInventory, row, 'v2_master_inventory') || changed;
+                        } else {
+                            changed = removeRealtimeRow(avOpenInventory, uid) || changed;
+                        }
+                    });
+                    if (changed) {
+                        refreshRealtimeDetailLookupIndexes('v2_master_inventory');
+                        invalidateResolvedViewStateCaches();
+                        markViewDirty('tasks');
+                        persistCurrentCache(false, 'ncr-approval-task-refresh');
+                        if (isViewVisible('tasks') && normalizeTaskViewValue(activeTaskTab) === safeView) {
+                            scheduleTasksRender(0, 0, true);
+                        }
+                    }
+                    return changed;
+                } catch (error) {
+                    console.warn('NCR approval task refresh failed', error);
+                    return false;
+                } finally {
+                    ncrApprovalTaskRefreshPromiseByKey.delete(refreshKey);
+                }
+            })();
+            ncrApprovalTaskRefreshPromiseByKey.set(refreshKey, promise);
+            return promise;
+        }
+
+        function scheduleNcrApprovalTaskRowsRefresh(view = activeTaskTab, options = {}) {
+            refreshNcrApprovalTaskRows(view, options).catch((error) => {
+                console.warn('NCR approval task refresh scheduling failed', error);
+            });
+            return false;
         }
 
         function getScopedTaskQueueItems(tab = activeTaskView, targetUser = currentUser) {
@@ -50120,7 +50208,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const safeUidJs = escJsAttrValue(uid);
             const domId = String(firstNonEmptyValue(item.DOM_ID, uid, '') || '');
             const assignment = getNcrApprovalAssignmentValue(item);
-            const stage = getNcrApprovalStageFromAssignment(assignment);
+            const stage = getNcrApprovalStageForItem(item);
             const type = getNcrApprovalTypeFromAssignment(assignment) || getNcrApprovalTypeForTaskView(activeTaskTab);
             const typeLabel = getNcrApprovalTypeLabel(type);
             const commonName = esc(String(firstNonEmptyValue(item.COMMONNAME, item.commonname, 'Unknown') || 'Unknown'));
@@ -50166,6 +50254,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             syncTaskApprovalModeToggles(activeTaskTab);
             syncTaskModeControls(activeTaskTab);
             syncTaskSubviewControls(activeTaskTab);
+            if (isNcrApprovalTaskView(activeTaskTab)) {
+                scheduleNcrApprovalTaskRowsRefresh(activeTaskTab, { force: !!(options && options.forceApprovalRefresh) });
+            }
             if (isTaskDiagnosticsView(activeTaskTab)) {
                 renderTaskDiagnosticsReview(options);
                 recordInternalPerfDuration('taskDrilldownDurations', taskRenderStartedAt, `${activeTaskTab}:review`);
