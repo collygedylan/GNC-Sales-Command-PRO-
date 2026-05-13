@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.30';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.31';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1872,7 +1872,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.30').trim() || 'V2026.05.12.30';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.31').trim() || 'V2026.05.12.31';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2750,7 +2750,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.30';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.31';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12117,7 +12117,7 @@ const FIELD_SAVE_GRACE_MS = 1400;
 
 let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='all'; let activeAvReserveDetailTab='customer'; let selectedAvReserveDetailCustomerKey=null;
 let selectedAvSeasons=new Set(['S1']); let avSeasonDefaultsInitialized=false; let avSourceDropdownOpen=false; let avSeasonDropdownOpen=false; let avGenusFilterOpen=false; let avContSizeFilterOpen=false; let avHoldDropdownOpen=false; let avPhotoDropdownOpen=false; let avSeasonSearchTerm=''; let selectedAvGenusNames=new Set(); let avGenusSearchTerm=''; let avGenusSelectionMode='all'; let selectedAvContSizes=new Set(); let avContSizeSearchTerm=''; let avContSizeSelectionMode='all'; let avHoldFilterMode='all'; let avHoldStopOnly=false; let avFilterItemsCache=[]; let avFilterGenusOptions=[]; let avFilterContSizeOptions=[];
-let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKeys=new Set(); let driveCustomerOutreachSelectedSourceRowIds=new Set(); let driveCustomerOutreachStateKey=''; let driveCustomerOutreachSendBusy=false; let driveCustomerOutreachReserveRows=[]; let driveCustomerOutreachReserveRowsKey=''; let driveCustomerOutreachReserveRowsLoadedKey=''; let driveCustomerOutreachReserveRowsLoading=false; let driveCustomerOutreachReserveRowsError=''; let driveCustomerOutreachReserveFetchToken=0;
+let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKeys=new Set(); let driveCustomerOutreachSelectedSourceRowIds=new Set(); let driveCustomerOutreachStateKey=''; let driveCustomerOutreachRecipientMode='selected'; let driveCustomerOutreachSelectedAllRepKeys=new Set(); let driveCustomerOutreachAllRepStateKey=''; let driveCustomerOutreachSendBusy=false; let driveCustomerOutreachReserveRows=[]; let driveCustomerOutreachReserveRowsKey=''; let driveCustomerOutreachReserveRowsLoadedKey=''; let driveCustomerOutreachReserveRowsLoading=false; let driveCustomerOutreachReserveRowsError=''; let driveCustomerOutreachReserveFetchToken=0;
         let taskTeamSelectorCacheKey=''; let taskTeamSelectorCacheHtml=''; let taskTeamSelectorEmptyHtml='';
 
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null; let moveUpViewLevel=0; let selectedMoveUpItemCode=null; let selectedMoveUpCommonName=null; let selectedMoveUpContSize=null;
@@ -12247,7 +12247,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.30').trim() || 'V2026.05.12.30';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.31').trim() || 'V2026.05.12.31';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -35966,6 +35966,9 @@ function toggleDriveQuickRequestItem(domId) {
             driveCustomerOutreachSelectedCustomerKeys = new Set();
             driveCustomerOutreachSelectedSourceRowIds = new Set();
             driveCustomerOutreachStateKey = '';
+            driveCustomerOutreachRecipientMode = 'selected';
+            driveCustomerOutreachSelectedAllRepKeys = new Set();
+            driveCustomerOutreachAllRepStateKey = '';
             driveCustomerOutreachSendBusy = false;
             driveCustomerOutreachReserveRows = [];
             driveCustomerOutreachReserveRowsKey = '';
@@ -36301,6 +36304,157 @@ function toggleDriveQuickRequestItem(domId) {
             );
         }
 
+        function getDriveCustomerOutreachRepKey(repName = '', repEmail = '') {
+            const email = normalizeRequestEmailAddress(repEmail || resolveRequestRecipientEmail(repName));
+            const token = normalizeRepMatchToken(repName).replace(/\s+/g, '');
+            return email || token || String(repName || '').trim().toLowerCase();
+        }
+
+        function getDriveCustomerOutreachSelectedRepCards(cards = getDriveCustomerOutreachCustomerCards(activeItem)) {
+            const reps = new Map();
+            (Array.isArray(cards) ? cards : []).forEach((card) => {
+                const repName = card && card.repName ? card.repName : 'Unknown Rep';
+                const repEmail = resolveRequestRecipientEmail(repName);
+                const repKey = getDriveCustomerOutreachRepKey(repName, repEmail);
+                if (!repKey) return;
+                const entry = reps.get(repKey) || {
+                    key: repKey,
+                    repName,
+                    repEmail,
+                    cards: [],
+                    customerCount: 0,
+                    qty: 0,
+                    hasQty: false
+                };
+                entry.cards.push(card);
+                entry.customerCount += 1;
+                if (card && card.hasQty) {
+                    entry.qty += Number(card.qty || 0);
+                    entry.hasQty = true;
+                }
+                reps.set(repKey, entry);
+            });
+            return Array.from(reps.values()).sort((a, b) => String(a.repName || '').localeCompare(String(b.repName || ''), undefined, { sensitivity: 'base' }));
+        }
+
+        function isDriveCustomerOutreachRepSelected(repEntry = null) {
+            if (!repEntry || !Array.isArray(repEntry.cards) || !repEntry.cards.length) return false;
+            return repEntry.cards.some((card) => driveCustomerOutreachSelectedCustomerKeys.has(card.key));
+        }
+
+        function setDriveCustomerOutreachRepSelected(repKey = '', selected = true) {
+            const safeKey = String(repKey || '').trim();
+            if (!safeKey) return false;
+            getDriveCustomerOutreachSelectedRepCards().forEach((repEntry) => {
+                if (String(repEntry.key || '').trim() !== safeKey) return;
+                repEntry.cards.forEach((card) => {
+                    if (selected) driveCustomerOutreachSelectedCustomerKeys.add(card.key);
+                    else driveCustomerOutreachSelectedCustomerKeys.delete(card.key);
+                });
+            });
+            driveCustomerOutreachOpen = true;
+            renderDriveCustomerOutreachPanel(activeItem);
+            return false;
+        }
+
+        function toggleDriveCustomerOutreachRep(repKey = '') {
+            const repEntry = getDriveCustomerOutreachSelectedRepCards().find((entry) => String(entry.key || '').trim() === String(repKey || '').trim());
+            return setDriveCustomerOutreachRepSelected(repKey, !isDriveCustomerOutreachRepSelected(repEntry));
+        }
+
+        function setDriveCustomerOutreachAllOrderRepsSelected(selected = true) {
+            getDriveCustomerOutreachSelectedRepCards().forEach((repEntry) => {
+                (repEntry.cards || []).forEach((card) => {
+                    if (!card || !card.key) return;
+                    if (selected) driveCustomerOutreachSelectedCustomerKeys.add(card.key);
+                    else driveCustomerOutreachSelectedCustomerKeys.delete(card.key);
+                });
+            });
+            driveCustomerOutreachOpen = true;
+            renderDriveCustomerOutreachPanel(activeItem);
+            return false;
+        }
+
+        function getDriveCustomerOutreachAllRepOptions() {
+            const entries = new Map();
+            BLOOM_CROP_UPDATE_REP_GROUPS.forEach((group) => {
+                (group.reps || []).forEach((repName) => {
+                    const email = getBloomCropUpdateRepEmail(repName);
+                    const key = getDriveCustomerOutreachRepKey(repName, email);
+                    if (!key) return;
+                    const existing = entries.get(key) || {
+                        key,
+                        repName,
+                        email,
+                        groups: [],
+                        groupLabels: []
+                    };
+                    if (!existing.groups.includes(group.key)) existing.groups.push(group.key);
+                    if (!existing.groupLabels.includes(group.label)) existing.groupLabels.push(group.label);
+                    entries.set(key, existing);
+                });
+            });
+            return Array.from(entries.values()).sort((a, b) => String(a.repName || '').localeCompare(String(b.repName || ''), undefined, { sensitivity: 'base' }));
+        }
+
+        function syncDriveCustomerOutreachAllRepDefaults() {
+            const allReps = getDriveCustomerOutreachAllRepOptions();
+            const stateKey = allReps.map((rep) => rep.key).join('|');
+            if (driveCustomerOutreachAllRepStateKey === stateKey) return allReps;
+            driveCustomerOutreachAllRepStateKey = stateKey;
+            driveCustomerOutreachSelectedAllRepKeys = new Set(allReps.map((rep) => rep.key));
+            return allReps;
+        }
+
+        function getDriveCustomerOutreachSelectedAllReps() {
+            return getDriveCustomerOutreachAllRepOptions().filter((rep) => driveCustomerOutreachSelectedAllRepKeys.has(rep.key) && rep.email);
+        }
+
+        function setDriveCustomerOutreachRecipientMode(mode = 'selected') {
+            driveCustomerOutreachRecipientMode = String(mode || '').trim().toLowerCase() === 'all' ? 'all' : 'selected';
+            if (driveCustomerOutreachRecipientMode === 'all') syncDriveCustomerOutreachAllRepDefaults();
+            driveCustomerOutreachOpen = true;
+            renderDriveCustomerOutreachPanel(activeItem);
+            return false;
+        }
+
+        function toggleDriveCustomerOutreachAllRep(repKey = '') {
+            const safeKey = String(repKey || '').trim();
+            if (!safeKey) return false;
+            syncDriveCustomerOutreachAllRepDefaults();
+            if (driveCustomerOutreachSelectedAllRepKeys.has(safeKey)) driveCustomerOutreachSelectedAllRepKeys.delete(safeKey);
+            else driveCustomerOutreachSelectedAllRepKeys.add(safeKey);
+            driveCustomerOutreachOpen = true;
+            renderDriveCustomerOutreachPanel(activeItem);
+            return false;
+        }
+
+        function setDriveCustomerOutreachAllGroupSelected(groupKey = '', selected = null) {
+            const safeGroupKey = String(groupKey || '').trim().toUpperCase();
+            if (!safeGroupKey) return false;
+            const groupReps = getDriveCustomerOutreachAllRepOptions().filter((rep) => (rep.groups || []).includes(safeGroupKey));
+            if (!groupReps.length) return false;
+            syncDriveCustomerOutreachAllRepDefaults();
+            const shouldSelect = selected === null
+                ? !groupReps.every((rep) => driveCustomerOutreachSelectedAllRepKeys.has(rep.key))
+                : !!selected;
+            groupReps.forEach((rep) => {
+                if (shouldSelect) driveCustomerOutreachSelectedAllRepKeys.add(rep.key);
+                else driveCustomerOutreachSelectedAllRepKeys.delete(rep.key);
+            });
+            driveCustomerOutreachOpen = true;
+            renderDriveCustomerOutreachPanel(activeItem);
+            return false;
+        }
+
+        function setDriveCustomerOutreachAllRepsSelected(selected = true) {
+            const allReps = getDriveCustomerOutreachAllRepOptions();
+            driveCustomerOutreachSelectedAllRepKeys = selected ? new Set(allReps.map((rep) => rep.key)) : new Set();
+            driveCustomerOutreachOpen = true;
+            renderDriveCustomerOutreachPanel(activeItem);
+            return false;
+        }
+
         function renderDriveCustomerOutreachPanel(item = activeItem, options = {}) {
             const legacyPanel = document.getElementById('drive-detail-customer-outreach-panel');
             if (legacyPanel) {
@@ -36333,12 +36487,17 @@ function toggleDriveQuickRequestItem(domId) {
             syncDriveCustomerOutreachDefaultSelections(item, cards, sourceRows);
             const selectedCustomerCount = cards.filter((card) => driveCustomerOutreachSelectedCustomerKeys.has(card.key)).length;
             const selectedSourceCount = sourceRows.filter((row) => driveCustomerOutreachSelectedSourceRowIds.has(getDriveCustomerOutreachRowId(row))).length;
+            const selectedRepCards = getDriveCustomerOutreachSelectedRepCards(cards);
+            const selectedOrderRepCount = selectedRepCards.filter(isDriveCustomerOutreachRepSelected).length;
+            const recipientMode = driveCustomerOutreachRecipientMode === 'all' ? 'all' : 'selected';
+            const allRepOptions = syncDriveCustomerOutreachAllRepDefaults();
+            const selectedAllReps = getDriveCustomerOutreachSelectedAllReps();
             const commonName = String(firstNonEmptyValue(item && item.COMMONNAME, item && item.DESCRIPTION, 'Item') || 'Item').trim();
             const itemCode = getDriveCustomerOutreachItemCode(item) || '--';
             const season = getDriveCustomerOutreachSeason(item) || 'All Seasons';
             const sourceLabel = getCustomerConsigneeOutreachSourceLabel(activeDetailSourceView || lastView || '', item);
             const canSendAllSalesReps = canSendCustomerConsigneeOutreachToAllSalesReps(item, activeDetailSourceView || lastView || '');
-            const allSalesRepCount = canSendAllSalesReps ? getAllSalesRepOutreachRecipientEmails().length : 0;
+            const allSalesRepCount = canSendAllSalesReps ? selectedAllReps.length : 0;
             const scopeNote = reserveSeasonFallback
                 ? 'Matched by itemcode from v2_reserves; no exact reserve season match was found.'
                 : 'Matched by itemcode and season from v2_reserves.';
@@ -36349,6 +36508,21 @@ function toggleDriveQuickRequestItem(domId) {
             const errorHtml = driveCustomerOutreachReserveRowsError
                 ? `<div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] font-bold text-amber-700">${esc(driveCustomerOutreachReserveRowsError)}</div>`
                 : '';
+            const orderRepHtml = selectedRepCards.length ? selectedRepCards.map((repEntry) => {
+                const checked = isDriveCustomerOutreachRepSelected(repEntry) ? 'checked' : '';
+                const qtyLabel = repEntry.hasQty ? `Qty ${formatDockDisplayQty(repEntry.qty)}` : `${repEntry.customerCount} customer${repEntry.customerCount === 1 ? '' : 's'}`;
+                return `<label class="flex min-h-[48px] items-center gap-3 rounded-xl border border-emerald-100 bg-white px-3 py-2 shadow-sm"><input type="checkbox" class="h-5 w-5 shrink-0 accent-emerald-600" ${checked} onclick='event.stopPropagation(); return toggleDriveCustomerOutreachRep(${JSON.stringify(repEntry.key)})'><span class="min-w-0 flex-1"><span class="block truncate text-[12px] font-black text-slate-800">${esc(repEntry.repName)}</span><span class="mt-0.5 block truncate text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${esc(qtyLabel)}</span><span class="mt-0.5 block truncate text-[10px] font-bold text-slate-400">${esc(repEntry.repEmail || resolveRequestRecipientEmail(repEntry.repName) || '')}</span></span></label>`;
+            }).join('') : '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[11px] font-bold text-slate-400">No sales reps with this item on order were found.</div>';
+            const allRepGroupsHtml = canSendAllSalesReps ? BLOOM_CROP_UPDATE_REP_GROUPS.map((group) => {
+                const groupReps = allRepOptions.filter((rep) => (rep.groups || []).includes(group.key));
+                const selectedInGroup = groupReps.filter((rep) => driveCustomerOutreachSelectedAllRepKeys.has(rep.key)).length;
+                const repsHtml = groupReps.map((rep) => {
+                    const checked = driveCustomerOutreachSelectedAllRepKeys.has(rep.key) ? 'checked' : '';
+                    return `<label class="flex min-h-[44px] items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm"><input type="checkbox" class="h-5 w-5 shrink-0 accent-[#007a4d]" ${checked} onclick='event.stopPropagation(); return toggleDriveCustomerOutreachAllRep(${JSON.stringify(rep.key)})'><span class="min-w-0 flex-1 truncate">${esc(rep.repName)}</span></label>`;
+                }).join('');
+                return `<div class="rounded-xl border border-sky-100 bg-sky-50/60 p-3"><div class="flex items-center justify-between gap-3"><div><div class="text-sm font-black text-sky-900">${esc(group.label)}</div><div class="mt-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-sky-600">${selectedInGroup}/${groupReps.length} selected</div></div><button type="button" class="rounded-full border border-sky-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-sky-700 shadow-sm active:scale-[.98]" onclick="return setDriveCustomerOutreachAllGroupSelected('${escJsAttrValue(group.key)}')">Toggle ${esc(group.key)}</button></div><div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">${repsHtml}</div></div>`;
+            }).join('') : '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[11px] font-bold text-slate-400">All-rep send is not available from this view.</div>';
+            const recipientHtml = `<div class="rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm"><div class="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"><label class="block"><span class="ml-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Recipient Choice</span><select class="mt-1 w-full rounded-2xl border border-emerald-200 bg-white px-3 py-3 text-[12px] font-black uppercase tracking-[0.12em] text-[#007a4d] outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" onchange="return setDriveCustomerOutreachRecipientMode(this.value)"><option value="selected" ${recipientMode === 'selected' ? 'selected' : ''}>Send To Selected Reps</option><option value="all" ${recipientMode === 'all' ? 'selected' : ''}>Send To All Reps</option></select></label><div class="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">${recipientMode === 'all' ? 'OK / NC / TX Groups' : 'Reps With This Item On Order'}</div><div class="mt-1 text-[12px] font-bold text-slate-700">${recipientMode === 'all' ? `${selectedAllReps.length}/${allRepOptions.length} reps selected` : `${selectedOrderRepCount}/${selectedRepCards.length} reps selected`}</div></div></div>${recipientMode === 'all' ? `<div class="mt-3 flex flex-wrap gap-2"><button type="button" class="rounded-full border border-sky-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-sky-700" onclick="return setDriveCustomerOutreachAllRepsSelected(true)">Select All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachAllRepsSelected(false)">Clear All</button></div><div class="mt-3 space-y-3">${allRepGroupsHtml}</div>` : `<div class="mt-3 flex flex-wrap gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachAllOrderRepsSelected(true)">Select All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachAllOrderRepsSelected(false)">Clear All</button></div><div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">${orderRepHtml}</div>`}</div>`;
             const customerHtml = cards.length ? cards.map((card) => {
                 const checked = driveCustomerOutreachSelectedCustomerKeys.has(card.key) ? 'checked' : '';
                 const qtyLabel = getDriveCustomerOutreachCustomerQtyLabel(card);
@@ -36362,13 +36536,14 @@ function toggleDriveQuickRequestItem(domId) {
                 const spec = getDriveCustomerOutreachSpec(row);
                 return `<label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm"><input type="checkbox" class="mt-1 h-4 w-4 shrink-0 accent-emerald-600" ${checked} onclick='event.stopPropagation(); return toggleDriveCustomerOutreachSourceRow(${JSON.stringify(rowId)})'>${photoThumb}<span class="min-w-0 flex-1"><span class="block text-[12px] font-black text-[#007a4d]">${esc(firstNonEmptyValue(row && row.LOCATIONCODE, 'No Loc'))} ${esc(firstNonEmptyValue(row && row.LOTCODE, ''))}</span><span class="mt-1 block break-words text-[11px] font-bold text-slate-700">Spec: ${esc(spec)}</span><span class="mt-1 block text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">PRI ${esc(firstNonEmptyValue(row && row.PRIORITY, '-'))} &bull; PTR ${esc(firstNonEmptyValue(row && row.PTRAVAILABLE, 0))} &bull; ${photos.length} photo${photos.length === 1 ? '' : 's'}</span></span></label>`;
             }).join('') : '<div class="rounded-xl border border-dashed border-amber-200 bg-amber-50 px-4 py-5 text-center text-[11px] font-bold text-amber-700">No rows with both photos and specs were found for this item and season.</div>';
-            const sendDisabled = !selectedCustomerCount || !selectedSourceCount || driveCustomerOutreachSendBusy;
-            const sendAllDisabled = !selectedSourceCount || !allSalesRepCount || driveCustomerOutreachSendBusy;
-            const sendAllHtml = canSendAllSalesReps
-                ? `<button type="button" class="w-full rounded-2xl px-4 py-3 text-[12px] font-black uppercase tracking-[0.14em] shadow-sm ${sendAllDisabled ? 'pointer-events-none bg-slate-200 text-slate-400' : 'bg-sky-700 text-white active:scale-[0.99]'}" onclick="return sendDriveCustomerOutreachEmails({ sendToAllSalesReps: true })">${driveCustomerOutreachSendBusy ? 'Sending...' : `Send To All Sales Reps${allSalesRepCount ? ` (${allSalesRepCount})` : ''}`}</button>`
-                : '';
+            const selectedModeCanSend = selectedCustomerCount > 0 && selectedOrderRepCount > 0;
+            const allModeCanSend = canSendAllSalesReps && allSalesRepCount > 0;
+            const sendDisabled = !selectedSourceCount || driveCustomerOutreachSendBusy || (recipientMode === 'all' ? !allModeCanSend : !selectedModeCanSend);
+            const sendButtonLabel = recipientMode === 'all'
+                ? `Send To Rep Groups${allSalesRepCount ? ` (${allSalesRepCount})` : ''}`
+                : `Send To Selected Reps${selectedOrderRepCount ? ` (${selectedOrderRepCount})` : ''}`;
             driveCustomerOutreachOpen = true;
-            panel.innerHTML = `<div class="space-y-4"><div class="rounded-[22px] border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm"><div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Customer / Consignee Send</div><div class="mt-2 text-[18px] font-black leading-tight text-slate-900 break-words">${esc(commonName)}</div><div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">${esc(sourceLabel)} &bull; v2_reserves &bull; ITEMCODE ${esc(itemCode)} &bull; SEASON ${esc(season)}</div><div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700">${reserveRows.length} reserve rows matched &bull; ${selectedCustomerCount}/${cards.length} customers selected &bull; ${selectedSourceCount}/${sourceRows.length} photo/spec rows selected</div><div class="mt-1 text-[10px] font-bold text-slate-500">${esc(scopeNote)}</div></div><button type="button" class="shrink-0 rounded-full border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[0.98]" onclick="loadDriveCustomerOutreachReserveRows(activeItem, true); return false;">Refresh</button></div></div>${loadingHtml}${errorHtml}<div><div class="mb-2 flex items-center justify-between gap-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Customername / Consigneename</div><div class="flex gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachCustomersSelected(true)">All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachCustomersSelected(false)">None</button></div></div><div class="grid grid-cols-1 gap-2">${customerHtml}</div></div><div><div class="mb-2 flex items-center justify-between gap-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Photo / Spec Rows To Send</div><div class="flex gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachSourceRowsSelected(true)">All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachSourceRowsSelected(false)">None</button></div></div>${sourceScopeNote}<div class="grid grid-cols-1 gap-2">${sourceHtml}</div></div><div class="grid grid-cols-1 gap-2 sm:grid-cols-${sendAllHtml ? '2' : '1'}"><button type="button" class="w-full rounded-2xl px-4 py-3 text-[12px] font-black uppercase tracking-[0.14em] shadow-sm ${sendDisabled ? 'pointer-events-none bg-slate-200 text-slate-400' : 'bg-emerald-700 text-white active:scale-[0.99]'}" onclick="return sendDriveCustomerOutreachEmails()">${driveCustomerOutreachSendBusy ? 'Sending...' : 'Send To Selected Reps'}</button>${sendAllHtml}</div></div>`;
+            panel.innerHTML = `<div class="space-y-4"><div class="rounded-[22px] border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm"><div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Customer / Consignee Send</div><div class="mt-2 text-[18px] font-black leading-tight text-slate-900 break-words">${esc(commonName)}</div><div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">${esc(sourceLabel)} &bull; v2_reserves &bull; ITEMCODE ${esc(itemCode)} &bull; SEASON ${esc(season)}</div><div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700">${reserveRows.length} reserve rows matched &bull; ${selectedCustomerCount}/${cards.length} customers selected &bull; ${selectedSourceCount}/${sourceRows.length} photo/spec rows selected</div><div class="mt-1 text-[10px] font-bold text-slate-500">${esc(scopeNote)}</div></div><button type="button" class="shrink-0 rounded-full border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[0.98]" onclick="loadDriveCustomerOutreachReserveRows(activeItem, true); return false;">Refresh</button></div></div>${loadingHtml}${errorHtml}${recipientHtml}<div><div class="mb-2 flex items-center justify-between gap-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Customername / Consigneename</div><div class="flex gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachCustomersSelected(true)">All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachCustomersSelected(false)">None</button></div></div><div class="grid grid-cols-1 gap-2">${customerHtml}</div></div><div><div class="mb-2 flex items-center justify-between gap-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Photo / Spec Rows To Send</div><div class="flex gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachSourceRowsSelected(true)">All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachSourceRowsSelected(false)">None</button></div></div>${sourceScopeNote}<div class="grid grid-cols-1 gap-2">${sourceHtml}</div></div><button type="button" class="w-full rounded-2xl px-4 py-3 text-[12px] font-black uppercase tracking-[0.14em] shadow-sm ${sendDisabled ? 'pointer-events-none bg-slate-200 text-slate-400' : 'bg-emerald-700 text-white active:scale-[0.99]'}" onclick="return sendDriveCustomerOutreachEmails({ sendToAllSalesReps: driveCustomerOutreachRecipientMode === 'all' })">${driveCustomerOutreachSendBusy ? 'Sending...' : esc(sendButtonLabel)}</button></div>`;
         }
 
         function toggleDriveCustomerOutreachPanel() {
@@ -36482,7 +36657,7 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             if (driveCustomerOutreachSendBusy) return false;
-            const sendToAllSalesReps = !!(options && options.sendToAllSalesReps);
+            const sendToAllSalesReps = !!(options && options.sendToAllSalesReps) || driveCustomerOutreachRecipientMode === 'all';
             const state = getDriveCustomerOutreachSelectedState(activeItem);
             if (!sendToAllSalesReps && !state.cards.length) {
                 showToast('Select Customers', 'Pick at least one customer / consignee card.', true);
@@ -36494,6 +36669,11 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (sendToAllSalesReps && !canSendCustomerConsigneeOutreachToAllSalesReps(activeItem, activeDetailSourceView || lastView || '')) {
                 showToast('Not Available', 'All-sales-rep send is only available from Drive Mode and AV rows.', true);
+                return false;
+            }
+            const selectedAllSalesReps = sendToAllSalesReps ? getDriveCustomerOutreachSelectedAllReps() : [];
+            if (sendToAllSalesReps && !selectedAllSalesReps.length) {
+                showToast('Select Reps', 'Pick at least one OK, NC, or TX sales rep.', true);
                 return false;
             }
             const groupedByRep = new Map();
@@ -36511,13 +36691,20 @@ function toggleDriveQuickRequestItem(domId) {
                 const commonName = String(firstNonEmptyValue(activeItem && activeItem.COMMONNAME, 'Item') || 'Item').trim();
                 const sourceLabel = getCustomerConsigneeOutreachSourceLabel(activeDetailSourceView || lastView || '', activeItem);
                 if (sendToAllSalesReps) {
-                    const salesRepEmails = getAllSalesRepOutreachRecipientEmails();
+                    const salesRepEmails = dedupeRequestEmailRecipients(selectedAllSalesReps.map((rep) => rep.email).filter(Boolean));
                     if (!salesRepEmails.length) {
                         showToast('No Emails', 'No sales rep email addresses were resolved.', true);
                         return false;
                     }
+                    const selectedGroupLabels = BLOOM_CROP_UPDATE_REP_GROUPS
+                        .filter((group) => selectedAllSalesReps.some((rep) => (rep.groups || []).includes(group.key)))
+                        .map((group) => group.label);
+                    const audienceLabel = selectedGroupLabels.length
+                        ? `${selectedGroupLabels.join(', ')} (${selectedAllSalesReps.length} rep${selectedAllSalesReps.length === 1 ? '' : 's'})`
+                        : `${selectedAllSalesReps.length} selected sales rep${selectedAllSalesReps.length === 1 ? '' : 's'}`;
                     const recipientEmails = dedupeRequestEmailRecipients([...salesRepEmails, ...REQUEST_EMAIL_INTERNAL_RECIPIENTS]);
-                    const customerPayload = state.cards.map((card) => ({
+                    const allModeCustomerCards = state.cards.length ? state.cards : getDriveCustomerOutreachCustomerCards(activeItem);
+                    const customerPayload = allModeCustomerCards.map((card) => ({
                         customername: card.customerName,
                         consigneename: card.consigneeName,
                         label: card.label,
@@ -36532,7 +36719,7 @@ function toggleDriveQuickRequestItem(domId) {
                         type: 'email',
                         emailType: 'drive_customer_outreach',
                         sendToAllSalesReps: true,
-                        audienceLabel: 'All Sales Reps',
+                        audienceLabel,
                         subject,
                         repName: '',
                         salesRepName: '',
@@ -36543,6 +36730,12 @@ function toggleDriveQuickRequestItem(domId) {
                         internalRecipients: REQUEST_EMAIL_INTERNAL_RECIPIENTS.slice(),
                         recipientEmails,
                         recipients: recipientEmails.map((email) => ({ email, role: salesRepEmails.includes(email) ? 'sales-rep' : 'internal' })),
+                        selectedRepGroups: selectedGroupLabels,
+                        selectedSalesReps: selectedAllSalesReps.map((rep) => ({
+                            name: rep.repName,
+                            email: rep.email,
+                            groups: rep.groupLabels || []
+                        })),
                         commonname: commonName,
                         itemcode: itemCode,
                         season,
@@ -36551,8 +36744,8 @@ function toggleDriveQuickRequestItem(domId) {
                         customerConsigneeRows: customerPayload,
                         sourceRows: itemPayload,
                         items: itemPayload,
-                        formattedItemsText: buildDriveCustomerOutreachEmailText(state.cards, state.sourceRows, activeItem, { audienceLabel: 'All Sales Reps' }),
-                        formattedItemsHtml: buildDriveCustomerOutreachEmailHtml(state.cards, state.sourceRows, activeItem, { audienceLabel: 'All Sales Reps' })
+                        formattedItemsText: buildDriveCustomerOutreachEmailText(allModeCustomerCards, state.sourceRows, activeItem, { audienceLabel }),
+                        formattedItemsHtml: buildDriveCustomerOutreachEmailHtml(allModeCustomerCards, state.sourceRows, activeItem, { audienceLabel })
                     };
                     const responseData = await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Drive Customer Outreach Email');
                     if (responseData && responseData.ok === false) {
