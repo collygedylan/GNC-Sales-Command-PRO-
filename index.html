@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.13.14';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.13.15';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.14').trim() || 'V2026.05.13.14';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.15').trim() || 'V2026.05.13.15';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2812,7 +2812,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.14';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.15';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12799,7 +12799,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.14').trim() || 'V2026.05.13.14';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.15').trim() || 'V2026.05.13.15';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -42674,6 +42674,9 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             if (archived) {
                 clearPendingRequestArchive(uid);
                 showToast('Removed', 'Request removed from Request tab.');
+                maybeSendRequestCompletionEmailForFolder(item.REQUEST_FOLDER, item, { suppressFailureToast: true }).catch((error) => {
+                    console.warn('Request completion email check after row removal failed', error);
+                });
                 return;
             }
             const retryDelay = computePendingRequestArchiveRetryDelay(1);
@@ -45143,6 +45146,40 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 console.warn('Could not refresh request folder before completion email', error);
             }
             return fallbackItems;
+        }
+
+        async function maybeSendRequestCompletionEmailForFolder(folderName, contextItem = null, options = {}) {
+            const safeFolderName = String(folderName || '').trim();
+            if (!safeFolderName) return { sent: false, reason: 'missing_folder' };
+            const safeOptions = options && typeof options === 'object' ? options : {};
+            const latestFolderItems = await getRequestFolderItemsForCompletionEmail(safeFolderName, contextItem);
+            const completedFolderItems = (Array.isArray(latestFolderItems) ? latestFolderItems : [])
+                .filter((item) => item && !item.REQ_ARCHIVED);
+            const allRequestFolderRowsComplete = completedFolderItems.length > 0 && completedFolderItems.every((item) => isRequestComplete(item));
+            if (!allRequestFolderRowsComplete) return { sent: false, reason: 'folder_not_complete', activeRows: completedFolderItems.length };
+            const completedFolderItemsSnapshot = completedFolderItems.map((row) => normalizeRowPhotoFields(Object.assign({}, row)));
+            const leadItem = contextItem || completedFolderItemsSnapshot[0] || {};
+            const repName = String(firstNonEmptyValue(leadItem.REQUESTED_BY, leadItem.requested_by, completedFolderItemsSnapshot[0] && completedFolderItemsSnapshot[0].REQUESTED_BY, selectedReqRepView, '') || '').trim();
+            const customerName = String(firstNonEmptyValue(leadItem.REQ_CUSTOMER, leadItem.req_customer, completedFolderItemsSnapshot[0] && completedFolderItemsSnapshot[0].REQ_CUSTOMER, '') || '').trim();
+            const completedFolderNote = getRequestFolderNote(safeFolderName, 'Complete', repName || selectedReqRepView);
+            const completedByUsers = collectRequestCompletionUsers(completedFolderItemsSnapshot);
+            const emailResult = await sendEmailNotification('request_complete', safeFolderName, repName, customerName, completedFolderItemsSnapshot.length, {
+                items: completedFolderItemsSnapshot,
+                folderNote: completedFolderNote,
+                completedByUsers
+            }, {
+                suppressFailureToast: !!safeOptions.suppressFailureToast
+            });
+            if (emailResult && emailResult.ok === true && !emailResult.skipped) {
+                sendPushNotification('request_complete', safeFolderName, repName, customerName, completedFolderItemsSnapshot.length);
+                return { sent: true, emailResult, rowCount: completedFolderItemsSnapshot.length };
+            }
+            return {
+                sent: false,
+                skipped: !!(emailResult && emailResult.skipped),
+                reason: emailResult && emailResult.skipped ? emailResult.reason : 'email_failed_or_skipped',
+                emailResult
+            };
         }
 
         function formatRequestItemsText(items, headerLabel = '', options = {}) {
@@ -53317,21 +53354,8 @@ ${folderNote ? `Folder Note: ${folderNote}
 
                     if (prefix === 'req-' && isComplete && !wasAlreadyComplete && !saveOptions.suppressRequestCompletionEmail) {
                         const completionFolderName = String(itemToSave.REQUEST_FOLDER || '').trim();
-                        const completedFolderNote = getRequestFolderNote(completionFolderName, 'Complete', selectedReqRepView);
                         deferNonCriticalWork('request-complete-email', () => {
-                            getRequestFolderItemsForCompletionEmail(completionFolderName, itemToSave).then((latestFolderItems) => {
-                                const completedFolderItems = (Array.isArray(latestFolderItems) ? latestFolderItems : [])
-                                    .filter(i => i && !i.REQ_ARCHIVED);
-                                const allRequestFolderRowsComplete = completedFolderItems.length > 0 && completedFolderItems.every(i => isRequestComplete(i));
-                                if (!allRequestFolderRowsComplete) return;
-                                const completedFolderItemsSnapshot = completedFolderItems.map((row) => normalizeRowPhotoFields(Object.assign({}, row)));
-                                const completedByUsers = collectRequestCompletionUsers(completedFolderItemsSnapshot);
-                                notifyRequestEvent('request_complete', completionFolderName, itemToSave.REQUESTED_BY, itemToSave.REQ_CUSTOMER, completedFolderItemsSnapshot.length, {
-                                    items: completedFolderItemsSnapshot,
-                                    folderNote: completedFolderNote,
-                                    completedByUsers
-                                });
-                            }).catch((error) => {
+                            maybeSendRequestCompletionEmailForFolder(completionFolderName, itemToSave).catch((error) => {
                                 console.warn('Request completion email check failed', error);
                             });
                         }, 72);
