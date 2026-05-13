@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.13.16';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.13.17';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1746,7 +1746,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 <button type="button" class="text-gray-500 font-bold py-2 px-3" onclick="closeNcrRepOutreachModal('no')">Close</button>
             </div>
             <p class="text-sm leading-6 text-slate-600">
-                Choose <span class="font-black text-[#007a4d]">Yes, Select Reps</span> to open the flexible OK, NC, and TX rep selector.
+                Choose <span class="font-black text-[#007a4d]">Yes, Select Reps</span> to open the flexible OK, NC, TX, and Admin recipient selector.
                 Choose <span class="font-black text-slate-700">No</span> to leave the approval in Inventory Office without sending the extra rep email.
             </p>
             <div class="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1817,7 +1817,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             </div>
             <div class="flex-1 overflow-y-auto px-5 py-4">
                 <label class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Message</label>
-                <textarea id="bloom-crop-update-message" class="input-field mt-1 min-h-[94px] resize-y border-emerald-200 focus:border-[#007a4d]" placeholder="Add a note for the sales reps..."></textarea>
+                <textarea id="bloom-crop-update-message" class="input-field mt-1 min-h-[94px] resize-y border-emerald-200 focus:border-[#007a4d]" placeholder="Add a note for the recipients..."></textarea>
                 <div class="mt-4 grid grid-cols-1 gap-2">
                     <div>
                         <div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Recipients</div>
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.16').trim() || 'V2026.05.13.16';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.17').trim() || 'V2026.05.13.17';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2492,7 +2492,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                         <option value="OK">OK Reps</option>
                                         <option value="NC">NC Reps</option>
                                         <option value="TX">TX Reps</option>
-                                        <option value="ALL">All Reps</option>
+                                        <option value="ADMIN">Admin Users</option>
+                                        <option value="ALL">All Recipients</option>
                                     </select>
                                 </label>
                                 <label class="advertisement-control advertisement-control-wide">
@@ -2812,7 +2813,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.16';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.17';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12777,7 +12778,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const BLOOM_CROP_UPDATE_REP_GROUPS = Object.freeze([
             { key: 'NC', label: 'NC Reps', reps: ['Abbey Burka', 'Chris Farrow', 'Chris Gaydos', 'Ellen Deely'] },
             { key: 'OK', label: 'OK Reps', reps: ['Annette Hancock', 'Tony Bono', 'Ben Brown', 'Ben Maschino', 'Brian Hatfield', 'Casey Rufener', 'David Brandt', 'Doug Baker', 'Kevin Effinger', 'Nate Douglas', 'Troy Lee', 'Wes Lugas'] },
-            { key: 'TX', label: 'TX Reps', reps: ['Ben Harveson', 'Chance Alldredge', 'Jessica Robertson', 'Josh Ringleb', 'Rudy Martinez', 'Tobu Brown', 'Tracey Tapscott', 'Traci Earle'] }
+            { key: 'TX', label: 'TX Reps', reps: ['Ben Harveson', 'Chance Alldredge', 'Jessica Robertson', 'Josh Ringleb', 'Rudy Martinez', 'Tobu Brown', 'Tracey Tapscott', 'Traci Earle'] },
+            { key: 'ADMIN', label: 'Admin Users', reps: ['Dylan Collyge', 'JD Jones', 'Kayla Knepp', 'Morgan Anderson'] }
         ]);
         const NCR_COMPLETIONS_TABLE = 'v2_ncr_completions';
         const NCR_COMPLETION_SELECT_FIELDS = 'source_unique_id,itemcode,locationcode,completed_by,completed_at,emailed_jd';
@@ -12806,7 +12808,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.16').trim() || 'V2026.05.13.16';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.17').trim() || 'V2026.05.13.17';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -32003,8 +32005,11 @@ function toggleDriveQuickRequestItem(domId) {
             const sendDisabled = avPhotoOutreachSendBusy || !sendRows.length || !selectedReps.length;
             const signature = buildRowsRenderSignature(`av-photo-outreach|${activeAVTab}|${brandLabel}|${minValueText}|${selectedReps.map((rep) => rep.key).join('|')}|${avPhotoOutreachSendBusy ? '1' : '0'}`, sendRows, ['S_LTS','SPEC','CALIPER','ROW_PHOTO_LINK','PHOTO_LINK','SAVED_PHOTO_LINK','CAV_HOT_PRICE']);
             const html = `<div class="mb-3 rounded-[22px] border border-emerald-200 bg-emerald-50/80 p-3 shadow-sm"><div class="flex flex-col gap-3"><div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">${esc(brandLabel)}</div><div class="mt-1 text-[12px] font-bold text-slate-600">${sendRows.length} rows ready from ${validPhotoSpecRows.length} visible rows with valid photos/specs.</div></div><div class="flex shrink-0 flex-wrap gap-1.5"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setAvPhotoOutreachAllRepsSelected(true)">All Reps</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-slate-600" onclick="return setAvPhotoOutreachAllRepsSelected(false)">Clear</button></div></div><div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2"><label class="min-w-0"><span class="ml-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Minimum s_LTS</span><input id="av-photo-outreach-min-slts" type="number" inputmode="decimal" step="1" class="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-[13px] font-black text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" value="${esc(minValueText)}" placeholder="e.g. 10" oninput="avPhotoOutreachMinSLts=this.value"></label><button type="button" class="self-end rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-95" onclick="return refreshAvPhotoOutreachPanel()">Apply</button></div><div class="space-y-2">${groupHtml}</div><button type="button" class="w-full rounded-2xl px-4 py-3 text-[12px] font-black uppercase tracking-[0.14em] shadow-sm ${sendDisabled ? 'pointer-events-none bg-slate-200 text-slate-400' : 'bg-emerald-700 text-white active:scale-[0.99]'}" onclick="return sendAvPhotoOutreachEmail()">${avPhotoOutreachSendBusy ? 'Sending...' : `Send ${sendRows.length} Rows To ${selectedReps.length} Reps`}</button></div></div>`;
+            const renderedHtml = html
+                .replace('>All Reps</button>', '>All Recipients</button>')
+                .replace(`Rows To ${selectedReps.length} Reps`, `Rows To ${selectedReps.length} Recipients`);
             panel.classList.remove('hidden');
-            setContainerHtmlWithSignature(panel, html, signature);
+            setContainerHtmlWithSignature(panel, renderedHtml, signature);
             return false;
         }
 
@@ -32024,7 +32029,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const selectedReps = getAvPhotoOutreachSelectedReps();
             if (!selectedReps.length) {
-                showToast('Select Reps', 'Pick at least one OK, NC, or TX rep.', true);
+                showToast('Select Recipients', 'Pick at least one OK, NC, TX, or Admin recipient.', true);
                 return false;
             }
             avPhotoOutreachSendBusy = true;
@@ -32037,7 +32042,7 @@ function toggleDriveQuickRequestItem(domId) {
                     .map((group) => group.label);
                 const audienceLabel = selectedGroupLabels.length
                     ? `${selectedGroupLabels.join(', ')} (${selectedReps.length} rep${selectedReps.length === 1 ? '' : 's'})`
-                    : `${selectedReps.length} selected rep${selectedReps.length === 1 ? '' : 's'}`;
+                    : `${selectedReps.length} selected recipient${selectedReps.length === 1 ? '' : 's'}`;
                 const salesRepEmails = dedupeRequestEmailRecipients(selectedReps.map((rep) => rep.email).filter(Boolean));
                 const recipientEmails = dedupeRequestEmailRecipients([...salesRepEmails, ...REQUEST_EMAIL_INTERNAL_RECIPIENTS]);
                 const minLabel = minSLts == null ? 'No minimum' : `s_LTS > ${minSLts}`;
@@ -36121,7 +36126,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const groupSelected = groupInputs.filter((input) => input.checked).length;
                 return buildBloomCropUpdateGroupButton(group.key, group.key, groupSelected, groupInputs.length, 'ph-map-pin');
             }).join('');
-            const allButton = buildBloomCropUpdateGroupButton('All Reps', 'ALL', selectedCount, inputs.length, 'ph-check-square');
+            const allButton = buildBloomCropUpdateGroupButton('All Recipients', 'ALL', selectedCount, inputs.length, 'ph-check-square');
             const clearButton = `<button type="button" class="min-h-[48px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-slate-600 shadow-sm active:scale-[.98]" onclick="return applyBloomCropUpdateRecipientPreset('CLEAR')"><div class="flex items-center gap-2"><i class="ph-bold ph-x-square text-sm"></i><span class="min-w-0 flex-1 text-[10px] font-black uppercase tracking-[0.12em]">Clear</span></div></button>`;
             const reserveButton = buildBloomCropUpdateGroupButton('Reserves', 'RESERVES', 0, 0, 'ph-users-three');
             controls.innerHTML = `${groupButtons}${allButton}${clearButton}${reserveButton}`;
@@ -36306,8 +36311,8 @@ function toggleDriveQuickRequestItem(domId) {
             if (sendBtn) sendBtn.disabled = !(selectedReps.length && bloomCropUpdatePendingItems.length);
             if (countEl) {
                 countEl.innerText = selectedReps.length
-                    ? `${selectedReps.length} sales rep${selectedReps.length === 1 ? '' : 's'} selected. Dylan and JD will also receive it.`
-                    : 'Select one or more rep groups, or check individual reps.';
+                    ? `${selectedReps.length} recipient${selectedReps.length === 1 ? '' : 's'} selected. Dylan and JD will also receive it.`
+                    : 'Select one or more rep/admin groups, or check individual recipients.';
             }
             renderBloomCropUpdateReservePreview();
             syncBloomCropUpdateGroupControls();
@@ -36579,7 +36584,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const selectedReps = getBloomCropUpdateSelectedReps();
             if (!selectedReps.length) {
-                showToast('Select Reps', 'Choose at least one sales rep.', true);
+                showToast('Select Recipients', 'Choose at least one recipient.', true);
                 return false;
             }
             const messageInput = document.getElementById('bloom-crop-update-message');
@@ -36619,7 +36624,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (!responseData || responseData.ok === false) {
                     throw new Error(String(firstNonEmptyValue(responseData && responseData.message, responseData && responseData.error, 'Could not send crop update email.')));
                 }
-                showToast('Sent', `Crop update sent to ${selectedReps.length} sales rep${selectedReps.length === 1 ? '' : 's'}.`);
+                showToast('Sent', `Crop update sent to ${selectedReps.length} recipient${selectedReps.length === 1 ? '' : 's'}.`);
                 closeBloomCropUpdateModal();
                 clearSelection();
             } catch (error) {
@@ -37613,7 +37618,7 @@ function toggleDriveQuickRequestItem(domId) {
                 }).join('');
                 return `<div class="rounded-xl border border-sky-100 bg-sky-50/60 p-3"><div class="flex items-center justify-between gap-3"><div><div class="text-sm font-black text-sky-900">${esc(group.label)}</div><div class="mt-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-sky-600">${selectedInGroup}/${groupReps.length} selected</div></div><button type="button" class="rounded-full border border-sky-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-sky-700 shadow-sm active:scale-[.98]" onclick="return setDriveCustomerOutreachAllGroupSelected('${escJsAttrValue(group.key)}')">Toggle ${esc(group.key)}</button></div><div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">${repsHtml}</div></div>`;
             }).join('') : '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[11px] font-bold text-slate-400">All-rep send is not available from this view.</div>';
-            const recipientHtml = `<div class="rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm"><div class="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"><label class="block"><span class="ml-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Recipient Choice</span><select class="mt-1 w-full rounded-2xl border border-emerald-200 bg-white px-3 py-3 text-[12px] font-black uppercase tracking-[0.12em] text-[#007a4d] outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" onchange="return setDriveCustomerOutreachRecipientMode(this.value)"><option value="selected" ${recipientMode === 'selected' ? 'selected' : ''}>Send To Selected Reps</option><option value="all" ${recipientMode === 'all' ? 'selected' : ''}>Send To All Reps</option></select></label><div class="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">${recipientMode === 'all' ? 'OK / NC / TX Groups' : 'Reps With This Item On Order'}</div><div class="mt-1 text-[12px] font-bold text-slate-700">${recipientMode === 'all' ? `${selectedAllReps.length}/${allRepOptions.length} reps selected` : `${selectedOrderRepCount}/${selectedRepCards.length} reps selected`}</div></div></div>${recipientMode === 'all' ? `<div class="mt-3 flex flex-wrap gap-2"><button type="button" class="rounded-full border border-sky-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-sky-700" onclick="return setDriveCustomerOutreachAllRepsSelected(true)">Select All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachAllRepsSelected(false)">Clear All</button></div><div class="mt-3 space-y-3">${allRepGroupsHtml}</div>` : `<div class="mt-3 flex flex-wrap gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachAllOrderRepsSelected(true)">Select All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachAllOrderRepsSelected(false)">Clear All</button></div><div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">${orderRepHtml}</div>`}</div>`;
+            const recipientHtml = `<div class="rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm"><div class="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"><label class="block"><span class="ml-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Recipient Choice</span><select class="mt-1 w-full rounded-2xl border border-emerald-200 bg-white px-3 py-3 text-[12px] font-black uppercase tracking-[0.12em] text-[#007a4d] outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" onchange="return setDriveCustomerOutreachRecipientMode(this.value)"><option value="selected" ${recipientMode === 'selected' ? 'selected' : ''}>Send To Selected Reps</option><option value="all" ${recipientMode === 'all' ? 'selected' : ''}>Send To Rep/Admin Groups</option></select></label><div class="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">${recipientMode === 'all' ? 'OK / NC / TX / Admin Groups' : 'Reps With This Item On Order'}</div><div class="mt-1 text-[12px] font-bold text-slate-700">${recipientMode === 'all' ? `${selectedAllReps.length}/${allRepOptions.length} recipients selected` : `${selectedOrderRepCount}/${selectedRepCards.length} reps selected`}</div></div></div>${recipientMode === 'all' ? `<div class="mt-3 flex flex-wrap gap-2"><button type="button" class="rounded-full border border-sky-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-sky-700" onclick="return setDriveCustomerOutreachAllRepsSelected(true)">Select All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachAllRepsSelected(false)">Clear All</button></div><div class="mt-3 space-y-3">${allRepGroupsHtml}</div>` : `<div class="mt-3 flex flex-wrap gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachAllOrderRepsSelected(true)">Select All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachAllOrderRepsSelected(false)">Clear All</button></div><div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">${orderRepHtml}</div>`}</div>`;
             const customerHtml = cards.length ? cards.map((card) => {
                 const checked = driveCustomerOutreachSelectedCustomerKeys.has(card.key) ? 'checked' : '';
                 const qtyLabel = getDriveCustomerOutreachCustomerQtyLabel(card);
@@ -37631,7 +37636,7 @@ function toggleDriveQuickRequestItem(domId) {
             const allModeCanSend = canSendAllSalesReps && allSalesRepCount > 0;
             const sendDisabled = !selectedSourceCount || driveCustomerOutreachSendBusy || (recipientMode === 'all' ? !allModeCanSend : !selectedModeCanSend);
             const sendButtonLabel = recipientMode === 'all'
-                ? `Send To Rep Groups${allSalesRepCount ? ` (${allSalesRepCount})` : ''}`
+                ? `Send To Rep/Admin Groups${allSalesRepCount ? ` (${allSalesRepCount})` : ''}`
                 : `Send To Selected Reps${selectedOrderRepCount ? ` (${selectedOrderRepCount})` : ''}`;
             driveCustomerOutreachOpen = true;
             panel.innerHTML = `<div class="space-y-4"><div class="rounded-[22px] border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm"><div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Customer / Consignee Send</div><div class="mt-2 text-[18px] font-black leading-tight text-slate-900 break-words">${esc(commonName)}</div><div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">${esc(sourceLabel)} &bull; v2_reserves &bull; ITEMCODE ${esc(itemCode)} &bull; SEASON ${esc(season)}</div><div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700">${reserveRows.length} reserve rows matched &bull; ${selectedCustomerCount}/${cards.length} customers selected &bull; ${selectedSourceCount}/${sourceRows.length} photo/spec rows selected</div><div class="mt-1 text-[10px] font-bold text-slate-500">${esc(scopeNote)}</div></div><button type="button" class="shrink-0 rounded-full border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[0.98]" onclick="loadDriveCustomerOutreachReserveRows(activeItem, true); return false;">Refresh</button></div></div>${loadingHtml}${errorHtml}${recipientHtml}<div><div class="mb-2 flex items-center justify-between gap-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Customername / Consigneename</div><div class="flex gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachCustomersSelected(true)">All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachCustomersSelected(false)">None</button></div></div><div class="grid grid-cols-1 gap-2">${customerHtml}</div></div><div><div class="mb-2 flex items-center justify-between gap-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Photo / Spec Rows To Send</div><div class="flex gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachSourceRowsSelected(true)">All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachSourceRowsSelected(false)">None</button></div></div>${sourceScopeNote}<div class="grid grid-cols-1 gap-2">${sourceHtml}</div></div><button type="button" class="w-full rounded-2xl px-4 py-3 text-[12px] font-black uppercase tracking-[0.14em] shadow-sm ${sendDisabled ? 'pointer-events-none bg-slate-200 text-slate-400' : 'bg-emerald-700 text-white active:scale-[0.99]'}" onclick="return sendDriveCustomerOutreachEmails({ sendToAllSalesReps: driveCustomerOutreachRecipientMode === 'all' })">${driveCustomerOutreachSendBusy ? 'Sending...' : esc(sendButtonLabel)}</button></div>`;
@@ -37768,7 +37773,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const selectedAllSalesReps = sendToAllSalesReps ? getDriveCustomerOutreachSelectedAllReps() : [];
             if (sendToAllSalesReps && !selectedAllSalesReps.length) {
-                showToast('Select Reps', 'Pick at least one OK, NC, or TX sales rep.', true);
+                showToast('Select Recipients', 'Pick at least one OK, NC, TX, or Admin recipient.', true);
                 return false;
             }
             const groupedByRep = new Map();
@@ -37789,7 +37794,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (sendToAllSalesReps) {
                     const salesRepEmails = dedupeRequestEmailRecipients(selectedAllSalesReps.map((rep) => rep.email).filter(Boolean));
                     if (!salesRepEmails.length) {
-                        showToast('No Emails', 'No sales rep email addresses were resolved.', true);
+                        showToast('No Emails', 'No recipient email addresses were resolved.', true);
                         return false;
                     }
                     const selectedGroupLabels = BLOOM_CROP_UPDATE_REP_GROUPS
@@ -37797,7 +37802,7 @@ function toggleDriveQuickRequestItem(domId) {
                         .map((group) => group.label);
                     const audienceLabel = selectedGroupLabels.length
                         ? `${selectedGroupLabels.join(', ')} (${selectedAllSalesReps.length} rep${selectedAllSalesReps.length === 1 ? '' : 's'})`
-                        : `${selectedAllSalesReps.length} selected sales rep${selectedAllSalesReps.length === 1 ? '' : 's'}`;
+                        : `${selectedAllSalesReps.length} selected recipient${selectedAllSalesReps.length === 1 ? '' : 's'}`;
                     const recipientEmails = dedupeRequestEmailRecipients([...salesRepEmails, ...REQUEST_EMAIL_INTERNAL_RECIPIENTS]);
                     const allModeCustomerCards = state.cards.length ? state.cards : getDriveCustomerOutreachCustomerCards(activeItem);
                     const customerPayload = allModeCustomerCards.map((card) => ({
@@ -37851,7 +37856,7 @@ function toggleDriveQuickRequestItem(domId) {
                         error.responseData = responseData;
                         throw error;
                     }
-                    showToast('Sent', `Sent to ${salesRepEmails.length} sales rep${salesRepEmails.length === 1 ? '' : 's'} with Dylan and JD copied.`);
+                    showToast('Sent', `Sent to ${salesRepEmails.length} recipient${salesRepEmails.length === 1 ? '' : 's'} with Dylan and JD copied.`);
                     return false;
                 }
                 let sentCount = 0;
@@ -52061,8 +52066,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (countEl) {
                 const folderRows = getAdvertisementSelectedFlyerFolderRows();
                 countEl.innerText = selectedReps.length
-                    ? `${selectedReps.length} sales rep${selectedReps.length === 1 ? '' : 's'} selected / ${folderRows.length} flyer row${folderRows.length === 1 ? '' : 's'} attached`
-                    : 'Choose a rep group.';
+                    ? `${selectedReps.length} recipient${selectedReps.length === 1 ? '' : 's'} selected / ${folderRows.length} flyer row${folderRows.length === 1 ? '' : 's'} attached`
+                    : 'Choose a rep/admin group.';
             }
         }
 
@@ -52129,7 +52134,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (advertisementEmailSendInFlight) return false;
             const selectedReps = getAdvertisementSelectedReps();
             if (!selectedReps.length) {
-                showToast('Select Reps', 'Choose at least one sales rep.', true);
+                showToast('Select Recipients', 'Choose at least one recipient.', true);
                 return false;
             }
             advertisementEmailSendInFlight = true;
@@ -52172,8 +52177,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (!responseData || responseData.ok === false) {
                     throw new Error(String(firstNonEmptyValue(responseData && responseData.message, responseData && responseData.error, 'Could not send advertisement email.')));
                 }
-                showToast('Sent', `Advertisement sent to ${selectedReps.length} sales rep${selectedReps.length === 1 ? '' : 's'}.`);
-                setAdvertisementStatus(`Advertisement emailed to ${selectedReps.length} sales rep${selectedReps.length === 1 ? '' : 's'}.`, false);
+                showToast('Sent', `Advertisement sent to ${selectedReps.length} recipient${selectedReps.length === 1 ? '' : 's'}.`);
+                setAdvertisementStatus(`Advertisement emailed to ${selectedReps.length} recipient${selectedReps.length === 1 ? '' : 's'}.`, false);
             } catch (error) {
                 const message = error && error.message ? error.message : 'Could not send advertisement email.';
                 showToast('Email Error', message, true);
