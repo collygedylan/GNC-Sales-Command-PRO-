@@ -23,6 +23,8 @@ LOGGER = logging.getLogger("gnc.supabase_ml_worker")
 DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
 DEFAULT_JOB_TABLE = "v2_ml_image_jobs"
 DEFAULT_PHOTO_BUCKET = "ml_capture_photos"
+DEFAULT_TRAINING_ASSETS_TABLE = "v2_disease_training_assets"
+DEFAULT_TRAINING_ASSETS_BUCKET = "disease_training_assets"
 DEFAULT_LIVE_EVENT_TABLE = "v2_app_live_events"
 DEFAULT_MODELS_DIR = pathlib.Path("models")
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
@@ -163,6 +165,8 @@ class WorkerConfig:
     drive_service_account_json: str
     job_table: str = DEFAULT_JOB_TABLE
     photo_bucket: str = DEFAULT_PHOTO_BUCKET
+    training_assets_table: str = DEFAULT_TRAINING_ASSETS_TABLE
+    training_assets_bucket: str = DEFAULT_TRAINING_ASSETS_BUCKET
     app_live_events_table: str = DEFAULT_LIVE_EVENT_TABLE
     poll_seconds: float = 10.0
     batch_size: int = 3
@@ -184,6 +188,8 @@ class WorkerConfig:
             drive_service_account_json=first_non_empty(os.environ.get("GDRIVE_SERVICE_ACCOUNT_JSON"), os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")),
             job_table=first_non_empty(os.environ.get("ML_JOB_TABLE"), default=DEFAULT_JOB_TABLE),
             photo_bucket=first_non_empty(os.environ.get("ML_PHOTO_BUCKET"), default=DEFAULT_PHOTO_BUCKET),
+            training_assets_table=first_non_empty(os.environ.get("ML_TRAINING_ASSETS_TABLE"), default=DEFAULT_TRAINING_ASSETS_TABLE),
+            training_assets_bucket=first_non_empty(os.environ.get("ML_TRAINING_ASSETS_BUCKET"), default=DEFAULT_TRAINING_ASSETS_BUCKET),
             app_live_events_table=first_non_empty(os.environ.get("APP_LIVE_EVENTS_TABLE"), default=DEFAULT_LIVE_EVENT_TABLE),
             poll_seconds=float(first_non_empty(os.environ.get("ML_POLL_SECONDS"), default="10")),
             batch_size=int(first_non_empty(os.environ.get("ML_BATCH_SIZE"), default="3")),
@@ -499,6 +505,21 @@ class SupabaseMlWorker:
         }
         self.supabase.table(self.config.job_table).update(payload).eq("status", "processing").lt("processing_started_at", cutoff).execute()
 
+    def recover_stale_training_assets(self) -> None:
+        if not self.config.training_assets_table:
+            return
+        cutoff = (utc_now() - timedelta(minutes=self.config.stale_processing_minutes)).isoformat()
+        payload = {
+            "processed_status": "pending_ml",
+            "processing_started_at": None,
+            "worker_id": None,
+            "last_error": "Recovered from stale processing state.",
+        }
+        try:
+            self.supabase.table(self.config.training_assets_table).update(payload).eq("processed_status", "processing").lt("processing_started_at", cutoff).execute()
+        except Exception as exc:
+            LOGGER.warning("Could not recover stale disease training assets: %s", exc)
+
     def fetch_pending_jobs(self) -> List[Dict[str, Any]]:
         response = (
             self.supabase.table(self.config.job_table)
@@ -509,6 +530,23 @@ class SupabaseMlWorker:
             .execute()
         )
         return list(response.data or [])
+
+    def fetch_pending_training_assets(self) -> List[Dict[str, Any]]:
+        if not self.config.training_assets_table:
+            return []
+        try:
+            response = (
+                self.supabase.table(self.config.training_assets_table)
+                .select("*")
+                .eq("processed_status", "pending_ml")
+                .order("created_at")
+                .limit(self.config.batch_size)
+                .execute()
+            )
+            return list(response.data or [])
+        except Exception as exc:
+            LOGGER.warning("Could not fetch disease training assets. Run ml_disease_training_assets_migration.sql if this table is missing: %s", exc)
+            return []
 
     def claim_job(self, job: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         job_id = str(job.get("unique_id") or "").strip()
@@ -547,6 +585,45 @@ class SupabaseMlWorker:
         target_path.write_bytes(image_bytes)
         return target_path
 
+    def claim_training_asset(self, asset: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        asset_id = str(asset.get("unique_id") or "").strip()
+        if not asset_id or not self.config.training_assets_table:
+            return None
+        payload = {
+            "processed_status": "processing",
+            "processing_started_at": iso_now(),
+            "worker_id": self.worker_id,
+            "attempts": int(asset.get("attempts") or 0) + 1,
+            "last_error": None,
+        }
+        try:
+            response = (
+                self.supabase.table(self.config.training_assets_table)
+                .update(payload)
+                .eq("unique_id", asset_id)
+                .eq("processed_status", "pending_ml")
+                .execute()
+            )
+            rows = list(response.data or [])
+            if rows:
+                return rows[0]
+        except Exception as exc:
+            LOGGER.warning("Could not claim disease training asset %s: %s", asset_id, exc)
+        return None
+
+    def download_training_asset(self, asset: Dict[str, Any], target_dir: pathlib.Path) -> pathlib.Path:
+        bucket = first_non_empty(asset.get("bucket"), default=self.config.training_assets_bucket)
+        storage_path = first_non_empty(asset.get("storage_path"))
+        if not storage_path:
+            raise RuntimeError("Training asset is missing storage_path.")
+        file_bytes = self.supabase.storage.from_(bucket).download(storage_path)
+        suffix = pathlib.Path(storage_path).suffix.lower()
+        if not suffix:
+            suffix = ".bin"
+        target_path = target_dir / f"{asset.get('unique_id') or uuid.uuid4().hex}{suffix}"
+        target_path.write_bytes(file_bytes)
+        return target_path
+
     def emit_live_event(self, source_table: str, row_id: str, event_type: str, payload: Optional[Dict[str, Any]] = None) -> None:
         live_table = first_non_empty(self.config.app_live_events_table)
         safe_source_table = first_non_empty(source_table)
@@ -557,7 +634,7 @@ class SupabaseMlWorker:
         event_payload = {
             "event_key": f"{safe_source_table}:{safe_event_type}:{uuid.uuid4().hex}",
             "event_type": safe_event_type,
-            "area": "diagnostics" if safe_source_table == self.config.job_table else "inventory",
+            "area": "diagnostics" if safe_source_table in {self.config.job_table, self.config.training_assets_table} else "inventory",
             "source_table": safe_source_table,
             "row_ids": [safe_row_id] if safe_row_id else [],
             "payload": {
@@ -666,12 +743,91 @@ class SupabaseMlWorker:
             self.mark_failed(claimed, exc)
             return False
 
+    def build_training_asset_result_payload(self, asset: Dict[str, Any], asset_path: pathlib.Path) -> Dict[str, Any]:
+        suffix = asset_path.suffix.lower()
+        asset_kind = first_non_empty(asset.get("asset_kind"), default="other")
+        if suffix not in IMAGE_EXTENSIONS or asset_kind == "lab_report":
+            return {
+                "processed_status": "processed",
+                "diagnosis": first_non_empty(asset.get("label"), default="Lab report indexed"),
+                "recommended_treatment": "Stored as labeled reference material for supervised diagnostics review.",
+                "confidence": None,
+                "processed_at": iso_now(),
+                "processing_started_at": None,
+                "worker_id": self.worker_id,
+                "last_error": None,
+            }
+
+        prediction = self.models.diagnostics.predict(asset_path) if self.models.diagnostics else Prediction(
+            diagnosis="Manual review required",
+            treatment="No diagnostics model is configured.",
+            manual_review=True,
+            reason="No diagnostics model is configured.",
+        )
+        reason = first_non_empty(prediction.reason)
+        return {
+            "processed_status": "processed",
+            "diagnosis": first_non_empty(prediction.diagnosis, asset.get("label"), default="Manual review required"),
+            "recommended_treatment": first_non_empty(prediction.treatment, default="Review image before using as training reference."),
+            "confidence": round(float(prediction.confidence or 0.0), 4),
+            "processed_at": iso_now(),
+            "processing_started_at": None,
+            "worker_id": self.worker_id,
+            "last_error": reason or None,
+        }
+
+    def mark_training_asset_failed(self, asset: Dict[str, Any], error: Exception) -> None:
+        asset_id = str(asset.get("unique_id") or "").strip()
+        if not asset_id or not self.config.training_assets_table:
+            return
+        payload = {
+            "processed_status": "failed",
+            "processing_started_at": None,
+            "worker_id": self.worker_id,
+            "last_error": str(error),
+        }
+        self.supabase.table(self.config.training_assets_table).update(payload).eq("unique_id", asset_id).execute()
+        self.emit_live_event(
+            self.config.training_assets_table,
+            asset_id,
+            "diagnostics:training_asset_failed",
+            {"processed_status": "failed", "error": str(error)},
+        )
+
+    def process_training_asset(self, asset: Dict[str, Any]) -> bool:
+        claimed = self.claim_training_asset(asset)
+        if not claimed:
+            return False
+        asset_id = str(claimed.get("unique_id") or "").strip()
+        LOGGER.info("Processing disease training asset %s", asset_id)
+        try:
+            with tempfile.TemporaryDirectory(prefix="gnc-ml-asset-") as temp_dir:
+                asset_path = self.download_training_asset(claimed, pathlib.Path(temp_dir))
+                payload = self.build_training_asset_result_payload(claimed, asset_path)
+                self.supabase.table(self.config.training_assets_table).update(payload).eq("unique_id", asset_id).execute()
+                self.emit_live_event(
+                    self.config.training_assets_table,
+                    asset_id,
+                    "diagnostics:training_asset_processed",
+                    {"processed_status": payload.get("processed_status"), "diagnosis": payload.get("diagnosis")},
+                )
+            LOGGER.info("Completed disease training asset %s", asset_id)
+            return True
+        except Exception as exc:
+            LOGGER.exception("Disease training asset %s failed", asset_id)
+            self.mark_training_asset_failed(claimed, exc)
+            return False
+
     def run_once(self) -> int:
         self.recover_stale_jobs()
+        self.recover_stale_training_assets()
         jobs = self.fetch_pending_jobs()
         processed = 0
         for job in jobs:
             if self.process_job(job):
+                processed += 1
+        for asset in self.fetch_pending_training_assets():
+            if self.process_training_asset(asset):
                 processed += 1
         return processed
 

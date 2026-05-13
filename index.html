@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.12.32';
+window.__APP_SHELL_VERSION__ = 'V2026.05.12.33';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1872,7 +1872,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.32').trim() || 'V2026.05.12.32';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.12.33').trim() || 'V2026.05.12.33';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2751,7 +2751,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.32';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.12.33';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2779,7 +2779,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             home: { realtimeTables: [ML_IMAGE_JOBS_TABLE], pollMs: 'visible-default' },
             chat: { realtimeTables: ['v2_chat_conversations', 'v2_chat_participants', 'v2_chat_messages'], pollMs: 60000 },
             drive: { realtimeTables: [], pollMs: 'visible-default' },
-            tasks: { realtimeTables: ['v2_active_request', 'v2_sales_office', FLYER_FOLDER_ROWS_TABLE, FLYER_FOLDER_HISTORY_TABLE], pollMs: 'visible-default' },
+            tasks: { realtimeTables: ['v2_active_request', 'v2_sales_office', FLYER_FOLDER_ROWS_TABLE, FLYER_FOLDER_HISTORY_TABLE, ML_IMAGE_JOBS_TABLE], pollMs: 'visible-default' },
             request: { realtimeTables: ['v2_active_request', REQUEST_HISTORY_TABLE], pollMs: 'visible-default' },
             'sales-office': { realtimeTables: ['v2_sales_office'], pollMs: 'visible-default' },
             moves: { realtimeTables: ['v2_sales_office'], pollMs: 'visible-default' },
@@ -7920,8 +7920,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             } else if (tableName === ML_IMAGE_JOBS_TABLE) {
                 markViewDirty('home');
                 markViewDirty('diagnostics');
+                markViewDirty('tasks');
                 if (getCurrentVisibleViewId() === 'home' && activeHomeTab === 'grading') scheduleHomeRender(true);
                 if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 160);
+                if (isViewVisible('tasks') && isTaskDiagnosticsView(activeTaskTab)) scheduleTasksRender(0, 0, true);
             }
             if (!deferVisualSync) flushRealtimeDatasetUpdates([tableName]);
             recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'unknown');
@@ -12201,6 +12203,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const NCR_APPROVAL_NEW_CROP_VIEW = 'ncr-approvals';
         const NCR_APPROVAL_MOVE_UP_VIEW = 'move-up-approvals';
         const NCR_APPROVAL_HOLD_RELEASE_VIEW = 'hold-release-approvals';
+        const TASK_DIAGNOSTICS_VIEW = 'diagnostics-review';
         const NCR_APPROVAL_ASSIGNMENTS = Object.freeze({
             'new-crop:dylan': 'ncr_approval_new_crop_dylan',
             'new-crop:jd': 'ncr_approval_new_crop_jd',
@@ -12255,7 +12258,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.32').trim() || 'V2026.05.12.32';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.12.33').trim() || 'V2026.05.12.33';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -14282,6 +14285,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return { required: [{ key: 'master', mode: 'full' }, { key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }], label: 'Loading move candidates and office queue...' };
             }
             if (viewId === 'tasks') {
+                if (isTaskDiagnosticsView(activeTaskView)) {
+                    return { required: [{ key: 'mlJobs', mode: 'initial' }], background: [{ key: 'mlJobs', mode: 'full' }], label: 'Loading diagnostic issue rows...' };
+                }
                 const isFlyerTaskView = activeTaskView === 'flyer';
                 const isAvBlankTaskView = activeTaskView === 'av-blanks';
                 const required = [{ key: 'master', mode: 'initial' }];
@@ -15265,6 +15271,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function isNcrApprovalTaskView(view = activeTaskView) {
             const safeView = String(view || '').trim().toLowerCase();
             return safeView === NCR_APPROVAL_NEW_CROP_VIEW || safeView === NCR_APPROVAL_MOVE_UP_VIEW || safeView === NCR_APPROVAL_HOLD_RELEASE_VIEW;
+        }
+
+        function isTaskDiagnosticsView(view = activeTaskView) {
+            return String(view || '').trim().toLowerCase() === TASK_DIAGNOSTICS_VIEW;
         }
 
         function getNcrApprovalAssignment(type = 'new-crop', stage = 'dylan') {
@@ -25737,6 +25747,9 @@ function toggleDriveQuickRequestItem(domId) {
             if (changedSet.has('mlJobs') && !affectedViews.includes('home')) {
                 affectedViews.push('home');
             }
+            if (changedSet.has('mlJobs') && !affectedViews.includes('tasks')) {
+                affectedViews.push('tasks');
+            }
             return affectedViews;
         }
 
@@ -28283,7 +28296,7 @@ function toggleDriveQuickRequestItem(domId) {
             beginDirectNavigationActivity();
             activeTaskView = normalizedView;
             activeTaskTab = normalizedView;
-            if (!isNcrApprovalTaskView(normalizedView)) lastNonApprovalTaskView = normalizedView;
+            if (!isNcrApprovalTaskView(normalizedView) && !isTaskDiagnosticsView(normalizedView)) lastNonApprovalTaskView = normalizedView;
             taskTabDropdownOpen = false;
             taskSubviewDropdownOpen = false;
             taskModeSearchTerm = '';
@@ -28323,7 +28336,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!shouldShowTaskInlineDetailFilters(normalizedView, taskViewLevel)) {
                 resetTaskLocationDetailFilters();
             }
-            if (isNcrApprovalTaskView(normalizedView)) {
+            if (isNcrApprovalTaskView(normalizedView) || isTaskDiagnosticsView(normalizedView)) {
                 selectedTaskGenusNames = new Set();
                 selectedTaskContSizes = new Set();
                 taskGenusSearchTerm = '';
@@ -41069,8 +41082,10 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             await ensureDatasetLoaded('mlJobs', 'full', { force: true }).catch(() => false);
             markViewDirty('home');
             markViewDirty('diagnostics');
+            markViewDirty('tasks');
             if (getCurrentVisibleViewId() === 'home') scheduleHomeRender(true);
             if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 120);
+            if (isViewVisible('tasks') && isTaskDiagnosticsView(activeTaskTab)) scheduleTasksRender(0, 0, true);
             return false;
         }
 
@@ -41108,15 +41123,148 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 rebuildMlImageJobIndexes();
                 markViewDirty('home');
                 markViewDirty('diagnostics');
+                markViewDirty('tasks');
                 showToast('Approved', 'ML grading row approved and logged.');
                 scheduleHomeRender(true);
                 if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 120);
+                if (isViewVisible('tasks') && isTaskDiagnosticsView(activeTaskTab)) scheduleTasksRender(0, 0, true);
             } catch (error) {
                 showToast('Save Failed', error && error.message ? error.message : 'Could not approve this ML job.', true);
             } finally {
                 if (button) {
                     button.disabled = false;
                     button.innerText = previousLabel || 'Approve & Log';
+                }
+            }
+            return false;
+        }
+
+        function isMlDiagnosticIssueRow(row = null) {
+            const item = normalizeMlImageJobRow(row);
+            if (!item || normalizeMlStatus(item.STATUS) !== 'pending_approval') return false;
+            if (item.MANUAL_REVIEW) return true;
+            const diagnosis = String(firstNonEmptyValue(item.DIAGNOSIS, '') || '').trim().toLowerCase();
+            if (!diagnosis) return false;
+            const healthyPhrases = [
+                'no visible issue',
+                'no disease',
+                'healthy',
+                'no treatment recommended',
+                'no diagnosis returned'
+            ];
+            return !healthyPhrases.some((phrase) => diagnosis === phrase || diagnosis.includes(phrase));
+        }
+
+        function getTaskDiagnosticIssueRows() {
+            if (!canUseMlAdminViews()) return [];
+            return getMlJobsByStatus(['pending_approval']).filter((row) => isMlDiagnosticIssueRow(row));
+        }
+
+        function renderTaskDiagnosticIssueCard(row = null) {
+            const item = normalizeMlImageJobRow(row);
+            if (!item) return '';
+            const uid = item.UNIQUE_ID;
+            const imageUrl = getMlJobImageUrl(item);
+            const imageHtml = imageUrl
+                ? `<img src="${esc(imageUrl)}" alt="" class="h-24 w-24 rounded-xl border border-red-100 bg-slate-100 object-cover flex-shrink-0" loading="lazy">`
+                : '<div class="h-24 w-24 rounded-xl border border-dashed border-red-200 bg-red-50 text-[10px] font-black uppercase tracking-[0.12em] text-red-300 flex items-center justify-center text-center flex-shrink-0">No Photo</div>';
+            const title = firstNonEmptyValue(item.ML_COMMON_NAME, item.COMMONNAME, 'AI Diagnostic');
+            const meta = [item.ITEMCODE ? `Item ${item.ITEMCODE}` : '', item.CONTSIZE, item.LOCATIONCODE ? `Loc ${item.LOCATIONCODE}` : '', item.BLOCK ? `Block ${item.BLOCK}` : '', item.SEASON].filter(Boolean).join(' | ');
+            const diagnosis = firstNonEmptyValue(item.DIAGNOSIS, 'Manual review required');
+            const treatment = firstNonEmptyValue(item.RECOMMENDED_TREATMENT, 'Review before routing.');
+            const confidence = formatMlConfidence(item.ML_CONFIDENCE);
+            return `<div class="rounded-2xl border border-red-100 bg-white p-4 shadow-sm">
+                <div class="flex items-start gap-3">
+                    ${imageHtml}
+                    <div class="min-w-0 flex-1">
+                        <div class="mb-2 flex flex-wrap gap-2">
+                            <span class="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-red-700">Diagnostic Issue</span>
+                            <span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${esc(formatMlTimestamp(firstNonEmptyValue(item.ML_COMPLETED_AT, item.UPDATED_AT, item.CREATED_AT)))}</span>
+                        </div>
+                        <div class="text-base font-black leading-tight text-slate-900 break-words">${esc(title)}</div>
+                        <div class="mt-1 text-[12px] font-bold text-slate-500 break-words">${esc(meta)}</div>
+                        <div class="mt-2 text-[11px] font-bold text-slate-500">Confidence ${esc(confidence)}</div>
+                    </div>
+                </div>
+                <div class="mt-3 rounded-xl border border-red-100 bg-red-50/60 px-3 py-3 text-[12px] font-semibold text-red-900">
+                    <div><span class="font-black">Issue:</span> ${esc(diagnosis)}</div>
+                    <div class="mt-1"><span class="font-black">Treatment:</span> ${esc(treatment)}</div>
+                </div>
+                <button type="button" class="mt-3 w-full rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-[0.99]" onclick="return markMlDiagnosticReviewed('${escJsAttrValue(uid)}', this)">Reviewed</button>
+            </div>`;
+        }
+
+        function renderTaskDiagnosticsReview(options = {}) {
+            const container = document.getElementById('task-content');
+            const crumb = document.getElementById('task-crumb');
+            if (!container) return false;
+            closeTaskDropdowns(false);
+            const tabs = document.getElementById('task-tabs-container');
+            if (tabs) tabs.classList.remove('hidden');
+            if (!canUseMlAdminViews()) {
+                if (crumb) crumb.innerText = 'Diagnostics';
+                container.innerHTML = '<div class="p-8 text-center text-gray-400">Diagnostics are restricted to Dylan.</div>';
+                return false;
+            }
+            if (!isDatasetLoaded('mlJobs', 'initial')) {
+                queueDatasetLoad('mlJobs', 'initial', 0);
+                if (crumb) crumb.innerText = 'Diagnostics | Loading';
+                container.innerHTML = '<div class="p-8 text-center text-gray-400">Loading diagnostic issue rows...</div>';
+                return false;
+            }
+            const searchTerm = String(taskLocationDetailSearchTerm || '').trim();
+            let rows = getTaskDiagnosticIssueRows();
+            if (searchTerm) rows = filterBySearch(rows, searchTerm, 'tasks');
+            if (crumb) crumb.innerText = `Diagnostics | ${rows.length} Issue${rows.length === 1 ? '' : 's'}`;
+            const prefixHtml = `<div class="mb-3 flex flex-col gap-2 rounded-2xl border border-red-100 bg-red-50/70 p-4 sm:flex-row sm:items-center sm:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-red-700">Diagnostics</div><div class="mt-1 text-sm font-bold text-red-900">Photos with a returned issue or manual-review flag appear here for Dylan.</div></div><button type="button" class="min-h-[42px] rounded-xl border border-red-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-red-700 shadow-sm active:scale-95" onclick="return refreshMlJobsNow()"><i class="ph-bold ph-arrows-clockwise align-middle"></i><span class="align-middle ml-1">Refresh</span></button></div>`;
+            renderMarkupChunkedByKey('tasks-diagnostics-review', container, null, rows, '', (row) => renderTaskDiagnosticIssueCard(row), {
+                prefixHtml,
+                approxCardHeight: 300,
+                emptyHtml: '<div class="p-8 text-center text-gray-400">No diagnostic issue rows need review.</div>'
+            });
+            syncTaskSharedFilterArea();
+            return false;
+        }
+
+        async function markMlDiagnosticReviewed(uniqueId = '', button = null) {
+            if (!canUseMlAdminViews()) {
+                showToast('Restricted', 'Only Dylan can review diagnostics.', true);
+                return false;
+            }
+            const safeId = String(uniqueId || '').trim();
+            const row = getMlImageJobById(safeId);
+            if (!row) {
+                showToast('Not Found', 'That diagnostic row could not be found.', true);
+                return false;
+            }
+            const previousLabel = button ? button.innerText : '';
+            if (button) {
+                button.disabled = true;
+                button.innerText = 'Saving...';
+            }
+            const payload = {
+                status: 'approved',
+                approved_by_username: String(currentUser || '').trim(),
+                approved_by_display: String(currentUserDisplay || currentUser || '').trim(),
+                approved_at: new Date().toISOString()
+            };
+            try {
+                await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(safeId)}`);
+                Object.assign(row, normalizeMlImageJobRow({ ...row, ...payload }));
+                rebuildMlImageJobIndexes();
+                markViewDirty('home');
+                markViewDirty('diagnostics');
+                markViewDirty('tasks');
+                showToast('Reviewed', 'Diagnostic row marked reviewed.');
+                if (isViewVisible('tasks')) scheduleTasksRender(0, 0, true);
+                if (getCurrentVisibleViewId() === 'home') scheduleHomeRender(true);
+                if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 120);
+            } catch (error) {
+                showToast('Save Failed', error && error.message ? error.message : 'Could not mark this diagnostic reviewed.', true);
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.innerText = previousLabel || 'Reviewed';
                 }
             }
             return false;
@@ -46336,13 +46484,14 @@ ${folderNote ? `Folder Note: ${folderNote}
             });
         }
 
-        const TASK_VIEW_VALUES = Object.freeze(['hot-price', 'positive-lts', 'hold', 'av-blanks', 'ncr', 'ncr-approvals', 'move-up-approvals', 'hold-release-approvals', 'colorwalk', 'endcap', 'flyer', 'cust', 'reserves']);
+        const TASK_VIEW_VALUES = Object.freeze(['hot-price', 'positive-lts', 'hold', 'av-blanks', 'ncr', 'ncr-approvals', 'move-up-approvals', 'hold-release-approvals', 'diagnostics-review', 'colorwalk', 'endcap', 'flyer', 'cust', 'reserves']);
         const TASK_FILTER_VALUES = Object.freeze(['all', 'season', 'location']);
 
         function getAvailableTaskViewValues() {
             return TASK_VIEW_VALUES.filter((value) => {
                 if (value === 'ncr') return canUseNcrTaskView();
                 if (isNcrApprovalTaskView(value)) return canUseNcrApprovalTaskView();
+                if (isTaskDiagnosticsView(value)) return canUseMlAdminViews();
                 return true;
             });
         }
@@ -46359,7 +46508,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function getDefaultTaskSubviewForView(tab = activeTaskView) {
             const safeView = normalizeTaskViewValue(tab);
-            if (safeView === 'flyer' || safeView === 'endcap' || safeView === 'colorwalk' || safeView === 'ncr' || isNcrApprovalTaskView(safeView)) return 'all';
+            if (safeView === 'flyer' || safeView === 'endcap' || safeView === 'colorwalk' || safeView === 'ncr' || isNcrApprovalTaskView(safeView) || isTaskDiagnosticsView(safeView)) return 'all';
             return DEFAULT_TASK_FILTER;
         }
 
@@ -46749,7 +46898,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const normalized = normalizeTaskReserveFilterValue(value);
                 return options.includes(normalized) ? normalized : 'all';
             }
-            if (safeView === 'ncr' || isNcrApprovalTaskView(safeView)) return 'all';
+            if (safeView === 'ncr' || isNcrApprovalTaskView(safeView) || isTaskDiagnosticsView(safeView)) return 'all';
             return normalizeTaskFilterValue(value);
         }
 
@@ -46758,7 +46907,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             activeTaskFilter = normalizeTaskFilterValue(activeTaskFilter);
             activeTaskCustomerFilter = normalizeTaskCustomerFilterValue(activeTaskCustomerFilter);
             activeTaskTab = activeTaskView;
-            if (!isNcrApprovalTaskView(activeTaskView)) lastNonApprovalTaskView = activeTaskView;
+            if (!isNcrApprovalTaskView(activeTaskView) && !isTaskDiagnosticsView(activeTaskView)) lastNonApprovalTaskView = activeTaskView;
             if (activeTaskView === 'reserves') {
                 const previousReserveRepFilter = normalizeTaskReserveFilterValue(activeTaskReserveRepFilter);
                 const previousReserveCustomerFilter = getTaskReserveCustomerSelectionKey(activeTaskReserveCustomerFilters, activeTaskReserveRepFilter);
@@ -46821,6 +46970,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const safeView = normalizeTaskViewValue(tab);
             if (safeView === 'ncr') return canUseNcrTaskView();
             if (isNcrApprovalTaskView(safeView)) return canUseNcrApprovalTaskView();
+            if (isTaskDiagnosticsView(safeView)) return canUseMlAdminViews();
             if (isCurrentUserInSharedTaskGroup()) return true;
             const explicitAdminTargetUser = safeRole === 'ADMIN' ? String(taskViewTargetUser || '').trim() : '';
             if (safeView === 'flyer') return true;
@@ -46836,6 +46986,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             return safeRole === 'ADMIN'
                 && !isCurrentUserInSharedTaskGroup()
                 && safeView !== 'flyer'
+                && !isTaskDiagnosticsView(safeView)
                 && !shouldUseSharedTaskQueue(safeView)
                 && !String(taskViewTargetUser || '').trim()
                 && !taskViewUsesBlockDrill(safeView);
@@ -46950,6 +47101,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (safeView === NCR_APPROVAL_NEW_CROP_VIEW) return 'NCR APPROVALS';
             if (safeView === NCR_APPROVAL_MOVE_UP_VIEW) return 'MOVE UP APPROVALS';
             if (safeView === NCR_APPROVAL_HOLD_RELEASE_VIEW) return 'OFF HOLD APPROVAL';
+            if (safeView === TASK_DIAGNOSTICS_VIEW) return 'DIAGNOSTICS';
             if (safeView === 'colorwalk') return 'COLOR WALK';
             if (safeView === 'endcap') return 'END CAP';
             if (safeView === 'flyer') return 'FLYER';
@@ -46971,6 +47123,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return option ? option.label : 'ALL';
             }
             if (isNcrApprovalTaskView(safeView)) return 'APPROVALS';
+            if (isTaskDiagnosticsView(safeView)) return 'ISSUES';
             const safeFilter = normalizeTaskFilterValue(subview);
             if (safeFilter === 'season') return 'SEASON SALES NOTES';
             if (safeFilter === 'location') return 'LOCATION SALES NOTES';
@@ -47091,6 +47244,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (safeView === 'colorwalk') return 'status-indigo';
             if (safeView === 'endcap') return 'status-yellow';
             if (safeView === 'ncr') return 'status-yellow';
+            if (isTaskDiagnosticsView(safeView)) return 'status-red';
             if (isNcrApprovalTaskView(safeView)) {
                 if (safeView === NCR_APPROVAL_MOVE_UP_VIEW) return 'status-green';
                 if (safeView === NCR_APPROVAL_HOLD_RELEASE_VIEW) return 'status-red';
@@ -47104,7 +47258,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function getTaskModeDropdownOptions() {
-            return getAvailableTaskViewValues().filter((value) => !isNcrApprovalTaskView(value)).map((value) => ({
+            return getAvailableTaskViewValues().filter((value) => !isNcrApprovalTaskView(value) && !isTaskDiagnosticsView(value)).map((value) => ({
                 value,
                 label: getTaskTabLabel(value)
             }));
@@ -47118,28 +47272,28 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (safeView === 'reserves') {
                 return getTaskReserveRepFilterOptions().map((option) => option.value);
             }
-            if (safeView === 'ncr' || isNcrApprovalTaskView(safeView)) return ['all'];
+            if (safeView === 'ncr' || isNcrApprovalTaskView(safeView) || isTaskDiagnosticsView(safeView)) return ['all'];
             return TASK_FILTER_VALUES.slice();
         }
 
         function shouldShowTaskSubviewDropdown(tab = activeTaskView) {
-            return !isNcrApprovalTaskView(tab);
+            return !isNcrApprovalTaskView(tab) && !isTaskDiagnosticsView(tab);
         }
 
         function shouldShowTaskHeaderSearch(tab = activeTaskView, level = taskViewLevel) {
             const safeView = normalizeTaskViewValue(tab);
-            if (isNcrApprovalTaskView(safeView)) return true;
+            if (isNcrApprovalTaskView(safeView) || isTaskDiagnosticsView(safeView)) return true;
             if (safeView === 'reserves') return true;
             return level === 2 && taskViewUsesBlockDrill(safeView) && safeView !== 'colorwalk';
         }
 
         function shouldShowTaskInlineGenusFilter(tab = activeTaskView, level = taskViewLevel) {
-            if (isNcrApprovalTaskView(tab)) return false;
+            if (isNcrApprovalTaskView(tab) || isTaskDiagnosticsView(tab)) return false;
             return true;
         }
 
         function shouldShowTaskInlineContSizeFilter(tab = activeTaskView, level = taskViewLevel) {
-            if (isNcrApprovalTaskView(tab)) return false;
+            if (isNcrApprovalTaskView(tab) || isTaskDiagnosticsView(tab)) return false;
             return true;
         }
 
@@ -47219,7 +47373,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function syncTaskSelectorRowLayout(tab = activeTaskTab) {
             const container = document.getElementById('task-tabs-container');
             if (!container) return;
-            const shouldShowTaskMode = !isNcrApprovalTaskView(tab);
+            const shouldShowTaskMode = !isNcrApprovalTaskView(tab) && !isTaskDiagnosticsView(tab);
             const shouldShowSubview = shouldShowTaskSubviewDropdown(tab);
             const shouldShowGenus = shouldShowTaskInlineGenusFilter(tab, taskViewLevel);
             const shouldShowContSize = shouldShowTaskInlineContSizeFilter(tab, taskViewLevel);
@@ -47429,23 +47583,26 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function getTaskApprovalModeOptions() {
-            return [
+            const options = [
                 { value: 'task', label: 'Task', icon: 'ph-clipboard-text' },
                 { value: NCR_APPROVAL_NEW_CROP_VIEW, label: 'NCR Approvals', icon: 'ph-seal-check' },
                 { value: NCR_APPROVAL_MOVE_UP_VIEW, label: 'Move Up Approvals', icon: 'ph-arrow-fat-up' },
                 { value: NCR_APPROVAL_HOLD_RELEASE_VIEW, label: 'Off Hold Approval', icon: 'ph-lock-open' }
             ];
+            if (canUseMlAdminViews()) options.push({ value: TASK_DIAGNOSTICS_VIEW, label: 'Diagnostics', icon: 'ph-stethoscope' });
+            return options;
         }
 
         function getActiveTaskApprovalModeValue(tab = activeTaskTab) {
             const safeTab = normalizeTaskViewValue(tab);
+            if (isTaskDiagnosticsView(safeTab)) return TASK_DIAGNOSTICS_VIEW;
             return isNcrApprovalTaskView(safeTab) ? safeTab : 'task';
         }
 
         function syncTaskApprovalModeToggles(tab = activeTaskTab) {
             const container = document.getElementById('task-approval-mode-toggles');
             if (!container) return;
-            if (!canUseNcrApprovalTaskView()) {
+            if (!canUseNcrApprovalTaskView() && !canUseMlAdminViews()) {
                 container.classList.add('hidden');
                 setContainerHtmlWithSignature(container, '', 'task-approval-mode:hidden');
                 return;
@@ -47469,6 +47626,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const fallbackView = !isNcrApprovalTaskView(lastNonApprovalTaskView) ? lastNonApprovalTaskView : DEFAULT_TASK_VIEW;
                 return setTaskView(fallbackView || DEFAULT_TASK_VIEW);
             }
+            if (isTaskDiagnosticsView(normalizedMode)) return setTaskView(TASK_DIAGNOSTICS_VIEW);
             if (!isNcrApprovalTaskView(normalizedMode)) return false;
             return setTaskView(normalizedMode);
         }
@@ -47477,7 +47635,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const host = document.getElementById('task-tab-dropdown-host');
             if (!host) return;
             const safeTab = String(tab || activeTaskTab || '').trim().toLowerCase();
-            if (isNcrApprovalTaskView(safeTab)) {
+            if (isNcrApprovalTaskView(safeTab) || isTaskDiagnosticsView(safeTab)) {
                 taskTabDropdownOpen = false;
                 host.classList.add('hidden');
                 setContainerHtmlWithSignature(host, '', `task-mode:hidden:${safeTab}`);
@@ -49062,6 +49220,11 @@ ${folderNote ? `Folder Note: ${folderNote}
             syncTaskApprovalModeToggles(activeTaskTab);
             syncTaskModeControls(activeTaskTab);
             syncTaskSubviewControls(activeTaskTab);
+            if (isTaskDiagnosticsView(activeTaskTab)) {
+                renderTaskDiagnosticsReview(options);
+                recordInternalPerfDuration('taskDrilldownDurations', taskRenderStartedAt, `${activeTaskTab}:review`);
+                return;
+            }
 
             const {
                 useBlockDrill,

@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: "*/10 * * * *"
   workflow_dispatch:
+  repository_dispatch:
+    types:
+      - ml-photo-created
+      - ml-training-asset-created
 
 concurrency:
   group: supabase-ml-worker
@@ -48,6 +52,8 @@ jobs:
           GDRIVE_INVENTORY_FILE_ID: ${{ secrets.GDRIVE_INVENTORY_FILE_ID }}
           ML_JOB_TABLE: v2_ml_image_jobs
           ML_PHOTO_BUCKET: ml_capture_photos
+          ML_TRAINING_ASSETS_TABLE: v2_disease_training_assets
+          ML_TRAINING_ASSETS_BUCKET: disease_training_assets
           APP_LIVE_EVENTS_TABLE: v2_app_live_events
           ML_MODELS_DIR: models
           ML_MODEL_PATH: models/plant_classifier.pt
