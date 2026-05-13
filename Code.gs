@@ -2911,10 +2911,11 @@ function collectRequestRecipients_(payload) {
   const emailType = String(payload && payload.emailType || '').trim().toLowerCase();
   const approvalStage = String(payload && (payload.approvalStage || payload.approval_stage) || '').trim().toLowerCase();
   const approvalType = String(payload && (payload.approvalType || payload.approval_type) || '').trim().toLowerCase().replace(/_/g, '-');
+  const requestedByEmail = normalizeEmailAddress_(payload && (payload.requestedByEmail || payload.requested_by_email) || '');
   const approvalFallbackRecipients = [];
   if (emailType === 'ncr_approval' || emailType === 'hold_release_request') {
     if (approvalStage === 'jd') {
-      approvalFallbackRecipients.push('jd_jones@greenleafnursery.com');
+      approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com');
     } else if (approvalStage === 'inventory') {
       if (approvalType.indexOf('hold-release') !== -1 || approvalType.indexOf('hold') !== -1) {
         approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com');
@@ -2938,6 +2939,7 @@ function collectRequestRecipients_(payload) {
     payload.recipients,
     payload.dylanEmail,
     payload.jdEmail,
+    requestedByEmail,
     repEmail,
     approvalFallbackRecipients
   ]);

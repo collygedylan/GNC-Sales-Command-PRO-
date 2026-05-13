@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.13.10';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.13.11';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1698,19 +1698,19 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg text-left">
             <div class="flex items-start justify-between gap-3 mb-4 border-b border-gray-100 pb-3">
                 <div>
-                    <div class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700"><i class="ph-bold ph-envelope-simple text-sm"></i>New Crop Release</div>
-                    <h3 class="mt-3 text-lg font-black text-slate-900">Send this completed row to JD?</h3>
+                    <div id="ncr-email-modal-badge" class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700"><i class="ph-bold ph-envelope-simple text-sm"></i>New Crop Release</div>
+                    <h3 id="ncr-email-modal-title" class="mt-3 text-lg font-black text-slate-900">Send this completed row for approval?</h3>
                     <div id="ncr-email-modal-label" class="mt-1 text-[11px] font-semibold text-slate-500"></div>
                 </div>
                 <button type="button" class="text-gray-500 font-bold py-2 px-3" onclick="closeNcrEmailModal('cancel')">Close</button>
             </div>
-            <p class="text-sm leading-6 text-slate-600">
+            <p id="ncr-email-modal-copy" class="text-sm leading-6 text-slate-600">
                 Choose <span class="font-black text-[#007a4d]">Yes, Send Email</span> to also email Dylan and JD as a New Crop Release.
                 Choose <span class="font-black text-slate-700">No, Normal Request Only</span> to keep the regular request save and rep completion email without sending the extra New Crop Release email.
             </p>
             <div class="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <button type="button" class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-gray-600 shadow-sm active:scale-95" onclick="closeNcrEmailModal('cancel')">Cancel</button>
-                <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-sm active:scale-95" onclick="closeNcrEmailModal('done')">No, Normal Request</button>
+                <button type="button" id="ncr-email-no-btn" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-sm active:scale-95" onclick="closeNcrEmailModal('done')">No, Normal Request</button>
                 <button type="button" id="ncr-email-yes-btn" class="rounded-xl border border-emerald-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="closeNcrEmailModal('email')">Yes, Send Email</button>
             </div>
         </div>
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.10').trim() || 'V2026.05.13.10';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.11').trim() || 'V2026.05.13.11';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2812,7 +2812,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.10';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.11';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10688,6 +10688,101 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             return users;
         }
 
+        function maybeWarnNcrApprovalRequesterSchemaMissing(error = null) {
+            ncrApprovalRequesterColumnsReady = false;
+            if (ncrApprovalRequesterSchemaWarningShown || !currentUser) return;
+            ncrApprovalRequesterSchemaWarningShown = true;
+            console.warn('NCR approval requester columns are not installed. Run ncr_approval_requester_migration.sql so approval emails keep the original sender copied through Dylan and JD.', error);
+        }
+
+        async function ensureNcrApprovalRequesterColumnsReady(force = false) {
+            if (ncrApprovalRequesterColumnsReady === true && !force) return true;
+            if (ncrApprovalRequesterColumnsReady === false && !force) return false;
+            if (ncrApprovalRequesterColumnsProbePromise && !force) return ncrApprovalRequesterColumnsProbePromise;
+            ncrApprovalRequesterColumnsProbePromise = (async () => {
+                if (navigator.onLine === false) return false;
+                try {
+                    const url = `${SUPABASE_URL}/rest/v1/v2_master_inventory?select=unique_id,ncr_approval_type,ncr_requested_by_username,ncr_requested_by_display,ncr_requested_by_email,ncr_requested_at&limit=1`;
+                    const response = await fetchWithTimeout(url, {
+                        method: 'GET',
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
+                    }, SUPABASE_READ_TIMEOUT_MS, 'NCR Approval Requester Schema');
+                    if (!response.ok) {
+                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
+                        const normalizedError = String(errorText || '').toLowerCase();
+                        if (normalizedError.includes('ncr_') || normalizedError.includes('column')) {
+                            maybeWarnNcrApprovalRequesterSchemaMissing(errorText);
+                            return false;
+                        }
+                        return false;
+                    }
+                    ncrApprovalRequesterColumnsReady = true;
+                    ncrApprovalRequesterSchemaWarningShown = false;
+                    return true;
+                } catch (error) {
+                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
+                    if (normalizedError.includes('ncr_') || normalizedError.includes('column')) {
+                        maybeWarnNcrApprovalRequesterSchemaMissing(error);
+                        return false;
+                    }
+                    return false;
+                } finally {
+                    ncrApprovalRequesterColumnsProbePromise = null;
+                }
+            })();
+            return ncrApprovalRequesterColumnsProbePromise;
+        }
+
+        function getCurrentNcrApprovalRequesterEntry() {
+            return normalizeRequestCompletionUserEntry({
+                username: currentUser || currentUserDisplay || '',
+                display: currentUserDisplay || currentUser || '',
+                email: resolveRequestRecipientEmail(currentUser || currentUserDisplay || '')
+            });
+        }
+
+        function getNcrApprovalRequesterEntryFromItem(item = null) {
+            if (!item || typeof item !== 'object') return null;
+            return normalizeRequestCompletionUserEntry({
+                username: firstNonEmptyValue(item.NCR_REQUESTED_BY_USERNAME, item.ncr_requested_by_username, item.ncrRequestedByUsername, item.REQUESTED_BY_USERNAME, ''),
+                display: firstNonEmptyValue(item.NCR_REQUESTED_BY_DISPLAY, item.ncr_requested_by_display, item.ncrRequestedByDisplay, item.NCR_REQUESTED_BY, item.REQUESTED_BY_DISPLAY, ''),
+                email: firstNonEmptyValue(item.NCR_REQUESTED_BY_EMAIL, item.ncr_requested_by_email, item.ncrRequestedByEmail, item.REQUESTED_BY_EMAIL, '')
+            });
+        }
+
+        function applyNcrApprovalRequesterFields(item = null, entry = null, type = '') {
+            if (!item || typeof item !== 'object') return null;
+            const normalized = normalizeRequestCompletionUserEntry(entry) || getCurrentNcrApprovalRequesterEntry();
+            const normalizedType = normalizeNcrApprovalType(type || getNcrApprovalTypeForItem(item));
+            if (normalized) {
+                item.NCR_REQUESTED_BY_USERNAME = normalized.username || '';
+                item.ncr_requested_by_username = normalized.username || '';
+                item.NCR_REQUESTED_BY_DISPLAY = normalized.display || normalized.username || '';
+                item.ncr_requested_by_display = normalized.display || normalized.username || '';
+                item.NCR_REQUESTED_BY_EMAIL = normalized.email || '';
+                item.ncr_requested_by_email = normalized.email || '';
+            }
+            item.NCR_APPROVAL_TYPE = normalizedType;
+            item.ncr_approval_type = normalizedType;
+            if (!String(firstNonEmptyValue(item.NCR_REQUESTED_AT, item.ncr_requested_at, '') || '').trim()) {
+                const requestedAt = new Date().toISOString();
+                item.NCR_REQUESTED_AT = requestedAt;
+                item.ncr_requested_at = requestedAt;
+            }
+            return normalized;
+        }
+
+        function getNcrApprovalRequesterNotifyOptions(item = null, extraOptions = {}) {
+            const requester = getNcrApprovalRequesterEntryFromItem(item);
+            const options = { ...(extraOptions || {}) };
+            if (requester) {
+                if (requester.email) options.requestedByEmail = requester.email;
+                if (requester.username) options.requestedByUsername = requester.username;
+                if (requester.display) options.requestedByDisplay = requester.display;
+            }
+            return options;
+        }
+
         function maybeWarnAvRuleSchemaMissing() {
             if (avRuleSchemaWarningShown || !currentUser) return;
             avRuleSchemaWarningShown = true;
@@ -12310,7 +12405,7 @@ let bloomCropUpdateRecipientMode='reps'; let bloomCropUpdateReserveEmailGroups=[
         let dockIssueStatusByUid=new Map(); let dockIssueAllocationsBySourceUid=new Map(); let dockIssueAllocationsById=new Map(); let dockIssueDataPromise=null; let dockIssueDataLoaded=false; let dockIssueStatusSchemaReady=null; let dockIssueStatusSchemaPromise=null; let dockIssueAllocationSchemaReady=null; let dockIssueAllocationSchemaPromise=null; let dockIssueSchemaWarningShown=false; let dockViewMode='docks'; let selectedDockIssueUid=null; let dockResolvedStateCacheKey=''; let dockResolvedStateCache=null; let dockDisplayInventory=[]; let dockDisplayInventoryById=new Map(); let dockDisplayInventoryBySourceUid=new Map(); let dockIssueSourceRowsCacheKey=''; let dockIssueSourceRowsById=new Map(); let dockIssueSourceRowsByCurrentUid=new Map(); let dockIssueSourceRowsByMatchKey=new Map();
         let takeBackRows=[]; let takeBackRowsById=new Map(); let takeBackSchemaReady=null; let takeBackSchemaPromise=null; let takeBackSchemaWarningShown=false; let takeBackDataLoaded=false; let takeBackDataPromise=null; let takeBackOptimisticDoneIds=new Set(); let takeBackDoneConfirmResolve=null;
         let detailRequestSourceDomIds=[];
-        let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false; let flyerFolderRowsSchemaReady=null; let flyerFolderRowsSchemaPromise=null; let flyerFolderRowsSchemaWarningShown=false; let requestHistorySchemaReady=null; let requestHistorySchemaWarningShown=false; let flyerFolderHistorySchemaReady=null; let flyerFolderHistorySchemaWarningShown=false; let requestCompletionUserColumnsReady=null; let requestCompletionUserColumnsProbePromise=null; let requestCompletionUserSchemaWarningShown=false;
+        let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false; let flyerFolderRowsSchemaReady=null; let flyerFolderRowsSchemaPromise=null; let flyerFolderRowsSchemaWarningShown=false; let requestHistorySchemaReady=null; let requestHistorySchemaWarningShown=false; let flyerFolderHistorySchemaReady=null; let flyerFolderHistorySchemaWarningShown=false; let requestCompletionUserColumnsReady=null; let requestCompletionUserColumnsProbePromise=null; let requestCompletionUserSchemaWarningShown=false; let ncrApprovalRequesterColumnsReady=null; let ncrApprovalRequesterColumnsProbePromise=null; let ncrApprovalRequesterSchemaWarningShown=false;
         let activeSalesOfficeTab='season'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
 let activeHomeTab='dashboard'; let selectedProductivityUser=''; let productivityViewMode='cards'; let productivityHistoryByUser=new Map(); let productivityHistoryLoadState=new Map(); let productivityHistorySchemaReady=null; let productivityHistorySchemaPromise=null; let productivityHistorySchemaWarningShown=false; let productivityHistoryBackfillPromise=null;
 
@@ -12699,7 +12794,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.10').trim() || 'V2026.05.13.10';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.11').trim() || 'V2026.05.13.11';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -26786,11 +26881,25 @@ function toggleDriveQuickRequestItem(domId) {
             if (resolver) resolver(String(choice || 'cancel').trim().toLowerCase() || 'cancel');
         }
 
-        function openNcrEmailModal(item = activeItem) {
+        function openNcrEmailModal(item = activeItem, type = '') {
             const modal = document.getElementById('ncr-email-modal');
             if (!modal) return Promise.resolve('cancel');
+            const safeType = normalizeNcrApprovalType(type || getNcrApprovalTypeForItem(item));
+            const typeLabel = getNcrApprovalTypeLabel(safeType);
+            const badge = document.getElementById('ncr-email-modal-badge');
+            const title = document.getElementById('ncr-email-modal-title');
+            const copy = document.getElementById('ncr-email-modal-copy');
             const label = document.getElementById('ncr-email-modal-label');
+            const noBtn = document.getElementById('ncr-email-no-btn');
+            const yesBtn = document.getElementById('ncr-email-yes-btn');
+            if (badge) badge.textContent = typeLabel;
+            if (title) title.textContent = `Send this completed row as ${typeLabel}?`;
+            if (copy) {
+                copy.textContent = `Choose Yes, Send Email to email Dylan and place this row in Tasks > ${getTaskTabLabel(getNcrApprovalTaskViewForType(safeType))}. Dylan approves first, then JD approves before it goes to Inventory Office. Choose No to keep the regular save path without sending this ${typeLabel} approval.`;
+            }
             if (label) label.textContent = getNcrEmailModalRowLabel(item);
+            if (noBtn) noBtn.textContent = 'No, Regular Save';
+            if (yesBtn) yesBtn.textContent = 'Yes, Send Email';
             if (ncrEmailPromptResolver) {
                 const previousResolver = ncrEmailPromptResolver;
                 ncrEmailPromptResolver = null;
@@ -26799,7 +26908,6 @@ function toggleDriveQuickRequestItem(domId) {
             modal.classList.remove('hidden');
             return new Promise((resolve) => {
                 ncrEmailPromptResolver = resolve;
-                const yesBtn = document.getElementById('ncr-email-yes-btn');
                 if (yesBtn) setTimeout(() => yesBtn.focus(), 0);
             });
         }
@@ -27144,6 +27252,8 @@ function toggleDriveQuickRequestItem(domId) {
                 );
                 const normalized = normalizeSalesYearForNcrRelease(value);
                 if (normalized != null) return normalized;
+                const fallbackYear = getNcrSalesYear(item);
+                if (fallbackYear != null) return fallbackYear;
             }
             return null;
         }
@@ -27153,9 +27263,11 @@ function toggleDriveQuickRequestItem(domId) {
             if (!sourceItem) return false;
             const uid = getNcrSourceUniqueId(sourceItem);
             if (uid && isNcrCompletedUid(uid)) return false;
-            if (!isNcrNewCropReleaseSeasonCode(getNcrSeasonCode(sourceItem))) return false;
             const salesYear = getNcrReleaseSalesYearNumber(item, sourceItem);
-            return isNcrSalesYearAboveReleaseCutoff(salesYear);
+            const seasonCode = getNcrSeasonCode(sourceItem);
+            if (isNcrNewCropReleaseSeasonCode(seasonCode)) return isNcrSalesYearAboveReleaseCutoff(salesYear);
+            if (isNcrMoveUpSeasonCode(seasonCode)) return isNcrSalesYearAtOrBelowReleaseCutoff(salesYear);
+            return false;
         }
 
         function getNcrReleaseDraftValuesFromSaveContext(item = null, prefix = '', sourceItem = null) {
@@ -27225,7 +27337,8 @@ function toggleDriveQuickRequestItem(domId) {
             const safeOptions = options || {};
             const sourceItem = getNcrReleaseSourceItemForSave(item, prefix, safeOptions);
             if (!shouldOfferNcrReleaseEmailForSave(item, prefix, { ...safeOptions, sourceItem })) return false;
-            const choice = await openNcrEmailModal(sourceItem);
+            const approvalType = getNcrApprovalTypeForItem(sourceItem, prefix === 'move-up' ? 'move-up' : '');
+            const choice = await openNcrEmailModal(sourceItem, approvalType);
             if (choice === 'done') {
                 try {
                     await persistNcrCompletionRecord(buildNcrCompletionRecord(sourceItem, false));
@@ -27246,7 +27359,6 @@ function toggleDriveQuickRequestItem(domId) {
             prepareNcrReleaseEmailDraftFromSaveContext(item, prefix, sourceItem);
             const photoUrls = getNcrReleasePhotoUrlsFromSaveContext(item, prefix, sourceItem);
             try {
-                const approvalType = getNcrApprovalTypeForItem(sourceItem, prefix === 'move-up' ? 'move-up' : '');
                 await submitNcrApprovalToDylan(sourceItem, approvalType, { photoUrls });
                 clearNcrDraft(sourceItem);
                 managerReviewInventoryDirty = true;
@@ -27719,13 +27831,24 @@ function toggleDriveQuickRequestItem(domId) {
 
         async function buildNcrApprovalSubmissionPayload(item = activeItem, type = 'new-crop', options = {}) {
             const safeOptions = options || {};
+            const safeType = normalizeNcrApprovalType(type);
             const draft = normalizeNcrDraftForCompletion(item);
             const masterItem = getNcrMasterItem(item) || item;
             const payload = {
-                app_tab_assignment: getNcrApprovalAssignment(type, 'dylan'),
+                app_tab_assignment: getNcrApprovalAssignment(safeType, 'dylan'),
                 assignedto: NCR_APPROVAL_DYLAN_USER,
                 date_completed: null
             };
+            const requester = applyNcrApprovalRequesterFields(masterItem || item, safeOptions.requester || null, safeType);
+            if (item && item !== masterItem) applyNcrApprovalRequesterFields(item, requester, safeType);
+            const canPersistRequester = await ensureNcrApprovalRequesterColumnsReady().catch(() => false);
+            if (canPersistRequester) {
+                payload.ncr_approval_type = safeType;
+                payload.ncr_requested_by_username = requester && requester.username ? requester.username : null;
+                payload.ncr_requested_by_display = requester && requester.display ? requester.display : (requester && requester.username ? requester.username : null);
+                payload.ncr_requested_by_email = requester && requester.email ? requester.email : null;
+                payload.ncr_requested_at = firstNonEmptyValue(masterItem && masterItem.NCR_REQUESTED_AT, masterItem && masterItem.ncr_requested_at, item && item.NCR_REQUESTED_AT, item && item.ncr_requested_at, new Date().toISOString());
+            }
             const setIfText = (key, value) => {
                 const text = String(firstNonEmptyValue(value, '') || '').trim();
                 if (text) payload[key] = text;
@@ -27768,14 +27891,16 @@ function toggleDriveQuickRequestItem(domId) {
             const safeType = normalizeNcrApprovalType(type);
             const typeLabel = getNcrApprovalTypeLabel(safeType);
             const currentUserEmail = resolveRequestRecipientEmail(currentUser || currentUserDisplay || '');
-            const requestedByEmail = normalizeRequestEmailAddress(firstNonEmptyValue(safeOptions.requestedByEmail, currentUserEmail, ''));
+            const requesterEntry = getNcrApprovalRequesterEntryFromItem(item);
+            const requestedByEmail = normalizeRequestEmailAddress(firstNonEmptyValue(safeOptions.requestedByEmail, requesterEntry && requesterEntry.email, currentUserEmail, ''));
             const targetRecipients = safeStage === 'dylan'
                 ? [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER]]
                 : (safeStage === 'jd'
-                    ? [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_JD_USER]]
+                    ? [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER], NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_JD_USER]]
                     : (safeType === 'hold-release'
                         ? [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER]]
                         : [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER], NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_JD_USER]]));
+            if (requestedByEmail) targetRecipients.push(requestedByEmail);
             const recipientEmails = dedupeRequestEmailRecipients(targetRecipients);
             const photoUrls = normalizeNcrEmailPhotoUrls(safeOptions.photoUrls || getNcrApprovalPhotoUrls(item));
             const requestStyleItem = buildNcrEmailShareItem(item, photoUrls, safeType);
@@ -27786,7 +27911,10 @@ function toggleDriveQuickRequestItem(domId) {
                 approved_qty: String(firstNonEmptyValue(safeOptions.approvedQty, '') || '').trim()
             };
             const rowLabel = [item && item.COMMONNAME, item && item.CONTSIZE, item && item.LOCATIONCODE].map((value) => String(value || '').trim()).filter(Boolean).join(' ');
-            const stageLabel = safeStage === 'jd' ? 'JD approval needed' : (safeStage === 'inventory' ? 'Inventory Office handoff' : 'Dylan approval needed');
+            const finalStageLabel = safeType === 'move-up'
+                ? 'Move Up approved'
+                : (safeType === 'hold-release' ? 'Take Off Hold approved' : 'Inventory Office handoff');
+            const stageLabel = safeStage === 'jd' ? 'JD approval needed' : (safeStage === 'inventory' ? finalStageLabel : 'Dylan approval needed');
             const taskViewLabel = getTaskTabLabel(getNcrApprovalTaskViewForType(safeType));
             const inventoryOfficeTabLabel = getInventoryOfficeApprovalTabLabel(safeType);
             const appInstruction = safeStage === 'jd'
@@ -27794,7 +27922,10 @@ function toggleDriveQuickRequestItem(domId) {
                 : (safeStage === 'inventory'
                     ? (safeType === 'hold-release'
                         ? `JD approved this Take Off Hold row. It is now approved to come off hold and is waiting in Inventory Office > ${inventoryOfficeTabLabel}.`
+                        : (safeType === 'move-up'
+                            ? `JD approved this Move Up row. It has been moved up and is waiting in Inventory Office > ${inventoryOfficeTabLabel}.`
                         : `Inventory Office: open the app and check Inventory Office > ${inventoryOfficeTabLabel}.`)
+                        )
                     : `Dylan: open the app and check Tasks > ${taskViewLabel}. Review the photos/data, then approve to send it to JD.`);
             const subject = `${typeLabel} Approval${rowLabel ? ': ' + rowLabel : ''}`;
             const folderId = `ncr-approval-${getNcrSourceUniqueId(item) || Date.now()}`;
@@ -27816,6 +27947,8 @@ function toggleDriveQuickRequestItem(domId) {
                 taskViewLabel,
                 taskViewId: getNcrApprovalTaskViewForType(safeType),
                 requestedByEmail,
+                requestedByUsername: String(firstNonEmptyValue(safeOptions.requestedByUsername, requesterEntry && requesterEntry.username, '') || '').trim(),
+                requestedByDisplay: String(firstNonEmptyValue(safeOptions.requestedByDisplay, requesterEntry && requesterEntry.display, '') || '').trim(),
                 internalRecipients: recipientEmails,
                 recipientEmails,
                 dylanEmail: recipientEmails.includes(NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER]) ? NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER] : '',
@@ -27855,13 +27988,20 @@ function toggleDriveQuickRequestItem(domId) {
         async function notifyNcrApprovalStage(item = activeItem, type = 'new-crop', stage = 'dylan', options = {}) {
             const safeStage = String(stage || 'dylan').trim().toLowerCase();
             const safeType = normalizeNcrApprovalType(type);
+            const requester = getNcrApprovalRequesterEntryFromItem(item);
             if (safeStage === 'dylan') sendNcrApprovalPush(item, safeType, safeStage, NCR_APPROVAL_DYLAN_USER);
             else if (safeStage === 'jd') sendNcrApprovalPush(item, safeType, safeStage, NCR_APPROVAL_JD_USER);
             else if (safeStage === 'inventory') {
                 sendNcrApprovalPush(item, safeType, safeStage, NCR_APPROVAL_DYLAN_USER);
                 if (safeType !== 'hold-release') sendNcrApprovalPush(item, safeType, safeStage, NCR_APPROVAL_JD_USER);
             }
-            await sendNcrApprovalEmail(item, safeType, safeStage, options);
+            if (requester && requester.username) {
+                const requesterUser = normalizePushUsername(requester.username);
+                if (requesterUser && requesterUser !== NCR_APPROVAL_DYLAN_USER && requesterUser !== NCR_APPROVAL_JD_USER) {
+                    sendNcrApprovalPush(item, safeType, safeStage, requesterUser);
+                }
+            }
+            await sendNcrApprovalEmail(item, safeType, safeStage, getNcrApprovalRequesterNotifyOptions(item, options));
         }
 
         function clearNcrApprovalTaskViewCaches() {
@@ -42976,6 +43116,15 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             return parsed == null ? 0 : parsed;
         }
 
+        function isSeasonSalesNoteOverrideEligibleRow(row = null) {
+            if (!row) return false;
+            const season = String(firstNonEmptyValue(row.SEASON, row.season, '') || '').trim().toUpperCase();
+            const baseSeason = season.replace(/\d+$/, '');
+            if (baseSeason !== 'F' && baseSeason !== 'S') return false;
+            const salesYear = getNcrSalesYear(row);
+            return isNcrSalesYearAtOrBelowReleaseCutoff(salesYear);
+        }
+
         function getSeasonSalesNoteOverrideTargetItem(item = null, linkedMasterItem = null) {
             const linked = linkedMasterItem || findLinkedMasterRow(item) || null;
             if (linked) return linked;
@@ -42989,6 +43138,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             if (!targetItem) return null;
             const targetUid = String(firstNonEmptyValue(targetItem.UNIQUE_ID, targetItem.unique_id, '') || '').trim();
             if (!targetUid) return null;
+            if (!isSeasonSalesNoteOverrideEligibleRow(targetItem)) return null;
             const targetAssignment = String(firstNonEmptyValue(targetItem.APP_TAB_ASSIGNMENT, targetItem.app_tab_assignment, '') || '').trim().toLowerCase();
             if (targetAssignment === 'season') return null;
             const itemCode = normalizeRequestSeasonOverrideValue(firstNonEmptyValue(targetItem.ITEMCODE, item && item.ITEMCODE, ''));
@@ -43002,6 +43152,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 if (!uid || uid === targetUid) return false;
                 const assignment = String(firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, row.app_tab_assignment, '') || '').trim().toLowerCase();
                 if (assignment !== 'season') return false;
+                if (!isSeasonSalesNoteOverrideEligibleRow(row)) return false;
                 return normalizeRequestSeasonOverrideValue(firstNonEmptyValue(row.ITEMCODE, '')) === itemCode;
             }).sort((a, b) => {
                 const ptrCompare = getRequestSeasonOverridePtr(b) - getRequestSeasonOverridePtr(a);
