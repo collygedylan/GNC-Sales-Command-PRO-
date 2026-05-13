@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-window.__APP_SHELL_VERSION__ = 'V2026.05.13.01';
+window.__APP_SHELL_VERSION__ = 'V2026.05.13.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -678,6 +678,41 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                 -webkit-transform:translate3d(0,140%,0) !important;
             }
             body.detail-field-active.ios-device #bottom-nav{
+                transform:translate3d(0,120%,0) !important;
+                -webkit-transform:translate3d(0,120%,0) !important;
+            }
+        }
+        body.ios-device.ios-footer-viewport-lock #bottom-nav,
+        body.ios-device.ios-footer-viewport-lock.performance-scroll-active #bottom-nav{
+            position:fixed !important;
+            top:var(--ios-bottom-nav-top, auto) !important;
+            bottom:auto !important;
+            margin-bottom:0 !important;
+            will-change:top;
+            transform:translate3d(-50%,0,0) !important;
+            -webkit-transform:translate3d(-50%,0,0) !important;
+            backface-visibility:hidden !important;
+            -webkit-backface-visibility:hidden !important;
+        }
+        body.app-standalone.keyboard-open.ios-device.ios-footer-viewport-lock #bottom-nav{
+            transform:translate3d(-50%,140%,0) !important;
+            -webkit-transform:translate3d(-50%,140%,0) !important;
+        }
+        body.detail-field-active.ios-device.ios-footer-viewport-lock #bottom-nav{
+            transform:translate3d(-50%,120%,0) !important;
+            -webkit-transform:translate3d(-50%,120%,0) !important;
+        }
+        @media (max-width: 767px){
+            body.ios-device.ios-footer-viewport-lock #bottom-nav,
+            body.ios-device.ios-footer-viewport-lock.performance-scroll-active #bottom-nav{
+                transform:translate3d(0,0,0) !important;
+                -webkit-transform:translate3d(0,0,0) !important;
+            }
+            body.app-standalone.keyboard-open.ios-device.ios-footer-viewport-lock #bottom-nav{
+                transform:translate3d(0,140%,0) !important;
+                -webkit-transform:translate3d(0,140%,0) !important;
+            }
+            body.detail-field-active.ios-device.ios-footer-viewport-lock #bottom-nav{
                 transform:translate3d(0,120%,0) !important;
                 -webkit-transform:translate3d(0,120%,0) !important;
             }
@@ -1895,7 +1930,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.01').trim() || 'V2026.05.13.01';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.02').trim() || 'V2026.05.13.02';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2774,7 +2809,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2968,6 +3003,10 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         let standaloneShellBaseHeight = 0;
         let iosStableViewportHeight = 0;
         let iosStableViewportKey = '';
+        let iosFooterViewportLockInitialized = false;
+        let iosBottomNavLockFrameQueued = false;
+        let iosBottomNavLastTop = -1;
+        let iosBottomNavLastHeight = -1;
         let detailFieldFocusResetTimer = null;
         let detailFormFocusInitialized = false;
         let viewportShellState = { appHeight: 0, visualHeight: 0, keyboardOffset: 0, standalone: null, ios: null, keyboardOpen: null };
@@ -3427,6 +3466,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             lastScrollAt = Date.now();
             if (document && document.body && document.body.classList.contains('ios-device')) {
                 clampHorizontalViewportShift();
+                scheduleIosBottomNavViewportLock('scroll');
             }
             if (document && document.body) {
                 document.body.classList.add('performance-scroll-active');
@@ -4107,6 +4147,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             ) {
                 scheduleStickyRailOffsetSync('viewport-height');
             }
+            if (iosDevice) scheduleIosBottomNavViewportLock(`viewport-height:${syncReason || 'sync'}`, true);
         }
 
         function initializeViewportHeightSync() {
@@ -4306,6 +4347,72 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             const mainScrollArea = document.getElementById('main-scroll-area');
             if (mainScrollArea && mainScrollArea.scrollLeft) mainScrollArea.scrollLeft = 0;
             if (window.scrollX) window.scrollTo(0, window.scrollY || 0);
+        }
+
+        function syncIosBottomNavViewportLock(reason = 'default') {
+            iosBottomNavLockFrameQueued = false;
+            const body = document.body;
+            const root = document.documentElement;
+            const bottomNav = document.getElementById('bottom-nav');
+            if (!body || !root || !bottomNav) return;
+            if (!isIOSDevice()) {
+                body.classList.remove('ios-footer-viewport-lock');
+                root.style.removeProperty('--ios-bottom-nav-top');
+                root.style.removeProperty('--ios-bottom-nav-height');
+                iosBottomNavLastTop = -1;
+                iosBottomNavLastHeight = -1;
+                return;
+            }
+            body.classList.add('ios-footer-viewport-lock');
+            const viewport = window.visualViewport;
+            const layoutHeight = Math.max(320, Math.round(window.innerHeight || root.clientHeight || 0));
+            const viewportHeight = viewport ? Math.max(320, Math.round(viewport.height || layoutHeight)) : layoutHeight;
+            const viewportOffsetTop = viewport ? Math.max(0, Math.round(viewport.offsetTop || 0)) : 0;
+            const navRect = bottomNav.getBoundingClientRect ? bottomNav.getBoundingClientRect() : null;
+            const navHeight = Math.max(1, Math.round(bottomNav.offsetHeight || (navRect && navRect.height) || 76));
+            const viewportBottom = Math.max(320, viewportOffsetTop + viewportHeight);
+            const nextTop = Math.max(0, Math.round(viewportBottom - navHeight));
+            if (iosBottomNavLastTop !== nextTop) {
+                root.style.setProperty('--ios-bottom-nav-top', `${nextTop}px`);
+                iosBottomNavLastTop = nextTop;
+            }
+            if (iosBottomNavLastHeight !== navHeight) {
+                root.style.setProperty('--ios-bottom-nav-height', `${navHeight}px`);
+                iosBottomNavLastHeight = navHeight;
+            }
+        }
+
+        function scheduleIosBottomNavViewportLock(reason = 'default', force = false) {
+            if (!isIOSDevice()) return;
+            if (!force && iosBottomNavLockFrameQueued) return;
+            iosBottomNavLockFrameQueued = true;
+            requestAnimationFrame(() => syncIosBottomNavViewportLock(reason));
+        }
+
+        function initializeIosBottomNavViewportLock() {
+            if (iosFooterViewportLockInitialized) return;
+            iosFooterViewportLockInitialized = true;
+            if (!isIOSDevice()) return;
+            scheduleIosBottomNavViewportLock('init', true);
+            const sync = (reason) => scheduleIosBottomNavViewportLock(reason, true);
+            window.addEventListener('resize', () => sync('window-resize'), { passive: true });
+            window.addEventListener('orientationchange', () => {
+                iosBottomNavLastTop = -1;
+                iosBottomNavLastHeight = -1;
+                setTimeout(() => sync('orientation'), 80);
+                setTimeout(() => sync('orientation-settled'), 360);
+            }, { passive: true });
+            window.addEventListener('pageshow', () => sync('pageshow'), { passive: true });
+            window.addEventListener('focus', () => sync('focus'), { passive: true });
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) sync('visible');
+            });
+            const mainScrollArea = document.getElementById('main-scroll-area');
+            if (mainScrollArea) mainScrollArea.addEventListener('scroll', () => scheduleIosBottomNavViewportLock('main-scroll'), { passive: true });
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', () => sync('visual-resize'), { passive: true });
+                window.visualViewport.addEventListener('scroll', () => sync('visual-scroll'), { passive: true });
+            }
         }
 
         function scheduleHorizontalViewportClamp(reason = 'default', force = false) {
@@ -12391,7 +12498,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.01').trim() || 'V2026.05.13.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.02').trim() || 'V2026.05.13.02';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -12994,6 +13101,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             initializeViewportModeSync();
             initializeStickyRailOffsetSync();
             initializeHorizontalViewportClamp();
+            initializeIosBottomNavViewportLock();
             initializeInteractiveChrome();
             initializeDetailFieldFocusSupport();
             installAmazonHeaderChrome();
