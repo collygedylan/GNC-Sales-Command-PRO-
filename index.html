@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.13.08';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.13.09';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.08').trim() || 'V2026.05.13.08';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.09').trim() || 'V2026.05.13.09';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2812,7 +2812,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.08';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.09';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12560,7 +12560,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.08').trim() || 'V2026.05.13.08';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.09').trim() || 'V2026.05.13.09';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -42805,19 +42805,25 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             return parsed == null ? 0 : parsed;
         }
 
-        function getRequestSeasonOverrideCandidate(requestItem = null, linkedMasterItem = null) {
-            const targetItem = linkedMasterItem || findLinkedMasterRow(requestItem) || null;
-            if (!requestItem || !targetItem) return null;
+        function getSeasonSalesNoteOverrideTargetItem(item = null, linkedMasterItem = null) {
+            const linked = linkedMasterItem || findLinkedMasterRow(item) || null;
+            if (linked) return linked;
+            const sourceTable = String(firstNonEmptyValue(item && item.SOURCE_TABLE, item && item.source_table, 'v2_master_inventory') || '').trim().toLowerCase();
+            return sourceTable === 'v2_master_inventory' ? item : null;
+        }
+
+        function getSeasonSalesNoteOverrideCandidate(item = null, options = {}) {
+            const opts = options && typeof options === 'object' ? options : {};
+            const targetItem = getSeasonSalesNoteOverrideTargetItem(item, opts.linkedMasterItem || null);
+            if (!targetItem) return null;
             const targetUid = String(firstNonEmptyValue(targetItem.UNIQUE_ID, targetItem.unique_id, '') || '').trim();
             if (!targetUid) return null;
-            const targetAssignment = String(firstNonEmptyValue(targetItem.APP_TAB_ASSIGNMENT, targetItem.app_tab_assignment, requestItem.APP_TAB_ASSIGNMENT, '') || '').trim().toLowerCase();
+            const targetAssignment = String(firstNonEmptyValue(targetItem.APP_TAB_ASSIGNMENT, targetItem.app_tab_assignment, '') || '').trim().toLowerCase();
             if (targetAssignment === 'season') return null;
-            const itemCode = normalizeRequestSeasonOverrideValue(firstNonEmptyValue(targetItem.ITEMCODE, requestItem.ITEMCODE, ''));
-            const locationCode = normalizeRequestSeasonOverrideValue(firstNonEmptyValue(targetItem.LOCATIONCODE, requestItem.LOCATIONCODE, ''));
-            const lotCode = normalizeRequestSeasonOverrideLot(firstNonEmptyValue(targetItem.LOTCODE, requestItem.LOTCODE, ''));
-            if (!itemCode || !locationCode || !lotCode) return null;
-            const requestQty = parseAppNumber(firstNonEmptyValue(requestItem.REQ_QTY, requestItem.req_qty, ''));
+            const itemCode = normalizeRequestSeasonOverrideValue(firstNonEmptyValue(targetItem.ITEMCODE, item && item.ITEMCODE, ''));
+            if (!itemCode) return null;
             const targetPtr = getRequestSeasonOverridePtr(targetItem);
+            if (!(targetPtr > 0)) return null;
             const rows = Array.isArray(fullInventory) ? fullInventory : [];
             const matchingSeasonRows = rows.filter((row) => {
                 if (!row || typeof row !== 'object') return false;
@@ -42825,27 +42831,54 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 if (!uid || uid === targetUid) return false;
                 const assignment = String(firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, row.app_tab_assignment, '') || '').trim().toLowerCase();
                 if (assignment !== 'season') return false;
-                return normalizeRequestSeasonOverrideValue(firstNonEmptyValue(row.ITEMCODE, '')) === itemCode
-                    && normalizeRequestSeasonOverrideValue(firstNonEmptyValue(row.LOCATIONCODE, '')) === locationCode
-                    && normalizeRequestSeasonOverrideLot(firstNonEmptyValue(row.LOTCODE, '')) === lotCode;
-            }).sort((a, b) => getRequestSeasonOverridePtr(b) - getRequestSeasonOverridePtr(a));
+                return normalizeRequestSeasonOverrideValue(firstNonEmptyValue(row.ITEMCODE, '')) === itemCode;
+            }).sort((a, b) => {
+                const ptrCompare = getRequestSeasonOverridePtr(b) - getRequestSeasonOverridePtr(a);
+                if (ptrCompare !== 0) return ptrCompare;
+                return compareSeasonWinnerCandidates(a, b);
+            });
             const previousSeasonItem = matchingSeasonRows[0] || null;
             if (!previousSeasonItem) return null;
             const previousSeasonPtr = getRequestSeasonOverridePtr(previousSeasonItem);
             if (!(targetPtr > previousSeasonPtr)) return null;
-            if (requestQty != null && requestQty > 0 && requestQty <= previousSeasonPtr) return null;
+            const requestItem = opts.requestItem || null;
+            const requestQty = requestItem ? parseAppNumber(firstNonEmptyValue(requestItem.REQ_QTY, requestItem.req_qty, '')) : null;
             return { targetItem, previousSeasonItem, targetPtr, previousSeasonPtr, requestQty };
         }
 
-        function getRequestSeasonOverridePrompt(candidate = null) {
+        function getRequestSeasonOverrideCandidate(requestItem = null, linkedMasterItem = null) {
+            if (!requestItem) return null;
+            return getSeasonSalesNoteOverrideCandidate(requestItem, {
+                linkedMasterItem,
+                requestItem
+            });
+        }
+
+        function getSeasonSalesNoteOverrideRowLabel(row = null) {
+            if (!row) return '';
+            const loc = String(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, '') || '').trim();
+            const lot = String(firstNonEmptyValue(row.LOTCODE, row.lotcode, '') || '').trim();
+            const priority = String(firstNonEmptyValue(row.PRIORITY, row.priority, '-') || '-').trim() || '-';
+            const parts = [];
+            if (loc) parts.push(`Loc ${loc}`);
+            if (lot) parts.push(`Lot ${lot}`);
+            parts.push(`Pri ${priority}`);
+            return parts.join(' / ');
+        }
+
+        function getSeasonSalesNoteOverridePrompt(candidate = null) {
             if (!candidate || !candidate.targetItem || !candidate.previousSeasonItem) return '';
             const commonName = String(firstNonEmptyValue(candidate.targetItem.COMMONNAME, 'this item') || 'this item').trim();
-            const requestQtyText = candidate.requestQty == null ? 'this request' : `request qty ${candidate.requestQty}`;
             const fromPtr = String(candidate.previousSeasonPtr == null ? '0' : candidate.previousSeasonPtr);
             const toPtr = String(candidate.targetPtr == null ? '0' : candidate.targetPtr);
-            const loc = String(firstNonEmptyValue(candidate.targetItem.LOCATIONCODE, '') || '').trim();
-            const lot = String(firstNonEmptyValue(candidate.targetItem.LOTCODE, '') || '').trim();
-            return `Use the larger PTRAVAILABLE row for the Season Sales Note?\n\n${commonName}${loc || lot ? ` (${[loc, lot].filter(Boolean).join(' / ')})` : ''}\n${requestQtyText} is greater than the current Season Sales Note row PTRAVAILABLE ${fromPtr}.\n\nSelect OK to use the PTRAVAILABLE ${toPtr} row as the Season Sales Note row and send it to Sales Office.`;
+            const previousLabel = getSeasonSalesNoteOverrideRowLabel(candidate.previousSeasonItem);
+            const targetLabel = getSeasonSalesNoteOverrideRowLabel(candidate.targetItem);
+            const requestQtyText = candidate.requestQty == null ? '' : `\nRequest Qty: ${candidate.requestQty}`;
+            return `Make this row the Season Sales Note?\n\n${commonName}${requestQtyText}\n\nCurrent Season Sales Note row:\n${previousLabel || 'Current season row'}\nPTRAVAILABLE: ${fromPtr}\n\nThis row:\n${targetLabel || 'Selected row'}\nPTRAVAILABLE: ${toPtr}\n\nSelect OK to move the Season Sales Note to this larger PTRAVAILABLE row and send it to Sales Office.`;
+        }
+
+        function getRequestSeasonOverridePrompt(candidate = null) {
+            return getSeasonSalesNoteOverridePrompt(candidate);
         }
 
         async function saveSalesOfficeAvNote() {
@@ -52199,7 +52232,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 let requestMasterId = '';
                 let requestMasterItem = null;
                 let requestShouldPublishInApp = false;
-                let requestSeasonOverride = null;
+                let seasonSalesNoteOverride = null;
 
                 if ((prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') && isComplete) {
                     const effectiveAvNote = String(itemToSave.AV_NOTE || '').trim();
@@ -52213,6 +52246,26 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (requiresAvNote && !effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','AV Note is required before completing this note.',true); return; }
                     if (specRequired && !effectiveSpec) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Spec is required before completing this note.',true); return; }
                     if (needsCaliper && !effectiveCaliper) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Caliper is required for this note.',true); return; }
+                }
+
+                if (isComplete && ['ssn-','lsn-','na-','flyer-'].includes(prefix)) {
+                    const overrideCandidate = getSeasonSalesNoteOverrideCandidate(itemToSave);
+                    if (overrideCandidate) {
+                        const useOverride = window.confirm(getSeasonSalesNoteOverridePrompt(overrideCandidate));
+                        if (!useOverride && prefix === 'ssn-') {
+                            if (btnComp) btnComp.innerText = 'MARK DONE';
+                            return;
+                        }
+                        if (useOverride) {
+                            seasonSalesNoteOverride = overrideCandidate;
+                            applySeasonLocationAssignmentFields(overrideCandidate.targetItem, 'season');
+                            itemToSave.APP_TAB_ASSIGNMENT = 'season';
+                            itemToSave.app_tab_assignment = 'season';
+                            if (String(firstNonEmptyValue(itemToSave.SOURCE_TABLE, itemToSave.source_table, 'v2_master_inventory') || '').trim().toLowerCase() === 'v2_master_inventory') {
+                                payload.app_tab_assignment = 'season';
+                            }
+                        }
+                    }
                 }
 
                 if (prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-') {
@@ -52254,7 +52307,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         if (overrideCandidate) {
                             const useOverride = window.confirm(getRequestSeasonOverridePrompt(overrideCandidate));
                             if (useOverride) {
-                                requestSeasonOverride = overrideCandidate;
+                                seasonSalesNoteOverride = overrideCandidate;
                                 assignment = 'season';
                                 requestAssignment = 'season';
                                 requestMasterItem = overrideCandidate.targetItem;
@@ -52484,10 +52537,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const artifacts = { soPayload: null, cloneSO: null, masterSyncId: null, masterSyncItem: null, masterSyncPayload: null, applyAvSync: false, masterSyncMissing: false, skipRemoteMasterSync: false, extraMasterSyncPatches: [], extraSalesOfficeDeleteIds: [] };
                     if (!isComplete) return artifacts;
 
-                    const requestOverrideTargetItem = prefix === 'req-' && requestSeasonOverride && requestSeasonOverride.targetItem
-                        ? requestSeasonOverride.targetItem
+                    const seasonOverrideTargetItem = seasonSalesNoteOverride && seasonSalesNoteOverride.targetItem
+                        ? seasonSalesNoteOverride.targetItem
                         : null;
-                    const linkedMasterItem = requestOverrideTargetItem || findLinkedMasterRow(itemToSave) || requestMasterItem || null;
+                    const linkedMasterItem = seasonOverrideTargetItem || findLinkedMasterRow(itemToSave) || requestMasterItem || null;
                     const salesRuleItem = linkedMasterItem || itemToSave;
                     const isFlyerFolderCompletion = prefix === 'flyer-' && isFlyerFolderRowSave;
                     const salesRuleId = String(firstNonEmptyValue(
@@ -52598,9 +52651,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                         }
                     }
 
-                    if (prefix === 'req-' && requestSeasonOverride && requestSeasonOverride.previousSeasonItem) {
-                        const previousSeasonId = String(firstNonEmptyValue(requestSeasonOverride.previousSeasonItem.UNIQUE_ID, requestSeasonOverride.previousSeasonItem.unique_id, '') || '').trim();
-                        const targetSeasonId = String(firstNonEmptyValue(requestSeasonOverride.targetItem && requestSeasonOverride.targetItem.UNIQUE_ID, artifacts.masterSyncId, '') || '').trim();
+                    if (seasonSalesNoteOverride && seasonSalesNoteOverride.previousSeasonItem) {
+                        const previousSeasonId = String(firstNonEmptyValue(seasonSalesNoteOverride.previousSeasonItem.UNIQUE_ID, seasonSalesNoteOverride.previousSeasonItem.unique_id, '') || '').trim();
+                        const targetSeasonId = String(firstNonEmptyValue(seasonSalesNoteOverride.targetItem && seasonSalesNoteOverride.targetItem.UNIQUE_ID, artifacts.masterSyncId, '') || '').trim();
                         if (previousSeasonId && previousSeasonId !== targetSeasonId) {
                             const previousClearPayload = {
                                 app_tab_assignment: 'location',
@@ -52611,15 +52664,15 @@ ${folderNote ? `Folder Note: ${folderNote}
                             };
                             if (avRuleColumnsReady === true) {
                                 const clearedAt = new Date().toISOString();
-                                previousClearPayload.av_rule_priority_snapshot = getPrioritySnapshotFromItem(requestSeasonOverride.previousSeasonItem) || null;
-                                previousClearPayload.av_rule_holdstop_snapshot = getHoldStopSnapshotFromItem(requestSeasonOverride.previousSeasonItem) || null;
+                                previousClearPayload.av_rule_priority_snapshot = getPrioritySnapshotFromItem(seasonSalesNoteOverride.previousSeasonItem) || null;
+                                previousClearPayload.av_rule_holdstop_snapshot = getHoldStopSnapshotFromItem(seasonSalesNoteOverride.previousSeasonItem) || null;
                                 previousClearPayload.av_rule_last_clear_reason = 'season_sales_note_moved_to_larger_ptr';
                                 previousClearPayload.av_rule_last_cleared_at = clearedAt;
                                 previousClearPayload.av_rule_match_updated_at = null;
                             }
                             artifacts.extraMasterSyncPatches.push({
                                 masterSyncId: previousSeasonId,
-                                item: requestSeasonOverride.previousSeasonItem,
+                                item: seasonSalesNoteOverride.previousSeasonItem,
                                 payload: previousClearPayload
                             });
                             artifacts.extraSalesOfficeDeleteIds.push(previousSeasonId);
