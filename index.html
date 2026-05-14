@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.14.01';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.14.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.01').trim() || 'V2026.05.14.01';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.02').trim() || 'V2026.05.14.02';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2813,7 +2813,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12829,7 +12829,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.01').trim() || 'V2026.05.14.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.02').trim() || 'V2026.05.14.02';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -15949,6 +15949,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (sourceView === NCR_APPROVAL_HOLD_RELEASE_VIEW) return 'hold-release';
             if (sourceView.includes('hold-release') || sourceView.includes('off-hold')) return 'hold-release';
             if (sourceView === 'move-up') return 'move-up';
+            if (isHoldReleaseCandidateRow(item)) return 'hold-release';
             if (isNcrMoveUpCandidateRow(item)) return 'move-up';
             return 'new-crop';
         }
@@ -27304,6 +27305,15 @@ function toggleDriveQuickRequestItem(domId) {
             return Promise.resolve(window.confirm(`Make this New Crop Release picture and data visible in the AV tab for ${label}?`));
         }
 
+        async function maybePublishNcrDraftToAppFromDetail(item = activeItem, photoUrls = []) {
+            if (!item) return false;
+            const shouldPublish = await openNcrAvPublishApproval(item);
+            if (!shouldPublish) return false;
+            await publishNcrDraftToAv(item, photoUrls);
+            showToast('Published', 'New Crop Release photos and data are now visible in Drive Mode and AV.');
+            return true;
+        }
+
         async function publishNcrDraftToAv(item = activeItem, photoUrls = []) {
             const draft = normalizeNcrDraftForCompletion(item);
             const masterItem = getNcrMasterItem(item);
@@ -27463,6 +27473,7 @@ function toggleDriveQuickRequestItem(domId) {
         function shouldOfferNcrReleaseEmailForSave(item = null, prefix = '', options = {}) {
             const sourceItem = getNcrReleaseSourceItemForSave(item, prefix, options);
             if (!sourceItem) return false;
+            if (isHoldReleaseCandidateRow(sourceItem)) return false;
             const uid = getNcrSourceUniqueId(sourceItem);
             if (uid && isNcrCompletedUid(uid)) return false;
             const salesYear = getNcrReleaseSalesYearNumber(item, sourceItem);
@@ -28523,7 +28534,15 @@ function toggleDriveQuickRequestItem(domId) {
             try {
                 const type = getNcrApprovalTypeForItem(item);
                 if (button) button.innerText = 'UPLOADING...';
-                await submitNcrApprovalToDylan(item, type);
+                let photoUrls = [];
+                const draftPhotoEntries = getNcrDraftPhotoEntries(item);
+                if (draftPhotoEntries.length) photoUrls = await uploadNcrDraftPhotos(item);
+                if (!photoUrls.length) photoUrls = normalizeNcrEmailPhotoUrls(getNcrDraftDisplayPhotoUrls(item));
+                if (!photoUrls.length) photoUrls = getNcrApprovalPhotoUrls(item);
+                if (button) button.innerText = 'PUBLISH?';
+                await maybePublishNcrDraftToAppFromDetail(item, photoUrls);
+                if (button) button.innerText = 'SENDING...';
+                await submitNcrApprovalToDylan(item, type, { photoUrls });
                 showToast('Sent To Dylan', `${getNcrApprovalTypeLabel(type)} row sent to Dylan for approval.`);
                 return true;
             } catch (error) {
@@ -54002,7 +54021,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                     const holdReleasePromptContext = { requestMasterItem, completionArtifacts: artifacts };
                     const shouldPromptHoldReleaseForCompletion = isComplete && !wasAlreadyComplete;
-                    const shouldPromptHoldReleaseForUpdate = !isComplete && !isSilentAutoSave && hasHoldReleasePromptRelevantUpdate(trackedChangeFlags);
+                    const shouldPromptHoldReleaseForUpdate = !isComplete && !isBackgroundPhotoSync && hasHoldReleasePromptRelevantUpdate(trackedChangeFlags);
                     if ((shouldPromptHoldReleaseForCompletion || shouldPromptHoldReleaseForUpdate) && !saveOptions.suppressHoldReleaseEmail && shouldOfferHoldReleasePromptForSave(itemToSave, prefix, holdReleasePromptContext)) {
                         deferNonCriticalWork('hold-release-email', () => {
                             promptAndSendHoldReleaseEmailFromSave(itemToSave, prefix, holdReleasePromptContext).catch((error) => {
