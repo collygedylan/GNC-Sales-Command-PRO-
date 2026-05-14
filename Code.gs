@@ -2917,11 +2917,7 @@ function collectRequestRecipients_(payload) {
     if (approvalStage === 'jd') {
       approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com');
     } else if (approvalStage === 'inventory') {
-      if (approvalType.indexOf('hold-release') !== -1 || approvalType.indexOf('hold') !== -1) {
-        approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com');
-      } else {
-        approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com');
-      }
+      approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com');
     } else {
       approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com');
     }
@@ -3773,6 +3769,22 @@ function sendGmailApiMessage_(options) {
   };
 }
 
+function getApprovalEmailDisplayName_(payload) {
+  const explicitName = String(
+    payload && (
+      payload.fromName ||
+      payload.brandLabel ||
+      payload.emailDisplayName ||
+      payload.sourceLabel
+    ) || ''
+  ).trim();
+  if (explicitName) return explicitName;
+  const approvalType = String(payload && (payload.approvalType || payload.approval_type) || '').trim().toLowerCase().replace(/_/g, '-');
+  if (approvalType.indexOf('hold-release') !== -1 || approvalType.indexOf('hold') !== -1) return 'GNC PH HOLD REMOVAL';
+  if (approvalType.indexOf('move-up') !== -1 || approvalType.indexOf('move') !== -1) return 'GNC PH MOVE UP';
+  return 'GNC PH NCR';
+}
+
 function sendRequestEmailWithFallback_(payload) {
   const recipients = collectRequestRecipients_(payload);
   if (!recipients.toArray.length) {
@@ -3787,10 +3799,11 @@ function sendRequestEmailWithFallback_(payload) {
   const message = buildRequestEmailMessage_(payload);
   const safeType = String(payload.emailType || '').trim().toLowerCase();
   if (safeType === 'ncr_complete') {
+    const ncrCompleteName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || 'GNC PH NCR').trim() || 'GNC PH NCR';
     try {
       GmailApp.sendEmail(recipients.toList, message.subject, message.textBody || message.subject, {
         htmlBody: message.htmlBody,
-        name: 'GNC PH NCR'
+        name: ncrCompleteName
       });
       return {
         ok: true,
@@ -3834,10 +3847,11 @@ function sendRequestEmailWithFallback_(payload) {
     }
   }
   if (safeType === 'ncr_approval' || safeType === 'hold_release_request') {
+    const approvalEmailName = getApprovalEmailDisplayName_(payload);
     try {
       GmailApp.sendEmail(recipients.toList, message.subject, message.textBody || message.subject, {
         htmlBody: message.htmlBody,
-        name: 'GNC PH Approvals'
+        name: approvalEmailName
       });
       return {
         ok: true,
