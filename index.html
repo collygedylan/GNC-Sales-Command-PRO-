@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.13.20';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.13.21';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.20').trim() || 'V2026.05.13.20';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.21').trim() || 'V2026.05.13.21';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2813,7 +2813,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.20';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.21';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6855,13 +6855,24 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
 
         function captureTrackedAvState(item) {
+            const photoLink = mergePhotoCsvList([
+                getSharedAppPhotoLinkCsvRaw(item, { includePending: false }),
+                getRequestPhotoLinkCsv(item, { includePending: false, includeSharedFallback: true }),
+                getDockOwnedPhotoLinkCsv(item, { includePending: false }),
+                getFlyerVisiblePhotoLinkCsv(item, { includePending: false })
+            ]);
             return {
-                avNote: normalizeRuleText(item && item.AV_NOTE),
-                spec: normalizeRuleText(item && item.SPEC),
-                match: normalizeRuleText(item && item.MATCH),
-                caliper: normalizeRuleText(item && item.CALIPER),
-                photoLink: normalizeRuleText(getSharedAppPhotoLinkCsvRaw(item, { includePending: false })),
-                photoName: normalizeRuleText(getSharedAppPhotoName(item))
+                avNote: normalizeRuleText(firstNonEmptyValue(item && item.AV_NOTE, item && item.REQ_AV_NOTE, item && item.DOCK_AV_NOTE, item && item.FLYER_AV_NOTE, '')),
+                spec: normalizeRuleText(firstNonEmptyValue(item && item.SPEC, item && item.REQ_SPEC, item && item.DOCK_SPEC, item && item.FLYER_SPEC, '')),
+                match: normalizeRuleText(firstNonEmptyValue(item && item.MATCH, item && item.REQ_MATCH, item && item.DOCK_MATCH, item && item.FLYER_MATCH, '')),
+                caliper: normalizeRuleText(firstNonEmptyValue(item && item.CALIPER, item && item.REQ_CALIPER, item && item.DOCK_CALIPER, item && item.FLYER_CALIPER, '')),
+                photoLink: normalizeRuleText(photoLink),
+                photoName: normalizeRuleText(mergePhotoCsvList([
+                    getSharedAppPhotoName(item),
+                    item && item.REQ_PHOTO_NAME,
+                    item && item.DOCK_PHOTO_NAME,
+                    item && item.FLYER_PHOTO_NAME
+                ]))
             };
         }
 
@@ -6874,6 +6885,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 caliper: beforeState.caliper !== afterState.caliper,
                 photo: !!opts.photoChanged || beforeState.photoLink !== afterState.photoLink || beforeState.photoName !== afterState.photoName
             };
+        }
+
+        function hasHoldReleasePromptRelevantUpdate(changeFlags = {}) {
+            const flags = changeFlags || {};
+            return !!(flags.photo || flags.avNote || flags.spec || flags.match || flags.caliper);
         }
 
         function applyAvRuleTouchState(item, changeFlags = {}, nowIso = new Date().toISOString()) {
@@ -12813,7 +12829,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.20').trim() || 'V2026.05.13.20';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.21').trim() || 'V2026.05.13.21';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -27484,7 +27500,7 @@ function toggleDriveQuickRequestItem(domId) {
             return holdCode.includes('H') || holdCode.includes('S') || holdCode.includes('HOLD') || holdCode.includes('STOP');
         }
 
-        function getHoldReleaseSourceItemForSave(item = null, prefix = '', options = {}) {
+        function getHoldReleaseCandidateItemsForSave(item = null, prefix = '', options = {}) {
             const safeOptions = options || {};
             const artifacts = safeOptions.completionArtifacts || {};
             const candidates = [
@@ -27496,6 +27512,7 @@ function toggleDriveQuickRequestItem(domId) {
                 getNcrMasterItem(item)
             ].filter(Boolean);
             const seen = new Set();
+            const uniqueCandidates = [];
             for (const candidate of candidates) {
                 const candidateId = String(firstNonEmptyValue(candidate && candidate.UNIQUE_ID, candidate && candidate.unique_id, candidate && candidate.DOM_ID, '') || '').trim();
                 const dedupeKey = candidateId || JSON.stringify([
@@ -27505,9 +27522,29 @@ function toggleDriveQuickRequestItem(domId) {
                 ]);
                 if (dedupeKey && seen.has(dedupeKey)) continue;
                 if (dedupeKey) seen.add(dedupeKey);
+                uniqueCandidates.push(candidate);
+            }
+            return uniqueCandidates;
+        }
+
+        function getHoldReleaseSourceItemForSave(item = null, prefix = '', options = {}) {
+            const candidates = getHoldReleaseCandidateItemsForSave(item, prefix, options);
+            for (const candidate of candidates) {
                 if (isHoldReleaseCandidateRow(candidate)) return candidate;
             }
             return null;
+        }
+
+        function isHoldReleaseApprovalAlreadyQueuedItem(item = null) {
+            if (!item || typeof item !== 'object') return false;
+            const assignment = getNcrApprovalAssignmentValue(item);
+            if (getNcrApprovalTypeFromAssignment(assignment) !== 'hold-release') return false;
+            const stage = getNcrApprovalStageFromAssignment(assignment) || getNcrApprovalStageForItem(item);
+            return stage === 'dylan' || stage === 'jd' || stage === 'inventory';
+        }
+
+        function isHoldReleaseApprovalAlreadyQueuedForSave(item = null, prefix = '', options = {}) {
+            return getHoldReleaseCandidateItemsForSave(item, prefix, options).some((candidate) => isHoldReleaseApprovalAlreadyQueuedItem(candidate));
         }
 
         function getHoldReleasePhotoUrlsFromSaveContext(item = null, prefix = '', sourceItem = null) {
@@ -27517,6 +27554,7 @@ function toggleDriveQuickRequestItem(domId) {
         function shouldOfferHoldReleasePromptForSave(item = null, prefix = '', options = {}) {
             const sourceItem = getHoldReleaseSourceItemForSave(item, prefix, options);
             if (!sourceItem) return false;
+            if (isHoldReleaseApprovalAlreadyQueuedForSave(item, prefix, { ...options, sourceItem })) return false;
             return getHoldReleasePhotoUrlsFromSaveContext(item, prefix, sourceItem).length > 0;
         }
 
@@ -27956,9 +27994,7 @@ function toggleDriveQuickRequestItem(domId) {
                 ? [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER]]
                 : (safeStage === 'jd'
                     ? [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER], NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_JD_USER]]
-                    : (safeType === 'hold-release'
-                        ? [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER]]
-                        : [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER], NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_JD_USER]]));
+                    : [NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_DYLAN_USER], NCR_APPROVAL_EMAIL_BY_USER[NCR_APPROVAL_JD_USER]]);
             if (requestedByEmail) targetRecipients.push(requestedByEmail);
             const recipientEmails = dedupeRequestEmailRecipients(targetRecipients);
             const photoUrls = normalizeNcrEmailPhotoUrls(safeOptions.photoUrls || getNcrApprovalPhotoUrls(item));
@@ -28052,7 +28088,7 @@ function toggleDriveQuickRequestItem(domId) {
             else if (safeStage === 'jd') sendNcrApprovalPush(item, safeType, safeStage, NCR_APPROVAL_JD_USER);
             else if (safeStage === 'inventory') {
                 sendNcrApprovalPush(item, safeType, safeStage, NCR_APPROVAL_DYLAN_USER);
-                if (safeType !== 'hold-release') sendNcrApprovalPush(item, safeType, safeStage, NCR_APPROVAL_JD_USER);
+                sendNcrApprovalPush(item, safeType, safeStage, NCR_APPROVAL_JD_USER);
             }
             if (requester && requester.username) {
                 const requesterUser = normalizePushUsername(requester.username);
@@ -53809,9 +53845,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                             });
                         }, 90);
                     }
-                    if (isComplete && !wasAlreadyComplete && !saveOptions.suppressHoldReleaseEmail && shouldOfferHoldReleasePromptForSave(itemToSave, prefix, { requestMasterItem, completionArtifacts: artifacts })) {
+                    const holdReleasePromptContext = { requestMasterItem, completionArtifacts: artifacts };
+                    const shouldPromptHoldReleaseForCompletion = isComplete && !wasAlreadyComplete;
+                    const shouldPromptHoldReleaseForUpdate = !isComplete && !isSilentAutoSave && hasHoldReleasePromptRelevantUpdate(trackedChangeFlags);
+                    if ((shouldPromptHoldReleaseForCompletion || shouldPromptHoldReleaseForUpdate) && !saveOptions.suppressHoldReleaseEmail && shouldOfferHoldReleasePromptForSave(itemToSave, prefix, holdReleasePromptContext)) {
                         deferNonCriticalWork('hold-release-email', () => {
-                            promptAndSendHoldReleaseEmailFromSave(itemToSave, prefix, { requestMasterItem, completionArtifacts: artifacts }).catch((error) => {
+                            promptAndSendHoldReleaseEmailFromSave(itemToSave, prefix, holdReleasePromptContext).catch((error) => {
                                 console.error('Auto Hold Release prompt failed', error);
                             });
                         }, 108);
