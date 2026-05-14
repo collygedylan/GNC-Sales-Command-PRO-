@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.14.06';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.14.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.06').trim() || 'V2026.05.14.06';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.07').trim() || 'V2026.05.14.07';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2813,7 +2813,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.06';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12842,7 +12842,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.06').trim() || 'V2026.05.14.06';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.07').trim() || 'V2026.05.14.07';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -15911,6 +15911,21 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return '';
         }
 
+        function getExplicitNcrApprovalTypeFromItem(item = null) {
+            const rawType = String(firstNonEmptyValue(
+                item && item.NCR_APPROVAL_TYPE,
+                item && item.ncr_approval_type,
+                item && item.APPROVAL_TYPE,
+                item && item.approval_type,
+                item && item.APPROVALTYPE,
+                item && item.approvalType,
+                ''
+            ) || '').trim();
+            if (!rawType) return '';
+            const normalized = normalizeNcrApprovalType(rawType);
+            return normalized === 'new-crop' || normalized === 'move-up' || normalized === 'hold-release' ? normalized : '';
+        }
+
         function getNcrApprovalStageFromAssignment(value = '') {
             const normalized = String(value || '').trim().toLowerCase();
             if (normalized.includes('_complete')) return 'complete';
@@ -15945,9 +15960,30 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return Object.keys(NCR_APPROVAL_ASSIGNMENTS).some((key) => NCR_APPROVAL_ASSIGNMENTS[key] === normalized);
         }
 
+        function getNcrApprovalQueueTypeForItem(item = null) {
+            return getNcrApprovalTypeFromAssignment(getNcrApprovalAssignmentValue(item))
+                || getExplicitNcrApprovalTypeFromItem(item);
+        }
+
+        function isNcrApprovalQueueItem(item = null) {
+            if (!item || typeof item !== 'object') return false;
+            if (isNcrApprovalAssignmentValue(getNcrApprovalAssignmentValue(item))) return true;
+            const explicitType = getExplicitNcrApprovalTypeFromItem(item);
+            if (!explicitType) return false;
+            const assignedUser = getNcrApprovalAssignedUser(item);
+            const stage = getNcrApprovalStageForItem(item);
+            return assignedUser === NCR_APPROVAL_DYLAN_USER
+                || assignedUser === NCR_APPROVAL_JD_USER
+                || stage === 'dylan'
+                || stage === 'jd'
+                || stage === 'inventory';
+        }
+
         function getNcrApprovalTypeForItem(item = null, fallbackView = '') {
             const assignmentType = getNcrApprovalTypeFromAssignment(getNcrApprovalAssignmentValue(item));
             if (assignmentType) return assignmentType;
+            const explicitType = getExplicitNcrApprovalTypeFromItem(item);
+            if (explicitType) return explicitType;
             const explicitTypeText = String(firstNonEmptyValue(
                 item && item.NCR_APPROVAL_TYPE,
                 item && item.ncr_approval_type,
@@ -28293,6 +28329,16 @@ function toggleDriveQuickRequestItem(domId) {
             ncrApprovalTaskQueueCacheKey = '';
             ncrApprovalTaskQueueCacheByView.clear();
             ncrApprovalTaskRefreshLastAtByKey.clear();
+            taskScopedQueueItemsCache.clear();
+            taskHotStateCache.clear();
+            taskFilteredItemsCache.clear();
+            taskResolvedStateKey = '';
+            taskResolvedStateCache = null;
+        }
+
+        function clearNcrApprovalTaskRenderCaches() {
+            ncrApprovalTaskQueueCacheKey = '';
+            ncrApprovalTaskQueueCacheByView.clear();
             taskScopedQueueItemsCache.clear();
             taskHotStateCache.clear();
             taskFilteredItemsCache.clear();
@@ -48560,8 +48606,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             (Array.isArray(fullInventory) ? fullInventory : []).forEach((item) => {
                 if (!item) return;
                 const assignment = getNcrApprovalAssignmentValue(item);
-                if (!assignment || !isNcrApprovalAssignmentValue(assignment)) return;
-                const type = getNcrApprovalTypeFromAssignment(assignment);
+                if (!isNcrApprovalQueueItem(item)) return;
+                const type = getNcrApprovalQueueTypeForItem(item);
                 const viewForType = getNcrApprovalTaskViewForType(type);
                 if (!ncrApprovalTaskQueueCacheByView.has(viewForType)) return;
                 const stage = getNcrApprovalStageForItem(item);
@@ -48575,6 +48621,45 @@ ${folderNote ? `Folder Note: ${folderNote}
                 });
             });
             return (ncrApprovalTaskQueueCacheByView.get(safeView) || []).slice();
+        }
+
+        async function fetchNcrApprovalRowsForTaskView(view = activeTaskTab, assignment = '', canReadRequesterFields = true) {
+            const safeView = normalizeTaskViewValue(view);
+            const safeAssignment = String(assignment || '').trim();
+            const approvalType = getNcrApprovalTypeForTaskView(safeView);
+            const assignedUser = getNcrApprovalStageForCurrentUser() === 'jd' ? NCR_APPROVAL_JD_USER : NCR_APPROVAL_DYLAN_USER;
+            const selectFields = getNcrApprovalTaskSelectFields(canReadRequesterFields);
+            const queries = [];
+            if (safeAssignment) {
+                queries.push(`select=${selectFields}&app_tab_assignment=eq.${encodeURIComponent(safeAssignment)}&order=unique_id.asc`);
+            }
+            if (canReadRequesterFields) {
+                queries.push(`select=${selectFields}&assignedto=eq.${encodeURIComponent(assignedUser)}&ncr_approval_type=eq.${encodeURIComponent(approvalType)}&order=unique_id.asc`);
+            }
+            const seen = new Set();
+            const rows = [];
+            for (const query of queries) {
+                try {
+                    const rawRows = await fetchSupabasePage('v2_master_inventory', query, 250, 0);
+                    formatFetchedRows(rawRows || [], 'v2_master_inventory').forEach((row) => {
+                        const uid = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
+                        if (!uid || seen.has(uid)) return;
+                        seen.add(uid);
+                        rows.push(row);
+                    });
+                } catch (error) {
+                    console.warn('NCR approval task fetch query failed', error);
+                }
+            }
+            return rows.filter((row) => {
+                if (!row) return false;
+                const type = getNcrApprovalQueueTypeForItem(row) || approvalType;
+                if (type !== approvalType) return false;
+                const stage = getNcrApprovalStageForItem(row);
+                if (stage === 'dylan') return assignedUser === NCR_APPROVAL_DYLAN_USER;
+                if (stage === 'jd') return assignedUser === NCR_APPROVAL_JD_USER;
+                return false;
+            });
         }
 
         function getNcrApprovalAssignmentForCurrentTaskUser(view = activeTaskTab) {
@@ -48600,10 +48685,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const promise = (async () => {
                 try {
                     const canReadRequesterFields = await ensureNcrApprovalRequesterColumnsReady().catch(() => false);
-                    const selectFields = getNcrApprovalTaskSelectFields(canReadRequesterFields);
-                    const query = `select=${selectFields}&app_tab_assignment=eq.${encodeURIComponent(assignment)}&order=unique_id.asc`;
-                    const rows = await fetchSupabasePage('v2_master_inventory', query, 250, 0);
-                    const formattedRows = formatFetchedRows(rows || [], 'v2_master_inventory');
+                    const formattedRows = await fetchNcrApprovalRowsForTaskView(safeView, assignment, canReadRequesterFields);
                     let changed = false;
                     formattedRows.forEach((row) => {
                         const uid = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
@@ -48615,7 +48697,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                             changed = removeRealtimeRow(avOpenInventory, uid) || changed;
                         }
                     });
-                    if (changed) {
+                    if (changed || formattedRows.length || force) {
+                        clearNcrApprovalTaskRenderCaches();
                         refreshRealtimeDetailLookupIndexes('v2_master_inventory');
                         invalidateResolvedViewStateCaches();
                         markViewDirty('tasks');
@@ -48677,7 +48760,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 : (keepCompletedInTaskTab
                     ? (Array.isArray(fullInventory) ? fullInventory.slice() : [])
                     : (Array.isArray(fullInventory) ? fullInventory.filter((item) => !hasCompletionDateValue(item) && !isOptimisticallyCompletedRow(item)) : []));
-            const regularTaskItems = baseItems.filter((item) => !isNcrApprovalAssignmentValue(getNcrApprovalAssignmentValue(item)));
+            const regularTaskItems = baseItems.filter((item) => !isNcrApprovalQueueItem(item));
             let nextItems = [];
             if (useSharedQueue) {
                 nextItems = safeView === 'flyer' ? regularTaskItems.filter((item) => isFlyerTaskItem(item)) : regularTaskItems;
