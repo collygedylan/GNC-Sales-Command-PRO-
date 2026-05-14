@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.14.07';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.14.08';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.07').trim() || 'V2026.05.14.07';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.08').trim() || 'V2026.05.14.08';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2813,7 +2813,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.07';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.08';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12842,7 +12842,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.07').trim() || 'V2026.05.14.07';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.08').trim() || 'V2026.05.14.08';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -15821,11 +15821,99 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return String(firstNonEmptyValue(itemOrUid && itemOrUid.UNIQUE_ID, itemOrUid && itemOrUid.unique_id, '')).trim();
         }
 
+        function getNcrLocalMasterById(uid = '') {
+            const safeUid = String(uid || '').trim();
+            if (!safeUid) return null;
+            if (!masterInventoryById.size && fullInventory.length) rebuildMasterInventoryIndexes();
+            return masterInventoryById.get(safeUid)
+                || (Array.isArray(fullInventory) ? fullInventory.find((row) => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim() === safeUid) : null)
+                || null;
+        }
+
         function getNcrMasterItem(item = activeItem) {
+            if (!item) return null;
             const uid = getNcrSourceUniqueId(item);
-            return (uid ? findItemByUniqueId(uid) : null)
-                || findLinkedMasterRow(item)
-                || (String(firstNonEmptyValue(item && item.SOURCE_TABLE, item && item.source_table, 'v2_master_inventory')).toLowerCase() === 'v2_master_inventory' ? item : null);
+            const linkedMaster = findLinkedMasterRow(item);
+            if (linkedMaster) return linkedMaster;
+            const localMaster = getNcrLocalMasterById(uid);
+            if (localMaster) return localMaster;
+            const explicitSourceTable = String(firstNonEmptyValue(item && item.SOURCE_TABLE, item && item.source_table, '') || '').trim().toLowerCase();
+            if (explicitSourceTable === 'v2_master_inventory') return item;
+            return null;
+        }
+
+        async function fetchNcrMasterItemFromSupabase(item = null) {
+            if (!item || navigator.onLine === false) return null;
+            const masterId = String(firstNonEmptyValue(item.MASTER_ID, item.MASTER_UNIQUE_ID, item.master_id, '') || '').trim();
+            const sourceUid = getNcrSourceUniqueId(item);
+            const candidateIds = [masterId, sourceUid].map((value) => String(value || '').trim()).filter(Boolean);
+            for (const uid of candidateIds) {
+                try {
+                    const rows = await fetchSupabasePage('v2_master_inventory', `select=${MASTER_INITIAL_SELECT_FIELDS}&unique_id=eq.${encodeURIComponent(uid)}`, 1, 0);
+                    const formattedRows = formatFetchedRows(rows || [], 'v2_master_inventory');
+                    if (formattedRows.length) return formattedRows[0];
+                } catch (error) {
+                    console.warn('NCR approval master lookup by id failed', error);
+                }
+            }
+            const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, '') || '').trim();
+            const locationCode = String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, item.LOCATION, item.location, '') || '').trim();
+            const lotCode = String(firstNonEmptyValue(item.LOTCODE, item.lotcode, item.LOT, item.lot, '') || '').trim();
+            if (!itemCode || !locationCode || !lotCode) return null;
+            try {
+                const query = `select=${MASTER_INITIAL_SELECT_FIELDS}&itemcode=eq.${encodeURIComponent(itemCode)}&locationcode=eq.${encodeURIComponent(locationCode)}&lotcode=eq.${encodeURIComponent(lotCode)}&order=unique_id.asc`;
+                const rows = await fetchSupabasePage('v2_master_inventory', query, 5, 0);
+                const formattedRows = formatFetchedRows(rows || [], 'v2_master_inventory');
+                return formattedRows[0] || null;
+            } catch (error) {
+                console.warn('NCR approval master lookup by row keys failed', error);
+                return null;
+            }
+        }
+
+        function cacheResolvedNcrMasterItem(masterItem = null) {
+            if (!masterItem) return null;
+            normalizeRowPhotoFields(masterItem);
+            buildSearchIndex(masterItem);
+            upsertRealtimeRow(fullInventory, masterItem, 'v2_master_inventory');
+            rebuildMasterInventoryIndexes();
+            refreshRealtimeDetailLookupIndexes('v2_master_inventory');
+            return getNcrLocalMasterById(getNcrSourceUniqueId(masterItem)) || masterItem;
+        }
+
+        async function resolveNcrApprovalMasterItemForWrite(item = activeItem) {
+            const localMaster = getNcrMasterItem(item);
+            if (localMaster) return cacheResolvedNcrMasterItem(localMaster);
+            const remoteMaster = await fetchNcrMasterItemFromSupabase(item);
+            if (remoteMaster) return cacheResolvedNcrMasterItem(remoteMaster);
+            return null;
+        }
+
+        async function verifyNcrApprovalMasterPayload(masterId = '', payload = null) {
+            const safeMasterId = String(masterId || '').trim();
+            if (!safeMasterId || !payload || navigator.onLine === false) return false;
+            const fields = ['unique_id', 'app_tab_assignment', 'assignedto'];
+            if (Object.prototype.hasOwnProperty.call(payload, 'ncr_approval_type')) fields.push('ncr_approval_type');
+            try {
+                const rows = await fetchSupabasePage('v2_master_inventory', `select=${fields.join(',')}&unique_id=eq.${encodeURIComponent(safeMasterId)}`, 1, 0);
+                const row = Array.isArray(rows) && rows.length ? rows[0] : null;
+                if (!row) return false;
+                const expectedAssignment = String(firstNonEmptyValue(payload.app_tab_assignment, '') || '').trim();
+                const actualAssignment = String(firstNonEmptyValue(row.app_tab_assignment, row.APP_TAB_ASSIGNMENT, '') || '').trim();
+                if (expectedAssignment && actualAssignment !== expectedAssignment) return false;
+                const expectedAssignee = String(firstNonEmptyValue(payload.assignedto, '') || '').trim();
+                const actualAssignee = String(firstNonEmptyValue(row.assignedto, row.ASSIGNEDTO, '') || '').trim();
+                if (expectedAssignee && actualAssignee !== expectedAssignee) return false;
+                if (Object.prototype.hasOwnProperty.call(payload, 'ncr_approval_type')) {
+                    const expectedType = normalizeNcrApprovalType(payload.ncr_approval_type);
+                    const actualType = normalizeNcrApprovalType(firstNonEmptyValue(row.ncr_approval_type, row.NCR_APPROVAL_TYPE, ''));
+                    if (expectedType && actualType !== expectedType) return false;
+                }
+                return true;
+            } catch (error) {
+                console.warn('NCR approval master verification failed', error);
+                return false;
+            }
         }
 
         function normalizeNcrApprovalType(value = '') {
@@ -28131,14 +28219,16 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function writeNcrApprovalMasterPayload(item = activeItem, payload = null, reason = 'ncr-approval') {
-            const masterItem = getNcrMasterItem(item);
-            const masterId = getNcrSourceUniqueId(masterItem || item);
+            const masterItem = await resolveNcrApprovalMasterItemForWrite(item);
+            const masterId = getNcrSourceUniqueId(masterItem);
             if (!masterItem || !masterId) throw new Error('Could not find the linked inventory row.');
             await runDetailWriteWithRetry('v2_master_inventory', 'PATCH', payload, `unique_id=eq.${encodeURIComponent(masterId)}`, {
                 timeoutMs: getDetailRowWriteTimeoutMs(),
                 retries: DETAIL_ROW_WRITE_RETRY_COUNT,
                 retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
             });
+            const verified = await verifyNcrApprovalMasterPayload(masterId, payload);
+            if (!verified) throw new Error('The approval row did not land in Supabase. Please refresh data and try again.');
             applyNcrApprovalPayloadToLocalRow(masterItem, payload, reason);
             if (item && item !== masterItem) applyMasterSyncPayloadToLocalRow(item, payload);
             return masterItem;
