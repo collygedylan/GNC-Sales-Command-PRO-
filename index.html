@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.13.22';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.13.23';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.22').trim() || 'V2026.05.13.22';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.13.23').trim() || 'V2026.05.13.23';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2813,7 +2813,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.22';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.13.23';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12829,7 +12829,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.22').trim() || 'V2026.05.13.22';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.13.23').trim() || 'V2026.05.13.23';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -29967,6 +29967,12 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
+        function getEmailRecipientDropdownToggleLabel(selectedCount = 0, totalCount = 0) {
+            const selected = Number(selectedCount) || 0;
+            const total = Number(totalCount) || 0;
+            return total > 0 && selected >= total ? 'Deselect All' : 'Select All';
+        }
+
         function renderEmailRecipientDropdownContext(context = '') {
             const safeContext = normalizeEmailRecipientContext(context);
             if (!safeContext) return false;
@@ -32250,8 +32256,9 @@ function toggleDriveQuickRequestItem(domId) {
             const reps = getAvPhotoOutreachRepOptions();
             const stateKey = reps.map((rep) => rep.key).join('|');
             if (avPhotoOutreachRepStateKey === stateKey) return reps;
+            const existingSelectedKeys = avPhotoOutreachSelectedRepKeys instanceof Set ? avPhotoOutreachSelectedRepKeys : new Set();
             avPhotoOutreachRepStateKey = stateKey;
-            avPhotoOutreachSelectedRepKeys = new Set(reps.map((rep) => rep.key));
+            avPhotoOutreachSelectedRepKeys = new Set(reps.filter((rep) => existingSelectedKeys.has(rep.key)).map((rep) => rep.key));
             return reps;
         }
 
@@ -32338,6 +32345,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const safeSearch = isOpen ? searchTerm : '';
                 const groupReps = repOptions.filter((rep) => (rep.groups || []).includes(groupKey));
                 const selectedInGroup = groupReps.filter((rep) => avPhotoOutreachSelectedRepKeys.has(rep.key)).length;
+                const groupToggleLabel = getEmailRecipientDropdownToggleLabel(selectedInGroup, groupReps.length);
                 const repsHtml = isOpen ? groupReps.map((rep) => {
                     const checked = avPhotoOutreachSelectedRepKeys.has(rep.key) ? 'checked' : '';
                     const hiddenClass = emailRecipientOptionMatchesSearch(rep.repName, rep.email, safeSearch) ? '' : ' hidden';
@@ -32345,9 +32353,9 @@ function toggleDriveQuickRequestItem(domId) {
                 }).join('') : '';
                 const emptyText = groupKey === 'ADMIN' && !appAdminRecipientUsersLoaded ? 'Loading admin users...' : 'No recipients found in this group.';
                 const openHtml = isOpen
-                    ? `<div class="mt-2" data-email-recipient-panel="av:${esc(groupKey)}"><div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2"><input type="search" class="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[12px] font-bold text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" value="${esc(safeSearch)}" placeholder="Search users..." oninput="return setEmailRecipientDropdownSearch('av','${escJsAttrValue(groupKey)}',this.value)" onclick="event.stopPropagation()"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setAvPhotoOutreachGroupSelected('${escJsAttrValue(groupKey)}')">Select / Clear</button></div><div class="mt-1 flex items-center justify-between text-[9px] font-black uppercase tracking-[0.12em] text-slate-400"><span data-email-recipient-search-count="true"></span><span>${selectedInGroup}/${groupReps.length} selected</span></div><div class="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">${repsHtml || `<div class="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-center text-[11px] font-bold text-slate-400">${esc(emptyText)}</div>`}</div></div>`
+                    ? `<div class="mt-2" data-email-recipient-panel="av:${esc(groupKey)}"><input type="search" class="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[12px] font-bold text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" value="${esc(safeSearch)}" placeholder="Search users..." oninput="return setEmailRecipientDropdownSearch('av','${escJsAttrValue(groupKey)}',this.value)" onclick="event.stopPropagation()"><div class="mt-1 flex items-center justify-between text-[9px] font-black uppercase tracking-[0.12em] text-slate-400"><span data-email-recipient-search-count="true"></span><span data-email-recipient-selected-count="true">${selectedInGroup}/${groupReps.length} selected</span></div><div class="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">${repsHtml || `<div class="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-center text-[11px] font-bold text-slate-400">${esc(emptyText)}</div>`}</div><button type="button" class="mt-2 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[.98]" onclick="return setAvPhotoOutreachGroupSelected('${escJsAttrValue(groupKey)}')">${esc(groupToggleLabel)}</button></div>`
                     : '';
-                return `<div class="rounded-xl border ${isOpen ? 'border-emerald-300 bg-white' : 'border-emerald-100 bg-white/80'} p-3"><button type="button" class="flex min-h-[42px] w-full items-center justify-between gap-2 text-left" onclick="return setEmailRecipientDropdownOpen('av','${escJsAttrValue(groupKey)}')"><span class="min-w-0"><span class="block text-[11px] font-black text-emerald-900">${esc(group.label)}</span><span class="block text-[9px] font-black uppercase tracking-[0.12em] text-emerald-600">${selectedInGroup}/${groupReps.length} selected</span></span><i class="ph-bold ${isOpen ? 'ph-caret-up' : 'ph-caret-down'} text-base text-emerald-700"></i></button>${openHtml}</div>`;
+                return `<div class="rounded-xl border ${isOpen ? 'border-emerald-300 bg-white' : 'border-emerald-100 bg-white/80'} p-3"><button type="button" class="flex min-h-[42px] w-full items-center justify-between gap-2 text-left" onclick="return setEmailRecipientDropdownOpen('av','${escJsAttrValue(groupKey)}')"><span class="min-w-0"><span class="block text-[11px] font-black text-emerald-900">${esc(group.label)}</span><span class="block text-[9px] font-black uppercase tracking-[0.12em] text-emerald-600" data-email-recipient-header-count="av:${esc(groupKey)}">${selectedInGroup}/${groupReps.length} selected</span></span><i class="ph-bold ${isOpen ? 'ph-caret-up' : 'ph-caret-down'} text-base text-emerald-700"></i></button>${openHtml}</div>`;
             }).join('');
             const sendDisabled = avPhotoOutreachSendBusy || !sendRows.length || !selectedReps.length;
             const signature = buildRowsRenderSignature(`av-photo-outreach|${activeAVTab}|${brandLabel}|${minValueText}|${selectedReps.map((rep) => rep.key).join('|')}|${avPhotoOutreachSendBusy ? '1' : '0'}`, sendRows, ['S_LTS','SPEC','CALIPER','ROW_PHOTO_LINK','PHOTO_LINK','SAVED_PHOTO_LINK','CAV_HOT_PRICE']);
@@ -36432,8 +36440,9 @@ function toggleDriveQuickRequestItem(domId) {
                 }).join('');
                 const selectedInGroup = groupReps.reduce((count, name) => selectedEmails.has(normalizeRequestEmailAddress(getBloomCropUpdateRepEmail(name))) ? count + 1 : count, 0);
                 const emptyText = groupKey === 'ADMIN' && !appAdminRecipientUsersLoaded ? 'Loading admin users...' : 'No recipients found in this group.';
+                const groupToggleLabel = getEmailRecipientDropdownToggleLabel(selectedInGroup, groupReps.length);
                 const openHtml = isOpen
-                    ? `<div class="mt-3" data-email-recipient-panel="bloom:${escapeShareHtml(groupKey)}"><div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2"><label class="min-w-0"><span class="ml-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Search ${escapeShareHtml(group.label)}</span><input type="search" class="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" value="${escapeShareHtml(safeSearch)}" placeholder="Search users..." oninput="return setEmailRecipientDropdownSearch('bloom','${escapeShareHtml(groupKey)}',this.value)" onclick="event.stopPropagation()"></label><button type="button" class="self-end rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[.98]" onclick="return applyBloomCropUpdateRecipientPreset('${escapeShareHtml(groupKey)}')">Select / Clear</button></div><div class="mt-1 flex items-center justify-between text-[9px] font-black uppercase tracking-[0.12em] text-slate-400"><span data-email-recipient-search-count="true">${safeSearch ? '' : ''}</span><span data-email-recipient-selected-count="true">${selectedInGroup}/${groupReps.length} selected</span></div><div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">${repsHtml || `<div class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-5 text-center text-[11px] font-bold text-slate-400">${escapeShareHtml(emptyText)}</div>`}</div></div>`
+                    ? `<div class="mt-3" data-email-recipient-panel="bloom:${escapeShareHtml(groupKey)}"><label class="block min-w-0"><span class="ml-1 text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Search ${escapeShareHtml(group.label)}</span><input type="search" class="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" value="${escapeShareHtml(safeSearch)}" placeholder="Search users..." oninput="return setEmailRecipientDropdownSearch('bloom','${escapeShareHtml(groupKey)}',this.value)" onclick="event.stopPropagation()"></label><div class="mt-1 flex items-center justify-between text-[9px] font-black uppercase tracking-[0.12em] text-slate-400"><span data-email-recipient-search-count="true">${safeSearch ? '' : ''}</span><span data-email-recipient-selected-count="true">${selectedInGroup}/${groupReps.length} selected</span></div><div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">${repsHtml || `<div class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-5 text-center text-[11px] font-bold text-slate-400">${escapeShareHtml(emptyText)}</div>`}</div><button type="button" class="mt-3 w-full rounded-xl border border-emerald-200 bg-white px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[.98]" onclick="return applyBloomCropUpdateRecipientPreset('${escapeShareHtml(groupKey)}')">${escapeShareHtml(groupToggleLabel)}</button></div>`
                     : `<div class="hidden">${repsHtml}</div>`;
                 return `<div class="rounded-xl border ${isOpen ? 'border-emerald-300 bg-emerald-50' : 'border-emerald-100 bg-white'} p-3 shadow-sm"><button type="button" class="flex min-h-[46px] w-full items-center justify-between gap-3 text-left" onclick="return setEmailRecipientDropdownOpen('bloom','${escapeShareHtml(groupKey)}')"><span class="min-w-0"><span class="block text-sm font-black text-emerald-900">${escapeShareHtml(group.label)}</span><span class="mt-0.5 block text-[10px] font-black uppercase tracking-[0.12em] text-emerald-600" data-email-recipient-header-count="bloom:${escapeShareHtml(groupKey)}">${selectedInGroup}/${groupReps.length} selected</span></span><i class="ph-bold ${isOpen ? 'ph-caret-up' : 'ph-caret-down'} text-lg text-emerald-700"></i></button>${openHtml}</div>`;
             }).join('');
@@ -36810,7 +36819,10 @@ function toggleDriveQuickRequestItem(domId) {
             if (title) title.innerText = String(firstNonEmptyValue(context.title, 'GNC PH Crop Update') || 'GNC PH Crop Update');
             if (rowCount) rowCount.innerText = String(firstNonEmptyValue(context.rowCountLabel, `${rows.length} selected row${rows.length === 1 ? '' : 's'}`) || '');
             if (messageInput) messageInput.value = String(firstNonEmptyValue(context.defaultMessage, '') || '');
-            if (recipientList) recipientList.innerHTML = buildBloomCropUpdateRecipientHtml();
+            if (recipientList) {
+                recipientList.innerHTML = '';
+                recipientList.innerHTML = buildBloomCropUpdateRecipientHtml();
+            }
             if (sendBtn) sendBtn.innerText = String(firstNonEmptyValue(context.sendButtonLabel, 'Send Crop Update') || 'Send Crop Update');
             bloomCropUpdateRecipientMode = 'reps';
             resetBloomCropUpdateReserveState();
@@ -36834,6 +36846,8 @@ function toggleDriveQuickRequestItem(domId) {
             resetBloomCropUpdateReserveState();
             const modal = document.getElementById('bloom-crop-update-modal');
             if (modal) modal.classList.add('hidden');
+            const recipientList = document.getElementById('bloom-crop-update-recipient-list');
+            if (recipientList) recipientList.innerHTML = '';
             updateGlobalBackButton();
             syncGlobalHeaderChrome({ reason: 'bloom-crop-update-close', force: true });
             return false;
@@ -37863,8 +37877,9 @@ function toggleDriveQuickRequestItem(domId) {
             const allReps = getDriveCustomerOutreachAllRepOptions();
             const stateKey = allReps.map((rep) => rep.key).join('|');
             if (driveCustomerOutreachAllRepStateKey === stateKey) return allReps;
+            const existingSelectedKeys = driveCustomerOutreachSelectedAllRepKeys instanceof Set ? driveCustomerOutreachSelectedAllRepKeys : new Set();
             driveCustomerOutreachAllRepStateKey = stateKey;
-            driveCustomerOutreachSelectedAllRepKeys = new Set(allReps.map((rep) => rep.key));
+            driveCustomerOutreachSelectedAllRepKeys = new Set(allReps.filter((rep) => existingSelectedKeys.has(rep.key)).map((rep) => rep.key));
             return allReps;
         }
 
@@ -37873,7 +37888,13 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function setDriveCustomerOutreachRecipientMode(mode = 'selected') {
-            driveCustomerOutreachRecipientMode = String(mode || '').trim().toLowerCase() === 'all' ? 'all' : 'selected';
+            const nextMode = String(mode || '').trim().toLowerCase() === 'all' ? 'all' : 'selected';
+            const modeChanged = driveCustomerOutreachRecipientMode !== nextMode;
+            driveCustomerOutreachRecipientMode = nextMode;
+            if (modeChanged && driveCustomerOutreachRecipientMode === 'all') {
+                driveCustomerOutreachSelectedAllRepKeys = new Set();
+                driveCustomerOutreachAllRepStateKey = '';
+            }
             if (driveCustomerOutreachRecipientMode === 'all') syncDriveCustomerOutreachAllRepDefaults();
             driveCustomerOutreachOpen = true;
             renderDriveCustomerOutreachPanel(activeItem);
@@ -37983,6 +38004,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const safeSearch = isOpen ? driveSearchTerm : '';
                 const groupReps = allRepOptions.filter((rep) => (rep.groups || []).includes(groupKey));
                 const selectedInGroup = groupReps.filter((rep) => driveCustomerOutreachSelectedAllRepKeys.has(rep.key)).length;
+                const groupToggleLabel = getEmailRecipientDropdownToggleLabel(selectedInGroup, groupReps.length);
                 const repsHtml = isOpen ? groupReps.map((rep) => {
                     const checked = driveCustomerOutreachSelectedAllRepKeys.has(rep.key) ? 'checked' : '';
                     const hiddenClass = emailRecipientOptionMatchesSearch(rep.repName, rep.email, safeSearch) ? '' : ' hidden';
@@ -37990,9 +38012,9 @@ function toggleDriveQuickRequestItem(domId) {
                 }).join('') : '';
                 const emptyText = groupKey === 'ADMIN' && !appAdminRecipientUsersLoaded ? 'Loading admin users...' : 'No recipients found in this group.';
                 const openHtml = isOpen
-                    ? `<div class="mt-3" data-email-recipient-panel="drive:${esc(groupKey)}"><div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2"><input type="search" class="w-full rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100" value="${esc(safeSearch)}" placeholder="Search users..." oninput="return setEmailRecipientDropdownSearch('drive','${escJsAttrValue(groupKey)}',this.value)" onclick="event.stopPropagation()"><button type="button" class="rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-sky-700 shadow-sm active:scale-[.98]" onclick="return setDriveCustomerOutreachAllGroupSelected('${escJsAttrValue(groupKey)}')">Select / Clear</button></div><div class="mt-1 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.12em] text-slate-400"><span data-email-recipient-search-count="true"></span><span>${selectedInGroup}/${groupReps.length} selected</span></div><div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">${repsHtml || `<div class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-5 text-center text-[11px] font-bold text-slate-400">${esc(emptyText)}</div>`}</div></div>`
+                    ? `<div class="mt-3" data-email-recipient-panel="drive:${esc(groupKey)}"><input type="search" class="w-full rounded-xl border border-sky-200 bg-white px-3 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100" value="${esc(safeSearch)}" placeholder="Search users..." oninput="return setEmailRecipientDropdownSearch('drive','${escJsAttrValue(groupKey)}',this.value)" onclick="event.stopPropagation()"><div class="mt-1 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.12em] text-slate-400"><span data-email-recipient-search-count="true"></span><span data-email-recipient-selected-count="true">${selectedInGroup}/${groupReps.length} selected</span></div><div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">${repsHtml || `<div class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-5 text-center text-[11px] font-bold text-slate-400">${esc(emptyText)}</div>`}</div><button type="button" class="mt-3 w-full rounded-xl border border-sky-200 bg-white px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-sky-700 shadow-sm active:scale-[.98]" onclick="return setDriveCustomerOutreachAllGroupSelected('${escJsAttrValue(groupKey)}')">${esc(groupToggleLabel)}</button></div>`
                     : '';
-                return `<div class="rounded-xl border ${isOpen ? 'border-sky-300 bg-sky-50' : 'border-sky-100 bg-white'} p-3"><button type="button" class="flex min-h-[46px] w-full items-center justify-between gap-3 text-left" onclick="return setEmailRecipientDropdownOpen('drive','${escJsAttrValue(groupKey)}')"><span class="min-w-0"><span class="block text-sm font-black text-sky-900">${esc(group.label)}</span><span class="mt-0.5 block text-[10px] font-black uppercase tracking-[0.12em] text-sky-600">${selectedInGroup}/${groupReps.length} selected</span></span><i class="ph-bold ${isOpen ? 'ph-caret-up' : 'ph-caret-down'} text-lg text-sky-700"></i></button>${openHtml}</div>`;
+                return `<div class="rounded-xl border ${isOpen ? 'border-sky-300 bg-sky-50' : 'border-sky-100 bg-white'} p-3"><button type="button" class="flex min-h-[46px] w-full items-center justify-between gap-3 text-left" onclick="return setEmailRecipientDropdownOpen('drive','${escJsAttrValue(groupKey)}')"><span class="min-w-0"><span class="block text-sm font-black text-sky-900">${esc(group.label)}</span><span class="mt-0.5 block text-[10px] font-black uppercase tracking-[0.12em] text-sky-600" data-email-recipient-header-count="drive:${esc(groupKey)}">${selectedInGroup}/${groupReps.length} selected</span></span><i class="ph-bold ${isOpen ? 'ph-caret-up' : 'ph-caret-down'} text-lg text-sky-700"></i></button>${openHtml}</div>`;
             }).join('') : '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[11px] font-bold text-slate-400">All-rep send is not available from this view.</div>';
             const recipientHtml = `<div class="rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm"><div class="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"><label class="block"><span class="ml-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Recipient Choice</span><select class="mt-1 w-full rounded-2xl border border-emerald-200 bg-white px-3 py-3 text-[12px] font-black uppercase tracking-[0.12em] text-[#007a4d] outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" onchange="return setDriveCustomerOutreachRecipientMode(this.value)"><option value="selected" ${recipientMode === 'selected' ? 'selected' : ''}>Send To Selected Reps</option><option value="all" ${recipientMode === 'all' ? 'selected' : ''}>Send To Rep/Admin Groups</option></select></label><div class="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">${recipientMode === 'all' ? 'OK / NC / TX / Admin Groups' : 'Reps With This Item On Order'}</div><div class="mt-1 text-[12px] font-bold text-slate-700">${recipientMode === 'all' ? `${selectedAllReps.length}/${allRepOptions.length} recipients selected` : `${selectedOrderRepCount}/${selectedRepCards.length} reps selected`}</div></div></div>${recipientMode === 'all' ? `<div class="mt-3 flex flex-wrap gap-2"><button type="button" class="rounded-full border border-sky-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-sky-700" onclick="return setDriveCustomerOutreachAllRepsSelected(true)">Select All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachAllRepsSelected(false)">Clear All</button></div><div class="mt-3 space-y-3">${allRepGroupsHtml}</div>` : `<div class="mt-3 flex flex-wrap gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setDriveCustomerOutreachAllOrderRepsSelected(true)">Select All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setDriveCustomerOutreachAllOrderRepsSelected(false)">Clear All</button></div><div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">${orderRepHtml}</div>`}</div>`;
             const customerHtml = cards.length ? cards.map((card) => {
@@ -52485,8 +52507,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }).join('');
                 const selectedInGroup = groupReps.reduce((count, name) => selectedEmails.has(normalizeRequestEmailAddress(getBloomCropUpdateRepEmail(name))) ? count + 1 : count, 0);
                 const emptyText = groupKey === 'ADMIN' && !appAdminRecipientUsersLoaded ? 'Loading admin users...' : 'No recipients found in this group.';
+                const groupToggleLabel = getEmailRecipientDropdownToggleLabel(selectedInGroup, groupReps.length);
                 const openHtml = isOpen
-                    ? `<div class="mt-3" data-email-recipient-panel="advertisement:${escapeHtml(groupKey)}"><div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2"><input type="search" class="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" value="${escapeHtml(safeSearch)}" placeholder="Search users..." oninput="return setEmailRecipientDropdownSearch('advertisement','${escapeHtml(groupKey)}',this.value)" onclick="event.stopPropagation()"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return applyAdvertisementRecipientPreset('${escapeHtml(groupKey)}')">Select / Clear</button></div><div class="mt-1 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.12em] text-slate-400"><span data-email-recipient-search-count="true"></span><span data-email-recipient-selected-count="true">${selectedInGroup}/${groupReps.length} selected</span></div><div class="advertisement-recipient-grid mt-3">${repsHtml || `<div class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-5 text-center text-[11px] font-bold text-slate-400">${escapeHtml(emptyText)}</div>`}</div></div>`
+                    ? `<div class="mt-3" data-email-recipient-panel="advertisement:${escapeHtml(groupKey)}"><input type="search" class="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-bold text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" value="${escapeHtml(safeSearch)}" placeholder="Search users..." oninput="return setEmailRecipientDropdownSearch('advertisement','${escapeHtml(groupKey)}',this.value)" onclick="event.stopPropagation()"><div class="mt-1 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.12em] text-slate-400"><span data-email-recipient-search-count="true"></span><span data-email-recipient-selected-count="true">${selectedInGroup}/${groupReps.length} selected</span></div><div class="advertisement-recipient-grid mt-3">${repsHtml || `<div class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-5 text-center text-[11px] font-bold text-slate-400">${escapeHtml(emptyText)}</div>`}</div><button type="button" class="mt-3 w-full rounded-xl border border-emerald-200 bg-white px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[.98]" onclick="return applyAdvertisementRecipientPreset('${escapeHtml(groupKey)}')">${escapeHtml(groupToggleLabel)}</button></div>`
                     : `<div class="hidden">${repsHtml}</div>`;
                 return `<div class="advertisement-recipient-group"><button type="button" class="flex min-h-[44px] w-full items-center justify-between gap-3 text-left" onclick="return setEmailRecipientDropdownOpen('advertisement','${escapeHtml(groupKey)}')"><span class="min-w-0"><span class="advertisement-recipient-group-title block">${escapeHtml(group.label)}</span><span class="mt-1 block text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" data-email-recipient-header-count="advertisement:${escapeHtml(groupKey)}">${selectedInGroup}/${groupReps.length} selected</span></span><i class="ph-bold ${isOpen ? 'ph-caret-up' : 'ph-caret-down'} text-lg text-emerald-700"></i></button>${openHtml}</div>`;
             }).join('');
@@ -52498,6 +52521,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const preserveSelection = !!(options && options.preserveSelection);
             const selectedEmails = preserveSelection ? new Set(getAdvertisementSelectedReps().map((rep) => rep.email).filter(Boolean)) : new Set();
             if (container && (force || !container.innerHTML.trim())) {
+                if (!preserveSelection) container.innerHTML = '';
                 container.innerHTML = buildAdvertisementRecipientHtml();
                 if (selectedEmails.size) {
                     document.querySelectorAll('[data-advertisement-rep="true"]').forEach((input) => {
