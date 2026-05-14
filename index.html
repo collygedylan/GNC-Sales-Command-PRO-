@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.14.05';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.14.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.05').trim() || 'V2026.05.14.05';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.06').trim() || 'V2026.05.14.06';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2813,7 +2813,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12842,7 +12842,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.05').trim() || 'V2026.05.14.05';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.06').trim() || 'V2026.05.14.06';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -15854,6 +15854,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (normalized === 'move-up') return 'Move Up';
             if (normalized === 'hold-release') return 'Off Hold';
             return 'NCR';
+        }
+
+        function getNcrApprovalTaskInstructionLabel(type = 'new-crop') {
+            const normalized = normalizeNcrApprovalType(type);
+            if (normalized === 'move-up') return 'Move Up Approvals';
+            if (normalized === 'hold-release') return 'Off Hold Approval';
+            return 'NCR Approvals';
         }
 
         function getInventoryOfficeApprovalTabLabel(type = 'move-up') {
@@ -28186,7 +28193,7 @@ function toggleDriveQuickRequestItem(domId) {
                 ? 'Move Up approved'
                 : (safeType === 'hold-release' ? 'Take Off Hold approved' : 'Inventory Office handoff');
             const stageLabel = safeStage === 'jd' ? 'JD approval needed' : (safeStage === 'inventory' ? finalStageLabel : 'Dylan approval needed');
-            const taskViewLabel = getTaskTabLabel(getNcrApprovalTaskViewForType(safeType));
+            const taskViewLabel = getNcrApprovalTaskInstructionLabel(safeType);
             const inventoryOfficeTabLabel = getInventoryOfficeApprovalTabLabel(safeType);
             const appInstruction = safeStage === 'jd'
                 ? `JD: open the app and check Tasks > ${taskViewLabel}. Review the photos/data, enter the approved quantity, then approve.`
@@ -48670,13 +48677,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                 : (keepCompletedInTaskTab
                     ? (Array.isArray(fullInventory) ? fullInventory.slice() : [])
                     : (Array.isArray(fullInventory) ? fullInventory.filter((item) => !hasCompletionDateValue(item) && !isOptimisticallyCompletedRow(item)) : []));
+            const regularTaskItems = baseItems.filter((item) => !isNcrApprovalAssignmentValue(getNcrApprovalAssignmentValue(item)));
             let nextItems = [];
             if (useSharedQueue) {
-                nextItems = safeView === 'flyer' ? baseItems.filter((item) => isFlyerTaskItem(item)) : baseItems;
+                nextItems = safeView === 'flyer' ? regularTaskItems.filter((item) => isFlyerTaskItem(item)) : regularTaskItems;
             } else if (owner) {
                 nextItems = safeView === 'flyer'
-                    ? baseItems.filter((item) => isFlyerTaskItem(item))
-                    : baseItems.filter((item) => item.ASSIGNEDTO === owner);
+                    ? regularTaskItems.filter((item) => isFlyerTaskItem(item))
+                    : regularTaskItems.filter((item) => item.ASSIGNEDTO === owner);
             }
             taskScopedQueueItemsCache.set(cacheKey, nextItems.slice());
             trimInternalCacheMap(taskScopedQueueItemsCache, 18);

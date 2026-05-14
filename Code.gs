@@ -3619,7 +3619,15 @@ function buildRequestEmailMessage_(payload) {
     const approvalTitle = escapeEmailHtml_(approvalTitleText);
     const approvalStage = escapeEmailHtml_(payload.approvalStageLabel || payload.approvalStage || 'Approval needed');
     const completedBy = escapeEmailHtml_(payload.completedBy || payload.completed_by || 'Unknown');
-    const appInstructionText = String(payload.appInstruction || payload.app_instruction || '').trim();
+    const approvalTypeText = String(payload.approvalType || payload.approval_type || payload.approvalLabel || payload.approval_label || payload.customer || '').trim().toLowerCase().replace(/_/g, '-');
+    const isHoldReleaseApproval = approvalTypeText.indexOf('hold-release') !== -1 || approvalTypeText.indexOf('hold') !== -1 || approvalTypeText.indexOf('take off hold') !== -1;
+    let appInstructionText = String(payload.appInstruction || payload.app_instruction || '').trim();
+    if (isHoldReleaseApproval && appInstructionText) {
+      appInstructionText = appInstructionText.replace(/Tasks\s*>\s*AV\s*BLANKS/ig, 'Tasks > Off Hold Approval');
+    }
+    if (isHoldReleaseApproval && !appInstructionText && String(payload.approvalStage || payload.approval_stage || '').trim().toLowerCase() !== 'inventory') {
+      appInstructionText = 'Open the app and check Tasks > Off Hold Approval. Review the photos/data, then approve.';
+    }
     const appInstructionHtml = appInstructionText
       ? '<p style="padding:12px 14px; border-radius:10px; background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46;"><strong>Next step:</strong> ' + escapeEmailHtml_(appInstructionText) + '</p>'
       : '';
