@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.14.11';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.14.12';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.11').trim() || 'V2026.05.14.11';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.12').trim() || 'V2026.05.14.12';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2813,7 +2813,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.11';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.12';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10779,6 +10779,49 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             });
         }
 
+        function getNcrApprovalUpdatedByEntryFromItem(item = null) {
+            if (!item || typeof item !== 'object') return null;
+            return getNcrApprovalRequesterEntryFromItem(item)
+                || getRequestCompletionUserEntryFromItem(item)
+                || normalizeRequestCompletionUserEntry({
+                    username: firstNonEmptyValue(
+                        item.UPDATED_BY_USERNAME,
+                        item.updated_by_username,
+                        item.UPDATED_BY,
+                        item.updated_by,
+                        item.ORDER_SUBMITTED_BY,
+                        item.order_submitted_by,
+                        item.REQUESTED_BY,
+                        item.requested_by,
+                        ''
+                    ),
+                    display: firstNonEmptyValue(
+                        item.UPDATED_BY_DISPLAY,
+                        item.updated_by_display,
+                        item.UPDATED_BY,
+                        item.updated_by,
+                        item.ORDER_SUBMITTED_BY,
+                        item.order_submitted_by,
+                        item.REQUESTED_BY_DISPLAY,
+                        item.requested_by_display,
+                        ''
+                    ),
+                    email: firstNonEmptyValue(
+                        item.UPDATED_BY_EMAIL,
+                        item.updated_by_email,
+                        item.ORDER_SUBMITTED_BY_EMAIL,
+                        item.order_submitted_by_email,
+                        item.REQUESTED_BY_EMAIL,
+                        item.requested_by_email,
+                        ''
+                    )
+                });
+        }
+
+        function formatNcrApprovalUpdatedByLabel(item = null) {
+            return formatRequestCompletionUserEntryLabel(getNcrApprovalUpdatedByEntryFromItem(item));
+        }
+
         function applyNcrApprovalRequesterFields(item = null, entry = null, type = '') {
             if (!item || typeof item !== 'object') return null;
             const normalized = normalizeRequestCompletionUserEntry(entry) || getCurrentNcrApprovalRequesterEntry();
@@ -12893,7 +12936,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.11').trim() || 'V2026.05.14.11';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.12').trim() || 'V2026.05.14.12';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -51083,6 +51126,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             const salesYear = esc(String(firstNonEmptyValue(item.SALEYEAR, item.SALESYEAR, item.salesyear, '-') || '-'));
             const ptrValue = getNcrPtrAvailableNumber(item);
             const ptrLabel = ptrValue == null ? String(firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, '0') || '0') : ptrValue.toLocaleString();
+            const updatedByLabel = formatNcrApprovalUpdatedByLabel(item);
+            const updatedByHtml = updatedByLabel
+                ? `<div class="mb-2 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.11em] text-amber-800"><i class="ph-bold ph-user-circle text-sm"></i><span class="shrink-0">Updated By</span><span class="min-w-0 truncate normal-case tracking-normal text-[11px] text-slate-800">${esc(updatedByLabel)}</span></div>`
+                : `<div class="mb-2 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.11em] text-slate-500"><i class="ph-bold ph-user-circle text-sm"></i><span>Updated By Unknown</span></div>`;
             const qtyInputId = `ncr-approval-qty-${String(uid || domId || Date.now()).replace(/[^a-z0-9_-]+/gi, '-')}`;
             const qtyTargetLabel = getNcrApprovalQuantityTargetLabel(type);
             const photoCsv = mergePhotoCsvList([
@@ -51103,7 +51150,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 ? `<div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"><label class="min-w-0 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Approved ${esc(qtyTargetLabel)} Qty<input id="${esc(qtyInputId)}" type="number" min="1" max="${esc(String(ptrValue == null ? '' : ptrValue))}" step="1" inputmode="numeric" class="mt-1 w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 text-right text-sm font-black text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="1-${esc(String(ptrLabel))}" value="${esc(String(firstNonEmptyValue(item.LOC_MATCH_QTY, item.loc_match_qty, '') || ''))}" onclick="event.stopPropagation()"></label><button type="button" class="min-h-[44px] self-end rounded-lg bg-blue-600 px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="event.stopPropagation(); return approveNcrApprovalAsJd('${safeUidJs}','${escJsAttrValue(qtyInputId)}', this)">Approve Qty To ${esc(qtyTargetLabel)}</button></div><div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">${denyButtonHtml}${resendButtonHtml}</div>`
                 : `<div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3"><button type="button" class="min-h-[44px] rounded-lg bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="event.stopPropagation(); return approveNcrApprovalAsDylan('${safeUidJs}', this)">Approve And Send To JD</button>${denyButtonHtml}${resendButtonHtml}</div>`;
             const borderClass = type === 'move-up' ? 'border-emerald-200' : (type === 'hold-release' ? 'border-red-200' : 'border-yellow-200');
-            return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border ${borderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${esc(domId)}" data-ncr-approval-uid="${esc(uid)}" ${buildCardActivationAttrs(domId, uid, 'tasks', 'Open approval row')}><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="mb-2 flex flex-wrap gap-2">${stageBadge}<span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${esc(typeLabel)}</span></div><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words mb-1">${commonName}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${contSize}</div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-white text-slate-700 px-2 py-1 rounded border border-slate-200">Item ${itemCode}</span><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">Loc ${locationCode}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">Lot ${lotCode}</span><span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">PTR ${esc(String(ptrLabel))}</span><span class="bg-slate-50 text-slate-600 px-2 py-1 rounded border border-slate-200">SY ${salesYear} ${seasonCode}</span></div></div>${photoHtml}</div>${actionHtml}</div></div>`;
+            return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border ${borderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${esc(domId)}" data-ncr-approval-uid="${esc(uid)}" ${buildCardActivationAttrs(domId, uid, 'tasks', 'Open approval row')}><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="mb-2 flex flex-wrap gap-2">${stageBadge}<span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${esc(typeLabel)}</span></div><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words mb-1">${commonName}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${contSize}</div>${updatedByHtml}<div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-white text-slate-700 px-2 py-1 rounded border border-slate-200">Item ${itemCode}</span><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">Loc ${locationCode}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">Lot ${lotCode}</span><span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">PTR ${esc(String(ptrLabel))}</span><span class="bg-slate-50 text-slate-600 px-2 py-1 rounded border border-slate-200">SY ${salesYear} ${seasonCode}</span></div></div>${photoHtml}</div>${actionHtml}</div></div>`;
         }
 
         function renderTasks(options = {}) {
