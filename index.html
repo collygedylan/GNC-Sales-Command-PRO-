@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.14.09';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.14.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.09').trim() || 'V2026.05.14.09';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.10').trim() || 'V2026.05.14.10';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2813,7 +2813,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12416,7 +12416,7 @@ const ncrFilterStateByView = {
 };
         let ncrCompletionSchemaReady=null; let ncrCompletionSchemaPromise=null; let ncrCompletionSchemaWarningShown=false; let ncrCompletionLoadPromise=null; let ncrCompletionsLoaded=false;
         let ncrEmailPromptResolver=null;
-        let holdReleasePromptResolver=null;
+        let holdReleasePromptResolver=null; let holdReleasePromptActiveKeys=new Set(); let holdReleasePromptRecentByKey=new Map();
         let ncrRepOutreachPromptResolver=null;
         let loginPrefetchPromise=null;
         let loginPrefetchMode='';
@@ -12825,10 +12825,60 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             'ncr_requested_by_email',
             'ncr_requested_at'
         ].join(',');
+        const NCR_APPROVAL_TASK_BASE_SELECT_FIELDS = [
+            'unique_id',
+            'warehouseid',
+            'plantgroupcode',
+            'itemcode',
+            'qualitycode',
+            'contsize',
+            'commonname',
+            'lotcode',
+            'locationcode',
+            'source',
+            'desigitem',
+            'desigcust',
+            'desigloc',
+            'priority',
+            'ptravailable',
+            's_lts',
+            'saleyear',
+            'itemspec',
+            'locationnote',
+            'locationnotedate',
+            'fieldtagcolor',
+            'holdstopcode',
+            'holdstopreason',
+            'season',
+            'blockalpha',
+            'blocknumber',
+            'app_tab_assignment',
+            'assignedto',
+            'date_completed',
+            'av_note',
+            'sales_note',
+            'salesnote',
+            'match',
+            'loc_match_qty',
+            'initial_ptr',
+            'spec',
+            'caliper',
+            'pic_note',
+            'picknote',
+            'photo_link',
+            'photo_name',
+            'dock_photo_link',
+            'dock_photo_name',
+            'flyer_photo_link',
+            'flyer_photo_name',
+            'last_updated'
+        ].join(',');
         function getNcrApprovalTaskSelectFields(includeRequesterFields = true) {
-            if (!includeRequesterFields) return MASTER_INITIAL_SELECT_FIELDS;
-            const fields = new Set(String(MASTER_INITIAL_SELECT_FIELDS || '').split(',').map((field) => String(field || '').trim()).filter(Boolean));
+            const fields = new Set(String(NCR_APPROVAL_TASK_BASE_SELECT_FIELDS || '').split(',').map((field) => String(field || '').trim()).filter(Boolean));
             String(NCR_APPROVAL_REQUESTER_SELECT_FIELDS || '').split(',').map((field) => String(field || '').trim()).filter(Boolean).forEach((field) => fields.add(field));
+            if (!includeRequesterFields) {
+                String(NCR_APPROVAL_REQUESTER_SELECT_FIELDS || '').split(',').map((field) => String(field || '').trim()).filter(Boolean).forEach((field) => fields.delete(field));
+            }
             return Array.from(fields).join(',');
         }
         function buildMasterInitialDatasetQuery() {
@@ -12843,7 +12893,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.09').trim() || 'V2026.05.14.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.10').trim() || 'V2026.05.14.10';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -27873,6 +27923,52 @@ function toggleDriveQuickRequestItem(domId) {
             return getHoldReleasePhotoUrlsFromSaveContext(item, prefix, sourceItem).length > 0;
         }
 
+        function getHoldReleasePromptDedupeKey(item = null, prefix = '', sourceItem = null) {
+            const resolvedSource = sourceItem || getHoldReleaseSourceItemForSave(item, prefix) || item || {};
+            const linkedMaster = findLinkedMasterRow(resolvedSource) || getNcrMasterItem(resolvedSource) || resolvedSource;
+            const uid = String(firstNonEmptyValue(
+                linkedMaster && linkedMaster.UNIQUE_ID,
+                linkedMaster && linkedMaster.unique_id,
+                resolvedSource && resolvedSource.MASTER_ID,
+                resolvedSource && resolvedSource.MASTER_UNIQUE_ID,
+                resolvedSource && resolvedSource.master_id,
+                resolvedSource && resolvedSource.UNIQUE_ID,
+                resolvedSource && resolvedSource.unique_id,
+                ''
+            ) || '').trim();
+            const fallback = [
+                firstNonEmptyValue(resolvedSource && resolvedSource.ITEMCODE, resolvedSource && resolvedSource.itemcode, ''),
+                firstNonEmptyValue(resolvedSource && resolvedSource.LOCATIONCODE, resolvedSource && resolvedSource.locationcode, ''),
+                firstNonEmptyValue(resolvedSource && resolvedSource.LOTCODE, resolvedSource && resolvedSource.lotcode, ''),
+                firstNonEmptyValue(resolvedSource && resolvedSource.CONTSIZE, resolvedSource && resolvedSource.contsize, '')
+            ].map((value) => String(value || '').trim()).filter(Boolean).join('|');
+            return ['hold-release', String(prefix || '').trim().toLowerCase(), uid || fallback].filter(Boolean).join('::');
+        }
+
+        function isDuplicateHoldReleasePromptActive(promptKey = '') {
+            const key = String(promptKey || '').trim();
+            if (!key) return false;
+            const now = Date.now();
+            for (const [recentKey, timestamp] of holdReleasePromptRecentByKey.entries()) {
+                if ((now - Number(timestamp || 0)) > 120000) holdReleasePromptRecentByKey.delete(recentKey);
+            }
+            return holdReleasePromptActiveKeys.has(key) || holdReleasePromptRecentByKey.has(key);
+        }
+
+        function markHoldReleasePromptStarted(promptKey = '') {
+            const key = String(promptKey || '').trim();
+            if (!key) return;
+            holdReleasePromptActiveKeys.add(key);
+            holdReleasePromptRecentByKey.set(key, Date.now());
+        }
+
+        function markHoldReleasePromptFinished(promptKey = '') {
+            const key = String(promptKey || '').trim();
+            if (!key) return;
+            holdReleasePromptActiveKeys.delete(key);
+            holdReleasePromptRecentByKey.set(key, Date.now());
+        }
+
         function getHoldReleaseEmailModalRowLabel(item = activeItem) {
             if (!item) return '';
             const rowLabel = [
@@ -28179,11 +28275,14 @@ function toggleDriveQuickRequestItem(domId) {
             const safeOptions = options || {};
             const sourceItem = getHoldReleaseSourceItemForSave(item, prefix, safeOptions);
             if (!sourceItem || !shouldOfferHoldReleasePromptForSave(item, prefix, { ...safeOptions, sourceItem })) return false;
+            const promptKey = getHoldReleasePromptDedupeKey(item, prefix, sourceItem);
+            if (isDuplicateHoldReleasePromptActive(promptKey)) return false;
+            markHoldReleasePromptStarted(promptKey);
             await waitForPromptModalToClose('ncr-email-modal');
-            const choice = await openHoldReleaseModal(sourceItem);
-            if (choice !== 'yes') return false;
-            const photoUrls = getHoldReleasePhotoUrlsFromSaveContext(item, prefix, sourceItem);
             try {
+                const choice = await openHoldReleaseModal(sourceItem);
+                if (choice !== 'yes') return false;
+                const photoUrls = getHoldReleasePhotoUrlsFromSaveContext(item, prefix, sourceItem);
                 prepareNcrReleaseEmailDraftFromSaveContext(item, prefix, sourceItem);
                 await submitNcrApprovalToDylan(sourceItem, 'hold-release', { photoUrls });
                 showToast('Sent To Dylan', 'Take Off Hold row sent to Dylan for approval.');
@@ -28192,6 +28291,8 @@ function toggleDriveQuickRequestItem(domId) {
                 console.error('Auto Hold Release approval failed', error);
                 showToast('Approval Failed', error && error.message ? error.message : 'Could not send the Take Off Hold approval.', true);
                 return false;
+            } finally {
+                markHoldReleasePromptFinished(promptKey);
             }
         }
 
