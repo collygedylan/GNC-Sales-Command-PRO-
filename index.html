@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.14.04';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.14.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.04').trim() || 'V2026.05.14.04';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.05').trim() || 'V2026.05.14.05';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2813,7 +2813,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12842,7 +12842,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.04').trim() || 'V2026.05.14.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.05').trim() || 'V2026.05.14.05';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -53143,6 +53143,234 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
         }
 
+        const REQUEST_LINKED_COMPLETION_PREFIXES = new Set(['ssn-', 'lsn-', 'na-']);
+
+        function getLinkedRequestCompletionSourceIds(item = null) {
+            if (!item) return [];
+            const ids = [
+                item.UNIQUE_ID,
+                item.unique_id,
+                item.MASTER_ID,
+                item.MASTER_UNIQUE_ID,
+                item.master_id,
+                item.SOURCE_UNIQUE_ID,
+                item.source_unique_id,
+                item.sourceUniqueId,
+                item.SOURCE_MASTER_ID,
+                item.SOURCE_MASTER_UNIQUE_ID,
+                item.source_master_id,
+                item.source_master_unique_id
+            ];
+            const linkedMaster = findLinkedMasterRow(item);
+            if (linkedMaster) ids.push(linkedMaster.UNIQUE_ID, linkedMaster.unique_id);
+            const seen = new Set();
+            return ids
+                .map((value) => String(value || '').trim())
+                .filter((value) => {
+                    if (!value || seen.has(value)) return false;
+                    seen.add(value);
+                    return true;
+                });
+        }
+
+        function addPendingLinkedRequestRow(targetRows, seenIds, row = null) {
+            if (!row || row.REQUEST_HISTORY || row.REQ_ARCHIVED || !isRequestPendingVisible(row)) return false;
+            const uniqueId = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
+            if (!uniqueId || seenIds.has(uniqueId)) return false;
+            seenIds.add(uniqueId);
+            targetRows.push(row);
+            return true;
+        }
+
+        function getLocalPendingRequestRowsForCompletedSource(sourceItem = null) {
+            const sourceIds = getLinkedRequestCompletionSourceIds(sourceItem);
+            if (!sourceIds.length || !Array.isArray(requestsInventory)) return [];
+            const sourceIdSet = new Set(sourceIds);
+            const rows = [];
+            const seenIds = new Set();
+            sourceIds.forEach((sourceId) => {
+                addPendingLinkedRequestRow(rows, seenIds, requestsInventoryById.get(sourceId));
+                (requestsInventoryByMasterId.get(sourceId) || []).forEach((row) => addPendingLinkedRequestRow(rows, seenIds, row));
+            });
+            requestsInventory.forEach((row) => {
+                if (!row) return;
+                const rowId = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
+                const rowMasterId = String(firstNonEmptyValue(row.MASTER_ID, row.MASTER_UNIQUE_ID, row.master_id, '') || '').trim();
+                if (sourceIdSet.has(rowId) || sourceIdSet.has(rowMasterId)) addPendingLinkedRequestRow(rows, seenIds, row);
+            });
+            return rows;
+        }
+
+        async function fetchPendingRequestRowsForCompletedSource(sourceItem = null) {
+            if (navigator.onLine === false) return [];
+            const sourceIds = getLinkedRequestCompletionSourceIds(sourceItem);
+            if (!sourceIds.length) return [];
+            const rows = [];
+            const seenIds = new Set();
+            for (const sourceId of sourceIds.slice(0, 4)) {
+                const encodedId = encodeURIComponent(sourceId);
+                try {
+                    const rawRows = await fetchSupabasePage('v2_active_request', `select=*&or=(unique_id.eq.${encodedId},master_id.eq.${encodedId},master_unique_id.eq.${encodedId})`, 1000, 0);
+                    formatFetchedRows(rawRows || [], 'v2_active_request').forEach((row) => addPendingLinkedRequestRow(rows, seenIds, row));
+                } catch (error) {
+                    console.warn('Could not fetch linked pending request rows for completed source', error);
+                }
+            }
+            return rows;
+        }
+
+        function getLinkedRequestCompletionPhotoLink(sourceItem = null, requestRow = null) {
+            return String(firstNonEmptyValue(
+                getRequestPhotoLinkCsv(sourceItem, { includePending: false, includeSharedFallback: true }),
+                getSharedAppPhotoLinkCsv(sourceItem, { includePending: false, respectRetention: false }),
+                sourceItem && sourceItem.ROW_PHOTO_LINK,
+                sourceItem && sourceItem.PHOTO_LINK,
+                sourceItem && sourceItem.SAVED_PHOTO_LINK,
+                requestRow && requestRow.REQ_PHOTO_LINK,
+                requestRow && requestRow.REQUEST_PHOTO_LINK,
+                ''
+            ) || '').trim();
+        }
+
+        function getLinkedRequestCompletionPhotoName(sourceItem = null, requestRow = null) {
+            return String(firstNonEmptyValue(
+                getSharedAppPhotoName(sourceItem),
+                sourceItem && sourceItem.ROW_PHOTO_NAME,
+                sourceItem && sourceItem.PHOTO_NAME,
+                sourceItem && sourceItem.SAVED_PHOTO_NAME,
+                requestRow && requestRow.REQ_PHOTO_NAME,
+                requestRow && requestRow.REQUEST_PHOTO_NAME,
+                ''
+            ) || '').trim();
+        }
+
+        function buildLinkedRequestCompletionPayload(sourceItem = null, savePayload = {}, requestRow = null, canPersistCompletionUser = false) {
+            const payload = {
+                req_status: 'Complete',
+                date_completed: String(firstNonEmptyValue(savePayload && savePayload.date_completed, new Date().toISOString()) || '').trim()
+            };
+            const setNullable = (key, value) => {
+                const safeValue = String(firstNonEmptyValue(value, '') || '').trim();
+                payload[key] = safeValue || null;
+            };
+            const matchValue = firstNonEmptyValue(sourceItem && sourceItem.REQ_MATCH, sourceItem && sourceItem.req_match, sourceItem && sourceItem.MATCH, sourceItem && sourceItem.match, requestRow && requestRow.REQ_MATCH, requestRow && requestRow.req_match, '');
+            const matchNumber = parseAppNumber(matchValue);
+            payload.req_match = matchNumber == null ? null : matchNumber;
+            setNullable('req_spec', firstNonEmptyValue(sourceItem && sourceItem.REQ_SPEC, sourceItem && sourceItem.req_spec, sourceItem && sourceItem.SPEC, sourceItem && sourceItem.spec, requestRow && requestRow.REQ_SPEC, requestRow && requestRow.req_spec, ''));
+            setNullable('req_caliper', firstNonEmptyValue(sourceItem && sourceItem.REQ_CALIPER, sourceItem && sourceItem.req_caliper, sourceItem && sourceItem.CALIPER, sourceItem && sourceItem.caliper, requestRow && requestRow.REQ_CALIPER, requestRow && requestRow.req_caliper, ''));
+            setNullable('req_pic_note', firstNonEmptyValue(sourceItem && sourceItem.REQ_PICK, sourceItem && sourceItem.REQ_PIC_NOTE, sourceItem && sourceItem.PICK, sourceItem && sourceItem.PIC_NOTE, requestRow && requestRow.REQ_PICK, requestRow && requestRow.REQ_PIC_NOTE, ''));
+            setNullable('req_comments', firstNonEmptyValue(sourceItem && sourceItem.REQ_COMMENTS, sourceItem && sourceItem.req_comments, sourceItem && sourceItem.SALES_NOTE, sourceItem && sourceItem.SALESNOTE, sourceItem && sourceItem.sales_note, requestRow && requestRow.REQ_COMMENTS, requestRow && requestRow.req_comments, ''));
+            setNullable('av_note', firstNonEmptyValue(sourceItem && sourceItem.AV_NOTE, sourceItem && sourceItem.av_note, requestRow && requestRow.AV_NOTE, requestRow && requestRow.av_note, ''));
+            setNullable('req_photo_link', getLinkedRequestCompletionPhotoLink(sourceItem, requestRow));
+            setNullable('req_photo_name', getLinkedRequestCompletionPhotoName(sourceItem, requestRow));
+            if (canPersistCompletionUser) {
+                const completionUser = applyRequestCompletionUserFields(requestRow || {});
+                if (completionUser) {
+                    payload.completed_by_username = completionUser.username || null;
+                    payload.completed_by_display = completionUser.display || completionUser.username || null;
+                    payload.completed_by_email = completionUser.email || null;
+                }
+            }
+            return payload;
+        }
+
+        function applyLinkedRequestCompletionToLocalRow(requestRow = null, sourceItem = null, payload = {}) {
+            if (!requestRow || !payload) return null;
+            const sourceTable = String(firstNonEmptyValue(sourceItem && sourceItem.SOURCE_TABLE, sourceItem && sourceItem.source_table, 'v2_master_inventory') || '').trim().toLowerCase();
+            if (!sourceTable || sourceTable === 'v2_master_inventory') syncMasterFieldsToRequestRow(sourceItem, requestRow);
+            requestRow.REQ_STATUS = 'Complete';
+            requestRow.req_status = 'Complete';
+            requestRow.DATE_COMPLETED = payload.date_completed || requestRow.DATE_COMPLETED || new Date().toISOString();
+            requestRow.date_completed = requestRow.DATE_COMPLETED;
+            if (Object.prototype.hasOwnProperty.call(payload, 'req_match')) {
+                requestRow.REQ_MATCH = payload.req_match == null ? '' : String(payload.req_match);
+                requestRow.req_match = requestRow.REQ_MATCH;
+            }
+            const applyStringPayload = (payloadKey, upperKey, lowerKey) => {
+                if (!Object.prototype.hasOwnProperty.call(payload, payloadKey)) return;
+                const value = payload[payloadKey] == null ? '' : String(payload[payloadKey]);
+                requestRow[upperKey] = value;
+                requestRow[lowerKey] = value;
+            };
+            applyStringPayload('req_spec', 'REQ_SPEC', 'req_spec');
+            applyStringPayload('req_caliper', 'REQ_CALIPER', 'req_caliper');
+            applyStringPayload('req_pic_note', 'REQ_PICK', 'req_pic_note');
+            applyStringPayload('req_comments', 'REQ_COMMENTS', 'req_comments');
+            applyStringPayload('av_note', 'AV_NOTE', 'av_note');
+            applyStringPayload('req_photo_link', 'REQ_PHOTO_LINK', 'req_photo_link');
+            applyStringPayload('req_photo_name', 'REQ_PHOTO_NAME', 'req_photo_name');
+            if (Object.prototype.hasOwnProperty.call(payload, 'completed_by_username')) {
+                applyRequestCompletionUserFields(requestRow, {
+                    username: payload.completed_by_username,
+                    display: payload.completed_by_display,
+                    email: payload.completed_by_email
+                });
+            } else {
+                applyRequestCompletionUserFields(requestRow);
+            }
+            normalizeRowPhotoFields(requestRow);
+            buildSearchIndex(requestRow);
+            return requestRow;
+        }
+
+        function refreshLinkedRequestCompletionState(rows = []) {
+            const completedRows = (Array.isArray(rows) ? rows : []).filter(Boolean);
+            if (!completedRows.length) return;
+            completedRows.forEach((row) => upsertRealtimeRow(requestsInventory, row, 'v2_active_request'));
+            rebuildRequestInventoryIndexes();
+            const rowIds = completedRows.map((row) => String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim()).filter(Boolean);
+            discardPendingLocalEdits(rowIds, true);
+            clearOptimisticCompletedRows(rowIds);
+            requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+            invalidateResolvedViewStateCaches();
+            updateFooterRequestBadge();
+            markViewDirty('request');
+            markViewDirty('reports');
+            markViewDirty('tasks');
+            refreshLocalRequestViewState('linked-request-complete', {
+                forceRender: true,
+                preferImmediate: true,
+                userAction: false,
+                typingDelay: REQUEST_REALTIME_UI_DELAY_MS,
+                renderHiddenRequest: true
+            });
+            triggerRequestRealtimeUiRefresh(0);
+        }
+
+        async function completeLinkedPendingRequestRowsFromSave(sourceItem = null, savePayload = {}, prefix = '', requestOptions = {}) {
+            if (!sourceItem || !REQUEST_LINKED_COMPLETION_PREFIXES.has(String(prefix || '').trim())) {
+                return { completedRows: [], folderNames: [], failedRows: [] };
+            }
+            let pendingRows = getLocalPendingRequestRowsForCompletedSource(sourceItem);
+            if (!pendingRows.length) pendingRows = await fetchPendingRequestRowsForCompletedSource(sourceItem);
+            const seenIds = new Set();
+            pendingRows = pendingRows.filter((row) => {
+                const rowId = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
+                if (!rowId || seenIds.has(rowId) || !isRequestPendingVisible(row)) return false;
+                seenIds.add(rowId);
+                return true;
+            });
+            if (!pendingRows.length) return { completedRows: [], folderNames: [], failedRows: [] };
+            const canPersistCompletionUser = await ensureRequestCompletionUserColumnsReady().catch(() => false);
+            const completedRows = [];
+            const failedRows = [];
+            for (const requestRow of pendingRows) {
+                const rowId = String(firstNonEmptyValue(requestRow.UNIQUE_ID, requestRow.unique_id, '') || '').trim();
+                if (!rowId) continue;
+                const requestPayload = buildLinkedRequestCompletionPayload(sourceItem, savePayload, requestRow, canPersistCompletionUser);
+                try {
+                    await runDetailWriteWithRetry('v2_active_request', 'PATCH', requestPayload, `unique_id=eq.${encodeURIComponent(rowId)}`, requestOptions);
+                    completedRows.push(applyLinkedRequestCompletionToLocalRow(requestRow, sourceItem, requestPayload));
+                } catch (error) {
+                    console.warn('Linked pending request completion write failed', rowId, error);
+                    failedRows.push({ row: requestRow, error });
+                }
+            }
+            if (completedRows.length) refreshLinkedRequestCompletionState(completedRows);
+            const folderNames = Array.from(new Set(completedRows.map((row) => String(getRequestFolderName(row) || '').trim()).filter(Boolean)));
+            return { completedRows, folderNames, failedRows };
+        }
+
         let autoSaveTimer = null;
 
         async function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null, options = {}) {
@@ -53803,6 +54031,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 };
 
                 let completionArtifacts = null;
+                let linkedRequestCompletionResult = null;
                 const targetTable = (prefix === 'req-') ? 'v2_active_request' : (itemToSave.SOURCE_TABLE || 'v2_master_inventory');
                 const pendingUploads = isComplete ? getPendingPhotoUploadsForItem(itemToSave, prefix) : [];
                 let savePayloadSignature = '';
@@ -53817,6 +54046,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                     if ((artifacts && (artifacts.soPayload || getCompletionSalesOfficeDeleteIds(artifacts).length)) || (!(artifacts && artifacts.soPayload) && trackedChangeFlags.avNote && getSeasonSalesOfficeSyncContext(itemToSave))) {
                         getDatasetKeysForTable('v2_sales_office').forEach((key) => changedKeys.add(key));
+                    }
+                    if (linkedRequestCompletionResult && Array.isArray(linkedRequestCompletionResult.completedRows) && linkedRequestCompletionResult.completedRows.length) {
+                        getDatasetKeysForTable('v2_active_request').forEach((key) => changedKeys.add(key));
                     }
                     return Array.from(changedKeys);
                 };
@@ -53917,6 +54149,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (prefix === 'req-' && !saveOptions.suppressRequestHistory) {
                         const requestHistoryEvent = isComplete && !wasAlreadyComplete ? 'completed' : (trackedChangeFlags.photo ? 'photo-updated' : 'updated');
                         deferNonCriticalWork('request-history', () => upsertRequestHistoryRows([itemToSave], requestHistoryEvent).catch(() => {}), 34);
+                    }
+
+                    if (linkedRequestCompletionResult && Array.isArray(linkedRequestCompletionResult.completedRows) && linkedRequestCompletionResult.completedRows.length && !saveOptions.suppressRequestHistory) {
+                        const linkedCompletedRows = linkedRequestCompletionResult.completedRows.slice();
+                        deferNonCriticalWork('linked-request-history', () => upsertRequestHistoryRows(linkedCompletedRows, 'completed').catch(() => {}), 38);
                     }
 
                     if (prefix === 'flyer-' && !saveOptions.suppressFlyerHistory) {
@@ -54057,6 +54294,17 @@ ${folderNote ? `Folder Note: ${folderNote}
                             });
                         }, 72);
                     }
+                    if (linkedRequestCompletionResult && Array.isArray(linkedRequestCompletionResult.folderNames) && linkedRequestCompletionResult.folderNames.length && !saveOptions.suppressRequestCompletionEmail) {
+                        const linkedCompletedRows = Array.isArray(linkedRequestCompletionResult.completedRows) ? linkedRequestCompletionResult.completedRows : [];
+                        linkedRequestCompletionResult.folderNames.forEach((folderName, folderIndex) => {
+                            const contextRow = linkedCompletedRows.find((row) => String(getRequestFolderName(row) || '').trim() === String(folderName || '').trim()) || linkedCompletedRows[0] || itemToSave;
+                            deferNonCriticalWork(`linked-request-complete-email-${folderIndex}`, () => {
+                                maybeSendRequestCompletionEmailForFolder(folderName, contextRow).catch((error) => {
+                                    console.warn('Linked request completion email check failed', error);
+                                });
+                            }, 82 + (folderIndex * 36));
+                        });
+                    }
                     if (isComplete && !wasAlreadyComplete && !saveOptions.suppressNcrReleaseEmail && shouldOfferNcrReleaseEmailForSave(itemToSave, prefix, { requestMasterItem, completionArtifacts: artifacts })) {
                         deferNonCriticalWork('ncr-release-email', () => {
                             promptAndSendNcrReleaseEmailFromSave(itemToSave, prefix, { requestMasterItem, completionArtifacts: artifacts }).catch((error) => {
@@ -54101,6 +54349,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                             runDetailWriteWithRetry('v2_active_request', 'PATCH', requestConfirmationPayload, `unique_id=eq.${encodeURIComponent(itemToSave.UNIQUE_ID)}`, saveRequestOptions).catch((error) => {
                                 console.warn('Request completion confirmation write skipped', error);
                             });
+                        }
+                        if (isComplete && REQUEST_LINKED_COMPLETION_PREFIXES.has(String(prefix || '').trim())) {
+                            linkedRequestCompletionResult = await completeLinkedPendingRequestRowsFromSave(itemToSave, payload, prefix, saveRequestOptions);
+                            if (linkedRequestCompletionResult && Array.isArray(linkedRequestCompletionResult.failedRows) && linkedRequestCompletionResult.failedRows.length && !isSilentAutoSave) {
+                                showToast('Request Sync Warning', 'The row saved, but one pending request copy could not be closed. Use Request refresh if it still appears.', true);
+                            }
                         }
                         if (isComplete) flushQueuedAppLiveEvents().catch(() => {});
                         const finalizeSave = () => handleSaveSuccess(completionArtifacts || buildCompletionArtifacts());
