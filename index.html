@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.14.03';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.14.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.03').trim() || 'V2026.05.14.03';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.04').trim() || 'V2026.05.14.04';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2813,7 +2813,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12817,6 +12817,19 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             'dock_photo_link','dock_photo_name','flyer_photo_link','flyer_photo_name','request_folder','req_status','flyer_folder','flyer_completed',
             'flyer_av_note','flyer_match','flyer_loc_match_qty','flyer_spec','flyer_caliper','flyer_pick','flyer_initial_ptr','updated_at'
         ].join(',');
+        const NCR_APPROVAL_REQUESTER_SELECT_FIELDS = [
+            'ncr_approval_type',
+            'ncr_requested_by_username',
+            'ncr_requested_by_display',
+            'ncr_requested_by_email',
+            'ncr_requested_at'
+        ].join(',');
+        function getNcrApprovalTaskSelectFields(includeRequesterFields = true) {
+            if (!includeRequesterFields) return MASTER_INITIAL_SELECT_FIELDS;
+            const fields = new Set(String(MASTER_INITIAL_SELECT_FIELDS || '').split(',').map((field) => String(field || '').trim()).filter(Boolean));
+            String(NCR_APPROVAL_REQUESTER_SELECT_FIELDS || '').split(',').map((field) => String(field || '').trim()).filter(Boolean).forEach((field) => fields.add(field));
+            return Array.from(fields).join(',');
+        }
         function buildMasterInitialDatasetQuery() {
             return `select=${MASTER_INITIAL_SELECT_FIELDS}&order=unique_id.asc`;
         }
@@ -12829,7 +12842,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.03').trim() || 'V2026.05.14.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.04').trim() || 'V2026.05.14.04';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -28179,13 +28192,16 @@ function toggleDriveQuickRequestItem(domId) {
                 ? `JD: open the app and check Tasks > ${taskViewLabel}. Review the photos/data, enter the approved quantity, then approve.`
                 : (safeStage === 'inventory'
                     ? (safeType === 'hold-release'
-                        ? `JD approved this Take Off Hold row. It is now approved to come off hold and is waiting in Inventory Office > ${inventoryOfficeTabLabel}.`
+                        ? `JD approved this Take Off Hold row. The row has been approved to come off hold and is waiting in Inventory Office > ${inventoryOfficeTabLabel}.`
                         : (safeType === 'move-up'
                             ? `JD approved this Move Up row. It has been moved up and is waiting in Inventory Office > ${inventoryOfficeTabLabel}.`
                         : `Inventory Office: open the app and check Inventory Office > ${inventoryOfficeTabLabel}.`)
                         )
                     : `Dylan: open the app and check Tasks > ${taskViewLabel}. Review the photos/data, then approve to send it to JD.`);
-            const subject = `${typeLabel} Approval${rowLabel ? ': ' + rowLabel : ''}`;
+            const subjectPrefix = safeStage === 'inventory' && safeType === 'hold-release'
+                ? 'Take Off Hold Approved'
+                : `${typeLabel} Approval`;
+            const subject = `${subjectPrefix}${rowLabel ? ': ' + rowLabel : ''}`;
             const folderId = `ncr-approval-${getNcrSourceUniqueId(item) || Date.now()}`;
             const payload = {
                 type: 'email',
@@ -28341,7 +28357,7 @@ function toggleDriveQuickRequestItem(domId) {
             const safeOptions = options || {};
             const { payload, photoUrls } = await buildNcrApprovalSubmissionPayload(item, safeType, safeOptions);
             const masterItem = await writeNcrApprovalMasterPayload(item, payload, 'ncr-approval-submit');
-            await notifyNcrApprovalStage(item || masterItem, safeType, 'dylan', {
+            await notifyNcrApprovalStage(masterItem || item, safeType, 'dylan', {
                 ...safeOptions,
                 photoUrls
             });
@@ -48576,7 +48592,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             ncrApprovalTaskRefreshLastAtByKey.set(refreshKey, now);
             const promise = (async () => {
                 try {
-                    const query = `select=${MASTER_INITIAL_SELECT_FIELDS}&app_tab_assignment=eq.${encodeURIComponent(assignment)}&order=unique_id.asc`;
+                    const canReadRequesterFields = await ensureNcrApprovalRequesterColumnsReady().catch(() => false);
+                    const selectFields = getNcrApprovalTaskSelectFields(canReadRequesterFields);
+                    const query = `select=${selectFields}&app_tab_assignment=eq.${encodeURIComponent(assignment)}&order=unique_id.asc`;
                     const rows = await fetchSupabasePage('v2_master_inventory', query, 250, 0);
                     const formattedRows = formatFetchedRows(rows || [], 'v2_master_inventory');
                     let changed = false;
