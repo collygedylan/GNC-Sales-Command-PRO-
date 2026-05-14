@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.14.10';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.14.11';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.10').trim() || 'V2026.05.14.10';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.11').trim() || 'V2026.05.14.11';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2813,7 +2813,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.10';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.11';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12893,7 +12893,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.10').trim() || 'V2026.05.14.10';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.11').trim() || 'V2026.05.14.11';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -28650,7 +28650,7 @@ function toggleDriveQuickRequestItem(domId) {
         function shouldPromptNcrRepOutreachAfterJdApproval(type = '') {
             const normalizedUser = normalizePushUsername(currentUser || currentUserDisplay || '');
             const normalizedType = normalizeNcrApprovalType(type);
-            return normalizedUser === NCR_APPROVAL_JD_USER && (normalizedType === 'new-crop' || normalizedType === 'hold-release');
+            return normalizedUser === NCR_APPROVAL_JD_USER && ['new-crop', 'move-up', 'hold-release'].includes(normalizedType);
         }
 
         function buildNcrRepOutreachSummaryLine(item = null, approvedQty = '') {
@@ -28682,6 +28682,7 @@ function toggleDriveQuickRequestItem(domId) {
         function buildNcrRepOutreachEmailContext(item = null, type = 'new-crop', approvedQty = '') {
             const label = getNcrApprovalTypeLabel(type);
             const shortLabel = getNcrApprovalShortLabel(type);
+            const brandLabel = getNcrApprovalEmailBrandLabel(type);
             const summary = buildNcrRepOutreachSummaryLine(item, approvedQty) || label;
             const defaultMessage = [
                 `${label} approved by JD Jones.`,
@@ -28690,14 +28691,14 @@ function toggleDriveQuickRequestItem(domId) {
             ].filter(Boolean).join('\n');
             return {
                 source: 'ncr_jd_approval_rep_outreach',
-                sourceLabel: `GNC PH ${label}`,
+                sourceLabel: brandLabel,
                 approvalType: normalizeNcrApprovalType(type),
                 approvedQty,
                 eyebrow: 'JD Approval',
                 title: `${label} Rep Send`,
                 rowCountLabel: `${shortLabel} approved | ${summary}`,
-                subject: `GNC PH ${label} - ${summary}`,
-                brandLabel: `GNC PH ${label}`,
+                subject: `${brandLabel} - ${summary}`,
+                brandLabel,
                 defaultMessage,
                 emailIntroText: defaultMessage,
                 sendButtonLabel: 'Send To Selected Reps'
@@ -28741,7 +28742,12 @@ function toggleDriveQuickRequestItem(domId) {
                 showToast('Photo Required', 'A photo is required before sending this row to Inventory Office.', true);
                 return false;
             }
-            if (button) button.innerText = 'SENDING...';
+            const originalText = button ? button.innerText : '';
+            let didSendToInventoryOffice = false;
+            if (button) {
+                button.disabled = true;
+                button.innerText = 'SENDING...';
+            }
             try {
                 const payload = {
                     app_tab_assignment: getNcrApprovalAssignment(type, 'inventory'),
@@ -28751,7 +28757,10 @@ function toggleDriveQuickRequestItem(domId) {
                     date_completed: null
                 };
                 const masterItem = await writeNcrApprovalMasterPayload(item, payload, 'ncr-approval-jd');
+                didSendToInventoryOffice = true;
                 removeNcrApprovalCardFromCurrentTaskView(uid);
+                markViewDirty('moves');
+                if (isViewVisible('moves')) queueInteractiveViewRender('moves', false, true, 0, 120);
                 await notifyNcrApprovalStage(masterItem || item, type, 'inventory', { approvedQty: qtyValue });
                 showToast('Inventory Office', `${getNcrApprovalTypeLabel(type)} row sent to Inventory Office.`);
                 setTimeout(() => {
@@ -28764,7 +28773,10 @@ function toggleDriveQuickRequestItem(domId) {
                 console.error('JD NCR approval failed', error);
                 showToast('Could Not Send', error && error.message ? error.message : 'Could not send this row to Inventory Office.', true);
             } finally {
-                if (button) button.innerText = `Approve Qty To ${qtyTargetLabel}`;
+                if (button && !didSendToInventoryOffice) {
+                    button.disabled = false;
+                    button.innerText = originalText || `Approve Qty To ${qtyTargetLabel}`;
+                }
             }
             return false;
         }
