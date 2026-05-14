@@ -3220,15 +3220,22 @@ function buildRequestEmailItemsFromRows_(rows, payload) {
   });
 }
 
-function hydrateQueuedRequestCompletePayload_(payload) {
+function getRequestEmailPayloadItems_(payload) {
+  if (Array.isArray(payload && payload.requestItems)) return payload.requestItems.filter(Boolean);
+  if (Array.isArray(payload && payload.items)) return payload.items.filter(Boolean);
+  if (Array.isArray(payload && payload.sourceRows)) return payload.sourceRows.filter(Boolean);
+  return [];
+}
+
+function hydrateRequestCompletePayload_(payload) {
   const safePayload = payload && typeof payload === 'object' ? JSON.parse(JSON.stringify(payload)) : {};
+  if (String(safePayload.emailType || '').trim().toLowerCase() !== 'request_complete') return safePayload;
   const folderId = String(firstNonEmptyRequestValue_(safePayload.requestFolder, safePayload.folderId, '')).trim();
   const requestIds = normalizeRequestIdList_(safePayload.requestIds);
-  const requestIdSet = new Set(requestIds);
+  const existingItems = getRequestEmailPayloadItems_(safePayload);
   let rows = fetchRequestRowsForEmailFolder_(folderId).filter(function(row) {
     const rowId = String(firstNonEmptyRequestValue_(row && row.unique_id, row && row.UNIQUE_ID, '')).trim();
     if (!rowId) return false;
-    if (requestIdSet.size && !requestIdSet.has(rowId)) return false;
     return !isArchivedRequestRow_(row);
   });
   if (requestIds.length) {
@@ -3239,11 +3246,31 @@ function hydrateQueuedRequestCompletePayload_(payload) {
       return (orderMap.has(aId) ? orderMap.get(aId) : Number.MAX_SAFE_INTEGER) - (orderMap.has(bId) ? orderMap.get(bId) : Number.MAX_SAFE_INTEGER);
     });
   }
-  delete safePayload.formattedItemsHtml;
-  delete safePayload.formattedItemsText;
-  safePayload.requestItems = buildRequestEmailItemsFromRows_(rows, safePayload);
-  if (safePayload.requestItems.length) safePayload.itemsCount = safePayload.requestItems.length;
+  const hydratedItems = buildRequestEmailItemsFromRows_(rows, safePayload);
+  if (hydratedItems.length) {
+    delete safePayload.formattedItemsHtml;
+    delete safePayload.formattedItemsText;
+    safePayload.requestItems = hydratedItems;
+    safePayload.itemsCount = hydratedItems.length;
+    safePayload.requestIds = hydratedItems.map(function(item) {
+      return String(firstNonEmptyRequestValue_(item && item.unique_id, '')).trim();
+    }).filter(Boolean);
+  }
+  const completedByUsers = collectRequestCompletionUsers_(Object.assign({}, safePayload, {
+    requestItems: hydratedItems.length ? hydratedItems.concat(existingItems) : existingItems
+  }));
+  const completedByEmails = completedByUsers.map(function(user) {
+    return user && user.email;
+  }).filter(Boolean);
+  safePayload.completedByUsers = completedByUsers;
+  safePayload.completed_by_users = completedByUsers;
+  safePayload.completedByEmails = completedByEmails;
+  safePayload.completed_by_emails = completedByEmails;
   return safePayload;
+}
+
+function hydrateQueuedRequestCompletePayload_(payload) {
+  return hydrateRequestCompletePayload_(payload);
 }
 
 function buildRequestItemsHtml_(payload) {
@@ -3794,6 +3821,9 @@ function getApprovalEmailDisplayName_(payload) {
 }
 
 function sendRequestEmailWithFallback_(payload) {
+  if (String(payload && payload.emailType || '').trim().toLowerCase() === 'request_complete') {
+    payload = hydrateRequestCompletePayload_(payload);
+  }
   const recipients = collectRequestRecipients_(payload);
   if (!recipients.toArray.length) {
     return {
