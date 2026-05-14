@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.14.02';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.14.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.02').trim() || 'V2026.05.14.02';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.03').trim() || 'V2026.05.14.03';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2813,7 +2813,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12829,7 +12829,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.02').trim() || 'V2026.05.14.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.03').trim() || 'V2026.05.14.03';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -16790,6 +16790,31 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
         }
 
+        function normalizeRepDisplayOrder(value='') {
+            const rawValue = String(value || '').trim();
+            if (!rawValue || rawValue.includes('@') || !rawValue.includes(',')) return rawValue;
+            const parts = rawValue.split(',').map((part) => part.trim()).filter(Boolean);
+            if (parts.length < 2) return rawValue;
+            const lastName = parts[0];
+            const firstName = parts.slice(1).join(' ');
+            if (!firstName || !lastName) return rawValue;
+            return `${firstName} ${lastName}`.replace(/\s+/g, ' ').trim();
+        }
+
+        function getRepNameLookupTokens(value='') {
+            const tokens = new Set();
+            const addToken = (candidate='') => {
+                const normalized = normalizeRepMatchToken(candidate);
+                if (!normalized) return;
+                tokens.add(normalized);
+                tokens.add(normalized.replace(/\s+/g, ''));
+            };
+            const rawValue = String(value || '').trim();
+            addToken(rawValue);
+            addToken(normalizeRepDisplayOrder(rawValue));
+            return tokens;
+        }
+
         function setRepPermutations(user) {
             const rawUser = String(user || '').toLowerCase().trim();
             const parts = rawUser.split(/[^a-z0-9]+/).filter(Boolean);
@@ -18522,10 +18547,9 @@ function toggleDriveQuickRequestItem(domId) {
         function resolveCanonicalRequestRepName(repName = '') {
             const rawValue = String(repName || '').trim();
             if (!rawValue) return '';
-            const token = normalizeRepMatchToken(rawValue);
-            const collapsedToken = token.replace(/\s+/g, '');
-            const matchedOption = REQUEST_MODAL_REP_OPTIONS.find((option) => option.token === token || option.collapsedToken === collapsedToken);
-            return matchedOption ? matchedOption.label : rawValue;
+            const lookupTokens = getRepNameLookupTokens(rawValue);
+            const matchedOption = REQUEST_MODAL_REP_OPTIONS.find((option) => lookupTokens.has(option.token) || lookupTokens.has(option.collapsedToken));
+            return matchedOption ? matchedOption.label : normalizeRepDisplayOrder(rawValue);
         }
 
         function isKnownSalesRepRequestName(repName = '') {
@@ -29856,7 +29880,10 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function resolveRequestRecipientEmail(repName = '') {
-            const normalized = String(repName || '').trim().toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+            const rawValue = String(repName || '').trim();
+            if (rawValue.includes('@')) return rawValue.toLowerCase();
+            const normalizedName = normalizeRepDisplayOrder(rawValue);
+            const normalized = String(normalizedName || rawValue || '').trim().toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
             const compact = normalized.replace(/\s+/g, '');
             const underscored = normalized.replace(/\s+/g, '_');
             const aliasMap = {
