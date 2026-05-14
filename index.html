@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.14.12';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.14.13';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.12').trim() || 'V2026.05.14.12';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.13').trim() || 'V2026.05.14.13';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2813,7 +2813,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.12';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.13';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12936,7 +12936,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.12').trim() || 'V2026.05.14.12';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.13').trim() || 'V2026.05.14.13';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -38197,11 +38197,34 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getDriveCustomerOutreachPhotoCsv(row = null) {
-            return String(getSharedAppPhotoLinkCsv(row, { includePending: false }) || '').trim();
+            if (!row) return '';
+            return String(mergePhotoCsvList([
+                getSharedAppPhotoLinkCsv(row, { includePending: false }),
+                row && row.ROW_PHOTO_LINK,
+                row && row.SAVED_PHOTO_LINK,
+                row && row.PHOTO_LINK,
+                row && row.PHOTOLINK,
+                row && row['PHOTO LINK'],
+                row && row.REQ_PHOTO_LINK,
+                row && row.REQUEST_PHOTO_LINK,
+                row && row.DOCK_PHOTO_LINK,
+                row && row.FLYER_PHOTO_LINK,
+                row && row.NA_PHOTO_LINK
+            ]) || '').trim();
         }
 
         function getDriveCustomerOutreachSpec(row = null) {
-            return String(getItemDisplayValue(row, 'SPEC', 'drive') || '').trim();
+            if (!row) return '';
+            return String(firstNonEmptyValue(
+                getItemDisplayValue(row, 'SPEC', 'drive'),
+                row && row.REQ_SPEC,
+                row && row.REQUEST_SPEC,
+                row && row.FLYER_SPEC,
+                row && row.ITEMSPEC,
+                row && row.ITEM_SPEC,
+                row && row.itemspec,
+                ''
+            ) || '').trim();
         }
 
         function hasDriveCustomerOutreachPhotoSpec(row = null) {
@@ -38244,8 +38267,30 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getDriveCustomerOutreachSourceRows(item = activeItem) {
-            if (!item || !Array.isArray(fullInventory)) return [];
-            return fullInventory.filter((row) => hasDriveCustomerOutreachPhotoSpec(row) && isDriveCustomerOutreachSameItemSeason(row, item))
+            if (!item) return [];
+            const candidates = [];
+            if (hasDriveCustomerOutreachPhotoSpec(item) && isDriveCustomerOutreachSameItemCode(item, item)) candidates.push(item);
+            if (Array.isArray(fullInventory)) {
+                fullInventory.forEach((row) => {
+                    if (!hasDriveCustomerOutreachPhotoSpec(row) || !isDriveCustomerOutreachSameItemCode(row, item)) return;
+                    candidates.push(row);
+                });
+            }
+            const rows = preferDriveCustomerOutreachSeasonRows(candidates, item);
+            const seen = new Set();
+            return rows
+                .filter((row) => {
+                    const rowId = getDriveCustomerOutreachRowId(row) || [
+                        getDriveCustomerOutreachItemCode(row),
+                        getDriveCustomerOutreachSeason(row),
+                        firstNonEmptyValue(row && row.LOCATIONCODE, row && row.LOCATION, ''),
+                        firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, ''),
+                        getDriveCustomerOutreachPhotoCsv(row)
+                    ].join('|');
+                    if (!rowId || seen.has(rowId)) return false;
+                    seen.add(rowId);
+                    return true;
+                })
                 .sort((a, b) => String(firstNonEmptyValue(a && a.LOCATIONCODE, '') || '').localeCompare(String(firstNonEmptyValue(b && b.LOCATIONCODE, '') || ''), undefined, { numeric: true }));
         }
 
