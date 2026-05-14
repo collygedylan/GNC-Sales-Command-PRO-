@@ -2625,6 +2625,45 @@ function buildCaliperMeasurementNoteHtml_(value) {
   return '<div style="margin:2px 0 6px 0;color:#dc2626;font-weight:700;">' + escapeEmailHtml_(CALIPER_MEASUREMENT_NOTE_) + '</div>';
 }
 
+function constrainEmailImagesForPhoneLayout_(html) {
+  const sourceHtml = String(html || '');
+  if (!sourceHtml) return '';
+  return sourceHtml.replace(/<img\b([^>]*)>/gi, function(match, attrs) {
+    let safeAttrs = String(attrs || '');
+    const imageStyle = 'display:block;width:100%;max-width:320px;height:auto;max-height:380px;object-fit:contain;border-radius:8px;border:1px solid #d7ded8;';
+    if (/style\s*=/i.test(safeAttrs)) {
+      safeAttrs = safeAttrs.replace(/style=(["'])(.*?)\1/i, function(styleMatch, quote, styleValue) {
+        return 'style=' + quote + String(styleValue || '') + ';' + imageStyle + quote;
+      });
+    } else {
+      safeAttrs += ' style="' + imageStyle + '"';
+    }
+    safeAttrs = safeAttrs.replace(/\sheight=(["'])[^"']*\1/ig, '');
+    if (/\bwidth\s*=/i.test(safeAttrs)) safeAttrs = safeAttrs.replace(/\swidth=(["'])[^"']*\1/i, ' width="320"');
+    else safeAttrs += ' width="320"';
+    return '<img' + safeAttrs + '>';
+  });
+}
+
+function buildPhoneSizedEmailHtml_(contentHtml) {
+  const bodyHtml = constrainEmailImagesForPhoneLayout_(contentHtml);
+  return [
+    '<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="width:100%;border-collapse:collapse;background:#ffffff;margin:0;padding:0;">',
+    '<tr>',
+    '<td align="center" style="padding:0;margin:0;">',
+    '<table role="presentation" cellpadding="0" cellspacing="0" width="430" style="width:100%;max-width:430px;border-collapse:collapse;margin:0 auto;">',
+    '<tr>',
+    '<td style="font-family:Arial,sans-serif;padding:0;color:#333333;font-size:14px;line-height:1.45;">',
+    bodyHtml,
+    '</td>',
+    '</tr>',
+    '</table>',
+    '</td>',
+    '</tr>',
+    '</table>'
+  ].join('');
+}
+
 function extractRequestPhotoUrls_(value) {
   const seen = {};
   return String(value || '')
@@ -3293,7 +3332,7 @@ function buildRequestItemsHtml_(payload) {
       return [
         '<div style="margin-top:10px;">',
         '<div><strong>' + linkLabel + ':</strong> <a href="' + safeUrl + '">' + escapeEmailHtml_(url) + '</a></div>',
-        '<div style="margin-top:6px;"><img src="' + safeUrl + '" alt="' + linkLabel + '" style="max-width:220px; max-height:220px; border-radius:8px; border:1px solid #ddd;"></div>',
+        '<div style="margin-top:6px;"><img src="' + safeUrl + '" alt="' + linkLabel + '" width="320" style="display:block;width:100%;max-width:320px;height:auto;max-height:380px;object-fit:contain;border-radius:8px;border:1px solid #ddd;"></div>',
         '</div>'
       ].join('');
     }).join('');
@@ -3463,7 +3502,7 @@ function buildRequestEmailMessage_(payload) {
         selectionSummaryText,
         'Please check the app under Requests > Pending to fulfill this request.'
       ].filter(Boolean).join('\n\n'),
-      htmlBody: [
+      htmlBody: buildPhoneSizedEmailHtml_([
         '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
         '<h2 style="color: #007a4d;">New Plant Request Submitted</h2>',
         '<p><strong>Rep:</strong> ' + repName + '</p>',
@@ -3474,7 +3513,7 @@ function buildRequestEmailMessage_(payload) {
         '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
         '<p style="font-size: 12px; color: #777;">Please check the app under <strong>Requests &gt; Pending</strong> to fulfill this request.</p>',
         '</div>'
-      ].join('')
+      ].join(''))
     };
   }
 
@@ -3511,7 +3550,7 @@ function buildRequestEmailMessage_(payload) {
         completedBySummary ? 'Completed By: ' + completedBySummary : '',
         itemsText
       ].filter(Boolean).join('\n\n'),
-      htmlBody: [
+      htmlBody: buildPhoneSizedEmailHtml_([
         '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
         '<h2 style="color: #007a4d;">Plant Request Completed!</h2>',
         '<p>Hello ' + repName + ',</p>',
@@ -3521,7 +3560,7 @@ function buildRequestEmailMessage_(payload) {
         '<p><strong>Total Items Fulfilled:</strong> ' + itemsCount + '</p>',
         detailSection,
         '</div>'
-      ].join('')
+      ].join(''))
     };
   }
 
@@ -3555,14 +3594,14 @@ function buildRequestEmailMessage_(payload) {
         hideItemHeader ? '' : 'Item: ' + plainItem,
         itemsText
       ].filter(Boolean).join('\n\n'),
-      htmlBody: [
+      htmlBody: buildPhoneSizedEmailHtml_([
         '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
         '<h2 style="color: #007a4d;">' + brandLabel + '</h2>',
         audienceLabel ? '<p>Hello ' + audienceLabel + ',</p>' : '',
         hideItemHeader ? '' : '<p><strong>Item:</strong> ' + htmlItem + '</p>',
         detailSection,
         '</div>'
-      ].join('')
+      ].join(''))
     };
   }
 
@@ -3601,14 +3640,14 @@ function buildRequestEmailMessage_(payload) {
         userMessage,
         cropItemsText
       ].filter(Boolean).join('\n\n'),
-      htmlBody: [
+      htmlBody: buildPhoneSizedEmailHtml_([
         '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
         '<h2 style="color: #007a4d;">' + brandLabel + '</h2>',
         requestedByHtml,
         messageHtml,
         detailSection,
         '</div>'
-      ].join('')
+      ].join(''))
     };
   }
 
@@ -3630,14 +3669,14 @@ function buildRequestEmailMessage_(payload) {
         'Source Row: ' + String(payload.folderId || payload.requestFolder || ''),
         itemsText
       ].filter(Boolean).join('\n\n'),
-      htmlBody: [
+      htmlBody: buildPhoneSizedEmailHtml_([
         '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
         '<h2 style="color: #007a4d;">PH NCR Review Completed</h2>',
         '<p><strong>Completed By:</strong> ' + completedBy + '</p>',
         '<p><strong>Source Row:</strong> ' + folderId + '</p>',
         detailSection,
         '</div>'
-      ].join('')
+      ].join(''))
     };
   }
 
@@ -3676,7 +3715,7 @@ function buildRequestEmailMessage_(payload) {
         'Source Row: ' + String(payload.folderId || payload.requestFolder || ''),
         itemsText
       ].filter(Boolean).join('\n\n'),
-      htmlBody: [
+      htmlBody: buildPhoneSizedEmailHtml_([
         '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
         '<h2 style="color: #007a4d;">' + approvalTitle + ' Approval</h2>',
         '<p><strong>Stage:</strong> ' + approvalStage + '</p>',
@@ -3685,7 +3724,7 @@ function buildRequestEmailMessage_(payload) {
         '<p><strong>Source Row:</strong> ' + folderId + '</p>',
         detailSection,
         '</div>'
-      ].join('')
+      ].join(''))
     };
   }
 
@@ -4039,7 +4078,7 @@ function doPost(e) {
         subject = `GNC PARK HILL: Request Fully Reviewed & Approved (${payload.folderId})`;
         
         let rowsHtml = payload.approvedItems.map(item => {
-            let imgHtml = item.photo ? `<br><img src="${item.photo.split(',')[0].trim()}" style="max-height:100px; border-radius:8px; margin-top:5px;">` : '';
+            let imgHtml = item.photo ? `<br><img src="${item.photo.split(',')[0].trim()}" width="320" style="display:block;width:100%;max-width:320px;height:auto;max-height:380px;object-fit:contain;border-radius:8px;border:1px solid #d7ded8;margin-top:5px;">` : '';
             return `<li style="margin-bottom:15px; background:#f9f9f9; padding:10px; border-left:4px solid #007a4d;">
                       <strong>${item.commonname} (${item.contsize})</strong><br>
                       Item Code: ${item.itemcode} | Loc: ${item.loc}<br>
@@ -4050,7 +4089,7 @@ function doPost(e) {
         
         if(payload.approvedItems.length === 0) { rowsHtml = "<p><em>No items were approved. All were rejected.</em></p>"; }
         
-        htmlBody = `
+        htmlBody = buildPhoneSizedEmailHtml_(`
           <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
             <h2 style="color: #007a4d;">Request Reviewed by Sales Rep</h2>
             <p><strong>Rep:</strong> ${payload.repName}</p>
@@ -4059,7 +4098,7 @@ function doPost(e) {
             <p>The rep has finished reviewing the completed request. Here are the items they <strong>Approved</strong>:</p>
             <ul style="list-style:none; padding:0;">${rowsHtml}</ul>
           </div>
-        `;
+        `);
         textBody = subject;
       }
 
