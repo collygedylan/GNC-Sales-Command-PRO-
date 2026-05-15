@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.14.15';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.14.16';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1936,7 +1936,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.15').trim() || 'V2026.05.14.15';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.16').trim() || 'V2026.05.14.16';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2816,7 +2816,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.15';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.16';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6050,6 +6050,18 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         }
 
         const INVALID_SHARED_AV_DISPLAY_KEYS = new Set(['AV_NOTE', 'SALES_NOTE', 'SALESNOTE', 'MATCH', 'SPEC', 'CALIPER', 'PICK', 'LOC_MATCH_QTY', 'INITIAL_PTR']);
+        const WORKFLOW_APPROVAL_SALES_NOTE_LINE_RE = /^(?:take\s+off\s+hold|off\s+hold|move\s+up|new\s+crop(?:\s+release)?|ncr)\s+(?:approval\s+)?(?:approved|denied|submitted|sent|updated|moved|completed)\b/i;
+
+        function stripWorkflowApprovalLinesFromSalesNote(value = '') {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+            return raw
+                .split(/\r?\n/)
+                .map((line) => String(line || '').trim())
+                .filter((line) => line && !WORKFLOW_APPROVAL_SALES_NOTE_LINE_RE.test(line))
+                .join('\n')
+                .trim();
+        }
 
         function shouldHideSharedAppPayloadForInvalidAvRules(item) {
             if (!item) return false;
@@ -6077,7 +6089,11 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             if (INVALID_SHARED_AV_DISPLAY_KEYS.has(normalizedKey) && shouldHideSharedAppPayloadForInvalidAvRules(item)) {
                 return '';
             }
-            return firstNonEmptyValue(item[normalizedKey], item[key], '');
+            const value = firstNonEmptyValue(item[normalizedKey], item[key], '');
+            if (normalizedKey === 'SALES_NOTE' || normalizedKey === 'SALESNOTE') {
+                return stripWorkflowApprovalLinesFromSalesNote(value);
+            }
+            return value;
         }
 
         function getDisplayLocMatchQtyValue(item, sourceView = '') {
@@ -13031,7 +13047,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.15').trim() || 'V2026.05.14.15';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.16').trim() || 'V2026.05.14.16';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -28702,14 +28718,6 @@ function toggleDriveQuickRequestItem(domId) {
             return !!card;
         }
 
-        function buildNcrApprovalDecisionNote(item = null, decision = 'Approval updated') {
-            const existing = String(firstNonEmptyValue(item && item.SALES_NOTE, item && item.sales_note, '') || '').trim();
-            const stamp = new Date().toISOString();
-            const userLabel = String(firstNonEmptyValue(currentUserDisplay, currentUser, 'Unknown') || 'Unknown').trim();
-            const note = `${decision} by ${userLabel} at ${stamp}`;
-            return [existing, note].filter(Boolean).join('\n');
-        }
-
         async function resendNcrApprovalStageEmail(uniqueId = '', button = null) {
             const uid = String(uniqueId || '').trim();
             const item = uid ? findItemByUniqueId(uid) : null;
@@ -28939,8 +28947,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const payload = {
                     app_tab_assignment: getNcrApprovalAssignment(type, 'complete'),
                     assignedto: '',
-                    date_completed: new Date().toISOString(),
-                    sales_note: buildNcrApprovalDecisionNote(item, `${typeLabel} approval denied`)
+                    date_completed: new Date().toISOString()
                 };
                 await writeNcrApprovalMasterPayload(item, payload, 'ncr-approval-denied');
                 removeNcrApprovalCardFromCurrentTaskView(uid);
@@ -44732,7 +44739,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const holdCode = String(rawHoldCode || '').trim().toUpperCase();
             const cleanHoldCode = holdCode && holdCode !== 'NULL' && holdCode !== '-' ? holdCode : '';
             const holdReasonText = firstNonEmptyValue(item.HOLDSTOPREASON, item.HOLD_STOP_REASON, item.HOLDREASON);
-            const salesNoteText = firstNonEmptyValue(item.SALESNOTE, item.SALES_NOTE, item.SALES_DESC, item.SALESDESC);
+            const salesNoteText = firstNonEmptyValue(getItemDisplayValue(item, 'SALES_NOTE', sourceView), item.SALES_DESC, item.SALESDESC);
             const hasStopHold = cleanHoldCode.includes('S');
             const hasHold = !hasStopHold && cleanHoldCode.includes('H');
             const holdBorderClass = hasStopHold ? 'app-card-stop' : (hasHold ? 'app-card-hold' : 'app-card-ready');
@@ -44928,7 +44935,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             }
             if(sourceView==='sales-office'){
                 let avNoteText = getSalesOfficeDisplayAvNote(item, 'No AV Note Provided');
-                let displaySalesNote = String(item.SALES_NOTE || salesNoteText || 'No Sales Note');
+                let displaySalesNote = String(stripWorkflowApprovalLinesFromSalesNote(firstNonEmptyValue(item.SALES_NOTE, salesNoteText, '')) || 'No Sales Note');
                 let itemCode = item.ITEMCODE || '-';
                 let locCode = item.LOCATIONCODE || '-';
                 let lotCode = item.LOTCODE || '-';
