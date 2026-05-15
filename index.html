@@ -42043,6 +42043,8 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
         let requestViewForceRefreshInFlight = false;
         let lastRequestViewForceRefreshAt = 0;
         let lastRequestViewSignatureSyncAt = 0;
+        let pendingRequestSourceCompletionReconcileTimer = null;
+        let pendingRequestSourceCompletionReconcileInFlight = false;
 
         function pauseRequestViewLiveSync(delayMs = 4500) {
             requestViewLiveSyncPausedUntil = Math.max(requestViewLiveSyncPausedUntil, Date.now() + Math.max(0, Number(delayMs) || 0));
@@ -42133,6 +42135,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 state.fullLoaded = true;
                 state.lastLoadedAt = new Date().toISOString();
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(formattedRows);
+                schedulePendingRequestSourceCompletionReconcile(36, 'request-live-sync');
                 refreshLocalRequestViewState('request-live-sync', {
                     renderVisible: true,
                     forceRender: true,
@@ -42176,6 +42179,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 state.fullLoaded = true;
                 state.lastLoadedAt = new Date().toISOString();
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+                schedulePendingRequestSourceCompletionReconcile(24, reason || 'request-force-refresh');
                 markViewDirty('request');
                 markViewDirty('reports');
                 if (isViewVisible('request')) queueInteractiveViewRender('request', false, true, 0, 160);
@@ -54340,6 +54344,64 @@ ${folderNote ? `Folder Note: ${folderNote}
             return payload;
         }
 
+        function findCompletedSourceForPendingRequestRow(requestRow = null) {
+            if (!requestRow || !isRequestPendingVisible(requestRow)) return null;
+            const linkedMaster = findLinkedMasterRow(requestRow);
+            if (linkedMaster && hasCompletionDateValue(linkedMaster)) return linkedMaster;
+            if (!Array.isArray(fullInventory) || !fullInventory.length) return null;
+            return fullInventory.find((item) => item && hasCompletionDateValue(item) && isLinkedRequestCompletionFieldMatch(item, requestRow)) || null;
+        }
+
+        function schedulePendingRequestSourceCompletionReconcile(delay = 80, reason = 'request-source-completion') {
+            if (!currentUser || !canAccessView('request') || navigator.onLine === false) return false;
+            if (pendingRequestSourceCompletionReconcileTimer) clearTimeout(pendingRequestSourceCompletionReconcileTimer);
+            pendingRequestSourceCompletionReconcileTimer = setTimeout(() => {
+                pendingRequestSourceCompletionReconcileTimer = null;
+                reconcilePendingRequestsFromCompletedSources(reason).catch((error) => {
+                    console.warn('Pending request source completion reconcile failed', error);
+                });
+            }, Math.max(0, Number(delay) || 0));
+            return true;
+        }
+
+        async function reconcilePendingRequestsFromCompletedSources(reason = 'request-source-completion') {
+            if (pendingRequestSourceCompletionReconcileInFlight || navigator.onLine === false || !Array.isArray(requestsInventory) || !requestsInventory.length) return false;
+            const pendingRows = requestsInventory
+                .filter(isRequestPendingVisible)
+                .map((row) => ({ row, source: findCompletedSourceForPendingRequestRow(row) }))
+                .filter((entry) => entry.source);
+            if (!pendingRows.length) return false;
+            pendingRequestSourceCompletionReconcileInFlight = true;
+            const canPersistCompletionUser = await ensureRequestCompletionUserColumnsReady().catch(() => false);
+            const completedRows = [];
+            try {
+                for (const entry of pendingRows.slice(0, 80)) {
+                    const rowId = String(firstNonEmptyValue(entry.row && entry.row.UNIQUE_ID, entry.row && entry.row.unique_id, '') || '').trim();
+                    if (!rowId || !isRequestPendingVisible(entry.row)) continue;
+                    const payload = buildLinkedRequestCompletionPayload(entry.source, {
+                        date_completed: firstNonEmptyValue(entry.source && entry.source.DATE_COMPLETED, entry.source && entry.source.date_completed, new Date().toISOString())
+                    }, entry.row, false);
+                    if (canPersistCompletionUser) {
+                        const sourceCompletionUser = getRequestCompletionUserEntryFromItem(entry.source);
+                        if (sourceCompletionUser) {
+                            payload.completed_by_username = sourceCompletionUser.username || null;
+                            payload.completed_by_display = sourceCompletionUser.display || sourceCompletionUser.username || null;
+                            payload.completed_by_email = sourceCompletionUser.email || null;
+                        }
+                    }
+                    await runDetailWriteWithRetry('v2_active_request', 'PATCH', payload, `unique_id=eq.${encodeURIComponent(rowId)}`, {});
+                    completedRows.push(applyLinkedRequestCompletionToLocalRow(entry.row, entry.source, { ...payload, _preserveCompletionUser: true }));
+                    await yieldToUiFrame();
+                }
+            } finally {
+                pendingRequestSourceCompletionReconcileInFlight = false;
+            }
+            if (!completedRows.length) return false;
+            refreshLinkedRequestCompletionState(completedRows);
+            persistCurrentCache(false, String(reason || 'request-source-completion'));
+            return true;
+        }
+
         function applyLinkedRequestCompletionToLocalRow(requestRow = null, sourceItem = null, payload = {}) {
             if (!requestRow || !payload) return null;
             const sourceTable = String(firstNonEmptyValue(sourceItem && sourceItem.SOURCE_TABLE, sourceItem && sourceItem.source_table, 'v2_master_inventory') || '').trim().toLowerCase();
@@ -54371,7 +54433,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     display: payload.completed_by_display,
                     email: payload.completed_by_email
                 });
-            } else {
+            } else if (!payload._preserveCompletionUser) {
                 applyRequestCompletionUserFields(requestRow);
             }
             normalizeRowPhotoFields(requestRow);
