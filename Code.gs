@@ -117,6 +117,42 @@ const DELAYED_REQUEST_EMAIL_QUEUE_KEY = 'DELAYED_REQUEST_EMAIL_QUEUE';
 const DELAYED_REQUEST_EMAIL_TRIGGER_HANDLER = 'processDelayedRequestEmailQueue_';
 const DELAYED_REQUEST_EMAIL_MIN_DELAY_MS = 30000;
 
+const MASTER_IMPORT_BASE_COMPARE_COLUMNS = Object.freeze([
+  'unique_id',
+  'assignedto',
+  'concat',
+  'holdstopcode'
+]);
+
+const MASTER_IMPORT_APP_OWNED_COLUMNS = Object.freeze([
+  'date_completed',
+  'app_tab_assignment',
+  'av_note',
+  'sales_note',
+  'match',
+  'spec',
+  'caliper',
+  'pic_note',
+  'loc_match_qty',
+  'initial_ptr',
+  'photo_link',
+  'photo_name'
+]);
+
+const MASTER_IMPORT_CLEAR_ON_NEW_HOLD_COLUMNS = Object.freeze([
+  'date_completed',
+  'av_note',
+  'sales_note',
+  'match',
+  'spec',
+  'caliper',
+  'pic_note',
+  'loc_match_qty',
+  'initial_ptr',
+  'photo_link',
+  'photo_name'
+]);
+
 function getAppLiveEventAreaForTable_(tableName) {
   const safeTable = String(tableName || '').trim();
   if (safeTable === 'v2_master_inventory') return 'inventory';
@@ -742,6 +778,72 @@ function buildExistingRowMap_(existingRows) {
   return map;
 }
 
+function normalizeMasterImportValue_(value) {
+  if (value === undefined || value === null) return '';
+  const text = String(value).trim();
+  if (!text || text.toUpperCase() === 'NULL') return '';
+  return text;
+}
+
+function getMasterImportHoldStopTokens_(value) {
+  const normalized = normalizeMasterImportValue_(value).toUpperCase();
+  const tokens = {};
+  if (normalized.indexOf('H') !== -1) tokens.H = true;
+  if (normalized.indexOf('S') !== -1) tokens.S = true;
+  return tokens;
+}
+
+function hasMasterImportBlockingHold_(value) {
+  const tokens = getMasterImportHoldStopTokens_(value);
+  return !!(tokens.H || tokens.S);
+}
+
+function shouldPreserveMasterImportAppOwnedFields_(existingRow, nextRow) {
+  if (!existingRow || !nextRow) return false;
+  const existingHadBlockingHold = hasMasterImportBlockingHold_(existingRow.holdstopcode);
+  const nextHasBlockingHold = hasMasterImportBlockingHold_(nextRow.holdstopcode);
+  if (!existingHadBlockingHold && nextHasBlockingHold) return false;
+  return true;
+}
+
+function hasExistingMasterImportAppOwnedValue_(existingRow) {
+  if (!existingRow) return false;
+  return MASTER_IMPORT_APP_OWNED_COLUMNS.some(function(column) {
+    return normalizeMasterImportValue_(existingRow[column]) !== '';
+  });
+}
+
+function preserveMasterImportAppOwnedFields_(nextRow, existingRow) {
+  if (!nextRow || !existingRow) return nextRow;
+  if (!shouldPreserveMasterImportAppOwnedFields_(existingRow, nextRow)) return nextRow;
+  MASTER_IMPORT_APP_OWNED_COLUMNS.forEach(function(column) {
+    const existingValue = existingRow[column];
+    if (normalizeMasterImportValue_(existingValue) !== '') {
+      nextRow[column] = existingValue;
+    }
+  });
+  return nextRow;
+}
+
+function clearMasterImportAppOwnedFieldsForNewHold_(nextRow, existingRow) {
+  if (!nextRow || !existingRow) return nextRow;
+  if (!hasExistingMasterImportAppOwnedValue_(existingRow)) return nextRow;
+  const existingHadBlockingHold = hasMasterImportBlockingHold_(existingRow.holdstopcode);
+  const nextHasBlockingHold = hasMasterImportBlockingHold_(nextRow.holdstopcode);
+  if (existingHadBlockingHold || !nextHasBlockingHold) return nextRow;
+  MASTER_IMPORT_CLEAR_ON_NEW_HOLD_COLUMNS.forEach(function(column) {
+    nextRow[column] = null;
+  });
+  return nextRow;
+}
+
+function applyMasterImportAppFieldRules_(nextRow, existingRow) {
+  if (!nextRow || !existingRow) return nextRow;
+  clearMasterImportAppOwnedFieldsForNewHold_(nextRow, existingRow);
+  preserveMasterImportAppOwnedFields_(nextRow, existingRow);
+  return nextRow;
+}
+
 function createDeltaSyncStats_() {
   return {
     sourceRows: 0,
@@ -824,8 +926,20 @@ function getStandardPayloadSelectColumns_(rawData) {
   return collectAllowedPayloadColumnsFromHeaders_(rawHeaders, ['unique_id', 'contsize']);
 }
 
+function getMasterImportCompareColumns_() {
+  const seen = {};
+  const columns = [];
+  MASTER_IMPORT_BASE_COMPARE_COLUMNS.concat(MASTER_IMPORT_APP_OWNED_COLUMNS).forEach(function(column) {
+    const safeColumn = String(column || '').trim().toLowerCase();
+    if (!safeColumn || seen[safeColumn]) return;
+    seen[safeColumn] = true;
+    columns.push(safeColumn);
+  });
+  return columns;
+}
+
 function getMasterPayloadSelectColumns_(rawData) {
-  return ['unique_id', 'assignedto', 'concat'];
+  return getMasterImportCompareColumns_();
 }
 
 function getCavPayloadSelectColumns_() {
@@ -1486,7 +1600,7 @@ function processFolder(dropFolderId, processedFolderId, tableName, payloadBuilde
         const existingRows = fetchSupabaseRowsForFile(
           tableName,
           fileName,
-          tableName === 'v2_master_inventory' ? 'unique_id,assignedto' : 'unique_id'
+          tableName === 'v2_master_inventory' ? getMasterImportCompareColumns_().join(',') : 'unique_id'
         );
 
         let results = payloadBuilderFunc(rawData, tableName, existingRows, syncStartTime, fileName);
@@ -1723,7 +1837,7 @@ function executeMasterSnapshotBatch_(tableName, parsedFiles, payloadBuilderFunc,
   const existingCompareRows = fetchSupabaseRowsByIds_(
     tableName,
     Array.from(requestedCompareIds),
-    ['unique_id', 'assignedto', 'concat'],
+    getMasterImportCompareColumns_(),
     { interChunkDelayMs: SUPABASE_MASTER_COMPARE_FETCH_DELAY_MS }
   );
   console.log(`[MASTER SNAPSHOT][${tableName}] stage=compare_rows_ready | existingCompareRows=${existingCompareRows.length}`);
@@ -2136,8 +2250,11 @@ function buildMasterPayload(rawData, tableName, existingRows, syncStartTime, fil
       }
     }
 
-    const existingAssignedTo = existingMap[uniqueId] && existingMap[uniqueId].assignedto
-      ? String(existingMap[uniqueId].assignedto).trim()
+    const existingRow = existingMap[uniqueId];
+    applyMasterImportAppFieldRules_(obj, existingRow);
+
+    const existingAssignedTo = existingRow && existingRow.assignedto
+      ? String(existingRow.assignedto).trim()
       : '';
 
     if (existingAssignedTo) obj.assignedto = existingAssignedTo;
@@ -2149,7 +2266,6 @@ function buildMasterPayload(rawData, tableName, existingRows, syncStartTime, fil
     obj.concat = buildRowSyncHash_(obj, ['assignedto']);
 
     seenIds.add(uniqueId);
-    const existingRow = existingMap[uniqueId];
     if (!existingRow) {
       stats.insertedRows++;
       upserts.push(obj);
