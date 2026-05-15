@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.14.13';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.14.14';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1933,7 +1933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.13').trim() || 'V2026.05.14.13';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.14.14').trim() || 'V2026.05.14.14';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2813,7 +2813,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.13';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.14.14';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -5121,12 +5121,13 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             saveData(false, normalizedPrefix, true);
         }
 
-        const DETAIL_MEASUREMENT_KEYBOARD_SELECTOR = '#view-detail input[id$="-spec"], #view-detail input[id$="-caliper"]';
+        const DETAIL_MEASUREMENT_KEYBOARD_SELECTOR = '#view-detail input[id$="-spec"], #view-detail input[id$="-caliper"], #view-detail input[id$="-av-note"], #view-detail input#global-av-note';
         let detailMeasurementKeyboardTarget = null;
         let detailMeasurementKeyboardType = '';
         let detailMeasurementKeyboardResumeId = '';
         let detailMeasurementKeyboardLifecycleTimer = null;
         let detailMeasurementKeyboardLastTouchStartAt = 0;
+        let detailMeasurementKeyboardLastHapticAt = 0;
 
         function isDetailMeasurementKeyboardInput(element = null) {
             return !!(element && element.matches && element.matches(DETAIL_MEASUREMENT_KEYBOARD_SELECTOR));
@@ -5134,7 +5135,16 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
 
         function getDetailMeasurementKeyboardTypeForInput(input = null) {
             const id = String(input && input.id || '').trim().toLowerCase();
+            if (id === 'global-av-note' || id.endsWith('-av-note')) return 'av-note';
             return id.endsWith('-caliper') ? 'caliper' : 'spec';
+        }
+
+        function triggerDetailKeyboardHaptic(duration = 8) {
+            const now = Date.now();
+            if (now - detailMeasurementKeyboardLastHapticAt < 24) return;
+            detailMeasurementKeyboardLastHapticAt = now;
+            if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
+            try { navigator.vibrate(Math.max(1, Math.min(20, Number(duration) || 8))); } catch (error) {}
         }
 
         function shouldPreferDetailMeasurementKeyboard() {
@@ -5155,6 +5165,65 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         }
 
         function getDetailMeasurementKeyboardKeys(type = 'spec') {
+            if (type === 'av-note') {
+                return [
+                    [
+                        { value: '1', token: '1', label: '1' },
+                        { value: '2', token: '2', label: '2' },
+                        { value: '3', token: '3', label: '3' },
+                        { value: '4', token: '4', label: '4' },
+                        { value: '5', token: '5', label: '5' },
+                        { value: '6', token: '6', label: '6' },
+                        { value: '7', token: '7', label: '7' },
+                        { value: '8', token: '8', label: '8' },
+                        { value: '9', token: '9', label: '9' },
+                        { value: '0', token: '0', label: '0' }
+                    ],
+                    [
+                        { value: 'Q', token: 'Q', label: 'Q' },
+                        { value: 'W', token: 'W', label: 'W' },
+                        { value: 'E', token: 'E', label: 'E' },
+                        { value: 'R', token: 'R', label: 'R' },
+                        { value: 'T', token: 'T', label: 'T' },
+                        { value: 'Y', token: 'Y', label: 'Y' },
+                        { value: 'U', token: 'U', label: 'U' },
+                        { value: 'I', token: 'I', label: 'I' },
+                        { value: 'O', token: 'O', label: 'O' },
+                        { value: 'P', token: 'P', label: 'P' }
+                    ],
+                    [
+                        { value: 'A', token: 'A', label: 'A' },
+                        { value: 'S', token: 'S', label: 'S' },
+                        { value: 'D', token: 'D', label: 'D' },
+                        { value: 'F', token: 'F', label: 'F' },
+                        { value: 'G', token: 'G', label: 'G' },
+                        { value: 'H', token: 'H', label: 'H' },
+                        { value: 'J', token: 'J', label: 'J' },
+                        { value: 'K', token: 'K', label: 'K' },
+                        { value: 'L', token: 'L', label: 'L' }
+                    ],
+                    [
+                        { value: 'Z', token: 'Z', label: 'Z' },
+                        { value: 'X', token: 'X', label: 'X' },
+                        { value: 'C', token: 'C', label: 'C' },
+                        { value: 'V', token: 'V', label: 'V' },
+                        { value: 'B', token: 'B', label: 'B' },
+                        { value: 'N', token: 'N', label: 'N' },
+                        { value: 'M', token: 'M', label: 'M' },
+                        { token: '__backspace', labelHtml: '<i class="ph-bold ph-backspace"></i>', action: 'backspace', flex: 1.35 }
+                    ],
+                    [
+                        { value: "'", token: 'apostrophe', label: "'", labelHtml: '&#39;', flex: 0.9 },
+                        { value: '"', token: 'double_quote', label: '"', flex: 0.9 },
+                        { value: '&', token: '&', label: '&', flex: 0.9 },
+                        { value: '/', token: '/', label: '/', flex: 0.9 },
+                        { value: '-', token: '-', label: '-', flex: 0.9 },
+                        { value: ' ', token: 'space', label: 'SPACE', flex: 4.4 },
+                        { value: '.', token: '.', label: '.', flex: 0.9 },
+                        { token: '__done', labelHtml: '<i class="ph-bold ph-arrow-bend-down-left"></i>', action: 'done', flex: 1.25 }
+                    ]
+                ];
+            }
             if (type === 'caliper') {
                 return [
                     { value: '1', token: '1', label: '1' },
@@ -5213,24 +5282,40 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
 
         function renderDetailMeasurementKeyboard() {
             const keyboard = ensureDetailMeasurementKeyboardElement();
-            const type = detailMeasurementKeyboardType === 'caliper' ? 'caliper' : 'spec';
-            const title = type === 'caliper' ? 'Caliper Keyboard' : 'Spec Keyboard';
+            const type = detailMeasurementKeyboardType === 'caliper' ? 'caliper' : (detailMeasurementKeyboardType === 'av-note' ? 'av-note' : 'spec');
+            const title = type === 'caliper' ? 'Caliper Keyboard' : (type === 'av-note' ? 'AV Note Keyboard' : 'Spec Keyboard');
             const keys = getDetailMeasurementKeyboardKeys(type);
-            const spaceKey = keys.find((key) => key && key.token === 'space');
-            const keysHtml = keys.filter((key) => !(key && key.token === 'space')).map((key) => {
+            const buildButtonHtml = (key, options = {}) => {
                 if (key.blank) return '<div aria-hidden="true"></div>';
                 const spanStyle = key.span ? ` style="grid-column: span ${Number(key.span) || 1} / span ${Number(key.span) || 1};"` : '';
-                const isOperator = ['.','-','double_quote','apostrophe','H','W','x','space','__backspace','__done'].includes(key.token);
-                const toneClass = isOperator ? 'bg-[#3b403d] text-zinc-100' : 'bg-[#272c29] text-zinc-100';
+                const flexStyle = options.avNote ? ` style="flex:${Number(key.flex) || 1} 1 0; min-width:0;"` : '';
+                const isOperator = ['.','-','/','&','double_quote','apostrophe','H','W','x','space','__backspace','__done'].includes(key.token);
+                const toneClass = options.avNote
+                    ? (isOperator ? 'bg-[#3b403d] text-zinc-100' : 'bg-[#272c29] text-zinc-100')
+                    : (isOperator ? 'bg-[#3b403d] text-zinc-100' : 'bg-[#272c29] text-zinc-100');
                 const labelHtml = key.labelHtml || esc(key.label);
                 const action = key.action === 'done'
                     ? 'return completeDetailMeasurementKeyboard()'
                     : `return pressDetailMeasurementKeyboardToken(this.dataset.keyToken)`;
-                return `<button type="button" data-key-token="${esc(key.token)}"${spanStyle} class="min-h-[42px] rounded-[24px] border border-black/20 px-2 text-[22px] font-medium leading-none shadow-sm active:scale-95 active:bg-[#535955] sm:min-h-[48px] ${toneClass}" onpointerdown="event.preventDefault()" onclick="${action}">${labelHtml}</button>`;
-            }).join('');
-            const spaceHtml = spaceKey
-                ? `<button type="button" data-key-token="space" class="mt-2 min-h-[42px] w-full rounded-[24px] border border-black/20 bg-[#3b403d] px-4 text-[13px] font-black uppercase tracking-[0.18em] text-zinc-100 shadow-sm active:scale-[0.99] active:bg-[#535955] sm:min-h-[48px]" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardToken(this.dataset.keyToken)">SPACE</button>`
-                : '';
+                const baseClass = options.avNote
+                    ? 'min-h-[38px] rounded-[21px] border border-black/20 px-1 text-[17px] font-medium leading-none shadow-sm active:scale-95 active:bg-[#535955] sm:min-h-[44px] sm:text-[19px]'
+                    : 'min-h-[42px] rounded-[24px] border border-black/20 px-2 text-[22px] font-medium leading-none shadow-sm active:scale-95 active:bg-[#535955] sm:min-h-[48px]';
+                return `<button type="button" data-key-token="${esc(key.token)}"${options.avNote ? flexStyle : spanStyle} class="${baseClass} ${toneClass}" onpointerdown="event.preventDefault()" onclick="${action}">${labelHtml}</button>`;
+            };
+            let keyboardBodyHtml = '';
+            if (type === 'av-note') {
+                keyboardBodyHtml = keys.map((row, rowIndex) => {
+                    const rowPad = rowIndex === 2 ? 'px-4' : (rowIndex === 3 ? 'px-8' : '');
+                    return `<div class="mb-1.5 flex w-full gap-1.5 ${rowPad}">${row.map((key) => buildButtonHtml(key, { avNote: true })).join('')}</div>`;
+                }).join('');
+            } else {
+                const spaceKey = keys.find((key) => key && key.token === 'space');
+                const keysHtml = keys.filter((key) => !(key && key.token === 'space')).map((key) => buildButtonHtml(key)).join('');
+                const spaceHtml = spaceKey
+                    ? `<button type="button" data-key-token="space" class="mt-2 min-h-[42px] w-full rounded-[24px] border border-black/20 bg-[#3b403d] px-4 text-[13px] font-black uppercase tracking-[0.18em] text-zinc-100 shadow-sm active:scale-[0.99] active:bg-[#535955] sm:min-h-[48px]" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardToken(this.dataset.keyToken)">SPACE</button>`
+                    : '';
+                keyboardBodyHtml = `<div class="grid grid-cols-4 gap-2">${keysHtml}</div>${spaceHtml}`;
+            }
             keyboard.innerHTML = [
                 '<div class="mx-auto max-w-md">',
                 '<div class="mb-1 flex items-center justify-between gap-3 px-2 text-zinc-300">',
@@ -5242,8 +5327,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                 '</div>',
                 '<button type="button" class="grid h-7 w-8 place-items-center rounded-xl bg-transparent text-lg text-zinc-200 active:scale-95" aria-label="Close keyboard" onpointerdown="event.preventDefault()" onclick="return completeDetailMeasurementKeyboard()"><i class="ph-bold ph-caret-down"></i></button>',
                 '</div>',
-                `<div class="grid grid-cols-4 gap-2">${keysHtml}</div>`,
-                spaceHtml,
+                keyboardBodyHtml,
                 `<div class="mt-1 flex items-center justify-between px-5 text-[9px] font-black uppercase tracking-[0.16em] text-zinc-400"><span>${esc(title)}</span><button type="button" class="rounded-full px-3 py-1 text-zinc-300 active:scale-95" onpointerdown="event.preventDefault()" onclick="return pressDetailMeasurementKeyboardKey('__clear')">Clear</button></div>`,
                 '</div>'
             ].join('');
@@ -5332,6 +5416,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
 
         function setDetailMeasurementFieldPreset(input = null, value = 'N/A') {
             if (!input) return false;
+            triggerDetailKeyboardHaptic(10);
             if (detailMeasurementKeyboardTarget === input) closeDetailMeasurementKeyboard(false, { blur: true });
             const nextValue = String(value || '').trim().toUpperCase();
             input.value = nextValue;
@@ -5429,6 +5514,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         }
 
         function completeDetailMeasurementKeyboard() {
+            triggerDetailKeyboardHaptic(12);
             const input = detailMeasurementKeyboardTarget;
             if (input) input.dispatchEvent(new Event('change', { bubbles: true }));
             restoreDetailMeasurementInputReadonly(input);
@@ -5459,6 +5545,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         function pressDetailMeasurementKeyboardKey(key = '') {
             const input = detailMeasurementKeyboardTarget;
             if (!input) return false;
+            triggerDetailKeyboardHaptic(key === '__backspace' ? 9 : 7);
             const value = String(input.value || '');
             const start = typeof input.selectionStart === 'number' ? input.selectionStart : value.length;
             const end = typeof input.selectionEnd === 'number' ? input.selectionEnd : start;
@@ -12936,7 +13023,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.13').trim() || 'V2026.05.14.13';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.14.14').trim() || 'V2026.05.14.14';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
