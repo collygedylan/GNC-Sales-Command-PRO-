@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.15.05';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.15.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1979,7 +1979,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.15.05').trim() || 'V2026.05.15.05';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.15.06').trim() || 'V2026.05.15.06';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2859,7 +2859,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.15.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.15.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -5225,6 +5225,9 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         let detailMeasurementKeyboardInteractionUntil = 0;
         let detailMeasurementKeyboardLastPointerToken = '';
         let detailMeasurementKeyboardLastPointerAt = 0;
+        let detailMeasurementKeyboardAvNoteMode = 'letters';
+        let detailMeasurementKeyboardRepeatTimer = null;
+        let detailMeasurementKeyboardRepeatInterval = null;
 
         function isDetailMeasurementKeyboardInput(element = null) {
             return !!(element && element.matches && element.matches(DETAIL_MEASUREMENT_KEYBOARD_SELECTOR));
@@ -5250,6 +5253,47 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                 detailMeasurementKeyboardInteractionUntil,
                 Date.now() + Math.max(120, Number(durationMs) || 900)
             );
+        }
+
+        function clearDetailMeasurementKeyboardRepeat() {
+            clearTimeout(detailMeasurementKeyboardRepeatTimer);
+            clearInterval(detailMeasurementKeyboardRepeatInterval);
+            detailMeasurementKeyboardRepeatTimer = null;
+            detailMeasurementKeyboardRepeatInterval = null;
+            return false;
+        }
+
+        function startDetailMeasurementKeyboardRepeat(token = '', action = 'key') {
+            clearDetailMeasurementKeyboardRepeat();
+            if (String(action || 'key') !== 'key' || String(token || '') !== '__backspace') return false;
+            detailMeasurementKeyboardRepeatTimer = setTimeout(() => {
+                detailMeasurementKeyboardRepeatInterval = setInterval(() => {
+                    if (!detailMeasurementKeyboardTarget || !isDetailMeasurementKeyboardVisible()) {
+                        clearDetailMeasurementKeyboardRepeat();
+                        return;
+                    }
+                    pressDetailMeasurementKeyboardKey('__backspace');
+                }, 58);
+            }, 330);
+            return false;
+        }
+
+        function toggleDetailMeasurementKeyboardAvNoteMode() {
+            if (detailMeasurementKeyboardType !== 'av-note') return false;
+            triggerDetailKeyboardHaptic(10);
+            detailMeasurementKeyboardAvNoteMode = detailMeasurementKeyboardAvNoteMode === 'numbers' ? 'letters' : 'numbers';
+            markDetailMeasurementKeyboardInteraction(1300);
+            renderDetailMeasurementKeyboard();
+            if (detailMeasurementKeyboardTarget) {
+                const cursorStart = typeof detailMeasurementKeyboardTarget.selectionStart === 'number'
+                    ? detailMeasurementKeyboardTarget.selectionStart
+                    : String(detailMeasurementKeyboardTarget.value || '').length;
+                const cursorEnd = typeof detailMeasurementKeyboardTarget.selectionEnd === 'number'
+                    ? detailMeasurementKeyboardTarget.selectionEnd
+                    : cursorStart;
+                restoreDetailMeasurementFieldFocus(detailMeasurementKeyboardTarget, cursorStart, cursorEnd);
+            }
+            return false;
         }
 
         function isDetailMeasurementKeyboardInteractionActive() {
@@ -5309,19 +5353,41 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                 ];
             }
             if (type === 'av-note') {
+                if (detailMeasurementKeyboardAvNoteMode === 'numbers') {
+                    return [
+                        [
+                            { value: '1', token: '1', label: '1' },
+                            { value: '2', token: '2', label: '2' },
+                            { value: '3', token: '3', label: '3' },
+                            { token: '__backspace', labelHtml: '<i class="ph-bold ph-backspace"></i>', action: 'backspace', flex: 1.35 }
+                        ],
+                        [
+                            { value: '4', token: '4', label: '4' },
+                            { value: '5', token: '5', label: '5' },
+                            { value: '6', token: '6', label: '6' },
+                            { value: '-', token: '-', label: '-' }
+                        ],
+                        [
+                            { value: '7', token: '7', label: '7' },
+                            { value: '8', token: '8', label: '8' },
+                            { value: '9', token: '9', label: '9' },
+                            { value: '.', token: '.', label: '.' }
+                        ],
+                        [
+                            { token: '__toggle_av_mode', label: 'ABC', action: 'toggle-av-mode', flex: 1.25 },
+                            { value: '0', token: '0', label: '0' },
+                            { value: '/', token: '/', label: '/' },
+                            { token: '__done', labelHtml: '<i class="ph-bold ph-arrow-bend-down-left"></i>', action: 'done', flex: 1.25 }
+                        ],
+                        [
+                            { value: "'", token: 'apostrophe', label: "'", labelHtml: '&#39;' },
+                            { value: '"', token: 'double_quote', label: '"' },
+                            { value: '&', token: '&', label: '&' },
+                            { value: ' ', token: 'space', label: 'SPACE', flex: 2.4 }
+                        ]
+                    ];
+                }
                 return [
-                    [
-                        { value: '1', token: '1', label: '1' },
-                        { value: '2', token: '2', label: '2' },
-                        { value: '3', token: '3', label: '3' },
-                        { value: '4', token: '4', label: '4' },
-                        { value: '5', token: '5', label: '5' },
-                        { value: '6', token: '6', label: '6' },
-                        { value: '7', token: '7', label: '7' },
-                        { value: '8', token: '8', label: '8' },
-                        { value: '9', token: '9', label: '9' },
-                        { value: '0', token: '0', label: '0' }
-                    ],
                     [
                         { value: 'Q', token: 'Q', label: 'Q' },
                         { value: 'W', token: 'W', label: 'W' },
@@ -5356,14 +5422,15 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                         { token: '__backspace', labelHtml: '<i class="ph-bold ph-backspace"></i>', action: 'backspace', flex: 1.35 }
                     ],
                     [
-                        { value: "'", token: 'apostrophe', label: "'", labelHtml: '&#39;', flex: 0.9 },
-                        { value: '"', token: 'double_quote', label: '"', flex: 0.9 },
-                        { value: '&', token: '&', label: '&', flex: 0.9 },
-                        { value: '/', token: '/', label: '/', flex: 0.9 },
-                        { value: '-', token: '-', label: '-', flex: 0.9 },
-                        { value: ' ', token: 'space', label: 'SPACE', flex: 4.4 },
-                        { value: '.', token: '.', label: '.', flex: 0.9 },
-                        { token: '__done', labelHtml: '<i class="ph-bold ph-arrow-bend-down-left"></i>', action: 'done', flex: 1.25 }
+                        { token: '__toggle_av_mode', label: '123', action: 'toggle-av-mode', flex: 1.25 },
+                        { value: "'", token: 'apostrophe', label: "'", labelHtml: '&#39;', flex: 0.85 },
+                        { value: '"', token: 'double_quote', label: '"', flex: 0.85 },
+                        { value: '&', token: '&', label: '&', flex: 0.85 },
+                        { value: '/', token: '/', label: '/', flex: 0.85 },
+                        { value: '-', token: '-', label: '-', flex: 0.85 },
+                        { value: ' ', token: 'space', label: 'SPACE', flex: 3.7 },
+                        { value: '.', token: '.', label: '.', flex: 0.85 },
+                        { token: '__done', labelHtml: '<i class="ph-bold ph-arrow-bend-down-left"></i>', action: 'done', flex: 1.2 }
                     ]
                 ];
             }
@@ -5426,27 +5493,29 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         function renderDetailMeasurementKeyboard() {
             const keyboard = ensureDetailMeasurementKeyboardElement();
             const type = detailMeasurementKeyboardType === 'caliper' ? 'caliper' : (detailMeasurementKeyboardType === 'av-note' ? 'av-note' : (detailMeasurementKeyboardType === 'match' ? 'match' : 'spec'));
-            const title = type === 'caliper' ? 'Caliper Keyboard' : (type === 'av-note' ? 'AV Note Keyboard' : (type === 'match' ? 'LOC Match Keyboard' : 'Spec Keyboard'));
+            const title = type === 'caliper' ? 'Caliper Keyboard' : (type === 'av-note' ? `AV Note ${detailMeasurementKeyboardAvNoteMode === 'numbers' ? '123' : 'ABC'} Keyboard` : (type === 'match' ? 'LOC Match Keyboard' : 'Spec Keyboard'));
             const keys = getDetailMeasurementKeyboardKeys(type);
             const buildButtonHtml = (key, options = {}) => {
                 if (key.blank) return '<div aria-hidden="true"></div>';
                 const spanStyle = key.span ? ` style="grid-column: span ${Number(key.span) || 1} / span ${Number(key.span) || 1};"` : '';
                 const flexStyle = options.avNote ? ` style="flex:${Number(key.flex) || 1} 1 0; min-width:0;"` : '';
-                const isOperator = ['.','-','/','&','double_quote','apostrophe','H','W','x','space','__backspace','__done','__clear'].includes(key.token);
+                const isOperator = ['.','-','/','&','double_quote','apostrophe','H','W','x','space','__backspace','__done','__clear','__toggle_av_mode'].includes(key.token);
                 const toneClass = options.avNote
                     ? (isOperator ? 'bg-[#3b403d] text-zinc-100' : 'bg-[#272c29] text-zinc-100')
                     : (isOperator ? 'bg-[#3b403d] text-zinc-100' : 'bg-[#272c29] text-zinc-100');
                 const labelHtml = key.labelHtml || esc(key.label);
-                const actionType = key.action === 'done' ? 'done' : (key.action === 'clear' ? 'clear' : 'key');
+                const actionType = key.action === 'done' ? 'done' : (key.action === 'clear' ? 'clear' : (key.action === 'toggle-av-mode' ? 'toggle-av-mode' : 'key'));
                 const baseClass = options.avNote
-                    ? 'min-h-[38px] rounded-[21px] border border-black/20 px-1 text-[17px] font-medium leading-none shadow-sm active:scale-95 active:bg-[#535955] sm:min-h-[44px] sm:text-[19px]'
+                    ? 'min-h-[44px] rounded-[22px] border border-black/20 px-1 text-[21px] font-semibold leading-none shadow-sm active:scale-95 active:bg-[#535955] sm:min-h-[48px] sm:text-[23px]'
                     : 'min-h-[42px] rounded-[24px] border border-black/20 px-2 text-[22px] font-medium leading-none shadow-sm active:scale-95 active:bg-[#535955] sm:min-h-[48px]';
-                return `<button type="button" tabindex="-1" data-key-action="${esc(actionType)}" data-key-token="${esc(key.token)}"${options.avNote ? flexStyle : spanStyle} class="${baseClass} ${toneClass}" onpointerdown="return handleDetailMeasurementKeyboardButtonPress(event, this.dataset.keyToken, this.dataset.keyAction)">${labelHtml}</button>`;
+                return `<button type="button" tabindex="-1" data-key-action="${esc(actionType)}" data-key-token="${esc(key.token)}"${options.avNote ? flexStyle : spanStyle} class="${baseClass} ${toneClass}" onpointerdown="return handleDetailMeasurementKeyboardButtonPress(event, this.dataset.keyToken, this.dataset.keyAction)" onpointerup="clearDetailMeasurementKeyboardRepeat()" onpointercancel="clearDetailMeasurementKeyboardRepeat()" onpointerleave="clearDetailMeasurementKeyboardRepeat()" onlostpointercapture="clearDetailMeasurementKeyboardRepeat()">${labelHtml}</button>`;
             };
             let keyboardBodyHtml = '';
             if (type === 'av-note') {
                 keyboardBodyHtml = keys.map((row, rowIndex) => {
-                    const rowPad = rowIndex === 2 ? 'px-4' : (rowIndex === 3 ? 'px-8' : '');
+                    const rowPad = detailMeasurementKeyboardAvNoteMode === 'numbers'
+                        ? ''
+                        : (rowIndex === 1 ? 'px-4' : (rowIndex === 2 ? 'px-8' : ''));
                     return `<div class="mb-1.5 flex w-full gap-1.5 ${rowPad}">${row.map((key) => buildButtonHtml(key, { avNote: true })).join('')}</div>`;
                 }).join('');
             } else {
@@ -5460,7 +5529,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             keyboard.innerHTML = [
                 '<div class="mx-auto max-w-md">',
                 '<div class="mb-1 flex items-center justify-between gap-3 px-2 text-zinc-300">',
-                '<button type="button" tabindex="-1" class="grid h-7 w-8 place-items-center rounded-xl bg-transparent text-lg text-zinc-200 active:scale-95" aria-label="Keyboard tools" onpointerdown="markDetailMeasurementKeyboardInteraction(); event.preventDefault()"><i class="ph-bold ph-squares-four"></i></button>',
+                `<button type="button" tabindex="-1" class="grid h-7 min-w-10 place-items-center rounded-xl bg-transparent px-1 text-[12px] font-black uppercase tracking-[0.08em] text-zinc-200 active:scale-95" aria-label="Toggle keyboard page" onpointerdown="${type === 'av-note' ? "return handleDetailMeasurementKeyboardButtonPress(event, '__toggle_av_mode', 'toggle-av-mode')" : 'markDetailMeasurementKeyboardInteraction(); event.preventDefault()'}">${type === 'av-note' ? esc(detailMeasurementKeyboardAvNoteMode === 'numbers' ? 'ABC' : '123') : '<i class="ph-bold ph-squares-four"></i>'}</button>`,
                 '<div class="flex items-center gap-5 text-lg text-zinc-200">',
                 '<i class="ph-bold ph-key"></i>',
                 '<i class="ph-bold ph-cardholder"></i>',
@@ -5532,12 +5601,16 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             const safeOptions = options && typeof options === 'object' ? options : {};
             const wasFocused = document.activeElement === input;
             const shouldPreserveSelection = safeOptions.preserveSelection === true || wasFocused;
+            const previousKeyboardTarget = detailMeasurementKeyboardTarget;
             if (detailMeasurementKeyboardTarget && detailMeasurementKeyboardTarget !== input) {
                 restoreDetailMeasurementInputReadonly(detailMeasurementKeyboardTarget);
             }
             cleanupStaleDetailMeasurementKeyboardInputs(input);
             detailMeasurementKeyboardTarget = input;
             detailMeasurementKeyboardType = type || getDetailMeasurementKeyboardTypeForInput(input);
+            if (detailMeasurementKeyboardType !== 'av-note' || previousKeyboardTarget !== input) {
+                detailMeasurementKeyboardAvNoteMode = 'letters';
+            }
             detailMeasurementKeyboardResumeId = String(input.id || '').trim();
             applyDetailMeasurementKeyboardInputState(input);
             try {
@@ -5569,7 +5642,10 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             markDetailMeasurementKeyboardInteraction(1300);
             if (safeAction === 'done') return completeDetailMeasurementKeyboard();
             if (safeAction === 'clear') return pressDetailMeasurementKeyboardKey('__clear');
-            return pressDetailMeasurementKeyboardToken(safeToken);
+            if (safeAction === 'toggle-av-mode') return toggleDetailMeasurementKeyboardAvNoteMode();
+            const pressed = pressDetailMeasurementKeyboardToken(safeToken);
+            startDetailMeasurementKeyboardRepeat(safeToken, safeAction);
+            return pressed;
         }
 
         function setDetailMeasurementFieldPreset(input = null, value = 'N/A') {
@@ -5616,6 +5692,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         }
 
         function closeDetailMeasurementKeyboard(commitChange = false, options = {}) {
+            clearDetailMeasurementKeyboardRepeat();
             const safeOptions = options && typeof options === 'object' ? options : {};
             const input = detailMeasurementKeyboardTarget;
             if (input && commitChange) {
@@ -5624,6 +5701,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             restoreDetailMeasurementInputReadonly(input);
             detailMeasurementKeyboardTarget = null;
             detailMeasurementKeyboardType = '';
+            detailMeasurementKeyboardAvNoteMode = 'letters';
             const keyboard = document.getElementById('detail-measurement-keyboard');
             if (keyboard) keyboard.classList.add('hidden');
             clearDetailMeasurementKeyboardLayout();
@@ -5672,12 +5750,14 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         }
 
         function completeDetailMeasurementKeyboard() {
+            clearDetailMeasurementKeyboardRepeat();
             triggerDetailKeyboardHaptic(12);
             const input = detailMeasurementKeyboardTarget;
             if (input) input.dispatchEvent(new Event('change', { bubbles: true }));
             restoreDetailMeasurementInputReadonly(input);
             detailMeasurementKeyboardTarget = null;
             detailMeasurementKeyboardType = '';
+            detailMeasurementKeyboardAvNoteMode = 'letters';
             const keyboard = document.getElementById('detail-measurement-keyboard');
             if (keyboard) keyboard.classList.add('hidden');
             clearDetailMeasurementKeyboardLayout();
@@ -13268,7 +13348,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.15.05').trim() || 'V2026.05.15.05';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.15.06').trim() || 'V2026.05.15.06';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
