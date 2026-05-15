@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.15.08';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.15.09';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2012,7 +2012,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.15.08').trim() || 'V2026.05.15.08';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.15.09').trim() || 'V2026.05.15.09';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2892,7 +2892,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.15.08';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.15.09';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -3179,6 +3179,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         let ncrApprovalTaskQueueCacheByView = new Map();
         let ncrApprovalTaskRefreshPromiseByKey = new Map();
         let ncrApprovalTaskRefreshLastAtByKey = new Map();
+        let ncrApprovalPendingLocalRemovalIds = new Map();
         const NCR_APPROVAL_TASK_REFRESH_THROTTLE_MS = 12000;
         let taskHotStateCache = new Map();
         let taskFilteredItemsCache = new Map();
@@ -13305,7 +13306,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const BLOOM_CROP_UPDATE_REP_GROUPS = Object.freeze([
             { key: 'NC', label: 'NC Reps', reps: ['Abbey Burka', 'Chris Farrow', 'Chris Gaydos', 'Ellen Deely'] },
             { key: 'OK', label: 'OK Reps', reps: ['Annette Hancock', 'Tony Bono', 'Ben Brown', 'Ben Maschino', 'Brian Hatfield', 'Casey Rufener', 'David Brandt', 'Doug Baker', 'Kevin Effinger', 'Nate Douglas', 'Troy Lee', 'Wes Lugas'] },
-            { key: 'TX', label: 'TX Reps', reps: ['Ben Harveson', 'Chance Alldredge', 'Jessica Robertson', 'Josh Ringleb', 'Rudy Martinez', 'Tobu Brown', 'Tracey Tapscott', 'Traci Earle'] },
+            { key: 'TX', label: 'TX Reps', reps: ['Ben Harveson', 'Chance Alldredge', 'Jessica Robertson', 'Josh Ringleb', 'Rudy Martinez', 'Toby Brown', 'Tracey Tapscott', 'Traci Earle'] },
             { key: 'ADMIN', label: 'Admin Users', reps: [] }
         ]);
         const NCR_COMPLETIONS_TABLE = 'v2_ncr_completions';
@@ -13399,7 +13400,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.15.08').trim() || 'V2026.05.15.08';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.15.09').trim() || 'V2026.05.15.09';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -29160,6 +29161,39 @@ function toggleDriveQuickRequestItem(domId) {
             await sendNcrApprovalEmail(item, safeType, safeStage, getNcrApprovalRequesterNotifyOptions(item, options));
         }
 
+        function pruneNcrApprovalPendingLocalRemovalIds() {
+            const now = Date.now();
+            const maxAgeMs = 4 * 60 * 1000;
+            ncrApprovalPendingLocalRemovalIds.forEach((createdAt, uid) => {
+                if (!uid || !createdAt || (now - Number(createdAt)) > maxAgeMs) {
+                    ncrApprovalPendingLocalRemovalIds.delete(uid);
+                }
+            });
+        }
+
+        function isNcrApprovalPendingLocalRemoval(uniqueId = '') {
+            const uid = String(uniqueId || '').trim();
+            if (!uid) return false;
+            pruneNcrApprovalPendingLocalRemovalIds();
+            return ncrApprovalPendingLocalRemovalIds.has(uid);
+        }
+
+        function setNcrApprovalPendingLocalRemoval(uniqueId = '', pending = true, options = {}) {
+            const uid = String(uniqueId || '').trim();
+            if (!uid) return false;
+            if (pending) {
+                ncrApprovalPendingLocalRemovalIds.set(uid, Date.now());
+            } else {
+                ncrApprovalPendingLocalRemovalIds.delete(uid);
+            }
+            clearNcrApprovalTaskViewCaches();
+            markViewDirty('tasks');
+            if (!options || options.schedule !== false) {
+                if (isViewVisible('tasks') && isNcrApprovalTaskView(activeTaskTab)) scheduleTasksRender(0, 0, true);
+            }
+            return true;
+        }
+
         function clearNcrApprovalTaskViewCaches() {
             ncrApprovalTaskQueueCacheKey = '';
             ncrApprovalTaskQueueCacheByView.clear();
@@ -29184,6 +29218,7 @@ function toggleDriveQuickRequestItem(domId) {
         function removeNcrApprovalCardFromCurrentTaskView(uniqueId = '') {
             const uid = String(uniqueId || '').trim();
             if (!uid) return false;
+            setNcrApprovalPendingLocalRemoval(uid, true, { schedule: false });
             clearNcrApprovalTaskViewCaches();
             const container = document.getElementById('task-content');
             const card = container ? container.querySelector(`[data-ncr-approval-uid="${escapeRequestCssValue(uid)}"]`) : null;
@@ -29255,6 +29290,8 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const type = getNcrApprovalTypeForItem(item);
             if (button) button.innerText = 'SENDING...';
+            let didWriteApproval = false;
+            removeNcrApprovalCardFromCurrentTaskView(uid);
             try {
                 const payload = {
                     app_tab_assignment: getNcrApprovalAssignment(type, 'jd'),
@@ -29262,10 +29299,12 @@ function toggleDriveQuickRequestItem(domId) {
                     date_completed: null
                 };
                 const masterItem = await writeNcrApprovalMasterPayload(item, payload, 'ncr-approval-dylan');
+                didWriteApproval = true;
                 removeNcrApprovalCardFromCurrentTaskView(uid);
                 await notifyNcrApprovalStage(masterItem || item, type, 'jd');
                 showToast('Sent To JD', `${getNcrApprovalTypeLabel(type)} row sent to JD.`);
             } catch (error) {
+                if (!didWriteApproval) setNcrApprovalPendingLocalRemoval(uid, false);
                 console.error('Dylan NCR approval failed', error);
                 showToast('Could Not Approve', error && error.message ? error.message : 'Could not send this row to JD.', true);
             } finally {
@@ -29375,6 +29414,7 @@ function toggleDriveQuickRequestItem(domId) {
                 button.disabled = true;
                 button.innerText = 'SENDING...';
             }
+            removeNcrApprovalCardFromCurrentTaskView(uid);
             try {
                 const payload = {
                     app_tab_assignment: getNcrApprovalAssignment(type, 'inventory'),
@@ -29397,6 +29437,7 @@ function toggleDriveQuickRequestItem(domId) {
                     });
                 }, 160);
             } catch (error) {
+                if (!didSendToInventoryOffice) setNcrApprovalPendingLocalRemoval(uid, false);
                 console.error('JD NCR approval failed', error);
                 showToast('Could Not Send', error && error.message ? error.message : 'Could not send this row to Inventory Office.', true);
             } finally {
@@ -29424,6 +29465,8 @@ function toggleDriveQuickRequestItem(domId) {
                 button.disabled = true;
                 button.innerText = 'DENYING...';
             }
+            let didWriteDenial = false;
+            removeNcrApprovalCardFromCurrentTaskView(uid);
             try {
                 const payload = {
                     app_tab_assignment: getNcrApprovalAssignment(type, 'complete'),
@@ -29431,9 +29474,11 @@ function toggleDriveQuickRequestItem(domId) {
                     date_completed: new Date().toISOString()
                 };
                 await writeNcrApprovalMasterPayload(item, payload, 'ncr-approval-denied');
+                didWriteDenial = true;
                 removeNcrApprovalCardFromCurrentTaskView(uid);
                 showToast('Denied', `${typeLabel} row removed from approvals.`);
             } catch (error) {
+                if (!didWriteDenial) setNcrApprovalPendingLocalRemoval(uid, false);
                 console.error('NCR approval deny failed', error);
                 showToast('Could Not Deny', error && error.message ? error.message : 'Could not deny this approval row.', true);
             } finally {
@@ -49503,6 +49548,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             let nextIndex = 0;
             (Array.isArray(fullInventory) ? fullInventory : []).forEach((item) => {
                 if (!item) return;
+                const uid = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim();
+                if (uid && isNcrApprovalPendingLocalRemoval(uid)) return;
                 const assignment = getNcrApprovalAssignmentValue(item);
                 if (!isNcrApprovalQueueItem(item)) return;
                 const type = getNcrApprovalQueueTypeForItem(item);
@@ -49551,6 +49598,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             return rows.filter((row) => {
                 if (!row) return false;
+                const uid = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
+                if (uid && isNcrApprovalPendingLocalRemoval(uid)) return false;
                 const type = getNcrApprovalQueueTypeForItem(row) || approvalType;
                 if (type !== approvalType) return false;
                 const stage = getNcrApprovalStageForItem(row);
