@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.15.07';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.15.08';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -765,6 +765,23 @@ body.viewport-compact #view-detail #det-location{font-size:clamp(.9rem,3.8vw,1.1
                 transform:translate3d(0,120%,0) !important;
                 -webkit-transform:translate3d(0,120%,0) !important;
             }
+        }
+        body.ios-device:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #bottom-nav,
+        body.ios-device.ios-footer-viewport-lock:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #bottom-nav,
+        body.ios-device.performance-scroll-active:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #bottom-nav{
+            position:fixed !important;
+            top:auto !important;
+            bottom:0 !important;
+            left:0 !important;
+            right:0 !important;
+            width:100vw !important;
+            max-width:100vw !important;
+            transform:translate3d(0,0,0) !important;
+            -webkit-transform:translate3d(0,0,0) !important;
+            opacity:1 !important;
+            pointer-events:auto !important;
+            z-index:3000 !important;
+            will-change:auto !important;
         }
     </style>
     <style>
@@ -1995,7 +2012,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.15.07').trim() || 'V2026.05.15.07';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.15.08').trim() || 'V2026.05.15.08';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2875,7 +2892,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.15.07';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.15.08';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -3537,9 +3554,26 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             return (Date.now() - lastTypingAt) < ACTIVE_TYPING_GRACE_MS;
         }
 
+        function clearStaleIosEditingChromeState(reason = '') {
+            if (!document || !document.body || !document.body.classList.contains('ios-device')) return false;
+            if (hasActiveTextEntryFocus()) return false;
+            if (typeof isDetailMeasurementKeyboardActiveForInput === 'function' && isDetailMeasurementKeyboardActiveForInput()) return false;
+            const body = document.body;
+            const hadEditingChrome = body.classList.contains('keyboard-open')
+                || body.classList.contains('detail-field-active')
+                || body.classList.contains('measurement-keyboard-open');
+            if (!hadEditingChrome) return false;
+            body.classList.remove('keyboard-open', 'detail-field-active', 'measurement-keyboard-open');
+            document.documentElement.style.setProperty('--keyboard-offset', '0px');
+            document.documentElement.style.setProperty('--detail-keyboard-height', '0px');
+            scheduleIosBottomNavViewportLock(`stale-editing:${normalizeUiSyncReason(reason) || 'clear'}`, true);
+            return true;
+        }
+
         function markScrollActivity() {
             lastScrollAt = Date.now();
             if (document && document.body && document.body.classList.contains('ios-device')) {
+                clearStaleIosEditingChromeState('scroll');
                 scheduleHorizontalViewportClamp('scroll');
                 scheduleIosBottomNavViewportLock('scroll');
             }
@@ -13365,7 +13399,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.15.07').trim() || 'V2026.05.15.07';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.15.08').trim() || 'V2026.05.15.08';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -54131,6 +54165,69 @@ ${folderNote ? `Folder Note: ${folderNote}
                 });
         }
 
+        function normalizeLinkedRequestCompletionMatchValue(value = '') {
+            return String(value == null ? '' : value)
+                .trim()
+                .toUpperCase()
+                .replace(/\s+/g, ' ');
+        }
+
+        function getLinkedRequestCompletionMatchValues(item = null) {
+            if (!item) return {};
+            return {
+                itemCode: normalizeLinkedRequestCompletionMatchValue(firstNonEmptyValue(item.ITEMCODE, item.itemcode, item.ITEM, item.item, '')),
+                locationCode: normalizeLinkedRequestCompletionMatchValue(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, item.LOCATION, item.location, '')),
+                lotCode: normalizeLinkedRequestCompletionMatchValue(firstNonEmptyValue(item.LOTCODE, item.lotcode, item.LOT, item.lot, '')),
+                contSize: normalizeLinkedRequestCompletionMatchValue(firstNonEmptyValue(item.CONTSIZE, item.contsize, item.ITEMSPEC, item.itemspec, item.SIZE, item.size, '')),
+                commonName: normalizeLinkedRequestCompletionMatchValue(firstNonEmptyValue(item.COMMONNAME, item.commonname, item.DESCRIPTION, item.description, item.PLANT_NAME, item.plant_name, ''))
+            };
+        }
+
+        function isLinkedRequestCompletionFieldMatch(sourceItem = null, requestRow = null) {
+            if (!sourceItem || !requestRow) return false;
+            const source = getLinkedRequestCompletionMatchValues(sourceItem);
+            const request = getLinkedRequestCompletionMatchValues(requestRow);
+            if (source.itemCode && request.itemCode && source.itemCode === request.itemCode) {
+                if (source.locationCode && request.locationCode && source.locationCode === request.locationCode) return true;
+                if (source.lotCode && request.lotCode && source.lotCode === request.lotCode && source.contSize && request.contSize && source.contSize === request.contSize) return true;
+            }
+            if (source.commonName && request.commonName && source.commonName === request.commonName && source.locationCode && request.locationCode && source.locationCode === request.locationCode) {
+                if (!source.contSize || !request.contSize || source.contSize === request.contSize) return true;
+            }
+            return false;
+        }
+
+        function buildLinkedRequestCompletionFallbackQueries(sourceItem = null) {
+            const match = getLinkedRequestCompletionMatchValues(sourceItem);
+            const queries = [];
+            const addQuery = (parts = []) => {
+                const safeParts = parts.filter(Boolean);
+                if (!safeParts.length) return;
+                queries.push(`select=*&${safeParts.join('&')}&order=unique_id.desc`);
+            };
+            if (match.itemCode && match.locationCode) {
+                addQuery([
+                    `itemcode=eq.${encodeURIComponent(match.itemCode)}`,
+                    `locationcode=eq.${encodeURIComponent(match.locationCode)}`
+                ]);
+            }
+            if (match.itemCode && match.lotCode && match.contSize) {
+                addQuery([
+                    `itemcode=eq.${encodeURIComponent(match.itemCode)}`,
+                    `lotcode=eq.${encodeURIComponent(match.lotCode)}`,
+                    `contsize=eq.${encodeURIComponent(match.contSize)}`
+                ]);
+            }
+            if (match.commonName && match.locationCode && match.contSize) {
+                addQuery([
+                    `commonname=eq.${encodeURIComponent(match.commonName)}`,
+                    `locationcode=eq.${encodeURIComponent(match.locationCode)}`,
+                    `contsize=eq.${encodeURIComponent(match.contSize)}`
+                ]);
+            }
+            return Array.from(new Set(queries));
+        }
+
         function addPendingLinkedRequestRow(targetRows, seenIds, row = null) {
             if (!row || row.REQUEST_HISTORY || row.REQ_ARCHIVED || !isRequestPendingVisible(row)) return false;
             const uniqueId = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
@@ -54142,7 +54239,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function getLocalPendingRequestRowsForCompletedSource(sourceItem = null) {
             const sourceIds = getLinkedRequestCompletionSourceIds(sourceItem);
-            if (!sourceIds.length || !Array.isArray(requestsInventory)) return [];
+            if (!Array.isArray(requestsInventory)) return [];
             const sourceIdSet = new Set(sourceIds);
             const rows = [];
             const seenIds = new Set();
@@ -54154,7 +54251,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (!row) return;
                 const rowId = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
                 const rowMasterId = String(firstNonEmptyValue(row.MASTER_ID, row.MASTER_UNIQUE_ID, row.master_id, '') || '').trim();
-                if (sourceIdSet.has(rowId) || sourceIdSet.has(rowMasterId)) addPendingLinkedRequestRow(rows, seenIds, row);
+                if (sourceIdSet.has(rowId) || sourceIdSet.has(rowMasterId) || isLinkedRequestCompletionFieldMatch(sourceItem, row)) addPendingLinkedRequestRow(rows, seenIds, row);
             });
             return rows;
         }
@@ -54162,7 +54259,8 @@ ${folderNote ? `Folder Note: ${folderNote}
         async function fetchPendingRequestRowsForCompletedSource(sourceItem = null) {
             if (navigator.onLine === false) return [];
             const sourceIds = getLinkedRequestCompletionSourceIds(sourceItem);
-            if (!sourceIds.length) return [];
+            const fallbackQueries = buildLinkedRequestCompletionFallbackQueries(sourceItem);
+            if (!sourceIds.length && !fallbackQueries.length) return [];
             const rows = [];
             const seenIds = new Set();
             for (const sourceId of sourceIds.slice(0, 4)) {
@@ -54172,6 +54270,16 @@ ${folderNote ? `Folder Note: ${folderNote}
                     formatFetchedRows(rawRows || [], 'v2_active_request').forEach((row) => addPendingLinkedRequestRow(rows, seenIds, row));
                 } catch (error) {
                     console.warn('Could not fetch linked pending request rows for completed source', error);
+                }
+            }
+            for (const query of fallbackQueries) {
+                try {
+                    const rawRows = await fetchSupabasePage('v2_active_request', query, 1000, 0);
+                    formatFetchedRows(rawRows || [], 'v2_active_request')
+                        .filter((row) => isLinkedRequestCompletionFieldMatch(sourceItem, row))
+                        .forEach((row) => addPendingLinkedRequestRow(rows, seenIds, row));
+                } catch (error) {
+                    console.warn('Could not fetch pending request rows by completed item fields', error);
                 }
             }
             return rows;
