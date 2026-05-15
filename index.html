@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.15.09';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.15.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2012,7 +2012,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.15.09').trim() || 'V2026.05.15.09';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.15.10').trim() || 'V2026.05.15.10';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2892,7 +2892,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.15.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.15.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -13400,7 +13400,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.15.09').trim() || 'V2026.05.15.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.15.10').trim() || 'V2026.05.15.10';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -44247,9 +44247,36 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             runRefresh();
         }
 
+        function getRequestArchiveConfirmMessage(item = null) {
+            const plantLine = [
+                firstNonEmptyValue(item && item.COMMONNAME, item && item.commonname, 'Unknown'),
+                firstNonEmptyValue(item && item.CONTSIZE, item && item.contsize, item && item.ITEMSPEC, ''),
+                firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, '')
+            ].map((value) => String(value || '').trim()).filter(Boolean).join(' ');
+            const customer = String(firstNonEmptyValue(item && item.REQ_CUSTOMER, item && item.req_customer, '') || '').trim();
+            const folder = String(firstNonEmptyValue(item && item.REQUEST_FOLDER, item && item.request_folder, '') || '').trim();
+            const details = [
+                plantLine,
+                customer ? `Customer: ${customer}` : '',
+                folder ? `Folder: ${folder}` : ''
+            ].filter(Boolean).join('\n');
+            return `Remove this request row from Pending Requests?\n\n${details || 'This row will be removed from the Request tab.'}`;
+        }
+
+        function confirmArchiveRequestRow(item = null) {
+            if (!item) return false;
+            if (typeof window === 'undefined' || typeof window.confirm !== 'function') return true;
+            return window.confirm(getRequestArchiveConfirmMessage(item));
+        }
+
         async function archiveRequestRow(uid) {
             const item = requestsInventory.find((entry) => entry.UNIQUE_ID === uid);
             if (!item) return;
+            if (!confirmArchiveRequestRow(item)) {
+                closeAllRequestSwipes();
+                showToast('Kept', 'Request row was not removed.');
+                return;
+            }
             item.REQ_ARCHIVED = true;
             buildSearchIndex(item);
             upsertRequestHistoryRows([item], 'archived').catch(() => {});
