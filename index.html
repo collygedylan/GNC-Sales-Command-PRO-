@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.15.06';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.15.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1754,10 +1754,18 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 Choose <span class="font-black text-[#007a4d]">Yes, Send Email</span> to also email Dylan and JD as a New Crop Release.
                 Choose <span class="font-black text-slate-700">No, Normal Request Only</span> to keep the regular request save and rep completion email without sending the extra New Crop Release email.
             </p>
-            <div class="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div id="ncr-email-message-step" class="mt-4 hidden rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+                <label for="ncr-email-message" class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Message</label>
+                <textarea id="ncr-email-message" class="mt-2 w-full resize-y rounded-xl border border-emerald-200 bg-white px-3 py-3 text-sm font-semibold leading-5 text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" rows="4" placeholder="Type a message for Dylan and JD..."></textarea>
+            </div>
+            <div id="ncr-email-choice-actions" class="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <button type="button" class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-gray-600 shadow-sm active:scale-95" onclick="closeNcrEmailModal('cancel')">Cancel</button>
                 <button type="button" id="ncr-email-no-btn" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-sm active:scale-95" onclick="closeNcrEmailModal('done')">No, Normal Request</button>
-                <button type="button" id="ncr-email-yes-btn" class="rounded-xl border border-emerald-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="closeNcrEmailModal('email')">Yes, Send Email</button>
+                <button type="button" id="ncr-email-yes-btn" class="rounded-xl border border-emerald-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="beginNcrEmailMessageStep()">Yes, Send Email</button>
+            </div>
+            <div id="ncr-email-message-actions" class="mt-5 hidden grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-sm active:scale-95" onclick="resetNcrEmailMessageStep()">Back</button>
+                <button type="button" id="ncr-email-done-btn" class="rounded-xl border border-emerald-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="closeNcrEmailModal('email')">Done</button>
             </div>
         </div>
     </div>
@@ -1771,13 +1779,21 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 </div>
                 <button type="button" class="text-gray-500 font-bold py-2 px-3" onclick="closeHoldReleaseModal('no')">Close</button>
             </div>
-            <p class="text-sm leading-6 text-slate-600">
+            <p id="hold-release-modal-copy" class="text-sm leading-6 text-slate-600">
                 Choose <span class="font-black text-[#007a4d]">Yes</span> to send this completed photo row to Dylan for Take Off Hold approval.
                 Choose <span class="font-black text-slate-700">No</span> to finish the row without creating the approval.
             </p>
-            <div class="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div id="hold-release-message-step" class="mt-4 hidden rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+                <label for="hold-release-message" class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Message</label>
+                <textarea id="hold-release-message" class="mt-2 w-full resize-y rounded-xl border border-emerald-200 bg-white px-3 py-3 text-sm font-semibold leading-5 text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" rows="4" placeholder="Type a message for Dylan and JD..."></textarea>
+            </div>
+            <div id="hold-release-choice-actions" class="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-sm active:scale-95" onclick="closeHoldReleaseModal('no')">No</button>
-                <button type="button" id="hold-release-yes-btn" class="rounded-xl border border-emerald-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="closeHoldReleaseModal('yes')">Yes</button>
+                <button type="button" id="hold-release-yes-btn" class="rounded-xl border border-emerald-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="beginHoldReleaseMessageStep()">Yes</button>
+            </div>
+            <div id="hold-release-message-actions" class="mt-5 hidden grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-sm active:scale-95" onclick="resetHoldReleaseMessageStep()">Back</button>
+                <button type="button" id="hold-release-done-btn" class="rounded-xl border border-emerald-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="closeHoldReleaseModal('yes')">Done</button>
             </div>
         </div>
     </div>
@@ -1979,7 +1995,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.15.06').trim() || 'V2026.05.15.06';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.15.07').trim() || 'V2026.05.15.07';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2859,7 +2875,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.15.06';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.15.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6558,7 +6574,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             return normalizeRowPhotoFields(item);
         }
 
-        const LINKED_ROW_SYNC_KEYS = ['COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PTRAVAILABLE','SEASONSUPPLY','PRIORITY','QUALITYCODE','FIELDTAGCOLOR','PLANTGROUPCODE','BLOCKALPHA','SEASON','S_LTS','HOLDSTOPCODE','HOLSTOPCODE','HOLDSTOPREASON','LOCATIONNOTE','LOCATIONNOTEDATE','AV_NOTE','SALES_NOTE','MATCH','SPEC','CALIPER','PICK','LOC_MATCH_QTY','INITIAL_PTR'];
+        const LINKED_ROW_SYNC_KEYS = ['COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PTRAVAILABLE','SEASONSUPPLY','PRIORITY','QUALITYCODE','FIELDTAGCOLOR','PLANTGROUPCODE','BLOCKALPHA','SEASON','S_LTS','HOLDSTOPCODE','HOLSTOPCODE','HOLDSTOPREASON','LOCATIONNOTE','LOCATIONNOTEDATE','AV_NOTE','SALES_NOTE','MATCH','SPEC','CALIPER','PICK','LOC_MATCH_QTY','INITIAL_PTR','NCR_APPROVAL_MESSAGE','ncr_approval_message'];
         const EXACT_ROW_SYNC_KEYS = LINKED_ROW_SYNC_KEYS.concat(getFlyerShadowKeys(), ['APP_TAB_ASSIGNMENT','PRODUCTIVITY_ORIGIN_ASSIGNMENT','DATE_COMPLETED','FLYER_CAT','FLYER_TITLE','FLYER_INST','FLYER_ASSIGNED','FLYER_NOTES','FLYER_COMPLETED','ASSIGNEDTO']);
         const ROW_SYNC_SNAPSHOT_EXTRA_KEYS = ['SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME','REQ_STATUS','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','REQ_RESERVE'];
         const ROW_SYNC_STORAGE_KEY = 'gnc_row_state_sync_v1';
@@ -11134,7 +11150,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             ncrApprovalRequesterColumnsProbePromise = (async () => {
                 if (navigator.onLine === false) return false;
                 try {
-                    const url = `${SUPABASE_URL}/rest/v1/v2_master_inventory?select=unique_id,ncr_approval_type,ncr_requested_by_username,ncr_requested_by_display,ncr_requested_by_email,ncr_requested_at&limit=1`;
+                    const url = `${SUPABASE_URL}/rest/v1/v2_master_inventory?select=unique_id,ncr_approval_type,ncr_requested_by_username,ncr_requested_by_display,ncr_requested_by_email,ncr_requested_at,ncr_approval_message&limit=1`;
                     const response = await fetchWithTimeout(url, {
                         method: 'GET',
                         headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
@@ -13278,7 +13294,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             'ncr_requested_by_username',
             'ncr_requested_by_display',
             'ncr_requested_by_email',
-            'ncr_requested_at'
+            'ncr_requested_at',
+            'ncr_approval_message'
         ].join(',');
         const NCR_APPROVAL_TASK_BASE_SELECT_FIELDS = [
             'unique_id',
@@ -13348,7 +13365,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.15.06').trim() || 'V2026.05.15.06';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.15.07').trim() || 'V2026.05.15.07';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -27572,6 +27589,7 @@ function toggleDriveQuickRequestItem(domId) {
                 reserve: String(firstNonEmptyValue(item && item.REQ_RESERVE, 'NO') || 'NO').trim().toUpperCase() === 'YES' ? 'YES' : 'NO',
                 pick: String(firstNonEmptyValue(locationPick, item && item.PICK, item && item.PIC_NOTE, item && item.PICKNOTE, standardPick, '') || '').trim(),
                 comments: String(firstNonEmptyValue(item && item.SALES_NOTE, item && item.SALESNOTE, '') || '').trim(),
+                approvalMessage: getNcrApprovalMessageFromItem(item),
                 photos: []
             };
         }
@@ -27758,12 +27776,56 @@ function toggleDriveQuickRequestItem(domId) {
             ].filter(Boolean).join(' - ');
         }
 
+        function getApprovalPromptChoice(result = null, fallback = 'cancel') {
+            if (typeof result === 'string') return String(result || fallback).trim().toLowerCase() || fallback;
+            return String(result && result.choice || fallback).trim().toLowerCase() || fallback;
+        }
+
+        function getApprovalPromptMessage(result = null) {
+            return String(result && typeof result === 'object' ? firstNonEmptyValue(result.message, '') : '').trim();
+        }
+
+        function getApprovalPromptTextareaValue(id = '') {
+            const textarea = document.getElementById(String(id || '').trim());
+            return String(textarea && textarea.value || '').trim();
+        }
+
+        function setPromptStepVisibility(prefix = '', messageMode = false) {
+            const copy = document.getElementById(`${prefix}-modal-copy`);
+            const messageStep = document.getElementById(`${prefix}-message-step`);
+            const choiceActions = document.getElementById(`${prefix}-choice-actions`);
+            const messageActions = document.getElementById(`${prefix}-message-actions`);
+            if (copy) copy.classList.toggle('hidden', !!messageMode);
+            if (messageStep) messageStep.classList.toggle('hidden', !messageMode);
+            if (choiceActions) choiceActions.classList.toggle('hidden', !!messageMode);
+            if (messageActions) messageActions.classList.toggle('hidden', !messageMode);
+        }
+
+        function resetNcrEmailMessageStep() {
+            setPromptStepVisibility('ncr-email', false);
+            const yesBtn = document.getElementById('ncr-email-yes-btn');
+            if (yesBtn) setTimeout(() => yesBtn.focus(), 0);
+            return false;
+        }
+
+        function beginNcrEmailMessageStep() {
+            setPromptStepVisibility('ncr-email', true);
+            const textarea = document.getElementById('ncr-email-message');
+            if (textarea) setTimeout(() => textarea.focus(), 0);
+            return false;
+        }
+
         function closeNcrEmailModal(choice = 'cancel') {
             const modal = document.getElementById('ncr-email-modal');
             if (modal) modal.classList.add('hidden');
+            const message = String(choice || '').trim().toLowerCase() === 'email' ? getApprovalPromptTextareaValue('ncr-email-message') : '';
+            setPromptStepVisibility('ncr-email', false);
             const resolver = ncrEmailPromptResolver;
             ncrEmailPromptResolver = null;
-            if (resolver) resolver(String(choice || 'cancel').trim().toLowerCase() || 'cancel');
+            if (resolver) resolver({
+                choice: String(choice || 'cancel').trim().toLowerCase() || 'cancel',
+                message
+            });
         }
 
         function openNcrEmailModal(item = activeItem, type = '') {
@@ -27784,11 +27846,19 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (label) label.textContent = getNcrEmailModalRowLabel(item);
             if (noBtn) noBtn.textContent = 'No, Regular Save';
-            if (yesBtn) yesBtn.textContent = 'Yes, Send Email';
+            if (yesBtn) yesBtn.textContent = 'Yes, Add Message';
+            const messageInput = document.getElementById('ncr-email-message');
+            if (messageInput) {
+                messageInput.value = '';
+                messageInput.placeholder = `Type a message for Dylan and JD about this ${typeLabel}...`;
+            }
+            const doneBtn = document.getElementById('ncr-email-done-btn');
+            if (doneBtn) doneBtn.textContent = 'Done';
+            setPromptStepVisibility('ncr-email', false);
             if (ncrEmailPromptResolver) {
                 const previousResolver = ncrEmailPromptResolver;
                 ncrEmailPromptResolver = null;
-                previousResolver('cancel');
+                previousResolver({ choice: 'cancel', message: '' });
             }
             modal.classList.remove('hidden');
             return new Promise((resolve) => {
@@ -27903,6 +27973,7 @@ function toggleDriveQuickRequestItem(domId) {
             const matchValue = String(firstNonEmptyValue(draft && draft.match, item && item.MATCH, item && item.match, '')).trim();
             const locMatchQty = calculateLocMatchQtyValue(item, matchValue);
             const photoCsv = normalizeNcrEmailPhotoUrls(photoUrls).join(',');
+            const approvalMessage = normalizeNcrApprovalMessage(firstNonEmptyValue(draft && draft.approvalMessage, getNcrApprovalMessageFromItem(item), ''));
             return {
                 commonname: String(firstNonEmptyValue(item && item.COMMONNAME, 'Unknown Item')).trim(),
                 contsize: String(firstNonEmptyValue(item && item.CONTSIZE, '-')).trim(),
@@ -27920,7 +27991,8 @@ function toggleDriveQuickRequestItem(domId) {
                 av_note: String(firstNonEmptyValue(draft && draft.avNote, item && item.AV_NOTE, item && item.av_note, '')).trim(),
                 reserve: String(firstNonEmptyValue(draft && draft.reserve, 'NO')).trim(),
                 pick_note: String(firstNonEmptyValue(draft && draft.pick, item && item.PICK, item && item.pic_note, '')).trim(),
-                comments: String(firstNonEmptyValue(draft && draft.comments, item && item.SALES_NOTE, item && item.sales_note, '')).trim(),
+                approval_message: approvalMessage,
+                comments: String(firstNonEmptyValue(approvalMessage, draft && draft.comments, item && item.SALES_NOTE, item && item.sales_note, '')).trim(),
                 photo: photoCsv,
                 photo_link: photoCsv,
                 photo_urls: photoCsv,
@@ -28074,7 +28146,10 @@ function toggleDriveQuickRequestItem(domId) {
                 LOC_MATCH_QTY: payload.loc_match_qty,
                 REQ_PICK: payload.pick_note,
                 REQ_PIC_NOTE: payload.pick_note,
-                REQ_COMMENTS: payload.comments,
+                NCR_APPROVAL_MESSAGE: payload.approval_message,
+                REQ_COMMENTS: payload.approval_message
+                    ? ['Approval Message:', payload.approval_message].filter(Boolean).join('\n')
+                    : payload.comments,
                 REQ_RESERVE: payload.reserve,
                 REQ_PHOTO_LINK: photoCsv,
                 REQUEST_PHOTO_LINK: photoCsv,
@@ -28228,12 +28303,44 @@ function toggleDriveQuickRequestItem(domId) {
             return draft;
         }
 
+        function normalizeNcrApprovalMessage(value = '') {
+            return String(value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+        }
+
+        function getNcrApprovalMessageFromItem(item = null) {
+            return normalizeNcrApprovalMessage(firstNonEmptyValue(
+                item && item.NCR_APPROVAL_MESSAGE,
+                item && item.ncr_approval_message,
+                item && item.NCR_APPROVAL_NOTE,
+                item && item.ncrApprovalMessage,
+                ''
+            ));
+        }
+
+        function applyNcrApprovalMessageToItem(item = null, message = '') {
+            if (!item || typeof item !== 'object') return '';
+            const safeMessage = normalizeNcrApprovalMessage(message);
+            item.NCR_APPROVAL_MESSAGE = safeMessage;
+            item.ncr_approval_message = safeMessage;
+            return safeMessage;
+        }
+
+        function applyNcrApprovalMessageToDraft(item = null, message = '') {
+            const safeMessage = normalizeNcrApprovalMessage(message);
+            const draft = getNcrDraft(item);
+            if (draft) draft.approvalMessage = safeMessage;
+            applyNcrApprovalMessageToItem(item, safeMessage);
+            return safeMessage;
+        }
+
         async function promptAndSendNcrReleaseEmailFromSave(item = null, prefix = '', options = {}) {
             const safeOptions = options || {};
             const sourceItem = getNcrReleaseSourceItemForSave(item, prefix, safeOptions);
             if (!shouldOfferNcrReleaseEmailForSave(item, prefix, { ...safeOptions, sourceItem })) return false;
             const approvalType = getNcrApprovalTypeForItem(sourceItem, prefix === 'move-up' ? 'move-up' : '');
-            const choice = await openNcrEmailModal(sourceItem, approvalType);
+            const promptResult = await openNcrEmailModal(sourceItem, approvalType);
+            const choice = getApprovalPromptChoice(promptResult, 'cancel');
+            const approvalMessage = getApprovalPromptMessage(promptResult);
             if (choice === 'done') {
                 try {
                     await persistNcrCompletionRecord(buildNcrCompletionRecord(sourceItem, false));
@@ -28252,9 +28359,10 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (choice !== 'email') return false;
             prepareNcrReleaseEmailDraftFromSaveContext(item, prefix, sourceItem);
+            applyNcrApprovalMessageToDraft(sourceItem, approvalMessage);
             const photoUrls = getNcrReleasePhotoUrlsFromSaveContext(item, prefix, sourceItem);
             try {
-                await submitNcrApprovalToDylan(sourceItem, approvalType, { photoUrls });
+                await submitNcrApprovalToDylan(sourceItem, approvalType, { photoUrls, approvalMessage });
                 clearNcrDraft(sourceItem);
                 managerReviewInventoryDirty = true;
                 moveUpInventoryDirty = true;
@@ -28437,12 +28545,31 @@ function toggleDriveQuickRequestItem(domId) {
             return holdReason ? `${holdLabel} | Reason: ${holdReason}` : holdLabel;
         }
 
+        function resetHoldReleaseMessageStep() {
+            setPromptStepVisibility('hold-release', false);
+            const yesBtn = document.getElementById('hold-release-yes-btn');
+            if (yesBtn) setTimeout(() => yesBtn.focus(), 0);
+            return false;
+        }
+
+        function beginHoldReleaseMessageStep() {
+            setPromptStepVisibility('hold-release', true);
+            const textarea = document.getElementById('hold-release-message');
+            if (textarea) setTimeout(() => textarea.focus(), 0);
+            return false;
+        }
+
         function closeHoldReleaseModal(choice = 'no') {
             const modal = document.getElementById('hold-release-modal');
             if (modal) modal.classList.add('hidden');
+            const message = String(choice || '').trim().toLowerCase() === 'yes' ? getApprovalPromptTextareaValue('hold-release-message') : '';
+            setPromptStepVisibility('hold-release', false);
             const resolver = holdReleasePromptResolver;
             holdReleasePromptResolver = null;
-            if (resolver) resolver(String(choice || 'no').trim().toLowerCase() || 'no');
+            if (resolver) resolver({
+                choice: String(choice || 'no').trim().toLowerCase() || 'no',
+                message
+            });
         }
 
         function isPromptModalVisible(modalId = '') {
@@ -28474,10 +28601,16 @@ function toggleDriveQuickRequestItem(domId) {
             if (!modal) return Promise.resolve('no');
             const label = document.getElementById('hold-release-modal-label');
             if (label) label.textContent = getHoldReleaseEmailModalRowLabel(item);
+            const messageInput = document.getElementById('hold-release-message');
+            if (messageInput) {
+                messageInput.value = '';
+                messageInput.placeholder = 'Type a message for Dylan and JD about taking this row off hold...';
+            }
+            setPromptStepVisibility('hold-release', false);
             if (holdReleasePromptResolver) {
                 const previousResolver = holdReleasePromptResolver;
                 holdReleasePromptResolver = null;
-                previousResolver('no');
+                previousResolver({ choice: 'no', message: '' });
             }
             modal.classList.remove('hidden');
             return new Promise((resolve) => {
@@ -28735,11 +28868,14 @@ function toggleDriveQuickRequestItem(domId) {
             markHoldReleasePromptStarted(promptKey);
             await waitForPromptModalToClose('ncr-email-modal');
             try {
-                const choice = await openHoldReleaseModal(sourceItem);
+                const promptResult = await openHoldReleaseModal(sourceItem);
+                const choice = getApprovalPromptChoice(promptResult, 'no');
                 if (choice !== 'yes') return false;
+                const approvalMessage = getApprovalPromptMessage(promptResult);
                 const photoUrls = getHoldReleasePhotoUrlsFromSaveContext(item, prefix, sourceItem);
                 prepareNcrReleaseEmailDraftFromSaveContext(item, prefix, sourceItem);
-                await submitNcrApprovalToDylan(sourceItem, 'hold-release', { photoUrls });
+                applyNcrApprovalMessageToDraft(sourceItem, approvalMessage);
+                await submitNcrApprovalToDylan(sourceItem, 'hold-release', { photoUrls, approvalMessage });
                 showToast('Sent To Dylan', 'Take Off Hold row sent to Dylan for approval.');
                 return true;
             } catch (error) {
@@ -28804,6 +28940,13 @@ function toggleDriveQuickRequestItem(domId) {
             const safeType = normalizeNcrApprovalType(type);
             const draft = normalizeNcrDraftForCompletion(item);
             const masterItem = getNcrMasterItem(item) || item;
+            const approvalMessage = normalizeNcrApprovalMessage(firstNonEmptyValue(
+                safeOptions.approvalMessage,
+                draft && draft.approvalMessage,
+                getNcrApprovalMessageFromItem(item),
+                getNcrApprovalMessageFromItem(masterItem),
+                ''
+            ));
             const payload = {
                 app_tab_assignment: getNcrApprovalAssignment(safeType, 'dylan'),
                 assignedto: NCR_APPROVAL_DYLAN_USER,
@@ -28811,6 +28954,8 @@ function toggleDriveQuickRequestItem(domId) {
             };
             const requester = applyNcrApprovalRequesterFields(masterItem || item, safeOptions.requester || null, safeType);
             if (item && item !== masterItem) applyNcrApprovalRequesterFields(item, requester, safeType);
+            applyNcrApprovalMessageToItem(masterItem || item, approvalMessage);
+            if (item && item !== masterItem) applyNcrApprovalMessageToItem(item, approvalMessage);
             const canPersistRequester = await ensureNcrApprovalRequesterColumnsReady().catch(() => false);
             if (canPersistRequester) {
                 payload.ncr_approval_type = safeType;
@@ -28818,6 +28963,7 @@ function toggleDriveQuickRequestItem(domId) {
                 payload.ncr_requested_by_display = requester && requester.display ? requester.display : (requester && requester.username ? requester.username : null);
                 payload.ncr_requested_by_email = requester && requester.email ? requester.email : null;
                 payload.ncr_requested_at = firstNonEmptyValue(masterItem && masterItem.NCR_REQUESTED_AT, masterItem && masterItem.ncr_requested_at, item && item.NCR_REQUESTED_AT, item && item.ncr_requested_at, new Date().toISOString());
+                payload.ncr_approval_message = approvalMessage || null;
             }
             const setIfText = (key, value) => {
                 const text = String(firstNonEmptyValue(value, '') || '').trim();
@@ -34395,7 +34541,7 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
         const chunkRenderTokensByKey = Object.create(null);
-        const DEFAULT_RENDER_SIGNATURE_FIELDS = ['UNIQUE_ID','DOM_ID','COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PRIORITY','PTRAVAILABLE','S_LTS','LOCATIONNOTE','LOCATIONNOTEDATE','SEASON','AV_NOTE','HOLDSTOPREASON','LISTPRICE','HOT_PRICE','HOTPRICE','REQ_STATUS','REQ_QTY','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','DOCK_NUM','STOPNUMBER','CUSTOMERNAME','SALESREPNAME','FOLDERNAME','COUNT','LABEL','NAME','LOCATIONBUCKET','BLOCKALPHA','STATUS','LINECOUNT','TOTALQTY','ROW_PHOTO_LINK','REQ_PHOTO_LINK','DOCK_PHOTO_LINK','FLYER_PHOTO_LINK','DOCK_NOTE','DOCK_ISSUE_NOTE','DOCK_ISSUE_STATE','DOCK_ISSUE_SOURCE_UID','DOCK_ISSUE_SOURCE_MATCH_KEY','issueSourceUniqueId','issueState','issueNote','sourceQty','remainingQty','sourceMatchKey','currentSourceUniqueId'];
+        const DEFAULT_RENDER_SIGNATURE_FIELDS = ['UNIQUE_ID','DOM_ID','COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PRIORITY','PTRAVAILABLE','S_LTS','LOCATIONNOTE','LOCATIONNOTEDATE','SEASON','AV_NOTE','HOLDSTOPREASON','LISTPRICE','HOT_PRICE','HOTPRICE','REQ_STATUS','REQ_QTY','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','NCR_APPROVAL_MESSAGE','ncr_approval_message','DOCK_NUM','STOPNUMBER','CUSTOMERNAME','SALESREPNAME','FOLDERNAME','COUNT','LABEL','NAME','LOCATIONBUCKET','BLOCKALPHA','STATUS','LINECOUNT','TOTALQTY','ROW_PHOTO_LINK','REQ_PHOTO_LINK','DOCK_PHOTO_LINK','FLYER_PHOTO_LINK','DOCK_NOTE','DOCK_ISSUE_NOTE','DOCK_ISSUE_STATE','DOCK_ISSUE_SOURCE_UID','DOCK_ISSUE_SOURCE_MATCH_KEY','issueSourceUniqueId','issueState','issueNote','sourceQty','remainingQty','sourceMatchKey','currentSourceUniqueId'];
 
         function normalizeRenderSignature(value = '') {
             return String(value || '').trim();
@@ -51585,6 +51731,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             const updatedByHtml = updatedByLabel
                 ? `<div class="mb-2 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.11em] text-amber-800"><i class="ph-bold ph-user-circle text-sm"></i><span class="shrink-0">Updated By</span><span class="min-w-0 truncate normal-case tracking-normal text-[11px] text-slate-800">${esc(updatedByLabel)}</span></div>`
                 : `<div class="mb-2 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.11em] text-slate-500"><i class="ph-bold ph-user-circle text-sm"></i><span>Updated By Unknown</span></div>`;
+            const approvalMessage = getNcrApprovalMessageFromItem(item);
+            const approvalMessageHtml = approvalMessage
+                ? `<div class="mb-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-left"><div class="text-[9px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Message</div><div class="mt-1 whitespace-pre-wrap break-words text-[12px] font-semibold leading-5 text-slate-700">${esc(approvalMessage)}</div></div>`
+                : '';
             const qtyInputId = `ncr-approval-qty-${String(uid || domId || Date.now()).replace(/[^a-z0-9_-]+/gi, '-')}`;
             const qtyTargetLabel = getNcrApprovalQuantityTargetLabel(type);
             const photoCsv = mergePhotoCsvList([
@@ -51605,7 +51755,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 ? `<div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"><label class="min-w-0 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Approved ${esc(qtyTargetLabel)} Qty<input id="${esc(qtyInputId)}" type="number" min="1" max="${esc(String(ptrValue == null ? '' : ptrValue))}" step="1" inputmode="numeric" class="mt-1 w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 text-right text-sm font-black text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="1-${esc(String(ptrLabel))}" value="${esc(String(firstNonEmptyValue(item.LOC_MATCH_QTY, item.loc_match_qty, '') || ''))}" onclick="event.stopPropagation()"></label><button type="button" class="min-h-[44px] self-end rounded-lg bg-blue-600 px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="event.stopPropagation(); return approveNcrApprovalAsJd('${safeUidJs}','${escJsAttrValue(qtyInputId)}', this)">Approve Qty To ${esc(qtyTargetLabel)}</button></div><div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">${denyButtonHtml}${resendButtonHtml}</div>`
                 : `<div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3"><button type="button" class="min-h-[44px] rounded-lg bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="event.stopPropagation(); return approveNcrApprovalAsDylan('${safeUidJs}', this)">Approve And Send To JD</button>${denyButtonHtml}${resendButtonHtml}</div>`;
             const borderClass = type === 'move-up' ? 'border-emerald-200' : (type === 'hold-release' ? 'border-red-200' : 'border-yellow-200');
-            return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border ${borderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${esc(domId)}" data-ncr-approval-uid="${esc(uid)}" ${buildCardActivationAttrs(domId, uid, 'tasks', 'Open approval row')}><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="mb-2 flex flex-wrap gap-2">${stageBadge}<span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${esc(typeLabel)}</span></div><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words mb-1">${commonName}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${contSize}</div>${updatedByHtml}<div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-white text-slate-700 px-2 py-1 rounded border border-slate-200">Item ${itemCode}</span><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">Loc ${locationCode}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">Lot ${lotCode}</span><span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">PTR ${esc(String(ptrLabel))}</span><span class="bg-slate-50 text-slate-600 px-2 py-1 rounded border border-slate-200">SY ${salesYear} ${seasonCode}</span></div></div>${photoHtml}</div>${actionHtml}</div></div>`;
+            return `<div class="flex items-center w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border ${borderClass} shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden" data-dom-id="${esc(domId)}" data-ncr-approval-uid="${esc(uid)}" ${buildCardActivationAttrs(domId, uid, 'tasks', 'Open approval row')}><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="mb-2 flex flex-wrap gap-2">${stageBadge}<span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${esc(typeLabel)}</span></div><div class="app-card-title font-black text-gray-800 text-[16px] leading-tight break-words mb-1">${commonName}</div><div class="app-card-subtitle font-bold text-[#007a4d] text-sm mb-2">${contSize}</div>${updatedByHtml}${approvalMessageHtml}<div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="bg-white text-slate-700 px-2 py-1 rounded border border-slate-200">Item ${itemCode}</span><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">Loc ${locationCode}</span><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded border border-gray-200">Lot ${lotCode}</span><span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">PTR ${esc(String(ptrLabel))}</span><span class="bg-slate-50 text-slate-600 px-2 py-1 rounded border border-slate-200">SY ${salesYear} ${seasonCode}</span></div></div>${photoHtml}</div>${actionHtml}</div></div>`;
         }
 
         function renderTasks(options = {}) {
@@ -55884,22 +56034,3 @@ ${folderNote ? `Folder Note: ${folderNote}
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
