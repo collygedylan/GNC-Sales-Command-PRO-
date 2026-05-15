@@ -80,7 +80,8 @@ const ALLOWED_DB_COLUMNS = new Set([
   'inventorynote', 'locationptn1', 'locationptn2', 'prisetby', 'priupdated', 'bypassloc', 'largeptrqty',
   'maxorderquantity', 'lochold', 'ext_ptronhand', 'varietycode', 'botanicalname', 'reversecommon',
 
-  'saleyear', 'blockalpha', 'blocknumber', 'bay', 'pullerresponsibility', 'season_available', 'salesnotebegindate'
+  'saleyear', 'blockalpha', 'blocknumber', 'bay', 'pullerresponsibility', 'season_available', 'salesnotebegindate',
+  'hold_release_approved_at', 'hold_release_approved_by', 'hold_release_approved_by_display', 'hold_release_approved_holdstopbegindate'
 ]);
 
 function runSOCOnly() { return processLatestFileOnlyFolder(FOLDERS.SOC_DROP, FOLDERS.SOC_PROCESSED, 'v2_soc_master', buildStandardPayload, { deltaMode: true }); }
@@ -121,7 +122,13 @@ const MASTER_IMPORT_BASE_COMPARE_COLUMNS = Object.freeze([
   'unique_id',
   'assignedto',
   'concat',
-  'holdstopcode'
+  'holdstopcode',
+  'holdstopreason',
+  'holdstopbegindate',
+  'hold_release_approved_at',
+  'hold_release_approved_by',
+  'hold_release_approved_by_display',
+  'hold_release_approved_holdstopbegindate'
 ]);
 
 const MASTER_IMPORT_APP_OWNED_COLUMNS = Object.freeze([
@@ -136,7 +143,11 @@ const MASTER_IMPORT_APP_OWNED_COLUMNS = Object.freeze([
   'loc_match_qty',
   'initial_ptr',
   'photo_link',
-  'photo_name'
+  'photo_name',
+  'hold_release_approved_at',
+  'hold_release_approved_by',
+  'hold_release_approved_by_display',
+  'hold_release_approved_holdstopbegindate'
 ]);
 
 const MASTER_IMPORT_CLEAR_ON_NEW_HOLD_COLUMNS = Object.freeze([
@@ -798,6 +809,61 @@ function hasMasterImportBlockingHold_(value) {
   return !!(tokens.H || tokens.S);
 }
 
+function parseMasterImportHoldReleaseDateMs_(value) {
+  if (value === undefined || value === null || value === '') return null;
+  if (Object.prototype.toString.call(value) === '[object Date]') {
+    const time = value.getTime();
+    return Number.isFinite(time) ? time : null;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    if (value > 10000 && value < 100000) {
+      return Math.round((value - 25569) * 86400000);
+    }
+    return value;
+  }
+  const text = normalizeMasterImportValue_(value);
+  if (!text) return null;
+  const direct = Date.parse(text);
+  if (Number.isFinite(direct)) return direct;
+  const slashDate = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(.+))?$/);
+  if (slashDate) {
+    const month = String(slashDate[1]).padStart(2, '0');
+    const day = String(slashDate[2]).padStart(2, '0');
+    const rawYear = String(slashDate[3]);
+    const year = rawYear.length === 2 ? `20${rawYear}` : rawYear;
+    const time = slashDate[4] ? String(slashDate[4]).trim() : '00:00:00';
+    const parsed = Date.parse(`${year}-${month}-${day}T${time}`);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  const dashDate = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+(.+))?$/);
+  if (dashDate) {
+    const month = String(dashDate[2]).padStart(2, '0');
+    const day = String(dashDate[3]).padStart(2, '0');
+    const time = dashDate[4] ? String(dashDate[4]).trim() : '00:00:00';
+    const parsed = Date.parse(`${dashDate[1]}-${month}-${day}T${time}`);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function shouldSuppressMasterImportHoldByRelease_(nextRow, existingRow) {
+  if (!nextRow || !existingRow) return false;
+  if (!hasMasterImportBlockingHold_(nextRow.holdstopcode)) return false;
+  const approvedAtMs = parseMasterImportHoldReleaseDateMs_(existingRow.hold_release_approved_at);
+  if (approvedAtMs == null) return false;
+  const beginValue = normalizeMasterImportValue_(nextRow.holdstopbegindate) || normalizeMasterImportValue_(existingRow.holdstopbegindate);
+  const beginMs = parseMasterImportHoldReleaseDateMs_(beginValue);
+  if (beginMs == null) return true;
+  return beginMs <= approvedAtMs;
+}
+
+function suppressMasterImportHoldForApprovedRelease_(nextRow) {
+  if (!nextRow) return nextRow;
+  nextRow.holdstopcode = null;
+  nextRow.holdstopreason = null;
+  return nextRow;
+}
+
 function shouldPreserveMasterImportAppOwnedFields_(existingRow, nextRow) {
   if (!existingRow || !nextRow) return false;
   const existingHadBlockingHold = hasMasterImportBlockingHold_(existingRow.holdstopcode);
@@ -839,6 +905,7 @@ function clearMasterImportAppOwnedFieldsForNewHold_(nextRow, existingRow) {
 
 function applyMasterImportAppFieldRules_(nextRow, existingRow) {
   if (!nextRow || !existingRow) return nextRow;
+  if (shouldSuppressMasterImportHoldByRelease_(nextRow, existingRow)) suppressMasterImportHoldForApprovedRelease_(nextRow);
   clearMasterImportAppOwnedFieldsForNewHold_(nextRow, existingRow);
   preserveMasterImportAppOwnedFields_(nextRow, existingRow);
   return nextRow;
@@ -1257,34 +1324,69 @@ function fetchSupabaseRowsByIds_(tableName, ids, selectColumns, options) {
   const fetchOptions = options || {};
   const interChunkDelayMs = Math.max(0, Number(fetchOptions.interChunkDelayMs) || 0);
   const batchSize = Math.max(1, Number(fetchOptions.batchSize) || SUPABASE_BY_ID_FETCH_BATCH_SIZE);
-  const chunkPlan = chunkSupabaseIdsForInFilter_(tableName, ids, selectColumns);
-  let rows = [];
+  let activeSelectColumns = normalizeSupabaseSelectColumns_(selectColumns).split(',').map(function(column) {
+    return String(column || '').trim();
+  }).filter(Boolean);
+  const ignoredMissingColumns = [];
 
-  const requests = chunkPlan.chunks.map(function(chunk) {
-    return {
-      url: `${chunkPlan.prefix}${chunk.join(',')}${chunkPlan.suffix}`,
-      method: 'get',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY },
-      muteHttpExceptions: true
-    };
-  });
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    const chunkPlan = chunkSupabaseIdsForInFilter_(tableName, ids, activeSelectColumns);
+    let rows = [];
+    let missingColumnMap = {};
+    let hardFailure = null;
 
-  for (let index = 0; index < requests.length; index += batchSize) {
-    const batch = requests.slice(index, index + batchSize);
-    const responses = executeFetchAllBatches(batch, batch.length);
-    responses.forEach(function(res, responseIndex) {
-      if (res.getResponseCode() !== 200) {
-        const chunkNumber = index + responseIndex + 1;
-        throw new Error(`Supabase by-ID lookup failed for ${tableName} chunk ${chunkNumber} (${res.getResponseCode()}): ${res.getContentText()}`);
-      }
-
-      const responseRows = JSON.parse(res.getContentText() || '[]');
-      if (Array.isArray(responseRows) && responseRows.length) rows = rows.concat(responseRows);
+    const requests = chunkPlan.chunks.map(function(chunk) {
+      return {
+        url: `${chunkPlan.prefix}${chunk.join(',')}${chunkPlan.suffix}`,
+        method: 'get',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY },
+        muteHttpExceptions: true
+      };
     });
-    if (interChunkDelayMs > 0 && index + batchSize < requests.length) Utilities.sleep(interChunkDelayMs);
+
+    for (let index = 0; index < requests.length; index += batchSize) {
+      const batch = requests.slice(index, index + batchSize);
+      const responses = executeFetchAllBatches(batch, batch.length);
+      responses.forEach(function(res, responseIndex) {
+        if (res.getResponseCode() !== 200) {
+          const chunkNumber = index + responseIndex + 1;
+          const body = res.getContentText();
+          extractMissingSupabaseColumnNames_(body).forEach(function(column) {
+            if (column && column !== 'unique_id') missingColumnMap[column] = true;
+          });
+          if (!Object.keys(missingColumnMap).length && !hardFailure) {
+            hardFailure = new Error(`Supabase by-ID lookup failed for ${tableName} chunk ${chunkNumber} (${res.getResponseCode()}): ${body}`);
+          }
+          return;
+        }
+
+        const responseRows = JSON.parse(res.getContentText() || '[]');
+        if (Array.isArray(responseRows) && responseRows.length) rows = rows.concat(responseRows);
+      });
+      if (Object.keys(missingColumnMap).length || hardFailure) break;
+      if (interChunkDelayMs > 0 && index + batchSize < requests.length) Utilities.sleep(interChunkDelayMs);
+    }
+
+    const missingColumns = Object.keys(missingColumnMap).filter(function(column) {
+      return ignoredMissingColumns.indexOf(column) === -1;
+    });
+    if (missingColumns.length) {
+      ignoredMissingColumns.push.apply(ignoredMissingColumns, missingColumns);
+      console.warn(`[WARN] Supabase schema is missing ${tableName} lookup column(s): ${missingColumns.join(', ')}. Retrying lookup without those fields.`);
+      const removeSet = {};
+      missingColumns.forEach(function(column) { removeSet[String(column || '').trim().toLowerCase()] = true; });
+      activeSelectColumns = activeSelectColumns.filter(function(column) {
+        return !removeSet[String(column || '').trim().toLowerCase()];
+      });
+      if (!activeSelectColumns.length) activeSelectColumns = ['unique_id'];
+      continue;
+    }
+
+    if (hardFailure) throw hardFailure;
+    return rows;
   }
 
-  return rows;
+  throw new Error(`Supabase by-ID lookup failed for ${tableName}: schema column retry limit exceeded.`);
 }
 
 function getSupabaseContentRangeCount(headers) {

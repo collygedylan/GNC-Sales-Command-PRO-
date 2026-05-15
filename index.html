@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.15.10';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.15.11';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1801,7 +1801,10 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 Choose <span class="font-black text-slate-700">No</span> to finish the row without creating the approval.
             </p>
             <div id="hold-release-message-step" class="mt-4 hidden rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
-                <label for="hold-release-message" class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Message</label>
+                <label for="hold-release-av-note" class="block text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">AV Note Required</label>
+                <textarea id="hold-release-av-note" class="mt-2 w-full resize-y rounded-xl border border-emerald-200 bg-white px-3 py-3 text-sm font-semibold leading-5 text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" rows="3" placeholder="Enter the AV Note that should stay visible after JD approves..."></textarea>
+                <p class="mt-2 text-[11px] font-semibold leading-5 text-emerald-800">This note is required before the Take Off Hold approval is sent.</p>
+                <label for="hold-release-message" class="mt-4 block text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Message</label>
                 <textarea id="hold-release-message" class="mt-2 w-full resize-y rounded-xl border border-emerald-200 bg-white px-3 py-3 text-sm font-semibold leading-5 text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" rows="4" placeholder="Type a message for Dylan and JD..."></textarea>
             </div>
             <div id="hold-release-choice-actions" class="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1810,7 +1813,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             </div>
             <div id="hold-release-message-actions" class="mt-5 hidden grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-sm active:scale-95" onclick="resetHoldReleaseMessageStep()">Back</button>
-                <button type="button" id="hold-release-done-btn" class="rounded-xl border border-emerald-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="closeHoldReleaseModal('yes')">Done</button>
+                <button type="button" id="hold-release-done-btn" class="rounded-xl border border-emerald-200 bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="finishHoldReleaseMessageStep()">Done</button>
             </div>
         </div>
     </div>
@@ -2012,7 +2015,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.15.10').trim() || 'V2026.05.15.10';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.15.11').trim() || 'V2026.05.15.11';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2892,7 +2895,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.15.10';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.15.11';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6609,7 +6612,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             return normalizeRowPhotoFields(item);
         }
 
-        const LINKED_ROW_SYNC_KEYS = ['COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PTRAVAILABLE','SEASONSUPPLY','PRIORITY','QUALITYCODE','FIELDTAGCOLOR','PLANTGROUPCODE','BLOCKALPHA','SEASON','S_LTS','HOLDSTOPCODE','HOLSTOPCODE','HOLDSTOPREASON','LOCATIONNOTE','LOCATIONNOTEDATE','AV_NOTE','SALES_NOTE','MATCH','SPEC','CALIPER','PICK','LOC_MATCH_QTY','INITIAL_PTR','NCR_APPROVAL_MESSAGE','ncr_approval_message'];
+        const LINKED_ROW_SYNC_KEYS = ['COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PTRAVAILABLE','SEASONSUPPLY','PRIORITY','QUALITYCODE','FIELDTAGCOLOR','PLANTGROUPCODE','BLOCKALPHA','SEASON','S_LTS','HOLDSTOPCODE','HOLSTOPCODE','HOLDSTOPREASON','HOLDSTOPBEGINDATE','holdstopbegindate','HOLD_RELEASE_APPROVED_AT','hold_release_approved_at','HOLD_RELEASE_APPROVED_BY','hold_release_approved_by','HOLD_RELEASE_APPROVED_BY_DISPLAY','hold_release_approved_by_display','HOLD_RELEASE_APPROVED_HOLDSTOPBEGINDATE','hold_release_approved_holdstopbegindate','LOCATIONNOTE','LOCATIONNOTEDATE','AV_NOTE','SALES_NOTE','MATCH','SPEC','CALIPER','PICK','LOC_MATCH_QTY','INITIAL_PTR','NCR_APPROVAL_MESSAGE','ncr_approval_message'];
         const EXACT_ROW_SYNC_KEYS = LINKED_ROW_SYNC_KEYS.concat(getFlyerShadowKeys(), ['APP_TAB_ASSIGNMENT','PRODUCTIVITY_ORIGIN_ASSIGNMENT','DATE_COMPLETED','FLYER_CAT','FLYER_TITLE','FLYER_INST','FLYER_ASSIGNED','FLYER_NOTES','FLYER_COMPLETED','ASSIGNEDTO']);
         const ROW_SYNC_SNAPSHOT_EXTRA_KEYS = ['SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME','REQ_STATUS','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','REQ_RESERVE'];
         const ROW_SYNC_STORAGE_KEY = 'gnc_row_state_sync_v1';
@@ -7048,7 +7051,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return tokens;
         }
 
-        function getHoldStopSnapshotFromItem(item) {
+        function getRawHoldStopSnapshotFromItem(item) {
             return normalizeHoldStopSnapshotValue(firstNonEmptyValue(
                 item && item.HOLDSTOPCODE,
                 item && item.holdstopcode,
@@ -7062,6 +7065,69 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 item && item.holstopcode,
                 ''
             ));
+        }
+
+        function parseHoldReleaseCompareTimestamp(value) {
+            const text = normalizeRuleText(value);
+            if (!text) return null;
+            const direct = Date.parse(text);
+            if (Number.isFinite(direct)) return direct;
+            const slashDate = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(.+))?$/);
+            if (slashDate) {
+                const month = String(slashDate[1]).padStart(2, '0');
+                const day = String(slashDate[2]).padStart(2, '0');
+                const rawYear = String(slashDate[3]);
+                const year = rawYear.length === 2 ? `20${rawYear}` : rawYear;
+                const time = slashDate[4] ? String(slashDate[4]).trim() : '00:00:00';
+                const parsed = Date.parse(`${year}-${month}-${day}T${time}`);
+                return Number.isFinite(parsed) ? parsed : null;
+            }
+            const dashDate = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+(.+))?$/);
+            if (dashDate) {
+                const month = String(dashDate[2]).padStart(2, '0');
+                const day = String(dashDate[3]).padStart(2, '0');
+                const time = dashDate[4] ? String(dashDate[4]).trim() : '00:00:00';
+                const parsed = Date.parse(`${dashDate[1]}-${month}-${day}T${time}`);
+                return Number.isFinite(parsed) ? parsed : null;
+            }
+            return null;
+        }
+
+        function getHoldReleaseApprovedAtValue(item = null) {
+            return firstNonEmptyValue(
+                item && item.HOLD_RELEASE_APPROVED_AT,
+                item && item.hold_release_approved_at,
+                item && item.HOLD_RELEASED_AT,
+                item && item.hold_released_at,
+                ''
+            );
+        }
+
+        function getHoldStopBeginDateValueFromItem(item = null) {
+            return firstNonEmptyValue(
+                item && item.HOLDSTOPBEGINDATE,
+                item && item.holdstopbegindate,
+                item && item.HOLD_STOP_BEGIN_DATE,
+                item && item.hold_stop_begin_date,
+                item && item.HOLDSTOP_BEGIN_DATE,
+                item && item.holdstop_begin_date,
+                ''
+            );
+        }
+
+        function isHoldReleaseOverrideActiveForItem(item = null) {
+            if (!item) return false;
+            if (!hasBlockingHoldStopCodeForAv(getRawHoldStopSnapshotFromItem(item))) return false;
+            const approvedAtMs = parseHoldReleaseCompareTimestamp(getHoldReleaseApprovedAtValue(item));
+            if (approvedAtMs == null) return false;
+            const holdBeginMs = parseHoldReleaseCompareTimestamp(getHoldStopBeginDateValueFromItem(item));
+            if (holdBeginMs == null) return true;
+            return holdBeginMs <= approvedAtMs;
+        }
+
+        function getHoldStopSnapshotFromItem(item) {
+            if (isHoldReleaseOverrideActiveForItem(item)) return '';
+            return getRawHoldStopSnapshotFromItem(item);
         }
 
         function getAvRuleHoldStopSnapshotFromItem(item) {
@@ -11309,6 +11375,51 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             return options;
         }
 
+        function maybeWarnHoldReleaseOverrideSchemaMissing(error = null) {
+            holdReleaseOverrideColumnsReady = false;
+            if (holdReleaseOverrideSchemaWarningShown || !currentUser) return;
+            holdReleaseOverrideSchemaWarningShown = true;
+            console.warn('Hold release override columns are not installed. Run hold_release_override_migration.sql so JD-approved hold removals stay cleared across imports.', error);
+        }
+
+        async function ensureHoldReleaseOverrideColumnsReady(force = false) {
+            if (holdReleaseOverrideColumnsReady === true && !force) return true;
+            if (holdReleaseOverrideColumnsReady === false && !force) return false;
+            if (holdReleaseOverrideColumnsProbePromise && !force) return holdReleaseOverrideColumnsProbePromise;
+            holdReleaseOverrideColumnsProbePromise = (async () => {
+                if (navigator.onLine === false) return false;
+                try {
+                    const url = `${SUPABASE_URL}/rest/v1/v2_master_inventory?select=unique_id,hold_release_approved_at,hold_release_approved_by,hold_release_approved_by_display,hold_release_approved_holdstopbegindate&limit=1`;
+                    const response = await fetchWithTimeout(url, {
+                        method: 'GET',
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
+                    }, SUPABASE_READ_TIMEOUT_MS, 'Hold Release Override Schema');
+                    if (!response.ok) {
+                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
+                        const normalizedError = String(errorText || '').toLowerCase();
+                        if (normalizedError.includes('hold_release_') || normalizedError.includes('column')) {
+                            maybeWarnHoldReleaseOverrideSchemaMissing(errorText);
+                            return false;
+                        }
+                        return false;
+                    }
+                    holdReleaseOverrideColumnsReady = true;
+                    holdReleaseOverrideSchemaWarningShown = false;
+                    return true;
+                } catch (error) {
+                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
+                    if (normalizedError.includes('hold_release_') || normalizedError.includes('column')) {
+                        maybeWarnHoldReleaseOverrideSchemaMissing(error);
+                        return false;
+                    }
+                    return false;
+                } finally {
+                    holdReleaseOverrideColumnsProbePromise = null;
+                }
+            })();
+            return holdReleaseOverrideColumnsProbePromise;
+        }
+
         function maybeWarnAvRuleSchemaMissing() {
             if (avRuleSchemaWarningShown || !currentUser) return;
             avRuleSchemaWarningShown = true;
@@ -12906,7 +13017,7 @@ let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chat
 let walkieChannels=[]; let walkieChannelMembers=[]; let walkieCalls=[]; let walkieCallMembers=[]; let walkieUsers=[]; let walkieSignalsSeen=new Set(); let walkieDataLoaded=false; let walkieLoadPromise=null; let walkieSchemaReady=null; let walkieSchemaProbePromise=null; let walkieSchemaWarningShown=false; let activeWalkieChannelId=''; let pendingWalkieOpenChannelId=''; let pendingWalkieOpenCallId=''; let walkieComposeOpen=false; let walkieUserSearchTerm=''; let walkieComposeTitle=''; let walkieSelectedUsers=new Set(); let walkieLastRenderSignature=''; let walkieDeviceId=''; let activeWalkieCallId=''; let walkieJoinedCallId=''; let walkieActiveMembershipId=''; let walkiePeerConnections=new Map(); let walkieRemoteAudioElements=new Map(); let walkieLocalStream=null; let walkieHeartbeatTimer=null; let walkieSpeakerHeartbeatTimer=null; let walkieReconnectTimer=null; let walkieActiveSpeakerIntent=false; let walkiePressedPointerId=''; let walkieForegroundNoticeShown=false;
         let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let requestHistoryInventoryById=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let flyerFolderHistoryInventoryById=new Map(); let mlImageJobsInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map();
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
-let reviewSearchTerm=''; let moveUpSearchTerm=''; let reviewBrowseMode='item'; let moveUpBrowseMode='item'; let selectedReviewBlockAlpha=null; let selectedReviewLocationCode=null; let selectedMoveUpBlockAlpha=null; let selectedMoveUpLocationCode=null; let reviewDerivedRenderCache={ key: '', filteredRows: [], cardRows: null, blockRows: null, blockGroups: null, itemGroups: null }; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set();
+let reviewSearchTerm=''; let moveUpSearchTerm=''; let reviewBrowseMode='item'; let moveUpBrowseMode='item'; let selectedReviewBlockAlpha=null; let selectedReviewLocationCode=null; let selectedMoveUpBlockAlpha=null; let selectedMoveUpLocationCode=null; let reviewDerivedRenderCache={ key: '', filteredRows: [], cardRows: null, blockRows: null, blockGroups: null, itemGroups: null }; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set(); let holdReleaseOverrideColumnsReady=null; let holdReleaseOverrideColumnsProbePromise=null; let holdReleaseOverrideSchemaWarningShown=false;
 const ncrFilterStateByView = {
     review: { selectedGenusNames: new Set(), genusSearchTerm: '', genusOpen: false, genusSelectionMode: 'all', selectedContSizes: new Set(), contSizeSearchTerm: '', contSizeOpen: false, contSizeSelectionMode: 'all', itemsCache: [], lastSignature: '' },
     'move-up': { selectedGenusNames: new Set(), genusSearchTerm: '', genusOpen: false, genusSelectionMode: 'all', selectedContSizes: new Set(), contSizeSearchTerm: '', contSizeOpen: false, contSizeSelectionMode: 'all', itemsCache: [], lastSignature: '' }
@@ -13318,7 +13429,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const MASTER_INITIAL_SELECT_FIELDS = [
             'unique_id','warehouseid','plantgroupcode','itemcode','qualitycode','contsize','commonname','description','plant_name',
             'lotcode','locationcode','source','desigitem','desigcust','desigloc','priority','ptravailable','s_lts','season_supply','saleyear',
-            'itemspec','locationnote','locationnotedate','fieldtagcolor','holdstopcode','holdstopreason','season','blockalpha','blocknumber',
+            'itemspec','locationnote','locationnotedate','fieldtagcolor','holdstopcode','holdstopreason','holdstopbegindate','season','blockalpha','blocknumber',
             'app_tab_assignment','assignedto','date_completed','av_note','sales_note','salesnote','match','loc_match_qty','initial_ptr','spec','caliper','pick',
             'photo_link','photo_name','saved_photo_link','saved_photo_name','row_photo_link','row_photo_name','req_photo_link','req_photo_name',
             'dock_photo_link','dock_photo_name','flyer_photo_link','flyer_photo_name','request_folder','req_status','flyer_folder','flyer_completed',
@@ -13356,6 +13467,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             'fieldtagcolor',
             'holdstopcode',
             'holdstopreason',
+            'holdstopbegindate',
             'season',
             'blockalpha',
             'blocknumber',
@@ -13383,6 +13495,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function getNcrApprovalTaskSelectFields(includeRequesterFields = true) {
             const fields = new Set(String(NCR_APPROVAL_TASK_BASE_SELECT_FIELDS || '').split(',').map((field) => String(field || '').trim()).filter(Boolean));
             String(NCR_APPROVAL_REQUESTER_SELECT_FIELDS || '').split(',').map((field) => String(field || '').trim()).filter(Boolean).forEach((field) => fields.add(field));
+            if (holdReleaseOverrideColumnsReady === true) {
+                ['hold_release_approved_at','hold_release_approved_by','hold_release_approved_by_display','hold_release_approved_holdstopbegindate'].forEach((field) => fields.add(field));
+            }
             if (!includeRequesterFields) {
                 String(NCR_APPROVAL_REQUESTER_SELECT_FIELDS || '').split(',').map((field) => String(field || '').trim()).filter(Boolean).forEach((field) => fields.delete(field));
             }
@@ -13400,7 +13515,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.15.10').trim() || 'V2026.05.15.10';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.15.11').trim() || 'V2026.05.15.11';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -27820,6 +27935,42 @@ function toggleDriveQuickRequestItem(domId) {
             return String(result && typeof result === 'object' ? firstNonEmptyValue(result.message, '') : '').trim();
         }
 
+        function getApprovalPromptAvNote(result = null) {
+            return String(result && typeof result === 'object' ? firstNonEmptyValue(result.avNote, result.av_note, '') : '').trim().toUpperCase();
+        }
+
+        function normalizeHoldReleaseApprovalAvNote(value = '') {
+            return String(value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim().toUpperCase();
+        }
+
+        function getHoldReleaseApprovalAvNoteFromItem(item = null) {
+            return normalizeHoldReleaseApprovalAvNote(firstNonEmptyValue(
+                item && getItemDisplayValue(item, 'AV_NOTE', ''),
+                item && item.AV_NOTE,
+                item && item.av_note,
+                item && item.REQ_AV_NOTE,
+                item && item.req_av_note,
+                item && item.FLYER_AV_NOTE,
+                item && item.flyer_av_note,
+                item && item.DOCK_AV_NOTE,
+                item && item.dock_av_note,
+                ''
+            ));
+        }
+
+        function applyHoldReleaseApprovalAvNote(item = null, avNote = '') {
+            if (!item || typeof item !== 'object') return '';
+            const safeAvNote = normalizeHoldReleaseApprovalAvNote(avNote);
+            item.AV_NOTE = safeAvNote;
+            item.av_note = safeAvNote;
+            const draft = getNcrDraft(item, false);
+            if (draft) {
+                draft.avNote = safeAvNote;
+                draft.avNoteTouched = true;
+            }
+            return safeAvNote;
+        }
+
         function getApprovalPromptTextareaValue(id = '') {
             const textarea = document.getElementById(String(id || '').trim());
             return String(textarea && textarea.value || '').trim();
@@ -28416,7 +28567,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
         }
 
-        function getHoldReleaseHoldCode(item = null) {
+        function getRawHoldReleaseHoldCode(item = null) {
             return String(firstNonEmptyValue(
                 item && item.HOLDSTOPCODE,
                 item && item.holdstopcode,
@@ -28438,7 +28589,12 @@ function toggleDriveQuickRequestItem(domId) {
             ) || '').trim();
         }
 
-        function getHoldReleaseHoldReason(item = null) {
+        function getHoldReleaseHoldCode(item = null) {
+            if (isHoldReleaseOverrideActiveForItem(item)) return '';
+            return getRawHoldReleaseHoldCode(item);
+        }
+
+        function getRawHoldReleaseHoldReason(item = null) {
             return String(firstNonEmptyValue(
                 item && item.HOLDSTOPREASON,
                 item && item.holdstopreason,
@@ -28450,6 +28606,11 @@ function toggleDriveQuickRequestItem(domId) {
                 item && item.hold_reason,
                 ''
             ) || '').trim();
+        }
+
+        function getHoldReleaseHoldReason(item = null) {
+            if (isHoldReleaseOverrideActiveForItem(item)) return '';
+            return getRawHoldReleaseHoldReason(item);
         }
 
         function isHoldReleaseBlankHoldValue(value = '') {
@@ -28589,8 +28750,22 @@ function toggleDriveQuickRequestItem(domId) {
 
         function beginHoldReleaseMessageStep() {
             setPromptStepVisibility('hold-release', true);
+            const avNoteInput = document.getElementById('hold-release-av-note');
             const textarea = document.getElementById('hold-release-message');
-            if (textarea) setTimeout(() => textarea.focus(), 0);
+            const targetInput = avNoteInput && !String(avNoteInput.value || '').trim() ? avNoteInput : textarea;
+            if (targetInput) setTimeout(() => targetInput.focus(), 0);
+            return false;
+        }
+
+        function finishHoldReleaseMessageStep() {
+            const avNoteInput = document.getElementById('hold-release-av-note');
+            const avNote = normalizeHoldReleaseApprovalAvNote(avNoteInput && avNoteInput.value || '');
+            if (!avNote) {
+                if (avNoteInput) avNoteInput.focus();
+                showToast('AV Note Required', 'Enter an AV Note before sending this Take Off Hold approval.', true);
+                return false;
+            }
+            closeHoldReleaseModal('yes');
             return false;
         }
 
@@ -28598,12 +28773,16 @@ function toggleDriveQuickRequestItem(domId) {
             const modal = document.getElementById('hold-release-modal');
             if (modal) modal.classList.add('hidden');
             const message = String(choice || '').trim().toLowerCase() === 'yes' ? getApprovalPromptTextareaValue('hold-release-message') : '';
+            const avNote = String(choice || '').trim().toLowerCase() === 'yes'
+                ? normalizeHoldReleaseApprovalAvNote(getApprovalPromptTextareaValue('hold-release-av-note'))
+                : '';
             setPromptStepVisibility('hold-release', false);
             const resolver = holdReleasePromptResolver;
             holdReleasePromptResolver = null;
             if (resolver) resolver({
                 choice: String(choice || 'no').trim().toLowerCase() || 'no',
-                message
+                message,
+                avNote
             });
         }
 
@@ -28641,11 +28820,16 @@ function toggleDriveQuickRequestItem(domId) {
                 messageInput.value = '';
                 messageInput.placeholder = 'Type a message for Dylan and JD about taking this row off hold...';
             }
+            const avNoteInput = document.getElementById('hold-release-av-note');
+            if (avNoteInput) {
+                avNoteInput.value = getHoldReleaseApprovalAvNoteFromItem(item);
+                avNoteInput.placeholder = 'Enter the AV Note that should stay visible after JD approves...';
+            }
             setPromptStepVisibility('hold-release', false);
             if (holdReleasePromptResolver) {
                 const previousResolver = holdReleasePromptResolver;
                 holdReleasePromptResolver = null;
-                previousResolver({ choice: 'no', message: '' });
+                previousResolver({ choice: 'no', message: '', avNote: '' });
             }
             modal.classList.remove('hidden');
             return new Promise((resolve) => {
@@ -28907,10 +29091,16 @@ function toggleDriveQuickRequestItem(domId) {
                 const choice = getApprovalPromptChoice(promptResult, 'no');
                 if (choice !== 'yes') return false;
                 const approvalMessage = getApprovalPromptMessage(promptResult);
+                const approvalAvNote = getApprovalPromptAvNote(promptResult);
+                if (!approvalAvNote) {
+                    showToast('AV Note Required', 'Enter an AV Note before sending this Take Off Hold approval.', true);
+                    return false;
+                }
                 const photoUrls = getHoldReleasePhotoUrlsFromSaveContext(item, prefix, sourceItem);
                 prepareNcrReleaseEmailDraftFromSaveContext(item, prefix, sourceItem);
+                applyHoldReleaseApprovalAvNote(sourceItem, approvalAvNote);
                 applyNcrApprovalMessageToDraft(sourceItem, approvalMessage);
-                await submitNcrApprovalToDylan(sourceItem, 'hold-release', { photoUrls, approvalMessage });
+                await submitNcrApprovalToDylan(sourceItem, 'hold-release', { photoUrls, approvalMessage, approvalAvNote });
                 showToast('Sent To Dylan', 'Take Off Hold row sent to Dylan for approval.');
                 return true;
             } catch (error) {
@@ -29000,12 +29190,28 @@ function toggleDriveQuickRequestItem(domId) {
                 payload.ncr_requested_at = firstNonEmptyValue(masterItem && masterItem.NCR_REQUESTED_AT, masterItem && masterItem.ncr_requested_at, item && item.NCR_REQUESTED_AT, item && item.ncr_requested_at, new Date().toISOString());
                 payload.ncr_approval_message = approvalMessage || null;
             }
+            const holdReleaseApprovalAvNote = safeType === 'hold-release'
+                ? normalizeHoldReleaseApprovalAvNote(firstNonEmptyValue(
+                    safeOptions.approvalAvNote,
+                    safeOptions.avNote,
+                    draft && draft.avNoteTouched ? draft.avNote : '',
+                    getHoldReleaseApprovalAvNoteFromItem(item),
+                    getHoldReleaseApprovalAvNoteFromItem(masterItem),
+                    ''
+                ))
+                : '';
+            if (safeType === 'hold-release') {
+                if (!holdReleaseApprovalAvNote) throw new Error('AV Note is required before sending this Take Off Hold approval.');
+                applyHoldReleaseApprovalAvNote(masterItem || item, holdReleaseApprovalAvNote);
+                if (item && item !== masterItem) applyHoldReleaseApprovalAvNote(item, holdReleaseApprovalAvNote);
+                payload.av_note = holdReleaseApprovalAvNote;
+            }
             const setIfText = (key, value) => {
                 const text = String(firstNonEmptyValue(value, '') || '').trim();
                 if (text) payload[key] = text;
             };
             if (draft) {
-                setIfText('av_note', String(firstNonEmptyValue(draft.avNote, draft.spec, '') || '').trim().toUpperCase());
+                if (safeType !== 'hold-release') setIfText('av_note', String(firstNonEmptyValue(draft.avNote, draft.spec, '') || '').trim().toUpperCase());
                 setIfText('spec', draft.spec);
                 setIfText('caliper', draft.caliper);
                 setIfText('pic_note', String(firstNonEmptyValue(draft.pick, getNcrAutoPickNote(item), '') || '').trim());
@@ -29416,6 +29622,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             removeNcrApprovalCardFromCurrentTaskView(uid);
             try {
+                const approvedAt = new Date().toISOString();
                 const payload = {
                     app_tab_assignment: getNcrApprovalAssignment(type, 'inventory'),
                     assignedto: '',
@@ -29423,6 +29630,16 @@ function toggleDriveQuickRequestItem(domId) {
                     initial_ptr: ptrValue == null ? null : ptrValue,
                     date_completed: null
                 };
+                if (type === 'hold-release') {
+                    payload.holdstopcode = null;
+                    payload.holdstopreason = null;
+                    if (await ensureHoldReleaseOverrideColumnsReady().catch(() => false)) {
+                        payload.hold_release_approved_at = approvedAt;
+                        payload.hold_release_approved_by = normalizePushUsername(currentUser || currentUserDisplay || '') || null;
+                        payload.hold_release_approved_by_display = String(currentUserDisplay || currentUser || '').trim() || null;
+                        payload.hold_release_approved_holdstopbegindate = String(firstNonEmptyValue(getHoldStopBeginDateValueFromItem(item), '') || '').trim() || null;
+                    }
+                }
                 const masterItem = await writeNcrApprovalMasterPayload(item, payload, 'ncr-approval-jd');
                 didSendToInventoryOffice = true;
                 removeNcrApprovalCardFromCurrentTaskView(uid);
@@ -34270,8 +34487,8 @@ function toggleDriveQuickRequestItem(domId) {
                     { label: 'Caliper', value: (row) => row.CALIPER || '' },
                     { label: 'AV Note', value: (row) => row.AV_NOTE || '' },
                     { label: 'Sales Note', value: (row) => firstNonEmptyValue(row.SALES_NOTE, row.SALESNOTE, row.SALES_DESC, row.SALESDESC) || '' },
-                    { label: 'Hold Code', value: (row) => firstNonEmptyValue(row.HOLDSTOPCODE, row.HOLD_STOP_CODE, row.HOLDSTOP) || '' },
-                    { label: 'Hold Reason', value: (row) => firstNonEmptyValue(row.HOLDSTOPREASON, row.HOLD_STOP_REASON, row.HOLDREASON) || '' },
+                    { label: 'Hold Code', value: (row) => getHoldStopSnapshotFromItem(row) || '' },
+                    { label: 'Hold Reason', value: (row) => isHoldReleaseOverrideActiveForItem(row) ? '' : (firstNonEmptyValue(row.HOLDSTOPREASON, row.HOLD_STOP_REASON, row.HOLDREASON) || '') },
                     { label: 'Photo Links', value: (row) => getPhotoUrlList(getRowPhotoLink(row, 'av')).join('\n') }
                 ];
                 if (activeAVTab === 'hotprice') {
@@ -34620,7 +34837,7 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
         const chunkRenderTokensByKey = Object.create(null);
-        const DEFAULT_RENDER_SIGNATURE_FIELDS = ['UNIQUE_ID','DOM_ID','COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PRIORITY','PTRAVAILABLE','S_LTS','LOCATIONNOTE','LOCATIONNOTEDATE','SEASON','AV_NOTE','HOLDSTOPREASON','LISTPRICE','HOT_PRICE','HOTPRICE','REQ_STATUS','REQ_QTY','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','NCR_APPROVAL_MESSAGE','ncr_approval_message','DOCK_NUM','STOPNUMBER','CUSTOMERNAME','SALESREPNAME','FOLDERNAME','COUNT','LABEL','NAME','LOCATIONBUCKET','BLOCKALPHA','STATUS','LINECOUNT','TOTALQTY','ROW_PHOTO_LINK','REQ_PHOTO_LINK','DOCK_PHOTO_LINK','FLYER_PHOTO_LINK','DOCK_NOTE','DOCK_ISSUE_NOTE','DOCK_ISSUE_STATE','DOCK_ISSUE_SOURCE_UID','DOCK_ISSUE_SOURCE_MATCH_KEY','issueSourceUniqueId','issueState','issueNote','sourceQty','remainingQty','sourceMatchKey','currentSourceUniqueId'];
+        const DEFAULT_RENDER_SIGNATURE_FIELDS = ['UNIQUE_ID','DOM_ID','COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PRIORITY','PTRAVAILABLE','S_LTS','LOCATIONNOTE','LOCATIONNOTEDATE','SEASON','AV_NOTE','HOLDSTOPCODE','HOLDSTOPREASON','HOLDSTOPBEGINDATE','HOLD_RELEASE_APPROVED_AT','LISTPRICE','HOT_PRICE','HOTPRICE','REQ_STATUS','REQ_QTY','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_PICK','REQ_COMMENTS','NCR_APPROVAL_MESSAGE','ncr_approval_message','DOCK_NUM','STOPNUMBER','CUSTOMERNAME','SALESREPNAME','FOLDERNAME','COUNT','LABEL','NAME','LOCATIONBUCKET','BLOCKALPHA','STATUS','LINECOUNT','TOTALQTY','ROW_PHOTO_LINK','REQ_PHOTO_LINK','DOCK_PHOTO_LINK','FLYER_PHOTO_LINK','DOCK_NOTE','DOCK_ISSUE_NOTE','DOCK_ISSUE_STATE','DOCK_ISSUE_SOURCE_UID','DOCK_ISSUE_SOURCE_MATCH_KEY','issueSourceUniqueId','issueState','issueNote','sourceQty','remainingQty','sourceMatchKey','currentSourceUniqueId'];
 
         function normalizeRenderSignature(value = '') {
             return String(value || '').trim();
@@ -45114,6 +45331,30 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 masterItem.ASSIGNEDTO = payload.assignedto || '';
                 masterItem.assignedto = payload.assignedto || '';
             }
+            if (Object.prototype.hasOwnProperty.call(payload, 'holdstopcode')) {
+                masterItem.HOLDSTOPCODE = payload.holdstopcode || '';
+                masterItem.holdstopcode = payload.holdstopcode || '';
+            }
+            if (Object.prototype.hasOwnProperty.call(payload, 'holdstopreason')) {
+                masterItem.HOLDSTOPREASON = payload.holdstopreason || '';
+                masterItem.holdstopreason = payload.holdstopreason || '';
+            }
+            if (Object.prototype.hasOwnProperty.call(payload, 'hold_release_approved_at')) {
+                masterItem.HOLD_RELEASE_APPROVED_AT = payload.hold_release_approved_at || '';
+                masterItem.hold_release_approved_at = payload.hold_release_approved_at || '';
+            }
+            if (Object.prototype.hasOwnProperty.call(payload, 'hold_release_approved_by')) {
+                masterItem.HOLD_RELEASE_APPROVED_BY = payload.hold_release_approved_by || '';
+                masterItem.hold_release_approved_by = payload.hold_release_approved_by || '';
+            }
+            if (Object.prototype.hasOwnProperty.call(payload, 'hold_release_approved_by_display')) {
+                masterItem.HOLD_RELEASE_APPROVED_BY_DISPLAY = payload.hold_release_approved_by_display || '';
+                masterItem.hold_release_approved_by_display = payload.hold_release_approved_by_display || '';
+            }
+            if (Object.prototype.hasOwnProperty.call(payload, 'hold_release_approved_holdstopbegindate')) {
+                masterItem.HOLD_RELEASE_APPROVED_HOLDSTOPBEGINDATE = payload.hold_release_approved_holdstopbegindate || '';
+                masterItem.hold_release_approved_holdstopbegindate = payload.hold_release_approved_holdstopbegindate || '';
+            }
             Object.keys(payload).forEach((key) => {
                 if (!/^av_rule_/i.test(key)) return;
                 const value = payload[key];
@@ -45301,10 +45542,11 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const tagColor=item.FIELDTAGCOLOR||'-';
             const safeUidJs=esc(item.UNIQUE_ID);
             const safeDockIssueSourceUidJs=esc(firstNonEmptyValue(item.DOCK_ISSUE_SOURCE_UID, item.UNIQUE_ID, item.unique_id, ''));
-            const rawHoldCode = firstNonEmptyValue(item.HOLDSTOPCODE, item.HOLD_STOP_CODE, item.HOLDSTOP);
+            const holdReleaseOverrideActive = isHoldReleaseOverrideActiveForItem(item);
+            const rawHoldCode = holdReleaseOverrideActive ? '' : firstNonEmptyValue(item.HOLDSTOPCODE, item.HOLD_STOP_CODE, item.HOLDSTOP);
             const holdCode = String(rawHoldCode || '').trim().toUpperCase();
             const cleanHoldCode = holdCode && holdCode !== 'NULL' && holdCode !== '-' ? holdCode : '';
-            const holdReasonText = firstNonEmptyValue(item.HOLDSTOPREASON, item.HOLD_STOP_REASON, item.HOLDREASON);
+            const holdReasonText = holdReleaseOverrideActive ? '' : firstNonEmptyValue(item.HOLDSTOPREASON, item.HOLD_STOP_REASON, item.HOLDREASON);
             const salesNoteText = firstNonEmptyValue(getItemDisplayValue(item, 'SALES_NOTE', sourceView), item.SALES_DESC, item.SALESDESC);
             const hasStopHold = cleanHoldCode.includes('S');
             const hasHold = !hasStopHold && cleanHoldCode.includes('H');
@@ -45372,7 +45614,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 const listPriceNumber = parseCardPriceNumber(firstNonEmptyValue(item.LISTPRICE, item.LISTPRI, ''));
                 const listPriceText = listPriceNumber === null ? formatCardPriceValue(firstNonEmptyValue(item.LISTPRICE, item.LISTPRI, '')) : `$${listPriceNumber.toFixed(2)}`;
                 const avNoteText = String(firstNonEmptyValue(item.AV_NOTE, '') || '').trim();
-                const holdReasonValue = String(firstNonEmptyValue(item.HOLDSTOPREASON, item.HOLD_STOP_REASON, item.HOLDREASON, '') || '').trim();
+                const holdReasonValue = holdReleaseOverrideActive ? '' : String(firstNonEmptyValue(item.HOLDSTOPREASON, item.HOLD_STOP_REASON, item.HOLDREASON, '') || '').trim();
                 const saveAmount = hotPriceNumber !== null && listPriceNumber !== null ? Math.max(0, listPriceNumber - hotPriceNumber) : null;
                 const saveAmountText = saveAmount !== null ? `$${saveAmount.toFixed(2)}` : '';
                 const showHotPrice = activeAVTab === 'hotprice' && hotPriceNumber !== null;
@@ -45531,7 +45773,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 const displaySpec = getItemDisplayValue(item, 'SPEC', displaySourceView);
                 const displayCaliper = getItemDisplayValue(item, 'CALIPER', displaySourceView);
                 const displayMatch = getItemDisplayValue(item, 'MATCH', displaySourceView);
-                const displayHoldStopCode = firstNonEmptyValue(item.HOLDSTOPCODE, item.holdstopcode, '-') || '-';
+                const displayHoldStopCode = holdReleaseOverrideActive ? '-' : (firstNonEmptyValue(item.HOLDSTOPCODE, item.holdstopcode, '-') || '-');
                 const displaySource = String(firstNonEmptyValue(item.SOURCE, item.source, '') || '').trim();
                 let noteHtml='';
                 const holdHtml = buildHoldReasonHtml();
@@ -47042,7 +47284,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function getStandardPickNoteForItem(item) {
             const locationCode = String(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.LOCATION, '') || '').trim();
-            const holdStopCode = String(firstNonEmptyValue(item && item.HOLDSTOPCODE, item && item.HOLD_STOP_CODE, item && item.HOLDSTOP, '') || '').trim().toUpperCase();
+            const holdStopCode = getHoldStopSnapshotFromItem(item);
             const priorityText = String(firstNonEmptyValue(item && item.PRIORITY, item && item.priority, '') || '').trim();
             if (!locationCode) return '';
             if (holdStopCode.includes('H')) return `${locationCode} PIC APPR H/O`;
@@ -49802,7 +50044,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return ltsValue > 1;
             }
             if (safeView === 'hold') {
-                const holdCode = String(firstNonEmptyValue(item && item.HOLDSTOPCODE, item && item.HOLD_STOP_CODE, item && item.HOLDSTOP, '') || '').trim().toUpperCase();
+                const holdCode = getHoldStopSnapshotFromItem(item);
                 if (!holdCode || holdCode === 'NULL' || holdCode === '-' || holdCode === 'N/A') return false;
                 return holdCode.includes('H') || holdCode.includes('S');
             }
