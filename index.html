@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.15.01';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.15.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -107,6 +107,32 @@ body.performance-lean-shell .request-swipe-row>div:first-child{box-shadow:0 5px 
 body.performance-lean-shell .cart-toggle-btn{box-shadow:0 4px 10px rgba(7,94,63,.10);transition:transform .12s ease,background .12s ease,color .12s ease,border-color .12s ease}
 body.performance-lean-shell .card-checkbox-container{transition:transform .12s ease}
 body.performance-lean-shell .item-row.cart-selected{box-shadow:0 0 0 2px rgba(0,122,77,.12) inset}
+body.ios-device .app-smart-card,
+body.ios-device .app-card-shell,
+body.ios-device .inv-card,
+body.ios-device .request-swipe-surface,
+body.ios-device .request-swipe-row>div:first-child{
+    transition:none !important;
+    box-shadow:0 3px 9px rgba(15,23,42,.045) !important;
+}
+body.ios-device .app-smart-card--season{
+    box-shadow:0 4px 10px rgba(0,122,77,.07) !important;
+}
+body.ios-device .app-smart-card:active,
+body.ios-device .inv-card:active,
+body.ios-device .footer-nav-btn:active,
+body.ios-device .app-card-bottom-btn:active{
+    transform:none !important;
+    -webkit-transform:none !important;
+}
+body.ios-device #bottom-nav,
+body.ios-device .freeze-panel,
+body.ios-device .sticky-search,
+body.ios-device .task-top-control-shell,
+body.ios-device .drive-filter-shell,
+body.ios-device .av-filter-shell{
+    transition:none !important;
+}
         body.ios-device.performance-scroll-active .nav-header,
         body.ios-device.performance-scroll-active #global-header-search-row,
         body.ios-device.performance-scroll-active .sticky-search,
@@ -1936,7 +1962,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.15.01').trim() || 'V2026.05.15.01';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.15.02').trim() || 'V2026.05.15.02';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2816,7 +2842,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.15.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.15.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -3014,6 +3040,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         let iosBottomNavLockFrameQueued = false;
         let iosBottomNavLastTop = -1;
         let iosBottomNavLastHeight = -1;
+        let iosBottomNavLastSyncAt = 0;
+        let iosBottomNavPendingSyncTimer = null;
         let detailFieldFocusResetTimer = null;
         let detailFormFocusInitialized = false;
         let viewportShellState = { appHeight: 0, visualHeight: 0, keyboardOffset: 0, standalone: null, ios: null, keyboardOpen: null };
@@ -3072,6 +3100,10 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         const ACTIVE_TOUCH_GRACE_MS = 90;
         const ACTIVE_INTERACTION_GRACE_MS = 400;
         const CHUNK_RENDER_GRACE_MS = 450;
+        const IOS_BOTTOM_NAV_SCROLL_THROTTLE_MS = 180;
+        const IOS_RENDER_SCROLL_DELAY_MS = 160;
+        const IOS_RENDER_TOUCH_DELAY_MS = 130;
+        const IOS_CHUNK_FRAME_BUDGET_MS = 1.7;
         const ACTIVE_CAMERA_GRACE_MS = 1500;
         const ACTIVE_PHOTO_PERSIST_GRACE_MS = 1600;
         let activeChunkRenderCount = 0;
@@ -3475,7 +3507,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         function markScrollActivity() {
             lastScrollAt = Date.now();
             if (document && document.body && document.body.classList.contains('ios-device')) {
-                clampHorizontalViewportShift();
+                scheduleHorizontalViewportClamp('scroll');
                 scheduleIosBottomNavViewportLock('scroll');
             }
             if (document && document.body) {
@@ -3530,22 +3562,23 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             const liveGestureActive = isUserInLiveTouchScrollGesture();
             const interactionSlowMode = liveGestureActive || shouldDeferInteractiveBackgroundWork() || isRecentViewSwitchActivity();
             const touchConstrained = isTouchConstrainedDevice();
+            const iosConstrained = isIOSDevice();
             if (liveGestureActive) {
                 return {
                     liveGestureActive: true,
                     interactionSlowMode: true,
-                    batchTarget: Math.min(safeTargetCount, Math.max(minBatch, Math.ceil(safeTargetCount / 2))),
-                    timeBudget: Math.max(touchConstrained ? 2.1 : 2.4, safeFrameBudget - 0.4),
-                    frameDelayMs: touchConstrained ? 24 : 32
+                    batchTarget: Math.min(safeTargetCount, Math.max(minBatch, Math.ceil(safeTargetCount / (iosConstrained ? 3 : 2)))),
+                    timeBudget: Math.max(iosConstrained ? 1.25 : (touchConstrained ? 2.1 : 2.4), safeFrameBudget - (iosConstrained ? 0.65 : 0.4)),
+                    frameDelayMs: iosConstrained ? 44 : (touchConstrained ? 24 : 32)
                 };
             }
             if (interactionSlowMode) {
                 return {
                     liveGestureActive: false,
                     interactionSlowMode: true,
-                    batchTarget: Math.min(safeTargetCount, Math.max(minBatch, Math.ceil(safeTargetCount / 2))),
-                    timeBudget: Math.max(touchConstrained ? 2.4 : 2.8, safeFrameBudget - 0.25),
-                    frameDelayMs: touchConstrained ? 18 : 24
+                    batchTarget: Math.min(safeTargetCount, Math.max(minBatch, Math.ceil(safeTargetCount / (iosConstrained ? 3 : 2)))),
+                    timeBudget: Math.max(iosConstrained ? 1.45 : (touchConstrained ? 2.4 : 2.8), safeFrameBudget - (iosConstrained ? 0.5 : 0.25)),
+                    frameDelayMs: iosConstrained ? 30 : (touchConstrained ? 18 : 24)
                 };
             }
             return {
@@ -4371,6 +4404,11 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                 root.style.removeProperty('--ios-bottom-nav-height');
                 iosBottomNavLastTop = -1;
                 iosBottomNavLastHeight = -1;
+                iosBottomNavLastSyncAt = 0;
+                if (iosBottomNavPendingSyncTimer) {
+                    clearTimeout(iosBottomNavPendingSyncTimer);
+                    iosBottomNavPendingSyncTimer = null;
+                }
                 return;
             }
             body.classList.add('ios-footer-viewport-lock');
@@ -4390,11 +4428,24 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                 root.style.setProperty('--ios-bottom-nav-height', `${navHeight}px`);
                 iosBottomNavLastHeight = navHeight;
             }
+            iosBottomNavLastSyncAt = Date.now();
         }
 
         function scheduleIosBottomNavViewportLock(reason = 'default', force = false) {
             if (!isIOSDevice()) return;
             const syncReason = normalizeUiSyncReason(reason);
+            if (!force && syncReason.includes('scroll')) {
+                const now = Date.now();
+                const elapsed = iosBottomNavLastSyncAt ? (now - iosBottomNavLastSyncAt) : IOS_BOTTOM_NAV_SCROLL_THROTTLE_MS;
+                if (elapsed < IOS_BOTTOM_NAV_SCROLL_THROTTLE_MS) {
+                    if (iosBottomNavPendingSyncTimer) clearTimeout(iosBottomNavPendingSyncTimer);
+                    iosBottomNavPendingSyncTimer = setTimeout(() => {
+                        iosBottomNavPendingSyncTimer = null;
+                        scheduleIosBottomNavViewportLock(`throttled:${syncReason || 'scroll'}`, false);
+                    }, Math.max(40, IOS_BOTTOM_NAV_SCROLL_THROTTLE_MS - elapsed));
+                    return;
+                }
+            }
             if (!force && shouldDeferChromeSyncWork(syncReason)) {
                 scheduleDeferredChromeSyncTask('ios-bottom-nav-lock', () => scheduleIosBottomNavViewportLock(`settled:${syncReason || 'ios-bottom-nav-lock'}`, true), ACTIVE_SCROLL_GRACE_MS + 120);
                 return;
@@ -9300,6 +9351,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (Math.max(0, Number(nextOptions.delay) || 0) > 0) return false;
             const targetView = document.getElementById('view-' + safeViewId);
             if (!targetView || targetView.classList.contains('hidden')) return false;
+            if (isIOSDevice() && !nextOptions.forceRender && isUserInLiveTouchScrollGesture()) return false;
             if (!nextOptions.allowWhileTyping && isUserActivelyTyping()) return false;
             if (!nextOptions.allowWhileTouching && isUserActivelyTouching()) return false;
             if (!nextOptions.allowWhileScrolling && isUserActivelyScrolling()) return false;
@@ -9401,7 +9453,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const safeViewId = String(viewId || '').trim();
             if (!safeViewId) return false;
             const nextOptions = (options && typeof options === 'object') ? options : {};
-            const delay = Math.max(0, Number(nextOptions.delay) || 0);
+            const iosConstrained = isIOSDevice();
+            const iosGestureBlocked = iosConstrained && !nextOptions.forceRender && isUserInLiveTouchScrollGesture();
+            const delay = Math.max(0, Number(nextOptions.delay) || 0, iosGestureBlocked ? IOS_RENDER_SCROLL_DELAY_MS : 0);
             const typingDelay = Math.max(28, Number(nextOptions.typingDelay) || 96);
             const touchRenderStartedAt = nextOptions.userAction ? beginInternalPerfMeasure() : 0;
             markViewDirty(safeViewId);
@@ -9422,13 +9476,13 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (typeof nextOptions.afterRender === 'function') nextOptions.afterRender();
             }, delay, typingDelay, {
                 allowWhileTyping: !!nextOptions.allowWhileTyping,
-                allowWhileTouching: !!nextOptions.allowWhileTouching,
-                allowWhileScrolling: !!nextOptions.allowWhileScrolling,
-                allowDuringRecentInteraction: !!nextOptions.allowDuringRecentInteraction,
+                allowWhileTouching: iosConstrained && !nextOptions.forceRender ? false : !!nextOptions.allowWhileTouching,
+                allowWhileScrolling: iosConstrained && !nextOptions.forceRender ? false : !!nextOptions.allowWhileScrolling,
+                allowDuringRecentInteraction: iosGestureBlocked ? false : !!nextOptions.allowDuringRecentInteraction,
                 allowDuringExtendedBlock: !!nextOptions.allowDuringExtendedBlock,
-                touchDelayMs: Math.max(24, Number(nextOptions.touchDelayMs) || 68),
-                scrollDelayMs: Math.max(32, Number(nextOptions.scrollDelayMs) || 74),
-                interactionDelayMs: Math.max(20, Number(nextOptions.interactionDelayMs) || 44)
+                touchDelayMs: iosConstrained ? Math.max(IOS_RENDER_TOUCH_DELAY_MS, Number(nextOptions.touchDelayMs) || 0) : Math.max(24, Number(nextOptions.touchDelayMs) || 68),
+                scrollDelayMs: iosConstrained ? Math.max(IOS_RENDER_SCROLL_DELAY_MS, Number(nextOptions.scrollDelayMs) || 0) : Math.max(32, Number(nextOptions.scrollDelayMs) || 74),
+                interactionDelayMs: iosConstrained ? Math.max(120, Number(nextOptions.interactionDelayMs) || 0) : Math.max(20, Number(nextOptions.interactionDelayMs) || 44)
             });
             return false;
         }
@@ -9513,7 +9567,14 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (!targetView || targetView.classList.contains('hidden')) return;
                 renderViewContent('tasks', false, forceRender);
                 recordInternalPerfDuration('touchToRenderDurations', touchRenderStartedAt, 'tasks');
-            }, Math.max(0, Number(delay) || 0), typingDelay, { allowWhileTouching: true, allowDuringRecentInteraction: true, touchDelayMs: 8, scrollDelayMs: 32, interactionDelayMs: 8 });
+            }, Math.max(0, Number(delay) || 0, isIOSDevice() && isUserInLiveTouchScrollGesture() ? IOS_RENDER_SCROLL_DELAY_MS : 0), typingDelay, {
+                allowWhileTouching: !isIOSDevice(),
+                allowWhileScrolling: !isIOSDevice(),
+                allowDuringRecentInteraction: !(isIOSDevice() && isUserInLiveTouchScrollGesture()),
+                touchDelayMs: isIOSDevice() ? IOS_RENDER_TOUCH_DELAY_MS : 8,
+                scrollDelayMs: isIOSDevice() ? IOS_RENDER_SCROLL_DELAY_MS : 32,
+                interactionDelayMs: isIOSDevice() ? 120 : 8
+            });
             return false;
         }
 
@@ -13061,7 +13122,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.15.01').trim() || 'V2026.05.15.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.15.02').trim() || 'V2026.05.15.02';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -13678,8 +13739,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (currentUser) {
                 flushPendingRequestArchives().catch(() => {});
                 schedulePendingRequestArchiveFlush(2800);
-                queueForegroundRefresh(80);
-                syncRequestViewLiveSync(120, { alwaysOn: true, allowHealthyRealtime: true });
+                queueForegroundRefresh(isIOSDevice() ? 360 : 80);
+                syncRequestViewLiveSync(isIOSDevice() ? 420 : 120, { alwaysOn: true, allowHealthyRealtime: true });
             }
         });
 
@@ -13691,8 +13752,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden && currentUser) {
-                queueForegroundRefresh(isIOSDevice() ? 60 : 120);
-                syncRequestViewLiveSync(120, { alwaysOn: true, allowHealthyRealtime: true });
+                queueForegroundRefresh(isIOSDevice() ? 420 : 120);
+                syncRequestViewLiveSync(isIOSDevice() ? 460 : 120, { alwaysOn: true, allowHealthyRealtime: true });
             } else {
                 clearRequestViewLiveSync();
             }
@@ -34270,16 +34331,19 @@ function toggleDriveQuickRequestItem(domId) {
             const reserveSpace = options.reserveSpace !== false;
             const reserveOffset = Number(options.reserveOffset) || 0;
             const renderSignature = normalizeRenderSignature(options.renderSignature || buildRowsRenderSignature(`${key}|${String(crumbText || '')}|${prefixHtml}`, rows));
-            const chunkSize = touchOptimized
+            const iosConstrained = isIOSDevice();
+            const chunkSize = iosConstrained
+                ? (total > 1800 ? 8 : (total > 900 ? 10 : 12))
+                : (touchOptimized
                 ? (total > 1800 ? 14 : (total > 900 ? 16 : 22))
-                : (total > 1400 ? 18 : (total > 700 ? 22 : 28));
+                : (total > 1400 ? 18 : (total > 700 ? 22 : 28)));
             const configuredInitialScreens = Number(options.initialScreens);
             const initialScreens = Number.isFinite(configuredInitialScreens) && configuredInitialScreens > 0
                 ? configuredInitialScreens
-                : (touchOptimized ? 1.25 : 1.15);
+                : (iosConstrained ? 0.95 : (touchOptimized ? 1.25 : 1.15));
             const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(6, chunkSize - 8) : Math.max(10, Math.ceil(chunkSize / 2)), Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 18) : Math.max(chunkSize, 28);
-            const frameBudgetMs = touchOptimized ? 3.2 : 3.1;
+            const perFrameLimit = iosConstrained ? chunkSize : (touchOptimized ? Math.max(chunkSize, 18) : Math.max(chunkSize, 28));
+            const frameBudgetMs = iosConstrained ? IOS_CHUNK_FRAME_BUDGET_MS : (touchOptimized ? 3.2 : 3.1);
             const hasFollowupChunks = total > initialTarget;
             const reserveHeightCap = touchOptimized
                 ? Math.max(viewportHeight * 3.2, approxCardHeight * Math.max(12, initialTarget + (chunkSize * 3)))
@@ -34319,7 +34383,7 @@ function toggleDriveQuickRequestItem(domId) {
             const renderBatch = (targetCount, useBudget) => {
                 let html = '';
                 let rendered = 0;
-                const pacing = getChunkRenderPacing(targetCount, frameBudgetMs, { minBatch: 8 });
+                const pacing = getChunkRenderPacing(targetCount, frameBudgetMs, { minBatch: iosConstrained ? 4 : 8 });
                 const batchTarget = pacing.batchTarget;
                 const timeBudget = pacing.timeBudget;
                 const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
@@ -34357,7 +34421,7 @@ function toggleDriveQuickRequestItem(domId) {
             };
 
             const queueNextChunkFrame = () => {
-                const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: 8 });
+                const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: iosConstrained ? 4 : 8 });
                 const scheduleFrame = () => requestAnimationFrame(renderNextChunk);
                 if (pacing.frameDelayMs > 0) {
                     if (pacing.liveGestureActive) incrementInternalPerfCounter('scrollBlockedChunkFrames');
@@ -34365,7 +34429,7 @@ function toggleDriveQuickRequestItem(domId) {
                     return;
                 }
                 if (typeof requestIdleCallback === 'function' && index > initialTarget && !isUserInLiveTouchScrollGesture()) {
-                    requestIdleCallback(scheduleFrame, { timeout: touchOptimized ? 120 : 80 });
+                    requestIdleCallback(scheduleFrame, { timeout: iosConstrained ? 180 : (touchOptimized ? 120 : 80) });
                     return;
                 }
                 scheduleFrame();
@@ -34402,15 +34466,18 @@ function toggleDriveQuickRequestItem(domId) {
             const total = Array.isArray(rows) ? rows.length : 0;
             const renderSignature = buildRowsRenderSignature(`av-open|${sourceView}|${String(crumbText || '')}`, rows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY']);
             const touchOptimized = isIOSDevice() || isStandaloneApp() || window.matchMedia('(pointer: coarse)').matches;
+            const iosConstrained = isIOSDevice();
             const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
             const approxCardHeight = sourceView === 'reserves_drill' ? 255 : (getIsAvPhotoSubview() ? 230 : 245);
-            const chunkSize = touchOptimized
+            const chunkSize = iosConstrained
+                ? (total > 1600 ? 8 : (total > 800 ? 10 : 12))
+                : (touchOptimized
                 ? (total > 1600 ? 14 : (total > 800 ? 18 : 24))
-                : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = touchOptimized ? 1.85 : 1.75;
+                : (total > 1200 ? 32 : (total > 600 ? 40 : 48)));
+            const initialScreens = iosConstrained ? 1.0 : (touchOptimized ? 1.85 : 1.75);
             const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(8, chunkSize - 2) : chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 20) : Math.max(chunkSize, 48);
-            const frameBudgetMs = touchOptimized ? 3.2 : 3.2;
+            const perFrameLimit = iosConstrained ? chunkSize : (touchOptimized ? Math.max(chunkSize, 20) : Math.max(chunkSize, 48));
+            const frameBudgetMs = iosConstrained ? IOS_CHUNK_FRAME_BUDGET_MS : 3.2;
             let index = 0;
             container.classList.add('performance-windowed-list');
             crumb.innerText = crumbText;
@@ -34431,7 +34498,7 @@ function toggleDriveQuickRequestItem(domId) {
             const renderBatch = (targetCount, useBudget) => {
                 let html = '';
                 let rendered = 0;
-                const pacing = getChunkRenderPacing(targetCount, frameBudgetMs, { minBatch: 10 });
+                const pacing = getChunkRenderPacing(targetCount, frameBudgetMs, { minBatch: iosConstrained ? 4 : 10 });
                 const batchTarget = pacing.batchTarget;
                 const timeBudget = pacing.timeBudget;
                 const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
@@ -34445,7 +34512,7 @@ function toggleDriveQuickRequestItem(domId) {
             };
             setContainerHtml(container, renderBatch(initialTarget, false));
             const queueNextChunkFrame = () => {
-                const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: 10 });
+                const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: iosConstrained ? 4 : 10 });
                 const scheduleFrame = () => requestAnimationFrame(renderNextChunk);
                 if (pacing.frameDelayMs > 0) {
                     if (pacing.liveGestureActive) incrementInternalPerfCounter('scrollBlockedChunkFrames');
@@ -34453,7 +34520,7 @@ function toggleDriveQuickRequestItem(domId) {
                     return;
                 }
                 if (typeof requestIdleCallback === 'function' && index > initialTarget && !isUserInLiveTouchScrollGesture()) {
-                    requestIdleCallback(scheduleFrame, { timeout: touchOptimized ? 120 : 80 });
+                    requestIdleCallback(scheduleFrame, { timeout: iosConstrained ? 180 : (touchOptimized ? 120 : 80) });
                     return;
                 }
                 scheduleFrame();
@@ -34485,16 +34552,19 @@ function toggleDriveQuickRequestItem(domId) {
             const total = Array.isArray(rows) ? rows.length : 0;
             const renderSignature = normalizeRenderSignature(options.renderSignature || buildRowsRenderSignature(`av-generic|${String(crumbText || '')}`, rows));
             const touchOptimized = isIOSDevice() || isStandaloneApp() || window.matchMedia('(pointer: coarse)').matches;
+            const iosConstrained = isIOSDevice();
             const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
             const approxCardHeight = Math.max(120, Number(options.approxCardHeight) || 185);
             const emptyHtml = options.emptyHtml || `<div class="p-6 text-center text-gray-400">No rows found.</div>`;
-            const chunkSize = touchOptimized
+            const chunkSize = iosConstrained
+                ? (total > 1600 ? 8 : (total > 800 ? 10 : 12))
+                : (touchOptimized
                 ? (total > 1600 ? 14 : (total > 800 ? 18 : 24))
-                : (total > 1200 ? 32 : (total > 600 ? 40 : 48));
-            const initialScreens = touchOptimized ? 1.85 : 1.75;
+                : (total > 1200 ? 32 : (total > 600 ? 40 : 48)));
+            const initialScreens = iosConstrained ? 1.0 : (touchOptimized ? 1.85 : 1.75);
             const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(8, chunkSize - 2) : chunkSize, Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = touchOptimized ? Math.max(chunkSize, 20) : Math.max(chunkSize, 48);
-            const frameBudgetMs = touchOptimized ? 3.2 : 3.2;
+            const perFrameLimit = iosConstrained ? chunkSize : (touchOptimized ? Math.max(chunkSize, 20) : Math.max(chunkSize, 48));
+            const frameBudgetMs = iosConstrained ? IOS_CHUNK_FRAME_BUDGET_MS : 3.2;
             let index = 0;
             container.classList.add('performance-windowed-list');
             crumb.innerText = crumbText;
@@ -34515,7 +34585,7 @@ function toggleDriveQuickRequestItem(domId) {
             const renderBatch = (targetCount, useBudget) => {
                 let html = '';
                 let rendered = 0;
-                const pacing = getChunkRenderPacing(targetCount, frameBudgetMs, { minBatch: 10 });
+                const pacing = getChunkRenderPacing(targetCount, frameBudgetMs, { minBatch: iosConstrained ? 4 : 10 });
                 const batchTarget = pacing.batchTarget;
                 const timeBudget = pacing.timeBudget;
                 const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
@@ -34529,7 +34599,7 @@ function toggleDriveQuickRequestItem(domId) {
             };
             setContainerHtml(container, renderBatch(initialTarget, false));
             const queueNextChunkFrame = () => {
-                const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: 10 });
+                const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: iosConstrained ? 4 : 10 });
                 const scheduleFrame = () => requestAnimationFrame(renderNextChunk);
                 if (pacing.frameDelayMs > 0) {
                     if (pacing.liveGestureActive) incrementInternalPerfCounter('scrollBlockedChunkFrames');
@@ -34537,7 +34607,7 @@ function toggleDriveQuickRequestItem(domId) {
                     return;
                 }
                 if (typeof requestIdleCallback === 'function' && index > initialTarget && !isUserInLiveTouchScrollGesture()) {
-                    requestIdleCallback(scheduleFrame, { timeout: touchOptimized ? 120 : 80 });
+                    requestIdleCallback(scheduleFrame, { timeout: iosConstrained ? 180 : (touchOptimized ? 120 : 80) });
                     return;
                 }
                 scheduleFrame();
