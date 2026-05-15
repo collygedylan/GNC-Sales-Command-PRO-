@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.15.03';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.15.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1979,7 +1979,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.15.03').trim() || 'V2026.05.15.03';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.15.04').trim() || 'V2026.05.15.04';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2859,7 +2859,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.15.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.15.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -5215,7 +5215,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             saveData(false, normalizedPrefix, true);
         }
 
-        const DETAIL_MEASUREMENT_KEYBOARD_SELECTOR = '#view-detail input[id$="-spec"], #view-detail input[id$="-caliper"], #view-detail input[id$="-av-note"], #view-detail input#global-av-note';
+        const DETAIL_MEASUREMENT_KEYBOARD_SELECTOR = '#view-detail input[id$="-spec"], #view-detail input[id$="-caliper"], #view-detail input[id$="-match"], #view-detail input[id$="-av-note"], #view-detail input#global-av-note';
         let detailMeasurementKeyboardTarget = null;
         let detailMeasurementKeyboardType = '';
         let detailMeasurementKeyboardResumeId = '';
@@ -5223,6 +5223,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         let detailMeasurementKeyboardLastTouchStartAt = 0;
         let detailMeasurementKeyboardLastHapticAt = 0;
         let detailMeasurementKeyboardInteractionUntil = 0;
+        let detailMeasurementKeyboardLastPointerToken = '';
+        let detailMeasurementKeyboardLastPointerAt = 0;
 
         function isDetailMeasurementKeyboardInput(element = null) {
             return !!(element && element.matches && element.matches(DETAIL_MEASUREMENT_KEYBOARD_SELECTOR));
@@ -5231,15 +5233,16 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         function getDetailMeasurementKeyboardTypeForInput(input = null) {
             const id = String(input && input.id || '').trim().toLowerCase();
             if (id === 'global-av-note' || id.endsWith('-av-note')) return 'av-note';
+            if (id.endsWith('-match')) return 'match';
             return id.endsWith('-caliper') ? 'caliper' : 'spec';
         }
 
         function triggerDetailKeyboardHaptic(duration = 8) {
             const now = Date.now();
-            if (now - detailMeasurementKeyboardLastHapticAt < 24) return;
+            if (now - detailMeasurementKeyboardLastHapticAt < 14) return;
             detailMeasurementKeyboardLastHapticAt = now;
             if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
-            try { navigator.vibrate(Math.max(1, Math.min(20, Number(duration) || 8))); } catch (error) {}
+            try { navigator.vibrate(Math.max(1, Math.min(28, Number(duration) || 8))); } catch (error) {}
         }
 
         function markDetailMeasurementKeyboardInteraction(durationMs = 900) {
@@ -5286,6 +5289,25 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         }
 
         function getDetailMeasurementKeyboardKeys(type = 'spec') {
+            if (type === 'match') {
+                return [
+                    { value: '1', token: '1', label: '1' },
+                    { value: '2', token: '2', label: '2' },
+                    { value: '3', token: '3', label: '3' },
+                    { token: '__backspace', labelHtml: '<i class="ph-bold ph-backspace"></i>', action: 'backspace' },
+                    { value: '4', token: '4', label: '4' },
+                    { value: '5', token: '5', label: '5' },
+                    { value: '6', token: '6', label: '6' },
+                    { value: '-', token: '-', label: '-' },
+                    { value: '7', token: '7', label: '7' },
+                    { value: '8', token: '8', label: '8' },
+                    { value: '9', token: '9', label: '9' },
+                    { value: '.', token: '.', label: '.' },
+                    { token: '__clear', labelHtml: '<span class="text-[12px] font-black uppercase tracking-[0.12em]">Clear</span>', action: 'clear' },
+                    { value: '0', token: '0', label: '0' },
+                    { token: '__done', labelHtml: '<span class="text-[12px] font-black uppercase tracking-[0.12em]">Enter</span>', action: 'done', span: 2 }
+                ];
+            }
             if (type === 'av-note') {
                 return [
                     [
@@ -5403,25 +5425,23 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
 
         function renderDetailMeasurementKeyboard() {
             const keyboard = ensureDetailMeasurementKeyboardElement();
-            const type = detailMeasurementKeyboardType === 'caliper' ? 'caliper' : (detailMeasurementKeyboardType === 'av-note' ? 'av-note' : 'spec');
-            const title = type === 'caliper' ? 'Caliper Keyboard' : (type === 'av-note' ? 'AV Note Keyboard' : 'Spec Keyboard');
+            const type = detailMeasurementKeyboardType === 'caliper' ? 'caliper' : (detailMeasurementKeyboardType === 'av-note' ? 'av-note' : (detailMeasurementKeyboardType === 'match' ? 'match' : 'spec'));
+            const title = type === 'caliper' ? 'Caliper Keyboard' : (type === 'av-note' ? 'AV Note Keyboard' : (type === 'match' ? 'LOC Match Keyboard' : 'Spec Keyboard'));
             const keys = getDetailMeasurementKeyboardKeys(type);
             const buildButtonHtml = (key, options = {}) => {
                 if (key.blank) return '<div aria-hidden="true"></div>';
                 const spanStyle = key.span ? ` style="grid-column: span ${Number(key.span) || 1} / span ${Number(key.span) || 1};"` : '';
                 const flexStyle = options.avNote ? ` style="flex:${Number(key.flex) || 1} 1 0; min-width:0;"` : '';
-                const isOperator = ['.','-','/','&','double_quote','apostrophe','H','W','x','space','__backspace','__done'].includes(key.token);
+                const isOperator = ['.','-','/','&','double_quote','apostrophe','H','W','x','space','__backspace','__done','__clear'].includes(key.token);
                 const toneClass = options.avNote
                     ? (isOperator ? 'bg-[#3b403d] text-zinc-100' : 'bg-[#272c29] text-zinc-100')
                     : (isOperator ? 'bg-[#3b403d] text-zinc-100' : 'bg-[#272c29] text-zinc-100');
                 const labelHtml = key.labelHtml || esc(key.label);
-                const action = key.action === 'done'
-                    ? 'return completeDetailMeasurementKeyboard()'
-                    : `return pressDetailMeasurementKeyboardToken(this.dataset.keyToken)`;
+                const actionType = key.action === 'done' ? 'done' : (key.action === 'clear' ? 'clear' : 'key');
                 const baseClass = options.avNote
                     ? 'min-h-[38px] rounded-[21px] border border-black/20 px-1 text-[17px] font-medium leading-none shadow-sm active:scale-95 active:bg-[#535955] sm:min-h-[44px] sm:text-[19px]'
                     : 'min-h-[42px] rounded-[24px] border border-black/20 px-2 text-[22px] font-medium leading-none shadow-sm active:scale-95 active:bg-[#535955] sm:min-h-[48px]';
-                return `<button type="button" tabindex="-1" data-key-token="${esc(key.token)}"${options.avNote ? flexStyle : spanStyle} class="${baseClass} ${toneClass}" onpointerdown="markDetailMeasurementKeyboardInteraction(); event.preventDefault()" onclick="${action}">${labelHtml}</button>`;
+                return `<button type="button" tabindex="-1" data-key-action="${esc(actionType)}" data-key-token="${esc(key.token)}"${options.avNote ? flexStyle : spanStyle} class="${baseClass} ${toneClass}" onpointerdown="return handleDetailMeasurementKeyboardButtonPress(event, this.dataset.keyToken, this.dataset.keyAction)">${labelHtml}</button>`;
             };
             let keyboardBodyHtml = '';
             if (type === 'av-note') {
@@ -5433,7 +5453,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                 const spaceKey = keys.find((key) => key && key.token === 'space');
                 const keysHtml = keys.filter((key) => !(key && key.token === 'space')).map((key) => buildButtonHtml(key)).join('');
                 const spaceHtml = spaceKey
-                    ? `<button type="button" tabindex="-1" data-key-token="space" class="mt-2 min-h-[42px] w-full rounded-[24px] border border-black/20 bg-[#3b403d] px-4 text-[13px] font-black uppercase tracking-[0.18em] text-zinc-100 shadow-sm active:scale-[0.99] active:bg-[#535955] sm:min-h-[48px]" onpointerdown="markDetailMeasurementKeyboardInteraction(); event.preventDefault()" onclick="return pressDetailMeasurementKeyboardToken(this.dataset.keyToken)">SPACE</button>`
+                    ? `<button type="button" tabindex="-1" data-key-action="key" data-key-token="space" class="mt-2 min-h-[42px] w-full rounded-[24px] border border-black/20 bg-[#3b403d] px-4 text-[13px] font-black uppercase tracking-[0.18em] text-zinc-100 shadow-sm active:scale-[0.99] active:bg-[#535955] sm:min-h-[48px]" onpointerdown="return handleDetailMeasurementKeyboardButtonPress(event, this.dataset.keyToken, this.dataset.keyAction)">SPACE</button>`
                     : '';
                 keyboardBodyHtml = `<div class="grid grid-cols-4 gap-2">${keysHtml}</div>${spaceHtml}`;
             }
@@ -5446,10 +5466,10 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                 '<i class="ph-bold ph-cardholder"></i>',
                 '<i class="ph-bold ph-map-pin"></i>',
                 '</div>',
-                '<button type="button" tabindex="-1" class="grid h-7 w-8 place-items-center rounded-xl bg-transparent text-lg text-zinc-200 active:scale-95" aria-label="Close keyboard" onpointerdown="markDetailMeasurementKeyboardInteraction(); event.preventDefault()" onclick="return completeDetailMeasurementKeyboard()"><i class="ph-bold ph-caret-down"></i></button>',
+                '<button type="button" tabindex="-1" class="grid h-7 w-8 place-items-center rounded-xl bg-transparent text-lg text-zinc-200 active:scale-95" aria-label="Close keyboard" onpointerdown="return handleDetailMeasurementKeyboardButtonPress(event, \'__done\', \'done\')"><i class="ph-bold ph-caret-down"></i></button>',
                 '</div>',
                 keyboardBodyHtml,
-                `<div class="mt-1 flex items-center justify-between px-5 text-[9px] font-black uppercase tracking-[0.16em] text-zinc-400"><span>${esc(title)}</span><button type="button" tabindex="-1" class="rounded-full px-3 py-1 text-zinc-300 active:scale-95" onpointerdown="markDetailMeasurementKeyboardInteraction(); event.preventDefault()" onclick="return pressDetailMeasurementKeyboardKey('__clear')">Clear</button></div>`,
+                `<div class="mt-1 flex items-center justify-between px-5 text-[9px] font-black uppercase tracking-[0.16em] text-zinc-400"><span>${esc(title)}</span><button type="button" tabindex="-1" class="rounded-full px-3 py-1 text-zinc-300 active:scale-95" onpointerdown="return handleDetailMeasurementKeyboardButtonPress(event, '__clear', 'clear')">Clear</button></div>`,
                 '</div>'
             ].join('');
             keyboard.classList.remove('hidden');
@@ -5478,7 +5498,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
 
         function applyDetailMeasurementKeyboardInputState(input = null) {
             if (!input || !input.dataset) return;
-            ['inputmode', 'autocomplete', 'autocapitalize', 'enterkeyhint', 'virtualkeyboardpolicy'].forEach((attrName) => rememberDetailMeasurementInputAttribute(input, attrName));
+            ['type', 'inputmode', 'autocomplete', 'autocapitalize', 'enterkeyhint', 'virtualkeyboardpolicy'].forEach((attrName) => rememberDetailMeasurementInputAttribute(input, attrName));
+            if (getDetailMeasurementKeyboardTypeForInput(input) === 'match') input.setAttribute('type', 'text');
             input.setAttribute('inputmode', 'none');
             input.setAttribute('autocomplete', 'off');
             input.setAttribute('autocapitalize', 'characters');
@@ -5494,7 +5515,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             else input.readOnly = false;
             delete input.dataset.detailKeypadWasReadonly;
             delete input.dataset.detailKeypadReadonlyApplied;
-            ['inputmode', 'autocomplete', 'autocapitalize', 'enterkeyhint', 'virtualkeyboardpolicy'].forEach((attrName) => restoreDetailMeasurementInputAttribute(input, attrName));
+            ['type', 'inputmode', 'autocomplete', 'autocapitalize', 'enterkeyhint', 'virtualkeyboardpolicy'].forEach((attrName) => restoreDetailMeasurementInputAttribute(input, attrName));
             input.removeAttribute('data-detail-measurement-keyboard');
             input.classList.remove('detail-measurement-input-active');
         }
@@ -5533,6 +5554,22 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             setTimeout(() => bringDetailFieldIntoView(input), 120);
             setTimeout(() => bringDetailFieldIntoView(input), isIOSDevice() ? 360 : 260);
             return false;
+        }
+
+        function handleDetailMeasurementKeyboardButtonPress(event = null, token = '', action = 'key') {
+            if (event && typeof event.preventDefault === 'function') event.preventDefault();
+            if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+            const now = Date.now();
+            const safeToken = String(token || '');
+            const safeAction = String(action || 'key');
+            const pointerSignature = `${safeAction}:${safeToken}`;
+            if (pointerSignature === detailMeasurementKeyboardLastPointerToken && now - detailMeasurementKeyboardLastPointerAt < 18) return false;
+            detailMeasurementKeyboardLastPointerToken = pointerSignature;
+            detailMeasurementKeyboardLastPointerAt = now;
+            markDetailMeasurementKeyboardInteraction(1300);
+            if (safeAction === 'done') return completeDetailMeasurementKeyboard();
+            if (safeAction === 'clear') return pressDetailMeasurementKeyboardKey('__clear');
+            return pressDetailMeasurementKeyboardToken(safeToken);
         }
 
         function setDetailMeasurementFieldPreset(input = null, value = 'N/A') {
@@ -5681,17 +5718,32 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             return true;
         }
 
+        function normalizeDetailMeasurementKeyboardValueForInput(input = null, value = '') {
+            const type = getDetailMeasurementKeyboardTypeForInput(input);
+            const text = String(value || '');
+            if (type !== 'match') return text;
+            let nextValue = text.replace(/[^\d.-]/g, '');
+            const firstDot = nextValue.indexOf('.');
+            if (firstDot >= 0) {
+                nextValue = nextValue.slice(0, firstDot + 1) + nextValue.slice(firstDot + 1).replace(/\./g, '');
+            }
+            const hasLeadingMinus = nextValue.startsWith('-');
+            nextValue = (hasLeadingMinus ? '-' : '') + nextValue.replace(/-/g, '');
+            return nextValue;
+        }
+
         function updateDetailMeasurementKeyboardTargetValue(nextValue = '', nextCursor = null) {
             const input = detailMeasurementKeyboardTarget;
             if (!input) return false;
             markDetailMeasurementKeyboardInteraction(1300);
-            input.value = String(nextValue || '');
+            input.value = normalizeDetailMeasurementKeyboardValueForInput(input, nextValue);
             restoreDetailMeasurementFieldFocus(input, nextCursor, nextCursor);
             input.dispatchEvent(new Event('input', { bubbles: true }));
             const safeCursor = Math.min(String(input.value || '').length, Math.max(0, Number(nextCursor) || 0));
             restoreDetailMeasurementFieldFocus(input, safeCursor, safeCursor);
             requestAnimationFrame(() => keepDetailMeasurementKeyboardAlive(input, safeCursor, safeCursor));
             setTimeout(() => keepDetailMeasurementKeyboardAlive(input, safeCursor, safeCursor), isIOSDevice() ? 90 : 40);
+            bringDetailFieldIntoView(input);
             return false;
         }
 
@@ -12936,6 +12988,15 @@ let activeHomeTab='dashboard'; let selectedProductivityUser=''; let productivity
         window.addEventListener('input', (event) => {
             const target = event && event.target ? event.target : null;
             if (!target || (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA')) return;
+            if (isDetailMeasurementKeyboardInput(target)) {
+                triggerDetailKeyboardHaptic(6);
+                bringDetailFieldIntoView(target);
+                if (detailMeasurementKeyboardTarget === target) {
+                    const cursorStart = typeof target.selectionStart === 'number' ? target.selectionStart : String(target.value || '').length;
+                    const cursorEnd = typeof target.selectionEnd === 'number' ? target.selectionEnd : cursorStart;
+                    requestAnimationFrame(() => keepDetailMeasurementKeyboardAlive(target, cursorStart, cursorEnd));
+                }
+            }
             if (!shouldUseDebouncedDetailInputSave(target.id)) return;
             const prefix = extractDetailPrefixFromInputId(target.id);
             if (prefix) queueLagSensitiveInputSave(prefix, target.id);
@@ -13207,7 +13268,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.15.03').trim() || 'V2026.05.15.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.15.04').trim() || 'V2026.05.15.04';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
