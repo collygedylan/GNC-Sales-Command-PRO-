@@ -3403,17 +3403,25 @@ function getRequestSelectionSummaryGroups_(payload) {
       item.CONT_SIZE,
       ''
     ) || '').trim();
+    const lotCode = String(firstNonEmptyRequestValue_(
+      item.lotcode,
+      item.LOTCODE,
+      item.lotCode,
+      item.LOT_CODE,
+      ''
+    ) || '').trim();
     if (!itemCode && !commonName && !contSize) return;
 
     const groupKey = itemCode
-      ? 'ITEMCODE:' + itemCode.toUpperCase()
-      : ['NOITEMCODE', commonName.toUpperCase(), contSize.toUpperCase()].join('|');
+      ? ['ITEMCODE', itemCode.toUpperCase(), contSize.toUpperCase(), lotCode.toUpperCase()].join('|')
+      : ['NOITEMCODE', commonName.toUpperCase(), contSize.toUpperCase(), lotCode.toUpperCase()].join('|');
 
     if (!groupsByKey[groupKey]) {
       groupsByKey[groupKey] = {
         itemcode: itemCode || 'N/A',
         commonname: commonName || 'Unknown Item',
         contsize: contSize || '-',
+        lotcode: lotCode || '-',
         rowsSelected: 0
       };
       order.push(groupKey);
@@ -3436,6 +3444,7 @@ function buildRequestSelectionSummaryHtml_(payload) {
       '<td style="padding:8px; border-bottom:1px solid #eee;"><strong>' + escapeEmailHtml_(group.itemcode) + '</strong></td>',
       '<td style="padding:8px; border-bottom:1px solid #eee;">' + escapeEmailHtml_(group.commonname) + '</td>',
       '<td style="padding:8px; border-bottom:1px solid #eee;">' + escapeEmailHtml_(group.contsize) + '</td>',
+      '<td style="padding:8px; border-bottom:1px solid #eee;">' + escapeEmailHtml_(group.lotcode) + '</td>',
       '<td style="padding:8px; border-bottom:1px solid #eee; text-align:center;">' + escapeEmailHtml_(group.rowsSelected) + '</td>',
       '</tr>'
     ].join('');
@@ -3450,6 +3459,7 @@ function buildRequestSelectionSummaryHtml_(payload) {
     '<th align="left" style="padding:8px; border-bottom:1px solid #ddd;">ITEMCODE</th>',
     '<th align="left" style="padding:8px; border-bottom:1px solid #ddd;">COMMONNAME</th>',
     '<th align="left" style="padding:8px; border-bottom:1px solid #ddd;">CONTSIZE</th>',
+    '<th align="left" style="padding:8px; border-bottom:1px solid #ddd;">LOTCODE</th>',
     '<th align="center" style="padding:8px; border-bottom:1px solid #ddd;">ROWS SELECTED</th>',
     '</tr>',
     '</thead>',
@@ -3472,6 +3482,7 @@ function buildRequestSelectionSummaryText_(payload) {
         'ITEMCODE: ' + group.itemcode,
         'COMMONNAME: ' + group.commonname,
         'CONTSIZE: ' + group.contsize,
+        'LOTCODE: ' + group.lotcode,
         'Rows Selected For Itemcode: ' + group.rowsSelected
       ].join('\n');
     }).join('\n\n')
