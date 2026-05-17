@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.17.20';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.17.21';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2067,7 +2067,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.20').trim() || 'V2026.05.17.20';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.21').trim() || 'V2026.05.17.21';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -3301,7 +3301,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.20';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.21';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -14267,7 +14267,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.20').trim() || 'V2026.05.17.20';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.21').trim() || 'V2026.05.17.21';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -32176,12 +32176,27 @@ function toggleDriveQuickRequestItem(domId) {
             return fallback;
         }
 
+        function getShearRecoveryDisplayText(recovery = null) {
+            if (!recovery || typeof recovery !== 'object') return 'Learned shear recovery: not loaded yet';
+            const parts = [];
+            if (Number.isFinite(Number(recovery.days))) parts.push(`${formatShearDecisionNumber(Number(recovery.days), 1)} days`);
+            if (Number.isFinite(Number(recovery.gdd))) parts.push(`${formatShearDecisionNumber(Number(recovery.gdd), 0)} GDD`);
+            if (Number(recovery.sampleCount || 0) > 0) parts.push(`${formatShearDecisionNumber(Number(recovery.sampleCount), 0)} samples`);
+            if (parts.length) return `Learned shear recovery: ${parts.join(' | ')}`;
+            return String(recovery.label || 'Learned shear recovery: no profile yet');
+        }
+
+        function renderShearRecoverySummaryHtml(recovery = null, extraClass = '') {
+            return `<div class="rounded-xl border border-lime-100 bg-lime-50 px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-lime-700 ${escapeHtml(extraClass || '')}">${escapeHtml(getShearRecoveryDisplayText(recovery))}</div>`;
+        }
+
         function buildShearDecisionLocationCard(candidate = null, context = {}) {
             const baseUid = String(context.baseUid || '').trim();
             const selectedUid = String(context.selectedUid || '').trim();
             const candidateUid = getShearDecisionRowUid(candidate);
             const ptr = getShearDecisionNumber(firstNonEmptyValue(candidate && candidate.PTRAVAILABLE, candidate && candidate.ptravailable, 0), 0);
-            const percent = Math.max(1, Math.min(100, getShearDecisionNumber(context.percent, 100)));
+            const hasPercent = String(context.percent == null ? '' : context.percent).trim() !== '';
+            const percent = hasPercent ? Math.max(1, Math.min(100, getShearDecisionNumber(context.percent, 100))) : 100;
             const shearQty = Math.ceil(ptr * (percent / 100));
             const demand = getShearDecisionReserveDemand(baseUid, context.item, candidate, context.days);
             const remainingAfterShear = Math.max(0, ptr - shearQty);
@@ -32213,7 +32228,7 @@ function toggleDriveQuickRequestItem(domId) {
                 <div class="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-5">
                     <div class="rounded-lg bg-slate-50 p-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">PTR</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatShearDecisionNumber(ptr))}</div></div>
                     <div class="rounded-lg bg-lime-50 p-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">Shear Qty</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatShearDecisionNumber(shearQty))}</div></div>
-                    <div class="rounded-lg bg-sky-50 p-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">Orders Next ${escapeHtml(String(demand.days))}D</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatShearDecisionNumber(demand.qty))}</div></div>
+                    <div class="rounded-lg bg-sky-50 p-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">Shipping Over ${escapeHtml(String(demand.days))} Days</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatShearDecisionNumber(demand.qty))}</div></div>
                     <div class="rounded-lg bg-emerald-50 p-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">After Shear</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatShearDecisionNumber(remainingAfterShear))}</div></div>
                     <div class="rounded-lg ${remainingAfterOrders >= 0 ? 'bg-emerald-50' : 'bg-red-50'} p-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">After Orders</div><div class="text-sm font-black ${remainingAfterOrders >= 0 ? 'text-emerald-800' : 'text-red-700'}">${escapeHtml(formatShearDecisionNumber(remainingAfterOrders))}</div></div>
                 </div>
@@ -32224,7 +32239,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function renderShearDecisionPlannerHtml(item = null, selectedItem = null, context = {}) {
             const baseUid = String(context.baseUid || '').trim();
-            const percent = getShearDecisionNumber(context.percent, 100);
+            const percent = String(context.percent == null ? '' : context.percent).trim() === '' ? 100 : getShearDecisionNumber(context.percent, 100);
             const days = Math.max(1, Math.min(120, Math.round(Number(context.days) || 14)));
             const candidates = getShearDecisionCandidateRows(item);
             const recovery = getShearDecisionRecoveryEstimate(item);
@@ -32282,7 +32297,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const loc = firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, 'No Loc');
                 const lot = firstNonEmptyValue(item.LOTCODE, item.lotcode, '-');
                 const ptr = firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, '0');
-                const percent = getShearListModalDraftValue(draftState, 'percent', baseUid, '100') || '100';
+                const percent = getShearListModalDraftValue(draftState, 'percent', baseUid, '');
                 const instructions = getShearListModalDraftValue(draftState, 'instructions', baseUid, '');
                 const days = getShearListModalDraftValue(draftState, 'days', baseUid, '14') || '14';
                 return `<div class="rounded-2xl border border-lime-100 bg-lime-50/50 p-3 shadow-sm" data-shear-base-uid="${escapeHtml(baseUid)}">
@@ -32767,10 +32782,11 @@ function toggleDriveQuickRequestItem(domId) {
                 <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">
                     <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">PTR ${escapeHtml(formatShearDecisionNumber(group.totalPtr))}</span>
                     <span class="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">${escapeHtml(String(locationCount))} Location${locationCount === 1 ? '' : 's'}</span>
-                    <span class="rounded-full bg-lime-50 px-2.5 py-1 text-lime-700">Orders Next ${escapeHtml(String(demand.days))}D ${escapeHtml(formatShearDecisionNumber(demand.qty))}</span>
+                    <span class="rounded-full bg-lime-50 px-2.5 py-1 text-lime-700">Shipping Over ${escapeHtml(String(demand.days))} Days ${escapeHtml(formatShearDecisionNumber(demand.qty))}</span>
                     <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">${escapeHtml(String(lotCount))} Lot${lotCount === 1 ? '' : 's'}</span>
                 </div>
                 ${renderShearDriveLotPtrChips(group.rows, 5)}
+                <div class="mt-3">${renderShearRecoverySummaryHtml(group.recovery)}</div>
                 <div class="mt-3 flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-500">
                     <span class="min-w-0 truncate">Seasons: ${escapeHtml(seasonText || '-')}</span>
                     <span class="shrink-0 text-[#007a4d]">${escapeHtml(String(group.rows.length))} row${group.rows.length === 1 ? '' : 's'} ></span>
@@ -32840,16 +32856,16 @@ function toggleDriveQuickRequestItem(domId) {
                     <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">Item ${escapeHtml(itemCode)}</span>
                     <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">PTR ${escapeHtml(formatShearDecisionNumber(ptr))}</span>
                     <span class="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">Block ${escapeHtml(block)}</span>
-                    <span class="rounded-full bg-lime-50 px-2.5 py-1 text-lime-700">Orders Next ${escapeHtml(String(demand.days))}D ${escapeHtml(formatShearDecisionNumber(demand.qty))}</span>
+                    <span class="rounded-full bg-lime-50 px-2.5 py-1 text-lime-700">Shipping Over ${escapeHtml(String(demand.days))} Days ${escapeHtml(formatShearDecisionNumber(demand.qty))}</span>
                 </div>
-                <div class="mt-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-500">
-                    ${escapeHtml(recovery.label)}
+                <div class="mt-3 rounded-xl border border-lime-100 bg-lime-50 px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-lime-700">
+                    ${escapeHtml(getShearRecoveryDisplayText(recovery))}
                     ${demand.undatedRowCount ? `<div class="mt-1 text-[10px] uppercase tracking-[0.12em] text-amber-600">${escapeHtml(String(demand.undatedRowCount))} undated reserve row${demand.undatedRowCount === 1 ? '' : 's'} not counted.</div>` : ''}
                 </div>
                 <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[140px_minmax(0,1fr)_auto] sm:items-end">
                     <label class="block">
                         <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-lime-700">Percent</span>
-                        <input id="shear-drive-percent-${escapeHtml(domKey)}" type="number" min="1" max="100" step="1" inputmode="numeric" class="mt-1 w-full rounded-xl border border-lime-200 bg-white px-3 py-2 text-center text-base font-black text-slate-900 outline-none focus:border-[#007a4d]" value="100">
+                        <input id="shear-drive-percent-${escapeHtml(domKey)}" type="number" min="1" max="100" step="1" inputmode="numeric" class="mt-1 w-full rounded-xl border border-lime-200 bg-white px-3 py-2 text-center text-base font-black text-slate-900 outline-none focus:border-[#007a4d]" value="" placeholder="%">
                     </label>
                     <label class="block">
                         <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-lime-700">Instructions Optional</span>
@@ -32893,11 +32909,11 @@ function toggleDriveQuickRequestItem(domId) {
                             <select class="mt-1 w-full rounded-xl border border-lime-200 bg-white px-3 py-2 text-sm font-black text-slate-900 outline-none focus:border-[#007a4d]" onchange="return setShearDriveFilter('driveLotcode', this.value)">${lotHtml}</select>
                         </label>
                         <label class="block">
-                            <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-lime-700">Order Window Days</span>
+                            <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-lime-700">Shipping Window Days</span>
                             <input type="number" min="1" max="180" step="1" inputmode="numeric" class="mt-1 w-full rounded-xl border border-lime-200 bg-white px-3 py-2 text-sm font-black text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeHtml(String(shearListState.driveShippingDays || 14))}" onchange="return setShearDriveFilter('driveShippingDays', this.value)">
                         </label>
                         <label class="block">
-                            <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-lime-700">Min Order Qty</span>
+                            <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-lime-700">Min Shipping Qty</span>
                             <input type="number" min="0" step="1" inputmode="numeric" class="mt-1 w-full rounded-xl border border-lime-200 bg-white px-3 py-2 text-sm font-black text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeHtml(String(shearListState.driveMinShipping || ''))}" placeholder="Any" onchange="return setShearDriveFilter('driveMinShipping', this.value)">
                         </label>
                     </div>
@@ -32926,8 +32942,30 @@ function toggleDriveQuickRequestItem(domId) {
             const domKey = getShearDecisionDomKey(safeUid);
             const percentInput = document.getElementById(`shear-drive-percent-${domKey}`);
             const instructionsInput = document.getElementById(`shear-drive-instructions-${domKey}`);
-            const percent = Math.max(1, Math.min(100, getShearDecisionNumber(percentInput && percentInput.value, 100)));
+            const rawPercent = String(percentInput && percentInput.value || '').trim();
+            const percent = Number(rawPercent);
+            if (!Number.isFinite(percent) || percent < 1 || percent > 100) {
+                showToast('Percent Needed', 'Enter the percent to shear from 1 to 100 before moving this row.', true);
+                try { if (percentInput) percentInput.focus(); } catch (_) {}
+                return false;
+            }
             const instructions = String(instructionsInput && instructionsInput.value || '').trim();
+            const itemCode = firstNonEmptyValue(item.ITEMCODE, item.itemcode, '-');
+            const commonName = firstNonEmptyValue(item.COMMONNAME, item.commonname, 'Unknown');
+            const contSize = firstNonEmptyValue(item.CONTSIZE, item.contsize, '-');
+            const lotCode = firstNonEmptyValue(item.LOTCODE, item.lotcode, '-');
+            const locationCode = firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, 'No Loc');
+            const confirmMessage = [
+                'Confirm Move To Shear List',
+                '',
+                `Amount to shear: ${percent}%`,
+                `Item Code: ${itemCode}`,
+                `Common Name: ${commonName}`,
+                `Cont Size: ${contSize}`,
+                `Lot Code: ${lotCode}`,
+                `Location Code: ${locationCode}`
+            ].join('\n');
+            if (!window.confirm(confirmMessage)) return false;
             const payload = buildShearListPayload(item, percent, instructions);
             if (!payload) {
                 showToast('Cannot Add', 'This row does not have a stable Drive Mode ID.', true);
