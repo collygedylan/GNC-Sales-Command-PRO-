@@ -65,7 +65,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- models; then
+          if [ -z "$(git status --porcelain -- models)" ]; then
             echo "No diagnostics model changes detected."
             exit 0
           fi
