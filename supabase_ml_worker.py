@@ -10,10 +10,14 @@ import logging
 import mimetypes
 import os
 import pathlib
+import re
 import socket
 import tempfile
 import time
 import uuid
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import datetime, timedelta, timezone
 from difflib import SequenceMatcher
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -26,6 +30,10 @@ DEFAULT_PHOTO_BUCKET = "ml_capture_photos"
 DEFAULT_TRAINING_ASSETS_TABLE = "v2_disease_training_assets"
 DEFAULT_TRAINING_ASSETS_BUCKET = "disease_training_assets"
 DEFAULT_LIVE_EVENT_TABLE = "v2_app_live_events"
+DEFAULT_GROWER_SCOUT_REPORTS_TABLE = "v2_grower_scout_reports"
+DEFAULT_GROWER_SCOUT_ASSETS_TABLE = "v2_grower_scout_assets"
+DEFAULT_GROWER_SCOUT_AUDIO_BUCKET = "grower_scout_audio"
+DEFAULT_GROWER_SCOUT_PHOTOS_BUCKET = "grower_scout_photos"
 DEFAULT_MODELS_DIR = pathlib.Path("models")
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
@@ -61,6 +69,59 @@ def normalize_grade(value: Any) -> str:
     if text in {"A", "B", "C", "D", "X", "S1", "F1", "U1", "U2", "U3"}:
         return text
     return ""
+
+
+LOCATION_CODE_RE = re.compile(r"\b[A-Z]\.\d{2}\.\d{3}\b", re.IGNORECASE)
+LOT_CODE_RE = re.compile(r"\b\d{2}\.(?:S1|F1|U1|U2|U3|X)\b", re.IGNORECASE)
+ITEM_CODE_RE = re.compile(r"\b\d{6}\.\d{3}\.\d\b")
+CONTSIZE_RE = re.compile(r"(?:^|[\s_-])(#\s*\d+|\d+\s*(?:DP|GP|GAL|GL|QT|PT)|\d+G|\d+P)(?=$|[\s_-])", re.IGNORECASE)
+
+
+def normalize_location_code(value: Any) -> str:
+    return str(value or "").strip().upper()
+
+
+def normalize_lot_code(value: Any) -> str:
+    return str(value or "").strip().upper()
+
+
+def normalize_contsize(value: Any) -> str:
+    return re.sub(r"\s+", "", str(value or "").strip().upper())
+
+
+def parse_asset_filename_fields(value: Any) -> Dict[str, str]:
+    name = pathlib.Path(str(value or "")).name
+    stem = pathlib.Path(name).stem
+    text = urllib.parse.unquote(stem).replace("_", " ").replace("-", " ")
+    text = " ".join(text.split())
+
+    location_match = LOCATION_CODE_RE.search(text)
+    lot_match = LOT_CODE_RE.search(text)
+    item_match = ITEM_CODE_RE.search(text)
+    contsize_match = CONTSIZE_RE.search(text)
+
+    common_name = text
+    cut_indexes = [
+        match.start()
+        for match in [location_match, lot_match, item_match, contsize_match]
+        if match and match.start() > 0
+    ]
+    if cut_indexes:
+        common_name = text[: min(cut_indexes)]
+
+    common_name = ITEM_CODE_RE.sub(" ", common_name)
+    common_name = LOCATION_CODE_RE.sub(" ", common_name)
+    common_name = LOT_CODE_RE.sub(" ", common_name)
+    common_name = CONTSIZE_RE.sub(" ", common_name)
+    common_name = " ".join(common_name.replace("_", " ").replace("-", " ").split())
+
+    return {
+        "commonname": common_name,
+        "locationcode": normalize_location_code(location_match.group(0) if location_match else ""),
+        "lotcode": normalize_lot_code(lot_match.group(0) if lot_match else ""),
+        "contsize": normalize_contsize(contsize_match.group(1) if contsize_match else ""),
+        "itemcode": item_match.group(0) if item_match else "",
+    }
 
 
 def map_model_grade_to_app_grade(model_grade: Any, selected_season: Any) -> str:
@@ -168,6 +229,15 @@ class WorkerConfig:
     training_assets_table: str = DEFAULT_TRAINING_ASSETS_TABLE
     training_assets_bucket: str = DEFAULT_TRAINING_ASSETS_BUCKET
     app_live_events_table: str = DEFAULT_LIVE_EVENT_TABLE
+    grower_scout_reports_table: str = DEFAULT_GROWER_SCOUT_REPORTS_TABLE
+    grower_scout_assets_table: str = DEFAULT_GROWER_SCOUT_ASSETS_TABLE
+    grower_scout_audio_bucket: str = DEFAULT_GROWER_SCOUT_AUDIO_BUCKET
+    grower_scout_photos_bucket: str = DEFAULT_GROWER_SCOUT_PHOTOS_BUCKET
+    ollama_url: str = "http://localhost:11434"
+    scout_summary_model: str = "qwen2.5:3b-instruct"
+    whisper_model_size: str = "base"
+    push_function_url: str = ""
+    pest_management_alert_usernames: str = "dylan_collyge"
     poll_seconds: float = 10.0
     batch_size: int = 3
     stale_processing_minutes: int = 30
@@ -191,6 +261,15 @@ class WorkerConfig:
             training_assets_table=first_non_empty(os.environ.get("ML_TRAINING_ASSETS_TABLE"), default=DEFAULT_TRAINING_ASSETS_TABLE),
             training_assets_bucket=first_non_empty(os.environ.get("ML_TRAINING_ASSETS_BUCKET"), default=DEFAULT_TRAINING_ASSETS_BUCKET),
             app_live_events_table=first_non_empty(os.environ.get("APP_LIVE_EVENTS_TABLE"), default=DEFAULT_LIVE_EVENT_TABLE),
+            grower_scout_reports_table=first_non_empty(os.environ.get("GROWER_SCOUT_REPORTS_TABLE"), default=DEFAULT_GROWER_SCOUT_REPORTS_TABLE),
+            grower_scout_assets_table=first_non_empty(os.environ.get("GROWER_SCOUT_ASSETS_TABLE"), default=DEFAULT_GROWER_SCOUT_ASSETS_TABLE),
+            grower_scout_audio_bucket=first_non_empty(os.environ.get("GROWER_SCOUT_AUDIO_BUCKET"), default=DEFAULT_GROWER_SCOUT_AUDIO_BUCKET),
+            grower_scout_photos_bucket=first_non_empty(os.environ.get("GROWER_SCOUT_PHOTOS_BUCKET"), default=DEFAULT_GROWER_SCOUT_PHOTOS_BUCKET),
+            ollama_url=first_non_empty(os.environ.get("OLLAMA_URL"), default="http://localhost:11434"),
+            scout_summary_model=first_non_empty(os.environ.get("SCOUT_SUMMARY_MODEL"), default="qwen2.5:3b-instruct"),
+            whisper_model_size=first_non_empty(os.environ.get("WHISPER_MODEL_SIZE"), default="base"),
+            push_function_url=first_non_empty(os.environ.get("PUSH_FUNCTION_URL")),
+            pest_management_alert_usernames=first_non_empty(os.environ.get("PEST_MANAGEMENT_ALERT_USERNAMES"), default="dylan_collyge"),
             poll_seconds=float(first_non_empty(os.environ.get("ML_POLL_SECONDS"), default="10")),
             batch_size=int(first_non_empty(os.environ.get("ML_BATCH_SIZE"), default="3")),
             stale_processing_minutes=int(first_non_empty(os.environ.get("ML_STALE_PROCESSING_MINUTES"), default="30")),
@@ -366,17 +445,63 @@ class InventoryCache:
         self.matcher = InventoryMatcher([])
         self.loaded_at = datetime.fromtimestamp(0, timezone.utc)
 
+    def load_from_supabase_inventory(self) -> List[InventoryEntry]:
+        client = RestSupabaseClient(self.config.supabase_url, self.config.supabase_service_role_key)
+        entries: List[InventoryEntry] = []
+        offset = 0
+        limit = 1000
+        while True:
+            response = (
+                client.table("v2_master_inventory")
+                .select("*")
+                .order("commonname")
+                .limit(limit)
+                .offset(offset)
+                .execute()
+            )
+            rows = list(response.data or [])
+            if not rows:
+                break
+            for row in rows:
+                common_name = first_non_empty(row.get("commonname"), row.get("COMMONNAME"))
+                genus = first_non_empty(row.get("genusname"), row.get("GENUSNAME"), row.get("genus"), row.get("GENUS"))
+                if not common_name and not genus:
+                    continue
+                itemcode = first_non_empty(row.get("itemcode"), row.get("ITEMCODE"))
+                contsize = first_non_empty(row.get("contsize"), row.get("CONTSIZE"))
+                key = "|".join(part for part in [itemcode, genus, common_name, contsize] if part)
+                entries.append(InventoryEntry(genus=genus, common_name=common_name, itemcode=itemcode, contsize=contsize, key=key))
+            if len(rows) < limit:
+                break
+            offset += len(rows)
+        return entries
+
+    def load_from_drive_inventory(self) -> List[InventoryEntry]:
+        service = build_drive_service(self.config.drive_service_account_json)
+        file_bytes, extension = download_drive_file_bytes(service, self.config.drive_inventory_file_id)
+        return parse_inventory_file(file_bytes, extension)
+
     def get_matcher(self) -> InventoryMatcher:
         age = (utc_now() - self.loaded_at).total_seconds()
         if self.matcher.entries and age < self.config.inventory_refresh_seconds:
             return self.matcher
 
-        service = build_drive_service(self.config.drive_service_account_json)
-        file_bytes, extension = download_drive_file_bytes(service, self.config.drive_inventory_file_id)
-        entries = parse_inventory_file(file_bytes, extension)
+        entries: List[InventoryEntry] = []
+        drive_error = None
+        if self.config.drive_inventory_file_id and self.config.drive_service_account_json:
+            try:
+                entries = self.load_from_drive_inventory()
+                LOGGER.info("Loaded %s inventory row(s) from Google Drive.", len(entries))
+            except Exception as exc:
+                drive_error = exc
+                LOGGER.warning("Could not load inventory from Google Drive; falling back to Supabase v2_master_inventory: %s", exc)
+        if not entries:
+            entries = self.load_from_supabase_inventory()
+            LOGGER.info("Loaded %s inventory row(s) from Supabase v2_master_inventory.", len(entries))
+        if not entries and drive_error:
+            raise RuntimeError(f"Inventory loading failed. Drive error: {drive_error}")
         self.matcher = InventoryMatcher(entries)
         self.loaded_at = utc_now()
-        LOGGER.info("Loaded %s inventory row(s) from Google Drive.", len(entries))
         return self.matcher
 
 
@@ -390,6 +515,137 @@ class Prediction:
     treatment: str = ""
     manual_review: bool = False
     reason: str = ""
+
+
+@dataclasses.dataclass
+class DiseaseReference:
+    unique_id: str
+    label: str
+    asset_kind: str
+    plant_folder: str = ""
+    commonname: str = ""
+    locationcode: str = ""
+    lotcode: str = ""
+    contsize: str = ""
+    itemcode: str = ""
+    file_name: str = ""
+    public_url: str = ""
+
+
+def disease_reference_from_row(row: Dict[str, Any]) -> DiseaseReference:
+    metadata = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+    parsed = metadata.get("parsed_file_fields") if isinstance(metadata.get("parsed_file_fields"), dict) else {}
+    parsed_from_name = parse_asset_filename_fields(first_non_empty(row.get("file_name"), row.get("source_file_title"), row.get("storage_path")))
+    return DiseaseReference(
+        unique_id=first_non_empty(row.get("unique_id")),
+        label=first_non_empty(row.get("label"), row.get("diagnosis")),
+        asset_kind=first_non_empty(row.get("asset_kind")),
+        plant_folder=first_non_empty(row.get("plant_folder"), parsed.get("plantFolder"), row.get("folder_path")),
+        commonname=first_non_empty(row.get("commonname"), parsed.get("commonname"), parsed_from_name.get("commonname")),
+        locationcode=normalize_location_code(first_non_empty(row.get("locationcode"), parsed.get("locationcode"), parsed_from_name.get("locationcode"))),
+        lotcode=normalize_lot_code(first_non_empty(row.get("lotcode"), parsed.get("lotcode"), parsed_from_name.get("lotcode"))),
+        contsize=normalize_contsize(first_non_empty(row.get("contsize"), parsed.get("contsize"), parsed_from_name.get("contsize"))),
+        itemcode=first_non_empty(row.get("itemcode"), parsed.get("itemcode"), parsed_from_name.get("itemcode")),
+        file_name=first_non_empty(row.get("file_name"), row.get("source_file_title")),
+        public_url=first_non_empty(row.get("public_url")),
+    )
+
+
+class DiseaseReferenceCache:
+    def __init__(self, config: WorkerConfig, supabase: Any):
+        self.config = config
+        self.supabase = supabase
+        self.references: List[DiseaseReference] = []
+        self.loaded_at = datetime.fromtimestamp(0, timezone.utc)
+
+    def get_references(self) -> List[DiseaseReference]:
+        age = (utc_now() - self.loaded_at).total_seconds()
+        if self.references and age < self.config.inventory_refresh_seconds:
+            return self.references
+
+        references: List[DiseaseReference] = []
+        offset = 0
+        limit = 1000
+        try:
+            while True:
+                response = (
+                    self.supabase.table(self.config.training_assets_table)
+                    .select("*")
+                    .order("created_at")
+                    .limit(limit)
+                    .offset(offset)
+                    .execute()
+                )
+                rows = list(response.data or [])
+                if not rows:
+                    break
+                for row in rows:
+                    reference = disease_reference_from_row(row)
+                    if reference.unique_id and reference.label:
+                        references.append(reference)
+                if len(rows) < limit:
+                    break
+                offset += len(rows)
+        except Exception as exc:
+            LOGGER.warning("Could not load disease reference assets from Supabase: %s", exc)
+
+        self.references = references
+        self.loaded_at = utc_now()
+        if references:
+            LOGGER.info("Loaded %s disease reference asset(s) from Supabase.", len(references))
+        return self.references
+
+    def match_job(self, job: Dict[str, Any]) -> Optional[Tuple[DiseaseReference, float]]:
+        references = self.get_references()
+        if not references:
+            return None
+
+        parsed = parse_asset_filename_fields(first_non_empty(job.get("image_path"), job.get("image_url"), job.get("unique_id")))
+        job_fields = {
+            "commonname": first_non_empty(job.get("common_name"), job.get("commonname"), parsed.get("commonname")),
+            "locationcode": normalize_location_code(first_non_empty(job.get("locationcode"), parsed.get("locationcode"))),
+            "lotcode": normalize_lot_code(first_non_empty(job.get("lotcode"), parsed.get("lotcode"))),
+            "contsize": normalize_contsize(first_non_empty(job.get("contsize"), parsed.get("contsize"))),
+            "itemcode": first_non_empty(job.get("itemcode"), parsed.get("itemcode")),
+        }
+
+        best: Optional[Tuple[DiseaseReference, float]] = None
+        for reference in references:
+            score = 0.0
+            if job_fields["locationcode"] and reference.locationcode and job_fields["locationcode"] == reference.locationcode:
+                score += 75
+            if job_fields["lotcode"] and reference.lotcode and job_fields["lotcode"] == reference.lotcode:
+                score += 55
+            if job_fields["contsize"] and reference.contsize and job_fields["contsize"] == reference.contsize:
+                score += 25
+            if job_fields["itemcode"] and reference.itemcode and job_fields["itemcode"] == reference.itemcode:
+                score += 90
+            if job_fields["commonname"] and reference.commonname:
+                score += 45 * SequenceMatcher(None, normalize_compact(job_fields["commonname"]), normalize_compact(reference.commonname)).ratio()
+            elif job_fields["commonname"] and reference.plant_folder:
+                score += 20 * SequenceMatcher(None, normalize_compact(job_fields["commonname"]), normalize_compact(reference.plant_folder)).ratio()
+            if reference.asset_kind == "lab_report":
+                score += 5
+
+            if score >= 70 and (best is None or score > best[1]):
+                best = (reference, score)
+        return best
+
+    def prediction_for_job(self, job: Dict[str, Any]) -> Optional[Prediction]:
+        matched = self.match_job(job)
+        if not matched:
+            return None
+        reference, score = matched
+        diagnosis = first_non_empty(reference.label, default="Disease reference match")
+        treatment = "Matched a Supabase disease/lab reference. Review the referenced lab report/photo before using this as a final diagnosis."
+        reason = f"Matched disease reference {reference.unique_id} from {reference.file_name or reference.plant_folder} at score {round(score, 1)}."
+        return Prediction(
+            confidence=min(0.95, max(0.25, score / 220.0)),
+            diagnosis=diagnosis,
+            treatment=treatment,
+            manual_review=True,
+            reason=reason,
+        )
 
 
 class TorchModelAdapter:
@@ -481,6 +737,141 @@ class ModelRegistry:
         self.diagnostics = TorchModelAdapter(diagnostics_model, diagnostics_labels) if diagnostics_model else None
 
 
+class RestResponse:
+    def __init__(self, data: Any = None):
+        self.data = data
+
+
+class RestTableQuery:
+    def __init__(self, client: "RestSupabaseClient", table_name: str):
+        self.client = client
+        self.table_name = table_name
+        self.method = "GET"
+        self.payload: Any = None
+        self.params: List[Tuple[str, str]] = []
+        self.prefer = ""
+
+    def select(self, columns: str = "*") -> "RestTableQuery":
+        self.method = "GET"
+        self.params.append(("select", columns or "*"))
+        return self
+
+    def update(self, payload: Dict[str, Any]) -> "RestTableQuery":
+        self.method = "PATCH"
+        self.payload = payload
+        self.prefer = "return=representation"
+        return self
+
+    def insert(self, payload: Any) -> "RestTableQuery":
+        self.method = "POST"
+        self.payload = payload
+        self.prefer = "return=minimal"
+        return self
+
+    def eq(self, column: str, value: Any) -> "RestTableQuery":
+        self.params.append((str(column), f"eq.{value}"))
+        return self
+
+    def lt(self, column: str, value: Any) -> "RestTableQuery":
+        self.params.append((str(column), f"lt.{value}"))
+        return self
+
+    def order(self, column: str, desc: bool = False) -> "RestTableQuery":
+        direction = "desc" if desc else "asc"
+        self.params.append(("order", f"{column}.{direction}"))
+        return self
+
+    def limit(self, count: int) -> "RestTableQuery":
+        self.params.append(("limit", str(max(0, int(count or 0)))))
+        return self
+
+    def offset(self, count: int) -> "RestTableQuery":
+        self.params.append(("offset", str(max(0, int(count or 0)))))
+        return self
+
+    def execute(self) -> RestResponse:
+        return self.client.execute_table_query(self)
+
+
+class RestStorageBucket:
+    def __init__(self, client: "RestSupabaseClient", bucket_name: str):
+        self.client = client
+        self.bucket_name = bucket_name
+
+    def download(self, storage_path: str) -> bytes:
+        safe_bucket = urllib.parse.quote(str(self.bucket_name or "").strip(), safe="")
+        safe_path = urllib.parse.quote(str(storage_path or "").strip().lstrip("/"), safe="/")
+        url = f"{self.client.base_url}/storage/v1/object/{safe_bucket}/{safe_path}"
+        request = urllib.request.Request(url, headers=self.client.headers(), method="GET")
+        with urllib.request.urlopen(request, timeout=self.client.timeout_seconds) as response:
+            return response.read()
+
+
+class RestStorageClient:
+    def __init__(self, client: "RestSupabaseClient"):
+        self.client = client
+
+    def from_(self, bucket_name: str) -> RestStorageBucket:
+        return RestStorageBucket(self.client, bucket_name)
+
+
+class RestSupabaseClient:
+    """Minimal Supabase REST/Storage client that supports sb_secret API keys.
+
+    The official supabase-py client may reject Supabase's newer sb_secret keys
+    in some versions. The worker only needs a small PostgREST/Storage surface,
+    so this adapter keeps the background ML loop compatible with both legacy
+    service_role JWTs and new secret API keys.
+    """
+
+    def __init__(self, supabase_url: str, service_key: str, timeout_seconds: int = 60):
+        self.base_url = str(supabase_url or "").strip().rstrip("/")
+        self.service_key = str(service_key or "").strip()
+        self.timeout_seconds = timeout_seconds
+        self.storage = RestStorageClient(self)
+
+    def headers(self, method: str = "GET", prefer: str = "") -> Dict[str, str]:
+        headers = {
+            "apikey": self.service_key,
+            "Authorization": f"Bearer {self.service_key}",
+            "Content-Type": "application/json",
+        }
+        if prefer:
+            headers["Prefer"] = prefer
+        elif method in {"POST", "PATCH"}:
+            headers["Prefer"] = "return=representation"
+        return headers
+
+    def table(self, table_name: str) -> RestTableQuery:
+        return RestTableQuery(self, table_name)
+
+    def execute_table_query(self, query: RestTableQuery) -> RestResponse:
+        query_string = urllib.parse.urlencode(query.params, doseq=True)
+        safe_table = urllib.parse.quote(str(query.table_name or "").strip(), safe="")
+        url = f"{self.base_url}/rest/v1/{safe_table}{'?' + query_string if query_string else ''}"
+        body = None
+        if query.payload is not None and query.method != "GET":
+            body = json.dumps(query.payload).encode("utf-8")
+        request = urllib.request.Request(
+            url,
+            data=body,
+            headers=self.headers(query.method, query.prefer),
+            method=query.method,
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
+                text = response.read().decode("utf-8")
+        except urllib.error.HTTPError as exc:
+            details = exc.read().decode("utf-8", errors="ignore")
+            raise RuntimeError(f"Supabase REST {query.method} {query.table_name} failed HTTP {exc.code}: {details}") from exc
+        if not text:
+            return RestResponse([])
+        try:
+            return RestResponse(json.loads(text))
+        except json.JSONDecodeError:
+            return RestResponse(text)
+
+
 class SupabaseMlWorker:
     def __init__(self, config: WorkerConfig):
         self.config = config
@@ -488,12 +879,12 @@ class SupabaseMlWorker:
         self.worker_id = f"{socket.gethostname()}-{uuid.uuid4().hex[:8]}"
         self.supabase = self._build_supabase_client()
         self.inventory_cache = InventoryCache(config)
+        self.disease_reference_cache = DiseaseReferenceCache(config, self.supabase)
         self.models = ModelRegistry(config)
+        self.whisper_model = None
 
     def _build_supabase_client(self) -> Any:
-        from supabase import create_client
-
-        return create_client(self.config.supabase_url, self.config.supabase_service_role_key)
+        return RestSupabaseClient(self.config.supabase_url, self.config.supabase_service_role_key)
 
     def recover_stale_jobs(self) -> None:
         cutoff = (utc_now() - timedelta(minutes=self.config.stale_processing_minutes)).isoformat()
@@ -519,6 +910,21 @@ class SupabaseMlWorker:
             self.supabase.table(self.config.training_assets_table).update(payload).eq("processed_status", "processing").lt("processing_started_at", cutoff).execute()
         except Exception as exc:
             LOGGER.warning("Could not recover stale disease training assets: %s", exc)
+
+    def recover_stale_scout_reports(self) -> None:
+        if not self.config.grower_scout_reports_table:
+            return
+        cutoff = (utc_now() - timedelta(minutes=self.config.stale_processing_minutes)).isoformat()
+        payload = {
+            "status": "pending_ai",
+            "processing_started_at": None,
+            "worker_id": None,
+            "last_error": "Recovered from stale processing state.",
+        }
+        try:
+            self.supabase.table(self.config.grower_scout_reports_table).update(payload).eq("status", "processing").lt("processing_started_at", cutoff).execute()
+        except Exception as exc:
+            LOGGER.warning("Could not recover stale grower scout reports. Run grower_scouting_migration.sql if this table is missing: %s", exc)
 
     def fetch_pending_jobs(self) -> List[Dict[str, Any]]:
         response = (
@@ -546,6 +952,23 @@ class SupabaseMlWorker:
             return list(response.data or [])
         except Exception as exc:
             LOGGER.warning("Could not fetch disease training assets. Run ml_disease_training_assets_migration.sql if this table is missing: %s", exc)
+            return []
+
+    def fetch_pending_scout_reports(self) -> List[Dict[str, Any]]:
+        if not self.config.grower_scout_reports_table:
+            return []
+        try:
+            response = (
+                self.supabase.table(self.config.grower_scout_reports_table)
+                .select("*")
+                .eq("status", "pending_ai")
+                .order("created_at")
+                .limit(self.config.batch_size)
+                .execute()
+            )
+            return list(response.data or [])
+        except Exception as exc:
+            LOGGER.warning("Could not fetch grower scout reports. Run grower_scouting_migration.sql if this table is missing: %s", exc)
             return []
 
     def claim_job(self, job: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -624,6 +1047,338 @@ class SupabaseMlWorker:
         target_path.write_bytes(file_bytes)
         return target_path
 
+    def claim_scout_report(self, report: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        report_id = str(report.get("unique_id") or "").strip()
+        if not report_id or not self.config.grower_scout_reports_table:
+            return None
+        payload = {
+            "status": "processing",
+            "processing_started_at": iso_now(),
+            "worker_id": self.worker_id,
+            "attempts": int(report.get("attempts") or 0) + 1,
+            "last_error": None,
+        }
+        try:
+            response = (
+                self.supabase.table(self.config.grower_scout_reports_table)
+                .update(payload)
+                .eq("unique_id", report_id)
+                .eq("status", "pending_ai")
+                .execute()
+            )
+            rows = list(response.data or [])
+            if rows:
+                return rows[0]
+        except Exception as exc:
+            LOGGER.warning("Could not claim grower scout report %s: %s", report_id, exc)
+        return None
+
+    def fetch_scout_assets(self, report_id: str) -> List[Dict[str, Any]]:
+        if not self.config.grower_scout_assets_table or not report_id:
+            return []
+        try:
+            response = (
+                self.supabase.table(self.config.grower_scout_assets_table)
+                .select("*")
+                .eq("report_id", report_id)
+                .order("created_at")
+                .execute()
+            )
+            return list(response.data or [])
+        except Exception as exc:
+            LOGGER.warning("Could not fetch grower scout assets for %s: %s", report_id, exc)
+            return []
+
+    def download_storage_object(self, bucket: str, storage_path: str, target_dir: pathlib.Path, fallback_suffix: str = ".bin") -> pathlib.Path:
+        safe_bucket = first_non_empty(bucket)
+        safe_path = first_non_empty(storage_path)
+        if not safe_bucket or not safe_path:
+            raise RuntimeError("Storage object is missing bucket or path.")
+        file_bytes = self.supabase.storage.from_(safe_bucket).download(safe_path)
+        suffix = pathlib.Path(safe_path).suffix.lower() or fallback_suffix
+        target_path = target_dir / f"{uuid.uuid4().hex}{suffix}"
+        target_path.write_bytes(file_bytes)
+        return target_path
+
+    def get_whisper_model(self) -> Any:
+        if self.whisper_model is not None:
+            return self.whisper_model
+        from faster_whisper import WhisperModel
+
+        self.whisper_model = WhisperModel(
+            self.config.whisper_model_size,
+            device=first_non_empty(os.environ.get("WHISPER_DEVICE"), default="cpu"),
+            compute_type=first_non_empty(os.environ.get("WHISPER_COMPUTE_TYPE"), default="int8"),
+        )
+        return self.whisper_model
+
+    def transcribe_scout_audio(self, audio_path: pathlib.Path, language: str = "") -> Tuple[str, str]:
+        if not audio_path or not audio_path.exists():
+            return "", ""
+        try:
+            model = self.get_whisper_model()
+            language_hint = str(language or "").strip().lower()
+            kwargs: Dict[str, Any] = {"vad_filter": True, "beam_size": 5}
+            if language_hint in {"en", "es"}:
+                kwargs["language"] = language_hint
+            segments, info = model.transcribe(str(audio_path), **kwargs)
+            transcript = " ".join(str(segment.text or "").strip() for segment in segments if str(segment.text or "").strip()).strip()
+            detected_language = getattr(info, "language", "") if info else ""
+            LOGGER.info("Transcribed scout audio %s with language=%s.", audio_path.name, detected_language or language_hint or "auto")
+            return transcript, ""
+        except Exception as exc:
+            return "", f"Transcription failed: {exc}"
+
+    def call_ollama_json(self, prompt: str) -> Tuple[Dict[str, Any], str]:
+        base_url = first_non_empty(self.config.ollama_url).rstrip("/")
+        model = first_non_empty(self.config.scout_summary_model)
+        if not base_url or not model:
+            return {}, "Ollama URL or model is not configured."
+        request_payload = json.dumps({
+            "model": model,
+            "prompt": prompt,
+            "stream": False,
+            "format": "json",
+            "options": {"temperature": 0.1},
+        }).encode("utf-8")
+        request = urllib.request.Request(
+            f"{base_url}/api/generate",
+            data=request_payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                raw = json.loads(response.read().decode("utf-8"))
+            text = str(raw.get("response") or "").strip()
+            if not text:
+                return {}, "Ollama returned an empty response."
+            parsed = json.loads(text)
+            return parsed if isinstance(parsed, dict) else {}, ""
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
+            return {}, f"Ollama summary failed: {exc}"
+
+    def fallback_scout_summary(self, note: str, report: Dict[str, Any]) -> Dict[str, Any]:
+        text = str(note or "").strip()
+        lowered = normalize_key(text)
+        issue_keywords = {
+            "pest": ["aphid", "mite", "spider mite", "scale", "thrip", "whitefly", "beetle", "bagworm", "caterpillar", "borer", "snail", "slug", "insect"],
+            "disease": ["blight", "mildew", "rot", "fungus", "fungal", "leaf spot", "canker", "rust", "wilt", "dieback", "disease"],
+            "nutrient": ["chlorosis", "yellowing", "deficiency", "nutrient", "iron", "nitrogen", "magnesium"],
+        }
+        matched_types = []
+        for issue_type, keywords in issue_keywords.items():
+            if any(keyword in lowered for keyword in keywords):
+                matched_types.append(issue_type)
+        severity = "none"
+        if any(word in lowered for word in ["severe", "heavy", "widespread", "critical", "bad"]):
+            severity = "high"
+        elif matched_types:
+            severity = "medium" if any(word in lowered for word in ["several", "spots", "some", "moderate"] ) else "low"
+        summary = text[:900] if text else "No spoken or typed scouting note was available."
+        diagnosis = ", ".join(matched_types).title() if matched_types else "No pest or disease issue called out in the note."
+        treatment = "Review the block and confirm treatment plan." if matched_types else "No treatment recommended from the note."
+        return {
+            "summary": summary,
+            "pest_issue": "pest" in matched_types,
+            "disease_issue": "disease" in matched_types,
+            "nutrient_issue": "nutrient" in matched_types,
+            "issue_type": ", ".join(matched_types),
+            "severity": severity,
+            "diagnosis": diagnosis,
+            "recommended_treatment": treatment,
+            "manual_review": not bool(text),
+        }
+
+    def summarize_scout_report(self, note: str, report: Dict[str, Any]) -> Tuple[Dict[str, Any], str]:
+        block = first_non_empty(report.get("block"), report.get("blockalpha"))
+        crop = first_non_empty(report.get("common_name"), report.get("genus"), report.get("itemcode"), default="Unknown crop")
+        language = first_non_empty(report.get("report_language"), default="en")
+        prompt = f"""
+You are summarizing a nursery crop scouting report for Greenleaf Nursery Company.
+Return only valid JSON with these keys:
+summary, pest_issue, disease_issue, nutrient_issue, issue_type, severity, diagnosis, recommended_treatment, follow_up_date, manual_review.
+severity must be one of none, low, medium, high, critical.
+The summary should be concise but detailed enough for an operations manager to act on.
+If the note is uncertain or lacks enough detail, set manual_review true.
+
+Context:
+Block: {block or "unknown"}
+Crop: {crop}
+Language: {language}
+
+Scouting note:
+{note or "No note provided."}
+""".strip()
+        parsed, error = self.call_ollama_json(prompt)
+        if not parsed:
+            return self.fallback_scout_summary(note, report), error
+        return parsed, error
+
+    def normalize_scout_summary_result(self, raw: Dict[str, Any], fallback_note: str = "") -> Dict[str, Any]:
+        source = raw if isinstance(raw, dict) else {}
+
+        def as_bool(value: Any) -> bool:
+            if isinstance(value, bool):
+                return value
+            return str(value or "").strip().lower() in {"1", "true", "yes", "y"}
+
+        severity = normalize_key(first_non_empty(source.get("severity"), default="none"))
+        if severity not in {"none", "low", "medium", "high", "critical"}:
+            severity = "none"
+        summary = first_non_empty(source.get("summary"), source.get("ai_summary"), default=fallback_note[:900])
+        pest_issue = as_bool(source.get("pest_issue"))
+        disease_issue = as_bool(source.get("disease_issue"))
+        nutrient_issue = as_bool(source.get("nutrient_issue"))
+        manual_review = as_bool(source.get("manual_review"))
+        if severity != "none" and not (pest_issue or disease_issue or nutrient_issue):
+            manual_review = True
+        return {
+            "summary": summary,
+            "pest_issue": pest_issue,
+            "disease_issue": disease_issue,
+            "nutrient_issue": nutrient_issue,
+            "issue_type": first_non_empty(source.get("issue_type"), source.get("issue"), default=""),
+            "severity": severity,
+            "diagnosis": first_non_empty(source.get("diagnosis"), source.get("issue"), default="No diagnosis returned."),
+            "recommended_treatment": first_non_empty(source.get("recommended_treatment"), source.get("treatment"), default="Review manually."),
+            "follow_up_date": first_non_empty(source.get("follow_up_date"), default="") or None,
+            "manual_review": manual_review,
+            "raw": source,
+        }
+
+    def build_scout_report_result_payload(self, report: Dict[str, Any], assets: List[Dict[str, Any]], temp_dir: pathlib.Path) -> Tuple[Dict[str, Any], bool]:
+        audio_path_value = first_non_empty(report.get("audio_path"))
+        audio_bucket = first_non_empty(report.get("audio_bucket"), default=self.config.grower_scout_audio_bucket)
+        transcript = first_non_empty(report.get("transcript"))
+        notes = first_non_empty(report.get("manual_note"))
+        errors = []
+        if audio_path_value and not transcript:
+            audio_path = self.download_storage_object(audio_bucket, audio_path_value, temp_dir, ".webm")
+            transcript, transcribe_error = self.transcribe_scout_audio(audio_path, first_non_empty(report.get("report_language")))
+            if transcribe_error:
+                errors.append(transcribe_error)
+
+        source_note = first_non_empty(transcript, notes)
+        summary_raw, summary_error = self.summarize_scout_report(source_note, report)
+        if summary_error:
+            errors.append(summary_error)
+        summary = self.normalize_scout_summary_result(summary_raw, source_note)
+
+        photo_assets = [asset for asset in assets if first_non_empty(asset.get("asset_kind")) == "photo"]
+        if not source_note and photo_assets:
+            summary["manual_review"] = True
+            summary["summary"] = first_non_empty(summary.get("summary"), default=f"{len(photo_assets)} scouting photo(s) uploaded without a spoken note.")
+            summary["diagnosis"] = first_non_empty(summary.get("diagnosis"), default="Photo-only scouting report requires manual review.")
+
+        has_issue = bool(summary["pest_issue"] or summary["disease_issue"] or summary["nutrient_issue"] or summary["manual_review"] or summary["severity"] != "none")
+        next_status = "dylan_review" if has_issue else "ai_complete"
+        payload = {
+            "status": next_status,
+            "transcript": transcript or None,
+            "ai_summary": summary["summary"] or None,
+            "summary_json": summary["raw"],
+            "pest_issue": summary["pest_issue"],
+            "disease_issue": summary["disease_issue"],
+            "nutrient_issue": summary["nutrient_issue"],
+            "manual_review": summary["manual_review"],
+            "issue_type": summary["issue_type"] or None,
+            "severity": summary["severity"],
+            "diagnosis": summary["diagnosis"] or None,
+            "recommended_treatment": summary["recommended_treatment"] or None,
+            "follow_up_date": summary["follow_up_date"],
+            "ai_completed_at": iso_now(),
+            "processing_started_at": None,
+            "worker_id": self.worker_id,
+            "last_error": "; ".join(errors) or None,
+        }
+        return payload, has_issue
+
+    def resolve_push_function_url(self) -> str:
+        explicit = first_non_empty(self.config.push_function_url)
+        if explicit:
+            return explicit
+        base = first_non_empty(self.config.supabase_url).rstrip("/")
+        return f"{base}/functions/v1/send-push-alert" if base else ""
+
+    def send_pest_issue_push(self, report: Dict[str, Any], payload: Dict[str, Any]) -> None:
+        push_url = self.resolve_push_function_url()
+        if not push_url:
+            return
+        report_id = first_non_empty(report.get("unique_id"))
+        body = {
+            "eventType": "pest_issue",
+            "reportId": report_id,
+            "folderId": report_id,
+            "targetUsers": self.config.pest_management_alert_usernames,
+            "block": first_non_empty(report.get("block"), report.get("blockalpha")),
+            "crop": first_non_empty(report.get("common_name"), report.get("genus"), report.get("itemcode"), default="Crop scout report"),
+            "severity": first_non_empty(payload.get("severity"), default="review"),
+            "issue": first_non_empty(payload.get("diagnosis"), payload.get("issue_type"), default="Pest Management review needed"),
+            "itemsCount": 1,
+        }
+        request = urllib.request.Request(
+            push_url,
+            data=json.dumps(body).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "apikey": self.config.supabase_service_role_key,
+                "Authorization": f"Bearer {self.config.supabase_service_role_key}",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                LOGGER.info("Pest issue push for %s returned HTTP %s.", report_id, response.status)
+        except Exception as exc:
+            LOGGER.warning("Could not send pest issue push for %s: %s", report_id, exc)
+
+    def mark_scout_report_failed(self, report: Dict[str, Any], error: Exception) -> None:
+        report_id = str(report.get("unique_id") or "").strip()
+        if not report_id:
+            return
+        payload = {
+            "status": "ai_failed",
+            "manual_review": True,
+            "processing_started_at": None,
+            "worker_id": self.worker_id,
+            "last_error": str(error),
+        }
+        self.supabase.table(self.config.grower_scout_reports_table).update(payload).eq("unique_id", report_id).execute()
+        self.emit_live_event(
+            self.config.grower_scout_reports_table,
+            report_id,
+            "grower:ai_failed",
+            {"status": "ai_failed", "error": str(error)},
+        )
+
+    def process_scout_report(self, report: Dict[str, Any]) -> bool:
+        claimed = self.claim_scout_report(report)
+        if not claimed:
+            return False
+        report_id = str(claimed.get("unique_id") or "").strip()
+        LOGGER.info("Processing grower scout report %s", report_id)
+        try:
+            assets = self.fetch_scout_assets(report_id)
+            with tempfile.TemporaryDirectory(prefix="gnc-scout-") as temp_dir:
+                payload, has_issue = self.build_scout_report_result_payload(claimed, assets, pathlib.Path(temp_dir))
+                self.supabase.table(self.config.grower_scout_reports_table).update(payload).eq("unique_id", report_id).execute()
+                self.emit_live_event(
+                    self.config.grower_scout_reports_table,
+                    report_id,
+                    "grower:ai_complete",
+                    {"status": payload.get("status"), "severity": payload.get("severity"), "has_issue": has_issue},
+                )
+                flagged_issue = bool(payload.get("pest_issue") or payload.get("disease_issue") or payload.get("nutrient_issue"))
+                if flagged_issue:
+                    self.send_pest_issue_push(claimed, payload)
+            LOGGER.info("Completed grower scout report %s", report_id)
+            return True
+        except Exception as exc:
+            LOGGER.exception("Grower scout report %s failed", report_id)
+            self.mark_scout_report_failed(claimed, exc)
+            return False
+
     def emit_live_event(self, source_table: str, row_id: str, event_type: str, payload: Optional[Dict[str, Any]] = None) -> None:
         live_table = first_non_empty(self.config.app_live_events_table)
         safe_source_table = first_non_empty(source_table)
@@ -634,7 +1389,7 @@ class SupabaseMlWorker:
         event_payload = {
             "event_key": f"{safe_source_table}:{safe_event_type}:{uuid.uuid4().hex}",
             "event_type": safe_event_type,
-            "area": "diagnostics" if safe_source_table in {self.config.job_table, self.config.training_assets_table} else "inventory",
+            "area": "grower" if safe_source_table in {self.config.grower_scout_reports_table, self.config.grower_scout_assets_table} else ("diagnostics" if safe_source_table in {self.config.job_table, self.config.training_assets_table} else "inventory"),
             "source_table": safe_source_table,
             "row_ids": [safe_row_id] if safe_row_id else [],
             "payload": {
@@ -660,6 +1415,9 @@ class SupabaseMlWorker:
             manual_review=True,
             reason="No diagnostics model is configured.",
         )
+        reference_prediction = self.disease_reference_cache.prediction_for_job(job)
+        if reference_prediction and (diagnostics_prediction.manual_review or not diagnostics_prediction.diagnosis):
+            diagnostics_prediction = reference_prediction
 
         matcher = self.inventory_cache.get_matcher()
         matched_entry, match_score = matcher.match(plant_prediction.genus, plant_prediction.common_name)
@@ -821,6 +1579,7 @@ class SupabaseMlWorker:
     def run_once(self) -> int:
         self.recover_stale_jobs()
         self.recover_stale_training_assets()
+        self.recover_stale_scout_reports()
         jobs = self.fetch_pending_jobs()
         processed = 0
         for job in jobs:
@@ -828,6 +1587,9 @@ class SupabaseMlWorker:
                 processed += 1
         for asset in self.fetch_pending_training_assets():
             if self.process_training_asset(asset):
+                processed += 1
+        for report in self.fetch_pending_scout_reports():
+            if self.process_scout_report(report):
                 processed += 1
         return processed
 
