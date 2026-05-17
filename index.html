@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.17.05';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.17.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2015,7 +2015,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.05').trim() || 'V2026.05.17.05';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.06').trim() || 'V2026.05.17.06';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2050,6 +2050,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <div id="drawer-request-btn" class="drawer-item text-blue-600 font-bold role-access role-admin role-rep role-request-enabled hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
             <div id="drawer-reserves-btn" class="drawer-item text-indigo-600 font-bold role-access role-admin hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
             <div id="drawer-office-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin role-rep hidden" onclick="switchView('office'); toggleMenu();"><i class="ph-bold ph-buildings"></i> Office</div>
+            <div id="drawer-production-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" onclick="switchView('production'); toggleMenu();"><i class="ph-bold ph-plant"></i> Production</div>
+            <div id="drawer-disease-pest-btn" class="drawer-item text-red-700 font-bold role-access hidden" onclick="switchView('disease-pest'); toggleMenu();"><i class="ph-bold ph-bug"></i> Disease &amp; Pest Management</div>
             <div id="drawer-sales-office-btn" class="drawer-item text-purple-600 font-bold role-access role-admin role-rep hidden" onclick="openSalesOfficeView(); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
             <div id="drawer-moves-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" onclick="openDrawerMovesView()"><i class="ph-bold ph-arrows-left-right"></i> Moves</div>
             <div id="drawer-leaf-btn" class="drawer-item text-emerald-700 font-bold" onclick="openLeafAssistant(); toggleMenu();"><i class="ph-bold ph-leaf"></i> Leaf Assistant</div>
@@ -2114,24 +2116,26 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div id="home-tile-drive" onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-qc-supervisor hidden"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
                                 <div id="home-tile-tasks" onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
                                 <div id="home-tile-docks" onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-qc-supervisor role-qc hidden"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
-                                <div id="home-tile-take-back" onclick="switchView('take-back')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-arrow-u-up-left text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Take Back</span></div>
+                                <div id="home-tile-take-back" onclick="switchView('take-back')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-arrow-u-up-left text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Take Back</span></div>
                                 <div id="home-tile-av" onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
                                 <div id="home-tile-request" onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-request-enabled hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
                                 <div id="home-tile-communication" onclick="switchView('communication')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-chat-circle-dots text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Communication</span></div>
                                 <div id="home-tile-walkie" onclick="switchView('walkie')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer hidden"><i class="ph-bold ph-radio text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Walkie</span></div>
                                 <div id="home-tile-reserves" onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
                                 <div id="home-tile-office" onclick="switchView('office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-buildings text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Office</span></div>
+                                <div id="home-tile-production" onclick="switchView('production')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-plant text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Production</span></div>
+                                <div id="home-tile-disease-pest" onclick="switchView('disease-pest')" class="bg-white border-2 border-red-600 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-bug text-3xl text-red-700"></i><span class="font-bold text-sm text-red-700 uppercase tracking-wide">Disease &amp; Pest</span></div>
                                 <div id="home-tile-sales-office" onclick="openSalesOfficeView()" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
-                                <div id="home-tile-moves" onclick="openMovesView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-arrows-left-right text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Moves</span></div>
+                                <div id="home-tile-moves" onclick="openMovesView()" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-arrows-left-right text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Moves</span></div>
                                 <div id="home-tile-inventory-office" onclick="openInventoryOfficeView()" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-warehouse text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Inventory Office</span></div>
                                 <div id="home-tile-reports" onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
                                 <div id="home-tile-hours" onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
-                                <div id="home-tile-review" onclick="switchView('review')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">New Crop Release</span></div>
-                                <div id="home-tile-move-up" onclick="switchView('move-up')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-arrow-up text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Move Up</span></div>
+                                <div id="home-tile-review" onclick="switchView('review')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">New Crop Release</span></div>
+                                <div id="home-tile-move-up" onclick="switchView('move-up')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-arrow-up text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Move Up</span></div>
                                 <div id="home-tile-advertisement" onclick="switchView('advertisement')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-megaphone text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Advertisement</span></div>
-                                <div id="home-tile-diagnostics" onclick="switchView('diagnostics')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-stethoscope text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Diagnostics</span></div>
-                                <div id="home-tile-grower" onclick="switchView('grower')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-plant text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Grower</span></div>
-                                <div id="home-tile-pest-management" onclick="switchView('pest-management')" class="bg-white border-2 border-red-600 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-bug text-3xl text-red-700"></i><span class="font-bold text-sm text-red-700 uppercase tracking-wide">Pest Management</span></div>
+                                <div id="home-tile-diagnostics" onclick="switchView('diagnostics')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-stethoscope text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Diagnostics</span></div>
+                                <div id="home-tile-grower" onclick="switchView('grower')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-plant text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Grower</span></div>
+                                <div id="home-tile-pest-management" onclick="switchView('pest-management')" class="hidden bg-white border-2 border-red-600 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-bug text-3xl text-red-700"></i><span class="font-bold text-sm text-red-700 uppercase tracking-wide">Pest Management</span></div>
                             </div>
                         </div>
                     </div>
@@ -2325,6 +2329,71 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div id="low-stock-crumb" class="text-xs font-bold text-[#007a4d] mb-3">NCR</div>
                     </div>
                     <div id="low-stock-content"></div>
+                </div>
+
+                <div id="view-production" class="hidden">
+                    <div class="freeze-panel">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <div>
+                                <div class="text-xs font-bold text-[#007a4d] uppercase tracking-[0.16em]">Production</div>
+                                <div class="text-xl font-black text-slate-900">Production</div>
+                            </div>
+                            <div class="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Hub</div>
+                        </div>
+                    </div>
+                    <div id="production-hub-grid" class="grid gap-3 md:grid-cols-2">
+                        <button type="button" id="production-open-grower" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('grower')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-plant text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Grower</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Scouting notes</div>
+                        </button>
+                        <button type="button" id="production-open-take-back" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('take-back')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-arrow-u-up-left text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Take Back</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Open take backs</div>
+                        </button>
+                        <button type="button" id="production-open-moves" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openMovesView()">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-arrows-left-right text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Moves</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Move candidates</div>
+                        </button>
+                        <button type="button" id="production-open-review" class="rounded-2xl border border-amber-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('review')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700"><i class="ph-bold ph-warning-circle text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">New Crop Release</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Review</div>
+                        </button>
+                        <button type="button" id="production-open-move-up" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('move-up')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-arrow-up text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Move Up</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">U season rows</div>
+                        </button>
+                    </div>
+                    <div id="production-empty-state" class="hidden rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No production modules are available for this login.</div>
+                </div>
+
+                <div id="view-disease-pest" class="hidden">
+                    <div class="freeze-panel">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <div>
+                                <div class="text-xs font-bold text-red-700 uppercase tracking-[0.16em]">Disease &amp; Pest</div>
+                                <div class="text-xl font-black text-slate-900">Disease &amp; Pest Management</div>
+                            </div>
+                            <div class="rounded-full border border-red-100 bg-red-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-red-700">Hub</div>
+                        </div>
+                    </div>
+                    <div id="disease-pest-hub-grid" class="grid gap-3 md:grid-cols-2">
+                        <button type="button" id="disease-pest-open-diagnostics" class="rounded-2xl border border-blue-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('diagnostics')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700"><i class="ph-bold ph-stethoscope text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Diagnostics</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">AI photo review</div>
+                        </button>
+                        <button type="button" id="disease-pest-open-pest-management" class="rounded-2xl border border-red-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('pest-management')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-700"><i class="ph-bold ph-bug text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Pest Management</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Flagged scouting reports</div>
+                        </button>
+                    </div>
+                    <div id="disease-pest-empty-state" class="hidden rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No disease or pest modules are available for this login.</div>
                 </div>
 
                 <div id="view-office" class="hidden">
@@ -2995,7 +3064,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10514,6 +10583,8 @@ bindFastInvokeById('drawer-drive-btn', 'openDrawerView', ['drive'], 'Drive Mode'
 bindFastInvokeById('drawer-request-btn', 'openDrawerView', ['request'], 'Requests');
 bindFastInvokeById('drawer-reserves-btn', 'openDrawerView', ['reserves'], 'Reserves');
             bindFastInvokeById('drawer-office-btn', 'openDrawerView', ['office'], 'Office');
+            bindFastInvokeById('drawer-production-btn', 'openDrawerView', ['production'], 'Production');
+            bindFastInvokeById('drawer-disease-pest-btn', 'openDrawerView', ['disease-pest'], 'Disease & Pest Management');
             bindFastInvokeById('drawer-sales-office-btn', 'openDrawerSalesOffice', [], 'Sales Office');
             bindFastInvokeById('drawer-moves-btn', 'openDrawerMovesView', [], 'Moves');
             bindFastInvokeById('drawer-reports-btn', 'openDrawerView', ['reports'], 'Reports');
@@ -10533,6 +10604,8 @@ bindFastInvokeById('home-tile-communication', 'switchView', ['communication'], '
 bindFastInvokeById('home-tile-walkie', 'switchView', ['walkie'], 'Walkie');
 bindFastInvokeById('home-tile-reserves', 'switchView', ['reserves'], 'Reserves');
             bindFastInvokeById('home-tile-office', 'switchView', ['office'], 'Office');
+            bindFastInvokeById('home-tile-production', 'switchView', ['production'], 'Production');
+            bindFastInvokeById('home-tile-disease-pest', 'switchView', ['disease-pest'], 'Disease & Pest Management');
             bindFastInvokeById('home-tile-sales-office', 'openSalesOfficeView', [], 'Sales Office');
             bindFastInvokeById('home-tile-moves', 'openMovesView', [], 'Moves');
             bindFastInvokeById('home-tile-inventory-office', 'openInventoryOfficeView', [], 'Inventory Office');
@@ -13684,7 +13757,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.05').trim() || 'V2026.05.17.05';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.06').trim() || 'V2026.05.17.06';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -13750,6 +13823,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             docks: { eyebrow: 'Amazon Search', title: 'Docks' },
             drive: { eyebrow: 'Amazon Search', title: 'Drive Mode' },
             communication: { eyebrow: 'Communication', title: 'Communication' },
+            production: { eyebrow: 'Production', title: 'Production' },
+            'disease-pest': { eyebrow: 'Disease & Pest', title: 'Disease & Pest Management' },
             request: { eyebrow: 'Amazon Filters', title: 'Requests' },
             tasks: { eyebrow: 'Amazon Filters', title: 'My Tasks' },
             'take-back': { eyebrow: 'Bloom Picker', title: 'Take Back' },
@@ -15708,6 +15783,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (viewId === 'docks') return { required: [{ key: 'soc', mode: 'initial' }], background: [{ key: 'soc', mode: 'full' }], label: 'Loading dock rows...' };
             if (viewId === 'request') return { required: [{ key: 'requests', mode: 'initial' }, { key: 'requestHistory', mode: 'initial' }], background: [{ key: 'requests', mode: 'full' }, { key: 'requestHistory', mode: 'full' }], label: 'Loading requests...' };
             if (viewId === 'communication') return { required: [], background: [], label: 'Loading communication...' };
+            if (viewId === 'production') return { required: [], background: [], label: 'Loading production...' };
+            if (viewId === 'disease-pest') return { required: [], background: [], label: 'Loading disease and pest management...' };
             if (viewId === 'chat') return { required: [], background: [], label: 'Loading chat...' };
             if (viewId === 'walkie') return { required: [], background: [], label: 'Loading walkie...' };
             if (viewId === 'reserves') {
@@ -24090,27 +24167,29 @@ function toggleDriveQuickRequestItem(domId) {
             return dockAssignableUsersPromise;
         }
 
-        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','av','request','reserves','sales-office','office','reports','hours','low-stock','review','move-up','advertisement','diagnostics','grower','pest-management','communication','chat'];
+        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','production','av','request','reserves','sales-office','office','reports','hours','low-stock','review','move-up','advertisement','diagnostics','disease-pest','grower','pest-management','communication','chat'];
         const ROLE_VIEW_ELEMENT_IDS = Object.freeze({
             drive: ['drawer-drive-btn', 'home-tile-drive'],
             tasks: ['drawer-tasks-btn', 'home-tile-tasks'],
             docks: ['drawer-docks-btn', 'home-tile-docks'],
-            'take-back': ['drawer-take-back-btn', 'home-tile-take-back'],
+            'take-back': ['drawer-take-back-btn'],
+            production: ['drawer-production-btn', 'home-tile-production'],
             av: ['drawer-av-btn', 'home-tile-av'],
             request: ['drawer-request-btn', 'home-tile-request', 'footer-request-btn'],
             reserves: ['drawer-reserves-btn', 'home-tile-reserves'],
             office: ['drawer-office-btn', 'home-tile-office'],
             'sales-office': ['drawer-sales-office-btn'],
-            moves: ['drawer-moves-btn', 'home-tile-moves'],
+            moves: ['drawer-moves-btn'],
             reports: ['drawer-reports-btn', 'home-tile-reports'],
             hours: ['drawer-hours-btn', 'home-tile-hours'],
             'low-stock': ['drawer-low-stock-btn'],
-            review: ['drawer-review-btn', 'home-tile-review'],
-            'move-up': ['drawer-move-up-btn', 'home-tile-move-up'],
+            review: ['drawer-review-btn'],
+            'move-up': ['drawer-move-up-btn'],
             advertisement: ['drawer-advertisement-btn', 'home-tile-advertisement'],
-            diagnostics: ['drawer-diagnostics-btn', 'home-tile-diagnostics'],
-            grower: ['drawer-grower-btn', 'home-tile-grower'],
-            'pest-management': ['drawer-pest-management-btn', 'home-tile-pest-management'],
+            diagnostics: ['drawer-diagnostics-btn'],
+            'disease-pest': ['drawer-disease-pest-btn', 'home-tile-disease-pest'],
+            grower: ['drawer-grower-btn'],
+            'pest-management': ['drawer-pest-management-btn'],
             communication: ['drawer-communication-btn', 'home-tile-communication', 'footer-communication-btn'],
             chat: [],
             walkie: ['drawer-walkie-btn', 'home-tile-walkie', 'footer-walkie-btn']
@@ -24146,14 +24225,18 @@ function toggleDriveQuickRequestItem(domId) {
             const allowedViews = new Set(['home']);
             if (isTakeBackOnly) {
                 allowedViews.add('take-back');
+                allowedViews.add('production');
             } else if (isForeman && !isAdmin) {
-                ['drive', 'take-back', 'communication', 'chat', 'hours', 'grower'].forEach(viewId => allowedViews.add(viewId));
+                ['drive', 'take-back', 'production', 'communication', 'chat', 'hours', 'grower'].forEach(viewId => allowedViews.add(viewId));
             } else if (isGrower && !isAdmin) {
-                ['grower', 'communication', 'chat'].forEach(viewId => allowedViews.add(viewId));
+                ['production', 'grower', 'communication', 'chat'].forEach(viewId => allowedViews.add(viewId));
             } else {
                 allowedViews.add('communication');
                 allowedViews.add('chat');
-                if (!isRep) allowedViews.add('take-back');
+                if (!isRep) {
+                    allowedViews.add('take-back');
+                    allowedViews.add('production');
+                }
             }
             if (isAdmin) {
                 ROLE_ACCESS_VIEWS.forEach(viewId => allowedViews.add(viewId));
@@ -24167,7 +24250,9 @@ function toggleDriveQuickRequestItem(domId) {
             if (canUseMovesModule()) {
                 allowedViews.add('moves');
                 allowedViews.add('office');
+                allowedViews.add('production');
             }
+            if (isStrictDylanCollygeUser()) allowedViews.add('disease-pest');
             return { isAdmin, isRep, isQcSupervisor, isQc, isCsr, isForeman, isGrower, isTakeBackOnly, isRequestRepScopedUser, allowedViews };
         }
 
@@ -24177,6 +24262,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (targetView === 'walkie') return false;
             if (targetView === 'diagnostics') return isStrictDylanCollygeUser();
             if (targetView === 'pest-management') return isStrictDylanCollygeUser();
+            if (targetView === 'disease-pest') return isStrictDylanCollygeUser();
             const access = getRoleAccessState();
             if (targetView === 'moves') return canUseMovesModule();
             if (targetView === 'request' && !access.isForeman && !access.isTakeBackOnly && access.isRequestRepScopedUser) return true;
@@ -24273,7 +24359,7 @@ function toggleDriveQuickRequestItem(domId) {
         function syncRoleAccessUi(access = getRoleAccessState()) {
             const allowedViews = access && access.allowedViews instanceof Set ? access.allowedViews : new Set();
             Object.keys(ROLE_VIEW_ELEMENT_IDS).forEach((viewId) => {
-                const isAllowed = (viewId === 'request' || viewId === 'moves' || viewId === 'diagnostics' || viewId === 'pest-management') ? canAccessView(viewId) : allowedViews.has(viewId);
+                const isAllowed = (viewId === 'request' || viewId === 'moves' || viewId === 'diagnostics' || viewId === 'disease-pest' || viewId === 'pest-management') ? canAccessView(viewId) : allowedViews.has(viewId);
                 ROLE_VIEW_ELEMENT_IDS[viewId].forEach((elementId) => {
                     const el = document.getElementById(elementId);
                     if (!el) return;
@@ -27547,7 +27633,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (canAccessView(target)) switchView(target);
         }
 
-        const TRACKED_VIEW_IDS = ['drive','tasks','review','move-up','advertisement','diagnostics','grower','pest-management','communication','office','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
+        const TRACKED_VIEW_IDS = ['drive','tasks','review','move-up','advertisement','diagnostics','grower','pest-management','communication','production','disease-pest','office','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
 
         function getAffectedViewsForDatasets(changedKeys = []) {
             const changedSet = new Set((changedKeys || []).filter(Boolean));
@@ -30004,6 +30090,34 @@ function toggleDriveQuickRequestItem(domId) {
             updateFooterChatBadge();
         }
 
+        function setHubButtonVisibility(buttonId = '', isVisible = false) {
+            const button = document.getElementById(buttonId);
+            if (!button) return false;
+            button.classList.toggle('hidden', !isVisible);
+            return !!isVisible;
+        }
+
+        function renderProductionHub() {
+            const visibleCount = [
+                setHubButtonVisibility('production-open-grower', canAccessView('grower')),
+                setHubButtonVisibility('production-open-take-back', canAccessView('take-back')),
+                setHubButtonVisibility('production-open-moves', canAccessView('moves')),
+                setHubButtonVisibility('production-open-review', canAccessView('review')),
+                setHubButtonVisibility('production-open-move-up', canAccessView('move-up'))
+            ].filter(Boolean).length;
+            const emptyState = document.getElementById('production-empty-state');
+            if (emptyState) emptyState.classList.toggle('hidden', visibleCount > 0);
+        }
+
+        function renderDiseasePestHub() {
+            const visibleCount = [
+                setHubButtonVisibility('disease-pest-open-diagnostics', canAccessView('diagnostics')),
+                setHubButtonVisibility('disease-pest-open-pest-management', canAccessView('pest-management'))
+            ].filter(Boolean).length;
+            const emptyState = document.getElementById('disease-pest-empty-state');
+            if (emptyState) emptyState.classList.toggle('hidden', visibleCount > 0);
+        }
+
         function renderOfficeHub() {
             const salesButton = document.getElementById('office-open-sales');
             const inventoryButton = document.getElementById('office-open-inventory');
@@ -30056,6 +30170,10 @@ function toggleDriveQuickRequestItem(domId) {
                 renderRequest();
             } else if (viewId === 'communication') {
                 renderCommunicationHub();
+            } else if (viewId === 'production') {
+                renderProductionHub();
+            } else if (viewId === 'disease-pest') {
+                renderDiseasePestHub();
             } else if (viewId === 'chat') {
                 renderChat();
             } else if (viewId === 'walkie') {
