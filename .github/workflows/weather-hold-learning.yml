@@ -1,0 +1,37 @@
+name: Sync Weather Hold Learning
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: weather-hold-learning
+  cancel-in-progress: false
+
+jobs:
+  sync-weather-hold-learning:
+    name: Update Park Hill weather and hold features
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Sync weather and hold learning features
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          WEATHER_STATION_KEY: park_hill_ok
+          WEATHER_LATITUDE: "35.8615"
+          WEATHER_LONGITUDE: "-94.9586"
+          WEATHER_TIMEZONE: America/Chicago
+          WEATHER_LOOKBACK_DAYS: "92"
+          HOLD_WEATHER_REFRESH_LIMIT: "2000"
+        run: python sync_weather_hold_learning.py

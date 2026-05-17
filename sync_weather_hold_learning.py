@@ -1,0 +1,231 @@
+#!/usr/bin/env python3
+"""Sync Park Hill weather and refresh hold-stop learning features.
+
+This script is designed for GitHub Actions. It uses the free Open-Meteo API,
+stores hourly Park Hill, OK weather in Supabase, then refreshes GDD/chill-hour
+rollups on hold events captured from v2_master_inventory.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from datetime import datetime, timezone
+from typing import Any, Dict, Iterable, List
+from zoneinfo import ZoneInfo
+
+
+OPEN_METEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
+DEFAULT_LATITUDE = 35.8615
+DEFAULT_LONGITUDE = -94.9586
+DEFAULT_TIMEZONE = "America/Chicago"
+DEFAULT_STATION_KEY = "park_hill_ok"
+HOURLY_FIELDS = [
+    "temperature_2m",
+    "relative_humidity_2m",
+    "precipitation",
+    "wind_speed_10m",
+]
+
+
+def first_non_empty(*values: Any, default: str = "") -> str:
+    for value in values:
+        if value is None:
+            continue
+        text = str(value).strip()
+        if text:
+            return text
+    return default
+
+
+def env_float(name: str, default: float) -> float:
+    raw = first_non_empty(os.environ.get(name))
+    if not raw:
+        return default
+    return float(raw)
+
+
+def env_int(name: str, default: int) -> int:
+    raw = first_non_empty(os.environ.get(name))
+    if not raw:
+        return default
+    return int(raw)
+
+
+def json_request(url: str, method: str = "GET", payload: Any = None, headers: Dict[str, str] | None = None, timeout: int = 60) -> Any:
+    data = None
+    request_headers = dict(headers or {})
+    if payload is not None:
+        data = json.dumps(payload).encode("utf-8")
+        request_headers.setdefault("Content-Type", "application/json")
+    request = urllib.request.Request(url, data=data, headers=request_headers, method=method)
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        raw = response.read().decode("utf-8")
+    if not raw:
+        return None
+    return json.loads(raw)
+
+
+def fetch_open_meteo_hourly(latitude: float, longitude: float, timezone_name: str, past_days: int) -> Dict[str, Any]:
+    query = {
+        "latitude": str(latitude),
+        "longitude": str(longitude),
+        "hourly": ",".join(HOURLY_FIELDS),
+        "temperature_unit": "fahrenheit",
+        "wind_speed_unit": "mph",
+        "precipitation_unit": "inch",
+        "timezone": timezone_name,
+        "past_days": str(max(1, min(92, past_days))),
+        "forecast_days": "2",
+    }
+    url = OPEN_METEO_FORECAST_URL + "?" + urllib.parse.urlencode(query)
+    try:
+        return json_request(url, timeout=90)
+    except urllib.error.HTTPError as exc:
+        if past_days > 14:
+            print(f"Open-Meteo rejected {past_days} past days; retrying with 14 days. HTTP {exc.code}", file=sys.stderr)
+            return fetch_open_meteo_hourly(latitude, longitude, timezone_name, 14)
+        raise
+
+
+def parse_local_hour(value: str, timezone_name: str) -> datetime:
+    local_zone = ZoneInfo(timezone_name)
+    parsed = datetime.fromisoformat(str(value))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=local_zone)
+    return parsed.astimezone(timezone.utc)
+
+
+def hourly_rows_from_response(payload: Dict[str, Any], station_key: str, latitude: float, longitude: float, timezone_name: str) -> List[Dict[str, Any]]:
+    hourly = payload.get("hourly") if isinstance(payload, dict) else {}
+    times = list(hourly.get("time") or [])
+    temperatures = list(hourly.get("temperature_2m") or [])
+    humidity = list(hourly.get("relative_humidity_2m") or [])
+    precipitation = list(hourly.get("precipitation") or [])
+    wind_speed = list(hourly.get("wind_speed_10m") or [])
+    rows: List[Dict[str, Any]] = []
+
+    for index, local_time in enumerate(times):
+        temperature_f = temperatures[index] if index < len(temperatures) else None
+        humidity_value = humidity[index] if index < len(humidity) else None
+        precipitation_value = precipitation[index] if index < len(precipitation) else None
+        wind_speed_value = wind_speed[index] if index < len(wind_speed) else None
+        observed_at = parse_local_hour(str(local_time), timezone_name)
+        if temperature_f is None:
+            gdd_base_50 = 0.0
+            chill_hours = 0.0
+        else:
+            temp = float(temperature_f)
+            gdd_base_50 = max(temp - 50.0, 0.0) / 24.0
+            chill_hours = 1.0 if 32.0 <= temp <= 45.0 else 0.0
+
+        rows.append(
+            {
+                "unique_id": f"{station_key}:{observed_at.strftime('%Y%m%dT%H%M%SZ')}",
+                "station_key": station_key,
+                "latitude": latitude,
+                "longitude": longitude,
+                "timezone": timezone_name,
+                "observed_at": observed_at.isoformat(),
+                "local_time": str(local_time),
+                "temperature_f": temperature_f,
+                "relative_humidity": humidity_value,
+                "precipitation_in": precipitation_value,
+                "wind_speed_mph": wind_speed_value,
+                "gdd_base_50": round(gdd_base_50, 5),
+                "chill_hours": chill_hours,
+                "source": "open-meteo",
+                "raw": {
+                    "open_meteo_local_time": str(local_time),
+                    "temperature_unit": "fahrenheit",
+                    "gdd_base": 50,
+                    "chill_hour_rule": "32F_to_45F",
+                },
+            }
+        )
+    return rows
+
+
+class SupabaseRest:
+    def __init__(self, url: str, service_key: str):
+        self.url = url.rstrip("/")
+        self.service_key = service_key
+
+    def headers(self, prefer: str = "") -> Dict[str, str]:
+        headers = {
+            "apikey": self.service_key,
+            "Authorization": f"Bearer {self.service_key}",
+            "Content-Type": "application/json",
+        }
+        if prefer:
+            headers["Prefer"] = prefer
+        return headers
+
+    def upsert(self, table: str, rows: List[Dict[str, Any]], on_conflict: str = "unique_id", batch_size: int = 500) -> int:
+        if not rows:
+            return 0
+        total = 0
+        for start in range(0, len(rows), batch_size):
+            batch = rows[start : start + batch_size]
+            query = urllib.parse.urlencode({"on_conflict": on_conflict})
+            endpoint = f"{self.url}/rest/v1/{urllib.parse.quote(table, safe='')}?{query}"
+            json_request(
+                endpoint,
+                method="POST",
+                payload=batch,
+                headers=self.headers("resolution=merge-duplicates,return=minimal"),
+                timeout=90,
+            )
+            total += len(batch)
+        return total
+
+    def rpc(self, function_name: str, payload: Dict[str, Any] | None = None) -> Any:
+        endpoint = f"{self.url}/rest/v1/rpc/{urllib.parse.quote(function_name, safe='')}"
+        return json_request(
+            endpoint,
+            method="POST",
+            payload=payload or {},
+            headers=self.headers("return=representation"),
+            timeout=120,
+        )
+
+
+def run() -> int:
+    supabase_url = first_non_empty(os.environ.get("SUPABASE_URL"))
+    supabase_key = first_non_empty(os.environ.get("SUPABASE_SERVICE_ROLE_KEY"), os.environ.get("SUPABASE_KEY"))
+    if not supabase_url or not supabase_key:
+        raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.")
+
+    latitude = env_float("WEATHER_LATITUDE", DEFAULT_LATITUDE)
+    longitude = env_float("WEATHER_LONGITUDE", DEFAULT_LONGITUDE)
+    timezone_name = first_non_empty(os.environ.get("WEATHER_TIMEZONE"), default=DEFAULT_TIMEZONE)
+    station_key = first_non_empty(os.environ.get("WEATHER_STATION_KEY"), default=DEFAULT_STATION_KEY)
+    lookback_days = env_int("WEATHER_LOOKBACK_DAYS", 92)
+    refresh_limit = env_int("HOLD_WEATHER_REFRESH_LIMIT", 2000)
+
+    started = time.time()
+    print(f"Fetching Open-Meteo weather for {station_key} ({latitude}, {longitude}) with {lookback_days} day lookback.")
+    weather_payload = fetch_open_meteo_hourly(latitude, longitude, timezone_name, lookback_days)
+    rows = hourly_rows_from_response(weather_payload, station_key, latitude, longitude, timezone_name)
+    if not rows:
+        raise RuntimeError("Open-Meteo returned no hourly weather rows.")
+
+    supabase = SupabaseRest(supabase_url, supabase_key)
+    upserted = supabase.upsert("v2_weather_hourly", rows, on_conflict="unique_id")
+    print(f"Upserted {upserted} hourly weather rows.")
+
+    refreshed = supabase.rpc("v2_refresh_hold_learning_weather_features", {"p_limit": refresh_limit})
+    print(f"Refreshed hold weather features: {refreshed}")
+    profile_refreshed = supabase.rpc("v2_refresh_hold_learning_profiles", {})
+    print(f"Refreshed hold learning profiles: {profile_refreshed}")
+    print(f"Weather hold learning sync completed in {round(time.time() - started, 1)}s.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(run())

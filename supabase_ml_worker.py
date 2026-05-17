@@ -36,6 +36,13 @@ DEFAULT_GROWER_SCOUT_AUDIO_BUCKET = "grower_scout_audio"
 DEFAULT_GROWER_SCOUT_PHOTOS_BUCKET = "grower_scout_photos"
 DEFAULT_MODELS_DIR = pathlib.Path("models")
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+ML_SOURCE_TABLE_ALLOWLIST = {
+    "v2_master_inventory",
+    "v2_active_request",
+    "v2_soc_master",
+    "v2_sales_office",
+    "v2_inventory_office",
+}
 
 
 def utc_now() -> datetime:
@@ -1029,6 +1036,52 @@ class SupabaseMlWorker:
         target_path.write_bytes(image_bytes)
         return target_path
 
+    def fetch_source_row_for_job(self, job: Dict[str, Any]) -> Dict[str, Any]:
+        source_table = first_non_empty(job.get("source_table")).strip().lower()
+        source_unique_id = first_non_empty(job.get("source_unique_id"))
+        if not source_table or not source_unique_id or source_table not in ML_SOURCE_TABLE_ALLOWLIST:
+            return {}
+        try:
+            response = (
+                self.supabase.table(source_table)
+                .select("*")
+                .eq("unique_id", source_unique_id)
+                .limit(1)
+                .execute()
+            )
+            rows = list(response.data or [])
+            return rows[0] if rows else {}
+        except Exception as exc:
+            LOGGER.warning("Could not resolve ML source row %s/%s: %s", source_table, source_unique_id, exc)
+            return {}
+
+    def get_source_identity_for_job(self, job: Dict[str, Any]) -> Dict[str, str]:
+        source_row = self.fetch_source_row_for_job(job)
+        parsed = parse_asset_filename_fields(first_non_empty(job.get("image_path"), job.get("image_url"), job.get("unique_id")))
+        source_identity = {
+            "genus": first_non_empty(
+                source_row.get("genus"),
+                source_row.get("genusname"),
+                source_row.get("GENUS"),
+                source_row.get("GENUSNAME"),
+                job.get("genus"),
+            ),
+            "common_name": first_non_empty(
+                source_row.get("commonname"),
+                source_row.get("common_name"),
+                source_row.get("COMMONNAME"),
+                source_row.get("COMMON_NAME"),
+                job.get("common_name"),
+                job.get("commonname"),
+                parsed.get("commonname"),
+            ),
+            "itemcode": first_non_empty(source_row.get("itemcode"), source_row.get("ITEMCODE"), job.get("itemcode"), parsed.get("itemcode")),
+            "contsize": normalize_contsize(first_non_empty(source_row.get("contsize"), source_row.get("CONTSIZE"), job.get("contsize"), parsed.get("contsize"))),
+            "locationcode": normalize_location_code(first_non_empty(source_row.get("locationcode"), source_row.get("LOCATIONCODE"), job.get("locationcode"), parsed.get("locationcode"))),
+            "lotcode": normalize_lot_code(first_non_empty(source_row.get("lotcode"), source_row.get("LOTCODE"), job.get("lotcode"), parsed.get("lotcode"))),
+        }
+        return source_identity
+
     def claim_training_asset(self, asset: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         asset_id = str(asset.get("unique_id") or "").strip()
         if not asset_id or not self.config.training_assets_table:
@@ -1429,6 +1482,7 @@ Scouting note:
             LOGGER.warning("Could not emit app live event for %s: %s", safe_row_id or safe_source_table, exc)
 
     def build_result_payload(self, job: Dict[str, Any], image_path: pathlib.Path) -> Dict[str, Any]:
+        source_identity = self.get_source_identity_for_job(job)
         plant_prediction = self.models.plant.predict(image_path)
         diagnostics_prediction = self.models.diagnostics.predict(image_path) if self.models.diagnostics else Prediction(
             manual_review=False,
@@ -1439,11 +1493,19 @@ Scouting note:
             diagnostics_prediction = reference_prediction
 
         matcher = self.inventory_cache.get_matcher()
-        matched_entry, match_score = matcher.match(plant_prediction.genus, plant_prediction.common_name)
+        low_confidence = plant_prediction.confidence < self.config.confidence_threshold
+        match_genus = first_non_empty(
+            plant_prediction.genus if self.models.plant.available and not low_confidence else "",
+            source_identity.get("genus"),
+        )
+        match_common_name = first_non_empty(
+            plant_prediction.common_name if self.models.plant.available and not low_confidence else "",
+            source_identity.get("common_name"),
+        )
+        matched_entry, match_score = matcher.match(match_genus, match_common_name)
 
         season = first_non_empty(job.get("season"), default="")
         app_grade = map_model_grade_to_app_grade(plant_prediction.grade, season)
-        low_confidence = plant_prediction.confidence < self.config.confidence_threshold
         diagnostics_low_confidence = diagnostics_prediction.confidence < self.config.confidence_threshold
         diagnostic_issue_found = bool(reference_prediction) or (
             bool(self.models.diagnostics and self.models.diagnostics.available)
@@ -1459,11 +1521,11 @@ Scouting note:
         should_request_approval = bool(diagnostic_issue_found or grading_result_ready)
         manual_review = bool(diagnostic_issue_found and diagnostics_prediction.manual_review)
 
-        genus = plant_prediction.genus
-        common_name = plant_prediction.common_name
+        genus = first_non_empty(source_identity.get("genus"), plant_prediction.genus)
+        common_name = first_non_empty(source_identity.get("common_name"), plant_prediction.common_name)
         if matched_entry:
-            genus = matched_entry.genus or genus
-            common_name = matched_entry.common_name or common_name
+            genus = genus or matched_entry.genus
+            common_name = common_name or matched_entry.common_name
 
         reason_bits = [
             plant_prediction.reason,
@@ -1478,6 +1540,12 @@ Scouting note:
 
         return {
             "status": "pending_approval" if should_request_approval else "approved",
+            "genus": source_identity.get("genus") or None,
+            "common_name": source_identity.get("common_name") or None,
+            "itemcode": source_identity.get("itemcode") or job.get("itemcode") or None,
+            "contsize": source_identity.get("contsize") or job.get("contsize") or None,
+            "locationcode": source_identity.get("locationcode") or job.get("locationcode") or None,
+            "lotcode": source_identity.get("lotcode") or job.get("lotcode") or None,
             "ml_genus": genus or None,
             "ml_common_name": common_name or None,
             "ml_grade_raw": plant_prediction.grade or None,

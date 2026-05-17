@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.16.03';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.16.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2015,7 +2015,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.16.03').trim() || 'V2026.05.16.03';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.16.04').trim() || 'V2026.05.16.04';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2930,7 +2930,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.16.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.16.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -13611,7 +13611,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.16.03').trim() || 'V2026.05.16.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.16.04').trim() || 'V2026.05.16.04';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -28281,6 +28281,12 @@ function toggleDriveQuickRequestItem(domId) {
                 entry.uploadedUrl = publicUrl;
                 entry.uploadedName = fileName;
                 uploadedUrls.push(publicUrl);
+                queueMlImageJobForUploadedRowPhoto(item, 'ncr-', {
+                    imageBucket: NCR_PHOTO_BUCKET,
+                    imagePath: filePath,
+                    imageUrl: publicUrl,
+                    uploadToken: String(firstNonEmptyValue(entry.id, createPendingPhotoToken()) || '').replace(/[^a-zA-Z0-9_-]/g, '')
+                }).catch((error) => console.warn('ML queue background task failed for NCR photo.', error));
                 markPhotoPersistActivity();
             }
             return uploadedUrls;
@@ -44286,9 +44292,9 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 typeof getTaskBlockAlpha === 'function' ? getTaskBlockAlpha(item) : ''
             ) || '').trim();
             const commonName = String(firstNonEmptyValue(
-                typeof getDrivePlantCommonName === 'function' ? getDrivePlantCommonName(item) : '',
                 item.COMMONNAME,
                 item.commonname,
+                typeof getDrivePlantCommonName === 'function' ? getDrivePlantCommonName(item) : '',
                 item.DESCRIPTION,
                 item.description,
                 item.PLANT_NAME,
@@ -44296,9 +44302,9 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 'Row Photo'
             ) || '').trim();
             const contSize = String(firstNonEmptyValue(
-                typeof getDrivePlantContSize === 'function' ? getDrivePlantContSize(item) : '',
                 item.CONTSIZE,
                 item.contsize,
+                typeof getDrivePlantContSize === 'function' ? getDrivePlantContSize(item) : '',
                 item.CONTAINER_SIZE,
                 item.container_size,
                 ''
@@ -44722,7 +44728,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const imageHtml = imageUrl
                 ? `<img src="${esc(imageUrl)}" alt="" class="h-24 w-24 rounded-xl border border-red-100 bg-slate-100 object-cover flex-shrink-0" loading="lazy">`
                 : '<div class="h-24 w-24 rounded-xl border border-dashed border-red-200 bg-red-50 text-[10px] font-black uppercase tracking-[0.12em] text-red-300 flex items-center justify-center text-center flex-shrink-0">No Photo</div>';
-            const title = firstNonEmptyValue(item.ML_COMMON_NAME, item.COMMONNAME, 'AI Diagnostic');
+            const title = firstNonEmptyValue(item.COMMONNAME, item.ML_COMMON_NAME, 'AI Diagnostic');
             const meta = [item.ITEMCODE ? `Item ${item.ITEMCODE}` : '', item.CONTSIZE, item.LOCATIONCODE ? `Loc ${item.LOCATIONCODE}` : '', item.BLOCK ? `Block ${item.BLOCK}` : '', item.SEASON].filter(Boolean).join(' | ');
             const diagnosis = firstNonEmptyValue(item.DIAGNOSIS, 'Manual review required');
             const treatment = firstNonEmptyValue(item.RECOMMENDED_TREATMENT, 'Review before routing.');
@@ -44830,7 +44836,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const imageUrl = getMlJobImageUrl(item);
             const photoHtml = imageUrl ? `<img src="${esc(imageUrl)}" alt="" class="h-20 w-20 rounded-xl object-cover border border-slate-200 bg-slate-100 flex-shrink-0" loading="lazy">` : '<div class="h-20 w-20 rounded-xl border border-dashed border-slate-300 bg-slate-50 flex-shrink-0"></div>';
             const statusClass = item.STATUS === 'ml_failed' ? 'border-red-200 bg-red-50 text-red-700' : (item.STATUS === 'approved' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-blue-200 bg-blue-50 text-blue-700');
-            const title = firstNonEmptyValue(item.ML_COMMON_NAME, item.COMMONNAME, 'AI Capture');
+            const title = firstNonEmptyValue(item.COMMONNAME, item.ML_COMMON_NAME, 'AI Capture');
             const issueText = firstNonEmptyValue(
                 item.DIAGNOSIS,
                 item.STATUS === 'processing' ? 'ML worker is processing this image.' : '',
