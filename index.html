@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.15.11';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.16.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2015,7 +2015,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.15.11').trim() || 'V2026.05.15.11';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.16.02').trim() || 'V2026.05.16.02';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2059,6 +2059,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <div id="drawer-move-up-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin hidden" onclick="switchView('move-up'); toggleMenu();"><i class="ph-bold ph-arrow-up"></i> Move Up</div>
             <div id="drawer-advertisement-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin hidden" onclick="switchView('advertisement'); toggleMenu();"><i class="ph-bold ph-megaphone"></i> Advertisement</div>
             <div id="drawer-diagnostics-btn" class="drawer-item text-blue-700 font-bold role-access hidden" onclick="switchView('diagnostics'); toggleMenu();"><i class="ph-bold ph-stethoscope"></i> Diagnostics</div>
+            <div id="drawer-grower-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" onclick="switchView('grower'); toggleMenu();"><i class="ph-bold ph-plant"></i> Grower</div>
+            <div id="drawer-pest-management-btn" class="drawer-item text-red-700 font-bold role-access hidden" onclick="switchView('pest-management'); toggleMenu();"><i class="ph-bold ph-bug"></i> Pest Management</div>
             <hr class="my-3 border-gray-200">
             <div id="drawer-logout-btn" class="drawer-item text-red-600 bg-red-50 font-bold justify-center rounded-lg mx-4 mt-2 mb-8" onclick="performLogout()"><i class="ph-bold ph-sign-out text-xl"></i> Log Out</div>
         </div>
@@ -2126,6 +2128,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div id="home-tile-move-up" onclick="switchView('move-up')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-arrow-up text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Move Up</span></div>
                                 <div id="home-tile-advertisement" onclick="switchView('advertisement')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-megaphone text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Advertisement</span></div>
                                 <div id="home-tile-diagnostics" onclick="switchView('diagnostics')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-stethoscope text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Diagnostics</span></div>
+                                <div id="home-tile-grower" onclick="switchView('grower')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-plant text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Grower</span></div>
+                                <div id="home-tile-pest-management" onclick="switchView('pest-management')" class="bg-white border-2 border-red-600 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-bug text-3xl text-red-700"></i><span class="font-bold text-sm text-red-700 uppercase tracking-wide">Pest Management</span></div>
                             </div>
                         </div>
                     </div>
@@ -2619,6 +2623,32 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div id="diagnostics-content"></div>
                 </div>
 
+                <div id="view-grower" class="hidden">
+                    <div class="freeze-panel">
+                        <div class="flex items-start justify-between gap-3 mb-3">
+                            <div class="min-w-0 flex-1">
+                                <div id="grower-crumb" class="text-xs font-bold text-[#007a4d] uppercase tracking-[0.16em] mb-1">Grower Scouting</div>
+                                <div class="text-xl font-black text-slate-900">Grower</div>
+                            </div>
+                            <button type="button" class="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return refreshGrowerScoutReportsNow()"><i class="ph-bold ph-arrows-clockwise text-base"></i><span>Refresh</span></button>
+                        </div>
+                    </div>
+                    <div id="grower-content"></div>
+                </div>
+
+                <div id="view-pest-management" class="hidden">
+                    <div class="freeze-panel">
+                        <div class="flex items-start justify-between gap-3 mb-3">
+                            <div class="min-w-0 flex-1">
+                                <div id="pest-management-crumb" class="text-xs font-bold text-red-700 uppercase tracking-[0.16em] mb-1">Pest Management</div>
+                                <div class="text-xl font-black text-slate-900">Pest Management</div>
+                            </div>
+                            <button type="button" class="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-red-700 shadow-sm active:scale-95" onclick="return refreshGrowerScoutReportsNow()"><i class="ph-bold ph-arrows-clockwise text-base"></i><span>Refresh</span></button>
+                        </div>
+                    </div>
+                    <div id="pest-management-content"></div>
+                </div>
+
                 <div id="view-detail" class="hidden">
                     <div class="freeze-panel">
                     <div class="back-btn" onclick="goBackFromDetail()"><i class="ph-bold ph-arrow-left"></i> Back</div>
@@ -2831,6 +2861,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const FLYER_FOLDER_HISTORY_TABLE = 'v2_flyer_folder_history';
         const ML_IMAGE_JOBS_TABLE = 'v2_ml_image_jobs';
         const ML_CAPTURE_PHOTO_BUCKET = 'ml_capture_photos';
+        const GROWER_SCOUT_REPORTS_TABLE = 'v2_grower_scout_reports';
+        const GROWER_SCOUT_ASSETS_TABLE = 'v2_grower_scout_assets';
+        const GROWER_SCOUT_AUDIO_BUCKET = 'grower_scout_audio';
+        const GROWER_SCOUT_PHOTOS_BUCKET = 'grower_scout_photos';
+        const GROWER_SCOUT_FILES_BUCKET = 'grower_scout_files';
         const APP_LIVE_EVENT_CLIENT_STORAGE_KEY = 'gnc_app_live_event_client_v1';
         const APP_LIVE_EVENT_PRUNE_STORAGE_KEY = 'gnc_app_live_event_pruned_v1';
         const APP_LIVE_EVENT_WRITE_COALESCE_MS = 900;
@@ -2895,7 +2930,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.15.11';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.16.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2935,6 +2970,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             review: { realtimeTables: [], pollMs: 'visible-default' },
             'move-up': { realtimeTables: [], pollMs: 'visible-default' },
             diagnostics: { realtimeTables: [ML_IMAGE_JOBS_TABLE], pollMs: 'visible-default' },
+            grower: { realtimeTables: [GROWER_SCOUT_REPORTS_TABLE, GROWER_SCOUT_ASSETS_TABLE], pollMs: 'visible-default' },
+            'pest-management': { realtimeTables: [GROWER_SCOUT_REPORTS_TABLE, GROWER_SCOUT_ASSETS_TABLE], pollMs: 'visible-default' },
             'low-stock': { realtimeTables: [], pollMs: 'visible-default' },
             hours: { realtimeTables: [], pollMs: 0 }
         });
@@ -3900,6 +3937,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             if (safeTable === FLYER_FOLDER_ROWS_TABLE) return 'tasks';
             if (safeTable === FLYER_FOLDER_HISTORY_TABLE) return 'tasks';
             if (safeTable === ML_IMAGE_JOBS_TABLE) return 'diagnostics';
+            if (safeTable === GROWER_SCOUT_REPORTS_TABLE || safeTable === GROWER_SCOUT_ASSETS_TABLE) return 'grower';
             if (safeTable === 'v2_master_inventory') return 'inventory';
             if (safeTable === 'v2_reserves') return 'reserves';
             if (safeTable === 'v2_soc_master') return 'docks';
@@ -7816,6 +7854,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (tableName === FLYER_FOLDER_ROWS_TABLE) return ['flyerRows'];
             if (tableName === FLYER_FOLDER_HISTORY_TABLE) return ['flyerHistory'];
             if (tableName === ML_IMAGE_JOBS_TABLE) return ['mlJobs'];
+            if (tableName === GROWER_SCOUT_REPORTS_TABLE) return ['growerScoutReports'];
+            if (tableName === GROWER_SCOUT_ASSETS_TABLE) return ['growerScoutAssets'];
             if (tableName === 'v2_cav_import') return ['cav', 'cavAvBlankKeys'];
             if (tableName === 'v2_view_av_hot_price_keys') return ['avHotPriceKeys'];
             if (tableName === 'v2_av_notes') return ['avNotes'];
@@ -8686,6 +8726,20 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     changed = upsertRealtimeRow(mlImageJobsInventory, normalizeMlImageJobRow(nextRow), tableName);
                 }
                 rebuildMlImageJobIndexes();
+            } else if (tableName === GROWER_SCOUT_REPORTS_TABLE) {
+                if (eventType === 'DELETE') {
+                    changed = removeRealtimeRow(growerScoutReportsInventory, uniqueId);
+                } else if (nextRow) {
+                    changed = upsertRealtimeRow(growerScoutReportsInventory, normalizeGrowerScoutReportRow(nextRow), tableName);
+                }
+                rebuildGrowerScoutIndexes();
+            } else if (tableName === GROWER_SCOUT_ASSETS_TABLE) {
+                if (eventType === 'DELETE') {
+                    changed = removeRealtimeRow(growerScoutAssetsInventory, uniqueId);
+                } else if (nextRow) {
+                    changed = upsertRealtimeRow(growerScoutAssetsInventory, normalizeGrowerScoutAssetRow(nextRow), tableName);
+                }
+                rebuildGrowerScoutIndexes();
             } else if (tableName === 'v2_cav_import') {
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(cavInventory, uniqueId)
@@ -8764,6 +8818,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (getCurrentVisibleViewId() === 'home' && activeHomeTab === 'grading') scheduleHomeRender(true);
                 if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 160);
                 if (isViewVisible('tasks') && isTaskDiagnosticsView(activeTaskTab)) scheduleTasksRender(0, 0, true);
+            } else if (tableName === GROWER_SCOUT_REPORTS_TABLE || tableName === GROWER_SCOUT_ASSETS_TABLE) {
+                markViewDirty('grower');
+                markViewDirty('pest-management');
+                if (isViewVisible('grower')) queueInteractiveViewRender('grower', false, true, 0, 120);
+                if (isViewVisible('pest-management')) queueInteractiveViewRender('pest-management', false, true, 0, 120);
             }
             if (!deferVisualSync) flushRealtimeDatasetUpdates([tableName]);
             recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'unknown');
@@ -10663,6 +10722,38 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
 
         function createPendingPhotoToken() {
             return `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+        }
+
+        function sanitizeInventoryPhotoFileSegment(value = '', fallback = 'NA') {
+            const cleaned = String(firstNonEmptyValue(value, fallback) || fallback)
+                .trim()
+                .replace(/[^a-zA-Z0-9_-]+/g, '');
+            return cleaned || String(fallback || 'NA').replace(/[^a-zA-Z0-9_-]+/g, '') || 'NA';
+        }
+
+        function getInventoryPhotoFileExtension(file = null, fallback = 'jpg') {
+            const name = String(file && file.name || '').trim();
+            const nameMatch = name.match(/\.([a-zA-Z0-9]{2,8})$/);
+            if (nameMatch && nameMatch[1]) {
+                const cleanExt = nameMatch[1].toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (cleanExt) return cleanExt === 'jpeg' ? 'jpg' : cleanExt;
+            }
+            const mimeType = String(file && file.type || '').trim().toLowerCase();
+            if (mimeType.includes('png')) return 'png';
+            if (mimeType.includes('webp')) return 'webp';
+            if (mimeType.includes('gif')) return 'gif';
+            if (mimeType.includes('heic')) return 'heic';
+            if (mimeType.includes('heif')) return 'heif';
+            return String(fallback || 'jpg').replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg';
+        }
+
+        function buildInventoryRowPhotoFileName(item = null, file = null, options = {}) {
+            const safeOptions = options || {};
+            const itemCode = sanitizeInventoryPhotoFileSegment(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, item && item.DESIGITEM, item && item.desigitem, 'NOITEM'), 'NOITEM');
+            const locationCode = sanitizeInventoryPhotoFileSegment(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, item && item.LOCATION, item && item.location, 'NOLOC'), 'NOLOC');
+            const token = sanitizeInventoryPhotoFileSegment(firstNonEmptyValue(safeOptions.uploadToken, createPendingPhotoToken()), String(Date.now()));
+            const extension = sanitizeInventoryPhotoFileSegment(firstNonEmptyValue(safeOptions.extension, getInventoryPhotoFileExtension(file, 'jpg')), 'jpg').toLowerCase();
+            return `${itemCode}-${locationCode}-${token}.${extension}`;
         }
 
         function registerPendingPhotoUpload(item, prefix, promise) {
@@ -12799,7 +12890,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             return items.map((item) => stripTransientCacheFields(item));
         }
 
-        const CACHE_SCHEMA_VERSION = 14;
+        const CACHE_SCHEMA_VERSION = 15;
         const MIN_TRUSTED_MASTER_COMMON_NAME_CACHE_COUNT = 1200;
         const INLINE_CACHE_RESERVE_LIMIT = 180;
         function buildCacheSnapshot() {
@@ -12816,6 +12907,8 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 flyerFolderRowsData: buildCacheRows(flyerFolderInventory),
                 flyerFolderHistoryData: buildCacheRows(flyerFolderHistoryInventory),
                 mlJobsData: buildCacheRows(mlImageJobsInventory),
+                growerScoutReportsData: buildCacheRows(growerScoutReportsInventory),
+                growerScoutAssetsData: buildCacheRows(growerScoutAssetsInventory),
                 cavData: buildCacheRows(cavInventory),
                 cavAvBlankKeysData: buildCacheRows(cavAvBlankKeyInventory),
                 avHotPriceKeysData: buildCacheRows(avHotPriceKeysInventory),
@@ -12849,6 +12942,8 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 flyerRows: { initialLoaded: hasRows(cachedRes.flyerFolderRowsData), fullLoaded: false },
                 flyerHistory: { initialLoaded: hasRows(cachedRes.flyerFolderHistoryData), fullLoaded: false },
                 mlJobs: { initialLoaded: hasRows(cachedRes.mlJobsData), fullLoaded: false },
+                growerScoutReports: { initialLoaded: hasRows(cachedRes.growerScoutReportsData), fullLoaded: false },
+                growerScoutAssets: { initialLoaded: hasRows(cachedRes.growerScoutAssetsData), fullLoaded: false },
                 cav: { initialLoaded: hasRows(cachedRes.cavData), fullLoaded: false },
                 cavAvBlankKeys: { initialLoaded: hasRows(cachedRes.cavAvBlankKeysData), fullLoaded: false },
                 avHotPriceKeys: { initialLoaded: hasRows(cachedRes.avHotPriceKeysData), fullLoaded: false },
@@ -13012,10 +13107,11 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             };
         }
 
-        let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let mlImageJobsInventory=[]; let cavInventory=[]; let cavAvBlankKeyInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
+        let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let mlImageJobsInventory=[]; let growerScoutReportsInventory=[]; let growerScoutAssetsInventory=[]; let cavInventory=[]; let cavAvBlankKeyInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
 let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null; let chatVoiceHoldPointerId=''; let chatVoiceHoldForComposer=false; let chatVoiceHoldFinishPending=''; let chatVoiceHoldStartPromise=null;
 let walkieChannels=[]; let walkieChannelMembers=[]; let walkieCalls=[]; let walkieCallMembers=[]; let walkieUsers=[]; let walkieSignalsSeen=new Set(); let walkieDataLoaded=false; let walkieLoadPromise=null; let walkieSchemaReady=null; let walkieSchemaProbePromise=null; let walkieSchemaWarningShown=false; let activeWalkieChannelId=''; let pendingWalkieOpenChannelId=''; let pendingWalkieOpenCallId=''; let walkieComposeOpen=false; let walkieUserSearchTerm=''; let walkieComposeTitle=''; let walkieSelectedUsers=new Set(); let walkieLastRenderSignature=''; let walkieDeviceId=''; let activeWalkieCallId=''; let walkieJoinedCallId=''; let walkieActiveMembershipId=''; let walkiePeerConnections=new Map(); let walkieRemoteAudioElements=new Map(); let walkieLocalStream=null; let walkieHeartbeatTimer=null; let walkieSpeakerHeartbeatTimer=null; let walkieReconnectTimer=null; let walkieActiveSpeakerIntent=false; let walkiePressedPointerId=''; let walkieForegroundNoticeShown=false;
-        let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let requestHistoryInventoryById=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let flyerFolderHistoryInventoryById=new Map(); let mlImageJobsInventoryById=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map();
+        let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let requestHistoryInventoryById=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let flyerFolderHistoryInventoryById=new Map(); let mlImageJobsInventoryById=new Map(); let growerScoutReportsInventoryById=new Map(); let growerScoutAssetsByReportId=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map();
+        let activeGrowerScoutTab='note'; let growerScoutRecorder=null; let growerScoutRecorderStream=null; let growerScoutRecordingActive=false; let growerScoutRecordingStartedAt=0; let growerScoutRecordingTimer=null; let growerScoutRecordMimeType=''; let growerScoutAudioChunks=[]; let growerScoutAudioBlob=null; let growerScoutAudioDurationSeconds=0; let growerScoutSubmitInFlight=false;
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
 let reviewSearchTerm=''; let moveUpSearchTerm=''; let reviewBrowseMode='item'; let moveUpBrowseMode='item'; let selectedReviewBlockAlpha=null; let selectedReviewLocationCode=null; let selectedMoveUpBlockAlpha=null; let selectedMoveUpLocationCode=null; let reviewDerivedRenderCache={ key: '', filteredRows: [], cardRows: null, blockRows: null, blockGroups: null, itemGroups: null }; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set(); let holdReleaseOverrideColumnsReady=null; let holdReleaseOverrideColumnsProbePromise=null; let holdReleaseOverrideSchemaWarningShown=false;
 const ncrFilterStateByView = {
@@ -13515,7 +13611,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.15.11').trim() || 'V2026.05.15.11';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.16.02').trim() || 'V2026.05.16.02';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -14169,6 +14265,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             flyerRows: { table: FLYER_FOLDER_ROWS_TABLE, sourceTable: FLYER_FOLDER_ROWS_TABLE, initialQuery: () => `select=${FLYER_FOLDER_ROW_SELECT_FIELDS}&order=created_at.desc`, fullQuery: () => `select=${FLYER_FOLDER_ROW_SELECT_FIELDS}&order=created_at.desc` },
             flyerHistory: { table: FLYER_FOLDER_HISTORY_TABLE, sourceTable: FLYER_FOLDER_ROWS_TABLE, initialQuery: () => `select=${FLYER_FOLDER_HISTORY_SELECT_FIELDS}&order=updated_at.desc`, fullQuery: () => `select=${FLYER_FOLDER_HISTORY_SELECT_FIELDS}&order=updated_at.desc` },
             mlJobs: { table: ML_IMAGE_JOBS_TABLE, sourceTable: ML_IMAGE_JOBS_TABLE, initialQuery: 'select=*&order=created_at.desc', fullQuery: 'select=*&order=created_at.desc' },
+            growerScoutReports: { table: GROWER_SCOUT_REPORTS_TABLE, sourceTable: GROWER_SCOUT_REPORTS_TABLE, initialQuery: 'select=*&order=created_at.desc', fullQuery: 'select=*&order=created_at.desc' },
+            growerScoutAssets: { table: GROWER_SCOUT_ASSETS_TABLE, sourceTable: GROWER_SCOUT_ASSETS_TABLE, initialQuery: 'select=*&order=created_at.desc', fullQuery: 'select=*&order=created_at.desc' },
             cav: { table: 'v2_cav_import', sourceTable: 'v2_cav_import', initialQuery: 'select=*', fullQuery: 'select=*' },
             cavAvBlankKeys: { table: 'v2_cav_import', sourceTable: 'v2_cav_import', initialQuery: 'select=*&season=eq.S1&order=itemcode.asc', fullQuery: 'select=*&season=eq.S1&order=itemcode.asc', initialFetchAll: true },
             avHotPriceKeys: { table: 'v2_view_av_hot_price_keys', sourceTable: 'v2_view_av_hot_price_keys', initialQuery: 'select=*', fullQuery: 'select=*' },
@@ -14190,6 +14288,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             review: { container: 'review-content', crumb: 'review-crumb' },
             'move-up': { container: 'move-up-content', crumb: 'move-up-crumb' },
             diagnostics: { container: 'diagnostics-content', crumb: 'diagnostics-crumb' },
+            grower: { container: 'grower-content', crumb: 'grower-crumb' },
+            'pest-management': { container: 'pest-management-content', crumb: 'pest-management-crumb' },
             advertisement: { container: 'advertisement-status' }
         };
 
@@ -15174,6 +15274,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (key === 'flyerRows') return { flyerFolderRowsData: formatted };
             if (key === 'flyerHistory') return { flyerFolderHistoryData: formatted };
             if (key === 'mlJobs') return { mlJobsData: formatted };
+            if (key === 'growerScoutReports') return { growerScoutReportsData: formatted };
+            if (key === 'growerScoutAssets') return { growerScoutAssetsData: formatted };
             if (key === 'cav') return { cavData: formatted };
             if (key === 'cavAvBlankKeys') return { cavAvBlankKeysData: formatted };
             if (key === 'avHotPriceKeys') return { avHotPriceKeysData: formatted };
@@ -15576,6 +15678,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (viewId === 'move-up') return { required: [{ key: 'master', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }], label: 'Loading Move Up rows...' };
             if (viewId === 'advertisement') return { required: [{ key: 'master', mode: 'initial' }, { key: 'flyerRows', mode: 'initial' }, { key: 'flyerHistory', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }, { key: 'flyerRows', mode: 'full' }, { key: 'flyerHistory', mode: 'full' }], label: 'Loading advertisement assets...' };
             if (viewId === 'diagnostics') return { required: [{ key: 'mlJobs', mode: 'initial' }], background: [{ key: 'mlJobs', mode: 'full' }], label: 'Loading diagnostics...' };
+            if (viewId === 'grower') return { required: [{ key: 'growerScoutReports', mode: 'initial' }, { key: 'growerScoutAssets', mode: 'initial' }, { key: 'master', mode: 'initial' }], background: [{ key: 'growerScoutReports', mode: 'full' }, { key: 'growerScoutAssets', mode: 'full' }], label: 'Loading grower scouting...' };
+            if (viewId === 'pest-management') return { required: [{ key: 'growerScoutReports', mode: 'initial' }, { key: 'growerScoutAssets', mode: 'initial' }], background: [{ key: 'growerScoutReports', mode: 'full' }, { key: 'growerScoutAssets', mode: 'full' }], label: 'Loading pest management...' };
             if (viewId === 'reports') return { required: [{ key: 'master', mode: 'initial' }, { key: 'requests', mode: 'initial' }, { key: 'requestHistory', mode: 'initial' }, { key: 'reserves', mode: 'initial' }, { key: 'soc', mode: 'initial' }], background: [{ key: 'master', mode: 'full' }, { key: 'requests', mode: 'full' }, { key: 'requestHistory', mode: 'full' }, { key: 'reserves', mode: 'full' }, { key: 'soc', mode: 'full' }], label: 'Loading reports...' };
             return null;
         }
@@ -21830,11 +21934,13 @@ function toggleDriveQuickRequestItem(domId) {
             const hasFlyerRows = hasKey('flyerFolderRowsData');
             const hasFlyerHistory = hasKey('flyerFolderHistoryData');
             const hasMlJobs = hasKey('mlJobsData');
+            const hasGrowerScoutReports = hasKey('growerScoutReportsData');
+            const hasGrowerScoutAssets = hasKey('growerScoutAssetsData');
             const hasCav = hasKey('cavData');
             const hasCavAvBlankKeys = hasKey('cavAvBlankKeysData');
             const hasAvHotPrice = hasKey('avHotPriceKeysData');
             const hasAvNotes = hasKey('avNotesData');
-            const didStructuralDataChange = hasMaster || hasAvOpen || hasRequests || hasRequestHistory || hasReserves || hasSoc || hasSalesOffice || hasFlyerRows || hasFlyerHistory || hasMlJobs || hasCav || hasCavAvBlankKeys || hasAvHotPrice || hasAvNotes;
+            const didStructuralDataChange = hasMaster || hasAvOpen || hasRequests || hasRequestHistory || hasReserves || hasSoc || hasSalesOffice || hasFlyerRows || hasFlyerHistory || hasMlJobs || hasGrowerScoutReports || hasGrowerScoutAssets || hasCav || hasCavAvBlankKeys || hasAvHotPrice || hasAvNotes;
             const changedDatasetKeys = [];
             if (hasMaster) changedDatasetKeys.push('master');
             if (hasAvOpen) changedDatasetKeys.push('avOpen');
@@ -21846,6 +21952,8 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasFlyerRows) changedDatasetKeys.push('flyerRows');
             if (hasFlyerHistory) changedDatasetKeys.push('flyerHistory');
             if (hasMlJobs) changedDatasetKeys.push('mlJobs');
+            if (hasGrowerScoutReports) changedDatasetKeys.push('growerScoutReports');
+            if (hasGrowerScoutAssets) changedDatasetKeys.push('growerScoutAssets');
             if (hasCav) changedDatasetKeys.push('cav');
             if (hasCavAvBlankKeys) changedDatasetKeys.push('cavAvBlankKeys');
             if (hasAvHotPrice) changedDatasetKeys.push('avHotPriceKeys');
@@ -21900,6 +22008,16 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasMlJobs) {
                 mlImageJobsInventory = (res.mlJobsData || []).map((item, idx) => normalizeMlImageJobRow(item, idx)).filter(Boolean);
                 rebuildMlImageJobIndexes();
+            }
+
+            if (hasGrowerScoutReports) {
+                growerScoutReportsInventory = (res.growerScoutReportsData || []).map((item, idx) => normalizeGrowerScoutReportRow(item, idx)).filter(Boolean);
+                rebuildGrowerScoutIndexes();
+            }
+
+            if (hasGrowerScoutAssets) {
+                growerScoutAssetsInventory = (res.growerScoutAssetsData || []).map((item, idx) => normalizeGrowerScoutAssetRow(item, idx)).filter(Boolean);
+                rebuildGrowerScoutIndexes();
             }
 
             if (hasRequests || hasRequestHistory || (hasMaster && requestsInventory.length)) {
@@ -23889,7 +24007,7 @@ function toggleDriveQuickRequestItem(domId) {
             return dockAssignableUsersPromise;
         }
 
-        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','av','request','reserves','sales-office','reports','hours','low-stock','review','move-up','advertisement','diagnostics','chat'];
+        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','av','request','reserves','sales-office','reports','hours','low-stock','review','move-up','advertisement','diagnostics','grower','pest-management','chat'];
         const ROLE_VIEW_ELEMENT_IDS = Object.freeze({
             drive: ['drawer-drive-btn', 'home-tile-drive'],
             tasks: ['drawer-tasks-btn', 'home-tile-tasks'],
@@ -23907,6 +24025,8 @@ function toggleDriveQuickRequestItem(domId) {
             'move-up': ['drawer-move-up-btn', 'home-tile-move-up'],
             advertisement: ['drawer-advertisement-btn', 'home-tile-advertisement'],
             diagnostics: ['drawer-diagnostics-btn', 'home-tile-diagnostics'],
+            grower: ['drawer-grower-btn', 'home-tile-grower'],
+            'pest-management': ['drawer-pest-management-btn', 'home-tile-pest-management'],
             chat: ['drawer-chat-btn', 'home-tile-chat', 'footer-chat-btn'],
             walkie: ['drawer-walkie-btn', 'home-tile-walkie', 'footer-walkie-btn']
         });
@@ -23932,16 +24052,19 @@ function toggleDriveQuickRequestItem(domId) {
             const isQc = !isQcSupervisor && (normalizedRole === 'QC' || normalizedRole.startsWith('QC'));
             const isCsr = normalizedRole === 'CSR' || normalizedRole.includes('CSR');
             const isForeman = compactRole === 'FOREMAN' || compactRole.includes('FOREMAN');
+            const isGrower = compactRole === 'GROWER' || compactRole.includes('GROWER');
             const isTakeBackRole = compactRole === 'TAKEBACK' || compactRole === 'TAKEBACKUSER' || compactRole.includes('TAKEBACK');
             const isRequestRepScopedUser = canUseRequestRepScopedAccess();
-            const isKnownLimitedRole = isRep || isQcSupervisor || isQc || isForeman || isTakeBackRole;
+            const isKnownLimitedRole = isRep || isQcSupervisor || isQc || isForeman || isGrower || isTakeBackRole;
             const isAdmin = normalizedRole.includes('ADMIN') || normalizedRole.includes('MANAGER') || isCsr || (!isKnownLimitedRole);
             const isTakeBackOnly = isTakeBackRole && !isAdmin;
             const allowedViews = new Set(['home']);
             if (isTakeBackOnly) {
                 allowedViews.add('take-back');
             } else if (isForeman && !isAdmin) {
-                ['drive', 'take-back', 'chat', 'hours'].forEach(viewId => allowedViews.add(viewId));
+                ['drive', 'take-back', 'chat', 'hours', 'grower'].forEach(viewId => allowedViews.add(viewId));
+            } else if (isGrower && !isAdmin) {
+                ['grower', 'chat'].forEach(viewId => allowedViews.add(viewId));
             } else {
                 allowedViews.add('chat');
                 if (!isRep) allowedViews.add('take-back');
@@ -23956,7 +24079,7 @@ function toggleDriveQuickRequestItem(domId) {
                 ['docks'].forEach(viewId => allowedViews.add(viewId));
             }
             if (canUseMovesModule()) allowedViews.add('moves');
-            return { isAdmin, isRep, isQcSupervisor, isQc, isCsr, isForeman, isTakeBackOnly, isRequestRepScopedUser, allowedViews };
+            return { isAdmin, isRep, isQcSupervisor, isQc, isCsr, isForeman, isGrower, isTakeBackOnly, isRequestRepScopedUser, allowedViews };
         }
 
         function canAccessView(viewId) {
@@ -23964,6 +24087,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!targetView || targetView === 'home' || targetView === 'detail') return true;
             if (targetView === 'walkie') return false;
             if (targetView === 'diagnostics') return isStrictDylanCollygeUser();
+            if (targetView === 'pest-management') return isStrictDylanCollygeUser();
             const access = getRoleAccessState();
             if (targetView === 'moves') return canUseMovesModule();
             if (targetView === 'request' && !access.isForeman && !access.isTakeBackOnly && access.isRequestRepScopedUser) return true;
@@ -24036,6 +24160,7 @@ function toggleDriveQuickRequestItem(domId) {
                     (access.isAdmin && el.classList.contains('role-admin')) ||
                     (access.isRep && el.classList.contains('role-rep')) ||
                     (access.isRequestRepScopedUser && el.classList.contains('role-request-enabled')) ||
+                    (access.isGrower && el.classList.contains('role-grower')) ||
                     (access.isQcSupervisor && el.classList.contains('role-qc-supervisor')) ||
                     (access.isQc && el.classList.contains('role-qc'));
                 el.classList.toggle('hidden', !isAllowed);
@@ -24059,7 +24184,7 @@ function toggleDriveQuickRequestItem(domId) {
         function syncRoleAccessUi(access = getRoleAccessState()) {
             const allowedViews = access && access.allowedViews instanceof Set ? access.allowedViews : new Set();
             Object.keys(ROLE_VIEW_ELEMENT_IDS).forEach((viewId) => {
-                const isAllowed = (viewId === 'request' || viewId === 'moves' || viewId === 'diagnostics') ? canAccessView(viewId) : allowedViews.has(viewId);
+                const isAllowed = (viewId === 'request' || viewId === 'moves' || viewId === 'diagnostics' || viewId === 'pest-management') ? canAccessView(viewId) : allowedViews.has(viewId);
                 ROLE_VIEW_ELEMENT_IDS[viewId].forEach((elementId) => {
                     const el = document.getElementById(elementId);
                     if (!el) return;
@@ -27333,7 +27458,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (canAccessView(target)) switchView(target);
         }
 
-        const TRACKED_VIEW_IDS = ['drive','tasks','review','move-up','advertisement','diagnostics','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
+        const TRACKED_VIEW_IDS = ['drive','tasks','review','move-up','advertisement','diagnostics','grower','pest-management','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
 
         function getAffectedViewsForDatasets(changedKeys = []) {
             const changedSet = new Set((changedKeys || []).filter(Boolean));
@@ -27355,6 +27480,9 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (changedSet.has('mlJobs') && !affectedViews.includes('tasks')) {
                 affectedViews.push('tasks');
+            }
+            if ((changedSet.has('growerScoutReports') || changedSet.has('growerScoutAssets')) && !affectedViews.includes('pest-management')) {
+                affectedViews.push('pest-management');
             }
             return affectedViews;
         }
@@ -27902,11 +28030,13 @@ function toggleDriveQuickRequestItem(domId) {
             if (!draft) return;
             Array.from(input.files || []).filter((file) => file && String(file.type || '').startsWith('image/')).forEach((file) => {
                 const previewUrl = URL.createObjectURL(file);
+                const uploadToken = createPendingPhotoToken().replace(/[^a-zA-Z0-9_-]/g, '');
+                const fileName = buildInventoryRowPhotoFileName(activeItem, file, { uploadToken });
                 draft.photos.push({
-                    id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                    id: uploadToken,
                     file,
                     previewUrl,
-                    fileName: String(file && file.name || `ncr-photo-${draft.photos.length + 1}.jpg`).trim(),
+                    fileName,
                     mimeType: String(file && file.type || 'image/jpeg').trim(),
                     uploadedUrl: '',
                     uploadedName: ''
@@ -28127,11 +28257,13 @@ function toggleDriveQuickRequestItem(domId) {
                     continue;
                 }
                 if (!entry.file) continue;
-                const clean = (value) => String(value || 'NA').replace(/[^a-zA-Z0-9_-]/g, '');
                 const originalName = String(entry.fileName || 'ncr-photo.jpg').trim();
                 const extMatch = originalName.match(/(\.[a-z0-9]+)$/i);
                 const extension = extMatch ? extMatch[1].toLowerCase() : '.jpg';
-                const fileName = `${clean(firstNonEmptyValue(item && item.ITEMCODE, item && item.COMMONNAME, 'NCR'))}-${clean(firstNonEmptyValue(item && item.LOCATIONCODE, 'ROW'))}-${Date.now()}${extension}`;
+                const fileName = buildInventoryRowPhotoFileName(item, entry.file, {
+                    uploadToken: String(firstNonEmptyValue(entry.id, createPendingPhotoToken()) || '').replace(/[^a-zA-Z0-9_-]/g, ''),
+                    extension: extension.replace(/^\./, '')
+                });
                 const filePath = `${NCR_PHOTO_PATH_PREFIX}/${new Date().toISOString().split('T')[0]}/${fileName}`;
                 const uploadResult = await withTimeout(
                     supabaseClient.storage.from(NCR_PHOTO_BUCKET).upload(filePath, entry.file, {
@@ -29805,6 +29937,10 @@ function toggleDriveQuickRequestItem(domId) {
                 renderAdvertisement();
             } else if (viewId === 'diagnostics') {
                 renderDiagnostics();
+            } else if (viewId === 'grower') {
+                renderGrowerScout();
+            } else if (viewId === 'pest-management') {
+                renderPestManagement();
             } else if (viewId === 'request') {
                 if (forceReset || !state.initialized) resetRequestView(false);
                 renderRequest();
@@ -43332,6 +43468,786 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             return parsed.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
         }
 
+        function canUseGrowerScoutView() {
+            const access = getRoleAccessState();
+            return !!(access.isAdmin || access.isForeman || access.isGrower || isStrictDylanCollygeUser());
+        }
+
+        function canUsePestManagementView() {
+            return isStrictDylanCollygeUser();
+        }
+
+        function normalizeGrowerScoutStatus(value = '') {
+            const text = String(value || '').trim().toLowerCase().replace(/\s+/g, '_');
+            if (['pending_ai', 'processing', 'ai_complete', 'dylan_review', 'reviewed', 'closed', 'ai_failed'].includes(text)) return text;
+            return text || 'pending_ai';
+        }
+
+        function normalizeGrowerScoutSeverity(value = '') {
+            const text = String(value || '').trim().toLowerCase();
+            if (['none', 'low', 'medium', 'high', 'critical'].includes(text)) return text;
+            return 'none';
+        }
+
+        function normalizeGrowerScoutReportRow(row = null, idx = 0) {
+            if (!row || typeof row !== 'object') return null;
+            const item = Object.assign({}, row);
+            item.SOURCE_TABLE = GROWER_SCOUT_REPORTS_TABLE;
+            item.UNIQUE_ID = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, item.ID, item.id, `grower_${idx}`)).trim();
+            item.DOM_ID = String(firstNonEmptyValue(item.DOM_ID, item.dom_id, `grower_${item.UNIQUE_ID}`)).trim();
+            item.STATUS = normalizeGrowerScoutStatus(firstNonEmptyValue(item.STATUS, item.status, 'pending_ai'));
+            item.REPORT_LANGUAGE = String(firstNonEmptyValue(item.REPORT_LANGUAGE, item.report_language, 'en')).trim().toLowerCase() || 'en';
+            item.BLOCK = String(firstNonEmptyValue(item.BLOCK, item.block, item.BLOCKALPHA, item.blockalpha, '')).trim();
+            item.BLOCKALPHA = String(firstNonEmptyValue(item.BLOCKALPHA, item.blockalpha, item.BLOCK, item.block, '')).trim();
+            item.LOCATIONCODE = String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, '')).trim();
+            item.ITEMCODE = String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, '')).trim();
+            item.GENUS = String(firstNonEmptyValue(item.GENUS, item.genus, '')).trim();
+            item.COMMONNAME = String(firstNonEmptyValue(item.COMMONNAME, item.COMMON_NAME, item.common_name, 'Crop Scout Report')).trim();
+            item.CONTSIZE = String(firstNonEmptyValue(item.CONTSIZE, item.contsize, '')).trim();
+            item.SEASON = String(firstNonEmptyValue(item.SEASON, item.season, '')).trim().toUpperCase();
+            item.SALESYEAR = firstNonEmptyValue(item.SALESYEAR, item.salesyear, '');
+            item.MANUAL_NOTE = String(firstNonEmptyValue(item.MANUAL_NOTE, item.manual_note, '')).trim();
+            item.AUDIO_BUCKET = String(firstNonEmptyValue(item.AUDIO_BUCKET, item.audio_bucket, GROWER_SCOUT_AUDIO_BUCKET)).trim() || GROWER_SCOUT_AUDIO_BUCKET;
+            item.AUDIO_PATH = String(firstNonEmptyValue(item.AUDIO_PATH, item.audio_path, '')).trim();
+            item.AUDIO_URL = String(firstNonEmptyValue(item.AUDIO_URL, item.audio_url, '')).trim();
+            item.AUDIO_MIME_TYPE = String(firstNonEmptyValue(item.AUDIO_MIME_TYPE, item.audio_mime_type, '')).trim();
+            item.AUDIO_DURATION_SECONDS = Math.max(0, Number(firstNonEmptyValue(item.AUDIO_DURATION_SECONDS, item.audio_duration_seconds, 0)) || 0);
+            item.TRANSCRIPT = String(firstNonEmptyValue(item.TRANSCRIPT, item.transcript, '')).trim();
+            item.AI_SUMMARY = String(firstNonEmptyValue(item.AI_SUMMARY, item.ai_summary, '')).trim();
+            item.SUMMARY_JSON = item.SUMMARY_JSON || item.summary_json || {};
+            item.PEST_ISSUE = item.PEST_ISSUE === true || item.pest_issue === true || String(firstNonEmptyValue(item.PEST_ISSUE, item.pest_issue, '')).toLowerCase() === 'true';
+            item.DISEASE_ISSUE = item.DISEASE_ISSUE === true || item.disease_issue === true || String(firstNonEmptyValue(item.DISEASE_ISSUE, item.disease_issue, '')).toLowerCase() === 'true';
+            item.NUTRIENT_ISSUE = item.NUTRIENT_ISSUE === true || item.nutrient_issue === true || String(firstNonEmptyValue(item.NUTRIENT_ISSUE, item.nutrient_issue, '')).toLowerCase() === 'true';
+            item.MANUAL_REVIEW = item.MANUAL_REVIEW === true || item.manual_review === true || String(firstNonEmptyValue(item.MANUAL_REVIEW, item.manual_review, '')).toLowerCase() === 'true';
+            item.ISSUE_TYPE = String(firstNonEmptyValue(item.ISSUE_TYPE, item.issue_type, '')).trim();
+            item.SEVERITY = normalizeGrowerScoutSeverity(firstNonEmptyValue(item.SEVERITY, item.severity, 'none'));
+            item.DIAGNOSIS = String(firstNonEmptyValue(item.DIAGNOSIS, item.diagnosis, '')).trim();
+            item.RECOMMENDED_TREATMENT = String(firstNonEmptyValue(item.RECOMMENDED_TREATMENT, item.recommended_treatment, '')).trim();
+            item.FOLLOW_UP_DATE = String(firstNonEmptyValue(item.FOLLOW_UP_DATE, item.follow_up_date, '')).trim();
+            item.REVIEW_STATUS = String(firstNonEmptyValue(item.REVIEW_STATUS, item.review_status, 'pending')).trim().toLowerCase() || 'pending';
+            item.REVIEWER_NOTE = String(firstNonEmptyValue(item.REVIEWER_NOTE, item.reviewer_note, '')).trim();
+            item.REVIEWED_BY_USERNAME = String(firstNonEmptyValue(item.REVIEWED_BY_USERNAME, item.reviewed_by_username, '')).trim();
+            item.REVIEWED_BY_DISPLAY = String(firstNonEmptyValue(item.REVIEWED_BY_DISPLAY, item.reviewed_by_display, '')).trim();
+            item.REVIEWED_AT = String(firstNonEmptyValue(item.REVIEWED_AT, item.reviewed_at, '')).trim();
+            item.CREATED_BY_USERNAME = String(firstNonEmptyValue(item.CREATED_BY_USERNAME, item.created_by_username, '')).trim();
+            item.CREATED_BY_DISPLAY = String(firstNonEmptyValue(item.CREATED_BY_DISPLAY, item.created_by_display, '')).trim();
+            item.CREATED_AT = String(firstNonEmptyValue(item.CREATED_AT, item.created_at, '')).trim();
+            item.UPDATED_AT = String(firstNonEmptyValue(item.UPDATED_AT, item.updated_at, '')).trim();
+            item.AI_COMPLETED_AT = String(firstNonEmptyValue(item.AI_COMPLETED_AT, item.ai_completed_at, '')).trim();
+            item.LAST_ERROR = String(firstNonEmptyValue(item.LAST_ERROR, item.last_error, '')).trim();
+            return item;
+        }
+
+        function normalizeGrowerScoutAssetRow(row = null, idx = 0) {
+            if (!row || typeof row !== 'object') return null;
+            const item = Object.assign({}, row);
+            item.SOURCE_TABLE = GROWER_SCOUT_ASSETS_TABLE;
+            item.UNIQUE_ID = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, item.ID, item.id, `grower_asset_${idx}`)).trim();
+            item.DOM_ID = String(firstNonEmptyValue(item.DOM_ID, item.dom_id, `grower_asset_${item.UNIQUE_ID}`)).trim();
+            item.REPORT_ID = String(firstNonEmptyValue(item.REPORT_ID, item.report_id, '')).trim();
+            item.ASSET_KIND = String(firstNonEmptyValue(item.ASSET_KIND, item.asset_kind, 'photo')).trim().toLowerCase() || 'photo';
+            item.BUCKET = String(firstNonEmptyValue(item.BUCKET, item.bucket, '')).trim();
+            item.STORAGE_PATH = String(firstNonEmptyValue(item.STORAGE_PATH, item.storage_path, '')).trim();
+            item.PUBLIC_URL = String(firstNonEmptyValue(item.PUBLIC_URL, item.public_url, '')).trim();
+            item.MIME_TYPE = String(firstNonEmptyValue(item.MIME_TYPE, item.mime_type, '')).trim();
+            item.FILE_NAME = String(firstNonEmptyValue(item.FILE_NAME, item.file_name, '')).trim();
+            item.FILE_SIZE_BYTES = Math.max(0, Number(firstNonEmptyValue(item.FILE_SIZE_BYTES, item.file_size_bytes, 0)) || 0);
+            item.CREATED_AT = String(firstNonEmptyValue(item.CREATED_AT, item.created_at, '')).trim();
+            return item;
+        }
+
+        function rebuildGrowerScoutIndexes() {
+            growerScoutReportsInventoryById = new Map();
+            (Array.isArray(growerScoutReportsInventory) ? growerScoutReportsInventory : []).forEach((row, idx) => {
+                const normalized = normalizeGrowerScoutReportRow(row, idx);
+                if (normalized && normalized.UNIQUE_ID) growerScoutReportsInventoryById.set(normalized.UNIQUE_ID, normalized);
+            });
+            growerScoutAssetsByReportId = new Map();
+            (Array.isArray(growerScoutAssetsInventory) ? growerScoutAssetsInventory : []).forEach((row, idx) => {
+                const normalized = normalizeGrowerScoutAssetRow(row, idx);
+                if (!normalized || !normalized.REPORT_ID) return;
+                const list = growerScoutAssetsByReportId.get(normalized.REPORT_ID) || [];
+                list.push(normalized);
+                growerScoutAssetsByReportId.set(normalized.REPORT_ID, list);
+            });
+            growerScoutAssetsByReportId.forEach((list, key) => {
+                list.sort((a, b) => String(a.CREATED_AT || '').localeCompare(String(b.CREATED_AT || '')));
+                growerScoutAssetsByReportId.set(key, list);
+            });
+        }
+
+        function getGrowerScoutReportById(uniqueId = '') {
+            const safeId = String(uniqueId || '').trim();
+            if (!safeId) return null;
+            return growerScoutReportsInventoryById.get(safeId) || null;
+        }
+
+        function getGrowerScoutAssetsForReport(reportId = '', kind = '') {
+            const safeId = String(reportId || '').trim();
+            const safeKind = String(kind || '').trim().toLowerCase();
+            const rows = safeId ? (growerScoutAssetsByReportId.get(safeId) || []) : [];
+            return safeKind ? rows.filter((row) => row.ASSET_KIND === safeKind) : rows;
+        }
+
+        function getGrowerScoutPrimaryPhotoUrl(report = null) {
+            const reportId = String(firstNonEmptyValue(report && report.UNIQUE_ID, report && report.unique_id, '') || '').trim();
+            const photo = getGrowerScoutAssetsForReport(reportId, 'photo').find((asset) => asset.PUBLIC_URL);
+            return photo ? photo.PUBLIC_URL : '';
+        }
+
+        function getGrowerScoutRows(options = {}) {
+            const opts = options || {};
+            const access = getRoleAccessState();
+            const includeAll = !!(opts.includeAll || access.isAdmin || isStrictDylanCollygeUser());
+            const userKey = normalizeSharedTaskCollaboratorKey(currentUser || currentUserDisplay || '');
+            return (Array.isArray(growerScoutReportsInventory) ? growerScoutReportsInventory : [])
+                .map((row, idx) => normalizeGrowerScoutReportRow(row, idx))
+                .filter(Boolean)
+                .filter((row) => includeAll || normalizeSharedTaskCollaboratorKey(row.CREATED_BY_USERNAME || row.CREATED_BY_DISPLAY || '') === userKey)
+                .sort((a, b) => String(firstNonEmptyValue(b.UPDATED_AT, b.CREATED_AT, '')).localeCompare(String(firstNonEmptyValue(a.UPDATED_AT, a.CREATED_AT, ''))));
+        }
+
+        function isGrowerScoutPestManagementRow(row = null) {
+            const item = normalizeGrowerScoutReportRow(row);
+            if (!item) return false;
+            if (['reviewed', 'closed'].includes(item.STATUS) || ['reviewed', 'no_issue', 'closed', 'needs_follow_up'].includes(item.REVIEW_STATUS)) return false;
+            if (item.STATUS !== 'dylan_review' && item.STATUS !== 'ai_complete' && !item.MANUAL_REVIEW) return false;
+            return !!(item.PEST_ISSUE || item.DISEASE_ISSUE || item.NUTRIENT_ISSUE || item.MANUAL_REVIEW || item.SEVERITY !== 'none');
+        }
+
+        function getPestManagementRows() {
+            if (!canUsePestManagementView()) return [];
+            return getGrowerScoutRows({ includeAll: true }).filter((row) => isGrowerScoutPestManagementRow(row));
+        }
+
+        function getGrowerScoutBlockOptions() {
+            const values = new Set();
+            (Array.isArray(fullInventory) ? fullInventory : []).forEach((row) => {
+                const block = String(firstNonEmptyValue(row && row.BLOCKALPHA, row && row.blockalpha, row && row.BLOCK, row && row.block, '') || '').trim();
+                if (block) values.add(block);
+            });
+            return Array.from(values).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+        }
+
+        function getGrowerScoutCropOptions(limit = 160) {
+            const seen = new Set();
+            const out = [];
+            (Array.isArray(fullInventory) ? fullInventory : []).forEach((row) => {
+                const common = String(firstNonEmptyValue(row && row.COMMONNAME, row && row.commonname, row && row.DESCRIPTION, row && row.description, '') || '').trim();
+                if (!common) return;
+                const contsize = String(firstNonEmptyValue(row && row.CONTSIZE, row && row.contsize, '') || '').trim();
+                const itemcode = String(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, '') || '').trim();
+                const key = `${common}|${contsize}|${itemcode}`.toLowerCase();
+                if (seen.has(key)) return;
+                seen.add(key);
+                out.push({ common, contsize, itemcode, genus: String(firstNonEmptyValue(row && row.GENUS, row && row.GENUSNAME, row && row.genus, '') || '').trim() });
+            });
+            return out.sort((a, b) => a.common.localeCompare(b.common, undefined, { sensitivity: 'base' })).slice(0, limit);
+        }
+
+        function findGrowerScoutCropFromSearch(value = '') {
+            const safeValue = String(value || '').trim().toLowerCase();
+            if (!safeValue) return null;
+            return (Array.isArray(fullInventory) ? fullInventory : []).find((row) => {
+                const haystack = [
+                    row && row.COMMONNAME,
+                    row && row.DESCRIPTION,
+                    row && row.ITEMCODE,
+                    row && row.CONTSIZE,
+                    row && row.GENUS,
+                    row && row.GENUSNAME
+                ].map((part) => String(part || '').trim().toLowerCase()).filter(Boolean).join(' ');
+                return haystack && safeValue.split(/\s+/).every((part) => haystack.includes(part));
+            }) || null;
+        }
+
+        function getGrowerScoutAudioMimeType() {
+            if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') return '';
+            const candidates = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/ogg'];
+            return candidates.find((value) => MediaRecorder.isTypeSupported(value)) || '';
+        }
+
+        function isGrowerScoutAudioSupported() {
+            return typeof window !== 'undefined'
+                && !!(navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function')
+                && typeof MediaRecorder !== 'undefined';
+        }
+
+        function getGrowerScoutRecordingDurationSeconds() {
+            if (!growerScoutRecordingStartedAt) return growerScoutAudioDurationSeconds || 0;
+            return Math.max(0, Math.round((Date.now() - growerScoutRecordingStartedAt) / 1000));
+        }
+
+        function formatGrowerScoutDuration(seconds = 0) {
+            const safeSeconds = Math.max(0, Number(seconds) || 0);
+            const minutes = Math.floor(safeSeconds / 60);
+            const remainder = safeSeconds % 60;
+            return `${minutes}:${String(remainder).padStart(2, '0')}`;
+        }
+
+        function updateGrowerScoutRecordingUi() {
+            const duration = formatGrowerScoutDuration(getGrowerScoutRecordingDurationSeconds());
+            const status = document.getElementById('grower-scout-record-status');
+            const button = document.getElementById('grower-scout-record-btn');
+            const clearBtn = document.getElementById('grower-scout-clear-audio-btn');
+            if (status) {
+                status.textContent = growerScoutRecordingActive
+                    ? `Recording ${duration}`
+                    : (growerScoutAudioBlob ? `Audio ready (${formatGrowerScoutDuration(growerScoutAudioDurationSeconds)})` : 'No audio recorded');
+            }
+            if (button) {
+                button.classList.toggle('bg-red-600', growerScoutRecordingActive);
+                button.classList.toggle('bg-[#007a4d]', !growerScoutRecordingActive);
+                button.innerHTML = growerScoutRecordingActive
+                    ? '<i class="ph-bold ph-stop-circle text-2xl"></i><span>Stop Recording</span>'
+                    : '<i class="ph-bold ph-microphone-stage text-2xl"></i><span>Start Voice Note</span>';
+            }
+            if (clearBtn) clearBtn.classList.toggle('hidden', !growerScoutAudioBlob || growerScoutRecordingActive);
+        }
+
+        function clearGrowerScoutRecordingTimer() {
+            if (growerScoutRecordingTimer) clearInterval(growerScoutRecordingTimer);
+            growerScoutRecordingTimer = null;
+        }
+
+        function stopGrowerScoutRecorderStream() {
+            if (growerScoutRecorderStream) {
+                growerScoutRecorderStream.getTracks().forEach((track) => {
+                    try { track.stop(); } catch (error) {}
+                });
+            }
+            growerScoutRecorderStream = null;
+        }
+
+        async function clearGrowerScoutAudio() {
+            if (growerScoutRecordingActive) return false;
+            growerScoutAudioBlob = null;
+            growerScoutAudioDurationSeconds = 0;
+            updateGrowerScoutRecordingUi();
+            return false;
+        }
+
+        async function startGrowerScoutRecording(event = null) {
+            if (event && typeof event.preventDefault === 'function') event.preventDefault();
+            if (growerScoutRecordingActive) return stopGrowerScoutRecording(event);
+            if (!isGrowerScoutAudioSupported()) {
+                showToast('Voice Unavailable', 'This device does not support in-app recording here.', true);
+                return false;
+            }
+            if (navigator.onLine === false) {
+                showToast('Offline', 'Reconnect before recording a scouting note.', true);
+                return false;
+            }
+            try {
+                const mimeType = getGrowerScoutAudioMimeType();
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+                growerScoutRecorderStream = stream;
+                growerScoutRecorder = recorder;
+                growerScoutAudioChunks = [];
+                growerScoutAudioBlob = null;
+                growerScoutAudioDurationSeconds = 0;
+                growerScoutRecordMimeType = mimeType || recorder.mimeType || 'audio/webm';
+                growerScoutRecordingActive = true;
+                growerScoutRecordingStartedAt = Date.now();
+                recorder.ondataavailable = (recordEvent) => {
+                    if (recordEvent && recordEvent.data && recordEvent.data.size > 0) growerScoutAudioChunks.push(recordEvent.data);
+                };
+                recorder.onerror = () => {
+                    showToast('Recording Stopped', 'The voice note stopped unexpectedly.', true);
+                    stopGrowerScoutRecorderStream();
+                    growerScoutRecordingActive = false;
+                    clearGrowerScoutRecordingTimer();
+                    updateGrowerScoutRecordingUi();
+                };
+                recorder.start(1000);
+                clearGrowerScoutRecordingTimer();
+                updateGrowerScoutRecordingUi();
+                growerScoutRecordingTimer = setInterval(updateGrowerScoutRecordingUi, 250);
+            } catch (error) {
+                stopGrowerScoutRecorderStream();
+                growerScoutRecordingActive = false;
+                clearGrowerScoutRecordingTimer();
+                showToast('Microphone Blocked', 'Allow microphone access to record scouting notes.', true);
+            }
+            return false;
+        }
+
+        async function stopGrowerScoutRecording(event = null) {
+            if (event && typeof event.preventDefault === 'function') event.preventDefault();
+            if (!growerScoutRecorder || !growerScoutRecordingActive) return false;
+            const recorder = growerScoutRecorder;
+            return new Promise((resolve) => {
+                recorder.onstop = () => {
+                    try {
+                        growerScoutAudioDurationSeconds = getGrowerScoutRecordingDurationSeconds();
+                        growerScoutAudioBlob = new Blob(growerScoutAudioChunks, { type: growerScoutRecordMimeType || recorder.mimeType || 'audio/webm' });
+                    } catch (error) {
+                        growerScoutAudioBlob = null;
+                        growerScoutAudioDurationSeconds = 0;
+                    } finally {
+                        growerScoutRecordingActive = false;
+                        growerScoutRecordingStartedAt = 0;
+                        growerScoutRecorder = null;
+                        growerScoutAudioChunks = [];
+                        stopGrowerScoutRecorderStream();
+                        clearGrowerScoutRecordingTimer();
+                        updateGrowerScoutRecordingUi();
+                        resolve(false);
+                    }
+                };
+                try {
+                    if (typeof recorder.requestData === 'function') recorder.requestData();
+                    if (recorder.state !== 'inactive') recorder.stop();
+                    else recorder.onstop();
+                } catch (error) {
+                    growerScoutRecordingActive = false;
+                    stopGrowerScoutRecorderStream();
+                    clearGrowerScoutRecordingTimer();
+                    updateGrowerScoutRecordingUi();
+                    resolve(false);
+                }
+            });
+        }
+
+        function getGrowerScoutMimeExtension(mimeType = '') {
+            const safeType = String(mimeType || '').toLowerCase();
+            if (safeType.includes('mp4')) return 'm4a';
+            if (safeType.includes('mpeg')) return 'mp3';
+            if (safeType.includes('ogg')) return 'ogg';
+            if (safeType.includes('wav')) return 'wav';
+            return 'webm';
+        }
+
+        function getGrowerScoutSafeFilePart(value = '') {
+            return String(value || 'scout').replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'scout';
+        }
+
+        async function uploadGrowerScoutBlob(bucket, blob, filePath, contentType = '') {
+            const uploadResult = await withTimeout(
+                supabaseClient.storage.from(bucket).upload(filePath, blob, {
+                    contentType: contentType || blob.type || 'application/octet-stream',
+                    cacheControl: '31536000',
+                    upsert: true
+                }),
+                SUPABASE_UPLOAD_TIMEOUT_MS,
+                'Grower scout upload'
+            );
+            if (uploadResult && uploadResult.error) throw uploadResult.error;
+            const { data: publicUrlData } = supabaseClient.storage.from(bucket).getPublicUrl(filePath);
+            return String(publicUrlData && publicUrlData.publicUrl || '').trim();
+        }
+
+        function buildGrowerScoutAssetPayload(reportId = '', kind = 'photo', bucket = '', storagePath = '', publicUrl = '', file = null) {
+            const safeReportId = String(reportId || '').trim();
+            const safePath = String(storagePath || '').trim();
+            const safeKind = String(kind || 'photo').trim().toLowerCase();
+            const uniqueId = `${safeReportId}_${safeKind}_${safePath}`.replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 180);
+            return {
+                unique_id: uniqueId || `grower_asset_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                report_id: safeReportId,
+                asset_kind: safeKind,
+                bucket,
+                storage_path: safePath,
+                public_url: publicUrl || null,
+                mime_type: file ? String(file.type || '').trim() || null : null,
+                file_name: file ? String(file.name || '').trim() || null : null,
+                file_size_bytes: file ? Math.max(0, Number(file.size) || 0) : null,
+                created_by_username: String(currentUser || '').trim(),
+                created_by_display: String(currentUserDisplay || currentUser || '').trim()
+            };
+        }
+
+        async function submitGrowerScoutReport(event = null) {
+            if (event && typeof event.preventDefault === 'function') event.preventDefault();
+            if (!currentUser || !canUseGrowerScoutView()) {
+                showToast('Restricted', 'You cannot submit grower scouting reports.', true);
+                return false;
+            }
+            if (navigator.onLine === false) {
+                showToast('Offline', 'Reconnect before submitting a scouting report.', true);
+                return false;
+            }
+            if (growerScoutSubmitInFlight) return false;
+            if (growerScoutRecordingActive) await stopGrowerScoutRecording();
+            const blockInput = document.getElementById('grower-scout-block');
+            const seasonInput = document.getElementById('grower-scout-season');
+            const languageInput = document.getElementById('grower-scout-language');
+            const cropInput = document.getElementById('grower-scout-crop-search');
+            const locationInput = document.getElementById('grower-scout-location');
+            const noteInput = document.getElementById('grower-scout-note');
+            const photoInput = document.getElementById('grower-scout-photos');
+            const fileInput = document.getElementById('grower-scout-files');
+            const button = document.getElementById('grower-scout-submit-btn');
+            const manualNote = String(noteInput && noteInput.value || '').trim();
+            const photos = photoInput && photoInput.files ? Array.from(photoInput.files || []) : [];
+            const files = fileInput && fileInput.files ? Array.from(fileInput.files || []) : [];
+            if (!manualNote && !growerScoutAudioBlob && !photos.length && !files.length) {
+                showToast('Add Details', 'Record a note, type a note, or attach a photo/file before submitting.', true);
+                return false;
+            }
+            const previousLabel = button ? button.innerHTML : '';
+            growerScoutSubmitInFlight = true;
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin align-middle"></i><span class="align-middle ml-2">Submitting...</span>';
+            }
+            try {
+                const reportId = `grower_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+                const dateFolder = new Date().toISOString().split('T')[0];
+                const userPart = getGrowerScoutSafeFilePart(currentUser || currentUserDisplay || 'user');
+                const folder = `${dateFolder}/${userPart}/${reportId}`;
+                const cropRow = findGrowerScoutCropFromSearch(cropInput && cropInput.value || '');
+                let audioUrl = '';
+                let audioPath = '';
+                let audioMimeType = '';
+                if (growerScoutAudioBlob && growerScoutAudioBlob.size) {
+                    audioMimeType = growerScoutAudioBlob.type || growerScoutRecordMimeType || 'audio/webm';
+                    const extension = getGrowerScoutMimeExtension(audioMimeType);
+                    audioPath = `${folder}/voice-note.${extension}`;
+                    audioUrl = await uploadGrowerScoutBlob(GROWER_SCOUT_AUDIO_BUCKET, growerScoutAudioBlob, audioPath, audioMimeType);
+                }
+                const payload = {
+                    unique_id: reportId,
+                    status: 'pending_ai',
+                    report_language: String(languageInput && languageInput.value || 'en').trim().toLowerCase() || 'en',
+                    block: String(blockInput && blockInput.value || '').trim() || null,
+                    blockalpha: String(blockInput && blockInput.value || '').trim() || null,
+                    locationcode: String(locationInput && locationInput.value || '').trim() || (cropRow ? String(firstNonEmptyValue(cropRow.LOCATIONCODE, cropRow.locationcode, '') || '').trim() : null),
+                    itemcode: cropRow ? String(firstNonEmptyValue(cropRow.ITEMCODE, cropRow.itemcode, '') || '').trim() || null : null,
+                    genus: cropRow ? String(firstNonEmptyValue(cropRow.GENUS, cropRow.GENUSNAME, cropRow.genus, '') || '').trim() || null : null,
+                    common_name: cropRow ? String(firstNonEmptyValue(cropRow.COMMONNAME, cropRow.commonname, cropRow.DESCRIPTION, '') || '').trim() || null : String(cropInput && cropInput.value || '').trim() || null,
+                    contsize: cropRow ? String(firstNonEmptyValue(cropRow.CONTSIZE, cropRow.contsize, '') || '').trim() || null : null,
+                    season: String(seasonInput && seasonInput.value || getDefaultMlCaptureSeason()).trim().toUpperCase() || getDefaultMlCaptureSeason(),
+                    salesyear: typeof getCurrentNcrSalesYearCode === 'function' ? getCurrentNcrSalesYearCode() : null,
+                    manual_note: manualNote || null,
+                    audio_bucket: audioPath ? GROWER_SCOUT_AUDIO_BUCKET : null,
+                    audio_path: audioPath || null,
+                    audio_url: audioUrl || null,
+                    audio_mime_type: audioMimeType || null,
+                    audio_duration_seconds: audioPath ? Math.max(0, Number(growerScoutAudioDurationSeconds) || 0) : null,
+                    created_by_username: String(currentUser || '').trim(),
+                    created_by_display: String(currentUserDisplay || currentUser || '').trim()
+                };
+                await supabaseFetch(GROWER_SCOUT_REPORTS_TABLE, 'POST', payload, 'on_conflict=unique_id', { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
+                const assetPayloads = [];
+                if (audioPath) assetPayloads.push(buildGrowerScoutAssetPayload(reportId, 'audio', GROWER_SCOUT_AUDIO_BUCKET, audioPath, audioUrl, null));
+                for (let index = 0; index < photos.length; index += 1) {
+                    const file = photos[index];
+                    const extension = pathlibSafeExtension(file.name, file.type, 'jpg');
+                    const filePath = `${folder}/photo-${index + 1}.${extension}`;
+                    const publicUrl = await uploadGrowerScoutBlob(GROWER_SCOUT_PHOTOS_BUCKET, file, filePath, file.type || 'image/jpeg');
+                    assetPayloads.push(buildGrowerScoutAssetPayload(reportId, 'photo', GROWER_SCOUT_PHOTOS_BUCKET, filePath, publicUrl, file));
+                }
+                for (let index = 0; index < files.length; index += 1) {
+                    const file = files[index];
+                    const extension = pathlibSafeExtension(file.name, file.type, 'bin');
+                    const filePath = `${folder}/file-${index + 1}-${getGrowerScoutSafeFilePart(file.name || 'attachment')}.${extension}`;
+                    const publicUrl = await uploadGrowerScoutBlob(GROWER_SCOUT_FILES_BUCKET, file, filePath, file.type || 'application/octet-stream');
+                    assetPayloads.push(buildGrowerScoutAssetPayload(reportId, 'file', GROWER_SCOUT_FILES_BUCKET, filePath, publicUrl, file));
+                }
+                if (assetPayloads.length) {
+                    await supabaseFetch(GROWER_SCOUT_ASSETS_TABLE, 'POST', assetPayloads, 'on_conflict=unique_id', { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
+                }
+                const normalizedReport = normalizeGrowerScoutReportRow(payload);
+                if (normalizedReport) upsertRealtimeRow(growerScoutReportsInventory, normalizedReport, GROWER_SCOUT_REPORTS_TABLE);
+                assetPayloads.map((asset, idx) => normalizeGrowerScoutAssetRow(asset, idx)).filter(Boolean).forEach((asset) => upsertRealtimeRow(growerScoutAssetsInventory, asset, GROWER_SCOUT_ASSETS_TABLE));
+                rebuildGrowerScoutIndexes();
+                growerScoutAudioBlob = null;
+                growerScoutAudioDurationSeconds = 0;
+                if (noteInput) noteInput.value = '';
+                if (cropInput) cropInput.value = '';
+                if (locationInput) locationInput.value = '';
+                if (photoInput) photoInput.value = '';
+                if (fileInput) fileInput.value = '';
+                activeGrowerScoutTab = 'summary';
+                markViewDirty('grower');
+                markViewDirty('pest-management');
+                showToast('Submitted', 'Grower scouting report sent to the local AI worker.');
+                queueInteractiveViewRender('grower', false, true, 0, 120);
+            } catch (error) {
+                console.error('Grower scout submit failed', error);
+                showToast('Submit Failed', error && error.message ? error.message : 'Could not submit grower scouting report.', true);
+            } finally {
+                growerScoutSubmitInFlight = false;
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = previousLabel || '<i class="ph-bold ph-paper-plane-tilt align-middle text-base"></i><span class="align-middle ml-2">Submit Scout Report</span>';
+                }
+            }
+            return false;
+        }
+
+        function pathlibSafeExtension(fileName = '', mimeType = '', fallback = 'bin') {
+            const nameExt = String(fileName || '').split('.').pop();
+            const ext = nameExt && nameExt !== fileName ? nameExt.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+            if (ext) return ext.slice(0, 8);
+            const safeMime = String(mimeType || '').toLowerCase();
+            if (safeMime.includes('jpeg')) return 'jpg';
+            if (safeMime.includes('png')) return 'png';
+            if (safeMime.includes('webp')) return 'webp';
+            if (safeMime.includes('pdf')) return 'pdf';
+            if (safeMime.includes('mp4')) return 'm4a';
+            if (safeMime.includes('webm')) return 'webm';
+            return String(fallback || 'bin').replace(/[^a-z0-9]/gi, '').toLowerCase() || 'bin';
+        }
+
+        function setGrowerScoutTab(tab = 'note') {
+            const safeTab = ['note', 'summary', 'files'].includes(String(tab || '').trim()) ? String(tab || '').trim() : 'note';
+            activeGrowerScoutTab = safeTab;
+            markViewDirty('grower');
+            queueInteractiveViewRender('grower', false, true, 0, 80);
+            return false;
+        }
+
+        function renderGrowerScoutTabs() {
+            const buttonClass = (tab) => activeGrowerScoutTab === tab
+                ? 'rounded-full border border-[#007a4d] bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm'
+                : 'rounded-full border border-emerald-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm';
+            return `<div class="sticky top-[var(--sticky-rail-offset,0px)] z-20 rounded-2xl border border-emerald-100 bg-white/95 p-3 shadow-sm backdrop-blur">
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" class="${buttonClass('note')}" onclick="return setGrowerScoutTab('note')"><i class="ph-bold ph-note-pencil align-middle"></i><span class="align-middle ml-1">Note</span></button>
+                    <button type="button" class="${buttonClass('summary')}" onclick="return setGrowerScoutTab('summary')"><i class="ph-bold ph-sparkle align-middle"></i><span class="align-middle ml-1">AI Summary</span></button>
+                    <button type="button" class="${buttonClass('files')}" onclick="return setGrowerScoutTab('files')"><i class="ph-bold ph-paperclip align-middle"></i><span class="align-middle ml-1">Files</span></button>
+                </div>
+            </div>`;
+        }
+
+        function renderGrowerScoutNotePanel() {
+            const blocks = getGrowerScoutBlockOptions();
+            const blockOptions = blocks.length
+                ? blocks.map((block) => `<option value="${escapeHtml(block)}">${escapeHtml(block)}</option>`).join('')
+                : '<option value="">Load Drive Mode blocks first</option>';
+            const cropOptions = getGrowerScoutCropOptions().map((entry) => `<option value="${escapeHtml([entry.common, entry.contsize, entry.itemcode].filter(Boolean).join(' '))}"></option>`).join('');
+            const season = typeof getCurrentNcrSeasonCode === 'function' ? getCurrentNcrSeasonCode() : getDefaultMlCaptureSeason();
+            const blockNotice = !isDatasetLoaded('master', 'initial')
+                ? '<div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-[12px] font-bold text-amber-800">Loading block and crop choices from Drive Mode.</div>'
+                : '';
+            if (!isDatasetLoaded('master', 'initial')) queueDatasetLoad('master', 'initial', 0);
+            return `<form id="grower-scout-form" class="space-y-4 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm" onsubmit="return submitGrowerScoutReport(event)">
+                ${blockNotice}
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <label class="block"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Block</span><select id="grower-scout-block" class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-800">${blockOptions}</select></label>
+                    <label class="block"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Season</span><select id="grower-scout-season" class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-800"><option value="S1" ${season === 'S1' ? 'selected' : ''}>S1</option><option value="F1" ${season === 'F1' ? 'selected' : ''}>F1</option></select></label>
+                    <label class="block"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Language</span><select id="grower-scout-language" class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-800"><option value="en">English</option><option value="es">Spanish</option></select></label>
+                </div>
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label class="block"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Crop / Item</span><input id="grower-scout-crop-search" list="grower-scout-crop-options" class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" placeholder="Optional crop or item"><datalist id="grower-scout-crop-options">${cropOptions}</datalist></label>
+                    <label class="block"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Location</span><input id="grower-scout-location" class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold uppercase text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" placeholder="Optional location"></label>
+                </div>
+                <div class="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3">
+                    <button id="grower-scout-record-btn" type="button" class="flex min-h-[74px] w-full items-center justify-center gap-3 rounded-2xl bg-[#007a4d] px-4 py-4 text-sm font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-[.99]" onclick="return startGrowerScoutRecording(event)"><i class="ph-bold ph-microphone-stage text-2xl"></i><span>Start Voice Note</span></button>
+                    <div class="mt-2 flex items-center justify-between gap-3 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700"><span id="grower-scout-record-status">No audio recorded</span><button id="grower-scout-clear-audio-btn" type="button" class="hidden rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-[9px] font-black text-emerald-700" onclick="return clearGrowerScoutAudio()">Clear</button></div>
+                </div>
+                <label class="block"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Typed Note</span><textarea id="grower-scout-note" rows="5" class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold leading-6 text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" placeholder="Optional typed scouting note..."></textarea></label>
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label class="block rounded-2xl border border-dashed border-emerald-200 bg-white px-3 py-3"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Photos</span><input id="grower-scout-photos" type="file" accept="image/*" multiple class="mt-2 block w-full text-sm font-bold text-slate-700"></label>
+                    <label class="block rounded-2xl border border-dashed border-emerald-200 bg-white px-3 py-3"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Files / Lab Reports</span><input id="grower-scout-files" type="file" multiple class="mt-2 block w-full text-sm font-bold text-slate-700"></label>
+                </div>
+                <button id="grower-scout-submit-btn" type="submit" class="w-full rounded-xl bg-[#007a4d] px-4 py-4 text-[12px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-[0.99]"><i class="ph-bold ph-paper-plane-tilt align-middle text-base"></i><span class="align-middle ml-2">Submit Scout Report</span></button>
+            </form>`;
+        }
+
+        function renderGrowerScoutStatusBadge(item = null) {
+            const status = normalizeGrowerScoutStatus(item && item.STATUS);
+            const tone = status === 'ai_failed'
+                ? 'border-red-200 bg-red-50 text-red-700'
+                : (status === 'dylan_review' || (item && item.MANUAL_REVIEW) ? 'border-amber-200 bg-amber-50 text-amber-700' : (status === 'reviewed' || status === 'closed' || status === 'ai_complete' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-blue-200 bg-blue-50 text-blue-700'));
+            return `<span class="rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${tone}">${escapeHtml(status.replace(/_/g, ' '))}</span>`;
+        }
+
+        function renderGrowerScoutReportCard(row = null, mode = 'summary') {
+            const item = normalizeGrowerScoutReportRow(row);
+            if (!item) return '';
+            const uid = item.UNIQUE_ID;
+            const photoUrl = getGrowerScoutPrimaryPhotoUrl(item);
+            const title = firstNonEmptyValue(item.COMMONNAME, item.GENUS, item.BLOCK ? `Block ${item.BLOCK}` : '', 'Crop Scout Report');
+            const meta = [item.BLOCK ? `Block ${item.BLOCK}` : '', item.LOCATIONCODE ? `Loc ${item.LOCATIONCODE}` : '', item.SEASON, item.SALESYEAR ? `SY ${item.SALESYEAR}` : '', item.CREATED_BY_DISPLAY || item.CREATED_BY_USERNAME].filter(Boolean).join(' | ');
+            const issueBits = [
+                item.PEST_ISSUE ? 'Pest' : '',
+                item.DISEASE_ISSUE ? 'Disease' : '',
+                item.NUTRIENT_ISSUE ? 'Nutrient' : '',
+                item.MANUAL_REVIEW ? 'Manual Review' : ''
+            ].filter(Boolean);
+            const photoHtml = photoUrl
+                ? `<img src="${escapeHtml(photoUrl)}" alt="" class="h-24 w-24 flex-shrink-0 rounded-xl border border-emerald-100 bg-slate-100 object-cover" loading="lazy">`
+                : '<div class="flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div>';
+            const audioHtml = item.AUDIO_URL
+                ? `<audio class="mt-3 w-full" controls preload="none" src="${escapeHtml(item.AUDIO_URL)}"></audio>`
+                : '';
+            const noteHtml = item.MANUAL_NOTE ? `<div class="mt-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-[12px] font-semibold text-slate-600"><span class="font-black text-slate-800">Note:</span> ${escapeHtml(item.MANUAL_NOTE)}</div>` : '';
+            const transcriptHtml = item.TRANSCRIPT ? `<div class="mt-2 rounded-xl border border-slate-100 bg-white px-3 py-2 text-[12px] font-semibold text-slate-600"><span class="font-black text-slate-800">Transcript:</span> ${escapeHtml(item.TRANSCRIPT)}</div>` : '';
+            const issueHtml = `<div class="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-3 text-[12px] font-semibold text-slate-700">
+                <div><span class="font-black text-slate-900">Summary:</span> ${escapeHtml(firstNonEmptyValue(item.AI_SUMMARY, item.STATUS === 'pending_ai' ? 'Waiting for local AI worker.' : '', item.STATUS === 'processing' ? 'Processing scouting report.' : '', 'No AI summary yet.'))}</div>
+                <div class="mt-1"><span class="font-black text-slate-900">Issue:</span> ${escapeHtml(firstNonEmptyValue(item.DIAGNOSIS, item.ISSUE_TYPE, issueBits.join(', '), 'No issue returned.'))}</div>
+                <div class="mt-1"><span class="font-black text-slate-900">Treatment:</span> ${escapeHtml(firstNonEmptyValue(item.RECOMMENDED_TREATMENT, 'Review report before action.'))}</div>
+            </div>`;
+            const reviewActions = mode === 'pest'
+                ? `<div class="mt-3 space-y-2">
+                    <textarea id="grower-review-note-${escapeHtml(uid)}" rows="3" class="w-full rounded-xl border border-red-100 bg-white px-3 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100" placeholder="Reviewer note...">${escapeHtml(item.REVIEWER_NOTE || '')}</textarea>
+                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        <button type="button" class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="return reviewGrowerScoutReport('${escJsAttrValue(uid)}','reviewed',this)">Reviewed</button>
+                        <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-sm active:scale-95" onclick="return reviewGrowerScoutReport('${escJsAttrValue(uid)}','no_issue',this)">No Issue</button>
+                        <button type="button" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-amber-700 shadow-sm active:scale-95" onclick="return reviewGrowerScoutReport('${escJsAttrValue(uid)}','needs_follow_up',this)">Needs Follow Up</button>
+                    </div>
+                </div>`
+                : '';
+            return `<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="flex items-start gap-3">
+                    ${photoHtml}
+                    <div class="min-w-0 flex-1">
+                        <div class="mb-2 flex flex-wrap gap-2">${renderGrowerScoutStatusBadge(item)}<span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${escapeHtml(formatMlTimestamp(firstNonEmptyValue(item.AI_COMPLETED_AT, item.UPDATED_AT, item.CREATED_AT)))}</span><span class="rounded-full border border-red-100 bg-red-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-red-700">${escapeHtml(item.SEVERITY)}</span></div>
+                        <div class="text-base font-black leading-tight text-slate-900 break-words">${escapeHtml(title)}</div>
+                        <div class="mt-1 text-[12px] font-bold text-slate-500 break-words">${escapeHtml(meta)}</div>
+                        ${issueBits.length ? `<div class="mt-2 flex flex-wrap gap-1.5">${issueBits.map((bit) => `<span class="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-amber-700">${escapeHtml(bit)}</span>`).join('')}</div>` : ''}
+                    </div>
+                </div>
+                ${audioHtml}
+                ${issueHtml}
+                ${noteHtml}
+                ${transcriptHtml}
+                ${item.LAST_ERROR ? `<div class="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800">${escapeHtml(item.LAST_ERROR)}</div>` : ''}
+                ${reviewActions}
+            </div>`;
+        }
+
+        function renderGrowerScoutSummaryPanel() {
+            const rows = getGrowerScoutRows({ includeAll: getRoleAccessState().isAdmin || isStrictDylanCollygeUser() }).slice(0, 60);
+            return rows.length
+                ? `<div class="space-y-3">${rows.map((row) => renderGrowerScoutReportCard(row, 'summary')).join('')}</div>`
+                : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-[12px] font-semibold text-slate-400">No grower scouting reports yet.</div>';
+        }
+
+        function renderGrowerScoutFilesPanel() {
+            const rows = getGrowerScoutRows({ includeAll: getRoleAccessState().isAdmin || isStrictDylanCollygeUser() }).slice(0, 80);
+            const cards = rows.map((row) => {
+                const item = normalizeGrowerScoutReportRow(row);
+                const assets = getGrowerScoutAssetsForReport(item.UNIQUE_ID);
+                if (!assets.length) return '';
+                const links = assets.map((asset) => {
+                    const label = firstNonEmptyValue(asset.FILE_NAME, asset.ASSET_KIND, asset.STORAGE_PATH, 'Attachment');
+                    const icon = asset.ASSET_KIND === 'photo' ? 'ph-image' : asset.ASSET_KIND === 'audio' ? 'ph-microphone' : 'ph-file';
+                    return `<a class="flex min-h-[46px] items-center gap-3 rounded-xl border border-emerald-100 bg-white px-3 py-2 text-sm font-black text-slate-800 shadow-sm" href="${escapeHtml(asset.PUBLIC_URL)}" target="_blank" rel="noopener"><i class="ph-bold ${icon} text-lg text-[#007a4d]"></i><span class="min-w-0 flex-1 truncate">${escapeHtml(label)}</span></a>`;
+                }).join('');
+                return `<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div class="text-sm font-black text-slate-900">${escapeHtml(firstNonEmptyValue(item.COMMONNAME, item.BLOCK ? `Block ${item.BLOCK}` : '', 'Scout Report'))}</div><div class="mt-1 text-[11px] font-bold text-slate-500">${escapeHtml(formatMlTimestamp(item.CREATED_AT))}</div><div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">${links}</div></div>`;
+            }).filter(Boolean);
+            return cards.length
+                ? `<div class="space-y-3">${cards.join('')}</div>`
+                : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-[12px] font-semibold text-slate-400">No scouting files have been uploaded yet.</div>';
+        }
+
+        function renderGrowerScout() {
+            if (!canUseGrowerScoutView()) {
+                switchView('home');
+                return;
+            }
+            if (ensureViewDataForRender('grower')) return;
+            const container = document.getElementById('grower-content');
+            const crumb = document.getElementById('grower-crumb');
+            if (!container) return;
+            if (!['note', 'summary', 'files'].includes(activeGrowerScoutTab)) activeGrowerScoutTab = 'note';
+            const allRows = getGrowerScoutRows({ includeAll: getRoleAccessState().isAdmin || isStrictDylanCollygeUser() });
+            const pendingCount = allRows.filter((row) => ['pending_ai', 'processing'].includes(row.STATUS)).length;
+            const issueCount = allRows.filter((row) => isGrowerScoutPestManagementRow(row)).length;
+            if (crumb) crumb.innerText = `Grower Scouting | ${pendingCount} Pending | ${issueCount} Issue${issueCount === 1 ? '' : 's'}`;
+            const body = activeGrowerScoutTab === 'note'
+                ? renderGrowerScoutNotePanel()
+                : activeGrowerScoutTab === 'files'
+                    ? renderGrowerScoutFilesPanel()
+                    : renderGrowerScoutSummaryPanel();
+            const signature = `grower:${activeGrowerScoutTab}:${getDatasetLoadSignature('growerScoutReports')}:${getDatasetLoadSignature('growerScoutAssets')}:${growerScoutAudioBlob ? growerScoutAudioDurationSeconds : 0}:${pendingCount}:${issueCount}`;
+            setContainerHtmlWithSignature(container, `<div class="space-y-4">${renderGrowerScoutTabs()}${body}</div>`, signature);
+            updateGrowerScoutRecordingUi();
+        }
+
+        async function refreshGrowerScoutReportsNow() {
+            await Promise.all([
+                ensureDatasetLoaded('growerScoutReports', 'full', { force: true }).catch(() => false),
+                ensureDatasetLoaded('growerScoutAssets', 'full', { force: true }).catch(() => false)
+            ]);
+            markViewDirty('grower');
+            markViewDirty('pest-management');
+            if (isViewVisible('grower')) queueInteractiveViewRender('grower', false, true, 0, 120);
+            if (isViewVisible('pest-management')) queueInteractiveViewRender('pest-management', false, true, 0, 120);
+            return false;
+        }
+
+        async function reviewGrowerScoutReport(uniqueId = '', reviewStatus = 'reviewed', button = null) {
+            if (!canUsePestManagementView()) {
+                showToast('Restricted', 'Only Dylan can review Pest Management reports.', true);
+                return false;
+            }
+            const safeId = String(uniqueId || '').trim();
+            const row = getGrowerScoutReportById(safeId);
+            if (!row) {
+                showToast('Not Found', 'That scouting report could not be found.', true);
+                return false;
+            }
+            const status = String(reviewStatus || 'reviewed').trim().toLowerCase();
+            const noteInput = document.getElementById(`grower-review-note-${safeId}`);
+            const previousLabel = button ? button.innerText : '';
+            if (button) {
+                button.disabled = true;
+                button.innerText = 'Saving...';
+            }
+            const payload = {
+                status: 'reviewed',
+                review_status: ['no_issue', 'needs_follow_up', 'closed'].includes(status) ? status : 'reviewed',
+                reviewer_note: String(noteInput && noteInput.value || '').trim() || null,
+                reviewed_by_username: String(currentUser || '').trim(),
+                reviewed_by_display: String(currentUserDisplay || currentUser || '').trim(),
+                reviewed_at: new Date().toISOString()
+            };
+            if (payload.review_status === 'no_issue') {
+                payload.pest_issue = false;
+                payload.disease_issue = false;
+                payload.nutrient_issue = false;
+                payload.severity = 'none';
+            }
+            try {
+                await supabaseFetch(GROWER_SCOUT_REPORTS_TABLE, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(safeId)}`);
+                Object.assign(row, normalizeGrowerScoutReportRow({ ...row, ...payload }));
+                rebuildGrowerScoutIndexes();
+                markViewDirty('grower');
+                markViewDirty('pest-management');
+                showToast('Reviewed', 'Pest Management report updated.');
+                if (isViewVisible('pest-management')) queueInteractiveViewRender('pest-management', false, true, 0, 120);
+                if (isViewVisible('grower')) queueInteractiveViewRender('grower', false, true, 0, 160);
+            } catch (error) {
+                showToast('Save Failed', error && error.message ? error.message : 'Could not review this scouting report.', true);
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.innerText = previousLabel || 'Reviewed';
+                }
+            }
+            return false;
+        }
+
+        function renderPestManagement() {
+            if (!canUsePestManagementView()) {
+                switchView('home');
+                return;
+            }
+            if (ensureViewDataForRender('pest-management')) return;
+            const container = document.getElementById('pest-management-content');
+            const crumb = document.getElementById('pest-management-crumb');
+            if (!container) return;
+            const rows = getPestManagementRows();
+            if (crumb) crumb.innerText = `Pest Management | ${rows.length} Active`;
+            const summaryHtml = `<section class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div class="rounded-xl border border-red-100 bg-white px-3 py-3 shadow-sm"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Active</div><div class="mt-1 text-xl font-black text-slate-900">${escapeHtml(String(rows.length))}</div></div>
+                <div class="rounded-xl border border-red-100 bg-white px-3 py-3 shadow-sm"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">High/Critical</div><div class="mt-1 text-xl font-black text-red-700">${escapeHtml(String(rows.filter((row) => ['high','critical'].includes(row.SEVERITY)).length))}</div></div>
+                <div class="rounded-xl border border-red-100 bg-white px-3 py-3 shadow-sm"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Manual Review</div><div class="mt-1 text-xl font-black text-amber-700">${escapeHtml(String(rows.filter((row) => row.MANUAL_REVIEW).length))}</div></div>
+                <div class="rounded-xl border border-red-100 bg-white px-3 py-3 shadow-sm"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Photos</div><div class="mt-1 text-xl font-black text-slate-900">${escapeHtml(String(rows.filter((row) => getGrowerScoutPrimaryPhotoUrl(row)).length))}</div></div>
+            </section>`;
+            const rowsHtml = rows.length
+                ? `<div class="space-y-3">${rows.map((row) => renderGrowerScoutReportCard(row, 'pest')).join('')}</div>`
+                : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-[12px] font-semibold text-slate-400">No active Pest Management reports.</div>';
+            const signature = `pest:${getDatasetLoadSignature('growerScoutReports')}:${getDatasetLoadSignature('growerScoutAssets')}:${rows.map((row) => `${row.UNIQUE_ID}:${row.STATUS}:${row.REVIEW_STATUS}:${row.UPDATED_AT}`).join('|')}`;
+            setContainerHtmlWithSignature(container, `<div class="space-y-5">${summaryHtml}<section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-red-700">Dylan Review</div>${rowsHtml}</section></div>`, signature);
+        }
+
         function getDefaultMlCaptureSeason() {
             const now = new Date();
             const month = now.getMonth() + 1;
@@ -56072,13 +56988,15 @@ ${folderNote ? `Folder Note: ${folderNote}
                 mergeRequestPhotoFields(itemToUpload, requestPhotoOwner);
                 itemToUpload = requestPhotoOwner;
             }
+            const uploadToken = createPendingPhotoToken().replace(/[^a-zA-Z0-9_-]/g, '');
+            const targetFileName = buildInventoryRowPhotoFileName(itemToUpload, file, { uploadToken, extension: 'jpg' });
             const previewItems = [detailUploadItem, itemToUpload].filter((item, index, list) => (
                 item && list.findIndex((candidate) => candidate === item) === index
             ));
             const previewUrl = URL.createObjectURL(file);
             const previewEntries = previewItems.map((previewItem) => ({
                 item: previewItem,
-                entry: createPendingPhotoPreview(previewItem, prefix, previewUrl, file.name || '')
+                entry: createPendingPhotoPreview(previewItem, prefix, previewUrl, targetFileName)
             })).filter((preview) => preview.entry);
             previewItems.forEach((previewItem) => refreshPendingPhotoUiForItem(previewItem, prefix));
 
@@ -56147,9 +57065,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                             }
                             try {
                                 const bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
-                                const clean = (t) => String(t || 'NA').replace(/[^a-zA-Z0-9_-]/g, '');
-                                const uploadToken = createPendingPhotoToken().replace(/[^a-zA-Z0-9_-]/g, '');
-                                const fileName = clean(itemToUpload.COMMONNAME) + '-' + clean(itemToUpload.CONTSIZE) + '-' + uploadToken + '.jpg';
+                                const fileName = targetFileName;
                                 const filePath = new Date().toISOString().split('T')[0] + '/' + fileName;
                                 const uploadResult = await withTimeout(
                                     supabaseClient.storage.from(bucketName).upload(filePath, blob, {

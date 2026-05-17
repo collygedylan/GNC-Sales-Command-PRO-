@@ -32,6 +32,39 @@ function sendHoursReminderEmail() {
   }
 }
 
+function setupDropFolderAutoSyncTrigger() {
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(function(trigger) {
+    if (trigger.getHandlerFunction() === AUTO_DROP_FOLDER_SYNC_TRIGGER_HANDLER) {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+  ScriptApp.newTrigger(AUTO_DROP_FOLDER_SYNC_TRIGGER_HANDLER)
+    .timeBased()
+    .everyMinutes(5)
+    .create();
+  console.log('Auto sync trigger established. Drop folders will be checked about every 5 minutes.');
+}
+
+function removeDropFolderAutoSyncTrigger() {
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(function(trigger) {
+    if (trigger.getHandlerFunction() === AUTO_DROP_FOLDER_SYNC_TRIGGER_HANDLER) {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+  console.log('Auto sync trigger removed.');
+}
+
+function runAutoDropFolderSync_() {
+  const requestedBy = Session.getEffectiveUser().getEmail() || 'Apps Script Auto Sync';
+  return queueManualSyncRequest_({
+    job: 'all',
+    source: 'auto_trigger',
+    requestedBy: requestedBy
+  });
+}
+
 // =========================================================================
 // SUPABASE CONSTANTS & FOLDERS
 // =========================================================================
@@ -48,8 +81,16 @@ const FOLDERS = {
   RESERVES_DROP: '1Xiyp6WQGAF-4Tm-KwSwi9RsBqulFcSAG',
   RESERVES_PROCESSED: '1u4Vk5L92zmcXXT2qNWzImWTud73Bpole',
   CAV_DROP: '1K-y4thhw_iu2UEEZGRc39LzlpUZtcOBZ',
-  CAV_PROCESSED: '1reWKO3GzeFhwsy_ot7Sjb2RPiFs448A5'
+  CAV_PROCESSED: '1reWKO3GzeFhwsy_ot7Sjb2RPiFs448A5',
+  DISEASE_ROOT: '1SpE0YA8Otu6otpjJULoJClBqk31Dv1wJ'
 };
+
+const DISEASE_ASSET_BUCKET = 'disease_training_assets';
+const DISEASE_ASSET_TABLE = 'v2_disease_training_assets';
+const DISEASE_PROCESSED_FOLDER_NAME = 'Processed';
+const DISEASE_SYNC_MAX_FILES_PER_RUN = 25;
+const DISEASE_SYNC_PROPERTY_PREFIX = 'DISEASE_SYNC_';
+const AUTO_DROP_FOLDER_SYNC_TRIGGER_HANDLER = 'runAutoDropFolderSync_';
 
 const ALLOWED_DB_COLUMNS = new Set([
   'unique_id','concat','last_updated','assignedto','spec','caliper','pic_note','sales_note',
@@ -88,10 +129,11 @@ function runSOCOnly() { return processLatestFileOnlyFolder(FOLDERS.SOC_DROP, FOL
 function runDriveAroundOnly() { return processSnapshotBatchFolder(FOLDERS.MASTER_DROP, FOLDERS.MASTER_PROCESSED, 'v2_master_inventory', buildMasterPayload); }
 function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, 'v2_reserves', buildStandardPayload, { deltaMode: true }); }
 function runCavOnly() { return processLatestFileOnlyFolder(FOLDERS.CAV_DROP, FOLDERS.CAV_PROCESSED, 'v2_cav_import', buildCavPayload, { deltaMode: true }); }
+function runDiseaseDriveToSupabaseSyncOnly() { return runDiseaseDriveToSupabaseSync(); }
 
 const MANUAL_SYNC_STATUS_KEY = 'MANUAL_SYNC_STATUS';
 const MANUAL_SYNC_TRIGGER_HANDLER = 'runQueuedManualSyncStage_';
-const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'cav']);
+const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'cav', 'disease']);
 const MANUAL_SYNC_EXECUTION_BUDGET_MS = 285000;
 const MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS = 120000;
 const MANUAL_SYNC_QUEUED_STALE_MS = 5 * 60 * 1000;
@@ -170,6 +212,7 @@ function getAppLiveEventAreaForTable_(tableName) {
   if (safeTable === 'v2_soc_master') return 'docks';
   if (safeTable === 'v2_reserves') return 'reserves';
   if (safeTable === 'v2_cav_import') return 'av';
+  if (safeTable === 'v2_disease_training_assets') return 'diagnostics';
   if (safeTable === 'v2_sales_office') return 'sales-office';
   if (safeTable === 'v2_active_request') return 'request';
   return '';
@@ -248,7 +291,8 @@ const MANUAL_SYNC_STAGE_DEFINITIONS = Object.freeze({
   drive: { label: 'Drive Around', run: runDriveAroundOnly },
   soc: { label: 'SOC', run: runSOCOnly },
   reserves: { label: 'Reserves', run: runReservesOnly },
-  cav: { label: 'CAV', run: runCavOnly }
+  cav: { label: 'CAV', run: runCavOnly },
+  disease: { label: 'Disease Lab Assets', run: runDiseaseDriveToSupabaseSyncOnly }
 });
 
 function runDriveSocReservesSequence() {
@@ -361,6 +405,7 @@ function getManualSyncStageOrder_(jobName) {
   if (normalized === 'soc') return ['soc'];
   if (normalized === 'reserves') return ['reserves'];
   if (normalized === 'cav') return ['cav'];
+  if (normalized === 'disease' || normalized === 'lab' || normalized === 'lab_reports') return ['disease'];
   return MANUAL_SYNC_STAGE_ORDER_DEFAULT.slice();
 }
 
@@ -4246,6 +4291,433 @@ function sendRequestEmailWithFallback_(payload) {
   }
 }
 
+// =========================================================================
+// DISEASE / LAB REPORT DRIVE MIRROR
+// =========================================================================
+function runDiseaseDriveToSupabaseSync() {
+  const config = getDiseaseSyncConfig_();
+  const root = getDriveFolderByIdWithRetry_(config.rootFolderId, 'Disease Lab Root');
+  console.log('[DISEASE SYNC] Starting. Root folder: ' + config.rootFolderId + '. Batch limit: ' + config.maxFiles + ' file(s).');
+  const state = {
+    scannedFiles: 0,
+    filesProcessed: 0,
+    uploadedFiles: 0,
+    skippedFiles: 0,
+    movedFiles: 0,
+    failedFiles: [],
+    maxFiles: config.maxFiles
+  };
+
+  syncDiseaseFolder_(config, root, '', state);
+
+  const completedAt = new Date().toISOString();
+  PropertiesService.getScriptProperties().setProperty(DISEASE_SYNC_PROPERTY_PREFIX + 'LAST_RUN_AT', completedAt);
+  emitTableSyncLiveEvent_(DISEASE_ASSET_TABLE, {
+    tableName: DISEASE_ASSET_TABLE,
+    filesProcessed: state.filesProcessed,
+    failedFiles: state.failedFiles.length,
+    scannedFiles: state.scannedFiles,
+    skippedFiles: state.skippedFiles,
+    movedFiles: state.movedFiles,
+    completedAt: completedAt
+  });
+
+  const summary = {
+    tableName: DISEASE_ASSET_TABLE,
+    filesProcessed: state.filesProcessed,
+    tempFilesRemoved: 0,
+    failedFiles: state.failedFiles.length,
+    failedFileNames: state.failedFiles.map(function(entry) { return entry.name; }),
+    failedFileErrors: state.failedFiles,
+    scannedFiles: state.scannedFiles,
+    skippedFiles: state.skippedFiles,
+    movedFiles: state.movedFiles,
+    message: 'Disease/lab sync scanned ' + state.scannedFiles + ' file(s), uploaded ' + state.uploadedFiles + ', skipped ' + state.skippedFiles + '.'
+  };
+  console.log('[DISEASE SYNC] ' + JSON.stringify(summary));
+  return summary;
+}
+
+function getDiseaseSyncConfig_() {
+  const props = PropertiesService.getScriptProperties();
+  const rootFolderId = String(props.getProperty('DISEASE_DRIVE_ROOT_FOLDER_ID') || FOLDERS.DISEASE_ROOT || '').trim();
+  if (!rootFolderId) throw new Error('Missing DISEASE_DRIVE_ROOT_FOLDER_ID or FOLDERS.DISEASE_ROOT.');
+  return {
+    supabaseUrl: String(props.getProperty('SUPABASE_URL') || SUPABASE_URL || '').trim().replace(/\/+$/, ''),
+    serviceRoleKey: String(props.getProperty('SUPABASE_SERVICE_ROLE_KEY') || SUPABASE_KEY || '').trim(),
+    rootFolderId: rootFolderId,
+    maxFiles: Math.max(1, Number(props.getProperty('DISEASE_SYNC_MAX_FILES_PER_RUN')) || DISEASE_SYNC_MAX_FILES_PER_RUN)
+  };
+}
+
+function syncDiseaseFolder_(config, folder, relativePath, state) {
+  if (state.scannedFiles >= config.maxFiles) return;
+  const folderName = String(folder.getName() || '').trim();
+  if (folderName.toLowerCase() === DISEASE_PROCESSED_FOLDER_NAME.toLowerCase()) return;
+
+  const safeRelativePath = sanitizeDiseasePath_(relativePath);
+  console.log('[DISEASE SYNC] Checking folder: ' + (safeRelativePath || folderName || 'Root'));
+  const files = listDriveFilesWithRetry_(folder, 'Disease folder ' + (safeRelativePath || folderName));
+  while (files.hasNext() && state.scannedFiles < config.maxFiles) {
+    const file = files.next();
+    state.scannedFiles += 1;
+    try {
+      syncDiseaseFile_(config, folder, file, safeRelativePath, state);
+    } catch (error) {
+      const fileName = file && file.getName ? file.getName() : 'Unknown file';
+      const message = error && error.message ? error.message : String(error);
+      state.failedFiles.push({ name: fileName, error: message });
+      console.error('[DISEASE SYNC] ' + fileName + ' failed: ' + message);
+    }
+  }
+
+  const folders = folder.getFolders();
+  while (folders.hasNext() && state.scannedFiles < config.maxFiles) {
+    const child = folders.next();
+    const childName = String(child.getName() || '').trim();
+    if (childName.toLowerCase() === DISEASE_PROCESSED_FOLDER_NAME.toLowerCase()) continue;
+    const childPath = safeRelativePath ? safeRelativePath + '/' + childName : childName;
+    syncDiseaseFolder_(config, child, childPath, state);
+  }
+}
+
+function syncDiseaseFile_(config, parentFolder, file, folderPath, state) {
+  const mimeType = String(file.getMimeType() || '').trim();
+  const assetKind = getDiseaseAssetKind_(mimeType);
+  const fileName = file.getName();
+  console.log('[DISEASE SYNC] ' + state.scannedFiles + '/' + config.maxFiles + ' preparing ' + fileName + ' (' + assetKind + ').');
+
+  if (assetKind === 'other') {
+    moveDiseaseFileToProcessed_(parentFolder, file, 'unsupported disease asset ' + fileName);
+    state.skippedFiles += 1;
+    state.movedFiles += 1;
+    return;
+  }
+
+  const driveFileId = file.getId();
+  const label = getDiseaseLabelForAsset_(folderPath, fileName);
+  const parsedFields = parseDiseaseAssetFileName_(fileName, folderPath);
+  const storagePath = buildDiseaseStoragePath_(folderPath, driveFileId, fileName, mimeType);
+  const blob = getDiseaseFileBlob_(file, mimeType);
+
+  console.log('[DISEASE SYNC] Uploading to Supabase Storage: ' + storagePath);
+  uploadDiseaseAssetToSupabase_(config, storagePath, blob);
+  const publicUrl = config.supabaseUrl + '/storage/v1/object/public/' + DISEASE_ASSET_BUCKET + '/' + encodeStoragePath_(storagePath);
+
+  console.log('[DISEASE SYNC] Upserting Supabase row: ' + fileName);
+  upsertDiseaseAssetRow_(config, {
+    unique_id: 'drive_' + sanitizeDiseaseToken_(driveFileId),
+    drive_file_id: driveFileId,
+    drive_parent_id: parentFolder.getId(),
+    drive_path: folderPath ? folderPath + '/' + fileName : fileName,
+    folder_path: folderPath,
+    plant_folder: parsedFields.plantFolder,
+    label: label,
+    asset_kind: assetKind,
+    bucket: DISEASE_ASSET_BUCKET,
+    storage_path: storagePath,
+    public_url: publicUrl,
+    mime_type: blob.getContentType() || mimeType,
+    file_name: fileName,
+    source_file_title: fileName,
+    commonname: parsedFields.commonname,
+    locationcode: parsedFields.locationcode,
+    lotcode: parsedFields.lotcode,
+    contsize: parsedFields.contsize,
+    itemcode: parsedFields.itemcode,
+    file_size: Number(file.getSize() || 0),
+    checksum: getDiseaseAssetChecksum_(file, blob),
+    processed_status: 'pending_ml',
+    metadata: {
+      drive_url: file.getUrl(),
+      drive_last_updated: file.getLastUpdated() ? file.getLastUpdated().toISOString() : '',
+      original_mime_type: mimeType,
+      parsed_file_fields: parsedFields
+    }
+  });
+
+  console.log('[DISEASE SYNC] Moving to Processed: ' + fileName);
+  moveDiseaseFileToProcessed_(parentFolder, file, 'processed disease asset ' + fileName);
+  state.filesProcessed += 1;
+  state.uploadedFiles += 1;
+  state.movedFiles += 1;
+  console.log('[DISEASE SYNC] Done: ' + fileName);
+}
+
+function moveDiseaseFileToProcessed_(parentFolder, file, label) {
+  const processedFolder = getOrCreateDiseaseProcessedFolder_(parentFolder);
+  moveDriveFileToFolderWithRetry_(file, processedFolder, label);
+}
+
+function getOrCreateDiseaseProcessedFolder_(parentFolder) {
+  const folders = parentFolder.getFoldersByName(DISEASE_PROCESSED_FOLDER_NAME);
+  return folders.hasNext() ? folders.next() : parentFolder.createFolder(DISEASE_PROCESSED_FOLDER_NAME);
+}
+
+function getDiseaseAssetKind_(mimeType) {
+  const safeMime = String(mimeType || '').toLowerCase();
+  if (safeMime.indexOf('image/') === 0) return 'diagnostic_photo';
+  if (safeMime === 'application/pdf') return 'lab_report';
+  if (safeMime.indexOf('application/vnd.google-apps.document') === 0) return 'lab_report';
+  if (safeMime.indexOf('application/vnd.google-apps.spreadsheet') === 0) return 'lab_report';
+  if (safeMime.indexOf('application/vnd.openxmlformats-officedocument') === 0) return 'lab_report';
+  if (safeMime.indexOf('application/msword') === 0) return 'lab_report';
+  if (safeMime.indexOf('text/') === 0) return 'lab_report';
+  return 'other';
+}
+
+function getDiseaseFileBlob_(file, mimeType) {
+  const safeMime = String(mimeType || '').toLowerCase();
+  if (safeMime.indexOf('application/vnd.google-apps.') === 0) {
+    return file.getAs(MimeType.PDF).setName(file.getName() + '.pdf');
+  }
+  return file.getBlob();
+}
+
+function getDiseaseAssetChecksum_(file, blob) {
+  const fileId = file && file.getId ? String(file.getId() || '') : '';
+  const fileSize = file && file.getSize ? String(file.getSize() || '') : '';
+  const updatedAt = file && file.getLastUpdated && file.getLastUpdated() ? file.getLastUpdated().toISOString() : '';
+  return [fileId, fileSize, updatedAt].filter(Boolean).join(':');
+}
+
+function getDiseaseLabelFromPath_(folderPath) {
+  const parts = String(folderPath || '').split('/').map(function(part) {
+    return part.trim();
+  }).filter(Boolean);
+  return parts[0] || 'Unlabeled';
+}
+
+function getDiseaseLabelForAsset_(folderPath, fileName) {
+  const fileLabel = getDiseaseLabelFromFileName_(fileName);
+  if (fileLabel) return fileLabel;
+  return getDiseaseLabelFromPath_(folderPath);
+}
+
+function getDiseaseLabelFromFileName_(fileName) {
+  const baseName = String(fileName || '')
+    .replace(/\.[a-zA-Z0-9]{1,8}$/, '')
+    .replace(/[_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!baseName) return '';
+
+  const issueMatch = baseName.match(/(brown garden snail|snail|cercospora|colletotrichum|xanthomonas|phytophthora|rhizoctonia|fusarium|pythium|botrytis|phomopsis|diplodia|pestalotia|canker|leaf spot|needle blight|tip blight|dieback|crown rot|stem rot|root rot|mites|scale|abiotic|graft failure)/i);
+  if (issueMatch) return normalizeDiseaseLabel_(issueMatch[0]);
+
+  const parts = baseName.split(/\s*-\s*/).map(function(part) {
+    return part.trim();
+  }).filter(Boolean);
+  if (parts.length > 1) {
+    return normalizeDiseaseLabel_(parts.slice(1).join('; '));
+  }
+  return '';
+}
+
+function normalizeDiseaseLabel_(value) {
+  return String(value || '')
+    .replace(/[()]/g, ' ')
+    .replace(/[,;]+/g, '; ')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*;\s*/g, '; ')
+    .trim()
+    .toLowerCase();
+}
+
+function parseDiseaseAssetFileName_(fileName, folderPath) {
+  const plantFolder = getDiseaseLabelFromPath_(folderPath);
+  const baseName = String(fileName || '')
+    .replace(/\.[a-zA-Z0-9]{1,8}$/, '')
+    .replace(/[_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const locationMatch = baseName.match(/\b[A-Z]\.\d{2}\.\d{3}\b/i);
+  const lotMatch = baseName.match(/\b\d{2}\.(S1|F1|U1|U2|U3|X)\b/i);
+  const itemMatch = baseName.match(/\b\d{6}\.\d{3}\.\d\b/);
+  const contsizeMatch = baseName.match(/(?:^|[\s-])(#\s*\d+|\d+\s*(?:DP|GP|GAL|GL|QT|PT)|\d+G|\d+P)(?=$|[\s-])/i);
+
+  let commonname = baseName;
+  const cutIndexes = [locationMatch, lotMatch, itemMatch, contsizeMatch]
+    .filter(Boolean)
+    .map(function(match) { return match.index || 0; })
+    .filter(function(index) { return index > 0; });
+  if (cutIndexes.length) {
+    commonname = baseName.slice(0, Math.min.apply(null, cutIndexes));
+  }
+
+  commonname = commonname
+    .replace(/\b\d{6}\.\d{3}\.\d\b/g, ' ')
+    .replace(/\b[A-Z]\.\d{2}\.\d{3}\b/ig, ' ')
+    .replace(/\b\d{2}\.(S1|F1|U1|U2|U3|X)\b/ig, ' ')
+    .replace(/(?:^|[\s-])(#\s*\d+|\d+\s*(?:DP|GP|GAL|GL|QT|PT)|\d+G|\d+P)(?=$|[\s-])/ig, ' ')
+    .replace(/\s*-\s*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return {
+    plantFolder: plantFolder,
+    commonname: commonname,
+    locationcode: locationMatch ? String(locationMatch[0]).toUpperCase() : '',
+    lotcode: lotMatch ? String(lotMatch[0]).toUpperCase() : '',
+    contsize: contsizeMatch ? String(contsizeMatch[1] || contsizeMatch[0]).replace(/\s+/g, '').toUpperCase() : '',
+    itemcode: itemMatch ? String(itemMatch[0]) : '',
+    originalFileName: fileName
+  };
+}
+
+function buildDiseaseStoragePath_(folderPath, driveFileId, fileName, mimeType) {
+  const safeFolderPath = sanitizeDiseasePath_(folderPath) || 'Unlabeled';
+  const baseName = sanitizeDiseaseFileName_(fileName || driveFileId);
+  const extension = getDiseaseFileExtension_(fileName, mimeType);
+  const suffix = extension && baseName.toLowerCase().slice(-extension.length) !== extension.toLowerCase()
+    ? extension
+    : '';
+  return safeFolderPath + '/' + sanitizeDiseaseToken_(driveFileId) + '-' + baseName + suffix;
+}
+
+function getDiseaseFileExtension_(fileName, mimeType) {
+  const nameMatch = String(fileName || '').match(/(\.[a-zA-Z0-9]{1,8})$/);
+  if (nameMatch) return nameMatch[1].toLowerCase();
+  const safeMime = String(mimeType || '').toLowerCase();
+  if (safeMime.indexOf('image/jpeg') === 0) return '.jpg';
+  if (safeMime.indexOf('image/png') === 0) return '.png';
+  if (safeMime.indexOf('image/webp') === 0) return '.webp';
+  if (safeMime.indexOf('application/pdf') === 0) return '.pdf';
+  if (safeMime.indexOf('application/vnd.google-apps.') === 0) return '.pdf';
+  return '';
+}
+
+function uploadDiseaseAssetToSupabase_(config, storagePath, blob) {
+  const url = config.supabaseUrl + '/storage/v1/object/' + DISEASE_ASSET_BUCKET + '/' + encodeStoragePath_(storagePath);
+  const response = UrlFetchApp.fetch(url, {
+    method: 'post',
+    muteHttpExceptions: true,
+    contentType: blob.getContentType() || 'application/octet-stream',
+    payload: blob.getBytes(),
+    headers: {
+      apikey: config.serviceRoleKey,
+      Authorization: 'Bearer ' + config.serviceRoleKey,
+      'x-upsert': 'true'
+    }
+  });
+  const code = response.getResponseCode();
+  if (code < 200 || code >= 300) {
+    throw new Error('Supabase storage upload failed: HTTP ' + code + ' ' + response.getContentText());
+  }
+}
+
+function upsertDiseaseAssetRow_(config, row) {
+  const url = config.supabaseUrl + '/rest/v1/' + DISEASE_ASSET_TABLE + '?on_conflict=drive_file_id';
+  const response = UrlFetchApp.fetch(url, {
+    method: 'post',
+    muteHttpExceptions: true,
+    contentType: 'application/json',
+    payload: JSON.stringify(row),
+    headers: {
+      apikey: config.serviceRoleKey,
+      Authorization: 'Bearer ' + config.serviceRoleKey,
+      Prefer: 'resolution=merge-duplicates,return=minimal'
+    }
+  });
+  const code = response.getResponseCode();
+  if (code < 200 || code >= 300) {
+    throw new Error('Supabase row upsert failed: HTTP ' + code + ' ' + response.getContentText());
+  }
+}
+
+function sanitizeDiseasePath_(value) {
+  return String(value || '')
+    .split('/')
+    .map(function(part) { return sanitizeDiseaseFileName_(part); })
+    .filter(Boolean)
+    .join('/');
+}
+
+function sanitizeDiseaseFileName_(value) {
+  return String(value || '')
+    .trim()
+    .replace(/[\\/:*?"<>|#%{}~\[\]`^]+/g, '-')
+    .replace(/\s+/g, ' ')
+    .replace(/^\.+|\.+$/g, '')
+    .slice(0, 120) || 'file';
+}
+
+function sanitizeDiseaseToken_(value) {
+  return String(value || '')
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, '')
+    .slice(0, 80) || Utilities.getUuid().replace(/-/g, '');
+}
+
+function firstNonEmptyPhotoUploadValue_() {
+  for (var i = 0; i < arguments.length; i++) {
+    var value = arguments[i];
+    if (value === null || value === undefined) continue;
+    var text = String(value).trim();
+    if (text !== '') return text;
+  }
+  return '';
+}
+
+function sanitizePhotoUploadFileSegment_(value, fallback) {
+  var clean = String(firstNonEmptyPhotoUploadValue_(value, fallback || 'NA') || fallback || 'NA')
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, '');
+  return clean || String(fallback || 'NA').replace(/[^a-zA-Z0-9_-]+/g, '') || 'NA';
+}
+
+function getPhotoUploadFileExtension_(payload) {
+  var fileName = String(payload && payload.filename || '').trim();
+  var fileMatch = fileName.match(/\.([a-zA-Z0-9]{2,8})$/);
+  if (fileMatch && fileMatch[1]) {
+    var cleanExt = String(fileMatch[1]).toLowerCase().replace(/[^a-z0-9]+/g, '');
+    if (cleanExt) return cleanExt === 'jpeg' ? 'jpg' : cleanExt;
+  }
+  var mimeType = String(payload && payload.mimeType || '').toLowerCase();
+  if (mimeType.indexOf('png') !== -1) return 'png';
+  if (mimeType.indexOf('webp') !== -1) return 'webp';
+  if (mimeType.indexOf('gif') !== -1) return 'gif';
+  if (mimeType.indexOf('heic') !== -1) return 'heic';
+  if (mimeType.indexOf('heif') !== -1) return 'heif';
+  return 'jpg';
+}
+
+function buildInventoryPhotoUploadFileName_(payload) {
+  var originalName = String(payload && payload.filename || '').trim();
+  var itemCode = firstNonEmptyPhotoUploadValue_(
+    payload && payload.itemcode,
+    payload && payload.itemCode,
+    payload && payload.item_code,
+    payload && payload.ITEMCODE
+  );
+  var locationCode = firstNonEmptyPhotoUploadValue_(
+    payload && payload.locationcode,
+    payload && payload.locationCode,
+    payload && payload.location_code,
+    payload && payload.loc,
+    payload && payload.LOCATIONCODE,
+    payload && payload.LOCATION
+  );
+  if (!itemCode || !locationCode) {
+    return sanitizeDiseaseFileName_(originalName || ('photo-' + new Date().getTime() + '.' + getPhotoUploadFileExtension_(payload)));
+  }
+  var token = sanitizePhotoUploadFileSegment_(
+    firstNonEmptyPhotoUploadValue_(payload && payload.uploadToken, payload && payload.upload_token),
+    String(new Date().getTime())
+  );
+  return sanitizePhotoUploadFileSegment_(itemCode, 'NOITEM') + '-' +
+    sanitizePhotoUploadFileSegment_(locationCode, 'NOLOC') + '-' +
+    token + '.' + getPhotoUploadFileExtension_(payload);
+}
+
+function encodeStoragePath_(path) {
+  return String(path || '')
+    .split('/')
+    .map(function(part) { return encodeURIComponent(part); })
+    .join('/');
+}
+
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
@@ -4367,11 +4839,12 @@ function doPost(e) {
           subfolder = subfoldersList.hasNext() ? subfoldersList.next() : parentFolder.createFolder(dateStr);
       }
       
-      const blob = Utilities.newBlob(Utilities.base64Decode(payload.image), payload.mimeType, payload.filename);
+      const uploadFileName = buildInventoryPhotoUploadFileName_(payload);
+      const blob = Utilities.newBlob(Utilities.base64Decode(payload.image), payload.mimeType, uploadFileName);
       const file = subfolder.createFile(blob); 
       file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       
-      return ContentService.createTextOutput(JSON.stringify({ status: "success", url: file.getUrl() })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", url: file.getUrl(), filename: uploadFileName })).setMimeType(ContentService.MimeType.JSON);
     }
   } catch (err) { 
     return ContentService.createTextOutput(JSON.stringify({
