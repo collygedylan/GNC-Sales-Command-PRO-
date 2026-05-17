@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.17.19';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.17.20';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2067,7 +2067,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.19').trim() || 'V2026.05.17.19';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.20').trim() || 'V2026.05.17.20';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2592,7 +2592,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div class="flex items-center justify-between gap-3 mb-3">
                             <div>
                                 <div id="shear-list-crumb" class="text-xs font-bold text-lime-700 uppercase tracking-[0.16em]">Open Shear Rows</div>
-                                <div class="text-xl font-black text-slate-900">Shear List</div>
+                                <div id="shear-list-heading-slot"><div class="text-xl font-black text-slate-900">Shear List</div></div>
                             </div>
                             <div class="flex shrink-0 items-center gap-2">
                                 <button id="shear-list-back-btn" type="button" class="hidden rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-95" onclick="return backShearListDrill()"><i class="ph-bold ph-caret-left text-base align-middle"></i><span class="align-middle ml-1">Back</span></button>
@@ -3301,7 +3301,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.19';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.20';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -14267,7 +14267,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.19').trim() || 'V2026.05.17.19';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.20').trim() || 'V2026.05.17.20';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -32213,7 +32213,7 @@ function toggleDriveQuickRequestItem(domId) {
                 <div class="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-5">
                     <div class="rounded-lg bg-slate-50 p-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">PTR</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatShearDecisionNumber(ptr))}</div></div>
                     <div class="rounded-lg bg-lime-50 p-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">Shear Qty</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatShearDecisionNumber(shearQty))}</div></div>
-                    <div class="rounded-lg bg-sky-50 p-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">Ship ${escapeHtml(String(demand.days))}d</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatShearDecisionNumber(demand.qty))}</div></div>
+                    <div class="rounded-lg bg-sky-50 p-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">Orders Next ${escapeHtml(String(demand.days))}D</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatShearDecisionNumber(demand.qty))}</div></div>
                     <div class="rounded-lg bg-emerald-50 p-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">After Shear</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatShearDecisionNumber(remainingAfterShear))}</div></div>
                     <div class="rounded-lg ${remainingAfterOrders >= 0 ? 'bg-emerald-50' : 'bg-red-50'} p-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">After Orders</div><div class="text-sm font-black ${remainingAfterOrders >= 0 ? 'text-emerald-800' : 'text-red-700'}">${escapeHtml(formatShearDecisionNumber(remainingAfterOrders))}</div></div>
                 </div>
@@ -32412,6 +32412,16 @@ function toggleDriveQuickRequestItem(domId) {
             if (shearListState.activeTab === 'drive') ensureShearDriveModeData();
             renderShearList();
             return false;
+        }
+
+        function renderShearListHeaderSlot() {
+            const slot = document.getElementById('shear-list-heading-slot');
+            if (!slot) return;
+            if (String(shearListState.activeTab || 'open').toLowerCase() === 'drive') {
+                slot.innerHTML = `<input id="shear-drive-search-input" type="search" class="w-full min-w-[220px] rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-black text-slate-900 outline-none shadow-sm focus:border-[#007a4d]" value="${escapeHtml(shearListState.driveSearch || '')}" placeholder="Search common name, size, item..." autocomplete="off" oninput="return setShearDriveFilter('driveSearch', this.value)">`;
+                return;
+            }
+            slot.innerHTML = '<div class="text-xl font-black text-slate-900">Shear List</div>';
         }
 
         function ensureShearDriveModeData() {
@@ -32672,6 +32682,34 @@ function toggleDriveQuickRequestItem(domId) {
             return list;
         }
 
+        function getShearDriveLotPtrEntries(rows = []) {
+            const totals = new Map();
+            (Array.isArray(rows) ? rows : []).forEach((item) => {
+                if (!item) return;
+                const lot = String(firstNonEmptyValue(item.LOTCODE, item.lotcode, '-') || '-').trim() || '-';
+                const ptr = getShearDrivePtr(item);
+                totals.set(lot, (totals.get(lot) || 0) + ptr);
+            });
+            return Array.from(totals.entries()).sort((left, right) => {
+                const leftLot = String(left[0] || '');
+                const rightLot = String(right[0] || '');
+                const lotDiff = leftLot.localeCompare(rightLot, undefined, { numeric: true, sensitivity: 'base' });
+                if (lotDiff) return lotDiff;
+                return Number(right[1] || 0) - Number(left[1] || 0);
+            });
+        }
+
+        function renderShearDriveLotPtrChips(rows = [], limit = 6) {
+            const entries = getShearDriveLotPtrEntries(rows);
+            if (!entries.length) return '';
+            const visible = entries.slice(0, limit);
+            const chips = visible.map(([lot, ptr]) => `<span class="rounded-full border border-emerald-100 bg-white px-2.5 py-1 text-emerald-700">Lot ${escapeHtml(lot)} PTR ${escapeHtml(formatShearDecisionNumber(ptr))}</span>`).join('');
+            const more = entries.length > visible.length
+                ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-500">+${escapeHtml(String(entries.length - visible.length))} lot${entries.length - visible.length === 1 ? '' : 's'}</span>`
+                : '';
+            return `<div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">${chips}${more}</div>`;
+        }
+
         function getShearDriveRowsForSelectedItem() {
             const selectedKey = String(shearListState.selectedDriveItemKey || '').trim();
             if (!selectedKey) return [];
@@ -32729,9 +32767,10 @@ function toggleDriveQuickRequestItem(domId) {
                 <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">
                     <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">PTR ${escapeHtml(formatShearDecisionNumber(group.totalPtr))}</span>
                     <span class="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">${escapeHtml(String(locationCount))} Location${locationCount === 1 ? '' : 's'}</span>
-                    <span class="rounded-full bg-lime-50 px-2.5 py-1 text-lime-700">Ship ${escapeHtml(String(demand.days))}d: ${escapeHtml(formatShearDecisionNumber(demand.qty))}</span>
+                    <span class="rounded-full bg-lime-50 px-2.5 py-1 text-lime-700">Orders Next ${escapeHtml(String(demand.days))}D ${escapeHtml(formatShearDecisionNumber(demand.qty))}</span>
                     <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">${escapeHtml(String(lotCount))} Lot${lotCount === 1 ? '' : 's'}</span>
                 </div>
+                ${renderShearDriveLotPtrChips(group.rows, 5)}
                 <div class="mt-3 flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-500">
                     <span class="min-w-0 truncate">Seasons: ${escapeHtml(seasonText || '-')}</span>
                     <span class="shrink-0 text-[#007a4d]">${escapeHtml(String(group.rows.length))} row${group.rows.length === 1 ? '' : 's'} ></span>
@@ -32765,6 +32804,7 @@ function toggleDriveQuickRequestItem(domId) {
                         <span class="rounded-full bg-white px-2.5 py-1 text-slate-600">${escapeHtml(String(rows.length))} row${rows.length === 1 ? '' : 's'}</span>
                         <span class="rounded-full bg-white px-2.5 py-1 text-emerald-700">Total PTR ${escapeHtml(formatShearDecisionNumber(totalPtr))}</span>
                     </div>
+                    ${renderShearDriveLotPtrChips(rows, 10)}
                 </div>
                 ${rows.map(renderShearDriveModeCard).join('')}
             </div>`;
@@ -32800,7 +32840,7 @@ function toggleDriveQuickRequestItem(domId) {
                     <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">Item ${escapeHtml(itemCode)}</span>
                     <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">PTR ${escapeHtml(formatShearDecisionNumber(ptr))}</span>
                     <span class="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">Block ${escapeHtml(block)}</span>
-                    <span class="rounded-full bg-lime-50 px-2.5 py-1 text-lime-700">Ship ${escapeHtml(String(demand.days))}d: ${escapeHtml(formatShearDecisionNumber(demand.qty))}</span>
+                    <span class="rounded-full bg-lime-50 px-2.5 py-1 text-lime-700">Orders Next ${escapeHtml(String(demand.days))}D ${escapeHtml(formatShearDecisionNumber(demand.qty))}</span>
                 </div>
                 <div class="mt-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-500">
                     ${escapeHtml(recovery.label)}
@@ -32843,7 +32883,7 @@ function toggleDriveQuickRequestItem(domId) {
                 : '';
             return `<div class="space-y-3">
                 <div class="rounded-2xl border border-lime-200 bg-lime-50/40 p-3 shadow-sm">
-                    <div class="grid grid-cols-2 gap-2 md:grid-cols-5">
+                    <div class="grid grid-cols-2 gap-2 md:grid-cols-4">
                         <label class="block">
                             <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-lime-700">Season</span>
                             <select class="mt-1 w-full rounded-xl border border-lime-200 bg-white px-3 py-2 text-sm font-black text-slate-900 outline-none focus:border-[#007a4d]" onchange="return setShearDriveFilter('driveSeason', this.value)">${seasonHtml}</select>
@@ -32853,16 +32893,12 @@ function toggleDriveQuickRequestItem(domId) {
                             <select class="mt-1 w-full rounded-xl border border-lime-200 bg-white px-3 py-2 text-sm font-black text-slate-900 outline-none focus:border-[#007a4d]" onchange="return setShearDriveFilter('driveLotcode', this.value)">${lotHtml}</select>
                         </label>
                         <label class="block">
-                            <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-lime-700">Ship Days</span>
+                            <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-lime-700">Order Window Days</span>
                             <input type="number" min="1" max="180" step="1" inputmode="numeric" class="mt-1 w-full rounded-xl border border-lime-200 bg-white px-3 py-2 text-sm font-black text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeHtml(String(shearListState.driveShippingDays || 14))}" onchange="return setShearDriveFilter('driveShippingDays', this.value)">
                         </label>
                         <label class="block">
-                            <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-lime-700">Min Ship Qty</span>
+                            <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-lime-700">Min Order Qty</span>
                             <input type="number" min="0" step="1" inputmode="numeric" class="mt-1 w-full rounded-xl border border-lime-200 bg-white px-3 py-2 text-sm font-black text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeHtml(String(shearListState.driveMinShipping || ''))}" placeholder="Any" onchange="return setShearDriveFilter('driveMinShipping', this.value)">
-                        </label>
-                        <label class="block col-span-2 md:col-span-1">
-                            <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-lime-700">Item Search</span>
-                            <input id="shear-drive-search-input" type="search" class="mt-1 w-full rounded-xl border border-lime-200 bg-white px-3 py-2 text-sm font-black text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeHtml(shearListState.driveSearch || '')}" placeholder="Common, size, item..." oninput="return setShearDriveFilter('driveSearch', this.value)">
                         </label>
                     </div>
                     <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
@@ -33109,8 +33145,8 @@ function toggleDriveQuickRequestItem(domId) {
             const openClass = active === 'open' ? 'bg-[#007a4d] text-white shadow-sm' : 'border border-emerald-200 bg-white text-[#007a4d]';
             const driveClass = active === 'drive' ? 'bg-[#007a4d] text-white shadow-sm' : 'border border-emerald-200 bg-white text-[#007a4d]';
             return `<div class="mb-3 grid grid-cols-2 gap-2 rounded-2xl border border-emerald-100 bg-white/80 p-2 shadow-sm">
-                <button type="button" class="rounded-xl px-3 py-3 text-[10px] font-black uppercase tracking-[0.14em] ${openClass}" onclick="return setShearListTab('open')"><i class="ph-bold ph-list-checks text-base align-middle"></i><span class="ml-1 align-middle">Open Shear List</span></button>
                 <button type="button" class="rounded-xl px-3 py-3 text-[10px] font-black uppercase tracking-[0.14em] ${driveClass}" onclick="return setShearListTab('drive')"><i class="ph-bold ph-car-profile text-base align-middle"></i><span class="ml-1 align-middle">Drive Mode</span></button>
+                <button type="button" class="rounded-xl px-3 py-3 text-[10px] font-black uppercase tracking-[0.14em] ${openClass}" onclick="return setShearListTab('open')"><i class="ph-bold ph-list-checks text-base align-middle"></i><span class="ml-1 align-middle">Open Shear List</span></button>
             </div>`;
         }
 
@@ -33118,6 +33154,7 @@ function toggleDriveQuickRequestItem(domId) {
             const container = document.getElementById('shear-list-content');
             const crumb = document.getElementById('shear-list-crumb');
             if (!container) return;
+            renderShearListHeaderSlot();
             if (!shearListState.loaded && !shearListState.loading) {
                 setContainerHtml(container, '<div class="p-4 space-y-3"><div class="skeleton h-28 w-full rounded-xl"></div><div class="skeleton h-28 w-full rounded-xl"></div><div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">Loading shear list...</div></div>');
                 loadShearListData(false).then(() => {
