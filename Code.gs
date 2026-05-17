@@ -1256,32 +1256,47 @@ function removeDriveAroundHistoryBackfillTrigger_() {
 }
 
 function scheduleDriveAroundHistoryBackfillTrigger_() {
-  removeDriveAroundHistoryBackfillTrigger_();
+  const triggers = ScriptApp.getProjectTriggers();
+  const hasTrigger = triggers.some(function(trigger) {
+    return trigger.getHandlerFunction() === DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER;
+  });
+  if (hasTrigger) return;
   ScriptApp.newTrigger(DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER)
     .timeBased()
-    .after(60 * 1000)
+    .everyMinutes(1)
     .create();
 }
 
 function startDriveAroundHistoryBackfill() {
   removeDriveAroundHistoryBackfillTrigger_();
+  scheduleDriveAroundHistoryBackfillTrigger_();
   return runDriveAroundHistoryBackfillChunk_();
 }
 
 function runDriveAroundHistoryBackfillChunk_() {
-  const result = syncDriveAroundHistoricalFileIndex_({
-    parseRows: true,
-    pendingOnly: true,
-    maxParsedFiles: DRIVE_AROUND_HISTORY_MAX_PARSED_FILES_PER_RUN
-  });
-  if (Number(result && result.remainingUnparsed || 0) > 0) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) {
     scheduleDriveAroundHistoryBackfillTrigger_();
-    console.log(`[DRIVE AROUND HISTORY] Backfill continuing. ${result.remainingUnparsed} file(s) still need row parsing.`);
-  } else {
-    removeDriveAroundHistoryBackfillTrigger_();
-    console.log('[DRIVE AROUND HISTORY] Backfill complete. All indexed files that could be parsed have row snapshots.');
+    console.log('[DRIVE AROUND HISTORY] Backfill already running. Keeping the recurring trigger active.');
+    return { skippedLockedRun: true, remainingUnparsed: 1 };
   }
-  return result;
+  try {
+    const result = syncDriveAroundHistoricalFileIndex_({
+      parseRows: true,
+      pendingOnly: true,
+      maxParsedFiles: DRIVE_AROUND_HISTORY_MAX_PARSED_FILES_PER_RUN
+    });
+    if (Number(result && result.remainingUnparsed || 0) > 0) {
+      scheduleDriveAroundHistoryBackfillTrigger_();
+      console.log(`[DRIVE AROUND HISTORY] Backfill continuing. ${result.remainingUnparsed} file(s) still need row parsing.`);
+    } else {
+      removeDriveAroundHistoryBackfillTrigger_();
+      console.log('[DRIVE AROUND HISTORY] Backfill complete. All indexed files that could be parsed have row snapshots.');
+    }
+    return result;
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function trashDriveFileWithRetry_(file, label) {

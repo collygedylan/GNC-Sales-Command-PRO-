@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.17.18';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.17.19';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2067,7 +2067,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.18').trim() || 'V2026.05.17.18';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.19').trim() || 'V2026.05.17.19';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -3301,7 +3301,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.18';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.19';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -14267,7 +14267,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.18').trim() || 'V2026.05.17.18';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.19').trim() || 'V2026.05.17.19';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -31772,6 +31772,8 @@ function toggleDriveQuickRequestItem(domId) {
             driveSearch: '',
             driveShippingDays: 14,
             driveMinShipping: '',
+            driveDrillLevel: 'items',
+            selectedDriveItemKey: '',
             drillLevel: 'blocks',
             selectedBlock: '',
             selectedLocation: ''
@@ -32425,7 +32427,12 @@ function toggleDriveQuickRequestItem(domId) {
                 if (!masterLoaded) targets.push({ key: 'master', mode: 'full' });
                 if (!reservesLoaded) targets.push({ key: 'reserves', mode: 'full' });
                 if (targets.length) {
-                    loadDatasetTargetsWithLimit(targets).then(() => {
+                    loadDatasetTargetsWithLimit(targets, {
+                        interruptible: true,
+                        requeueOnInteraction: true,
+                        preserveRequestedMode: true,
+                        retryReason: 'shear-drive-mode-full-load'
+                    }, 1).then(() => {
                         if (isViewVisible('shear-list') && shearListState.activeTab === 'drive') renderShearList();
                     }).catch(() => {});
                 }
@@ -32438,6 +32445,10 @@ function toggleDriveQuickRequestItem(domId) {
             shearListState[safeField] = safeField === 'driveShippingDays'
                 ? Math.max(1, Math.min(180, Math.round(Number(value) || 14)))
                 : String(value || '').trim();
+            if (['driveSeason', 'driveLotcode', 'driveSearch'].includes(safeField)) {
+                shearListState.driveDrillLevel = 'items';
+                shearListState.selectedDriveItemKey = '';
+            }
             if (safeField === 'driveSearch') {
                 if (shearDriveFilterRenderTimer) clearTimeout(shearDriveFilterRenderTimer);
                 shearDriveFilterRenderTimer = setTimeout(() => {
@@ -32479,11 +32490,20 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getShearDriveBaseRows() {
             const rows = Array.isArray(fullInventory) ? fullInventory : [];
+            const seen = new Set();
             return rows.filter((item) => {
                 if (!item) return false;
                 if (typeof hasCompletionDateValue === 'function' && hasCompletionDateValue(item)) return false;
-                const ptr = getShearDrivePtr(item);
-                return ptr > 0;
+                const uid = getShearDriveRowUid(item);
+                if (uid && seen.has(uid)) return false;
+                if (uid) seen.add(uid);
+                return !!String(firstNonEmptyValue(
+                    item && item.COMMONNAME,
+                    item && item.commonname,
+                    item && item.ITEMCODE,
+                    item && item.itemcode,
+                    ''
+                ) || '').trim();
             });
         }
 
@@ -32601,6 +32621,155 @@ function toggleDriveQuickRequestItem(domId) {
             return rows;
         }
 
+        function getShearDriveItemKey(item = null) {
+            const itemCode = getShearListCompareKey(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, ''));
+            const commonName = getShearListCompareKey(firstNonEmptyValue(item && item.COMMONNAME, item && item.commonname, ''));
+            const contSize = getShearListCompareKey(firstNonEmptyValue(item && item.CONTSIZE, item && item.contsize, ''));
+            return [itemCode || 'no-item', commonName || 'unknown', contSize || 'no-size'].join('::');
+        }
+
+        function groupShearDriveItemCards(rows = []) {
+            const groups = new Map();
+            (rows || []).forEach((item) => {
+                const key = getShearDriveItemKey(item);
+                if (!groups.has(key)) {
+                    groups.set(key, {
+                        key,
+                        commonName: firstNonEmptyValue(item && item.COMMONNAME, item && item.commonname, 'Unknown'),
+                        contSize: firstNonEmptyValue(item && item.CONTSIZE, item && item.contsize, '-'),
+                        itemCode: firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '-'),
+                        genus: firstNonEmptyValue(item && item.GENUS, item && item.genus, ''),
+                        rows: [],
+                        locations: new Set(),
+                        lots: new Set(),
+                        seasons: new Set(),
+                        totalPtr: 0
+                    });
+                }
+                const group = groups.get(key);
+                group.rows.push(item);
+                group.locations.add(String(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, 'No Loc') || 'No Loc'));
+                group.lots.add(String(firstNonEmptyValue(item && item.LOTCODE, item && item.lotcode, '-') || '-'));
+                group.seasons.add(getShearDriveSeason(item) || '-');
+                group.totalPtr += getShearDrivePtr(item);
+            });
+            const list = Array.from(groups.values());
+            list.forEach((group) => {
+                group.sample = group.rows[0] || null;
+                group.demand = group.sample ? getShearDriveShippingDemand(group.sample) : { days: shearListState.driveShippingDays || 14, qty: 0, rowCount: 0, undatedQty: 0, undatedRowCount: 0 };
+                group.recovery = group.sample ? getShearDecisionRecoveryEstimate(group.sample) : { label: 'No learned shear recovery profile yet.' };
+                group.openRowCount = group.rows.filter(isShearDriveRowAlreadyOpen).length;
+            });
+            list.sort((left, right) => {
+                const demandDiff = (right.demand ? right.demand.qty : 0) - (left.demand ? left.demand.qty : 0);
+                if (demandDiff) return demandDiff;
+                const commonDiff = String(left.commonName || '').localeCompare(String(right.commonName || ''), undefined, { numeric: true, sensitivity: 'base' });
+                if (commonDiff) return commonDiff;
+                const sizeDiff = String(left.contSize || '').localeCompare(String(right.contSize || ''), undefined, { numeric: true, sensitivity: 'base' });
+                if (sizeDiff) return sizeDiff;
+                return String(left.itemCode || '').localeCompare(String(right.itemCode || ''), undefined, { numeric: true, sensitivity: 'base' });
+            });
+            return list;
+        }
+
+        function getShearDriveRowsForSelectedItem() {
+            const selectedKey = String(shearListState.selectedDriveItemKey || '').trim();
+            if (!selectedKey) return [];
+            const season = String(shearListState.driveSeason || '').trim().toUpperCase();
+            const lotcode = String(shearListState.driveLotcode || '').trim().toLowerCase();
+            return getShearDriveBaseRows()
+                .filter((item) => getShearDriveItemKey(item) === selectedKey)
+                .filter((item) => {
+                    if (season && getShearDriveSeason(item) !== season) return false;
+                    if (lotcode && getShearDriveLotcode(item).toLowerCase() !== lotcode) return false;
+                    return true;
+                })
+                .sort((left, right) => {
+                    const demandDiff = getShearDriveShippingDemand(right).qty - getShearDriveShippingDemand(left).qty;
+                    if (demandDiff) return demandDiff;
+                    const ptrDiff = getShearDrivePtr(right) - getShearDrivePtr(left);
+                    if (ptrDiff) return ptrDiff;
+                    return String(firstNonEmptyValue(left && left.LOCATIONCODE, left && left.locationcode, '') || '').localeCompare(String(firstNonEmptyValue(right && right.LOCATIONCODE, right && right.locationcode, '') || ''), undefined, { numeric: true, sensitivity: 'base' });
+                });
+        }
+
+        function openShearDriveItem(key = '') {
+            const safeKey = String(key || '').trim();
+            if (!safeKey) return false;
+            shearListState.driveDrillLevel = 'rows';
+            shearListState.selectedDriveItemKey = safeKey;
+            renderShearList();
+            return false;
+        }
+
+        function backShearDriveItems() {
+            shearListState.driveDrillLevel = 'items';
+            shearListState.selectedDriveItemKey = '';
+            renderShearList();
+            return false;
+        }
+
+        function renderShearDriveItemCard(group = null) {
+            if (!group) return '';
+            const safeKey = escJsAttrValue(group.key);
+            const demand = group.demand || { days: shearListState.driveShippingDays || 14, qty: 0, rowCount: 0 };
+            const riskAfterFullShear = getShearListNumericValue(group.totalPtr) - getShearListNumericValue(demand.qty);
+            const riskClass = riskAfterFullShear >= 0 ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-red-200 bg-red-50 text-red-700';
+            const locationCount = group.locations ? group.locations.size : 0;
+            const lotCount = group.lots ? group.lots.size : 0;
+            const seasonText = group.seasons ? Array.from(group.seasons).sort().join(', ') : '-';
+            return `<button type="button" class="w-full rounded-2xl border border-[#007a4d] bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openShearDriveItem('${safeKey}')">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="text-lg font-black leading-tight text-slate-900">${escapeHtml(group.commonName || 'Unknown')}</div>
+                        <div class="mt-1 text-[12px] font-bold text-slate-500">${escapeHtml(group.contSize || '-')} | Item ${escapeHtml(group.itemCode || '-')}</div>
+                    </div>
+                    <span class="shrink-0 rounded-full border ${riskClass} px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em]">${riskAfterFullShear >= 0 ? 'OK' : 'Risk'}</span>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">
+                    <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">PTR ${escapeHtml(formatShearDecisionNumber(group.totalPtr))}</span>
+                    <span class="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">${escapeHtml(String(locationCount))} Location${locationCount === 1 ? '' : 's'}</span>
+                    <span class="rounded-full bg-lime-50 px-2.5 py-1 text-lime-700">Ship ${escapeHtml(String(demand.days))}d: ${escapeHtml(formatShearDecisionNumber(demand.qty))}</span>
+                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">${escapeHtml(String(lotCount))} Lot${lotCount === 1 ? '' : 's'}</span>
+                </div>
+                <div class="mt-3 flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-500">
+                    <span class="min-w-0 truncate">Seasons: ${escapeHtml(seasonText || '-')}</span>
+                    <span class="shrink-0 text-[#007a4d]">${escapeHtml(String(group.rows.length))} row${group.rows.length === 1 ? '' : 's'} ></span>
+                </div>
+            </button>`;
+        }
+
+        function renderShearDriveItemRows() {
+            const rows = getShearDriveRowsForSelectedItem();
+            if (!rows.length) {
+                shearListState.driveDrillLevel = 'items';
+                shearListState.selectedDriveItemKey = '';
+                return '';
+            }
+            const first = rows[0];
+            const commonName = firstNonEmptyValue(first && first.COMMONNAME, first && first.commonname, 'Unknown');
+            const contSize = firstNonEmptyValue(first && first.CONTSIZE, first && first.contsize, '-');
+            const itemCode = firstNonEmptyValue(first && first.ITEMCODE, first && first.itemcode, '-');
+            const totalPtr = rows.reduce((total, item) => total + getShearDrivePtr(item), 0);
+            return `<div class="space-y-3">
+                <div class="rounded-2xl border border-[#007a4d] bg-emerald-50/40 p-4 shadow-sm">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">All Locations</div>
+                            <div class="mt-1 text-xl font-black leading-tight text-slate-900">${escapeHtml(commonName)}</div>
+                            <div class="mt-1 text-[12px] font-bold text-slate-500">${escapeHtml(contSize)} | Item ${escapeHtml(itemCode)}</div>
+                        </div>
+                        <button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return backShearDriveItems()"><i class="ph-bold ph-caret-left align-middle"></i><span class="ml-1 align-middle">Items</span></button>
+                    </div>
+                    <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">
+                        <span class="rounded-full bg-white px-2.5 py-1 text-slate-600">${escapeHtml(String(rows.length))} row${rows.length === 1 ? '' : 's'}</span>
+                        <span class="rounded-full bg-white px-2.5 py-1 text-emerald-700">Total PTR ${escapeHtml(formatShearDecisionNumber(totalPtr))}</span>
+                    </div>
+                </div>
+                ${rows.map(renderShearDriveModeCard).join('')}
+            </div>`;
+        }
+
         function renderShearDriveModeCard(item = null) {
             if (!item) return '';
             const uid = getShearDriveRowUid(item);
@@ -32656,17 +32825,21 @@ function toggleDriveQuickRequestItem(domId) {
             const seasonOptions = getShearDriveSeasonOptions();
             const lotOptions = getShearDriveLotcodeOptions();
             const rows = getShearDriveFilteredRows();
-            const limitedRows = rows.slice(0, 80);
+            const itemGroups = groupShearDriveItemCards(rows);
+            const showingItemRows = shearListState.driveDrillLevel === 'rows' && !!String(shearListState.selectedDriveItemKey || '').trim();
+            const limitedGroups = itemGroups.slice(0, 120);
             const seasonHtml = `<option value="">All Seasons</option>${seasonOptions.map((season) => `<option value="${escapeHtml(season)}" ${shearListState.driveSeason === season ? 'selected' : ''}>${escapeHtml(season)}</option>`).join('')}`;
             const lotHtml = `<option value="">All Lots</option>${lotOptions.map((lot) => `<option value="${escapeHtml(lot)}" ${shearListState.driveLotcode === lot ? 'selected' : ''}>${escapeHtml(lot)}</option>`).join('')}`;
             const reserveNote = Array.isArray(reservesInventory) && reservesInventory.length
                 ? `${reservesInventory.length.toLocaleString()} reserve rows available for shipping checks.`
                 : 'Reserve rows are loading; shipping demand may show 0 until v2_reserves is cached.';
-            const rowsHtml = limitedRows.length
-                ? limitedRows.map(renderShearDriveModeCard).join('')
-                : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No Drive Mode rows match these filters.</div>';
-            const moreHtml = rows.length > limitedRows.length
-                ? `<div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Showing ${limitedRows.length} of ${rows.length}. Tighten search, season, lot, or shipping filters for faster picking.</div>`
+            const rowsHtml = showingItemRows
+                ? (renderShearDriveItemRows() || '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No location rows match this item anymore.</div>')
+                : (limitedGroups.length
+                    ? limitedGroups.map(renderShearDriveItemCard).join('')
+                    : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No Drive Mode items match these filters.</div>');
+            const moreHtml = !showingItemRows && itemGroups.length > limitedGroups.length
+                ? `<div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Showing ${limitedGroups.length} of ${itemGroups.length} item cards from ${rows.length} Drive Mode rows. Tighten search, season, lot, or shipping filters for faster picking.</div>`
                 : '';
             return `<div class="space-y-3">
                 <div class="rounded-2xl border border-lime-200 bg-lime-50/40 p-3 shadow-sm">
@@ -32688,12 +32861,12 @@ function toggleDriveQuickRequestItem(domId) {
                             <input type="number" min="0" step="1" inputmode="numeric" class="mt-1 w-full rounded-xl border border-lime-200 bg-white px-3 py-2 text-sm font-black text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeHtml(String(shearListState.driveMinShipping || ''))}" placeholder="Any" onchange="return setShearDriveFilter('driveMinShipping', this.value)">
                         </label>
                         <label class="block col-span-2 md:col-span-1">
-                            <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-lime-700">Common Name</span>
-                            <input id="shear-drive-search-input" type="search" class="mt-1 w-full rounded-xl border border-lime-200 bg-white px-3 py-2 text-sm font-black text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeHtml(shearListState.driveSearch || '')}" placeholder="Search..." oninput="return setShearDriveFilter('driveSearch', this.value)">
+                            <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-lime-700">Item Search</span>
+                            <input id="shear-drive-search-input" type="search" class="mt-1 w-full rounded-xl border border-lime-200 bg-white px-3 py-2 text-sm font-black text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeHtml(shearListState.driveSearch || '')}" placeholder="Common, size, item..." oninput="return setShearDriveFilter('driveSearch', this.value)">
                         </label>
                     </div>
                     <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
-                        <span>${escapeHtml(String(rows.length))} matching Drive Mode row${rows.length === 1 ? '' : 's'}</span>
+                        <span>${showingItemRows ? 'Viewing all rows for selected item' : `${escapeHtml(String(itemGroups.length))} item card${itemGroups.length === 1 ? '' : 's'} from ${escapeHtml(String(rows.length))} Drive Mode row${rows.length === 1 ? '' : 's'}`}</span>
                         <span>${escapeHtml(reserveNote)}</span>
                     </div>
                 </div>
