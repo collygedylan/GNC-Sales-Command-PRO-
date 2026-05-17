@@ -73,9 +73,12 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const APP_LIVE_EVENTS_TABLE = 'v2_app_live_events';
 const EMIT_APP_LIVE_EVENTS = true;
 const DRIVE_AROUND_HISTORY_TABLE = 'v2_drive_around_report_files';
+const DRIVE_AROUND_HISTORY_ROW_TABLE = 'v2_drive_around_report_rows';
 const DRIVE_AROUND_HISTORY_FOLDER_ID = '1hswTWk4GooXIAXFmfdx9I6IyqLJ1LqSA';
 const DRIVE_AROUND_HISTORY_MAX_FILES_PER_RUN = 2500;
+const DRIVE_AROUND_HISTORY_MAX_PARSED_FILES_PER_RUN = 12;
 const DRIVE_AROUND_HISTORY_SUPPORTED_EXTENSIONS = Object.freeze(['.csv', '.xls', '.xlsx']);
+const DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER = 'runDriveAroundHistoryBackfillChunk_';
 const GOOGLE_SHEETS_MIME_TYPE = 'application/vnd.google-apps.spreadsheet';
 
 const FOLDERS = {
@@ -132,7 +135,7 @@ const ALLOWED_DB_COLUMNS = new Set([
 
 function runSOCOnly() { return processLatestFileOnlyFolder(FOLDERS.SOC_DROP, FOLDERS.SOC_PROCESSED, 'v2_soc_master', buildStandardPayload, { deltaMode: true }); }
 function runDriveAroundOnly() { return processSnapshotBatchFolder(FOLDERS.MASTER_DROP, FOLDERS.MASTER_PROCESSED, 'v2_master_inventory', buildMasterPayload); }
-function runDriveAroundHistoryOnly() { return syncDriveAroundHistoricalFileIndex_(); }
+function runDriveAroundHistoryOnly() { return syncDriveAroundHistoricalFileIndex_({ parseRows: true }); }
 function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, 'v2_reserves', buildStandardPayload, { deltaMode: true }); }
 function runCavOnly() { return processLatestFileOnlyFolder(FOLDERS.CAV_DROP, FOLDERS.CAV_PROCESSED, 'v2_cav_import', buildCavPayload, { deltaMode: true }); }
 function runDiseaseDriveToSupabaseSyncOnly() { return runDiseaseDriveToSupabaseSync(); }
@@ -219,7 +222,7 @@ function getAppLiveEventAreaForTable_(tableName) {
   if (safeTable === 'v2_reserves') return 'reserves';
   if (safeTable === 'v2_cav_import') return 'av';
   if (safeTable === 'v2_disease_training_assets') return 'diagnostics';
-  if (safeTable === DRIVE_AROUND_HISTORY_TABLE || safeTable === 'v2_hold_release_cycles') return 'weather-hold';
+  if (safeTable === DRIVE_AROUND_HISTORY_TABLE || safeTable === DRIVE_AROUND_HISTORY_ROW_TABLE || safeTable === 'v2_hold_release_cycles') return 'weather-hold';
   if (safeTable === 'v2_sales_office') return 'sales-office';
   if (safeTable === 'v2_active_request') return 'request';
   return '';
@@ -846,12 +849,12 @@ function getDriveFileSizeSafe_(file) {
   }
 }
 
-function fetchExistingDriveAroundHistoryFileIds_() {
+function fetchExistingDriveAroundHistoryManifestMap_() {
   const limit = SUPABASE_FETCH_PAGE_SIZE;
   let offset = 0;
-  const ids = {};
+  const byId = {};
   while (true) {
-    const url = `${SUPABASE_URL}/rest/v1/${DRIVE_AROUND_HISTORY_TABLE}?select=file_id&limit=${limit}&offset=${offset}`;
+    const url = `${SUPABASE_URL}/rest/v1/${DRIVE_AROUND_HISTORY_TABLE}?select=file_id,file_name,report_date,drive_modified_time,row_count,hold_row_count,status,error_message&limit=${limit}&offset=${offset}`;
     const res = UrlFetchApp.fetch(url, {
       method: 'get',
       headers: {
@@ -867,12 +870,127 @@ function fetchExistingDriveAroundHistoryFileIds_() {
     if (!Array.isArray(batch) || !batch.length) break;
     batch.forEach(function(row) {
       const fileId = String(row && row.file_id || '').trim();
-      if (fileId) ids[fileId] = true;
+      if (fileId) byId[fileId] = row || {};
     });
     if (batch.length < limit) break;
     offset += limit;
   }
-  return ids;
+  return byId;
+}
+
+function driveAroundHistoryManifestHasRows_(manifestRow) {
+  if (!manifestRow) return false;
+  const status = String(manifestRow.status || '').trim().toLowerCase();
+  const rowCount = Number(manifestRow.row_count || 0);
+  return rowCount > 0 && ['row_indexed', 'processed', 'complete'].indexOf(status) !== -1;
+}
+
+function normalizeDriveAroundHistoryHeaderKey_(header) {
+  return String(header || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function findDriveAroundHistoryColumnIndex_(headers, candidates) {
+  const cleanHeaders = (headers || []).map(normalizeDriveAroundHistoryHeaderKey_);
+  for (let i = 0; i < candidates.length; i++) {
+    const candidate = normalizeDriveAroundHistoryHeaderKey_(candidates[i]);
+    const index = cleanHeaders.indexOf(candidate);
+    if (index > -1) return index;
+  }
+  return -1;
+}
+
+function getDriveAroundHistoryCell_(row, headers, candidates) {
+  const index = findDriveAroundHistoryColumnIndex_(headers, candidates);
+  if (index < 0) return '';
+  return String(row[index] == null ? '' : row[index]).trim();
+}
+
+function parseDriveAroundHistoryNumber_(value) {
+  const text = String(value == null ? '' : value).replace(/,/g, '').trim();
+  if (!text) return null;
+  const number = Number(text);
+  return isNaN(number) ? null : number;
+}
+
+function classifyDriveAroundHoldReason_(reason) {
+  const text = String(reason || '').toLowerCase();
+  if (/(aphid|mite|scale|thrip|snail|caterpillar|insect|bug|pest|borer|beetle)/.test(text)) return 'pest';
+  if (/(fung|disease|leaf spot|phytophthora|rhizoctonia|botrytis|canker|mildew|rot|rust|anthracnose|blight|phomopsis|sclerotinia)/.test(text)) return 'fungal_disease';
+  if (/(leaf quality|leaf|foliar|chlorosis|yellow|necrosis|spotting|burn)/.test(text)) return 'leaf_quality';
+  if (/(shear|sheared|trim|cutback|cut back|prune|pruned)/.test(text)) return 'sheared';
+  if (/(freeze|frost|cold|heat|hail|weather|wind|drought|wet)/.test(text)) return 'weather_stress';
+  return text.trim() ? 'other' : 'unknown';
+}
+
+function buildDriveAroundHistoryRowRawJson_(headers, row) {
+  const raw = {};
+  (headers || []).forEach(function(header, index) {
+    const key = normalizePayloadColumnKey_(header) || `column_${index + 1}`;
+    if (!key) return;
+    const value = row[index];
+    raw[key] = value == null ? null : String(value).trim();
+  });
+  return raw;
+}
+
+function buildDriveAroundHistorySnapshotRows_(file, rawData, manifestRow, nowIso) {
+  if (!rawData || rawData.length < 2) return [];
+  const headers = rawData[0].map(function(header) { return String(header || '').trim(); });
+  const fileId = String(file.getId() || '').trim();
+  const fileName = String(file.getName() || '').trim();
+  const reportDate = manifestRow.report_date || parseDriveAroundReportDateString_(fileName);
+  const rows = [];
+  for (let i = 1; i < rawData.length; i++) {
+    const row = rawData[i] || [];
+    const itemcode = getDriveAroundHistoryCell_(row, headers, ['itemcode', 'item code', 'item']);
+    const commonname = getDriveAroundHistoryCell_(row, headers, ['commonname', 'common name', 'sortnamevariety', 'description']);
+    const locationcode = getDriveAroundHistoryCell_(row, headers, ['locationcode', 'location code', 'location']);
+    const lotcode = getDriveAroundHistoryCell_(row, headers, ['lotcode', 'lot code', 'lot']);
+    const contsize = getDriveAroundHistoryCell_(row, headers, ['contsize', 'printedcontainercode', 'container sort', 'containersort', 'size']);
+    const holdstopcode = getDriveAroundHistoryCell_(row, headers, ['holdstopcode', 'hold stop code']);
+    const holdstopreason = getDriveAroundHistoryCell_(row, headers, ['holdstopreason', 'hold stop reason']);
+    if (!itemcode && !commonname && !locationcode && !lotcode && !holdstopcode && !holdstopreason) continue;
+    const rowNumber = i + 1;
+    const raw = buildDriveAroundHistoryRowRawJson_(headers, row);
+    const rowHash = Utilities.base64EncodeWebSafe(Utilities.computeDigest(
+      Utilities.DigestAlgorithm.SHA_256,
+      JSON.stringify(raw),
+      Utilities.Charset.UTF_8
+    )).replace(/=+$/g, '');
+    rows.push({
+      unique_id: `drive_around_row_${fileId}_${rowNumber}`.replace(/[^a-zA-Z0-9_-]+/g, '_'),
+      file_id: fileId,
+      file_name: fileName,
+      report_date: reportDate,
+      row_number: rowNumber,
+      item_key: [
+        itemcode,
+        commonname,
+        contsize,
+        locationcode,
+        lotcode
+      ].map(function(value) { return String(value || '').trim().toLowerCase(); }).join('|'),
+      itemcode: itemcode || null,
+      commonname: commonname || null,
+      genus: getDriveAroundHistoryCell_(row, headers, ['genus', 'genusname', 'genus name']) || null,
+      contsize: contsize || null,
+      locationcode: locationcode || null,
+      lotcode: lotcode || null,
+      season: getDriveAroundHistoryCell_(row, headers, ['season']) || null,
+      blockalpha: getDriveAroundHistoryCell_(row, headers, ['blockalpha', 'block alpha', 'block']) || null,
+      salesyear: getDriveAroundHistoryCell_(row, headers, ['salesyear', 'sale year', 'sales year']) || null,
+      ptravailable: parseDriveAroundHistoryNumber_(getDriveAroundHistoryCell_(row, headers, ['ptravailable', 'ptr available'])),
+      holdstopcode: holdstopcode || null,
+      holdstopreason: holdstopreason || null,
+      holdstopbegindate_raw: getDriveAroundHistoryCell_(row, headers, ['holdstopbegindate', 'hold stop begin date']) || null,
+      hold_reason_category: classifyDriveAroundHoldReason_(holdstopreason),
+      row_hash: rowHash,
+      raw: raw,
+      created_at: nowIso,
+      updated_at: nowIso
+    });
+  }
+  return rows;
 }
 
 function buildDriveAroundHistoryManifestRow_(file, folderPath, nowIso) {
@@ -903,7 +1021,7 @@ function buildDriveAroundHistoryManifestRow_(file, folderPath, nowIso) {
   };
 }
 
-function collectDriveAroundHistoryManifestRows_(folder, folderPath, existingIds, state) {
+function collectDriveAroundHistoryManifestRows_(folder, folderPath, existingManifestById, state) {
   if (state.filesSeen >= state.maxFiles) return;
   const files = listDriveFilesWithRetry_(folder, `Drive Around history ${folderPath}`);
   while (files.hasNext() && state.filesSeen < state.maxFiles) {
@@ -916,60 +1034,151 @@ function collectDriveAroundHistoryManifestRows_(folder, folderPath, existingIds,
       continue;
     }
     const fileId = String(file.getId() || '').trim();
-    if (fileId && existingIds[fileId]) {
+    const existingManifest = fileId ? existingManifestById[fileId] : null;
+    const manifestRow = buildDriveAroundHistoryManifestRow_(file, folderPath, state.nowIso);
+    if (!state.parseRows) {
+      if (existingManifest) {
+        state.skippedExisting++;
+        continue;
+      }
+      state.manifestRows.push(manifestRow);
+      continue;
+    }
+    if (driveAroundHistoryManifestHasRows_(existingManifest)) {
       state.skippedExisting++;
       continue;
     }
-    state.rows.push(buildDriveAroundHistoryManifestRow_(file, folderPath, state.nowIso));
+    if (state.parsedFiles >= state.maxParsedFiles) {
+      state.remainingUnparsed++;
+      if (!existingManifest) state.manifestRows.push(manifestRow);
+      continue;
+    }
+    try {
+      const rawData = extractDataFromFile(file, state.rootFolderId);
+      const snapshotRows = buildDriveAroundHistorySnapshotRows_(file, rawData, manifestRow, state.nowIso);
+      manifestRow.row_count = snapshotRows.length;
+      manifestRow.hold_row_count = snapshotRows.filter(function(row) {
+        return String(row && row.holdstopcode || '').trim().toUpperCase() === 'H';
+      }).length;
+      manifestRow.status = snapshotRows.length ? 'row_indexed' : 'empty';
+      manifestRow.error_message = null;
+      state.manifestRows.push(manifestRow);
+      Array.prototype.push.apply(state.snapshotRows, snapshotRows);
+      state.parsedFiles++;
+      state.rowsParsed += snapshotRows.length;
+      console.log(`[DRIVE AROUND HISTORY] Parsed ${fileName}: ${snapshotRows.length} row snapshot${snapshotRows.length === 1 ? '' : 's'}.`);
+    } catch (err) {
+      const errorMessage = err && err.message ? err.message : String(err);
+      manifestRow.status = 'failed';
+      manifestRow.error_message = errorMessage;
+      state.manifestRows.push(manifestRow);
+      state.parseFailedFiles.push({ name: fileName, error: errorMessage });
+      console.error(`[DRIVE AROUND HISTORY] ${fileName} failed: ${errorMessage}`);
+    }
   }
   const subfolders = listDriveSubfoldersWithRetry_(folder, `Drive Around history ${folderPath}`);
   while (subfolders.hasNext() && state.filesSeen < state.maxFiles) {
     const subfolder = subfolders.next();
     const subfolderName = String(subfolder.getName() || '').trim();
-    collectDriveAroundHistoryManifestRows_(subfolder, `${folderPath}/${subfolderName || 'Unnamed'}`, existingIds, state);
+    collectDriveAroundHistoryManifestRows_(subfolder, `${folderPath}/${subfolderName || 'Unnamed'}`, existingManifestById, state);
   }
 }
 
 function syncDriveAroundHistoricalFileIndex_(options) {
   const safeOptions = options || {};
   const maxFiles = Math.max(1, Number(safeOptions.maxFiles) || DRIVE_AROUND_HISTORY_MAX_FILES_PER_RUN);
+  const parseRows = safeOptions.parseRows !== false;
+  const maxParsedFiles = Math.max(1, Number(safeOptions.maxParsedFiles) || DRIVE_AROUND_HISTORY_MAX_PARSED_FILES_PER_RUN);
   const rootFolderId = String(safeOptions.folderId || DRIVE_AROUND_HISTORY_FOLDER_ID || FOLDERS.MASTER_PROCESSED || '').trim();
   if (!rootFolderId) throw new Error('Missing Drive Around history folder ID.');
   const started = new Date();
   const nowIso = started.toISOString();
   const rootFolder = getDriveFolderByIdWithRetry_(rootFolderId, 'Drive Around historical processed folder');
-  const existingIds = fetchExistingDriveAroundHistoryFileIds_();
+  const existingManifestById = fetchExistingDriveAroundHistoryManifestMap_();
   const state = {
     nowIso: nowIso,
+    rootFolderId: rootFolderId,
     maxFiles: maxFiles,
+    maxParsedFiles: maxParsedFiles,
+    parseRows: parseRows,
     filesSeen: 0,
     skippedExisting: 0,
     skippedUnsupported: 0,
-    rows: []
+    remainingUnparsed: 0,
+    parsedFiles: 0,
+    rowsParsed: 0,
+    parseFailedFiles: [],
+    manifestRows: [],
+    snapshotRows: []
   };
-  collectDriveAroundHistoryManifestRows_(rootFolder, rootFolder.getName(), existingIds, state);
-  if (state.rows.length) {
-    pushToSupabase(DRIVE_AROUND_HISTORY_TABLE, state.rows);
+  collectDriveAroundHistoryManifestRows_(rootFolder, rootFolder.getName(), existingManifestById, state);
+  if (state.manifestRows.length) {
+    pushToSupabase(DRIVE_AROUND_HISTORY_TABLE, state.manifestRows);
+  }
+  if (state.snapshotRows.length) {
+    pushToSupabase(DRIVE_AROUND_HISTORY_ROW_TABLE, state.snapshotRows);
   }
   const summary = {
     filesSeen: state.filesSeen,
-    filesProcessed: state.rows.length,
-    upsertCount: state.rows.length,
-    totalRows: state.rows.length,
+    filesProcessed: state.manifestRows.length,
+    parsedFiles: state.parsedFiles,
+    upsertCount: state.manifestRows.length + state.snapshotRows.length,
+    totalRows: state.snapshotRows.length,
+    rowSnapshotCount: state.snapshotRows.length,
     deleteCount: 0,
     tempFilesRemoved: 0,
     skippedExisting: state.skippedExisting,
     skippedUnsupported: state.skippedUnsupported,
+    remainingUnparsed: state.remainingUnparsed,
+    parseFailedFiles: state.parseFailedFiles,
     tableName: DRIVE_AROUND_HISTORY_TABLE,
     runId: Utilities.getUuid().replace(/-/g, '').slice(0, 10)
   };
   emitTableSyncLiveEvent_(DRIVE_AROUND_HISTORY_TABLE, summary);
   console.log(
-    `[DONE] ${DRIVE_AROUND_HISTORY_TABLE}: ${state.rows.length} new historical file manifest` +
-    `${state.rows.length === 1 ? '' : 's'} indexed | ${state.skippedExisting} existing skipped | ` +
-    `${state.skippedUnsupported} unsupported skipped | ${state.filesSeen} file${state.filesSeen === 1 ? '' : 's'} scanned.`
+    `[DONE] ${DRIVE_AROUND_HISTORY_TABLE}: ${state.manifestRows.length} manifest row${state.manifestRows.length === 1 ? '' : 's'} upserted | ` +
+    `${state.snapshotRows.length} historical row snapshot${state.snapshotRows.length === 1 ? '' : 's'} upserted | ` +
+    `${state.parsedFiles} file${state.parsedFiles === 1 ? '' : 's'} parsed | ${state.remainingUnparsed} still waiting for row parsing | ` +
+    `${state.skippedExisting} existing skipped | ${state.skippedUnsupported} unsupported skipped | ${state.filesSeen} file${state.filesSeen === 1 ? '' : 's'} scanned.`
   );
   return summary;
+}
+
+function removeDriveAroundHistoryBackfillTrigger_() {
+  const triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(function(trigger) {
+    if (trigger.getHandlerFunction() === DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER) {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+}
+
+function scheduleDriveAroundHistoryBackfillTrigger_() {
+  removeDriveAroundHistoryBackfillTrigger_();
+  ScriptApp.newTrigger(DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER)
+    .timeBased()
+    .after(60 * 1000)
+    .create();
+}
+
+function startDriveAroundHistoryBackfill() {
+  removeDriveAroundHistoryBackfillTrigger_();
+  return runDriveAroundHistoryBackfillChunk_();
+}
+
+function runDriveAroundHistoryBackfillChunk_() {
+  const result = syncDriveAroundHistoricalFileIndex_({
+    parseRows: true,
+    maxParsedFiles: DRIVE_AROUND_HISTORY_MAX_PARSED_FILES_PER_RUN
+  });
+  if (Number(result && result.remainingUnparsed || 0) > 0) {
+    scheduleDriveAroundHistoryBackfillTrigger_();
+    console.log(`[DRIVE AROUND HISTORY] Backfill continuing. ${result.remainingUnparsed} file(s) still need row parsing.`);
+  } else {
+    removeDriveAroundHistoryBackfillTrigger_();
+    console.log('[DRIVE AROUND HISTORY] Backfill complete. All indexed files that could be parsed have row snapshots.');
+  }
+  return result;
 }
 
 function trashDriveFileWithRetry_(file, label) {
