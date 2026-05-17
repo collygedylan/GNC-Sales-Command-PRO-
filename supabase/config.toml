@@ -1,0 +1,11 @@
+project_id = "kzrnyjsosryejjejliii"
+
+[functions.app-api]
+verify_jwt = false
+
+[functions.send-push-alert]
+verify_jwt = false
+
+[functions.outlook-api]
+verify_jwt = false
+

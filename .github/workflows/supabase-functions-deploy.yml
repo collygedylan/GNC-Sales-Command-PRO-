@@ -1,0 +1,79 @@
+name: Deploy Supabase Edge Functions
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - supabase/config.toml
+      - supabase/functions/app-api/**
+      - supabase/functions/send-push-alert/**
+      - supabase/functions/outlook-api/**
+      - supabase/functions/_shared/**
+      - .github/workflows/supabase-functions-deploy.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-functions-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy Edge Functions
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set Supabase Edge Function secrets
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Push Edge Function secrets
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: kzrnyjsosryejjejliii
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          APP_SESSION_SECRET: ${{ secrets.APP_SESSION_SECRET || secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
+          MICROSOFT_CLIENT_SECRET: ${{ secrets.MICROSOFT_CLIENT_SECRET }}
+          MICROSOFT_REDIRECT_URI: ${{ secrets.MICROSOFT_REDIRECT_URI }}
+          OUTLOOK_TOKEN_ENCRYPTION_KEY: ${{ secrets.OUTLOOK_TOKEN_ENCRYPTION_KEY || secrets.APP_SESSION_SECRET || secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          test -n "$SUPABASE_ACCESS_TOKEN" || (echo "Missing GitHub secret SUPABASE_ACCESS_TOKEN" && exit 1)
+          test -n "$SUPABASE_URL" || (echo "Missing GitHub secret SUPABASE_URL" && exit 1)
+          test -n "$SUPABASE_SERVICE_ROLE_KEY" || (echo "Missing GitHub secret SUPABASE_SERVICE_ROLE_KEY" && exit 1)
+          supabase secrets set \
+            SUPABASE_URL="$SUPABASE_URL" \
+            SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
+            APP_SESSION_SECRET="$APP_SESSION_SECRET" \
+            MICROSOFT_CLIENT_ID="$MICROSOFT_CLIENT_ID" \
+            MICROSOFT_CLIENT_SECRET="$MICROSOFT_CLIENT_SECRET" \
+            MICROSOFT_REDIRECT_URI="$MICROSOFT_REDIRECT_URI" \
+            OUTLOOK_TOKEN_ENCRYPTION_KEY="$OUTLOOK_TOKEN_ENCRYPTION_KEY" \
+            --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Deploy app-api
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: kzrnyjsosryejjejliii
+        run: supabase functions deploy app-api --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+
+      - name: Deploy send-push-alert
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: kzrnyjsosryejjejliii
+        run: supabase functions deploy send-push-alert --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+
+      - name: Deploy outlook-api
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: kzrnyjsosryejjejliii
+        run: supabase functions deploy outlook-api --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
