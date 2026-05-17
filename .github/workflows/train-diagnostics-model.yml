@@ -1,0 +1,74 @@
+name: Train Diagnostics Model
+
+on:
+  workflow_dispatch:
+    inputs:
+      epochs:
+        description: "Training epochs"
+        required: false
+        default: "8"
+      dry_run:
+        description: "Only inspect Supabase assets; do not train"
+        required: false
+        default: "false"
+  schedule:
+    - cron: "35 6 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: train-diagnostics-model
+  cancel-in-progress: false
+
+jobs:
+  train:
+    name: Train diagnostics classifier
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: requirements-ml.txt
+
+      - name: Install ML dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-ml.txt
+
+      - name: Train diagnostics model
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GDRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
+          GDRIVE_INVENTORY_FILE_ID: ${{ secrets.GDRIVE_INVENTORY_FILE_ID }}
+          ML_TRAINING_ASSETS_TABLE: v2_disease_training_assets
+          ML_TRAINING_ASSETS_BUCKET: disease_training_assets
+          DIAGNOSTICS_TRAIN_EPOCHS: ${{ github.event.inputs.epochs || '8' }}
+          DIAGNOSTICS_DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          DIAGNOSTICS_EXTRACT_PDF_IMAGES: "true"
+          DIAGNOSTICS_USE_PRETRAINED: "true"
+          LOG_LEVEL: INFO
+        run: python train_diagnostics_model.py
+
+      - name: Commit diagnostics model updates
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- models; then
+            echo "No diagnostics model changes detected."
+            exit 0
+          fi
+          git add models/diagnostics_classifier.pt models/diagnostics_labels.json models/diagnostics_training_report.json
+          git commit -m "Train diagnostics model from disease assets"
+          git push
