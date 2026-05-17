@@ -72,8 +72,13 @@ def json_request(url: str, method: str = "GET", payload: Any = None, headers: Di
         data = json.dumps(payload).encode("utf-8")
         request_headers.setdefault("Content-Type", "application/json")
     request = urllib.request.Request(url, data=data, headers=request_headers, method=method)
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        raw = response.read().decode("utf-8")
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            raw = response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="ignore")
+        detail = body[:2000] if body else exc.reason
+        raise RuntimeError(f"HTTP {exc.code} {method} {url}: {detail}") from exc
     if not raw:
         return None
     return json.loads(raw)
@@ -150,6 +155,7 @@ def hourly_rows_from_response(payload: Dict[str, Any], station_key: str, latitud
     precipitation = list(hourly.get("precipitation") or [])
     wind_speed = list(hourly.get("wind_speed_10m") or [])
     rows: List[Dict[str, Any]] = []
+    seen_observed_at: Dict[str, int] = {}
 
     for index, local_time in enumerate(times):
         temperature_f = temperatures[index] if index < len(temperatures) else None
@@ -165,30 +171,38 @@ def hourly_rows_from_response(payload: Dict[str, Any], station_key: str, latitud
             gdd_base_50 = max(temp - 50.0, 0.0) / 24.0
             chill_hours = 1.0 if 32.0 <= temp <= 45.0 else 0.0
 
-        rows.append(
-            {
-                "unique_id": f"{station_key}:{observed_at.strftime('%Y%m%dT%H%M%SZ')}",
-                "station_key": station_key,
-                "latitude": latitude,
-                "longitude": longitude,
-                "timezone": timezone_name,
-                "observed_at": observed_at.isoformat(),
-                "local_time": str(local_time),
-                "temperature_f": temperature_f,
-                "relative_humidity": humidity_value,
-                "precipitation_in": precipitation_value,
-                "wind_speed_mph": wind_speed_value,
-                "gdd_base_50": round(gdd_base_50, 5),
-                "chill_hours": chill_hours,
-                "source": "open-meteo",
-                "raw": {
-                    "open_meteo_local_time": str(local_time),
-                    "temperature_unit": "fahrenheit",
-                    "gdd_base": 50,
-                    "chill_hour_rule": "32F_to_45F",
-                },
-            }
-        )
+        row = {
+            "unique_id": f"{station_key}:{observed_at.strftime('%Y%m%dT%H%M%SZ')}",
+            "station_key": station_key,
+            "latitude": latitude,
+            "longitude": longitude,
+            "timezone": timezone_name,
+            "observed_at": observed_at.isoformat(),
+            "local_time": str(local_time),
+            "temperature_f": temperature_f,
+            "relative_humidity": humidity_value,
+            "precipitation_in": precipitation_value,
+            "wind_speed_mph": wind_speed_value,
+            "gdd_base_50": round(gdd_base_50, 5),
+            "chill_hours": chill_hours,
+            "source": "open-meteo",
+            "raw": {
+                "open_meteo_local_time": str(local_time),
+                "temperature_unit": "fahrenheit",
+                "gdd_base": 50,
+                "chill_hour_rule": "32F_to_45F",
+            },
+        }
+
+        duplicate_index = seen_observed_at.get(row["unique_id"])
+        if duplicate_index is not None:
+            # Open-Meteo can return a duplicate converted UTC hour around DST
+            # transitions. Keep one row per Supabase unique timestamp so the
+            # batch upsert never tries to update the same row twice.
+            rows[duplicate_index] = row
+        else:
+            rows.append(row)
+            seen_observed_at[row["unique_id"]] = len(rows) - 1
     return rows
 
 

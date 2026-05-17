@@ -6,7 +6,8 @@
 --   2. Hold learning events whenever v2_master_inventory receives H in holdstopcode.
 --   3. Growing degree day base 50 and chill-hour rollups for each hold event.
 
-create extension if not exists pgcrypto;
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 
 create table if not exists public.v2_weather_hourly (
   unique_id text primary key,
@@ -225,7 +226,7 @@ create or replace function public.v2_capture_hold_learning_event()
 returns trigger
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   event_date date;
@@ -328,7 +329,7 @@ create or replace function public.v2_refresh_hold_learning_weather_features(p_li
 returns integer
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   ev record;
@@ -416,7 +417,7 @@ create or replace function public.v2_refresh_hold_learning_profiles()
 returns integer
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   refreshed integer := 0;

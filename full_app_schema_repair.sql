@@ -5,7 +5,8 @@
 -- Cleanup help: after running, inspect public.v2_app_schema_cleanup_candidates for objects to review manually.
 -- Run in Supabase SQL Editor as the project owner/postgres role.
 
-create extension if not exists pgcrypto;
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 
 
 -- ============================================================================
@@ -1228,7 +1229,7 @@ create or replace function public.v2_capture_hold_learning_event()
 returns trigger
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   event_date date;
@@ -1331,7 +1332,7 @@ create or replace function public.v2_refresh_hold_learning_weather_features(p_li
 returns integer
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   ev record;
@@ -1419,7 +1420,7 @@ create or replace function public.v2_refresh_hold_learning_profiles()
 returns integer
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   refreshed integer := 0;
