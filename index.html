@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.17.02';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.17.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2015,7 +2015,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.02').trim() || 'V2026.05.17.02';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.04').trim() || 'V2026.05.17.04';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2038,7 +2038,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <div id="drawer-home-btn" class="drawer-item" onclick="switchView('home'); toggleMenu();"><i class="ph-bold ph-house"></i> Home</div>
             <div id="drawer-force-sync-btn" class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData('force'); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div>
             <div id="drawer-enable-push-btn" class="drawer-item text-blue-600 font-bold" onclick="manuallyEnablePushNotifications(); toggleMenu();"><i class="ph-bold ph-bell-ringing"></i> Enable Notifications</div>
-            <div id="drawer-chat-btn" class="drawer-item text-sky-600 font-bold" onclick="switchView('chat'); toggleMenu();"><i class="ph-bold ph-chats-circle"></i> Chat</div>
+            <div id="drawer-communication-btn" class="drawer-item text-sky-600 font-bold" onclick="switchView('communication'); toggleMenu();"><i class="ph-bold ph-chat-circle-dots"></i> Communication</div>
             <div id="drawer-walkie-btn" class="drawer-item text-emerald-700 font-bold hidden" onclick="switchView('walkie'); toggleMenu();"><i class="ph-bold ph-radio"></i> Walkie</div>
             <hr class="my-2">
             <div id="drawer-drive-btn" class="drawer-item role-access role-admin role-qc-supervisor hidden" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
@@ -2047,8 +2047,9 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <div id="drawer-take-back-btn" class="drawer-item text-emerald-700 font-bold" onclick="switchView('take-back'); toggleMenu();"><i class="ph-bold ph-arrow-u-up-left"></i> Take Back</div>
             <div id="drawer-av-btn" class="drawer-item text-teal-600 font-bold role-access role-admin role-rep hidden" onclick="switchView('av'); toggleMenu();"><i class="ph-bold ph-notebook"></i> AV</div>
             <hr class="my-2">
-        <div id="drawer-request-btn" class="drawer-item text-blue-600 font-bold role-access role-admin role-rep role-request-enabled hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
+            <div id="drawer-request-btn" class="drawer-item text-blue-600 font-bold role-access role-admin role-rep role-request-enabled hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
             <div id="drawer-reserves-btn" class="drawer-item text-indigo-600 font-bold role-access role-admin hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
+            <div id="drawer-office-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin role-rep hidden" onclick="switchView('office'); toggleMenu();"><i class="ph-bold ph-buildings"></i> Office</div>
             <div id="drawer-sales-office-btn" class="drawer-item text-purple-600 font-bold role-access role-admin role-rep hidden" onclick="openSalesOfficeView(); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
             <div id="drawer-moves-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" onclick="openDrawerMovesView()"><i class="ph-bold ph-arrows-left-right"></i> Moves</div>
             <div id="drawer-leaf-btn" class="drawer-item text-emerald-700 font-bold" onclick="openLeafAssistant(); toggleMenu();"><i class="ph-bold ph-leaf"></i> Leaf Assistant</div>
@@ -2116,9 +2117,10 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div id="home-tile-take-back" onclick="switchView('take-back')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-arrow-u-up-left text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Take Back</span></div>
                                 <div id="home-tile-av" onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
                                 <div id="home-tile-request" onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-request-enabled hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
-                                <div id="home-tile-chat" onclick="switchView('chat')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-chats-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Chat</span></div>
+                                <div id="home-tile-communication" onclick="switchView('communication')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-chat-circle-dots text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Communication</span></div>
                                 <div id="home-tile-walkie" onclick="switchView('walkie')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer hidden"><i class="ph-bold ph-radio text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Walkie</span></div>
                                 <div id="home-tile-reserves" onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
+                                <div id="home-tile-office" onclick="switchView('office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-buildings text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Office</span></div>
                                 <div id="home-tile-sales-office" onclick="openSalesOfficeView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
                                 <div id="home-tile-moves" onclick="openMovesView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-arrows-left-right text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Moves</span></div>
                                 <div id="home-tile-inventory-office" onclick="openInventoryOfficeView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-warehouse text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Inventory Office</span></div>
@@ -2217,6 +2219,41 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div id="request-content"></div>
                 </div>
 
+                <div id="view-communication" class="hidden">
+                    <div class="freeze-panel">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <div>
+                                <div class="text-xs font-bold text-[#007a4d] uppercase tracking-[0.16em]">Communication</div>
+                                <div class="text-xl font-black text-slate-900">Communication</div>
+                            </div>
+                            <div class="rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-sky-700">Hub</div>
+                        </div>
+                    </div>
+                    <div class="grid gap-3 md:grid-cols-3">
+                        <button type="button" class="rounded-2xl border border-sky-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('chat')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-700"><i class="ph-bold ph-chats-circle text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Chat</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Messages</div>
+                        </button>
+                        <button type="button" id="communication-phone-placeholder" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openCommunicationPlaceholder('phone')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-phone text-2xl"></i></div>
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="text-lg font-black text-slate-900">Phone</div>
+                                <span class="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Placeholder</span>
+                            </div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Calls</div>
+                        </button>
+                        <button type="button" id="communication-email-placeholder" class="rounded-2xl border border-indigo-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openCommunicationPlaceholder('email')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700"><i class="ph-bold ph-envelope-simple text-2xl"></i></div>
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="text-lg font-black text-slate-900">Email</div>
+                                <span class="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Placeholder</span>
+                            </div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Mail</div>
+                        </button>
+                    </div>
+                </div>
+
                 <div id="view-chat" class="hidden">
                     <div class="freeze-panel">
                         <div class="flex items-center justify-between gap-3 mb-3">
@@ -2288,6 +2325,31 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div id="low-stock-crumb" class="text-xs font-bold text-[#007a4d] mb-3">NCR</div>
                     </div>
                     <div id="low-stock-content"></div>
+                </div>
+
+                <div id="view-office" class="hidden">
+                    <div class="freeze-panel">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <div>
+                                <div class="text-xs font-bold text-[#007a4d] uppercase tracking-[0.16em]">Office</div>
+                                <div class="text-xl font-black text-slate-900">Office</div>
+                            </div>
+                            <div class="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Hub</div>
+                        </div>
+                    </div>
+                    <div id="office-hub-grid" class="grid gap-3 md:grid-cols-2">
+                        <button type="button" id="office-open-sales" class="rounded-2xl border border-purple-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openSalesOfficeView()">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-purple-700"><i class="ph-bold ph-briefcase text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Sales Office</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Orders and notes</div>
+                        </button>
+                        <button type="button" id="office-open-inventory" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openInventoryOfficeView()">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-warehouse text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Inventory Office</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Move and approval queue</div>
+                        </button>
+                    </div>
+                    <div id="office-empty-state" class="hidden rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No office modules are available for this login.</div>
                 </div>
 
                 <div id="view-sales-office" class="hidden">
@@ -2845,7 +2907,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 <button type="button" data-footer-view="tasks" class="footer-nav-btn" aria-label="Tasks"><i class="ph-bold ph-clipboard-text"></i><span>Tasks</span></button>
                 <button type="button" data-footer-view="docks" class="footer-nav-btn" aria-label="Docks"><i class="ph-bold ph-truck"></i><span>Docks</span></button>
                 <button type="button" id="footer-request-btn" data-footer-view="request" class="footer-nav-btn hidden" aria-label="Requests"><i class="ph-bold ph-chat-circle-text"></i><span>Reqs</span><span id="footer-request-badge" class="footer-nav-badge hidden">0</span></button>
-                <button type="button" id="footer-chat-btn" data-footer-view="chat" class="footer-nav-btn" aria-label="Chat"><i class="ph-bold ph-chats-circle"></i><span>Chat</span><span id="footer-chat-badge" class="footer-nav-badge hidden">0</span></button>
+                <button type="button" id="footer-communication-btn" data-footer-view="communication" class="footer-nav-btn" aria-label="Communication"><i class="ph-bold ph-chat-circle-dots"></i><span>Comm</span><span id="footer-chat-badge" class="footer-nav-badge hidden">0</span></button>
                 <button type="button" id="footer-walkie-btn" data-footer-view="walkie" class="footer-nav-btn hidden" aria-label="Walkie"><i class="ph-bold ph-radio"></i><span>Walkie</span><span id="footer-walkie-badge" class="footer-nav-badge hidden">0</span></button>
                 <button type="button" id="footer-cart-btn" class="footer-nav-btn hidden" aria-label="Bloom Picker"><i class="ph-bold ph-handbag"></i><span>Bloom</span><span id="footer-cart-badge" class="footer-nav-badge hidden">0</span></button>
             </nav>
@@ -2933,7 +2995,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10415,6 +10477,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return false;
         }
 
+        function openCommunicationPlaceholder(kind = '') {
+            const label = String(kind || '').trim().toLowerCase() === 'email' ? 'Email' : 'Phone';
+            showToast(label, `${label} placeholder is ready for the next build.`, false);
+            return false;
+        }
+
         function logoutFromDrawer() {
             performLogout();
             return false;
@@ -10436,15 +10504,16 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 bindFastInvokeById('drawer-home-btn', 'openDrawerView', ['home'], 'Home');
 bindFastInvokeById('drawer-force-sync-btn', 'forceSyncAndCloseMenu', [], 'Force Data Sync');
 bindFastInvokeById('drawer-enable-push-btn', 'manuallyEnablePushNotifications', [], 'Enable Notifications');
-bindFastInvokeById('drawer-chat-btn', 'openDrawerView', ['chat'], 'Chat');
+bindFastInvokeById('drawer-communication-btn', 'openDrawerView', ['communication'], 'Communication');
 bindFastInvokeById('drawer-walkie-btn', 'openDrawerView', ['walkie'], 'Walkie');
 bindFastInvokeById('drawer-drive-btn', 'openDrawerView', ['drive'], 'Drive Mode');
             bindFastInvokeById('drawer-tasks-btn', 'openDrawerView', ['tasks'], 'My Tasks');
             bindFastInvokeById('drawer-docks-btn', 'openDrawerView', ['docks'], 'Docks');
             bindFastInvokeById('drawer-take-back-btn', 'openDrawerView', ['take-back'], 'Take Back');
             bindFastInvokeById('drawer-av-btn', 'openDrawerView', ['av'], 'AV');
-            bindFastInvokeById('drawer-request-btn', 'openDrawerView', ['request'], 'Requests');
+bindFastInvokeById('drawer-request-btn', 'openDrawerView', ['request'], 'Requests');
 bindFastInvokeById('drawer-reserves-btn', 'openDrawerView', ['reserves'], 'Reserves');
+            bindFastInvokeById('drawer-office-btn', 'openDrawerView', ['office'], 'Office');
             bindFastInvokeById('drawer-sales-office-btn', 'openDrawerSalesOffice', [], 'Sales Office');
             bindFastInvokeById('drawer-moves-btn', 'openDrawerMovesView', [], 'Moves');
             bindFastInvokeById('drawer-reports-btn', 'openDrawerView', ['reports'], 'Reports');
@@ -10460,9 +10529,10 @@ bindFastInvokeById('drawer-reserves-btn', 'openDrawerView', ['reserves'], 'Reser
             bindFastInvokeById('home-tile-take-back', 'switchView', ['take-back'], 'Take Back');
             bindFastInvokeById('home-tile-av', 'switchView', ['av'], 'AV');
 bindFastInvokeById('home-tile-request', 'switchView', ['request'], 'Requests');
-bindFastInvokeById('home-tile-chat', 'switchView', ['chat'], 'Chat');
+bindFastInvokeById('home-tile-communication', 'switchView', ['communication'], 'Communication');
 bindFastInvokeById('home-tile-walkie', 'switchView', ['walkie'], 'Walkie');
 bindFastInvokeById('home-tile-reserves', 'switchView', ['reserves'], 'Reserves');
+            bindFastInvokeById('home-tile-office', 'switchView', ['office'], 'Office');
             bindFastInvokeById('home-tile-sales-office', 'openSalesOfficeView', [], 'Sales Office');
             bindFastInvokeById('home-tile-moves', 'openMovesView', [], 'Moves');
             bindFastInvokeById('home-tile-inventory-office', 'openInventoryOfficeView', [], 'Inventory Office');
@@ -10473,7 +10543,7 @@ bindFastInvokeById('home-tile-reserves', 'switchView', ['reserves'], 'Reserves')
             bindFastInvokeById('home-tile-advertisement', 'switchView', ['advertisement'], 'Advertisement');
 bindFastInvokeById('footer-menu-btn', 'toggleMenu', [], 'Menu');
 bindFastInvokeById('footer-request-btn', 'switchView', ['request'], 'Requests');
-bindFastInvokeById('footer-chat-btn', 'switchView', ['chat'], 'Chat');
+bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 'Communication');
 bindFastInvokeById('footer-walkie-btn', 'switchView', ['walkie'], 'Walkie');
 bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             bindFastInvokeById('custom-rep-btn', 'selectCustomRequestRepFromInput', [], 'Assign custom sales rep');
@@ -13614,7 +13684,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.02').trim() || 'V2026.05.17.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.04').trim() || 'V2026.05.17.04';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -13679,11 +13749,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             reserves: { eyebrow: 'Amazon Search', title: 'Reserves' },
             docks: { eyebrow: 'Amazon Search', title: 'Docks' },
             drive: { eyebrow: 'Amazon Search', title: 'Drive Mode' },
+            communication: { eyebrow: 'Communication', title: 'Communication' },
             request: { eyebrow: 'Amazon Filters', title: 'Requests' },
             tasks: { eyebrow: 'Amazon Filters', title: 'My Tasks' },
             'take-back': { eyebrow: 'Bloom Picker', title: 'Take Back' },
             reports: { eyebrow: 'Amazon Filters', title: 'Reports' },
             'low-stock': { eyebrow: 'Amazon Filters', title: 'NCR' },
+            office: { eyebrow: 'Office', title: 'Office' },
             'sales-office': { eyebrow: 'Amazon Filters', title: 'Sales Office' },
             moves: { eyebrow: 'Inventory Office', title: 'Moves' },
             review: { eyebrow: 'Amazon Filters', title: 'New Crop Release' },
@@ -15635,6 +15707,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             if (viewId === 'docks') return { required: [{ key: 'soc', mode: 'initial' }], background: [{ key: 'soc', mode: 'full' }], label: 'Loading dock rows...' };
             if (viewId === 'request') return { required: [{ key: 'requests', mode: 'initial' }, { key: 'requestHistory', mode: 'initial' }], background: [{ key: 'requests', mode: 'full' }, { key: 'requestHistory', mode: 'full' }], label: 'Loading requests...' };
+            if (viewId === 'communication') return { required: [], background: [], label: 'Loading communication...' };
             if (viewId === 'chat') return { required: [], background: [], label: 'Loading chat...' };
             if (viewId === 'walkie') return { required: [], background: [], label: 'Loading walkie...' };
             if (viewId === 'reserves') {
@@ -15643,6 +15716,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 }
                 return { required: [{ key: 'reserves', mode: 'full' }], background: [], label: 'Loading all reserve rows...' };
             }
+            if (viewId === 'office') return { required: [], background: [], label: 'Loading office...' };
             if (viewId === 'sales-office') return { required: [{ key: 'salesOffice', mode: 'initial' }], background: [{ key: 'salesOffice', mode: 'full' }, { key: 'master', mode: 'initial' }], label: 'Loading sales office...' };
             if (viewId === 'moves') {
                 if (activeMovesTab === 'office') {
@@ -24016,7 +24090,7 @@ function toggleDriveQuickRequestItem(domId) {
             return dockAssignableUsersPromise;
         }
 
-        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','av','request','reserves','sales-office','reports','hours','low-stock','review','move-up','advertisement','diagnostics','grower','pest-management','chat'];
+        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','av','request','reserves','sales-office','office','reports','hours','low-stock','review','move-up','advertisement','diagnostics','grower','pest-management','communication','chat'];
         const ROLE_VIEW_ELEMENT_IDS = Object.freeze({
             drive: ['drawer-drive-btn', 'home-tile-drive'],
             tasks: ['drawer-tasks-btn', 'home-tile-tasks'],
@@ -24025,6 +24099,7 @@ function toggleDriveQuickRequestItem(domId) {
             av: ['drawer-av-btn', 'home-tile-av'],
             request: ['drawer-request-btn', 'home-tile-request', 'footer-request-btn'],
             reserves: ['drawer-reserves-btn', 'home-tile-reserves'],
+            office: ['drawer-office-btn', 'home-tile-office'],
             'sales-office': ['drawer-sales-office-btn', 'home-tile-sales-office'],
             moves: ['drawer-moves-btn', 'home-tile-moves', 'home-tile-inventory-office'],
             reports: ['drawer-reports-btn', 'home-tile-reports'],
@@ -24036,7 +24111,8 @@ function toggleDriveQuickRequestItem(domId) {
             diagnostics: ['drawer-diagnostics-btn', 'home-tile-diagnostics'],
             grower: ['drawer-grower-btn', 'home-tile-grower'],
             'pest-management': ['drawer-pest-management-btn', 'home-tile-pest-management'],
-            chat: ['drawer-chat-btn', 'home-tile-chat', 'footer-chat-btn'],
+            communication: ['drawer-communication-btn', 'home-tile-communication', 'footer-communication-btn'],
+            chat: [],
             walkie: ['drawer-walkie-btn', 'home-tile-walkie', 'footer-walkie-btn']
         });
 
@@ -24071,23 +24147,27 @@ function toggleDriveQuickRequestItem(domId) {
             if (isTakeBackOnly) {
                 allowedViews.add('take-back');
             } else if (isForeman && !isAdmin) {
-                ['drive', 'take-back', 'chat', 'hours', 'grower'].forEach(viewId => allowedViews.add(viewId));
+                ['drive', 'take-back', 'communication', 'chat', 'hours', 'grower'].forEach(viewId => allowedViews.add(viewId));
             } else if (isGrower && !isAdmin) {
-                ['grower', 'chat'].forEach(viewId => allowedViews.add(viewId));
+                ['grower', 'communication', 'chat'].forEach(viewId => allowedViews.add(viewId));
             } else {
+                allowedViews.add('communication');
                 allowedViews.add('chat');
                 if (!isRep) allowedViews.add('take-back');
             }
             if (isAdmin) {
                 ROLE_ACCESS_VIEWS.forEach(viewId => allowedViews.add(viewId));
             } else if (isRep) {
-                ['av', 'docks', 'request', 'sales-office'].forEach(viewId => allowedViews.add(viewId));
+                ['av', 'docks', 'request', 'sales-office', 'office'].forEach(viewId => allowedViews.add(viewId));
             } else if (isQcSupervisor) {
                 ['drive', 'docks'].forEach(viewId => allowedViews.add(viewId));
             } else if (isQc) {
                 ['docks'].forEach(viewId => allowedViews.add(viewId));
             }
-            if (canUseMovesModule()) allowedViews.add('moves');
+            if (canUseMovesModule()) {
+                allowedViews.add('moves');
+                allowedViews.add('office');
+            }
             return { isAdmin, isRep, isQcSupervisor, isQc, isCsr, isForeman, isGrower, isTakeBackOnly, isRequestRepScopedUser, allowedViews };
         }
 
@@ -27467,7 +27547,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (canAccessView(target)) switchView(target);
         }
 
-        const TRACKED_VIEW_IDS = ['drive','tasks','review','move-up','advertisement','diagnostics','grower','pest-management','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
+        const TRACKED_VIEW_IDS = ['drive','tasks','review','move-up','advertisement','diagnostics','grower','pest-management','communication','office','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
 
         function getAffectedViewsForDatasets(changedKeys = []) {
             const changedSet = new Set((changedKeys || []).filter(Boolean));
@@ -29920,6 +30000,21 @@ function toggleDriveQuickRequestItem(domId) {
             if (shouldRender && typeof renderReserves === 'function') scheduleReservesRender();
         }
 
+        function renderCommunicationHub() {
+            updateFooterChatBadge();
+        }
+
+        function renderOfficeHub() {
+            const salesButton = document.getElementById('office-open-sales');
+            const inventoryButton = document.getElementById('office-open-inventory');
+            const emptyState = document.getElementById('office-empty-state');
+            const canUseSalesOffice = canAccessView('sales-office');
+            const canUseInventoryOffice = canAccessView('moves');
+            if (salesButton) salesButton.classList.toggle('hidden', !canUseSalesOffice);
+            if (inventoryButton) inventoryButton.classList.toggle('hidden', !canUseInventoryOffice);
+            if (emptyState) emptyState.classList.toggle('hidden', canUseSalesOffice || canUseInventoryOffice);
+        }
+
         function renderViewContent(viewId, forceReset = false, forceRender = false) {
             const state = ensureViewRenderState(viewId);
             if (!forceReset && !forceRender && state.initialized && !state.dirty) {
@@ -29959,6 +30054,8 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (viewId === 'request') {
                 if (forceReset || !state.initialized) resetRequestView(false);
                 renderRequest();
+            } else if (viewId === 'communication') {
+                renderCommunicationHub();
             } else if (viewId === 'chat') {
                 renderChat();
             } else if (viewId === 'walkie') {
@@ -29966,6 +30063,8 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (viewId === 'reserves') {
                 if (forceReset || !state.initialized) resetReservesView(false);
                 if (typeof renderReserves === 'function') renderReserves();
+            } else if (viewId === 'office') {
+                renderOfficeHub();
             } else if (viewId === 'sales-office') {
                 renderSalesOffice();
             } else if (viewId === 'moves') {
@@ -30179,8 +30278,9 @@ function toggleDriveQuickRequestItem(domId) {
             document.querySelectorAll('#bottom-nav [data-footer-view]').forEach((button) => {
                 const viewId = String(button.getAttribute('data-footer-view') || '').trim();
                 const isAllowed = canAccessView(viewId);
+                const isCommunicationChildView = viewId === 'communication' && (currentView === 'communication' || currentView === 'chat');
                 button.classList.toggle('hidden', !isAllowed);
-                button.classList.toggle('active', isAllowed && viewId === currentView);
+                button.classList.toggle('active', isAllowed && (viewId === currentView || isCommunicationChildView));
             });
             const menuBtn = document.getElementById('footer-menu-btn');
             const drawer = document.getElementById('side-drawer');
