@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.17.16';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.17.17';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2067,7 +2067,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.16').trim() || 'V2026.05.17.16';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.17').trim() || 'V2026.05.17.17';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -3211,6 +3211,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const GROWER_SCOUT_ASSETS_TABLE = 'v2_grower_scout_assets';
         const SHEAR_LIST_TABLE = 'v2_shear_list';
         const SHEAR_LIST_SELECT_FIELDS = '*';
+        const SPREAD_COUNT_TABLE = 'v2_spread_counts';
+        const SPREAD_COUNT_SELECT_FIELDS = '*';
         const GROWER_SCOUT_AUDIO_BUCKET = 'grower_scout_audio';
         const GROWER_SCOUT_PHOTOS_BUCKET = 'grower_scout_photos';
         const GROWER_SCOUT_FILES_BUCKET = 'grower_scout_files';
@@ -3278,7 +3280,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.16';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.17';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -3321,6 +3323,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             grower: { realtimeTables: [GROWER_SCOUT_REPORTS_TABLE, GROWER_SCOUT_ASSETS_TABLE], pollMs: 'visible-default' },
             'pest-management': { realtimeTables: [GROWER_SCOUT_REPORTS_TABLE, GROWER_SCOUT_ASSETS_TABLE], pollMs: 'visible-default' },
             'shear-list': { realtimeTables: [SHEAR_LIST_TABLE], pollMs: 'visible-default' },
+            'sales-inventory': { realtimeTables: [SPREAD_COUNT_TABLE], pollMs: 'visible-default' },
             sales: { realtimeTables: [], pollMs: 'visible-default' },
             qc: { realtimeTables: [], pollMs: 'visible-default' },
             'low-stock': { realtimeTables: [], pollMs: 'visible-default' },
@@ -4286,6 +4289,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             if (safeTable === 'v2_sales_office') return 'sales-office';
             if (safeTable === 'v2_take_back_queue') return 'take-back';
             if (safeTable === SHEAR_LIST_TABLE) return 'shear-list';
+            if (safeTable === SPREAD_COUNT_TABLE) return 'sales-inventory';
             if (safeTable === FLYER_FOLDER_ROWS_TABLE) return 'tasks';
             if (safeTable === FLYER_FOLDER_HISTORY_TABLE) return 'tasks';
             if (safeTable === ML_IMAGE_JOBS_TABLE) return 'diagnostics';
@@ -9013,6 +9017,19 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 markViewDirty('shear-list');
                 if (isViewVisible('shear-list')) renderShearList();
                 recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'shear-list');
+                return true;
+            }
+
+            if (tableName === SPREAD_COUNT_TABLE) {
+                const rawRow = eventType === 'DELETE' ? (payload.old || {}) : (payload.new || {});
+                const uniqueId = String(firstNonEmptyValue(rawRow.unique_id, rawRow.UNIQUE_ID, '')).trim();
+                if (!uniqueId) return false;
+                if (eventType === 'DELETE') removeSpreadCountRecordFromCache(uniqueId);
+                else cacheSpreadCountRecord(rawRow);
+                spreadCountState.loaded = true;
+                markViewDirty('sales-inventory');
+                if (isViewVisible('sales-inventory')) renderProductionInventoryCountingContent();
+                recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'spread-count');
                 return true;
             }
 
@@ -14197,7 +14214,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.16').trim() || 'V2026.05.17.16';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.17').trim() || 'V2026.05.17.17';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -30745,10 +30762,610 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
+        const SPREAD_COUNT_DIRECTIONS = [
+            { key: 'north_south', label: 'North -> South', shortLabel: 'N -> S' },
+            { key: 'south_north', label: 'South -> North', shortLabel: 'S -> N' },
+            { key: 'east_west', label: 'East -> West', shortLabel: 'E -> W' },
+            { key: 'west_east', label: 'West -> East', shortLabel: 'W -> E' }
+        ];
+
+        let spreadCountState = {
+            loaded: false,
+            loading: false,
+            error: '',
+            lastLoadedAt: 0,
+            promise: null,
+            rows: [],
+            recordsByUniqueId: new Map(),
+            recordsBySourceUid: new Map(),
+            drillLevel: 'blocks',
+            selectedBlock: '',
+            selectedLocation: '',
+            directionByLocation: Object.create(null),
+            orderByLocation: Object.create(null),
+            draftCountsBySourceUid: Object.create(null)
+        };
+
+        function getSpreadCountValue(row = null, field = '', fallback = '') {
+            if (!row || !field) return fallback;
+            const lowerField = String(field || '').trim().toLowerCase();
+            const upperField = lowerField.toUpperCase();
+            return firstNonEmptyValue(row[lowerField], row[upperField], fallback);
+        }
+
+        function getSpreadCountDisplayValue(value = '', fallback = '-') {
+            const text = String(value == null ? '' : value).trim();
+            return text || fallback;
+        }
+
+        function getSpreadCountNumber(value = null, fallback = null) {
+            const parsed = parseAppNumber(value);
+            return parsed === null || !Number.isFinite(parsed) ? fallback : parsed;
+        }
+
+        function getSpreadCountSourceUid(row = null) {
+            return String(firstNonEmptyValue(
+                row && row.SOURCE_UNIQUE_ID,
+                row && row.source_unique_id,
+                row && row.MASTER_UNIQUE_ID,
+                row && row.master_unique_id,
+                row && row.UNIQUE_ID,
+                row && row.unique_id,
+                row && row.DOM_ID,
+                ''
+            ) || '').trim();
+        }
+
+        function buildSpreadCountUniqueId(row = null) {
+            const sourceUid = getSpreadCountSourceUid(row);
+            if (!sourceUid) return '';
+            return `spread-count-${sourceUid}`.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+        }
+
+        function getSpreadCountRecordId(row = null) {
+            return String(getSpreadCountValue(row, 'unique_id', '') || '').trim();
+        }
+
+        function getSpreadCountLocationKey(block = '', location = '') {
+            return `${String(block || '').trim().toLowerCase()}::${String(location || '').trim().toLowerCase()}`;
+        }
+
+        function rebuildSpreadCountIndexes() {
+            const byUniqueId = new Map();
+            const bySourceUid = new Map();
+            (spreadCountState.rows || []).forEach((row) => {
+                const uniqueId = getSpreadCountRecordId(row);
+                const sourceUid = String(getSpreadCountValue(row, 'source_unique_id', '') || '').trim();
+                if (uniqueId) byUniqueId.set(uniqueId, row);
+                if (sourceUid) bySourceUid.set(sourceUid, row);
+            });
+            spreadCountState.recordsByUniqueId = byUniqueId;
+            spreadCountState.recordsBySourceUid = bySourceUid;
+        }
+
+        function cacheSpreadCountRecord(row = null) {
+            if (!row || typeof row !== 'object') return false;
+            const uniqueId = getSpreadCountRecordId(row);
+            if (!uniqueId) return false;
+            const nextRows = Array.isArray(spreadCountState.rows) ? spreadCountState.rows : [];
+            const index = nextRows.findIndex((existing) => getSpreadCountRecordId(existing) === uniqueId);
+            if (index === -1) spreadCountState.rows = [row, ...nextRows];
+            else spreadCountState.rows = nextRows.map((existing, rowIndex) => rowIndex === index ? Object.assign({}, existing, row) : existing);
+            rebuildSpreadCountIndexes();
+            return true;
+        }
+
+        function removeSpreadCountRecordFromCache(uniqueId = '') {
+            const safeId = String(uniqueId || '').trim();
+            if (!safeId) return false;
+            const previousLength = spreadCountState.rows.length;
+            spreadCountState.rows = (spreadCountState.rows || []).filter((row) => getSpreadCountRecordId(row) !== safeId);
+            rebuildSpreadCountIndexes();
+            return spreadCountState.rows.length !== previousLength;
+        }
+
+        async function loadSpreadCountData(force = false) {
+            const staleMs = 3 * 60 * 1000;
+            if (!force && spreadCountState.loaded && (Date.now() - spreadCountState.lastLoadedAt) < staleMs) return spreadCountState;
+            if (spreadCountState.promise && !force) return spreadCountState.promise;
+            spreadCountState.loading = true;
+            spreadCountState.error = '';
+            spreadCountState.promise = (async () => {
+                const rows = await supabaseFetch(SPREAD_COUNT_TABLE, 'GET', null, `select=${SPREAD_COUNT_SELECT_FIELDS}&order=blockalpha.asc,locationcode.asc,row_order.asc,updated_at.desc`);
+                spreadCountState.rows = Array.isArray(rows) ? rows : [];
+                rebuildSpreadCountIndexes();
+                spreadCountState.loaded = true;
+                spreadCountState.lastLoadedAt = Date.now();
+                return spreadCountState;
+            })().catch((error) => {
+                spreadCountState.error = error && error.message ? error.message : 'Spread Count rows could not load.';
+                spreadCountState.loaded = true;
+                rebuildSpreadCountIndexes();
+                return spreadCountState;
+            }).finally(() => {
+                spreadCountState.loading = false;
+                spreadCountState.promise = null;
+            });
+            return spreadCountState.promise;
+        }
+
+        function ensureSpreadCountInventoryData() {
+            const fullLoaded = typeof isDatasetLoaded === 'function' ? isDatasetLoaded('master', 'full') : (Array.isArray(fullInventory) && fullInventory.length > 0);
+            if (!fullLoaded && typeof loadDatasetTargetsWithLimit === 'function') {
+                loadDatasetTargetsWithLimit([{ key: 'master', mode: 'full' }], {
+                    interruptible: true,
+                    requeueOnInteraction: true,
+                    preserveRequestedMode: true,
+                    retryReason: 'spread-count-master-load'
+                }, 1).then(() => {
+                    if (isViewVisible('sales-inventory') && productionInventoryCountingTab === 'spread') renderProductionInventoryCountingContent();
+                }).catch(() => {});
+            }
+            if (!spreadCountState.loaded && !spreadCountState.loading) {
+                loadSpreadCountData(false).then(() => {
+                    if (isViewVisible('sales-inventory') && productionInventoryCountingTab === 'spread') renderProductionInventoryCountingContent();
+                }).catch(() => {});
+            }
+            return fullLoaded;
+        }
+
+        function getSpreadCountBlockValue(row = null) {
+            return getSpreadCountDisplayValue(getSpreadCountValue(row, 'blockalpha', ''), 'No Block');
+        }
+
+        function getSpreadCountLocationValue(row = null) {
+            return getSpreadCountDisplayValue(getSpreadCountValue(row, 'locationcode', ''), 'No Location');
+        }
+
+        function getSpreadCountSourceRows() {
+            const rows = Array.isArray(fullInventory) ? fullInventory : [];
+            const seen = new Set();
+            return rows.filter((row) => {
+                if (!row || typeof row !== 'object') return false;
+                const sourceUid = getSpreadCountSourceUid(row);
+                if (!sourceUid || seen.has(sourceUid)) return false;
+                seen.add(sourceUid);
+                return !!String(firstNonEmptyValue(
+                    row.COMMONNAME,
+                    row.commonname,
+                    row.ITEMCODE,
+                    row.itemcode,
+                    row.LOCATIONCODE,
+                    row.locationcode,
+                    ''
+                ) || '').trim();
+            });
+        }
+
+        function groupSpreadCountRows(rows = [], keyGetter = null, labelGetter = null) {
+            const groups = new Map();
+            (rows || []).forEach((row) => {
+                const key = String(keyGetter ? keyGetter(row) : '').trim() || 'Unknown';
+                const label = String(labelGetter ? labelGetter(row) : key).trim() || key;
+                if (!groups.has(key)) groups.set(key, { key, label, rows: [], locations: new Set(), count: 0 });
+                const group = groups.get(key);
+                group.rows.push(row);
+                group.locations.add(getSpreadCountLocationValue(row));
+                group.count += 1;
+            });
+            return Array.from(groups.values()).sort((left, right) => left.label.localeCompare(right.label, undefined, { numeric: true, sensitivity: 'base' }));
+        }
+
+        function getSpreadCountRowsForSelectedLocation() {
+            const block = String(spreadCountState.selectedBlock || '').trim();
+            const location = String(spreadCountState.selectedLocation || '').trim();
+            return getSpreadCountSourceRows().filter((row) => getSpreadCountBlockValue(row) === block && getSpreadCountLocationValue(row) === location);
+        }
+
+        function getSpreadCountRecordForSourceUid(sourceUid = '') {
+            const safeUid = String(sourceUid || '').trim();
+            return safeUid ? (spreadCountState.recordsBySourceUid.get(safeUid) || null) : null;
+        }
+
+        function getSpreadCountDirectionMeta(direction = '') {
+            const safeDirection = String(direction || '').trim();
+            return SPREAD_COUNT_DIRECTIONS.find((item) => item.key === safeDirection) || SPREAD_COUNT_DIRECTIONS[0];
+        }
+
+        function getSpreadCountDirectionForLocation(block = spreadCountState.selectedBlock, location = spreadCountState.selectedLocation) {
+            const locationKey = getSpreadCountLocationKey(block, location);
+            if (spreadCountState.directionByLocation[locationKey]) return spreadCountState.directionByLocation[locationKey];
+            const counts = new Map();
+            getSpreadCountRowsForSelectedLocation().forEach((row) => {
+                const record = getSpreadCountRecordForSourceUid(getSpreadCountSourceUid(row));
+                const direction = String(getSpreadCountValue(record, 'direction', '') || '').trim();
+                if (!direction) return;
+                counts.set(direction, (counts.get(direction) || 0) + 1);
+            });
+            const best = Array.from(counts.entries()).sort((left, right) => right[1] - left[1])[0];
+            return best ? best[0] : 'north_south';
+        }
+
+        function getSpreadCountDefaultSortedRows(rows = []) {
+            return (rows || []).slice().sort((left, right) => {
+                const locDiff = getSpreadCountLocationValue(left).localeCompare(getSpreadCountLocationValue(right), undefined, { numeric: true, sensitivity: 'base' });
+                if (locDiff) return locDiff;
+                const commonDiff = String(firstNonEmptyValue(left.COMMONNAME, left.commonname, '') || '').localeCompare(String(firstNonEmptyValue(right.COMMONNAME, right.commonname, '') || ''), undefined, { numeric: true, sensitivity: 'base' });
+                if (commonDiff) return commonDiff;
+                const lotDiff = String(firstNonEmptyValue(left.LOTCODE, left.lotcode, '') || '').localeCompare(String(firstNonEmptyValue(right.LOTCODE, right.lotcode, '') || ''), undefined, { numeric: true, sensitivity: 'base' });
+                if (lotDiff) return lotDiff;
+                return String(firstNonEmptyValue(left.ITEMCODE, left.itemcode, '') || '').localeCompare(String(firstNonEmptyValue(right.ITEMCODE, right.itemcode, '') || ''), undefined, { numeric: true, sensitivity: 'base' });
+            });
+        }
+
+        function ensureSpreadCountOrderForLocation(rows = []) {
+            const locationKey = getSpreadCountLocationKey(spreadCountState.selectedBlock, spreadCountState.selectedLocation);
+            const validIds = new Set((rows || []).map((row) => getSpreadCountSourceUid(row)).filter(Boolean));
+            const savedOrder = (rows || [])
+                .map((row) => {
+                    const sourceUid = getSpreadCountSourceUid(row);
+                    const record = getSpreadCountRecordForSourceUid(sourceUid);
+                    const order = getSpreadCountNumber(getSpreadCountValue(record, 'row_order', null), null);
+                    return { sourceUid, order };
+                })
+                .filter((entry) => entry.sourceUid && entry.order !== null)
+                .sort((left, right) => left.order - right.order)
+                .map((entry) => entry.sourceUid);
+            const existingOrder = Array.isArray(spreadCountState.orderByLocation[locationKey]) ? spreadCountState.orderByLocation[locationKey] : [];
+            const merged = [];
+            [...existingOrder, ...savedOrder, ...getSpreadCountDefaultSortedRows(rows).map((row) => getSpreadCountSourceUid(row))].forEach((sourceUid) => {
+                if (!sourceUid || !validIds.has(sourceUid) || merged.includes(sourceUid)) return;
+                merged.push(sourceUid);
+            });
+            spreadCountState.orderByLocation[locationKey] = merged;
+            return merged;
+        }
+
+        function getSpreadCountOrderedRows(rows = []) {
+            const safeRows = getSpreadCountDefaultSortedRows(rows);
+            const byUid = new Map(safeRows.map((row) => [getSpreadCountSourceUid(row), row]));
+            const order = ensureSpreadCountOrderForLocation(safeRows);
+            const ordered = order.map((sourceUid) => byUid.get(sourceUid)).filter(Boolean);
+            safeRows.forEach((row) => {
+                if (!ordered.includes(row)) ordered.push(row);
+            });
+            return ordered;
+        }
+
+        function setSpreadCountDrill(level = 'blocks', block = '', location = '') {
+            spreadCountState.drillLevel = ['blocks', 'locations', 'rows'].includes(level) ? level : 'blocks';
+            spreadCountState.selectedBlock = String(block || '').trim();
+            spreadCountState.selectedLocation = String(location || '').trim();
+            renderProductionInventoryCountingContent();
+            return false;
+        }
+
+        function openSpreadCountBlock(block = '') {
+            return setSpreadCountDrill('locations', block, '');
+        }
+
+        function openSpreadCountLocation(block = '', location = '') {
+            return setSpreadCountDrill('rows', block || spreadCountState.selectedBlock, location);
+        }
+
+        function backSpreadCountDrill() {
+            if (spreadCountState.drillLevel === 'rows') return setSpreadCountDrill('locations', spreadCountState.selectedBlock, '');
+            if (spreadCountState.drillLevel === 'locations') return setSpreadCountDrill('blocks', '', '');
+            return false;
+        }
+
+        function setSpreadCountDirection(direction = '') {
+            const safeDirection = getSpreadCountDirectionMeta(direction).key;
+            const locationKey = getSpreadCountLocationKey(spreadCountState.selectedBlock, spreadCountState.selectedLocation);
+            spreadCountState.directionByLocation[locationKey] = safeDirection;
+            renderProductionInventoryCountingContent();
+            return false;
+        }
+
+        function setSpreadCountDraft(sourceUid = '', value = '') {
+            const safeUid = String(sourceUid || '').trim();
+            if (!safeUid) return false;
+            spreadCountState.draftCountsBySourceUid[safeUid] = String(value == null ? '' : value);
+            return true;
+        }
+
+        function getSpreadCountInputValue(sourceUid = '') {
+            const safeUid = String(sourceUid || '').trim();
+            if (safeUid && Object.prototype.hasOwnProperty.call(spreadCountState.draftCountsBySourceUid, safeUid)) {
+                return spreadCountState.draftCountsBySourceUid[safeUid];
+            }
+            const record = getSpreadCountRecordForSourceUid(safeUid);
+            const value = getSpreadCountValue(record, 'counted_qty', '');
+            return value === null || value === undefined ? '' : String(value);
+        }
+
+        function findSpreadCountInput(sourceUid = '') {
+            const safeUid = String(sourceUid || '').trim();
+            if (!safeUid) return null;
+            return Array.from(document.querySelectorAll('.spread-count-input'))
+                .find((input) => String(input && input.dataset ? input.dataset.sourceUid || '' : '').trim() === safeUid) || null;
+        }
+
+        function moveSpreadCountRow(sourceUid = '', delta = 0) {
+            const safeUid = String(sourceUid || '').trim();
+            const change = Number(delta) || 0;
+            if (!safeUid || !change) return false;
+            const rows = getSpreadCountRowsForSelectedLocation();
+            const order = ensureSpreadCountOrderForLocation(rows).slice();
+            const index = order.indexOf(safeUid);
+            const nextIndex = Math.max(0, Math.min(order.length - 1, index + change));
+            if (index === -1 || index === nextIndex) return false;
+            order.splice(index, 1);
+            order.splice(nextIndex, 0, safeUid);
+            spreadCountState.orderByLocation[getSpreadCountLocationKey(spreadCountState.selectedBlock, spreadCountState.selectedLocation)] = order;
+            renderProductionInventoryCountingContent();
+            return false;
+        }
+
+        function buildSpreadCountSnapshot(row = null) {
+            const fields = ['UNIQUE_ID','ITEMCODE','COMMONNAME','GENUS','CONTSIZE','LOCATIONCODE','LOTCODE','SEASON','BLOCKALPHA','SOURCE'];
+            const snapshot = {};
+            fields.forEach((field) => {
+                const value = firstNonEmptyValue(row && row[field], row && row[field.toLowerCase()], '');
+                if (value !== '') snapshot[field.toLowerCase()] = value;
+            });
+            return snapshot;
+        }
+
+        function buildSpreadCountPayload(row = null, countValue = '', rowOrder = 0, direction = '') {
+            if (!row) return null;
+            const sourceUid = getSpreadCountSourceUid(row);
+            const uniqueId = buildSpreadCountUniqueId(row);
+            if (!sourceUid || !uniqueId) return null;
+            const textValue = String(countValue == null ? '' : countValue).trim();
+            const countedQty = textValue === '' ? null : getSpreadCountNumber(textValue, null);
+            if (textValue !== '' && countedQty === null) return null;
+            const now = new Date().toISOString();
+            return {
+                unique_id: uniqueId,
+                source_unique_id: sourceUid,
+                itemcode: firstNonEmptyValue(row.ITEMCODE, row.itemcode, ''),
+                commonname: firstNonEmptyValue(row.COMMONNAME, row.commonname, ''),
+                genus: firstNonEmptyValue(row.GENUS, row.genus, ''),
+                contsize: firstNonEmptyValue(row.CONTSIZE, row.contsize, ''),
+                locationcode: firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, ''),
+                lotcode: firstNonEmptyValue(row.LOTCODE, row.lotcode, ''),
+                season: firstNonEmptyValue(row.SEASON, row.season, ''),
+                blockalpha: firstNonEmptyValue(row.BLOCKALPHA, row.blockalpha, ''),
+                direction: getSpreadCountDirectionMeta(direction).key,
+                row_order: Math.max(1, Number(rowOrder) || 1),
+                counted_qty: countedQty,
+                counted_by_username: currentUser || '',
+                counted_by_display: currentUserDisplay || currentUser || '',
+                counted_at: now,
+                updated_by_username: currentUser || '',
+                updated_by_display: currentUserDisplay || currentUser || '',
+                updated_at: now,
+                snapshot: buildSpreadCountSnapshot(row)
+            };
+        }
+
+        async function saveSpreadCountRow(sourceUid = '', button = null) {
+            const safeUid = String(sourceUid || '').trim();
+            const rows = getSpreadCountOrderedRows(getSpreadCountRowsForSelectedLocation());
+            const rowIndex = rows.findIndex((row) => getSpreadCountSourceUid(row) === safeUid);
+            const row = rowIndex >= 0 ? rows[rowIndex] : null;
+            if (!row) {
+                showToast('Missing Row', 'That Spread Count row is not loaded anymore.', true);
+                return false;
+            }
+            const input = findSpreadCountInput(safeUid);
+            const value = input ? input.value : getSpreadCountInputValue(safeUid);
+            setSpreadCountDraft(safeUid, value);
+            const direction = getSpreadCountDirectionForLocation();
+            const payload = buildSpreadCountPayload(row, value, rowIndex + 1, direction);
+            if (!payload) {
+                showToast('Check Count', 'Enter a valid counted number before saving.', true);
+                return false;
+            }
+            if (button) {
+                button.disabled = true;
+                button.innerText = 'SAVING...';
+            }
+            try {
+                await supabaseFetch(SPREAD_COUNT_TABLE, 'POST', payload, 'on_conflict=unique_id');
+                cacheSpreadCountRecord(payload);
+                markViewDirty('sales-inventory');
+                showToast('Saved', 'Spread Count row saved.');
+                renderProductionInventoryCountingContent();
+            } catch (error) {
+                showToast('Error', error && error.message ? error.message : 'Could not save Spread Count.', true);
+                if (button) {
+                    button.disabled = false;
+                    button.innerText = 'Save Count';
+                }
+            }
+            return false;
+        }
+
+        async function saveVisibleSpreadCountRows(button = null) {
+            const rows = getSpreadCountOrderedRows(getSpreadCountRowsForSelectedLocation());
+            const direction = getSpreadCountDirectionForLocation();
+            const payloads = rows.map((row, index) => {
+                const sourceUid = getSpreadCountSourceUid(row);
+                const input = findSpreadCountInput(sourceUid);
+                const value = input ? input.value : getSpreadCountInputValue(sourceUid);
+                setSpreadCountDraft(sourceUid, value);
+                const existing = getSpreadCountRecordForSourceUid(sourceUid);
+                if (String(value || '').trim() === '' && !existing) return null;
+                return buildSpreadCountPayload(row, value, index + 1, direction);
+            }).filter(Boolean);
+            if (!payloads.length) {
+                showToast('No Counts', 'Enter at least one count before saving this location.', true);
+                return false;
+            }
+            if (button) {
+                button.disabled = true;
+                button.innerText = 'SAVING...';
+            }
+            try {
+                await supabaseFetch(SPREAD_COUNT_TABLE, 'POST', payloads, 'on_conflict=unique_id');
+                payloads.forEach(cacheSpreadCountRecord);
+                markViewDirty('sales-inventory');
+                showToast('Saved', 'Spread Count location saved.');
+                renderProductionInventoryCountingContent();
+            } catch (error) {
+                showToast('Error', error && error.message ? error.message : 'Could not save Spread Count location.', true);
+                if (button) {
+                    button.disabled = false;
+                    button.innerText = 'Save Location';
+                }
+            }
+            return false;
+        }
+
+        function refreshSpreadCountData() {
+            spreadCountState.loaded = false;
+            spreadCountState.error = '';
+            loadSpreadCountData(true).then(() => {
+                if (isViewVisible('sales-inventory')) renderProductionInventoryCountingContent();
+            }).catch(() => {});
+            if (typeof loadDatasetTargetsWithLimit === 'function') {
+                loadDatasetTargetsWithLimit([{ key: 'master', mode: 'full' }], { force: true, preserveRequestedMode: true, retryReason: 'spread-count-refresh' }, 1)
+                    .then(() => { if (isViewVisible('sales-inventory')) renderProductionInventoryCountingContent(); })
+                    .catch(() => {});
+            }
+            renderProductionInventoryCountingContent();
+            return false;
+        }
+
+        function renderSpreadCountDirectionControls() {
+            const activeDirection = getSpreadCountDirectionForLocation();
+            return `<div class="grid grid-cols-2 gap-2 md:grid-cols-4">
+                ${SPREAD_COUNT_DIRECTIONS.map((direction) => {
+                    const active = direction.key === activeDirection;
+                    return `<button type="button" class="rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] shadow-sm active:scale-95 ${active ? 'border-[#007a4d] bg-[#007a4d] text-white' : 'border-green-200 bg-white text-[#007a4d]'}" onclick="return setSpreadCountDirection('${escJsAttrValue(direction.key)}')">${escapeHtml(direction.label)}</button>`;
+                }).join('')}
+            </div>`;
+        }
+
+        function renderSpreadCountRowCard(row = null, index = 0, total = 0) {
+            const sourceUid = getSpreadCountSourceUid(row);
+            const sourceArg = escJsAttrValue(sourceUid);
+            const commonName = firstNonEmptyValue(row && row.COMMONNAME, row && row.commonname, 'Unknown');
+            const contSize = firstNonEmptyValue(row && row.CONTSIZE, row && row.contsize, '-');
+            const itemCode = firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, '-');
+            const lotCode = firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, '-');
+            const locationCode = firstNonEmptyValue(row && row.LOCATIONCODE, row && row.locationcode, '-');
+            const season = firstNonEmptyValue(row && row.SEASON, row && row.season, '-');
+            const countValue = getSpreadCountInputValue(sourceUid);
+            const record = getSpreadCountRecordForSourceUid(sourceUid);
+            const savedBy = getSpreadCountValue(record, 'counted_by_display', getSpreadCountValue(record, 'counted_by_username', ''));
+            const savedAt = formatWeatherHoldDate(getSpreadCountValue(record, 'counted_at', ''));
+            const savedHtml = savedBy
+                ? `<div class="mt-2 text-[10px] font-bold uppercase tracking-[0.10em] text-slate-400">Saved by ${escapeHtml(savedBy)}${savedAt !== '-' ? ` | ${escapeHtml(savedAt)}` : ''}</div>`
+                : '';
+            return `<div class="rounded-2xl border border-[#007a4d] bg-white p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Plant Order ${index + 1}</div>
+                        <div class="mt-1 text-lg font-black leading-tight text-slate-900">${escapeHtml(commonName)}</div>
+                        <div class="mt-1 text-[12px] font-bold text-slate-500">${escapeHtml(contSize)} | ${escapeHtml(season)}</div>
+                    </div>
+                    <div class="flex shrink-0 gap-1">
+                        <button type="button" class="h-10 w-10 rounded-xl border border-green-200 bg-white text-[#007a4d] disabled:opacity-30" ${index <= 0 ? 'disabled' : ''} onclick="return moveSpreadCountRow('${sourceArg}', -1)" aria-label="Move row up"><i class="ph-bold ph-arrow-up"></i></button>
+                        <button type="button" class="h-10 w-10 rounded-xl border border-green-200 bg-white text-[#007a4d] disabled:opacity-30" ${index >= total - 1 ? 'disabled' : ''} onclick="return moveSpreadCountRow('${sourceArg}', 1)" aria-label="Move row down"><i class="ph-bold ph-arrow-down"></i></button>
+                    </div>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">
+                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">Item ${escapeHtml(itemCode)}</span>
+                    <span class="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">Lot ${escapeHtml(lotCode)}</span>
+                    <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">Loc ${escapeHtml(locationCode)}</span>
+                </div>
+                <label class="mt-4 block">
+                    <span class="block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Counted Number</span>
+                    <input type="number" min="0" step="1" inputmode="numeric" class="spread-count-input mt-1 w-full rounded-xl border border-green-200 bg-white px-3 py-3 text-lg font-black text-slate-900 outline-none focus:border-[#007a4d]" data-source-uid="${escapeHtml(sourceUid)}" value="${escapeHtml(countValue)}" placeholder="Enter count" oninput="return setSpreadCountDraft('${sourceArg}', this.value)">
+                </label>
+                ${savedHtml}
+                <button type="button" class="mt-4 w-full rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="return saveSpreadCountRow('${sourceArg}', this)">Save Count</button>
+            </div>`;
+        }
+
+        function renderSpreadCountContent(container) {
+            const hasFullInventory = ensureSpreadCountInventoryData();
+            const sourceRows = getSpreadCountSourceRows();
+            const loadingNotice = !hasFullInventory
+                ? '<div class="mb-3 rounded-xl border border-sky-100 bg-sky-50 px-3 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-sky-700">Loading all Drive Mode rows for Spread Count...</div>'
+                : '';
+            const savingNotice = spreadCountState.loading
+                ? '<div class="mb-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Loading saved counts...</div>'
+                : '';
+            const errorNotice = spreadCountState.error
+                ? `<div class="mb-3 rounded-xl border border-red-100 bg-red-50 px-3 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-red-700">${escapeHtml(spreadCountState.error)}</div>`
+                : '';
+            const baseHeader = `<div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex min-w-0 items-center gap-3">
+                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-arrows-left-right text-2xl"></i></div>
+                    <div class="min-w-0">
+                        <div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Counting</div>
+                        <div class="text-lg font-black text-slate-900">Spread Count</div>
+                    </div>
+                </div>
+                <button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return refreshSpreadCountData()"><i class="ph-bold ph-arrows-clockwise align-middle"></i><span class="ml-1 align-middle">Refresh</span></button>
+            </div>`;
+            if (!sourceRows.length) {
+                setContainerHtml(container, `${baseHeader}${loadingNotice}${savingNotice}${errorNotice}<div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center text-sm font-bold text-slate-400">${hasFullInventory ? 'No Drive Mode rows are available for Spread Count.' : 'Drive Mode rows are loading.'}</div>`);
+                return;
+            }
+            const crumbParts = ['Spread Count'];
+            if (spreadCountState.selectedBlock) crumbParts.push(`Block ${spreadCountState.selectedBlock}`);
+            if (spreadCountState.selectedLocation) crumbParts.push(spreadCountState.selectedLocation);
+            const backHtml = spreadCountState.drillLevel !== 'blocks'
+                ? `<button type="button" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-95" onclick="return backSpreadCountDrill()"><i class="ph-bold ph-caret-left text-base align-middle"></i><span class="ml-1 align-middle">Back</span></button>`
+                : '';
+            let bodyHtml = '';
+            if (spreadCountState.drillLevel === 'blocks') {
+                const groups = groupSpreadCountRows(sourceRows, getSpreadCountBlockValue, getSpreadCountBlockValue);
+                bodyHtml = `<div class="space-y-2">${groups.map((group) => `<button type="button" class="drill-item w-full rounded-2xl border border-[#007a4d] bg-white p-4 text-left shadow-sm" onclick="return openSpreadCountBlock('${escJsAttrValue(group.key)}')">
+                    <span class="min-w-0">
+                        <span class="block text-lg font-black text-slate-900">Block ${escapeHtml(group.label)}</span>
+                        <span class="mt-1 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">${group.rows.length} row${group.rows.length === 1 ? '' : 's'} | ${group.locations.size} location${group.locations.size === 1 ? '' : 's'}</span>
+                    </span>
+                    <i class="ph-bold ph-caret-right text-slate-300"></i>
+                </button>`).join('')}</div>`;
+            } else if (spreadCountState.drillLevel === 'locations') {
+                const rows = sourceRows.filter((row) => getSpreadCountBlockValue(row) === spreadCountState.selectedBlock);
+                const groups = groupSpreadCountRows(rows, getSpreadCountLocationValue, getSpreadCountLocationValue);
+                bodyHtml = groups.length
+                    ? `<div class="space-y-2">${groups.map((group) => `<button type="button" class="drill-item w-full rounded-2xl border border-[#007a4d] bg-white p-4 text-left shadow-sm" onclick="return openSpreadCountLocation('${escJsAttrValue(spreadCountState.selectedBlock)}', '${escJsAttrValue(group.key)}')">
+                        <span class="min-w-0">
+                            <span class="block text-lg font-black text-slate-900">Loc ${escapeHtml(group.label)}</span>
+                            <span class="mt-1 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">${group.rows.length} row${group.rows.length === 1 ? '' : 's'}</span>
+                        </span>
+                        <i class="ph-bold ph-caret-right text-slate-300"></i>
+                    </button>`).join('')}</div>`
+                    : '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center text-sm font-bold text-slate-400">No locations found for this block.</div>';
+            } else {
+                const rows = getSpreadCountOrderedRows(getSpreadCountRowsForSelectedLocation());
+                const directionMeta = getSpreadCountDirectionMeta(getSpreadCountDirectionForLocation());
+                bodyHtml = `<div class="space-y-3">
+                    <div class="rounded-2xl border border-green-200 bg-emerald-50/60 p-3">
+                        <div class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Walking Direction | ${escapeHtml(directionMeta.label)}</div>
+                        ${renderSpreadCountDirectionControls()}
+                    </div>
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">${rows.length} row${rows.length === 1 ? '' : 's'} in plant order</div>
+                        <button type="button" class="rounded-xl bg-[#007a4d] px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="return saveVisibleSpreadCountRows(this)">Save Location</button>
+                    </div>
+                    ${rows.length ? rows.map((row, index) => renderSpreadCountRowCard(row, index, rows.length)).join('') : '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center text-sm font-bold text-slate-400">No rows found for this location.</div>'}
+                </div>`;
+            }
+            setContainerHtml(container, `${baseHeader}
+                <div class="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-green-100 pt-3">
+                    <div class="rounded-full border border-green-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">${escapeHtml(crumbParts.join(' > '))}</div>
+                    ${backHtml}
+                </div>
+                <div class="mt-3">${loadingNotice}${savingNotice}${errorNotice}${bodyHtml}</div>`);
+        }
+
         function renderProductionInventoryCountingContent() {
             const container = document.getElementById('production-inventory-counting-content');
             if (!container) return;
             const isSpread = productionInventoryCountingTab === 'spread';
+            if (isSpread) {
+                renderSpreadCountContent(container);
+                return;
+            }
             const title = isSpread ? 'Spread Count' : 'Bunch Count';
             const icon = isSpread ? 'ph-arrows-left-right' : 'ph-plant';
             setContainerHtml(container, `<div class="flex items-center gap-3">
