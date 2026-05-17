@@ -21,6 +21,7 @@ create table if not exists public.v2_weather_hourly (
   relative_humidity numeric,
   precipitation_in numeric,
   wind_speed_mph numeric,
+  wind_direction_deg numeric,
   gdd_base_50 numeric not null default 0,
   chill_hours numeric not null default 0,
   source text not null default 'open-meteo',
@@ -32,6 +33,32 @@ create table if not exists public.v2_weather_hourly (
 
 create index if not exists idx_v2_weather_hourly_station_time
   on public.v2_weather_hourly (station_key, observed_at desc);
+
+alter table public.v2_weather_hourly
+  add column if not exists wind_direction_deg numeric;
+
+create table if not exists public.v2_weather_daily (
+  unique_id text primary key,
+  station_key text not null default 'park_hill_ok',
+  latitude numeric,
+  longitude numeric,
+  timezone text not null default 'America/Chicago',
+  date date not null,
+  temperature_high_f numeric,
+  temperature_low_f numeric,
+  daily_gdd_base_50 numeric not null default 0,
+  precipitation_in numeric,
+  wind_speed_mph numeric,
+  wind_direction_deg numeric,
+  source text not null default 'open-meteo',
+  raw jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint v2_weather_daily_station_date_unique unique (station_key, date)
+);
+
+create index if not exists idx_v2_weather_daily_station_date
+  on public.v2_weather_daily (station_key, date desc);
 
 create table if not exists public.v2_hold_learning_events (
   unique_id text primary key,
@@ -69,6 +96,9 @@ create table if not exists public.v2_hold_learning_events (
   avg_temperature_f_14d numeric,
   avg_temperature_f_30d numeric,
   weather_features_refreshed_at timestamptz,
+  released_on date,
+  gdd_base_50_to_release numeric,
+  hold_days integer,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -91,8 +121,78 @@ create table if not exists public.v2_hold_learning_profiles (
   avg_chill_hours_season numeric,
   avg_precipitation_in_30d numeric,
   avg_temperature_f_30d numeric,
+  release_sample_count integer not null default 0,
+  avg_gdd_base_50_to_release numeric,
+  median_gdd_base_50_to_release numeric,
+  avg_days_to_release numeric,
   updated_at timestamptz not null default now()
 );
+
+alter table public.v2_hold_learning_events
+  add column if not exists released_on date,
+  add column if not exists gdd_base_50_to_release numeric,
+  add column if not exists hold_days integer;
+
+alter table public.v2_hold_learning_profiles
+  add column if not exists release_sample_count integer not null default 0,
+  add column if not exists avg_gdd_base_50_to_release numeric,
+  add column if not exists median_gdd_base_50_to_release numeric,
+  add column if not exists avg_days_to_release numeric;
+
+create table if not exists public.v2_drive_around_report_files (
+  file_id text primary key,
+  file_name text not null,
+  mime_type text,
+  report_date date,
+  drive_modified_time timestamptz,
+  web_view_link text,
+  processed_at timestamptz not null default now(),
+  row_count integer not null default 0,
+  hold_row_count integer not null default 0,
+  status text not null default 'processed',
+  error_message text,
+  raw jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.v2_hold_release_cycles (
+  unique_id text primary key,
+  item_key text not null,
+  itemcode text,
+  commonname text,
+  genus text,
+  contsize text,
+  locationcode text,
+  lotcode text,
+  season text,
+  blockalpha text,
+  salesyear text,
+  holdstopreason text,
+  hold_reason_category text,
+  hold_started_on date not null,
+  hold_released_on date,
+  hold_days integer,
+  gdd_base_50_to_release numeric,
+  start_file_id text,
+  start_file_name text,
+  release_file_id text,
+  release_file_name text,
+  source_file_ids text[] not null default '{}'::text[],
+  source_file_names text[] not null default '{}'::text[],
+  snapshot jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_v2_hold_release_cycles_item
+  on public.v2_hold_release_cycles (itemcode, commonname, contsize, locationcode, lotcode);
+
+create index if not exists idx_v2_hold_release_cycles_reason
+  on public.v2_hold_release_cycles (hold_reason_category, hold_started_on desc);
+
+create index if not exists idx_v2_hold_release_cycles_release
+  on public.v2_hold_release_cycles (hold_released_on desc);
 
 create index if not exists idx_v2_hold_learning_events_hold_started
   on public.v2_hold_learning_events (hold_started_on desc);
@@ -125,6 +225,12 @@ before update on public.v2_weather_hourly
 for each row
 execute function public.v2_touch_hold_weather_updated_at();
 
+drop trigger if exists trg_v2_weather_daily_updated_at on public.v2_weather_daily;
+create trigger trg_v2_weather_daily_updated_at
+before update on public.v2_weather_daily
+for each row
+execute function public.v2_touch_hold_weather_updated_at();
+
 drop trigger if exists trg_v2_hold_learning_events_updated_at on public.v2_hold_learning_events;
 create trigger trg_v2_hold_learning_events_updated_at
 before update on public.v2_hold_learning_events
@@ -134,6 +240,18 @@ execute function public.v2_touch_hold_weather_updated_at();
 drop trigger if exists trg_v2_hold_learning_profiles_updated_at on public.v2_hold_learning_profiles;
 create trigger trg_v2_hold_learning_profiles_updated_at
 before update on public.v2_hold_learning_profiles
+for each row
+execute function public.v2_touch_hold_weather_updated_at();
+
+drop trigger if exists trg_v2_drive_around_report_files_updated_at on public.v2_drive_around_report_files;
+create trigger trg_v2_drive_around_report_files_updated_at
+before update on public.v2_drive_around_report_files
+for each row
+execute function public.v2_touch_hold_weather_updated_at();
+
+drop trigger if exists trg_v2_hold_release_cycles_updated_at on public.v2_hold_release_cycles;
+create trigger trg_v2_hold_release_cycles_updated_at
+before update on public.v2_hold_release_cycles
 for each row
 execute function public.v2_touch_hold_weather_updated_at();
 
@@ -440,7 +558,26 @@ begin
     avg_chill_hours_season,
     avg_precipitation_in_30d,
     avg_temperature_f_30d,
+    release_sample_count,
+    avg_gdd_base_50_to_release,
+    median_gdd_base_50_to_release,
+    avg_days_to_release,
     updated_at
+  )
+  with release_stats as (
+    select
+      lower(trim(coalesce(commonname, 'unknown'))) as common_key,
+      nullif(trim(contsize), '') as contsize_key,
+      coalesce(nullif(trim(hold_reason_category), ''), 'unknown') as reason_key,
+      count(*) filter (where hold_released_on is not null)::integer as release_sample_count,
+      round(avg(gdd_base_50_to_release) filter (where gdd_base_50_to_release is not null), 3) as avg_gdd_base_50_to_release,
+      round((percentile_cont(0.5) within group (order by gdd_base_50_to_release))::numeric, 3) as median_gdd_base_50_to_release,
+      round(avg(hold_days) filter (where hold_days is not null), 2) as avg_days_to_release
+    from public.v2_hold_release_cycles
+    group by
+      lower(trim(coalesce(commonname, 'unknown'))),
+      nullif(trim(contsize), ''),
+      coalesce(nullif(trim(hold_reason_category), ''), 'unknown')
   )
   select
     'hold_profile_' || encode(digest(concat_ws('|',
@@ -464,8 +601,16 @@ begin
     round(avg(chill_hours_season), 3) as avg_chill_hours_season,
     round(avg(precipitation_in_30d), 3) as avg_precipitation_in_30d,
     round(avg(avg_temperature_f_30d), 2) as avg_temperature_f_30d,
+    coalesce(max(release_stats.release_sample_count), 0) as release_sample_count,
+    max(release_stats.avg_gdd_base_50_to_release) as avg_gdd_base_50_to_release,
+    max(release_stats.median_gdd_base_50_to_release) as median_gdd_base_50_to_release,
+    max(release_stats.avg_days_to_release) as avg_days_to_release,
     now()
   from public.v2_hold_learning_events
+  left join release_stats
+    on release_stats.common_key = lower(trim(coalesce(v2_hold_learning_events.commonname, 'unknown')))
+   and release_stats.contsize_key is not distinct from nullif(trim(v2_hold_learning_events.contsize), '')
+   and release_stats.reason_key = coalesce(nullif(trim(v2_hold_learning_events.hold_reason_category), ''), 'unknown')
   where commonname is not null
     and hold_reason_category is not null
     and weather_features_refreshed_at is not null
@@ -491,6 +636,10 @@ begin
     avg_chill_hours_season = excluded.avg_chill_hours_season,
     avg_precipitation_in_30d = excluded.avg_precipitation_in_30d,
     avg_temperature_f_30d = excluded.avg_temperature_f_30d,
+    release_sample_count = excluded.release_sample_count,
+    avg_gdd_base_50_to_release = excluded.avg_gdd_base_50_to_release,
+    median_gdd_base_50_to_release = excluded.median_gdd_base_50_to_release,
+    avg_days_to_release = excluded.avg_days_to_release,
     updated_at = now();
 
   get diagnostics refreshed = row_count;
@@ -557,8 +706,32 @@ end;
 $$;
 
 alter table public.v2_weather_hourly enable row level security;
+alter table public.v2_weather_daily enable row level security;
 alter table public.v2_hold_learning_events enable row level security;
 alter table public.v2_hold_learning_profiles enable row level security;
+alter table public.v2_drive_around_report_files enable row level security;
+alter table public.v2_hold_release_cycles enable row level security;
+
+alter table public.v2_app_users
+  add column if not exists division text not null default '10',
+  add column if not exists language text not null default 'English';
+
+update public.v2_app_users
+set
+  division = coalesce(nullif(trim(division), ''), '10'),
+  language = case
+    when lower(coalesce(language, '')) in ('spanish', 'es', 'espanol') then 'Spanish'
+    else 'English'
+  end;
+
+do $$
+begin
+  alter table public.v2_app_users
+    add constraint v2_app_users_language_check
+    check (language in ('English', 'Spanish'));
+exception
+  when duplicate_object then null;
+end $$;
 
 drop policy if exists "Allow app read weather hourly" on public.v2_weather_hourly;
 create policy "Allow app read weather hourly"
@@ -569,6 +742,19 @@ create policy "Allow app read weather hourly"
 drop policy if exists "Allow service write weather hourly" on public.v2_weather_hourly;
 create policy "Allow service write weather hourly"
   on public.v2_weather_hourly
+  for all
+  using (auth.role() = 'service_role')
+  with check (auth.role() = 'service_role');
+
+drop policy if exists "Allow app read weather daily" on public.v2_weather_daily;
+create policy "Allow app read weather daily"
+  on public.v2_weather_daily
+  for select
+  using (true);
+
+drop policy if exists "Allow service write weather daily" on public.v2_weather_daily;
+create policy "Allow service write weather daily"
+  on public.v2_weather_daily
   for all
   using (auth.role() = 'service_role')
   with check (auth.role() = 'service_role');
@@ -599,13 +785,50 @@ create policy "Allow service write hold learning profiles"
   using (auth.role() = 'service_role')
   with check (auth.role() = 'service_role');
 
+drop policy if exists "Allow app read drive around report files" on public.v2_drive_around_report_files;
+create policy "Allow app read drive around report files"
+  on public.v2_drive_around_report_files
+  for select
+  using (true);
+
+drop policy if exists "Allow service write drive around report files" on public.v2_drive_around_report_files;
+create policy "Allow service write drive around report files"
+  on public.v2_drive_around_report_files
+  for all
+  using (auth.role() = 'service_role')
+  with check (auth.role() = 'service_role');
+
+drop policy if exists "Allow app read hold release cycles" on public.v2_hold_release_cycles;
+create policy "Allow app read hold release cycles"
+  on public.v2_hold_release_cycles
+  for select
+  using (true);
+
+drop policy if exists "Allow service write hold release cycles" on public.v2_hold_release_cycles;
+create policy "Allow service write hold release cycles"
+  on public.v2_hold_release_cycles
+  for all
+  using (auth.role() = 'service_role')
+  with check (auth.role() = 'service_role');
+
 alter table public.v2_weather_hourly replica identity full;
+alter table public.v2_weather_daily replica identity full;
 alter table public.v2_hold_learning_events replica identity full;
 alter table public.v2_hold_learning_profiles replica identity full;
+alter table public.v2_drive_around_report_files replica identity full;
+alter table public.v2_hold_release_cycles replica identity full;
 
 do $$
 begin
   alter publication supabase_realtime add table public.v2_weather_hourly;
+exception
+  when duplicate_object then null;
+  when undefined_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.v2_weather_daily;
 exception
   when duplicate_object then null;
   when undefined_object then null;
@@ -622,6 +845,22 @@ end $$;
 do $$
 begin
   alter publication supabase_realtime add table public.v2_hold_learning_profiles;
+exception
+  when duplicate_object then null;
+  when undefined_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.v2_drive_around_report_files;
+exception
+  when duplicate_object then null;
+  when undefined_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.v2_hold_release_cycles;
 exception
   when duplicate_object then null;
   when undefined_object then null;

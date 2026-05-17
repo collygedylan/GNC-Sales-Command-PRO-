@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.17.10';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.17.11';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2030,7 +2030,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.10').trim() || 'V2026.05.17.10';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.11').trim() || 'V2026.05.17.11';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -3237,7 +3237,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.10';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.11';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12166,6 +12166,8 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 'gnc_user_v3',
                 'gnc_pin_v3',
                 'gnc_role_v3',
+                'gnc_division_v1',
+                'gnc_language_v1',
                 LOGIN_DISPLAY_NAME_STORAGE_KEY,
                 VERIFIED_LOGIN_STORAGE_KEY
             ].forEach((key) => {
@@ -12177,6 +12179,8 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             currentUser = '';
             currentUserDisplay = '';
             currentRole = '';
+            currentUserDivision = '10';
+            currentUserLanguage = 'English';
             safeRole = '';
             currentAppSessionToken = '';
             currentAppSessionExpiresAt = 0;
@@ -12884,11 +12888,29 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             return true;
         }
 
-        function buildTrustedLoginUserRecord(username, role, source = 'local-cache', displayName = '') {
+        function normalizeAppUserLanguage(value = '') {
+            const normalized = String(value || '').trim().toLowerCase();
+            if (['spanish', 'es', 'espanol'].includes(normalized)) return 'Spanish';
+            return 'English';
+        }
+
+        function getCurrentAppLanguageCode() {
+            return normalizeAppUserLanguage(currentUserLanguage) === 'Spanish' ? 'es' : 'en';
+        }
+
+        function applyCurrentUserLanguagePreference() {
+            try {
+                document.documentElement.setAttribute('lang', getCurrentAppLanguageCode());
+            } catch (error) {}
+        }
+
+        function buildTrustedLoginUserRecord(username, role, source = 'local-cache', displayName = '', division = '10', language = 'English') {
             return {
                 username: String(username || '').trim(),
                 displayName: String(displayName || username || '').trim(),
                 role: String(role || '').trim(),
+                division: String(firstNonEmptyValue(division, '10') || '10').trim() || '10',
+                language: normalizeAppUserLanguage(language),
                 _fromLocalCache: source !== 'remote',
                 _deferCacheWarm: true,
                 _trustedSource: source
@@ -12905,12 +12927,16 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 const displayName = String(firstNonEmptyValue(parsed.displayName, parsed.username, '')).trim();
                 const password = String(parsed.password || '').trim();
                 const role = String(parsed.role || '').trim();
+                const division = String(firstNonEmptyValue(parsed.division, '10') || '10').trim() || '10';
+                const language = normalizeAppUserLanguage(parsed.language);
                 if (!username || !password || !role) return null;
                 return {
                     username,
                     displayName,
                     password,
                     role,
+                    division,
+                    language,
                     verifiedAt: String(parsed.verifiedAt || '').trim()
                 };
             } catch (error) {
@@ -12918,11 +12944,13 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             }
         }
 
-        function persistVerifiedLoginRecord(username, password, role, displayName = '') {
+        function persistVerifiedLoginRecord(username, password, role, displayName = '', division = '10', language = 'English') {
             const normalizedUsername = String(username || '').trim().toLowerCase();
             const normalizedPassword = String(password || '').trim();
             const normalizedRole = String(role || '').trim();
             const normalizedDisplayName = String(displayName || username || '').trim();
+            const normalizedDivision = String(firstNonEmptyValue(division, '10') || '10').trim() || '10';
+            const normalizedLanguage = normalizeAppUserLanguage(language);
             if (!normalizedUsername || !normalizedPassword || !normalizedRole) return false;
             try {
                 localStorage.setItem(VERIFIED_LOGIN_STORAGE_KEY, JSON.stringify({
@@ -12930,6 +12958,8 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                     displayName: normalizedDisplayName || normalizedUsername,
                     password: normalizedPassword,
                     role: normalizedRole,
+                    division: normalizedDivision,
+                    language: normalizedLanguage,
                     verifiedAt: new Date().toISOString()
                 }));
                 return true;
@@ -12944,11 +12974,13 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             const savedUser = String(localStorage.getItem('gnc_user_v3') || '').trim();
             const savedPassword = String(localStorage.getItem('gnc_pin_v3') || '').trim();
             const savedRole = String(localStorage.getItem('gnc_role_v3') || '').trim();
+            const savedDivision = String(firstNonEmptyValue(localStorage.getItem('gnc_division_v1'), '10') || '10').trim() || '10';
+            const savedLanguage = normalizeAppUserLanguage(localStorage.getItem('gnc_language_v1'));
             const savedDisplayName = getStoredDisplayName();
             if (!savedUser || !savedPassword || !savedRole) return null;
             if (savedUser.toLowerCase() !== normalizedUsername) return null;
             if (savedPassword !== normalizedPassword) return null;
-            return buildTrustedLoginUserRecord(savedUser, savedRole, 'local-cache', savedDisplayName || savedUser);
+            return buildTrustedLoginUserRecord(savedUser, savedRole, 'local-cache', savedDisplayName || savedUser, savedDivision, savedLanguage);
         }
 
         async function tryVerifiedLoginRecord(username, password) {
@@ -12958,7 +12990,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             if (!record) return null;
             if (String(record.username || '').trim().toLowerCase() !== normalizedUsername) return null;
             if (String(record.password || '') !== normalizedPassword) return null;
-            return buildTrustedLoginUserRecord(record.username, record.role, 'verified-cache', record.displayName || record.username);
+            return buildTrustedLoginUserRecord(record.username, record.role, 'verified-cache', record.displayName || record.username, record.division || '10', record.language || 'English');
         }
 
         function getPersistedSessionRestoreRecord() {
@@ -12966,6 +12998,8 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             const savedUser = normalizeSessionIdentity(localStorage.getItem('gnc_user_v3'));
             const savedPassword = String(localStorage.getItem('gnc_pin_v3') || '').trim();
             const savedRole = String(localStorage.getItem('gnc_role_v3') || '').trim();
+            const savedDivision = String(firstNonEmptyValue(localStorage.getItem('gnc_division_v1'), '10') || '10').trim() || '10';
+            const savedLanguage = normalizeAppUserLanguage(localStorage.getItem('gnc_language_v1'));
             const savedDisplayName = getStoredDisplayName();
             if (savedUser && savedPassword && savedRole) {
                 return {
@@ -12973,6 +13007,8 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                     displayName: savedDisplayName || savedUser,
                     password: savedPassword,
                     role: savedRole,
+                    division: savedDivision,
+                    language: savedLanguage,
                     source: 'local-session'
                 };
             }
@@ -12983,6 +13019,8 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 displayName: verifiedRecord.displayName || verifiedRecord.username,
                 password: verifiedRecord.password,
                 role: verifiedRecord.role,
+                division: verifiedRecord.division || '10',
+                language: verifiedRecord.language || 'English',
                 source: 'verified-cache'
             };
         }
@@ -13094,8 +13132,11 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                     const result = await fetchRemoteLoginUser(normalizedUsername, normalizedPassword);
                     if (!result || !result.ok || !result.user) return;
                     const remoteRole = String(firstNonEmptyValue(result.user.role, result.user.ROLE, currentRole, '')).trim() || currentRole;
-                    persistVerifiedLoginRecord(normalizedUsername, normalizedPassword, remoteRole, currentUserDisplay || normalizedUsername);
+                    const remoteDivision = String(firstNonEmptyValue(result.user.division, result.user.DIVISION, currentUserDivision, '10') || '10').trim() || '10';
+                    const remoteLanguage = normalizeAppUserLanguage(firstNonEmptyValue(result.user.language, result.user.LANGUAGE, currentUserLanguage, 'English'));
+                    persistVerifiedLoginRecord(normalizedUsername, normalizedPassword, remoteRole, currentUserDisplay || normalizedUsername, remoteDivision, remoteLanguage);
                     try { localStorage.setItem('gnc_role_v3', remoteRole); } catch (error) {}
+                    try { localStorage.setItem('gnc_division_v1', remoteDivision); localStorage.setItem('gnc_language_v1', remoteLanguage); } catch (error) {}
                 } catch (error) {}
             }, 2200);
         }
@@ -13129,10 +13170,10 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
         }
 
         async function fetchRemoteLoginUser(normalizedUsername, normalizedPassword) {
-            const exactUrl = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password&username=eq.${encodeURIComponent(normalizedUsername)}&limit=1`;
+            const exactUrl = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password,division,language&username=eq.${encodeURIComponent(normalizedUsername)}&limit=1`;
             let rows = await fetchLoginRowsWithRetry(exactUrl, 'Login');
             if ((!Array.isArray(rows) || rows.length === 0) && normalizedUsername) {
-                const fallbackUrl = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password&username=ilike.${encodeURIComponent(normalizedUsername)}&limit=3`;
+                const fallbackUrl = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password,division,language&username=ilike.${encodeURIComponent(normalizedUsername)}&limit=3`;
                 rows = await fetchLoginRowsWithRetry(fallbackUrl, 'Login');
             }
             const matchedUser = Array.isArray(rows)
@@ -13481,7 +13522,7 @@ const ncrFilterStateByView = {
         let lastBackgroundRefreshAt=0;
         let cacheWarmPromise=null;
         let cachePersistTimer=null; let cachePersistIdleHandle=null; let lastCachePersistAt=0; let pendingCachePersist=false;
-let currentUser=""; let currentUserDisplay=""; let currentRole=""; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let currentPrimaryViewId="home"; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let bloomCropUpdateModalOpen=false; let bloomCropUpdatePendingItems=[]; let bloomCropUpdateEmailContext=null; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0; let leafVoiceRecognition=null; let leafVoiceListening=false; let leafVoiceSpeaking=false; let leafVoiceAbortRequested=false; let leafVoiceSubmitPending=false; let leafVoiceInterimText=''; let leafVoiceFinalText=''; let leafVoiceStatusOverride=''; let leafLastSpokenAnswer=''; let leafVoiceUtterance=null; let leafVoiceFinalizeTimer=null; let leafVoiceLastSpeechAt=0;
+let currentUser=""; let currentUserDisplay=""; let currentRole=""; let currentUserDivision="10"; let currentUserLanguage="English"; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let currentPrimaryViewId="home"; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let bloomCropUpdateModalOpen=false; let bloomCropUpdatePendingItems=[]; let bloomCropUpdateEmailContext=null; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0; let leafVoiceRecognition=null; let leafVoiceListening=false; let leafVoiceSpeaking=false; let leafVoiceAbortRequested=false; let leafVoiceSubmitPending=false; let leafVoiceInterimText=''; let leafVoiceFinalText=''; let leafVoiceStatusOverride=''; let leafLastSpokenAnswer=''; let leafVoiceUtterance=null; let leafVoiceFinalizeTimer=null; let leafVoiceLastSpeechAt=0;
 let bloomCropUpdateRecipientMode='reps'; let bloomCropUpdateReserveEmailGroups=[]; let bloomCropUpdateReserveRowsLoading=false; let bloomCropUpdateReserveRowsError=''; let bloomCropUpdateReserveFetchToken=0;
 let appAdminRecipientUsers=[]; let appAdminRecipientUsersPromise=null; let appAdminRecipientUsersLoaded=false; let appAdminRecipientUsersSignature=''; let appAdminRecipientEmailByToken=new Map();
 let emailRecipientOpenGroupByContext={ bloom: '', av: '', drive: '', advertisement: '' }; let emailRecipientSearchByContext={ bloom: '', av: '', drive: '', advertisement: '' };
@@ -13962,7 +14003,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.10').trim() || 'V2026.05.17.10';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.11').trim() || 'V2026.05.17.11';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -21448,6 +21489,9 @@ function toggleDriveQuickRequestItem(domId) {
             currentUser = normalizedUsername;
             currentUserDisplay = displayName || normalizedUsername;
             currentRole = role;
+            currentUserDivision = String(firstNonEmptyValue(sessionRecord.division, localStorage.getItem('gnc_division_v1'), '10') || '10').trim() || '10';
+            currentUserLanguage = normalizeAppUserLanguage(firstNonEmptyValue(sessionRecord.language, localStorage.getItem('gnc_language_v1'), 'English'));
+            applyCurrentUserLanguagePreference();
             safeRole = String(currentRole).toUpperCase().replace(/\s+/g,'');
             try {
                 await finalizeLogin(currentUser, password, false, { restoredSession: true, skipBiometricPrompt: true, sessionSource: sessionRecord.source || 'startup-restore' });
@@ -21487,6 +21531,9 @@ function toggleDriveQuickRequestItem(domId) {
                     currentUser=String(userRecord.username || userRecord.USERNAME || inputUser).trim().toLowerCase();
                     currentUserDisplay=String(firstNonEmptyValue(userRecord.displayName, userRecord.username, userRecord.USERNAME, rawUser, currentUser)).trim();
                     currentRole=userRecord.role||userRecord.ROLE||'User';
+                    currentUserDivision=String(firstNonEmptyValue(userRecord.division, userRecord.DIVISION, localStorage.getItem('gnc_division_v1'), '10') || '10').trim() || '10';
+                    currentUserLanguage=normalizeAppUserLanguage(firstNonEmptyValue(userRecord.language, userRecord.LANGUAGE, localStorage.getItem('gnc_language_v1'), 'English'));
+                    applyCurrentUserLanguagePreference();
                     if (result.source === 'verified-cache') {
                         if (result.warning) console.warn('Login remote fetch failed; using verified cache.', result.warning);
                         showToast('Success', 'Signed in with saved verified login.');
@@ -21735,8 +21782,11 @@ function toggleDriveQuickRequestItem(domId) {
             localStorage.setItem('gnc_user_v3',user);
             localStorage.setItem('gnc_pin_v3',pass);
             localStorage.setItem('gnc_role_v3',currentRole);
+            localStorage.setItem('gnc_division_v1',currentUserDivision || '10');
+            localStorage.setItem('gnc_language_v1',normalizeAppUserLanguage(currentUserLanguage));
             localStorage.setItem(LOGIN_DISPLAY_NAME_STORAGE_KEY, currentUserDisplay || currentUser || user);
-            persistVerifiedLoginRecord(user, pass, currentRole, currentUserDisplay || currentUser || user);
+            persistVerifiedLoginRecord(user, pass, currentRole, currentUserDisplay || currentUser || user, currentUserDivision || '10', currentUserLanguage || 'English');
+            applyCurrentUserLanguagePreference();
             document.getElementById('header-user').innerText=currentUserDisplay || currentUser;
             const roleAccess = getRoleAccessState();
             const deferHeavyLoginWarm = isTouchConstrainedDevice();
@@ -30326,8 +30376,10 @@ function toggleDriveQuickRequestItem(domId) {
             lastLoadedAt: 0,
             promise: null,
             weatherRows: [],
+            dailyWeatherRows: [],
             holdEvents: [],
-            holdProfiles: []
+            holdProfiles: [],
+            holdCycles: []
         };
 
         function setHubButtonVisibility(buttonId = '', isVisible = false) {
@@ -30527,6 +30579,11 @@ function toggleDriveQuickRequestItem(domId) {
         function formatWeatherHoldDate(value = '') {
             const text = String(value || '').trim();
             if (!text) return '-';
+            if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+                const parts = text.split('-').map((part) => Number(part));
+                const localDate = new Date(parts[0], parts[1] - 1, parts[2]);
+                return localDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            }
             const date = new Date(text);
             if (Number.isNaN(date.getTime())) return text;
             return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -30538,6 +30595,22 @@ function toggleDriveQuickRequestItem(domId) {
                 const time = Date.parse(row && row.observed_at || '');
                 return Number.isFinite(time) && time >= cutoff;
             });
+        }
+
+        function getDailyWeatherRowsSince(days = 1) {
+            const cutoff = Date.now() - Math.max(1, Number(days) || 1) * 24 * 60 * 60 * 1000;
+            return (weatherHoldState.dailyWeatherRows || []).filter((row) => {
+                const time = Date.parse(row && row.date || '');
+                return Number.isFinite(time) && time >= cutoff;
+            });
+        }
+
+        function formatWindDirection(value) {
+            const parsed = getWeatherHoldNumber(value, NaN);
+            if (!Number.isFinite(parsed)) return '-';
+            const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+            const index = Math.round((((parsed % 360) + 360) % 360) / 45) % directions.length;
+            return `${directions[index]} ${Math.round(parsed)} deg`;
         }
 
         function sumWeatherField(rows = [], field = '') {
@@ -30561,15 +30634,20 @@ function toggleDriveQuickRequestItem(domId) {
             weatherHoldState.loading = true;
             weatherHoldState.error = '';
             const weatherCutoff = new Date(Date.now() - (45 * 24 * 60 * 60 * 1000)).toISOString();
+            const dailyCutoff = new Date(Date.now() - (45 * 24 * 60 * 60 * 1000)).toISOString().slice(0, 10);
             weatherHoldState.promise = (async () => {
-                const [weatherRows, holdEvents, holdProfiles] = await Promise.all([
-                    supabaseFetch('v2_weather_hourly', 'GET', null, `select=observed_at,local_time,temperature_f,relative_humidity,precipitation_in,wind_speed_mph,gdd_base_50,chill_hours&station_key=eq.park_hill_ok&observed_at=gte.${encodeURIComponent(weatherCutoff)}&order=observed_at.desc&limit=1200`),
-                    supabaseFetch('v2_hold_learning_events', 'GET', null, 'select=hold_started_on,hold_detected_at,itemcode,commonname,genus,contsize,locationcode,lotcode,season,blockalpha,holdstopreason,hold_reason_category,gdd_base_50_30d,gdd_base_50_season,chill_hours_30d,chill_hours_season,precipitation_in_30d,avg_temperature_f_30d,weather_features_refreshed_at&order=hold_started_on.desc&limit=250'),
-                    supabaseFetch('v2_hold_learning_profiles', 'GET', null, 'select=commonname,genus,contsize,hold_reason_category,sample_count,first_hold_on,last_hold_on,avg_gdd_base_50_30d,median_gdd_base_50_30d,avg_chill_hours_30d,avg_precipitation_in_30d,avg_temperature_f_30d,updated_at&order=updated_at.desc&limit=200')
+                const [weatherRows, dailyWeatherRows, holdEvents, holdProfiles, holdCycles] = await Promise.all([
+                    supabaseFetch('v2_weather_hourly', 'GET', null, `select=observed_at,local_time,temperature_f,relative_humidity,precipitation_in,wind_speed_mph,wind_direction_deg,gdd_base_50,chill_hours&station_key=eq.park_hill_ok&observed_at=gte.${encodeURIComponent(weatherCutoff)}&order=observed_at.desc&limit=1200`),
+                    supabaseFetch('v2_weather_daily', 'GET', null, `select=date,temperature_high_f,temperature_low_f,daily_gdd_base_50,precipitation_in,wind_speed_mph,wind_direction_deg&station_key=eq.park_hill_ok&date=gte.${encodeURIComponent(dailyCutoff)}&order=date.desc&limit=60`),
+                    supabaseFetch('v2_hold_learning_events', 'GET', null, 'select=hold_started_on,hold_detected_at,released_on,hold_days,gdd_base_50_to_release,itemcode,commonname,genus,contsize,locationcode,lotcode,season,blockalpha,holdstopreason,hold_reason_category,gdd_base_50_30d,gdd_base_50_season,chill_hours_30d,chill_hours_season,precipitation_in_30d,avg_temperature_f_30d,weather_features_refreshed_at&order=hold_started_on.desc&limit=250'),
+                    supabaseFetch('v2_hold_learning_profiles', 'GET', null, 'select=commonname,genus,contsize,hold_reason_category,sample_count,first_hold_on,last_hold_on,avg_gdd_base_50_30d,median_gdd_base_50_30d,avg_chill_hours_30d,avg_precipitation_in_30d,avg_temperature_f_30d,release_sample_count,avg_gdd_base_50_to_release,median_gdd_base_50_to_release,avg_days_to_release,updated_at&order=updated_at.desc&limit=200'),
+                    supabaseFetch('v2_hold_release_cycles', 'GET', null, 'select=itemcode,commonname,genus,contsize,locationcode,lotcode,season,blockalpha,holdstopreason,hold_reason_category,hold_started_on,hold_released_on,hold_days,gdd_base_50_to_release,start_file_name,release_file_name&order=hold_started_on.desc&limit=250')
                 ]);
                 weatherHoldState.weatherRows = Array.isArray(weatherRows) ? weatherRows : [];
+                weatherHoldState.dailyWeatherRows = Array.isArray(dailyWeatherRows) ? dailyWeatherRows : [];
                 weatherHoldState.holdEvents = Array.isArray(holdEvents) ? holdEvents : [];
                 weatherHoldState.holdProfiles = Array.isArray(holdProfiles) ? holdProfiles : [];
+                weatherHoldState.holdCycles = Array.isArray(holdCycles) ? holdCycles : [];
                 weatherHoldState.loaded = true;
                 weatherHoldState.lastLoadedAt = Date.now();
                 return weatherHoldState;
@@ -30603,25 +30681,35 @@ function toggleDriveQuickRequestItem(domId) {
                 return;
             }
             const latest = (weatherHoldState.weatherRows || [])[0] || {};
+            const latestDaily = (weatherHoldState.dailyWeatherRows || [])[0] || {};
             const rows7 = getWeatherRowsSince(7);
             const rows30 = getWeatherRowsSince(30);
-            const gdd7 = sumWeatherField(rows7, 'gdd_base_50');
-            const gdd30 = sumWeatherField(rows30, 'gdd_base_50');
+            const dailyRows7 = getDailyWeatherRowsSince(7);
+            const dailyRows30 = getDailyWeatherRowsSince(30);
+            const gdd7 = dailyRows7.length ? sumWeatherField(dailyRows7, 'daily_gdd_base_50') : sumWeatherField(rows7, 'gdd_base_50');
+            const gdd30 = dailyRows30.length ? sumWeatherField(dailyRows30, 'daily_gdd_base_50') : sumWeatherField(rows30, 'gdd_base_50');
             const chill30 = sumWeatherField(rows30, 'chill_hours');
-            const rain7 = sumWeatherField(rows7, 'precipitation_in');
+            const rain7 = dailyRows7.length ? sumWeatherField(dailyRows7, 'precipitation_in') : sumWeatherField(rows7, 'precipitation_in');
             const avg30 = avgWeatherField(rows30, 'temperature_f');
             const latestTime = formatWeatherHoldDate(latest.observed_at);
             const metricHtml = [
                 renderWeatherHoldMetric('Current Temp', `${formatWeatherHoldNumber(latest.temperature_f, 1)} F`, latestTime),
-                renderWeatherHoldMetric('GDD Base 50', formatWeatherHoldInteger(gdd7), 'Last 7 days'),
-                renderWeatherHoldMetric('GDD Base 50', formatWeatherHoldInteger(gdd30), 'Last 30 days'),
+                renderWeatherHoldMetric('Daily High / Low', `${formatWeatherHoldNumber(latestDaily.temperature_high_f, 0)} / ${formatWeatherHoldNumber(latestDaily.temperature_low_f, 0)} F`, latestDaily.date || 'Latest day'),
+                renderWeatherHoldMetric('GDD Base 50', formatWeatherHoldInteger(gdd7), 'Last 7 days, daily high/low'),
+                renderWeatherHoldMetric('GDD Base 50', formatWeatherHoldInteger(gdd30), 'Last 30 days, daily high/low'),
                 renderWeatherHoldMetric('Chill Hours', formatWeatherHoldInteger(chill30), 'Last 30 days'),
                 renderWeatherHoldMetric('Rainfall', `${formatWeatherHoldNumber(rain7, 2)} in`, 'Last 7 days'),
+                renderWeatherHoldMetric('Wind', `${formatWeatherHoldNumber(latest.wind_speed_mph, 0)} mph`, formatWindDirection(latest.wind_direction_deg || latestDaily.wind_direction_deg)),
                 renderWeatherHoldMetric('Avg Temp', `${formatWeatherHoldNumber(avg30, 1)} F`, 'Last 30 days')
             ].join('');
             const profileRows = (weatherHoldState.holdProfiles || []).slice(0, 12).map((row) => {
                 const label = [row.commonname, row.contsize].map((value) => String(value || '').trim()).filter(Boolean).join(' ');
-                return `<div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="font-black text-slate-900">${escapeHtml(label || row.genus || 'Hold Profile')}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${escapeHtml(row.hold_reason_category || 'unknown')} | ${escapeHtml(String(row.sample_count || 0))} samples</div></div><div class="text-right text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(formatWeatherHoldDate(row.last_hold_on))}</div></div><div class="mt-3 grid grid-cols-3 gap-2 text-center"><div class="rounded-xl bg-emerald-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">GDD 30</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldInteger(row.median_gdd_base_50_30d || row.avg_gdd_base_50_30d))}</div></div><div class="rounded-xl bg-sky-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Chill</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldInteger(row.avg_chill_hours_30d))}</div></div><div class="rounded-xl bg-amber-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Rain</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldNumber(row.avg_precipitation_in_30d, 2))}</div></div></div></div>`;
+                return `<div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="font-black text-slate-900">${escapeHtml(label || row.genus || 'Hold Profile')}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${escapeHtml(row.hold_reason_category || 'unknown')} | ${escapeHtml(String(row.sample_count || 0))} hold samples | ${escapeHtml(String(row.release_sample_count || 0))} release samples</div></div><div class="text-right text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(formatWeatherHoldDate(row.last_hold_on))}</div></div><div class="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-5"><div class="rounded-xl bg-emerald-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">GDD 30</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldInteger(row.median_gdd_base_50_30d || row.avg_gdd_base_50_30d))}</div></div><div class="rounded-xl bg-sky-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Chill</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldInteger(row.avg_chill_hours_30d))}</div></div><div class="rounded-xl bg-amber-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Rain</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldNumber(row.avg_precipitation_in_30d, 2))}</div></div><div class="rounded-xl bg-rose-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">GDD Off H</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldInteger(row.median_gdd_base_50_to_release || row.avg_gdd_base_50_to_release))}</div></div><div class="rounded-xl bg-slate-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Days Off H</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldNumber(row.avg_days_to_release, 1))}</div></div></div></div>`;
+            }).join('');
+            const cycleRows = (weatherHoldState.holdCycles || []).slice(0, 16).map((row) => {
+                const label = [row.commonname, row.contsize].map((value) => String(value || '').trim()).filter(Boolean).join(' ');
+                const meta = [`Item ${row.itemcode || '-'}`, `Loc ${row.locationcode || '-'}`, `Lot ${row.lotcode || '-'}`].join(' | ');
+                return `<div class="rounded-2xl border border-rose-100 bg-white p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="font-black text-slate-900">${escapeHtml(label || row.genus || 'Hold Release Cycle')}</div><div class="mt-1 text-[11px] font-bold text-slate-500">${escapeHtml(meta)}</div></div><span class="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-rose-700">${escapeHtml(row.hold_reason_category || 'unknown')}</span></div><div class="mt-3 rounded-xl bg-slate-50 p-3 text-[12px] font-bold text-slate-700">${escapeHtml(row.holdstopreason || 'No hold reason listed')}</div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full bg-rose-50 px-2.5 py-1 text-rose-700">H ${escapeHtml(formatWeatherHoldDate(row.hold_started_on))}</span><span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">Off H ${escapeHtml(formatWeatherHoldDate(row.hold_released_on))}</span><span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">GDD ${escapeHtml(formatWeatherHoldInteger(row.gdd_base_50_to_release))}</span><span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">Days ${escapeHtml(String(row.hold_days || 0))}</span></div><div class="mt-2 text-[10px] font-bold text-slate-400">${escapeHtml(row.start_file_name || '')}${row.release_file_name ? ` -> ${escapeHtml(row.release_file_name)}` : ''}</div></div>`;
             }).join('');
             const eventRows = (weatherHoldState.holdEvents || []).slice(0, 20).map((row) => {
                 const label = [row.commonname, row.contsize].map((value) => String(value || '').trim()).filter(Boolean).join(' ');
@@ -30629,8 +30717,9 @@ function toggleDriveQuickRequestItem(domId) {
                 return `<div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="font-black text-slate-900">${escapeHtml(label || row.genus || 'Hold Event')}</div><div class="mt-1 text-[11px] font-bold text-slate-500">${escapeHtml(meta)}</div></div><span class="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-amber-700">${escapeHtml(row.hold_reason_category || 'unknown')}</span></div><div class="mt-3 rounded-xl bg-slate-50 p-3 text-[12px] font-bold text-slate-700">${escapeHtml(row.holdstopreason || 'No hold reason listed')}</div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">GDD 30 ${escapeHtml(formatWeatherHoldInteger(row.gdd_base_50_30d))}</span><span class="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">Chill ${escapeHtml(formatWeatherHoldInteger(row.chill_hours_30d))}</span><span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-500">${escapeHtml(formatWeatherHoldDate(row.hold_started_on))}</span></div></div>`;
             }).join('');
             const emptyProfileHtml = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No hold learning profiles loaded yet.</div>';
+            const emptyCycleHtml = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No Drive Around hold release cycles loaded yet.</div>';
             const emptyEventHtml = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No hold learning events loaded yet.</div>';
-            setContainerHtml(container, `<div class="space-y-5"><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">${metricHtml}</div><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">When Items Go On Hold</div><div class="grid gap-3 lg:grid-cols-2">${profileRows || emptyProfileHtml}</div></section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">Recent Hold Events</div>${eventRows || emptyEventHtml}</section></div>`);
+            setContainerHtml(container, `<div class="space-y-5"><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">${metricHtml}</div><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">When Items Go On Hold</div><div class="grid gap-3 lg:grid-cols-2">${profileRows || emptyProfileHtml}</div></section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-rose-700">GDD To Come Off Hold</div><div class="grid gap-3 lg:grid-cols-2">${cycleRows || emptyCycleHtml}</div></section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">Recent Hold Events</div>${eventRows || emptyEventHtml}</section></div>`);
         }
 
         function reloadWeatherHoldData() {
@@ -45134,7 +45223,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <label class="block"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Block</span><select id="grower-scout-block" class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-800">${blockOptions}</select></label>
                     <label class="block"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Season</span><select id="grower-scout-season" class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-800"><option value="S1" ${season === 'S1' ? 'selected' : ''}>S1</option><option value="F1" ${season === 'F1' ? 'selected' : ''}>F1</option></select></label>
-                    <label class="block"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Language</span><select id="grower-scout-language" class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-800"><option value="en">English</option><option value="es">Spanish</option></select></label>
+                    <label class="block"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Language</span><select id="grower-scout-language" class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-800"><option value="en" ${getCurrentAppLanguageCode() === 'en' ? 'selected' : ''}>English</option><option value="es" ${getCurrentAppLanguageCode() === 'es' ? 'selected' : ''}>Spanish</option></select></label>
                 </div>
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <label class="block"><span class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Crop / Item</span><input id="grower-scout-crop-search" list="grower-scout-crop-options" class="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" placeholder="Optional crop or item"><datalist id="grower-scout-crop-options">${cropOptions}</datalist></label>

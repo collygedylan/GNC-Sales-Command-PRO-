@@ -31,6 +31,14 @@ HOURLY_FIELDS = [
     "relative_humidity_2m",
     "precipitation",
     "wind_speed_10m",
+    "wind_direction_10m",
+]
+DAILY_FIELDS = [
+    "temperature_2m_max",
+    "temperature_2m_min",
+    "precipitation_sum",
+    "wind_speed_10m_max",
+    "wind_direction_10m_dominant",
 ]
 
 
@@ -89,6 +97,7 @@ def fetch_open_meteo_hourly(latitude: float, longitude: float, timezone_name: st
         "latitude": str(latitude),
         "longitude": str(longitude),
         "hourly": ",".join(HOURLY_FIELDS),
+        "daily": ",".join(DAILY_FIELDS),
         "temperature_unit": "fahrenheit",
         "wind_speed_unit": "mph",
         "precipitation_unit": "inch",
@@ -111,6 +120,7 @@ def fetch_open_meteo_archive_hourly(latitude: float, longitude: float, timezone_
         "latitude": str(latitude),
         "longitude": str(longitude),
         "hourly": ",".join(HOURLY_FIELDS),
+        "daily": ",".join(DAILY_FIELDS),
         "temperature_unit": "fahrenheit",
         "wind_speed_unit": "mph",
         "precipitation_unit": "inch",
@@ -154,6 +164,7 @@ def hourly_rows_from_response(payload: Dict[str, Any], station_key: str, latitud
     humidity = list(hourly.get("relative_humidity_2m") or [])
     precipitation = list(hourly.get("precipitation") or [])
     wind_speed = list(hourly.get("wind_speed_10m") or [])
+    wind_direction = list(hourly.get("wind_direction_10m") or [])
     rows: List[Dict[str, Any]] = []
     seen_observed_at: Dict[str, int] = {}
 
@@ -162,6 +173,7 @@ def hourly_rows_from_response(payload: Dict[str, Any], station_key: str, latitud
         humidity_value = humidity[index] if index < len(humidity) else None
         precipitation_value = precipitation[index] if index < len(precipitation) else None
         wind_speed_value = wind_speed[index] if index < len(wind_speed) else None
+        wind_direction_value = wind_direction[index] if index < len(wind_direction) else None
         observed_at = parse_local_hour(str(local_time), timezone_name)
         if temperature_f is None:
             gdd_base_50 = 0.0
@@ -183,6 +195,7 @@ def hourly_rows_from_response(payload: Dict[str, Any], station_key: str, latitud
             "relative_humidity": humidity_value,
             "precipitation_in": precipitation_value,
             "wind_speed_mph": wind_speed_value,
+            "wind_direction_deg": wind_direction_value,
             "gdd_base_50": round(gdd_base_50, 5),
             "chill_hours": chill_hours,
             "source": "open-meteo",
@@ -203,6 +216,53 @@ def hourly_rows_from_response(payload: Dict[str, Any], station_key: str, latitud
         else:
             rows.append(row)
             seen_observed_at[row["unique_id"]] = len(rows) - 1
+    return rows
+
+
+def daily_gdd_base_50(high_f: Any, low_f: Any) -> float:
+    if high_f is None or low_f is None:
+        return 0.0
+    return max(((float(high_f) + float(low_f)) / 2.0) - 50.0, 0.0)
+
+
+def daily_rows_from_response(payload: Dict[str, Any], station_key: str, latitude: float, longitude: float, timezone_name: str) -> List[Dict[str, Any]]:
+    daily = payload.get("daily") if isinstance(payload, dict) else {}
+    dates = list(daily.get("time") or [])
+    highs = list(daily.get("temperature_2m_max") or [])
+    lows = list(daily.get("temperature_2m_min") or [])
+    precipitation = list(daily.get("precipitation_sum") or [])
+    wind_speed = list(daily.get("wind_speed_10m_max") or [])
+    wind_direction = list(daily.get("wind_direction_10m_dominant") or [])
+    rows: List[Dict[str, Any]] = []
+
+    for index, local_date in enumerate(dates):
+        high_f = highs[index] if index < len(highs) else None
+        low_f = lows[index] if index < len(lows) else None
+        precipitation_value = precipitation[index] if index < len(precipitation) else None
+        wind_speed_value = wind_speed[index] if index < len(wind_speed) else None
+        wind_direction_value = wind_direction[index] if index < len(wind_direction) else None
+        rows.append(
+            {
+                "unique_id": f"{station_key}:{local_date}",
+                "station_key": station_key,
+                "latitude": latitude,
+                "longitude": longitude,
+                "timezone": timezone_name,
+                "date": str(local_date),
+                "temperature_high_f": high_f,
+                "temperature_low_f": low_f,
+                "daily_gdd_base_50": round(daily_gdd_base_50(high_f, low_f), 5),
+                "precipitation_in": precipitation_value,
+                "wind_speed_mph": wind_speed_value,
+                "wind_direction_deg": wind_direction_value,
+                "source": "open-meteo",
+                "raw": {
+                    "open_meteo_local_date": str(local_date),
+                    "temperature_unit": "fahrenheit",
+                    "gdd_formula": "max(((high_f + low_f) / 2) - 50, 0)",
+                },
+            }
+        )
     return rows
 
 
@@ -273,6 +333,30 @@ class SupabaseRest:
         except ValueError:
             return 0
 
+    def count_daily_rows_since(self, table: str, station_key: str, date_gte: date) -> int:
+        query = urllib.parse.urlencode({
+            "select": "unique_id",
+            "station_key": f"eq.{station_key}",
+            "date": f"gte.{date_gte.isoformat()}",
+            "limit": "1",
+        })
+        endpoint = f"{self.url}/rest/v1/{urllib.parse.quote(table, safe='')}?{query}"
+        headers = self.headers("count=exact")
+        headers["Range"] = "0-0"
+        request = urllib.request.Request(endpoint, headers=headers, method="GET")
+        with urllib.request.urlopen(request, timeout=60) as response:
+            content_range = response.headers.get("Content-Range", "")
+            response.read()
+        if "/" not in content_range:
+            return 0
+        total = content_range.rsplit("/", 1)[-1].strip()
+        if not total or total == "*":
+            return 0
+        try:
+            return int(total)
+        except ValueError:
+            return 0
+
 
 def run() -> int:
     supabase_url = first_non_empty(os.environ.get("SUPABASE_URL"))
@@ -300,13 +384,17 @@ def run() -> int:
     history_end = local_today - timedelta(days=1)
     if history_years > 0 and history_start <= history_end:
         expected_history_hours = max(1, ((history_end - history_start).days + 1) * 24)
+        expected_history_days = max(1, ((history_end - history_start).days + 1))
         observed_at_gte = datetime.combine(history_start, datetime.min.time(), ZoneInfo(timezone_name)).astimezone(timezone.utc).isoformat()
         existing_history_hours = supabase.count_weather_rows_since("v2_weather_hourly", station_key, observed_at_gte)
-        coverage_ratio = existing_history_hours / expected_history_hours
-        should_backfill_history = history_force or coverage_ratio < history_min_coverage
+        existing_history_days = supabase.count_daily_rows_since("v2_weather_daily", station_key, history_start)
+        hourly_coverage_ratio = existing_history_hours / expected_history_hours
+        daily_coverage_ratio = existing_history_days / expected_history_days
+        should_backfill_history = history_force or hourly_coverage_ratio < history_min_coverage or daily_coverage_ratio < history_min_coverage
         print(
             f"Weather history coverage since {history_start}: {existing_history_hours}/{expected_history_hours} "
-            f"hours ({coverage_ratio:.1%}). Backfill needed: {should_backfill_history}."
+            f"hours ({hourly_coverage_ratio:.1%}), {existing_history_days}/{expected_history_days} "
+            f"days ({daily_coverage_ratio:.1%}). Backfill needed: {should_backfill_history}."
         )
         if should_backfill_history:
             history_upserted = 0
@@ -319,18 +407,23 @@ def run() -> int:
                 print(f"Fetching historical Open-Meteo archive {chunk_start} to {chunk_end}.")
                 archive_payload = fetch_open_meteo_archive_hourly(latitude, longitude, timezone_name, chunk_start, chunk_end)
                 archive_rows = hourly_rows_from_response(archive_payload, station_key, latitude, longitude, timezone_name)
+                archive_daily_rows = daily_rows_from_response(archive_payload, station_key, latitude, longitude, timezone_name)
                 history_upserted += supabase.upsert("v2_weather_hourly", archive_rows, on_conflict="unique_id")
+                supabase.upsert("v2_weather_daily", archive_daily_rows, on_conflict="unique_id")
                 print(f"Upserted {len(archive_rows)} archive rows for {chunk_start} to {chunk_end}.")
             print(f"Historical weather backfill upserted {history_upserted} rows.")
 
     print(f"Fetching Open-Meteo weather for {station_key} ({latitude}, {longitude}) with {lookback_days} day lookback.")
     weather_payload = fetch_open_meteo_hourly(latitude, longitude, timezone_name, lookback_days)
     rows = hourly_rows_from_response(weather_payload, station_key, latitude, longitude, timezone_name)
+    daily_rows = daily_rows_from_response(weather_payload, station_key, latitude, longitude, timezone_name)
     if not rows:
         raise RuntimeError("Open-Meteo returned no hourly weather rows.")
 
     upserted = supabase.upsert("v2_weather_hourly", rows, on_conflict="unique_id")
+    daily_upserted = supabase.upsert("v2_weather_daily", daily_rows, on_conflict="unique_id")
     print(f"Upserted {upserted} hourly weather rows.")
+    print(f"Upserted {daily_upserted} daily weather rows.")
 
     refreshed = supabase.rpc("v2_refresh_hold_learning_weather_features", {"p_limit": refresh_limit})
     print(f"Refreshed hold weather features: {refreshed}")
