@@ -68,7 +68,7 @@ jobs:
           ML_LABELS_PATH: models/labels.json
           ML_DIAGNOSTICS_MODEL_PATH: models/diagnostics_classifier.pt
           ML_DIAGNOSTICS_LABELS_PATH: models/diagnostics_labels.json
-          ML_BATCH_SIZE: "50"
+          ML_BATCH_SIZE: "200"
           ML_POLL_SECONDS: "0"
           ML_RUN_ONCE: "true"
           OLLAMA_URL: ""
