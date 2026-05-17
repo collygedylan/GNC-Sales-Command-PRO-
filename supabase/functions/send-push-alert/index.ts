@@ -26,6 +26,12 @@ const FLYER_ALERT_USERNAMES = new Set(
     .map((value) => normalizeUsername(value))
     .filter(Boolean)
 );
+const PEST_MANAGEMENT_ALERT_USERNAMES = new Set(
+  String(Deno.env.get("PEST_MANAGEMENT_ALERT_USERNAMES") || "dylan_collyge")
+    .split(",")
+    .map((value) => normalizeUsername(value))
+    .filter(Boolean)
+);
 const PUSH_TABLE = "v2_push_subscriptions";
 const PUSH_SEND_CONCURRENCY = Math.max(1, Number(Deno.env.get("PUSH_SEND_CONCURRENCY") || "8") || 8);
 const WEB_PUSH_OPTIONS = { TTL: 120, urgency: "high", timeout: 8000 };
@@ -75,8 +81,12 @@ function buildTargetUsers(eventType: string, payload: Record<string, unknown>) {
   if (eventType === "chat_message") {
     return normalizePayloadUserList(payload.recipients || payload.targetUsers || payload.to);
   }
-  if (eventType === "walkie_alert") {
+  if (eventType === "walkie_alert" || eventType === "walkie_voice_message") {
     return normalizePayloadUserList(payload.recipients || payload.targetUsers || payload.to);
+  }
+  if (eventType === "pest_issue") {
+    const directUsers = normalizePayloadUserList(payload.recipients || payload.targetUsers || payload.to);
+    return directUsers.length ? directUsers : [...PEST_MANAGEMENT_ALERT_USERNAMES];
   }
   if (eventType === "request_complete") {
     const direct = normalizeUsername(String(payload.requestedByUsername || payload.requestedBy || payload.repName || ""));
@@ -128,6 +138,21 @@ function buildNotification(eventType: string, payload: Record<string, unknown>) 
       url: "./"
     };
   }
+  if (eventType === "walkie_voice_message") {
+    const sender = String(payload.sentBy || payload.createdBy || payload.senderDisplayName || "Walkie").trim();
+    const channelTitle = String(payload.title || payload.channelTitle || payload.customer || "Voice message").trim();
+    const messageId = String(payload.messageId || payload.folderId || "").trim();
+    const channelId = String(payload.channelId || "").trim();
+    return {
+      title: "Walkie Voice Message",
+      body: `${sender} left a voice message in ${channelTitle}.`,
+      tag: `walkie-voice-${messageId || Date.now()}`,
+      viewId: "walkie",
+      channelId,
+      messageId,
+      url: "./"
+    };
+  }
   if (eventType === "flyer_created") {
     return {
       title: "Flyer Created",
@@ -145,6 +170,20 @@ function buildNotification(eventType: string, payload: Record<string, unknown>) 
       body: `${folderName} is complete. ${itemsCount} row${itemsCount === 1 ? "" : "s"} have photos and specs.`,
       tag: `flyer-complete-${folderName || "folder"}`,
       viewId: "tasks",
+      url: "./"
+    };
+  }
+  if (eventType === "pest_issue") {
+    const block = String(payload.block || payload.blockAlpha || "").trim();
+    const crop = String(payload.crop || payload.commonName || payload.common_name || "Crop scout report").trim();
+    const severity = String(payload.severity || "review").trim();
+    const issue = String(payload.issue || payload.diagnosis || "Pest or disease issue flagged").trim();
+    return {
+      title: "Pest Management Review",
+      body: `${crop}${block ? ` in Block ${block}` : ""}: ${severity.toUpperCase()} - ${issue}`,
+      tag: `pest-management-${String(payload.reportId || payload.folderId || Date.now()).trim()}`,
+      viewId: "pest-management",
+      reportId: String(payload.reportId || payload.folderId || "").trim(),
       url: "./"
     };
   }
@@ -225,7 +264,7 @@ serve(async (req) => {
 
   const payload = await req.json().catch(() => ({})) as Record<string, unknown>;
   const eventType = String(payload.eventType || payload.type || "").trim().toLowerCase();
-  if (eventType !== "new_request" && eventType !== "request_complete" && eventType !== "flyer_created" && eventType !== "flyer_complete" && eventType !== "chat_message" && eventType !== "walkie_alert") {
+  if (eventType !== "new_request" && eventType !== "request_complete" && eventType !== "flyer_created" && eventType !== "flyer_complete" && eventType !== "chat_message" && eventType !== "walkie_alert" && eventType !== "walkie_voice_message" && eventType !== "pest_issue") {
     return jsonResponse({ error: "Unsupported event type." }, 400);
   }
 
