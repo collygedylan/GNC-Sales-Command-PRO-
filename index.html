@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.17.13';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.17.14';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1697,11 +1697,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <div id="shear-list-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md text-left flex flex-col max-h-[90vh]">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-3xl text-left flex flex-col max-h-[92vh]">
             <div class="flex items-start justify-between gap-3 border-b border-lime-100 pb-3">
                 <div>
                     <h3 class="font-black text-xl text-lime-700">Add To Shear List</h3>
-                    <p class="mt-1 text-[11px] font-semibold text-slate-500">Enter the percentage of each selected row that needs to be sheared.</p>
+                    <p class="mt-1 text-[11px] font-semibold text-slate-500">Review Drive Mode locations, shipping demand, and learned shear recovery before saving.</p>
                 </div>
                 <button type="button" class="h-10 w-10 rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm active:scale-95" onclick="return closeShearListModal()"><i class="ph-bold ph-x text-lg"></i></button>
             </div>
@@ -2065,7 +2065,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.13').trim() || 'V2026.05.17.13';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.14').trim() || 'V2026.05.17.14';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -3275,7 +3275,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.13';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.14';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -14050,7 +14050,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.13').trim() || 'V2026.05.17.13';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.14').trim() || 'V2026.05.17.14';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -30872,6 +30872,10 @@ function toggleDriveQuickRequestItem(domId) {
             selectedBlock: '',
             selectedLocation: ''
         };
+        let shearListModalItems = [];
+        let shearListModalReserveRowsByBaseUid = new Map();
+        let shearListModalReserveLoadingByBaseUid = new Set();
+        let shearListModalReserveErrorByBaseUid = new Map();
 
         function getShearListValue(row = null, field = '', fallback = '') {
             if (!row || !field) return fallback;
@@ -30968,6 +30972,458 @@ function toggleDriveQuickRequestItem(domId) {
             };
             if (safeInstructions) payload.instructions = safeInstructions;
             return payload;
+        }
+
+        function getShearDecisionDomKey(value = '') {
+            return String(value || 'shear')
+                .replace(/[^a-zA-Z0-9_-]+/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-+|-+$/g, '') || 'shear';
+        }
+
+        function getShearDecisionRowUid(row = null) {
+            return buildShearListSourceUid(row) || String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, row && row.DOM_ID, '') || '').trim();
+        }
+
+        function getShearDecisionNumber(value = 0, fallback = 0) {
+            const parsed = parseAppNumber(value);
+            if (parsed === null || !Number.isFinite(parsed)) return fallback;
+            return parsed;
+        }
+
+        function formatShearDecisionNumber(value = 0, digits = 0) {
+            const parsed = getShearDecisionNumber(value, NaN);
+            if (!Number.isFinite(parsed)) return '-';
+            return parsed.toLocaleString('en-US', {
+                maximumFractionDigits: digits,
+                minimumFractionDigits: digits
+            });
+        }
+
+        function getShearDecisionCandidateRows(item = null, limit = 18) {
+            if (!item) return [];
+            const itemCode = getShearListCompareKey(firstNonEmptyValue(item.ITEMCODE, item.itemcode, ''));
+            const commonName = getShearListCompareKey(firstNonEmptyValue(item.COMMONNAME, item.commonname, ''));
+            const contSize = getShearListCompareKey(firstNonEmptyValue(item.CONTSIZE, item.contsize, ''));
+            const sourceUid = getShearDecisionRowUid(item);
+            const rows = Array.isArray(fullInventory) ? fullInventory : [];
+            const seen = new Set();
+            const matches = [];
+            rows.forEach((candidate) => {
+                if (!candidate) return;
+                const candidateItemCode = getShearListCompareKey(firstNonEmptyValue(candidate.ITEMCODE, candidate.itemcode, ''));
+                const candidateCommon = getShearListCompareKey(firstNonEmptyValue(candidate.COMMONNAME, candidate.commonname, ''));
+                const candidateCont = getShearListCompareKey(firstNonEmptyValue(candidate.CONTSIZE, candidate.contsize, ''));
+                const isMatch = itemCode
+                    ? candidateItemCode === itemCode
+                    : (commonName && contSize && candidateCommon === commonName && candidateCont === contSize);
+                if (!isMatch) return;
+                const candidateUid = getShearDecisionRowUid(candidate) || [
+                    candidateItemCode,
+                    getShearListCompareKey(firstNonEmptyValue(candidate.LOCATIONCODE, candidate.locationcode, '')),
+                    getShearListCompareKey(firstNonEmptyValue(candidate.LOTCODE, candidate.lotcode, ''))
+                ].join('|');
+                if (!candidateUid || seen.has(candidateUid)) return;
+                seen.add(candidateUid);
+                matches.push(candidate);
+            });
+            matches.sort((left, right) => {
+                const leftUid = getShearDecisionRowUid(left);
+                const rightUid = getShearDecisionRowUid(right);
+                if (sourceUid && leftUid === sourceUid) return -1;
+                if (sourceUid && rightUid === sourceUid) return 1;
+                const ptrDiff = getShearDecisionNumber(firstNonEmptyValue(right.PTRAVAILABLE, right.ptravailable, 0)) - getShearDecisionNumber(firstNonEmptyValue(left.PTRAVAILABLE, left.ptravailable, 0));
+                if (ptrDiff) return ptrDiff;
+                return String(firstNonEmptyValue(left.LOCATIONCODE, left.locationcode, '') || '').localeCompare(String(firstNonEmptyValue(right.LOCATIONCODE, right.locationcode, '') || ''), undefined, { numeric: true, sensitivity: 'base' });
+            });
+            return matches.slice(0, limit);
+        }
+
+        function getShearDecisionReserveLocalRows(item = null) {
+            const rows = Array.isArray(reservesInventory) ? reservesInventory : [];
+            if (!item || !rows.length) return [];
+            return rows.filter((row) => isDriveCustomerOutreachSameItemCode(row, item));
+        }
+
+        function buildShearDecisionReserveQuery(item = null) {
+            const itemCodes = getDriveCustomerOutreachItemCodeVariants(item);
+            if (!itemCodes.length) return '';
+            if (itemCodes.length === 1) return `select=*&itemcode=eq.${encodeURIComponent(itemCodes[0])}`;
+            const conditions = itemCodes.map((itemCode) => `itemcode.eq.${encodeURIComponent(itemCode)}`);
+            return `select=*&or=(${conditions.join(',')})`;
+        }
+
+        async function loadShearDecisionReserveRows(baseUid = '', item = null, force = false) {
+            const safeBaseUid = String(baseUid || '').trim();
+            if (!safeBaseUid || !item) return [];
+            if (!force && shearListModalReserveRowsByBaseUid.has(safeBaseUid)) return shearListModalReserveRowsByBaseUid.get(safeBaseUid) || [];
+            if (shearListModalReserveLoadingByBaseUid.has(safeBaseUid)) return shearListModalReserveRowsByBaseUid.get(safeBaseUid) || [];
+            const query = buildShearDecisionReserveQuery(item);
+            if (!query) return [];
+            shearListModalReserveLoadingByBaseUid.add(safeBaseUid);
+            shearListModalReserveErrorByBaseUid.delete(safeBaseUid);
+            try {
+                const rows = await supabaseFetch('v2_reserves', 'GET', null, query);
+                const hydratedRows = hydrateDriveCustomerOutreachReserveRows(rows || [], `shear_${safeBaseUid}`);
+                shearListModalReserveRowsByBaseUid.set(safeBaseUid, hydratedRows);
+                return hydratedRows;
+            } catch (error) {
+                shearListModalReserveErrorByBaseUid.set(safeBaseUid, error && error.message ? error.message : 'Could not load v2_reserves rows.');
+                return shearListModalReserveRowsByBaseUid.get(safeBaseUid) || [];
+            } finally {
+                shearListModalReserveLoadingByBaseUid.delete(safeBaseUid);
+            }
+        }
+
+        function getShearDecisionReserveRows(baseUid = '', item = null) {
+            const safeBaseUid = String(baseUid || '').trim();
+            const fetchedRows = safeBaseUid && shearListModalReserveRowsByBaseUid.has(safeBaseUid)
+                ? shearListModalReserveRowsByBaseUid.get(safeBaseUid)
+                : null;
+            const rows = Array.isArray(fetchedRows) ? fetchedRows : getShearDecisionReserveLocalRows(item);
+            return preferDriveCustomerOutreachSeasonRows(rows, item);
+        }
+
+        function parseShearDecisionReserveDate(row = null) {
+            const raw = firstNonEmptyValue(
+                row && row.REQUESTDATE,
+                row && row.REQUEST_DATE,
+                row && row.DATE_REQUESTED,
+                row && row.REQUESTED_DATE,
+                row && row.SHIPDATE,
+                row && row.SHIP_DATE,
+                row && row.DELIVERYDATE,
+                row && row.DELIVERY_DATE,
+                ''
+            );
+            const stamp = Date.parse(String(raw || '').trim());
+            return Number.isFinite(stamp) ? stamp : NaN;
+        }
+
+        function getShearDecisionReserveQty(row = null) {
+            if (typeof getDriveCustomerOutreachReserveQty === 'function') {
+                const qty = getDriveCustomerOutreachReserveQty(row);
+                if (qty !== null && Number.isFinite(qty)) return Math.max(0, qty);
+            }
+            return Math.max(0, getShearDecisionNumber(firstNonEmptyValue(
+                row && row.QUANTITYORDERED,
+                row && row.quantityordered,
+                row && row.QUANITYORDERED,
+                row && row.quanityordered,
+                row && row.QTY_ORDERED,
+                row && row.qty_ordered,
+                row && row.QTY,
+                row && row.qty,
+                0
+            ), 0));
+        }
+
+        function isShearDecisionSameLocation(row = null, candidate = null) {
+            const left = getShearListCompareKey(firstNonEmptyValue(row && row.LOCATIONCODE, row && row.locationcode, row && row.LOCATION, ''));
+            const right = getShearListCompareKey(firstNonEmptyValue(candidate && candidate.LOCATIONCODE, candidate && candidate.locationcode, candidate && candidate.LOCATION, ''));
+            return !!(left && right && left === right);
+        }
+
+        function isShearDecisionSameLot(row = null, candidate = null) {
+            const left = getShearListCompareKey(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, ''));
+            const right = getShearListCompareKey(firstNonEmptyValue(candidate && candidate.LOTCODE, candidate && candidate.lotcode, ''));
+            return !!(left && right && left === right);
+        }
+
+        function getShearDecisionReserveDemand(baseUid = '', item = null, candidate = null, days = 14) {
+            const safeDays = Math.max(1, Math.min(120, Math.round(Number(days) || 14)));
+            const start = new Date();
+            start.setHours(0, 0, 0, 0);
+            const startMs = start.getTime();
+            const endMs = startMs + (safeDays * 24 * 60 * 60 * 1000);
+            const rows = getShearDecisionReserveRows(baseUid, item)
+                .filter((row) => isDriveCustomerOutreachSameItemCode(row, item));
+            const datedRows = [];
+            const undatedRows = [];
+            rows.forEach((row) => {
+                const stamp = parseShearDecisionReserveDate(row);
+                if (!Number.isFinite(stamp)) {
+                    undatedRows.push(row);
+                    return;
+                }
+                if (stamp >= startMs && stamp <= endMs) datedRows.push(row);
+            });
+            const locationRows = datedRows.filter((row) => isShearDecisionSameLocation(row, candidate));
+            const lotRows = datedRows.filter((row) => isShearDecisionSameLot(row, candidate));
+            const selectedRows = locationRows.length ? locationRows : (lotRows.length ? lotRows : datedRows);
+            const matchScope = locationRows.length ? 'location' : (lotRows.length ? 'lot' : 'item');
+            const sumQty = (list) => list.reduce((total, row) => total + getShearDecisionReserveQty(row), 0);
+            return {
+                days: safeDays,
+                rows: selectedRows,
+                rowCount: selectedRows.length,
+                qty: sumQty(selectedRows),
+                itemQty: sumQty(datedRows),
+                itemRowCount: datedRows.length,
+                undatedQty: sumQty(undatedRows),
+                undatedRowCount: undatedRows.length,
+                matchScope
+            };
+        }
+
+        function getShearDecisionRecentDailyGddAverage(days = 14) {
+            const rows = getDailyWeatherRowsSince(days);
+            const values = rows
+                .map((row) => getShearDecisionNumber(firstNonEmptyValue(row && row.daily_gdd_base_50, row && row.DAILY_GDD_BASE_50, row && row.gdd_base_50, row && row.GDD_BASE_50, 0), NaN))
+                .filter(Number.isFinite);
+            if (!values.length) return NaN;
+            return values.reduce((total, value) => total + value, 0) / values.length;
+        }
+
+        function getShearDecisionRecoveryEstimate(item = null) {
+            const profiles = Array.isArray(weatherHoldState.holdProfiles) ? weatherHoldState.holdProfiles : [];
+            const targetCommon = getShearListCompareKey(firstNonEmptyValue(item && item.COMMONNAME, item && item.commonname, ''));
+            const targetCont = getShearListCompareKey(firstNonEmptyValue(item && item.CONTSIZE, item && item.contsize, ''));
+            const targetGenus = getShearListCompareKey(firstNonEmptyValue(item && item.GENUS, item && item.genus, ''));
+            const shearProfiles = profiles
+                .filter((profile) => String(firstNonEmptyValue(profile && profile.hold_reason_category, profile && profile.HOLD_REASON_CATEGORY, '') || '').toLowerCase().includes('shear'))
+                .map((profile) => {
+                    const common = getShearListCompareKey(firstNonEmptyValue(profile && profile.commonname, profile && profile.COMMONNAME, ''));
+                    const cont = getShearListCompareKey(firstNonEmptyValue(profile && profile.contsize, profile && profile.CONTSIZE, ''));
+                    const genus = getShearListCompareKey(firstNonEmptyValue(profile && profile.genus, profile && profile.GENUS, ''));
+                    let score = 0;
+                    if (targetCommon && common === targetCommon) score += 6;
+                    if (targetCont && cont === targetCont) score += 3;
+                    if (targetGenus && genus === targetGenus) score += 1;
+                    return { profile, score };
+                })
+                .filter((entry) => entry.score > 0)
+                .sort((left, right) => right.score - left.score);
+            const matched = shearProfiles[0] ? shearProfiles[0].profile : null;
+            if (!matched) {
+                return {
+                    ready: false,
+                    days: NaN,
+                    gdd: NaN,
+                    sampleCount: 0,
+                    label: weatherHoldState.loading ? 'Loading learned shear recovery...' : 'No learned shear recovery profile yet.'
+                };
+            }
+            const gdd = getShearDecisionNumber(firstNonEmptyValue(
+                matched.median_gdd_base_50_to_release,
+                matched.MEDIAN_GDD_BASE_50_TO_RELEASE,
+                matched.avg_gdd_base_50_to_release,
+                matched.AVG_GDD_BASE_50_TO_RELEASE,
+                matched.median_gdd_base_50_30d,
+                matched.MEDIAN_GDD_BASE_50_30D,
+                matched.avg_gdd_base_50_30d,
+                matched.AVG_GDD_BASE_50_30D,
+                NaN
+            ), NaN);
+            let days = getShearDecisionNumber(firstNonEmptyValue(
+                matched.avg_days_to_release,
+                matched.AVG_DAYS_TO_RELEASE,
+                NaN
+            ), NaN);
+            if (!Number.isFinite(days) && Number.isFinite(gdd)) {
+                const dailyGdd = getShearDecisionRecentDailyGddAverage(14);
+                if (Number.isFinite(dailyGdd) && dailyGdd > 0) days = Math.ceil(gdd / dailyGdd);
+            }
+            const sampleCount = Math.max(0, Math.round(getShearDecisionNumber(firstNonEmptyValue(
+                matched.release_sample_count,
+                matched.RELEASE_SAMPLE_COUNT,
+                matched.sample_count,
+                matched.SAMPLE_COUNT,
+                0
+            ), 0)));
+            const parts = [];
+            if (Number.isFinite(days)) parts.push(`${formatShearDecisionNumber(days, 1)} days`);
+            if (Number.isFinite(gdd)) parts.push(`${formatShearDecisionNumber(gdd, 0)} GDD`);
+            if (sampleCount) parts.push(`${sampleCount} samples`);
+            return {
+                ready: true,
+                days,
+                gdd,
+                sampleCount,
+                label: parts.length ? `Learned shear recovery: ${parts.join(' | ')}` : 'Learned shear recovery profile found.'
+            };
+        }
+
+        function collectShearListModalDraftState() {
+            const state = { percent: new Map(), instructions: new Map(), days: new Map(), selectedUid: new Map() };
+            document.querySelectorAll('.shear-percent-input').forEach((input) => {
+                const baseUid = String(input && input.dataset ? input.dataset.baseUid || '' : '').trim();
+                if (!baseUid) return;
+                state.percent.set(baseUid, String(input.value || '').trim());
+                state.selectedUid.set(baseUid, String(input.dataset.selectedUid || '').trim());
+            });
+            document.querySelectorAll('.shear-instructions-input').forEach((input) => {
+                const baseUid = String(input && input.dataset ? input.dataset.baseUid || '' : '').trim();
+                if (baseUid) state.instructions.set(baseUid, String(input.value || ''));
+            });
+            document.querySelectorAll('.shear-window-input').forEach((input) => {
+                const baseUid = String(input && input.dataset ? input.dataset.baseUid || '' : '').trim();
+                if (baseUid) state.days.set(baseUid, String(input.value || '').trim());
+            });
+            return state;
+        }
+
+        function getShearListModalDraftValue(state, key, baseUid, fallback = '') {
+            if (state && state[key] && typeof state[key].get === 'function' && state[key].has(baseUid)) return state[key].get(baseUid);
+            return fallback;
+        }
+
+        function buildShearDecisionLocationCard(candidate = null, context = {}) {
+            const baseUid = String(context.baseUid || '').trim();
+            const selectedUid = String(context.selectedUid || '').trim();
+            const candidateUid = getShearDecisionRowUid(candidate);
+            const ptr = getShearDecisionNumber(firstNonEmptyValue(candidate && candidate.PTRAVAILABLE, candidate && candidate.ptravailable, 0), 0);
+            const percent = Math.max(1, Math.min(100, getShearDecisionNumber(context.percent, 100)));
+            const shearQty = Math.ceil(ptr * (percent / 100));
+            const demand = getShearDecisionReserveDemand(baseUid, context.item, candidate, context.days);
+            const remainingAfterShear = Math.max(0, ptr - shearQty);
+            const remainingAfterOrders = remainingAfterShear - demand.qty;
+            const isSelected = candidateUid && selectedUid && candidateUid === selectedUid;
+            const isRecommended = candidateUid && context.bestUid && candidateUid === context.bestUid;
+            const riskClass = remainingAfterOrders >= 0
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                : (remainingAfterOrders >= -Math.max(10, ptr * 0.1) ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-red-200 bg-red-50 text-red-700');
+            const riskText = remainingAfterOrders >= 0 ? 'Best Fit' : (remainingAfterOrders >= -Math.max(10, ptr * 0.1) ? 'Watch' : 'Risk');
+            const loc = firstNonEmptyValue(candidate && candidate.LOCATIONCODE, candidate && candidate.locationcode, 'No Loc');
+            const lot = firstNonEmptyValue(candidate && candidate.LOTCODE, candidate && candidate.lotcode, '-');
+            const block = firstNonEmptyValue(candidate && candidate.BLOCKALPHA, candidate && candidate.blockalpha, '-');
+            const season = firstNonEmptyValue(candidate && candidate.SEASON, candidate && candidate.season, '-');
+            const safeBaseUid = escJsAttrValue(baseUid);
+            const safeCandidateUid = escJsAttrValue(candidateUid);
+            const badgeHtml = isRecommended ? '<span class="rounded-full border border-emerald-200 bg-white px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700">Recommended</span>' : '';
+            return `<div class="rounded-xl border ${isSelected ? 'border-[#007a4d] bg-emerald-50/70' : 'border-slate-200 bg-white'} p-3 shadow-sm">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <div class="font-black text-slate-900">Loc ${escapeHtml(loc)} <span class="text-slate-400">| Lot ${escapeHtml(lot)}</span></div>
+                            ${badgeHtml}
+                        </div>
+                        <div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Block ${escapeHtml(block)} | ${escapeHtml(season)} | Matched ${escapeHtml(demand.matchScope)}</div>
+                    </div>
+                    <span class="rounded-full border ${riskClass} px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em]">${escapeHtml(riskText)}</span>
+                </div>
+                <div class="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-5">
+                    <div class="rounded-lg bg-slate-50 p-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">PTR</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatShearDecisionNumber(ptr))}</div></div>
+                    <div class="rounded-lg bg-lime-50 p-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">Shear Qty</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatShearDecisionNumber(shearQty))}</div></div>
+                    <div class="rounded-lg bg-sky-50 p-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">Ship ${escapeHtml(String(demand.days))}d</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatShearDecisionNumber(demand.qty))}</div></div>
+                    <div class="rounded-lg bg-emerald-50 p-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">After Shear</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatShearDecisionNumber(remainingAfterShear))}</div></div>
+                    <div class="rounded-lg ${remainingAfterOrders >= 0 ? 'bg-emerald-50' : 'bg-red-50'} p-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">After Orders</div><div class="text-sm font-black ${remainingAfterOrders >= 0 ? 'text-emerald-800' : 'text-red-700'}">${escapeHtml(formatShearDecisionNumber(remainingAfterOrders))}</div></div>
+                </div>
+                <div class="mt-2 text-[10px] font-bold text-slate-400">${demand.rowCount} dated reserve row${demand.rowCount === 1 ? '' : 's'}${demand.undatedRowCount ? ` | ${escapeHtml(String(demand.undatedRowCount))} undated row${demand.undatedRowCount === 1 ? '' : 's'} not counted` : ''}</div>
+                <button type="button" class="mt-3 w-full rounded-xl ${isSelected ? 'bg-[#007a4d] text-white' : 'border border-emerald-200 bg-white text-[#007a4d]'} px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] shadow-sm active:scale-95" onclick="return selectShearDecisionLocation('${safeBaseUid}', '${safeCandidateUid}')">${isSelected ? 'Selected Location' : 'Use This Location'}</button>
+            </div>`;
+        }
+
+        function renderShearDecisionPlannerHtml(item = null, selectedItem = null, context = {}) {
+            const baseUid = String(context.baseUid || '').trim();
+            const percent = getShearDecisionNumber(context.percent, 100);
+            const days = Math.max(1, Math.min(120, Math.round(Number(context.days) || 14)));
+            const candidates = getShearDecisionCandidateRows(item);
+            const recovery = getShearDecisionRecoveryEstimate(item);
+            const loading = shearListModalReserveLoadingByBaseUid.has(baseUid);
+            const error = shearListModalReserveErrorByBaseUid.get(baseUid) || '';
+            const candidateScores = candidates.map((candidate) => {
+                const ptr = getShearDecisionNumber(firstNonEmptyValue(candidate && candidate.PTRAVAILABLE, candidate && candidate.ptravailable, 0), 0);
+                const shearQty = Math.ceil(ptr * (Math.max(1, Math.min(100, percent)) / 100));
+                const demand = getShearDecisionReserveDemand(baseUid, item, candidate, days);
+                return {
+                    uid: getShearDecisionRowUid(candidate),
+                    score: (ptr - shearQty) - demand.qty,
+                    ptr
+                };
+            }).sort((left, right) => {
+                if (right.score !== left.score) return right.score - left.score;
+                return right.ptr - left.ptr;
+            });
+            const bestUid = candidateScores[0] ? candidateScores[0].uid : '';
+            const selectedLoc = firstNonEmptyValue(selectedItem && selectedItem.LOCATIONCODE, selectedItem && selectedItem.locationcode, 'No Loc');
+            const selectedPtr = firstNonEmptyValue(selectedItem && selectedItem.PTRAVAILABLE, selectedItem && selectedItem.ptravailable, '0');
+            const locationCards = candidates.length
+                ? candidates.map((candidate) => buildShearDecisionLocationCard(candidate, { ...context, item, percent, days, bestUid })).join('')
+                : '<div class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-5 text-center text-[11px] font-bold text-slate-400">No other Drive Mode locations found for this item.</div>';
+            const loadingHtml = loading ? '<div class="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-sky-700">Loading current v2_reserves shipping demand...</div>' : '';
+            const errorHtml = error ? `<div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-amber-700">${escapeHtml(error)}</div>` : '';
+            return `<div class="mt-3 rounded-2xl border border-emerald-200 bg-white p-3">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="min-w-0">
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Drive Mode Location Planner</div>
+                        <div class="mt-1 text-[12px] font-bold text-slate-500">Selected Loc ${escapeHtml(selectedLoc)} | PTR ${escapeHtml(String(selectedPtr))}</div>
+                        <div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-lime-700">${escapeHtml(recovery.label)}</div>
+                    </div>
+                    <label class="block min-w-[128px]">
+                        <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">Shipping Window Days</span>
+                        <input type="number" min="1" max="120" step="1" inputmode="numeric" class="shear-window-input mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-center text-base font-black text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeHtml(String(days))}" data-base-uid="${escapeHtml(baseUid)}" onchange="return refreshShearDecisionPlanner('${escJsAttrValue(baseUid)}')">
+                    </label>
+                </div>
+                <div class="mt-3 space-y-2">${loadingHtml}${errorHtml}</div>
+                <div class="mt-3 grid grid-cols-1 gap-2">${locationCards}</div>
+            </div>`;
+        }
+
+        function renderShearListModalRows(items = shearListModalItems, draftState = collectShearListModalDraftState()) {
+            const rowsEl = document.getElementById('shear-list-modal-rows');
+            if (!rowsEl) return;
+            const rows = Array.isArray(items) ? items : [];
+            rowsEl.innerHTML = rows.map((item) => {
+                const baseUid = buildShearListSourceUid(item);
+                const selectedUid = getShearListModalDraftValue(draftState, 'selectedUid', baseUid, baseUid) || baseUid;
+                const selectedItem = findItemByUniqueId(selectedUid) || item;
+                const selectedDomId = String(firstNonEmptyValue(selectedItem && selectedItem.DOM_ID, selectedItem && selectedItem.dom_id, '') || '').trim();
+                const commonName = firstNonEmptyValue(item.COMMONNAME, item.commonname, 'Unknown');
+                const contSize = firstNonEmptyValue(item.CONTSIZE, item.contsize, '-');
+                const loc = firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, 'No Loc');
+                const lot = firstNonEmptyValue(item.LOTCODE, item.lotcode, '-');
+                const ptr = firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, '0');
+                const percent = getShearListModalDraftValue(draftState, 'percent', baseUid, '100') || '100';
+                const instructions = getShearListModalDraftValue(draftState, 'instructions', baseUid, '');
+                const days = getShearListModalDraftValue(draftState, 'days', baseUid, '14') || '14';
+                return `<div class="rounded-2xl border border-lime-100 bg-lime-50/50 p-3 shadow-sm" data-shear-base-uid="${escapeHtml(baseUid)}">
+                    <div class="font-black text-slate-900 leading-tight">${escapeHtml(commonName)}</div>
+                    <div class="mt-1 text-[11px] font-bold text-slate-500">${escapeHtml(contSize)} | Original Loc ${escapeHtml(loc)} | Lot ${escapeHtml(lot)} | PTR ${escapeHtml(String(ptr))}</div>
+                    <label class="mt-3 block text-[10px] font-black uppercase tracking-[0.14em] text-lime-700">Percent To Shear</label>
+                    <input type="number" min="1" max="100" step="1" inputmode="numeric" class="shear-percent-input input-field !mb-0 border-lime-200 bg-white text-center text-lg font-black" value="${escapeHtml(String(percent))}" data-base-uid="${escapeHtml(baseUid)}" data-dom-id="${escapeHtml(selectedDomId)}" data-selected-uid="${escapeHtml(selectedUid)}" onchange="return refreshShearDecisionPlanner('${escJsAttrValue(baseUid)}')">
+                    ${renderShearDecisionPlannerHtml(item, selectedItem, { baseUid, selectedUid, percent, days })}
+                    <label class="mt-3 block text-[10px] font-black uppercase tracking-[0.14em] text-lime-700">Instructions Optional</label>
+                    <textarea class="shear-instructions-input input-field !mb-0 min-h-[78px] border-lime-200 bg-white text-sm font-bold" placeholder="Add shear instructions..." data-base-uid="${escapeHtml(baseUid)}">${escapeHtml(instructions)}</textarea>
+                </div>`;
+            }).join('');
+        }
+
+        function ensureShearDecisionModalData(items = shearListModalItems) {
+            if (typeof loadWeatherHoldData === 'function' && !weatherHoldState.loaded && !weatherHoldState.loading) {
+                loadWeatherHoldData(false).then(() => {
+                    const modal = document.getElementById('shear-list-modal');
+                    if (modal && !modal.classList.contains('hidden')) renderShearListModalRows();
+                }).catch(() => {});
+            }
+            (Array.isArray(items) ? items : []).forEach((item) => {
+                const baseUid = buildShearListSourceUid(item);
+                if (!baseUid || shearListModalReserveRowsByBaseUid.has(baseUid) || shearListModalReserveLoadingByBaseUid.has(baseUid)) return;
+                loadShearDecisionReserveRows(baseUid, item, false).then(() => {
+                    const modal = document.getElementById('shear-list-modal');
+                    if (modal && !modal.classList.contains('hidden')) renderShearListModalRows();
+                }).catch(() => {});
+            });
+        }
+
+        function refreshShearDecisionPlanner(baseUid = '') {
+            renderShearListModalRows(shearListModalItems, collectShearListModalDraftState());
+            return false;
+        }
+
+        function selectShearDecisionLocation(baseUid = '', selectedUid = '') {
+            const safeBaseUid = String(baseUid || '').trim();
+            const safeSelectedUid = String(selectedUid || '').trim();
+            if (!safeBaseUid || !safeSelectedUid) return false;
+            const input = Array.from(document.querySelectorAll('.shear-percent-input'))
+                .find((entry) => String(entry && entry.dataset ? entry.dataset.baseUid || '' : '').trim() === safeBaseUid) || null;
+            const selectedItem = findItemByUniqueId(safeSelectedUid);
+            if (input) {
+                input.dataset.selectedUid = safeSelectedUid;
+                input.dataset.domId = String(firstNonEmptyValue(selectedItem && selectedItem.DOM_ID, selectedItem && selectedItem.dom_id, '') || '').trim();
+            }
+            renderShearListModalRows(shearListModalItems, collectShearListModalDraftState());
+            return false;
         }
 
         async function loadShearListData(force = false) {
@@ -48991,6 +49447,10 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             if (modal) modal.classList.add('hidden');
             if (rows) rows.innerHTML = '';
             if (submitBtn) submitBtn.innerText = 'Add Rows';
+            shearListModalItems = [];
+            shearListModalReserveRowsByBaseUid = new Map();
+            shearListModalReserveLoadingByBaseUid = new Set();
+            shearListModalReserveErrorByBaseUid = new Map();
             return false;
         }
 
@@ -49009,24 +49469,10 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const modal = document.getElementById('shear-list-modal');
             const rowsEl = document.getElementById('shear-list-modal-rows');
             if (!modal || !rowsEl) return false;
-            rowsEl.innerHTML = items.map((item) => {
-                const domId = String(firstNonEmptyValue(item.DOM_ID, item.dom_id, '') || '').trim();
-                const sourceUid = buildShearListSourceUid(item);
-                const commonName = firstNonEmptyValue(item.COMMONNAME, item.commonname, 'Unknown');
-                const contSize = firstNonEmptyValue(item.CONTSIZE, item.contsize, '-');
-                const loc = firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, 'No Loc');
-                const lot = firstNonEmptyValue(item.LOTCODE, item.lotcode, '-');
-                const ptr = firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, '0');
-                return `<div class="rounded-2xl border border-lime-100 bg-lime-50/50 p-3 shadow-sm">
-                    <div class="font-black text-slate-900 leading-tight">${escapeHtml(commonName)}</div>
-                    <div class="mt-1 text-[11px] font-bold text-slate-500">${escapeHtml(contSize)} | Loc ${escapeHtml(loc)} | Lot ${escapeHtml(lot)} | PTR ${escapeHtml(String(ptr))}</div>
-                    <label class="mt-3 block text-[10px] font-black uppercase tracking-[0.14em] text-lime-700">Percent To Shear</label>
-                    <input type="number" min="1" max="100" step="1" inputmode="numeric" class="shear-percent-input input-field !mb-0 border-lime-200 bg-white text-center text-lg font-black" value="100" data-dom-id="${escapeHtml(domId)}" data-source-uid="${escapeHtml(sourceUid)}">
-                    <label class="mt-3 block text-[10px] font-black uppercase tracking-[0.14em] text-lime-700">Instructions Optional</label>
-                    <textarea class="shear-instructions-input input-field !mb-0 min-h-[78px] border-lime-200 bg-white text-sm font-bold" placeholder="Add shear instructions..." data-source-uid="${escapeHtml(sourceUid)}"></textarea>
-                </div>`;
-            }).join('');
+            shearListModalItems = items.slice();
+            renderShearListModalRows(shearListModalItems, { percent: new Map(), instructions: new Map(), days: new Map(), selectedUid: new Map() });
             modal.classList.remove('hidden');
+            ensureShearDecisionModalData(shearListModalItems);
             return false;
         }
 
@@ -49040,14 +49486,15 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const payloads = [];
             const instructionInputsBySourceUid = new Map(
                 Array.from(document.querySelectorAll('.shear-instructions-input')).map((entry) => [
-                    String(entry && entry.dataset ? entry.dataset.sourceUid || '' : '').trim(),
+                    String(entry && entry.dataset ? entry.dataset.baseUid || '' : '').trim(),
                     entry
                 ])
             );
             for (const input of inputs) {
                 const domId = String(input.dataset.domId || '').trim();
-                const sourceUid = String(input.dataset.sourceUid || '').trim();
-                const item = (domId && findItemByDomId(domId)) || (sourceUid && findItemByUniqueId(sourceUid));
+                const baseUid = String(input.dataset.baseUid || '').trim();
+                const selectedUid = String(input.dataset.selectedUid || '').trim();
+                const item = (selectedUid && findItemByUniqueId(selectedUid)) || (domId && findItemByDomId(domId)) || (baseUid && findItemByUniqueId(baseUid));
                 const percent = Number(input.value);
                 if (!item) continue;
                 if (!Number.isFinite(percent) || percent < 1 || percent > 100) {
@@ -49055,7 +49502,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                     try { input.focus(); } catch (error) {}
                     return false;
                 }
-                const instructionInput = instructionInputsBySourceUid.get(sourceUid) || null;
+                const instructionInput = instructionInputsBySourceUid.get(baseUid) || null;
                 const instructions = instructionInput ? String(instructionInput.value || '').trim() : '';
                 const payload = buildShearListPayload(item, percent, instructions);
                 if (payload) payloads.push(payload);
