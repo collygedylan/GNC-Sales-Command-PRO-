@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.17.01';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.17.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2015,7 +2015,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.01').trim() || 'V2026.05.17.01';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.02').trim() || 'V2026.05.17.02';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2861,6 +2861,9 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const FLYER_FOLDER_HISTORY_TABLE = 'v2_flyer_folder_history';
         const ML_IMAGE_JOBS_TABLE = 'v2_ml_image_jobs';
         const ML_CAPTURE_PHOTO_BUCKET = 'ml_capture_photos';
+        const DIAGNOSTIC_LAB_CASES_TABLE = 'v2_diagnostic_lab_cases';
+        const DIAGNOSTIC_LAB_REPORT_BUCKET = 'diagnostic_lab_reports';
+        const DISEASE_TRAINING_ASSETS_TABLE = 'v2_disease_training_assets';
         const GROWER_SCOUT_REPORTS_TABLE = 'v2_grower_scout_reports';
         const GROWER_SCOUT_ASSETS_TABLE = 'v2_grower_scout_assets';
         const GROWER_SCOUT_AUDIO_BUCKET = 'grower_scout_audio';
@@ -2930,7 +2933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -13611,7 +13614,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.01').trim() || 'V2026.05.17.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.02').trim() || 'V2026.05.17.02';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -43435,6 +43438,22 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             item.DIAGNOSTIC_REFERENCE_SCORE = firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_SCORE, item.diagnostic_reference_score, '');
             item.DIAGNOSTIC_REFERENCE_REPORT_TEXT = String(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_REPORT_TEXT, item.diagnostic_reference_report_text, '')).trim();
             item.DIAGNOSTIC_REFERENCE_REPORT_REWRITE = String(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_REPORT_REWRITE, item.diagnostic_reference_report_rewrite, '')).trim();
+            item.DIAGNOSTIC_REVIEW_DECISION = String(firstNonEmptyValue(item.DIAGNOSTIC_REVIEW_DECISION, item.diagnostic_review_decision, '')).trim().toLowerCase();
+            item.DIAGNOSTIC_REVIEWER_REPORT = String(firstNonEmptyValue(item.DIAGNOSTIC_REVIEWER_REPORT, item.diagnostic_reviewer_report, '')).trim();
+            item.DIAGNOSTIC_REVIEWER_DIAGNOSIS = String(firstNonEmptyValue(item.DIAGNOSTIC_REVIEWER_DIAGNOSIS, item.diagnostic_reviewer_diagnosis, '')).trim();
+            item.DIAGNOSTIC_REVIEWER_TREATMENT = String(firstNonEmptyValue(item.DIAGNOSTIC_REVIEWER_TREATMENT, item.diagnostic_reviewer_treatment, '')).trim();
+            item.DIAGNOSTIC_REVIEWED_BY_USERNAME = String(firstNonEmptyValue(item.DIAGNOSTIC_REVIEWED_BY_USERNAME, item.diagnostic_reviewed_by_username, '')).trim();
+            item.DIAGNOSTIC_REVIEWED_BY_DISPLAY = String(firstNonEmptyValue(item.DIAGNOSTIC_REVIEWED_BY_DISPLAY, item.diagnostic_reviewed_by_display, '')).trim();
+            item.DIAGNOSTIC_REVIEWED_AT = String(firstNonEmptyValue(item.DIAGNOSTIC_REVIEWED_AT, item.diagnostic_reviewed_at, '')).trim();
+            item.DIAGNOSTIC_LAB_CASE_ID = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_CASE_ID, item.diagnostic_lab_case_id, '')).trim();
+            item.DIAGNOSTIC_LAB_STATUS = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_STATUS, item.diagnostic_lab_status, '')).trim().toLowerCase();
+            item.DIAGNOSTIC_LAB_LABEL_PRINTED_AT = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_LABEL_PRINTED_AT, item.diagnostic_lab_label_printed_at, '')).trim();
+            item.DIAGNOSTIC_LAB_REPORT_BUCKET = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_REPORT_BUCKET, item.diagnostic_lab_report_bucket, '')).trim();
+            item.DIAGNOSTIC_LAB_REPORT_PATH = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_REPORT_PATH, item.diagnostic_lab_report_path, '')).trim();
+            item.DIAGNOSTIC_LAB_REPORT_URL = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_REPORT_URL, item.diagnostic_lab_report_url, '')).trim();
+            item.DIAGNOSTIC_LAB_REPORT_UPLOADED_AT = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_REPORT_UPLOADED_AT, item.diagnostic_lab_report_uploaded_at, '')).trim();
+            item.DIAGNOSTIC_LAB_REPORT_UPLOADED_BY = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_REPORT_UPLOADED_BY, item.diagnostic_lab_report_uploaded_by, '')).trim();
+            item.DIAGNOSTIC_LEARNING_SCOPE = String(firstNonEmptyValue(item.DIAGNOSTIC_LEARNING_SCOPE, item.diagnostic_learning_scope, 'genus_commonname_all_contsizes')).trim() || 'genus_commonname_all_contsizes';
             return item;
         }
 
@@ -44830,6 +44849,515 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             return getMlJobsByStatus(['pending_approval']).filter((row) => isMlDiagnosticIssueRow(row));
         }
 
+        function sanitizeDiagnosticCaseSegment(value = '', fallback = 'NA') {
+            const cleaned = String(value || '').trim().replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toUpperCase();
+            return (cleaned || fallback).slice(0, 28);
+        }
+
+        function buildDiagnosticLabCaseId(item = null) {
+            const normalized = normalizeMlImageJobRow(item) || {};
+            const dateStamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            const itemPart = sanitizeDiagnosticCaseSegment(firstNonEmptyValue(normalized.ITEMCODE, 'NOITEM'));
+            const locPart = sanitizeDiagnosticCaseSegment(firstNonEmptyValue(normalized.LOCATIONCODE, 'NOLOC'));
+            const lotPart = sanitizeDiagnosticCaseSegment(firstNonEmptyValue(normalized.LOTCODE, normalized.SEASON, 'NOLOT'));
+            const randomPart = (window.crypto && typeof window.crypto.randomUUID === 'function')
+                ? window.crypto.randomUUID().split('-')[0].toUpperCase()
+                : Math.random().toString(36).slice(2, 10).toUpperCase();
+            return `LAB-${dateStamp}-${itemPart}-${locPart}-${lotPart}-${randomPart}`;
+        }
+
+        function getDiagnosticLabCaseId(item = null) {
+            const normalized = normalizeMlImageJobRow(item) || {};
+            return String(firstNonEmptyValue(normalized.DIAGNOSTIC_LAB_CASE_ID, '')).trim() || buildDiagnosticLabCaseId(normalized);
+        }
+
+        function getDiagnosticReviewLabel(item = null, fallback = 'Diagnostic review') {
+            const normalized = normalizeMlImageJobRow(item) || {};
+            return String(firstNonEmptyValue(
+                normalized.DIAGNOSTIC_REVIEWER_DIAGNOSIS,
+                normalized.DIAGNOSTIC_REFERENCE_LABEL,
+                normalized.DIAGNOSIS,
+                fallback
+            )).trim();
+        }
+
+        function getDiagnosticReviewMetadata(item = null, extra = {}) {
+            const normalized = normalizeMlImageJobRow(item) || {};
+            const metaInfo = getMlJobDriveModeMeta(normalized);
+            return {
+                source: 'gnc_app_diagnostic_review',
+                source_ml_job_id: normalized.UNIQUE_ID || '',
+                source_table: normalized.ML_ROW_SOURCE_TABLE || '',
+                source_unique_id: normalized.ML_SOURCE_UNIQUE_ID || '',
+                learning_scope: 'genus_commonname_all_contsizes',
+                genus: firstNonEmptyValue(normalized.GENUS, normalized.ML_GENUS, metaInfo.sourceRow && metaInfo.sourceRow.GENUS, ''),
+                commonname: getMlJobDisplayCommonName(normalized),
+                itemcode: metaInfo.itemcode || normalized.ITEMCODE || '',
+                contsize: metaInfo.contsize || normalized.CONTSIZE || '',
+                locationcode: metaInfo.loc || normalized.LOCATIONCODE || '',
+                lotcode: metaInfo.lot || normalized.LOTCODE || '',
+                season: metaInfo.season || normalized.SEASON || '',
+                block: metaInfo.block || normalized.BLOCK || '',
+                ...extra
+            };
+        }
+
+        async function upsertDiagnosticLearningReference(item = null, options = {}) {
+            const normalized = normalizeMlImageJobRow(item);
+            if (!normalized || !normalized.UNIQUE_ID) return false;
+            const caseId = String(firstNonEmptyValue(options.caseId, normalized.DIAGNOSTIC_LAB_CASE_ID, buildDiagnosticLabCaseId(normalized))).trim();
+            const nowIso = new Date().toISOString();
+            const meta = getDiagnosticReviewMetadata(normalized, options.metadata || {});
+            const label = String(firstNonEmptyValue(options.label, getDiagnosticReviewLabel(normalized), 'Diagnostic review')).trim();
+            const reportText = String(firstNonEmptyValue(options.reportText, normalized.DIAGNOSTIC_REVIEWER_REPORT, normalized.DIAGNOSTIC_REFERENCE_REPORT_TEXT, '')).trim();
+            const reportRewrite = String(firstNonEmptyValue(options.reportRewrite, reportText, normalized.DIAGNOSTIC_REFERENCE_REPORT_REWRITE, '')).trim();
+            const uniquePart = sanitizeDiagnosticCaseSegment(firstNonEmptyValue(options.uniquePart, options.decision, 'review'), 'REVIEW').toLowerCase();
+            const uniqueId = String(firstNonEmptyValue(options.uniqueId, `${uniquePart}-${caseId}`)).trim();
+            const storagePath = String(firstNonEmptyValue(options.storagePath, `review-feedback/${caseId}.json`)).trim();
+            const payload = {
+                unique_id: uniqueId,
+                drive_file_id: String(firstNonEmptyValue(options.driveFileId, uniqueId)).trim(),
+                drive_parent_id: 'gnc-app-diagnostic-review',
+                drive_path: storagePath,
+                folder_path: `app-diagnostic-review/${sanitizeDiagnosticCaseSegment(firstNonEmptyValue(meta.genus, meta.commonname, 'plant'), 'PLANT')}`,
+                label,
+                asset_kind: String(firstNonEmptyValue(options.assetKind, 'review_feedback')).trim(),
+                bucket: String(firstNonEmptyValue(options.bucket, DIAGNOSTIC_LAB_REPORT_BUCKET)).trim(),
+                storage_path: storagePath,
+                public_url: String(firstNonEmptyValue(options.publicUrl, '')).trim() || null,
+                mime_type: String(firstNonEmptyValue(options.mimeType, 'application/json')).trim(),
+                file_name: String(firstNonEmptyValue(options.fileName, `${caseId}-review-feedback.txt`)).trim(),
+                file_size: Number(options.fileSize || 0) || null,
+                checksum: null,
+                processed_status: 'processed',
+                diagnosis: label,
+                recommended_treatment: String(firstNonEmptyValue(options.treatment, normalized.RECOMMENDED_TREATMENT, 'Review current crop condition before treatment.')).trim(),
+                confidence: Number(options.confidence || normalized.ML_CONFIDENCE || 0) || null,
+                worker_id: 'app-review',
+                attempts: 0,
+                processing_started_at: null,
+                processed_at: nowIso,
+                last_error: null,
+                plant_folder: firstNonEmptyValue(meta.genus, meta.commonname, ''),
+                source_file_title: String(firstNonEmptyValue(options.fileName, `${caseId}-review-feedback.txt`)).trim(),
+                genus: meta.genus || null,
+                commonname: meta.commonname || null,
+                locationcode: meta.locationcode || null,
+                lotcode: meta.lotcode || null,
+                contsize: meta.contsize || null,
+                itemcode: meta.itemcode || null,
+                source_ml_job_id: normalized.UNIQUE_ID,
+                lab_case_id: caseId,
+                reviewer_report: reportText || null,
+                reviewer_username: String(currentUser || '').trim() || null,
+                reviewer_display: String(currentUserDisplay || currentUser || '').trim() || null,
+                review_decision: String(firstNonEmptyValue(options.decision, normalized.DIAGNOSTIC_REVIEW_DECISION, '')).trim() || null,
+                learning_scope: 'genus_commonname_all_contsizes',
+                report_text: reportText || null,
+                report_rewrite: reportRewrite || null,
+                metadata: {
+                    ...meta,
+                    case_id: caseId,
+                    review_decision: String(firstNonEmptyValue(options.decision, '')).trim(),
+                    recommended_treatment: String(firstNonEmptyValue(options.treatment, normalized.RECOMMENDED_TREATMENT, '')).trim(),
+                    reviewed_at: nowIso,
+                    lab_report_url: String(firstNonEmptyValue(options.publicUrl, '')).trim()
+                },
+                updated_at: nowIso
+            };
+            try {
+                await supabaseFetch(DISEASE_TRAINING_ASSETS_TABLE, 'POST', payload, 'on_conflict=unique_id', { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
+                return true;
+            } catch (error) {
+                console.warn('Diagnostic learning reference save failed', error);
+                showToast('Learning Reference Warning', 'The review saved, but the learning reference table needs the new SQL migration.', true);
+                return false;
+            }
+        }
+
+        async function upsertDiagnosticLabCase(item = null, caseId = '', patch = {}) {
+            const normalized = normalizeMlImageJobRow(item);
+            if (!normalized || !caseId) return false;
+            const meta = getDiagnosticReviewMetadata(normalized);
+            const nowIso = new Date().toISOString();
+            const photoCsv = getMlJobPhotoCsv(normalized);
+            const photoUrls = getPhotoUrlList(photoCsv);
+            const payload = {
+                unique_id: caseId,
+                ml_job_id: normalized.UNIQUE_ID,
+                case_label: caseId,
+                status: String(firstNonEmptyValue(patch.status, 'pending_lab_report')).trim(),
+                source_table: normalized.ML_ROW_SOURCE_TABLE || null,
+                source_unique_id: normalized.ML_SOURCE_UNIQUE_ID || null,
+                itemcode: meta.itemcode || null,
+                genus: meta.genus || null,
+                commonname: meta.commonname || null,
+                contsize: meta.contsize || null,
+                locationcode: meta.locationcode || null,
+                lotcode: meta.lotcode || null,
+                season: meta.season || null,
+                block: meta.block || null,
+                image_url: getMlJobImageUrl(normalized) || null,
+                photo_link: photoCsv || null,
+                model_diagnosis: normalized.DIAGNOSIS || null,
+                model_treatment: normalized.RECOMMENDED_TREATMENT || null,
+                model_confidence: Number(normalized.ML_CONFIDENCE || 0) || null,
+                reviewer_report: String(firstNonEmptyValue(patch.reviewer_report, normalized.DIAGNOSTIC_REVIEWER_REPORT, '')).trim() || null,
+                reviewer_diagnosis: String(firstNonEmptyValue(patch.reviewer_diagnosis, normalized.DIAGNOSTIC_REVIEWER_DIAGNOSIS, '')).trim() || null,
+                reviewer_treatment: String(firstNonEmptyValue(patch.reviewer_treatment, normalized.DIAGNOSTIC_REVIEWER_TREATMENT, '')).trim() || null,
+                reviewer_username: String(currentUser || '').trim() || null,
+                reviewer_display: String(currentUserDisplay || currentUser || '').trim() || null,
+                reviewed_at: String(firstNonEmptyValue(patch.reviewed_at, nowIso)).trim(),
+                lab_report_bucket: String(firstNonEmptyValue(patch.lab_report_bucket, normalized.DIAGNOSTIC_LAB_REPORT_BUCKET, '')).trim() || null,
+                lab_report_path: String(firstNonEmptyValue(patch.lab_report_path, normalized.DIAGNOSTIC_LAB_REPORT_PATH, '')).trim() || null,
+                lab_report_url: String(firstNonEmptyValue(patch.lab_report_url, normalized.DIAGNOSTIC_LAB_REPORT_URL, '')).trim() || null,
+                lab_report_uploaded_by: String(firstNonEmptyValue(patch.lab_report_uploaded_by, normalized.DIAGNOSTIC_LAB_REPORT_UPLOADED_BY, '')).trim() || null,
+                lab_report_uploaded_at: String(firstNonEmptyValue(patch.lab_report_uploaded_at, normalized.DIAGNOSTIC_LAB_REPORT_UPLOADED_AT, '')).trim() || null,
+                learning_scope: 'genus_commonname_all_contsizes',
+                metadata: {
+                    photo_count: photoUrls.length,
+                    review_source: 'gnc_app',
+                    ...getDiagnosticReviewMetadata(normalized)
+                },
+                updated_at: nowIso
+            };
+            try {
+                await supabaseFetch(DIAGNOSTIC_LAB_CASES_TABLE, 'POST', payload, 'on_conflict=unique_id', { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
+                return true;
+            } catch (error) {
+                console.warn('Diagnostic lab case save failed', error);
+                showToast('Lab Case Warning', 'The job saved, but the diagnostic lab case table needs the new SQL migration.', true);
+                return false;
+            }
+        }
+
+        function refreshDiagnosticReviewViews() {
+            rebuildMlImageJobIndexes();
+            markViewDirty('home');
+            markViewDirty('diagnostics');
+            markViewDirty('tasks');
+            if (isViewVisible('tasks')) scheduleTasksRender(0, 0, true);
+            if (getCurrentVisibleViewId() === 'home') scheduleHomeRender(true);
+            if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 120);
+        }
+
+        async function saveDiagnosticReviewDecision(uniqueId = '', decision = 'agree', options = {}) {
+            if (!canUseMlAdminViews()) {
+                showToast('Restricted', 'Only Dylan can review diagnostics.', true);
+                return false;
+            }
+            const safeId = String(uniqueId || '').trim();
+            const row = getMlImageJobById(safeId);
+            if (!row) {
+                showToast('Not Found', 'That diagnostic row could not be found.', true);
+                return false;
+            }
+            const normalized = normalizeMlImageJobRow(row);
+            const nowIso = new Date().toISOString();
+            const safeDecision = String(decision || '').trim().toLowerCase();
+            const reviewerReport = String(firstNonEmptyValue(options.report, normalized.DIAGNOSTIC_REVIEWER_REPORT, '')).trim();
+            const reviewerDiagnosis = String(firstNonEmptyValue(options.diagnosis, getDiagnosticReviewLabel(normalized))).trim();
+            const reviewerTreatment = String(firstNonEmptyValue(options.treatment, normalized.RECOMMENDED_TREATMENT, '')).trim();
+            const caseId = String(firstNonEmptyValue(options.caseId, normalized.DIAGNOSTIC_LAB_CASE_ID, safeDecision === 'send_lab' ? buildDiagnosticLabCaseId(normalized) : '')).trim();
+            const payload = {
+                diagnostic_review_decision: safeDecision,
+                diagnostic_reviewer_report: reviewerReport || null,
+                diagnostic_reviewer_diagnosis: reviewerDiagnosis || null,
+                diagnostic_reviewer_treatment: reviewerTreatment || null,
+                diagnostic_reviewed_by_username: String(currentUser || '').trim(),
+                diagnostic_reviewed_by_display: String(currentUserDisplay || currentUser || '').trim(),
+                diagnostic_reviewed_at: nowIso,
+                diagnostic_learning_scope: 'genus_commonname_all_contsizes',
+                updated_at: nowIso
+            };
+            if (caseId) payload.diagnostic_lab_case_id = caseId;
+            if (safeDecision === 'send_lab') {
+                payload.diagnostic_lab_status = 'pending_lab_report';
+            } else {
+                payload.status = 'approved';
+                payload.approved_by_username = String(currentUser || '').trim();
+                payload.approved_by_display = String(currentUserDisplay || currentUser || '').trim();
+                payload.approved_at = nowIso;
+            }
+            await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(safeId)}`, { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
+            Object.assign(row, normalizeMlImageJobRow({ ...row, ...payload }));
+            if (safeDecision === 'send_lab') {
+                await upsertDiagnosticLabCase(row, caseId, {
+                    status: 'pending_lab_report',
+                    reviewer_report: reviewerReport,
+                    reviewer_diagnosis: reviewerDiagnosis,
+                    reviewer_treatment: reviewerTreatment,
+                    reviewed_at: nowIso
+                });
+            } else {
+                await upsertDiagnosticLearningReference(row, {
+                    caseId: caseId || `REVIEW-${safeId}`,
+                    decision: safeDecision,
+                    label: reviewerDiagnosis,
+                    reportText: reviewerReport || reviewerDiagnosis,
+                    treatment: reviewerTreatment,
+                    assetKind: 'review_feedback',
+                    uniquePart: safeDecision
+                });
+            }
+            refreshDiagnosticReviewViews();
+            return true;
+        }
+
+        async function agreeMlDiagnostic(uniqueId = '', button = null) {
+            const previousLabel = button ? button.innerText : '';
+            if (button) {
+                button.disabled = true;
+                button.innerText = 'Saving...';
+            }
+            try {
+                await saveDiagnosticReviewDecision(uniqueId, 'agree', {});
+                showToast('Agreed', 'Diagnostic review saved and added as a learning reference.');
+            } catch (error) {
+                showToast('Save Failed', error && error.message ? error.message : 'Could not save the diagnostic agreement.', true);
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.innerText = previousLabel || 'Agree';
+                }
+            }
+            return false;
+        }
+
+        async function disagreeMlDiagnostic(uniqueId = '', button = null) {
+            const row = getMlImageJobById(String(uniqueId || '').trim());
+            if (!row) {
+                showToast('Not Found', 'That diagnostic row could not be found.', true);
+                return false;
+            }
+            const diagnosis = window.prompt('What diagnosis should the module learn for this row?', String(firstNonEmptyValue(row.DIAGNOSTIC_REVIEWER_DIAGNOSIS, row.DIAGNOSIS, '')).trim());
+            if (diagnosis === null) return false;
+            const cleanDiagnosis = String(diagnosis || '').trim();
+            if (!cleanDiagnosis) {
+                showToast('Report Needed', 'Enter the corrected diagnosis before saving a disagreement.', true);
+                return false;
+            }
+            const report = window.prompt('Add your diagnostic report or notes for this row.', String(firstNonEmptyValue(row.DIAGNOSTIC_REVIEWER_REPORT, row.DIAGNOSTIC_REFERENCE_REPORT_REWRITE, '')).trim());
+            if (report === null) return false;
+            const treatment = window.prompt('Recommended treatment or next step?', String(firstNonEmptyValue(row.DIAGNOSTIC_REVIEWER_TREATMENT, row.RECOMMENDED_TREATMENT, '')).trim());
+            if (treatment === null) return false;
+            const previousLabel = button ? button.innerText : '';
+            if (button) {
+                button.disabled = true;
+                button.innerText = 'Saving...';
+            }
+            try {
+                await saveDiagnosticReviewDecision(uniqueId, 'disagree', {
+                    diagnosis: cleanDiagnosis,
+                    report,
+                    treatment
+                });
+                showToast('Disagreement Saved', 'Your report was saved and added as a learning reference.');
+            } catch (error) {
+                showToast('Save Failed', error && error.message ? error.message : 'Could not save the diagnostic disagreement.', true);
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.innerText = previousLabel || 'Disagree';
+                }
+            }
+            return false;
+        }
+
+        async function sendMlDiagnosticToLab(uniqueId = '', button = null) {
+            const row = getMlImageJobById(String(uniqueId || '').trim());
+            if (!row) {
+                showToast('Not Found', 'That diagnostic row could not be found.', true);
+                return false;
+            }
+            const caseId = getDiagnosticLabCaseId(row);
+            const report = window.prompt('Add the note to send with this lab case. The row will stay in Diagnostics until the lab report is uploaded.', String(firstNonEmptyValue(row.DIAGNOSTIC_REVIEWER_REPORT, row.DIAGNOSIS, '')).trim());
+            if (report === null) return false;
+            const previousLabel = button ? button.innerText : '';
+            if (button) {
+                button.disabled = true;
+                button.innerText = 'Saving...';
+            }
+            try {
+                await saveDiagnosticReviewDecision(uniqueId, 'send_lab', {
+                    caseId,
+                    report,
+                    diagnosis: getDiagnosticReviewLabel(row),
+                    treatment: firstNonEmptyValue(row.RECOMMENDED_TREATMENT, 'Await lab report.'),
+                });
+                showToast('Lab Case Created', `Print label ${caseId} and send the sample.`);
+            } catch (error) {
+                showToast('Save Failed', error && error.message ? error.message : 'Could not create the lab case.', true);
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.innerText = previousLabel || 'Send Lab';
+                }
+            }
+            return false;
+        }
+
+        async function printDiagnosticLabLabel(uniqueId = '') {
+            const row = getMlImageJobById(String(uniqueId || '').trim());
+            if (!row) {
+                showToast('Not Found', 'That diagnostic row could not be found.', true);
+                return false;
+            }
+            const item = normalizeMlImageJobRow(row);
+            const caseId = getDiagnosticLabCaseId(item);
+            const meta = getMlJobDriveModeMeta(item);
+            const title = getMlJobDisplayCommonName(item);
+            const printedAt = new Date().toISOString();
+            try {
+                await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'PATCH', {
+                    diagnostic_lab_case_id: caseId,
+                    diagnostic_lab_status: item.DIAGNOSTIC_LAB_STATUS || 'pending_lab_report',
+                    diagnostic_lab_label_printed_at: printedAt,
+                    updated_at: printedAt
+                }, `unique_id=eq.${encodeURIComponent(item.UNIQUE_ID)}`, { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
+                Object.assign(row, normalizeMlImageJobRow({ ...row, diagnostic_lab_case_id: caseId, diagnostic_lab_label_printed_at: printedAt }));
+            } catch (error) {
+                console.warn('Could not record diagnostic lab label print', error);
+            }
+            const labelHtml = `<!doctype html><html><head><title>${escapeHtml(caseId)}</title><style>
+                @page { size: 4in 2in; margin: 0.12in; }
+                body { margin: 0; font-family: Arial, sans-serif; color: #111827; }
+                .label { border: 2px solid #111827; border-radius: 10px; padding: 10px; height: calc(2in - 0.24in); box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }
+                .case { font-size: 18px; font-weight: 900; letter-spacing: 0.03em; }
+                .title { font-size: 13px; font-weight: 800; line-height: 1.15; }
+                .meta { font-size: 11px; font-weight: 700; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
+                .footer { font-size: 9px; font-weight: 700; color: #4b5563; }
+            </style></head><body><div class="label">
+                <div class="case">${escapeHtml(caseId)}</div>
+                <div class="title">${escapeHtml(title)}</div>
+                <div class="meta">
+                    <div>Item: ${escapeHtml(meta.itemcode || item.ITEMCODE || '-')}</div>
+                    <div>Size: ${escapeHtml(meta.contsize || item.CONTSIZE || '-')}</div>
+                    <div>Loc: ${escapeHtml(meta.loc || item.LOCATIONCODE || '-')}</div>
+                    <div>Lot: ${escapeHtml(meta.lot || item.LOTCODE || '-')}</div>
+                </div>
+                <div class="footer">Place this label on the lab report before taking/uploading its photo.</div>
+            </div><script>window.addEventListener('load', function(){ window.print(); });<\/script></body></html>`;
+            const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=420,height=260');
+            if (!printWindow) {
+                showToast('Pop-up Blocked', `Label ID: ${caseId}`, true);
+                return false;
+            }
+            printWindow.document.open();
+            printWindow.document.write(labelHtml);
+            printWindow.document.close();
+            refreshDiagnosticReviewViews();
+            return false;
+        }
+
+        function uploadDiagnosticLabReport(uniqueId = '') {
+            const row = getMlImageJobById(String(uniqueId || '').trim());
+            if (!row) {
+                showToast('Not Found', 'That diagnostic row could not be found.', true);
+                return false;
+            }
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*,application/pdf';
+            input.capture = 'environment';
+            input.onchange = () => {
+                const file = input.files && input.files[0] ? input.files[0] : null;
+                if (file) saveDiagnosticLabReportUpload(uniqueId, file).catch((error) => {
+                    showToast('Upload Failed', error && error.message ? error.message : 'Could not upload the lab report.', true);
+                });
+            };
+            input.click();
+            return false;
+        }
+
+        async function saveDiagnosticLabReportUpload(uniqueId = '', file = null) {
+            if (!file) return false;
+            const row = getMlImageJobById(String(uniqueId || '').trim());
+            if (!row) {
+                showToast('Not Found', 'That diagnostic row could not be found.', true);
+                return false;
+            }
+            const item = normalizeMlImageJobRow(row);
+            const caseId = getDiagnosticLabCaseId(item);
+            const resultText = window.prompt('Enter the lab report result or diagnosis. This is what the module will learn.', String(firstNonEmptyValue(item.DIAGNOSTIC_REVIEWER_DIAGNOSIS, item.DIAGNOSIS, '')).trim());
+            if (resultText === null) return false;
+            const cleanResult = String(resultText || '').trim();
+            if (!cleanResult) {
+                showToast('Result Needed', 'Enter the lab result before uploading.', true);
+                return false;
+            }
+            const treatmentText = window.prompt('Recommended treatment from the lab report or your review?', String(firstNonEmptyValue(item.DIAGNOSTIC_REVIEWER_TREATMENT, item.RECOMMENDED_TREATMENT, '')).trim());
+            if (treatmentText === null) return false;
+            const nowIso = new Date().toISOString();
+            const ext = pathlibSafeExtension(file.name, file.type, 'jpg');
+            const safeName = sanitizeDiagnosticCaseSegment(file.name.replace(/\.[^.]+$/, ''), 'LAB-REPORT');
+            const filePath = `${new Date().toISOString().slice(0, 10)}/${caseId}/${safeName}-${Date.now()}.${ext}`;
+            const uploadResult = await withTimeout(supabaseClient.storage.from(DIAGNOSTIC_LAB_REPORT_BUCKET).upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: true,
+                contentType: file.type || undefined
+            }), SUPABASE_UPLOAD_TIMEOUT_MS, 'diagnostic lab report upload');
+            if (uploadResult.error) throw uploadResult.error;
+            const { data: publicUrlData } = supabaseClient.storage.from(DIAGNOSTIC_LAB_REPORT_BUCKET).getPublicUrl(filePath);
+            const publicUrl = publicUrlData && publicUrlData.publicUrl ? publicUrlData.publicUrl : '';
+            const payload = {
+                status: 'approved',
+                diagnostic_review_decision: 'lab_report_uploaded',
+                diagnostic_reviewer_report: cleanResult,
+                diagnostic_reviewer_diagnosis: cleanResult,
+                diagnostic_reviewer_treatment: String(treatmentText || '').trim() || null,
+                diagnostic_reviewed_by_username: String(currentUser || '').trim(),
+                diagnostic_reviewed_by_display: String(currentUserDisplay || currentUser || '').trim(),
+                diagnostic_reviewed_at: nowIso,
+                diagnostic_lab_case_id: caseId,
+                diagnostic_lab_status: 'lab_report_uploaded',
+                diagnostic_lab_report_bucket: DIAGNOSTIC_LAB_REPORT_BUCKET,
+                diagnostic_lab_report_path: filePath,
+                diagnostic_lab_report_url: publicUrl || null,
+                diagnostic_lab_report_uploaded_at: nowIso,
+                diagnostic_lab_report_uploaded_by: String(currentUser || '').trim(),
+                diagnostic_learning_scope: 'genus_commonname_all_contsizes',
+                approved_by_username: String(currentUser || '').trim(),
+                approved_by_display: String(currentUserDisplay || currentUser || '').trim(),
+                approved_at: nowIso,
+                updated_at: nowIso
+            };
+            await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(item.UNIQUE_ID)}`, { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
+            Object.assign(row, normalizeMlImageJobRow({ ...row, ...payload }));
+            await upsertDiagnosticLabCase(row, caseId, {
+                status: 'lab_report_uploaded',
+                reviewer_report: cleanResult,
+                reviewer_diagnosis: cleanResult,
+                reviewer_treatment: String(treatmentText || '').trim(),
+                lab_report_bucket: DIAGNOSTIC_LAB_REPORT_BUCKET,
+                lab_report_path: filePath,
+                lab_report_url: publicUrl,
+                lab_report_uploaded_by: String(currentUser || '').trim(),
+                lab_report_uploaded_at: nowIso,
+                reviewed_at: nowIso
+            });
+            await upsertDiagnosticLearningReference(row, {
+                caseId,
+                decision: 'lab_report_uploaded',
+                label: cleanResult,
+                reportText: cleanResult,
+                reportRewrite: cleanResult,
+                treatment: String(treatmentText || '').trim(),
+                assetKind: file.type && file.type.toLowerCase().includes('pdf') ? 'lab_report' : 'lab_report_photo',
+                uniquePart: 'lab-report',
+                storagePath: filePath,
+                publicUrl,
+                bucket: DIAGNOSTIC_LAB_REPORT_BUCKET,
+                mimeType: file.type || 'application/octet-stream',
+                fileName: file.name || `${caseId}.${ext}`,
+                fileSize: file.size || 0,
+                confidence: item.ML_CONFIDENCE || null
+            });
+            refreshDiagnosticReviewViews();
+            showToast('Lab Report Uploaded', 'The lab result was saved and added to the diagnostic learning references.');
+            return false;
+        }
+
         function renderTaskDiagnosticIssueCard(row = null) {
             const item = normalizeMlImageJobRow(row);
             if (!item) return '';
@@ -44867,6 +45395,23 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 : activeTab === 'photos'
                     ? photosHtml
                     : `<div class="rounded-xl border border-red-100 bg-red-50/60 px-3 py-3 text-[12px] font-semibold text-red-900"><div><span class="font-black">Issue:</span> ${esc(diagnosis)}</div><div class="mt-1"><span class="font-black">Recommended Treatment:</span> ${esc(treatment)}</div>${item.DIAGNOSTIC_REFERENCE_LABEL ? `<div class="mt-2 text-[11px] text-red-800"><span class="font-black">Reference:</span> ${esc(item.DIAGNOSTIC_REFERENCE_LABEL)}${item.DIAGNOSTIC_REFERENCE_SCORE ? ` (${esc(String(Math.round(Number(item.DIAGNOSTIC_REFERENCE_SCORE) || 0)))} match score)` : ''}</div>` : ''}</div>`;
+            const labCaseId = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_CASE_ID, '')).trim();
+            const labStatus = String(firstNonEmptyValue(item.DIAGNOSTIC_LAB_STATUS, '')).trim();
+            const reviewReportHtml = item.DIAGNOSTIC_REVIEWER_REPORT
+                ? `<div class="mt-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-[11px] font-bold leading-relaxed text-amber-900"><span class="font-black uppercase tracking-[0.12em] text-[9px]">Reviewer Report</span><br>${esc(item.DIAGNOSTIC_REVIEWER_REPORT)}</div>`
+                : '';
+            const labControlsHtml = labCaseId || labStatus === 'pending_lab_report'
+                ? `<div class="mt-3 rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div><div class="text-[9px] font-black uppercase tracking-[0.14em] text-blue-700">Lab Case</div><div class="text-sm font-black text-blue-950">${esc(labCaseId || 'Label not printed yet')}</div></div>
+                        ${item.DIAGNOSTIC_LAB_REPORT_URL ? `<a href="${esc(item.DIAGNOSTIC_LAB_REPORT_URL)}" target="_blank" rel="noopener" class="rounded-full border border-blue-200 bg-white px-3 py-2 text-[9px] font-black uppercase tracking-[0.12em] text-blue-700">Open Report</a>` : ''}
+                    </div>
+                    <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <button type="button" class="rounded-xl border border-blue-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700 shadow-sm active:scale-95" onclick="event.stopPropagation(); return printDiagnosticLabLabel('${escJsAttrValue(uid)}')"><i class="ph-bold ph-printer align-middle"></i><span class="align-middle ml-1">Print Label</span></button>
+                        <button type="button" class="rounded-xl bg-blue-600 px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="event.stopPropagation(); return uploadDiagnosticLabReport('${escJsAttrValue(uid)}')"><i class="ph-bold ph-upload-simple align-middle"></i><span class="align-middle ml-1">Upload Lab Report</span></button>
+                    </div>
+                </div>`
+                : '';
             return `<div class="rounded-2xl border border-red-100 bg-white p-4 shadow-sm">
                 <div class="flex items-start gap-3">
                     <div class="min-w-0 flex-1">
@@ -44888,7 +45433,13 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 <div class="mt-3">
                     ${tabContent}
                 </div>
-                <button type="button" class="mt-3 w-full rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-[0.99]" onclick="return markMlDiagnosticReviewed('${escJsAttrValue(uid)}', this)">Reviewed</button>
+                ${reviewReportHtml}
+                ${labControlsHtml}
+                <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <button type="button" class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-[0.99]" onclick="return agreeMlDiagnostic('${escJsAttrValue(uid)}', this)"><i class="ph-bold ph-check-circle align-middle"></i><span class="align-middle ml-1">Agree</span></button>
+                    <button type="button" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-amber-800 shadow-sm active:scale-[0.99]" onclick="return disagreeMlDiagnostic('${escJsAttrValue(uid)}', this)"><i class="ph-bold ph-pencil-simple-line align-middle"></i><span class="align-middle ml-1">Disagree</span></button>
+                    <button type="button" class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-blue-800 shadow-sm active:scale-[0.99]" onclick="return sendMlDiagnosticToLab('${escJsAttrValue(uid)}', this)"><i class="ph-bold ph-flask align-middle"></i><span class="align-middle ml-1">Send Lab</span></button>
+                </div>
             </div>`;
         }
 

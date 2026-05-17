@@ -617,6 +617,7 @@ class DiseaseReference:
     label: str
     asset_kind: str
     plant_folder: str = ""
+    genus: str = ""
     commonname: str = ""
     locationcode: str = ""
     lotcode: str = ""
@@ -626,6 +627,11 @@ class DiseaseReference:
     public_url: str = ""
     report_text: str = ""
     report_rewrite: str = ""
+    reviewer_report: str = ""
+    recommended_treatment: str = ""
+    learning_scope: str = ""
+    source_ml_job_id: str = ""
+    lab_case_id: str = ""
 
 
 def disease_reference_from_row(row: Dict[str, Any]) -> DiseaseReference:
@@ -637,6 +643,7 @@ def disease_reference_from_row(row: Dict[str, Any]) -> DiseaseReference:
         label=first_non_empty(row.get("label"), row.get("diagnosis")),
         asset_kind=first_non_empty(row.get("asset_kind")),
         plant_folder=first_non_empty(row.get("plant_folder"), parsed.get("plantFolder"), row.get("folder_path")),
+        genus=first_non_empty(row.get("genus"), parsed.get("genus"), metadata.get("genus")),
         commonname=first_non_empty(row.get("commonname"), parsed.get("commonname"), parsed_from_name.get("commonname")),
         locationcode=normalize_location_code(first_non_empty(row.get("locationcode"), parsed.get("locationcode"), parsed_from_name.get("locationcode"))),
         lotcode=normalize_lot_code(first_non_empty(row.get("lotcode"), parsed.get("lotcode"), parsed_from_name.get("lotcode"))),
@@ -646,6 +653,11 @@ def disease_reference_from_row(row: Dict[str, Any]) -> DiseaseReference:
         public_url=first_non_empty(row.get("public_url")),
         report_text=first_non_empty(row.get("report_text")),
         report_rewrite=first_non_empty(row.get("report_rewrite")),
+        reviewer_report=first_non_empty(row.get("reviewer_report"), metadata.get("reviewer_report")),
+        recommended_treatment=first_non_empty(row.get("recommended_treatment"), metadata.get("recommended_treatment")),
+        learning_scope=first_non_empty(row.get("learning_scope"), metadata.get("learning_scope")),
+        source_ml_job_id=first_non_empty(row.get("source_ml_job_id"), metadata.get("source_ml_job_id")),
+        lab_case_id=first_non_empty(row.get("lab_case_id"), metadata.get("case_id")),
     )
 
 
@@ -700,6 +712,7 @@ class DiseaseReferenceCache:
 
         parsed = parse_asset_filename_fields(first_non_empty(job.get("image_path"), job.get("image_url"), job.get("unique_id")))
         job_fields = {
+            "genus": first_non_empty(job.get("genus"), job.get("ml_genus"), parsed.get("genus")),
             "commonname": first_non_empty(job.get("common_name"), job.get("commonname"), parsed.get("commonname")),
             "locationcode": normalize_location_code(first_non_empty(job.get("locationcode"), parsed.get("locationcode"))),
             "lotcode": normalize_lot_code(first_non_empty(job.get("lotcode"), parsed.get("lotcode"))),
@@ -710,6 +723,11 @@ class DiseaseReferenceCache:
         best: Optional[Tuple[DiseaseReference, float]] = None
         for reference in references:
             score = 0.0
+            broad_learning = normalize_compact(reference.learning_scope) in {
+                "genuscommonnameallcontsizes",
+                "samecommonnameallcontsizes",
+                "allcontsizes",
+            }
             if job_fields["locationcode"] and reference.locationcode and job_fields["locationcode"] == reference.locationcode:
                 score += 75
             if job_fields["lotcode"] and reference.lotcode and job_fields["lotcode"] == reference.lotcode:
@@ -718,12 +736,22 @@ class DiseaseReferenceCache:
                 score += 25
             if job_fields["itemcode"] and reference.itemcode and job_fields["itemcode"] == reference.itemcode:
                 score += 90
+            if job_fields["genus"] and reference.genus:
+                genus_ratio = SequenceMatcher(None, normalize_compact(job_fields["genus"]), normalize_compact(reference.genus)).ratio()
+                score += 30 * genus_ratio
             if job_fields["commonname"] and reference.commonname:
-                score += 45 * SequenceMatcher(None, normalize_compact(job_fields["commonname"]), normalize_compact(reference.commonname)).ratio()
+                common_ratio = SequenceMatcher(None, normalize_compact(job_fields["commonname"]), normalize_compact(reference.commonname)).ratio()
+                score += 45 * common_ratio
+                if broad_learning and common_ratio >= 0.92:
+                    score += 45
             elif job_fields["commonname"] and reference.plant_folder:
                 score += 20 * SequenceMatcher(None, normalize_compact(job_fields["commonname"]), normalize_compact(reference.plant_folder)).ratio()
+            if broad_learning and job_fields["genus"] and reference.genus and normalize_compact(job_fields["genus"]) == normalize_compact(reference.genus):
+                score += 20
             if reference.asset_kind == "lab_report":
                 score += 5
+            elif reference.asset_kind in {"lab_report_photo", "review_feedback"}:
+                score += 8
 
             if score >= 70 and (best is None or score > best[1]):
                 best = (reference, score)
@@ -734,8 +762,19 @@ class DiseaseReferenceCache:
             return None
         reference, score = matched
         diagnosis = first_non_empty(reference.label, default="Disease reference match")
-        treatment = "Review matching lab report and current crop condition before selecting treatment."
-        reason = f"Matched disease reference {reference.unique_id} from {reference.file_name or reference.plant_folder} at score {round(score, 1)}."
+        treatment = first_non_empty(
+            reference.recommended_treatment,
+            reference.reviewer_report,
+            "Review matching lab report and current crop condition before selecting treatment.",
+        )
+        reason_bits = [
+            f"Matched disease reference {reference.unique_id}",
+            f"from {reference.file_name or reference.plant_folder or reference.lab_case_id}",
+            f"at score {round(score, 1)}",
+        ]
+        if reference.learning_scope:
+            reason_bits.append(f"scope {reference.learning_scope}")
+        reason = " ".join(bit for bit in reason_bits if bit) + "."
         return Prediction(
             confidence=min(0.95, max(0.25, score / 220.0)),
             diagnosis=diagnosis,
