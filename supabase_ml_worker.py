@@ -467,6 +467,72 @@ def parse_inventory_file(file_bytes: bytes, extension: str) -> List[InventoryEnt
     return dataframe_to_inventory_entries(dataframe)
 
 
+def extract_lab_report_text(path: pathlib.Path, max_chars: int = 24000) -> str:
+    suffix = path.suffix.lower()
+    text = ""
+    if suffix == ".pdf":
+        try:
+            import fitz
+
+            with fitz.open(str(path)) as document:
+                chunks = []
+                for page in document:
+                    page_text = page.get_text("text") or ""
+                    if page_text.strip():
+                        chunks.append(page_text)
+                    if sum(len(chunk) for chunk in chunks) >= max_chars:
+                        break
+                text = "\n".join(chunks)
+        except Exception as exc:
+            LOGGER.warning("Could not extract PDF lab report text from %s: %s", path.name, exc)
+    elif suffix in {".txt", ".csv"}:
+        try:
+            text = path.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            text = path.read_text(errors="ignore")
+    cleaned = re.sub(r"[ \t]+", " ", text or "")
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()[:max_chars]
+
+
+def rewrite_lab_report_text(report_text: str, label: str = "", file_name: str = "") -> str:
+    text = " ".join(str(report_text or "").replace("\r", "\n").split())
+    diagnosis = first_non_empty(label, default="Referenced lab report")
+    title = first_non_empty(file_name, default="Lab report")
+    if not text:
+        return f"{title}\n\nDiagnosis referenced by the ML worker: {diagnosis}.\n\nNo extractable report text was found in the uploaded lab file."
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    selected: List[str] = []
+    priority_patterns = [
+        r"diagnos",
+        r"identif",
+        r"isolat",
+        r"symptom",
+        r"recommend",
+        r"treat",
+        r"fung",
+        r"pest",
+        r"sample",
+    ]
+    for sentence in sentences:
+        clean = sentence.strip()
+        if not clean:
+            continue
+        if any(re.search(pattern, clean, re.IGNORECASE) for pattern in priority_patterns):
+            selected.append(clean)
+        if len(selected) >= 8:
+            break
+    if len(selected) < 4:
+        selected = [sentence.strip() for sentence in sentences[:8] if sentence.strip()]
+    body = "\n".join(f"- {sentence}" for sentence in selected)
+    return (
+        f"{title}\n\n"
+        f"Referenced diagnosis: {diagnosis}.\n\n"
+        "Rewritten lab report notes:\n"
+        f"{body}"
+    ).strip()
+
+
 class InventoryCache:
     def __init__(self, config: WorkerConfig):
         self.config = config
@@ -558,6 +624,8 @@ class DiseaseReference:
     itemcode: str = ""
     file_name: str = ""
     public_url: str = ""
+    report_text: str = ""
+    report_rewrite: str = ""
 
 
 def disease_reference_from_row(row: Dict[str, Any]) -> DiseaseReference:
@@ -576,6 +644,8 @@ def disease_reference_from_row(row: Dict[str, Any]) -> DiseaseReference:
         itemcode=first_non_empty(row.get("itemcode"), parsed.get("itemcode"), parsed_from_name.get("itemcode")),
         file_name=first_non_empty(row.get("file_name"), row.get("source_file_title")),
         public_url=first_non_empty(row.get("public_url")),
+        report_text=first_non_empty(row.get("report_text")),
+        report_rewrite=first_non_empty(row.get("report_rewrite")),
     )
 
 
@@ -659,13 +729,12 @@ class DiseaseReferenceCache:
                 best = (reference, score)
         return best
 
-    def prediction_for_job(self, job: Dict[str, Any]) -> Optional[Prediction]:
-        matched = self.match_job(job)
+    def prediction_from_match(self, matched: Optional[Tuple[DiseaseReference, float]]) -> Optional[Prediction]:
         if not matched:
             return None
         reference, score = matched
         diagnosis = first_non_empty(reference.label, default="Disease reference match")
-        treatment = "Matched a Supabase disease/lab reference. Review the referenced lab report/photo before using this as a final diagnosis."
+        treatment = "Review matching lab report and current crop condition before selecting treatment."
         reason = f"Matched disease reference {reference.unique_id} from {reference.file_name or reference.plant_folder} at score {round(score, 1)}."
         return Prediction(
             confidence=min(0.95, max(0.25, score / 220.0)),
@@ -674,6 +743,9 @@ class DiseaseReferenceCache:
             manual_review=True,
             reason=reason,
         )
+
+    def prediction_for_job(self, job: Dict[str, Any]) -> Optional[Prediction]:
+        return self.prediction_from_match(self.match_job(job))
 
 
 class TorchModelAdapter:
@@ -1488,7 +1560,8 @@ Scouting note:
             manual_review=False,
             reason="No diagnostics model is configured.",
         )
-        reference_prediction = self.disease_reference_cache.prediction_for_job(job)
+        reference_match = self.disease_reference_cache.match_job(job)
+        reference_prediction = self.disease_reference_cache.prediction_from_match(reference_match)
         if reference_prediction and (diagnostics_prediction.manual_review or not diagnostics_prediction.diagnosis):
             diagnostics_prediction = reference_prediction
 
@@ -1537,6 +1610,19 @@ Scouting note:
         reason = "; ".join(bit for bit in reason_bits if bit)
         diagnosis_default = "Manual review required" if diagnostic_issue_found else "No disease issue detected from available references."
         treatment_default = "Review image before logging quantities." if diagnostic_issue_found else "No treatment recommended."
+        reference_payload: Dict[str, Any] = {}
+        if reference_match:
+            reference, reference_score = reference_match
+            reference_payload = {
+                "diagnostic_reference_asset_id": reference.unique_id or None,
+                "diagnostic_reference_kind": reference.asset_kind or None,
+                "diagnostic_reference_file_name": reference.file_name or None,
+                "diagnostic_reference_public_url": reference.public_url or None,
+                "diagnostic_reference_label": reference.label or None,
+                "diagnostic_reference_score": round(float(reference_score or 0.0), 3),
+                "diagnostic_reference_report_text": reference.report_text or None,
+                "diagnostic_reference_report_rewrite": reference.report_rewrite or None,
+            }
 
         return {
             "status": "pending_approval" if should_request_approval else "approved",
@@ -1559,6 +1645,7 @@ Scouting note:
             "processing_started_at": None,
             "worker_id": self.worker_id,
             "last_error": reason or None,
+            **reference_payload,
         }
 
     def mark_failed(self, job: Dict[str, Any], error: Exception) -> None:
@@ -1590,7 +1677,17 @@ Scouting note:
             with tempfile.TemporaryDirectory(prefix="gnc-ml-") as temp_dir:
                 image_path = self.download_job_image(claimed, pathlib.Path(temp_dir))
                 payload = self.build_result_payload(claimed, image_path)
-                self.supabase.table(self.config.job_table).update(payload).eq("unique_id", job_id).execute()
+                try:
+                    self.supabase.table(self.config.job_table).update(payload).eq("unique_id", job_id).execute()
+                except Exception as update_exc:
+                    reference_keys = [key for key in payload if key.startswith("diagnostic_reference_")]
+                    if reference_keys and "does not exist" in str(update_exc).lower():
+                        LOGGER.warning("Diagnostic reference columns are missing; run diagnostic_reference_report_migration.sql. Saving ML result without reference fields for %s.", job_id)
+                        fallback_payload = {key: value for key, value in payload.items() if key not in reference_keys}
+                        self.supabase.table(self.config.job_table).update(fallback_payload).eq("unique_id", job_id).execute()
+                        payload = fallback_payload
+                    else:
+                        raise
                 self.emit_live_event(
                     self.config.job_table,
                     job_id,
@@ -1608,10 +1705,18 @@ Scouting note:
         suffix = asset_path.suffix.lower()
         asset_kind = first_non_empty(asset.get("asset_kind"), default="other")
         if suffix not in IMAGE_EXTENSIONS or asset_kind == "lab_report":
+            report_text = extract_lab_report_text(asset_path)
+            report_rewrite = rewrite_lab_report_text(
+                report_text,
+                first_non_empty(asset.get("label"), default="Lab report indexed"),
+                first_non_empty(asset.get("file_name"), asset.get("source_file_title"), asset_path.name),
+            )
             return {
                 "processed_status": "processed",
                 "diagnosis": first_non_empty(asset.get("label"), default="Lab report indexed"),
                 "recommended_treatment": "Stored as labeled reference material for supervised diagnostics review.",
+                "report_text": report_text or None,
+                "report_rewrite": report_rewrite or None,
                 "confidence": None,
                 "processed_at": iso_now(),
                 "processing_started_at": None,
@@ -1665,7 +1770,17 @@ Scouting note:
             with tempfile.TemporaryDirectory(prefix="gnc-ml-asset-") as temp_dir:
                 asset_path = self.download_training_asset(claimed, pathlib.Path(temp_dir))
                 payload = self.build_training_asset_result_payload(claimed, asset_path)
-                self.supabase.table(self.config.training_assets_table).update(payload).eq("unique_id", asset_id).execute()
+                try:
+                    self.supabase.table(self.config.training_assets_table).update(payload).eq("unique_id", asset_id).execute()
+                except Exception as update_exc:
+                    optional_keys = {"report_text", "report_rewrite"}
+                    if optional_keys.intersection(payload) and "does not exist" in str(update_exc).lower():
+                        LOGGER.warning("Lab report text columns are missing; run diagnostic_reference_report_migration.sql. Saving training asset result without report text for %s.", asset_id)
+                        fallback_payload = {key: value for key, value in payload.items() if key not in optional_keys}
+                        self.supabase.table(self.config.training_assets_table).update(fallback_payload).eq("unique_id", asset_id).execute()
+                        payload = fallback_payload
+                    else:
+                        raise
                 self.emit_live_event(
                     self.config.training_assets_table,
                     asset_id,

@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.16.04';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.17.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2015,7 +2015,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.16.04').trim() || 'V2026.05.16.04';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.01').trim() || 'V2026.05.17.01';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2930,7 +2930,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.16.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -13107,7 +13107,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             };
         }
 
-        let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let mlImageJobsInventory=[]; let growerScoutReportsInventory=[]; let growerScoutAssetsInventory=[]; let cavInventory=[]; let cavAvBlankKeyInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={};
+        let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let mlImageJobsInventory=[]; let growerScoutReportsInventory=[]; let growerScoutAssetsInventory=[]; let cavInventory=[]; let cavAvBlankKeyInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={}; let diagnosticIssueCardTabs=new Map();
 let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null; let chatVoiceHoldPointerId=''; let chatVoiceHoldForComposer=false; let chatVoiceHoldFinishPending=''; let chatVoiceHoldStartPromise=null;
 let walkieChannels=[]; let walkieChannelMembers=[]; let walkieCalls=[]; let walkieCallMembers=[]; let walkieUsers=[]; let walkieSignalsSeen=new Set(); let walkieDataLoaded=false; let walkieLoadPromise=null; let walkieSchemaReady=null; let walkieSchemaProbePromise=null; let walkieSchemaWarningShown=false; let activeWalkieChannelId=''; let pendingWalkieOpenChannelId=''; let pendingWalkieOpenCallId=''; let walkieComposeOpen=false; let walkieUserSearchTerm=''; let walkieComposeTitle=''; let walkieSelectedUsers=new Set(); let walkieLastRenderSignature=''; let walkieDeviceId=''; let activeWalkieCallId=''; let walkieJoinedCallId=''; let walkieActiveMembershipId=''; let walkiePeerConnections=new Map(); let walkieRemoteAudioElements=new Map(); let walkieLocalStream=null; let walkieHeartbeatTimer=null; let walkieSpeakerHeartbeatTimer=null; let walkieReconnectTimer=null; let walkieActiveSpeakerIntent=false; let walkiePressedPointerId=''; let walkieForegroundNoticeShown=false;
         let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let requestHistoryInventoryById=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let flyerFolderHistoryInventoryById=new Map(); let mlImageJobsInventoryById=new Map(); let growerScoutReportsInventoryById=new Map(); let growerScoutAssetsByReportId=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map();
@@ -13611,7 +13611,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.16.04').trim() || 'V2026.05.16.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.01').trim() || 'V2026.05.17.01';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -20961,10 +20961,16 @@ function toggleDriveQuickRequestItem(domId) {
                     });
                 }, 120);
             };
-            photoModalState.wheelHandler = () => markScrollActivity();
+            photoModalState.wheelHandler = (event) => {
+                markScrollActivity();
+                if (!window.matchMedia('(pointer: coarse)').matches && Math.abs(Number(event.deltaY) || 0) > Math.abs(Number(event.deltaX) || 0)) {
+                    gallery.scrollLeft += Number(event.deltaY) || 0;
+                    if (typeof event.preventDefault === 'function') event.preventDefault();
+                }
+            };
             photoModalState.touchMoveHandler = () => markScrollActivity();
             gallery.addEventListener('scroll', photoModalState.scrollHandler, { passive: true });
-            gallery.addEventListener('wheel', photoModalState.wheelHandler, { passive: true });
+            gallery.addEventListener('wheel', photoModalState.wheelHandler, { passive: false });
             gallery.addEventListener('touchmove', photoModalState.touchMoveHandler, { passive: true });
             photoModalState.galleryClickHandler = (event) => {
                 if (window.matchMedia('(pointer: coarse)').matches) return;
@@ -43386,6 +43392,8 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             item.UNIQUE_ID = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, item.ID, item.id, `ml_${idx}`)).trim();
             item.DOM_ID = String(firstNonEmptyValue(item.DOM_ID, item.dom_id, `ml_${item.UNIQUE_ID}`)).trim();
             item.STATUS = normalizeMlStatus(firstNonEmptyValue(item.STATUS, item.status, 'pending_ml'));
+            item.ML_ROW_SOURCE_TABLE = String(firstNonEmptyValue(item.ML_ROW_SOURCE_TABLE, item.ml_row_source_table, item.source_table, '')).trim();
+            item.ML_SOURCE_UNIQUE_ID = String(firstNonEmptyValue(item.ML_SOURCE_UNIQUE_ID, item.ml_source_unique_id, item.source_unique_id, '')).trim();
             item.IMAGE_BUCKET = String(firstNonEmptyValue(item.IMAGE_BUCKET, item.image_bucket, ML_CAPTURE_PHOTO_BUCKET)).trim() || ML_CAPTURE_PHOTO_BUCKET;
             item.IMAGE_PATH = String(firstNonEmptyValue(item.IMAGE_PATH, item.image_path, '')).trim();
             item.IMAGE_URL = String(firstNonEmptyValue(item.IMAGE_URL, item.image_url, '')).trim();
@@ -43419,6 +43427,14 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             item.ML_COMPLETED_AT = String(firstNonEmptyValue(item.ML_COMPLETED_AT, item.ml_completed_at, '')).trim();
             item.APPROVED_AT = String(firstNonEmptyValue(item.APPROVED_AT, item.approved_at, '')).trim();
             item.LAST_ERROR = String(firstNonEmptyValue(item.LAST_ERROR, item.last_error, '')).trim();
+            item.DIAGNOSTIC_REFERENCE_ASSET_ID = String(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_ASSET_ID, item.diagnostic_reference_asset_id, '')).trim();
+            item.DIAGNOSTIC_REFERENCE_KIND = String(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_KIND, item.diagnostic_reference_kind, '')).trim();
+            item.DIAGNOSTIC_REFERENCE_FILE_NAME = String(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_FILE_NAME, item.diagnostic_reference_file_name, '')).trim();
+            item.DIAGNOSTIC_REFERENCE_PUBLIC_URL = String(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_PUBLIC_URL, item.diagnostic_reference_public_url, '')).trim();
+            item.DIAGNOSTIC_REFERENCE_LABEL = String(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_LABEL, item.diagnostic_reference_label, '')).trim();
+            item.DIAGNOSTIC_REFERENCE_SCORE = firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_SCORE, item.diagnostic_reference_score, '');
+            item.DIAGNOSTIC_REFERENCE_REPORT_TEXT = String(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_REPORT_TEXT, item.diagnostic_reference_report_text, '')).trim();
+            item.DIAGNOSTIC_REFERENCE_REPORT_REWRITE = String(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_REPORT_REWRITE, item.diagnostic_reference_report_rewrite, '')).trim();
             return item;
         }
 
@@ -43472,6 +43488,100 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const parsed = new Date(text);
             if (Number.isNaN(parsed.getTime())) return text;
             return parsed.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        }
+
+        function isGenericMlTitle(value = '') {
+            const text = String(value || '').trim().toLowerCase();
+            return !text || ['unknown', 'ai capture', 'row photo', 'manual review required'].includes(text);
+        }
+
+        function findMlJobSourceRow(row = null) {
+            const item = normalizeMlImageJobRow(row);
+            if (!item) return null;
+            const sourceUid = String(firstNonEmptyValue(item.ML_SOURCE_UNIQUE_ID, '') || '').trim();
+            const sourceTable = String(firstNonEmptyValue(item.ML_ROW_SOURCE_TABLE, '') || '').trim().toLowerCase();
+            if (sourceUid) {
+                if (sourceTable === 'v2_active_request') return requestsInventoryById.get(sourceUid) || findItemByUniqueId(sourceUid);
+                if (sourceTable === 'v2_soc_master') return socInventoryById.get(sourceUid) || findItemByUniqueId(sourceUid);
+                if (sourceTable === 'v2_sales_office') return salesOfficeInventoryById.get(sourceUid) || findItemByUniqueId(sourceUid);
+                return findItemByUniqueId(sourceUid);
+            }
+            const itemCode = String(item.ITEMCODE || '').trim();
+            const locationCode = String(item.LOCATIONCODE || '').trim();
+            const lotCode = String(item.LOTCODE || '').trim();
+            const contSize = String(item.CONTSIZE || '').trim();
+            const candidates = [
+                ...(Array.isArray(fullInventory) ? fullInventory : []),
+                ...(Array.isArray(avOpenInventory) ? avOpenInventory : []),
+                ...(Array.isArray(requestsInventory) ? requestsInventory : []),
+                ...(Array.isArray(socInventory) ? socInventory : []),
+                ...(Array.isArray(salesOfficeInventory) ? salesOfficeInventory : []),
+                ...(Array.isArray(moveUpInventory) ? moveUpInventory : []),
+                ...(Array.isArray(managerReviewInventory) ? managerReviewInventory : [])
+            ];
+            return candidates.find((candidate) => {
+                if (!candidate) return false;
+                const sameItem = !itemCode || String(firstNonEmptyValue(candidate.ITEMCODE, candidate.itemcode, '')).trim() === itemCode;
+                const sameLoc = !locationCode || String(firstNonEmptyValue(candidate.LOCATIONCODE, candidate.locationcode, '')).trim() === locationCode;
+                const sameLot = !lotCode || String(firstNonEmptyValue(candidate.LOTCODE, candidate.lotcode, '')).trim() === lotCode;
+                const sameSize = !contSize || String(firstNonEmptyValue(candidate.CONTSIZE, candidate.contsize, '')).trim() === contSize;
+                return sameItem && sameLoc && sameLot && sameSize;
+            }) || null;
+        }
+
+        function getMlJobDisplayCommonName(row = null) {
+            const item = normalizeMlImageJobRow(row);
+            const sourceRow = findMlJobSourceRow(item);
+            const sourceName = String(firstNonEmptyValue(sourceRow && sourceRow.COMMONNAME, sourceRow && sourceRow.commonname, '')).trim();
+            if (!isGenericMlTitle(sourceName)) return sourceName;
+            if (!isGenericMlTitle(item && item.COMMONNAME)) return String(item.COMMONNAME).trim();
+            if (!isGenericMlTitle(item && item.ML_COMMON_NAME)) return String(item.ML_COMMON_NAME).trim();
+            return String(firstNonEmptyValue(item && item.ITEMCODE, item && item.LOCATIONCODE, 'Diagnostic Row')).trim();
+        }
+
+        function getMlJobPhotoCsv(row = null) {
+            const item = normalizeMlImageJobRow(row);
+            const sourceRow = findMlJobSourceRow(item);
+            const ownImage = getMlJobImageUrl(item);
+            return mergePhotoCsvList([
+                ownImage,
+                sourceRow ? getDriveCustomerOutreachPhotoCsv(sourceRow) : '',
+                sourceRow ? getSharedAppPhotoLinkCsv(sourceRow, { includePending: false, respectRetention: false }) : '',
+                sourceRow && sourceRow.ROW_PHOTO_LINK,
+                sourceRow && sourceRow.REQ_PHOTO_LINK,
+                sourceRow && sourceRow.DOCK_PHOTO_LINK,
+                sourceRow && sourceRow.FLYER_PHOTO_LINK,
+                item && item.IMAGE_URL
+            ]);
+        }
+
+        function getMlJobDriveModeMeta(row = null) {
+            const item = normalizeMlImageJobRow(row);
+            const sourceRow = findMlJobSourceRow(item);
+            const itemcode = firstNonEmptyValue(sourceRow && sourceRow.ITEMCODE, item && item.ITEMCODE, '');
+            const contsize = firstNonEmptyValue(sourceRow && sourceRow.CONTSIZE, item && item.CONTSIZE, '');
+            const loc = firstNonEmptyValue(sourceRow && sourceRow.LOCATIONCODE, item && item.LOCATIONCODE, '');
+            const lot = firstNonEmptyValue(sourceRow && sourceRow.LOTCODE, item && item.LOTCODE, '');
+            const block = firstNonEmptyValue(sourceRow && sourceRow.BLOCKALPHA, item && item.BLOCK, '');
+            const season = firstNonEmptyValue(sourceRow && sourceRow.SEASON, item && item.SEASON, '');
+            return { itemcode, contsize, loc, lot, block, season, sourceRow };
+        }
+
+        function getDiagnosticIssueCardTab(uid = '') {
+            const safeUid = String(uid || '').trim();
+            return diagnosticIssueCardTabs.get(safeUid) || 'diagnostic';
+        }
+
+        function setDiagnosticIssueCardTab(uid = '', tab = 'diagnostic') {
+            const safeUid = String(uid || '').trim();
+            const safeTab = ['diagnostic', 'report', 'photos'].includes(String(tab || '').trim()) ? String(tab).trim() : 'diagnostic';
+            if (!safeUid) return false;
+            diagnosticIssueCardTabs.set(safeUid, safeTab);
+            markViewDirty('tasks');
+            markViewDirty('diagnostics');
+            if (isViewVisible('tasks')) scheduleTasksRender(0, 0, true);
+            if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 80);
+            return false;
         }
 
         function canUseGrowerScoutView() {
@@ -44724,18 +44834,41 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const item = normalizeMlImageJobRow(row);
             if (!item) return '';
             const uid = item.UNIQUE_ID;
-            const imageUrl = getMlJobImageUrl(item);
+            const photoCsv = getMlJobPhotoCsv(item);
+            const photoUrls = getPhotoUrlList(photoCsv);
+            const imageUrl = photoUrls[0] || getMlJobImageUrl(item);
+            const photoCount = photoUrls.length;
             const imageHtml = imageUrl
-                ? `<img src="${esc(imageUrl)}" alt="" class="h-24 w-24 rounded-xl border border-red-100 bg-slate-100 object-cover flex-shrink-0" loading="lazy">`
-                : '<div class="h-24 w-24 rounded-xl border border-dashed border-red-200 bg-red-50 text-[10px] font-black uppercase tracking-[0.12em] text-red-300 flex items-center justify-center text-center flex-shrink-0">No Photo</div>';
-            const title = firstNonEmptyValue(item.COMMONNAME, item.ML_COMMON_NAME, 'AI Diagnostic');
-            const meta = [item.ITEMCODE ? `Item ${item.ITEMCODE}` : '', item.CONTSIZE, item.LOCATIONCODE ? `Loc ${item.LOCATIONCODE}` : '', item.BLOCK ? `Block ${item.BLOCK}` : '', item.SEASON].filter(Boolean).join(' | ');
+                ? `<button type="button" class="ml-3 flex-shrink-0 flex flex-col items-center" onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(photoCsv || imageUrl)}', '${escJsAttrValue(getMlJobDisplayCommonName(item))}'); return false;"><div class="relative h-24 w-24 overflow-hidden rounded-xl border border-red-100 bg-slate-100 shadow-sm"><img src="${esc(getDirectImageUrl(imageUrl, 'gallery-tile'))}" alt="" class="h-full w-full object-cover" loading="lazy" decoding="async">${photoCount > 1 ? `<span class="absolute -right-1 -top-1 rounded-full border-2 border-white bg-[#007a4d] px-1.5 py-0.5 text-[10px] font-black text-white">+${esc(String(photoCount - 1))}</span>` : ''}</div><span class="mt-1 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">${photoCount > 1 ? `${esc(String(photoCount))} Photos` : 'Photo'}</span></button>`
+                : '<div class="ml-3 h-24 w-24 rounded-xl border border-dashed border-red-200 bg-red-50 text-[10px] font-black uppercase tracking-[0.12em] text-red-300 flex items-center justify-center text-center flex-shrink-0">No Photo</div>';
+            const title = getMlJobDisplayCommonName(item);
+            const metaInfo = getMlJobDriveModeMeta(item);
+            const meta = [metaInfo.itemcode ? `Item ${metaInfo.itemcode}` : '', metaInfo.contsize, metaInfo.loc ? `Loc ${metaInfo.loc}` : '', metaInfo.lot ? `Lot ${metaInfo.lot}` : '', metaInfo.block ? `Block ${metaInfo.block}` : '', metaInfo.season].filter(Boolean).join(' | ');
             const diagnosis = firstNonEmptyValue(item.DIAGNOSIS, 'Manual review required');
             const treatment = firstNonEmptyValue(item.RECOMMENDED_TREATMENT, 'Review before routing.');
             const confidence = formatMlConfidence(item.ML_CONFIDENCE);
+            const sourceRow = metaInfo.sourceRow;
+            const ptr = firstNonEmptyValue(sourceRow && sourceRow.PTRAVAILABLE, sourceRow && sourceRow.ptravailable, item.PTRAVAILABLE, '');
+            const source = firstNonEmptyValue(sourceRow && sourceRow.SOURCE, sourceRow && sourceRow.source, '');
+            const activeTab = getDiagnosticIssueCardTab(uid);
+            const tabButton = (tab, label) => `<button type="button" class="${activeTab === tab ? 'rounded-full border border-[#007a4d] bg-[#007a4d] px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-white shadow-sm' : 'rounded-full border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm'}" onclick="event.stopPropagation(); return setDiagnosticIssueCardTab('${escJsAttrValue(uid)}', '${escJsAttrValue(tab)}')">${esc(label)}</button>`;
+            const reportText = firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_REPORT_REWRITE, item.DIAGNOSTIC_REFERENCE_REPORT_TEXT, '');
+            const reportHtml = reportText
+                ? `<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-[12px] font-semibold leading-relaxed text-slate-700 whitespace-pre-wrap">${esc(reportText)}</div>`
+                : `<div class="rounded-xl border border-dashed border-slate-300 bg-white px-3 py-6 text-center text-[12px] font-semibold text-slate-400">No rewritten lab report is attached yet. Run <span class="font-black">diagnostic_reference_report_migration.sql</span>, then let the ML worker reprocess lab reports.</div>`;
+            const reportMetaHtml = (item.DIAGNOSTIC_REFERENCE_FILE_NAME || item.DIAGNOSTIC_REFERENCE_LABEL)
+                ? `<div class="mb-2 flex flex-wrap gap-2"><span class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">${esc(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_LABEL, 'Lab Report'))}</span>${item.DIAGNOSTIC_REFERENCE_FILE_NAME ? `<span class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">${esc(item.DIAGNOSTIC_REFERENCE_FILE_NAME)}</span>` : ''}</div>`
+                : '';
+            const photosHtml = photoUrls.length
+                ? `<div class="grid grid-cols-3 gap-2 sm:grid-cols-5">${photoUrls.map((url, index) => `<button type="button" class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm active:scale-95" onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(photoCsv)}', '${escJsAttrValue(title)}'); requestAnimationFrame(() => snapPhotoModalToIndex(${index}, false)); return false;"><img src="${esc(getDirectImageUrl(url, 'gallery-tile'))}" alt="" class="aspect-square w-full object-cover" loading="lazy" decoding="async"></button>`).join('')}</div>`
+                : '<div class="rounded-xl border border-dashed border-slate-300 bg-white px-3 py-6 text-center text-[12px] font-semibold text-slate-400">No photos are attached to this row yet.</div>';
+            const tabContent = activeTab === 'report'
+                ? `${reportMetaHtml}${reportHtml}`
+                : activeTab === 'photos'
+                    ? photosHtml
+                    : `<div class="rounded-xl border border-red-100 bg-red-50/60 px-3 py-3 text-[12px] font-semibold text-red-900"><div><span class="font-black">Issue:</span> ${esc(diagnosis)}</div><div class="mt-1"><span class="font-black">Recommended Treatment:</span> ${esc(treatment)}</div>${item.DIAGNOSTIC_REFERENCE_LABEL ? `<div class="mt-2 text-[11px] text-red-800"><span class="font-black">Reference:</span> ${esc(item.DIAGNOSTIC_REFERENCE_LABEL)}${item.DIAGNOSTIC_REFERENCE_SCORE ? ` (${esc(String(Math.round(Number(item.DIAGNOSTIC_REFERENCE_SCORE) || 0)))} match score)` : ''}</div>` : ''}</div>`;
             return `<div class="rounded-2xl border border-red-100 bg-white p-4 shadow-sm">
                 <div class="flex items-start gap-3">
-                    ${imageHtml}
                     <div class="min-w-0 flex-1">
                         <div class="mb-2 flex flex-wrap gap-2">
                             <span class="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-red-700">Diagnostic Issue</span>
@@ -44743,12 +44876,17 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                         </div>
                         <div class="text-base font-black leading-tight text-slate-900 break-words">${esc(title)}</div>
                         <div class="mt-1 text-[12px] font-bold text-slate-500 break-words">${esc(meta)}</div>
-                        <div class="mt-2 text-[11px] font-bold text-slate-500">Confidence ${esc(confidence)}</div>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">Confidence ${esc(confidence)}</span>
+                            ${ptr !== '' ? `<span class="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">PTR ${esc(String(ptr))}</span>` : ''}
+                            ${source ? `<span class="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">${esc(source)}</span>` : ''}
+                        </div>
                     </div>
+                    ${imageHtml}
                 </div>
-                <div class="mt-3 rounded-xl border border-red-100 bg-red-50/60 px-3 py-3 text-[12px] font-semibold text-red-900">
-                    <div><span class="font-black">Issue:</span> ${esc(diagnosis)}</div>
-                    <div class="mt-1"><span class="font-black">Treatment:</span> ${esc(treatment)}</div>
+                <div class="mt-3 flex flex-wrap gap-2">${tabButton('diagnostic', 'Diagnostic')}${tabButton('report', 'Lab Report')}${tabButton('photos', 'Photos')}</div>
+                <div class="mt-3">
+                    ${tabContent}
                 </div>
                 <button type="button" class="mt-3 w-full rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-[0.99]" onclick="return markMlDiagnosticReviewed('${escJsAttrValue(uid)}', this)">Reviewed</button>
             </div>`;
@@ -44833,10 +44971,14 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
         function renderDiagnosticCard(row = null) {
             const item = normalizeMlImageJobRow(row);
             if (!item) return '';
-            const imageUrl = getMlJobImageUrl(item);
-            const photoHtml = imageUrl ? `<img src="${esc(imageUrl)}" alt="" class="h-20 w-20 rounded-xl object-cover border border-slate-200 bg-slate-100 flex-shrink-0" loading="lazy">` : '<div class="h-20 w-20 rounded-xl border border-dashed border-slate-300 bg-slate-50 flex-shrink-0"></div>';
+            const photoCsv = getMlJobPhotoCsv(item);
+            const photoUrls = getPhotoUrlList(photoCsv);
+            const imageUrl = photoUrls[0] || getMlJobImageUrl(item);
+            const photoHtml = imageUrl ? `<button type="button" class="flex-shrink-0" onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(photoCsv || imageUrl)}', '${escJsAttrValue(getMlJobDisplayCommonName(item))}'); return false;"><img src="${esc(getDirectImageUrl(imageUrl, 'gallery-tile'))}" alt="" class="h-20 w-20 rounded-xl object-cover border border-slate-200 bg-slate-100 active:scale-95 transition-transform" loading="lazy" decoding="async"></button>` : '<div class="h-20 w-20 rounded-xl border border-dashed border-slate-300 bg-slate-50 flex-shrink-0"></div>';
             const statusClass = item.STATUS === 'ml_failed' ? 'border-red-200 bg-red-50 text-red-700' : (item.STATUS === 'approved' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-blue-200 bg-blue-50 text-blue-700');
-            const title = firstNonEmptyValue(item.COMMONNAME, item.ML_COMMON_NAME, 'AI Capture');
+            const title = getMlJobDisplayCommonName(item);
+            const metaInfo = getMlJobDriveModeMeta(item);
+            const meta = [metaInfo.itemcode ? `Item ${metaInfo.itemcode}` : '', metaInfo.contsize, metaInfo.loc ? `Loc ${metaInfo.loc}` : '', metaInfo.lot ? `Lot ${metaInfo.lot}` : '', metaInfo.block ? `Block ${metaInfo.block}` : '', metaInfo.season, item.ML_GRADE].filter(Boolean).join(' | ');
             const issueText = firstNonEmptyValue(
                 item.DIAGNOSIS,
                 item.STATUS === 'processing' ? 'ML worker is processing this image.' : '',
@@ -44860,7 +45002,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap gap-2 mb-2"><span class="rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${statusClass}">${esc(item.STATUS.replace(/_/g, ' '))}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${esc(formatMlTimestamp(firstNonEmptyValue(item.ML_COMPLETED_AT, item.UPDATED_AT, item.CREATED_AT)))}</span></div>
                         <div class="text-base font-black text-slate-900 leading-tight break-words">${esc(title)}</div>
-                        <div class="mt-1 text-[12px] font-bold text-slate-500 break-words">${esc([item.ML_GENUS, item.BLOCK ? 'Block ' + item.BLOCK : '', item.SEASON, item.ML_GRADE].filter(Boolean).join(' | '))}</div>
+                        <div class="mt-1 text-[12px] font-bold text-slate-500 break-words">${esc(meta)}</div>
                     </div>
                 </div>
                 <div class="mt-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-[12px] font-semibold text-slate-600">
