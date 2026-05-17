@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.17.12';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.17.13';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -525,6 +525,41 @@ body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-
         #gallery-sections{contain:layout paint style}
         #gallery-sections img{transform:translateZ(0);will-change:transform}
         .photo-gallery-clickzone{cursor:pointer}
+        #home-dashboard-grid > div,
+        #view-sales button[id^="sales-open-"],
+        #view-qc button[id^="qc-open-"],
+        #view-production button[id^="production-open-"],
+        #view-disease-pest button[id^="disease-pest-open-"],
+        #view-office button[id^="office-open-"],
+        #view-sales-inventory button[id^="sales-inventory-open-"],
+        #view-communication button[id^="communication-open-"],
+        .app-card-shell,
+        .app-smart-card,
+        .drill-item{border-color:#007a4d !important}
+        .inv-card{border-top-color:#007a4d !important;border-right-color:#007a4d !important;border-bottom-color:#007a4d !important}
+        #home-dashboard-grid > div > i,
+        #home-dashboard-grid > div > span,
+        #view-sales button[id^="sales-open-"] i,
+        #view-qc button[id^="qc-open-"] i,
+        #view-production button[id^="production-open-"] i,
+        #view-disease-pest button[id^="disease-pest-open-"] i,
+        #view-office button[id^="office-open-"] i,
+        #view-sales-inventory button[id^="sales-inventory-open-"] i,
+        #view-communication button[id^="communication-open-"] i{color:#007a4d !important}
+        #photo-modal-prev:not(.hidden),
+        #photo-modal-next:not(.hidden){display:flex}
+        @media (pointer:fine){
+            #photo-modal-gallery{cursor:grab;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.55) rgba(255,255,255,.08);padding-bottom:.7rem}
+            #photo-modal-gallery.photo-modal-dragging{cursor:grabbing;scroll-snap-type:none}
+            #photo-modal-gallery.scrollbar-none::-webkit-scrollbar,
+            #photo-modal-gallery::-webkit-scrollbar{display:block;width:auto;height:12px}
+            #photo-modal-gallery.scrollbar-none::-webkit-scrollbar-track,
+            #photo-modal-gallery::-webkit-scrollbar-track{background:rgba(255,255,255,.08);border-radius:999px}
+            #photo-modal-gallery.scrollbar-none::-webkit-scrollbar-thumb,
+            #photo-modal-gallery::-webkit-scrollbar-thumb{background:rgba(255,255,255,.55);border:3px solid rgba(0,0,0,.72);border-radius:999px}
+            #photo-modal-gallery.scrollbar-none::-webkit-scrollbar-thumb:hover,
+            #photo-modal-gallery::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.75)}
+        }
         #drive-search-container,#av-search-container,#reserves-search-container,#docks-search-container{position:-webkit-sticky;position:sticky;top:0;z-index:45}
 .nav-header{position:-webkit-sticky;position:sticky;top:0;z-index:60;padding:max(10px,env(safe-area-inset-top)) var(--shell-gutter) 12px;background:linear-gradient(180deg,#007a4d 0%,#0d8b5d 100%);box-shadow:0 6px 14px rgba(7,94,63,.12)}
         .nav-header-shell{display:flex;flex-direction:column;gap:.5rem;width:var(--shell-width);max-width:var(--shell-width);margin:0 auto}
@@ -2030,7 +2065,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.12').trim() || 'V2026.05.17.12';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.13').trim() || 'V2026.05.17.13';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -3240,7 +3275,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.12';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.13';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6468,6 +6503,15 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             scrollHandler: null,
             wheelHandler: null,
             touchMoveHandler: null,
+            pointerDownHandler: null,
+            pointerMoveHandler: null,
+            pointerUpHandler: null,
+            pointerCancelHandler: null,
+            pointerDragging: false,
+            pointerDragMoved: false,
+            pointerDragStartX: 0,
+            pointerDragStartScrollLeft: 0,
+            pointerSuppressClickUntil: 0,
             galleryClickHandler: null,
             keyHandler: null,
             primedKey: ''
@@ -14006,7 +14050,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.12').trim() || 'V2026.05.17.12';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.13').trim() || 'V2026.05.17.13';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -21350,6 +21394,18 @@ function toggleDriveQuickRequestItem(domId) {
             if (photoModalState.touchMoveHandler) {
                 gallery.removeEventListener('touchmove', photoModalState.touchMoveHandler);
             }
+            if (photoModalState.pointerDownHandler) {
+                gallery.removeEventListener('pointerdown', photoModalState.pointerDownHandler);
+            }
+            if (photoModalState.pointerMoveHandler) {
+                gallery.removeEventListener('pointermove', photoModalState.pointerMoveHandler);
+            }
+            if (photoModalState.pointerUpHandler) {
+                gallery.removeEventListener('pointerup', photoModalState.pointerUpHandler);
+            }
+            if (photoModalState.pointerCancelHandler) {
+                gallery.removeEventListener('pointercancel', photoModalState.pointerCancelHandler);
+            }
             if (photoModalState.keyHandler) {
                 window.removeEventListener('keydown', photoModalState.keyHandler);
             }
@@ -21383,12 +21439,59 @@ function toggleDriveQuickRequestItem(domId) {
                 }
             };
             photoModalState.touchMoveHandler = () => markScrollActivity();
+            photoModalState.pointerDownHandler = (event) => {
+                if (window.matchMedia('(pointer: coarse)').matches || event.button !== 0 || photoModalState.urls.length <= 1) return;
+                photoModalState.pointerDragging = true;
+                photoModalState.pointerDragMoved = false;
+                photoModalState.pointerDragStartX = Number(event.clientX) || 0;
+                photoModalState.pointerDragStartScrollLeft = Number(gallery.scrollLeft) || 0;
+                gallery.classList.add('photo-modal-dragging');
+                try { gallery.setPointerCapture(event.pointerId); } catch (error) {}
+                markScrollActivity();
+                if (typeof event.preventDefault === 'function') event.preventDefault();
+            };
+            photoModalState.pointerMoveHandler = (event) => {
+                if (!photoModalState.pointerDragging) return;
+                const nextX = Number(event.clientX) || 0;
+                const deltaX = nextX - photoModalState.pointerDragStartX;
+                if (Math.abs(deltaX) > 4) photoModalState.pointerDragMoved = true;
+                gallery.scrollLeft = photoModalState.pointerDragStartScrollLeft - deltaX;
+                markScrollActivity();
+                if (typeof event.preventDefault === 'function') event.preventDefault();
+            };
+            photoModalState.pointerUpHandler = (event) => {
+                if (!photoModalState.pointerDragging) return;
+                const moved = !!photoModalState.pointerDragMoved;
+                photoModalState.pointerDragging = false;
+                photoModalState.pointerDragMoved = false;
+                gallery.classList.remove('photo-modal-dragging');
+                try { gallery.releasePointerCapture(event.pointerId); } catch (error) {}
+                syncPhotoModalIndexFromScroll();
+                snapPhotoModalToIndex(photoModalState.index, true);
+                if (moved) photoModalState.pointerSuppressClickUntil = Date.now() + 260;
+            };
+            photoModalState.pointerCancelHandler = (event) => {
+                if (!photoModalState.pointerDragging) return;
+                photoModalState.pointerDragging = false;
+                photoModalState.pointerDragMoved = false;
+                gallery.classList.remove('photo-modal-dragging');
+                try { gallery.releasePointerCapture(event.pointerId); } catch (error) {}
+                syncPhotoModalIndexFromScroll();
+            };
             gallery.addEventListener('scroll', photoModalState.scrollHandler, { passive: true });
             gallery.addEventListener('wheel', photoModalState.wheelHandler, { passive: false });
             gallery.addEventListener('touchmove', photoModalState.touchMoveHandler, { passive: true });
+            gallery.addEventListener('pointerdown', photoModalState.pointerDownHandler);
+            gallery.addEventListener('pointermove', photoModalState.pointerMoveHandler);
+            gallery.addEventListener('pointerup', photoModalState.pointerUpHandler);
+            gallery.addEventListener('pointercancel', photoModalState.pointerCancelHandler);
             photoModalState.galleryClickHandler = (event) => {
                 if (window.matchMedia('(pointer: coarse)').matches) return;
                 if (photoModalState.urls.length <= 1) return;
+                if (Date.now() < photoModalState.pointerSuppressClickUntil) {
+                    if (typeof event.preventDefault === 'function') event.preventDefault();
+                    return;
+                }
                 stepPhotoModal(1);
             };
             gallery.addEventListener('click', photoModalState.galleryClickHandler);
@@ -21435,10 +21538,23 @@ function toggleDriveQuickRequestItem(domId) {
                 if (photoModalState.touchMoveHandler) {
                     gallery.removeEventListener('touchmove', photoModalState.touchMoveHandler);
                 }
+                if (photoModalState.pointerDownHandler) {
+                    gallery.removeEventListener('pointerdown', photoModalState.pointerDownHandler);
+                }
+                if (photoModalState.pointerMoveHandler) {
+                    gallery.removeEventListener('pointermove', photoModalState.pointerMoveHandler);
+                }
+                if (photoModalState.pointerUpHandler) {
+                    gallery.removeEventListener('pointerup', photoModalState.pointerUpHandler);
+                }
+                if (photoModalState.pointerCancelHandler) {
+                    gallery.removeEventListener('pointercancel', photoModalState.pointerCancelHandler);
+                }
                 if (photoModalState.galleryClickHandler) {
                     gallery.removeEventListener('click', photoModalState.galleryClickHandler);
                 }
                 gallery.classList.remove('photo-gallery-clickzone');
+                gallery.classList.remove('photo-modal-dragging');
                 gallery.innerHTML = '';
             }
             if (photoModalState.keyHandler) {
@@ -21453,6 +21569,15 @@ function toggleDriveQuickRequestItem(domId) {
             photoModalState.scrollHandler = null;
             photoModalState.wheelHandler = null;
             photoModalState.touchMoveHandler = null;
+            photoModalState.pointerDownHandler = null;
+            photoModalState.pointerMoveHandler = null;
+            photoModalState.pointerUpHandler = null;
+            photoModalState.pointerCancelHandler = null;
+            photoModalState.pointerDragging = false;
+            photoModalState.pointerDragMoved = false;
+            photoModalState.pointerDragStartX = 0;
+            photoModalState.pointerDragStartScrollLeft = 0;
+            photoModalState.pointerSuppressClickUntil = 0;
             photoModalState.galleryClickHandler = null;
             photoModalState.keyHandler = null;
             photoModalState.primedKey = '';
@@ -31865,7 +31990,22 @@ function toggleDriveQuickRequestItem(domId) {
                 switchView('home');
                 return false;
             }
+            if (currentView === 'shear-list') {
+                if (shearListState && shearListState.drillLevel && shearListState.drillLevel !== 'blocks') {
+                    backShearListDrill();
+                    updateGlobalBackButton();
+                    return false;
+                }
+                if (restorePreviousViewFromHistory()) return false;
+                switchView('home');
+                return false;
+            }
             if (currentView === 'reserves' || currentView === 'sales-office' || currentView === 'reports' || currentView === 'hours' || currentView === 'low-stock') {
+                if (restorePreviousViewFromHistory()) return false;
+                switchView('home');
+                return false;
+            }
+            if (currentView && currentView !== 'home') {
                 if (restorePreviousViewFromHistory()) return false;
                 switchView('home');
                 return false;
