@@ -16,7 +16,6 @@ export type AppSessionClaims = {
   displayName: string;
   role: string;
   mustChangePassword: boolean;
-  passwordChangedAt?: string;
   iat: number;
   exp: number;
 };
@@ -35,8 +34,7 @@ export function normalizeRole(value = "") {
 }
 
 export function isForcedPasswordValue(value = "") {
-  const trimmed = String(value || "").trim();
-  return FORCED_PASSWORD_CHANGE_VALUES.has(trimmed) || FORCED_PASSWORD_CHANGE_VALUES.has(trimmed.toUpperCase()) || FORCED_PASSWORD_CHANGE_VALUES.has(trimmed.toLowerCase());
+  return FORCED_PASSWORD_CHANGE_VALUES.has(String(value || "").trim());
 }
 
 export function getRoleAccessState(role = "") {
@@ -53,24 +51,18 @@ export function getRoleAccessState(role = "") {
     roleDisplay.includes("QC SUPERVISOR");
   const isQc = !isQcSupervisor && (normalizedRole === "QC" || normalizedRole.startsWith("QC"));
   const isCsr = normalizedRole === "CSR" || normalizedRole.includes("CSR");
-  const isForeman = normalizedRole.includes("FOREMAN");
-  const isGrower = normalizedRole.includes("GROWER");
-  const isAdmin = normalizedRole.includes("ADMIN") || normalizedRole.includes("MANAGER") || isCsr || (!isRep && !isQcSupervisor && !isQc && !isForeman && !isGrower);
+  const isAdmin = normalizedRole.includes("ADMIN") || normalizedRole.includes("MANAGER") || isCsr || (!isRep && !isQcSupervisor && !isQc);
   const allowedViews = new Set<string>(["home", "chat"]);
   if (isAdmin) {
-    ["drive", "tasks", "docks", "av", "request", "reserves", "sales-office", "reports", "hours", "low-stock", "review", "grower", "pest-management", "outlook", "chat"].forEach((viewId) => allowedViews.add(viewId));
+    ["drive", "tasks", "docks", "av", "request", "reserves", "sales-office", "reports", "hours", "low-stock", "review", "chat"].forEach((viewId) => allowedViews.add(viewId));
   } else if (isRep) {
     ["av", "docks", "request", "sales-office"].forEach((viewId) => allowedViews.add(viewId));
   } else if (isQcSupervisor) {
     ["drive", "docks"].forEach((viewId) => allowedViews.add(viewId));
   } else if (isQc) {
     ["docks"].forEach((viewId) => allowedViews.add(viewId));
-  } else if (isForeman) {
-    ["drive", "hours", "grower"].forEach((viewId) => allowedViews.add(viewId));
-  } else if (isGrower) {
-    ["grower"].forEach((viewId) => allowedViews.add(viewId));
   }
-  return { isAdmin, isRep, isQcSupervisor, isQc, isForeman, isGrower, allowedViews };
+  return { isAdmin, isRep, isQcSupervisor, isQc, allowedViews };
 }
 
 function getSessionSecret() {
@@ -129,7 +121,6 @@ export async function createAppSession(input: {
   displayName?: string;
   role?: string;
   mustChangePassword?: boolean;
-  passwordChangedAt?: string;
 }) {
   const nowSeconds = Math.floor(Date.now() / 1000);
   const claims: AppSessionClaims = {
@@ -138,7 +129,6 @@ export async function createAppSession(input: {
     displayName: String(input.displayName || input.username || "").trim() || normalizeUsername(input.username),
     role: String(input.role || "User").trim() || "User",
     mustChangePassword: !!input.mustChangePassword,
-    passwordChangedAt: String(input.passwordChangedAt || "").trim() || undefined,
     iat: nowSeconds,
     exp: nowSeconds + getSessionTtlSeconds(),
   };
@@ -165,7 +155,6 @@ export async function verifyAppSessionToken(token = ""): Promise<AppSessionClaim
       displayName: String(claims.displayName || claims.username || "").trim() || normalizeUsername(claims.username),
       role: String(claims.role || "User").trim() || "User",
       mustChangePassword: !!claims.mustChangePassword,
-      passwordChangedAt: String(claims.passwordChangedAt || "").trim() || undefined,
       iat: Number(claims.iat || 0),
       exp: Number(claims.exp || 0),
     };

@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.17.03';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.17.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2015,7 +2015,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.03').trim() || 'V2026.05.17.03';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.02').trim() || 'V2026.05.17.02';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2039,7 +2039,6 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <div id="drawer-force-sync-btn" class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData('force'); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div>
             <div id="drawer-enable-push-btn" class="drawer-item text-blue-600 font-bold" onclick="manuallyEnablePushNotifications(); toggleMenu();"><i class="ph-bold ph-bell-ringing"></i> Enable Notifications</div>
             <div id="drawer-chat-btn" class="drawer-item text-sky-600 font-bold" onclick="switchView('chat'); toggleMenu();"><i class="ph-bold ph-chats-circle"></i> Chat</div>
-            <div id="drawer-outlook-btn" class="drawer-item text-blue-700 font-bold" onclick="switchView('outlook'); toggleMenu();"><i class="ph-bold ph-envelope-simple"></i> Outlook</div>
             <div id="drawer-walkie-btn" class="drawer-item text-emerald-700 font-bold hidden" onclick="switchView('walkie'); toggleMenu();"><i class="ph-bold ph-radio"></i> Walkie</div>
             <hr class="my-2">
             <div id="drawer-drive-btn" class="drawer-item role-access role-admin role-qc-supervisor hidden" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
@@ -2118,7 +2117,6 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div id="home-tile-av" onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
                                 <div id="home-tile-request" onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-request-enabled hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
                                 <div id="home-tile-chat" onclick="switchView('chat')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-chats-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Chat</span></div>
-                                <div id="home-tile-outlook" onclick="switchView('outlook')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-envelope-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Outlook</span></div>
                                 <div id="home-tile-walkie" onclick="switchView('walkie')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer hidden"><i class="ph-bold ph-radio text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Walkie</span></div>
                                 <div id="home-tile-reserves" onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
                                 <div id="home-tile-sales-office" onclick="openSalesOfficeView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
@@ -2625,19 +2623,6 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div id="diagnostics-content"></div>
                 </div>
 
-                <div id="view-outlook" class="hidden">
-                    <div class="freeze-panel">
-                        <div class="flex items-start justify-between gap-3 mb-3">
-                            <div class="min-w-0 flex-1">
-                                <div id="outlook-crumb" class="text-xs font-bold text-[#007a4d] uppercase tracking-[0.16em] mb-1">Microsoft Mail</div>
-                                <div class="text-xl font-black text-slate-900">Outlook</div>
-                            </div>
-                            <button type="button" class="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700 shadow-sm active:scale-95" onclick="return connectOutlookAccount()"><i class="ph-bold ph-plugs-connected text-base"></i><span>Connect</span></button>
-                        </div>
-                    </div>
-                    <div id="outlook-content"></div>
-                </div>
-
                 <div id="view-grower" class="hidden">
                     <div class="freeze-panel">
                         <div class="flex items-start justify-between gap-3 mb-3">
@@ -2853,7 +2838,6 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 </div>
                 <div id="cart-helper-text" class="hidden">Bloom Picker orders are for AV open stock rows. Assign, Request, Flyer, and End Cap work on inventory rows.</div>
             </div>
-            <button id="global-ptt-button" type="button" class="hidden fixed right-4 bottom-[86px] z-[46] h-14 w-14 rounded-full bg-emerald-700 text-white shadow-xl active:scale-95" aria-label="Global push to talk" onpointerdown="return startGlobalVoiceMessage(event)" onpointerup="return finishGlobalVoiceMessage(event, false)" onpointercancel="return finishGlobalVoiceMessage(event, true)" onpointerleave="return finishGlobalVoiceMessage(event, false)"><i class="ph-bold ph-microphone-stage text-2xl"></i></button>
             <nav id="bottom-nav" class="fixed bottom-0 w-full border-t border-green-100 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.22)] z-50">
                 <button type="button" id="footer-menu-btn" class="footer-nav-btn" aria-label="Menu"><i class="ph-bold ph-list"></i><span>Menu</span></button>
                 <button type="button" data-footer-view="home" class="footer-nav-btn" aria-label="Home"><i class="ph-bold ph-house"></i><span>Home</span></button>
@@ -2868,8 +2852,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
         <script id="app-script-source" type="text/plain">
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
-        const SUPABASE_KEY = "sb_publishable_FpB561OcET7JsjWr2--kOA_9R68Kqxa";
-        const SUPABASE_PUBLISHABLE_KEY = SUPABASE_KEY;
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec";
         const PUSH_SUBSCRIPTIONS_TABLE = 'v2_push_subscriptions';
         const APP_LIVE_EVENTS_TABLE = 'v2_app_live_events';
@@ -2902,11 +2885,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const WALKIE_CALLS_TABLE = 'v2_walkie_calls';
         const WALKIE_CALL_MEMBERS_TABLE = 'v2_walkie_call_members';
         const WALKIE_SIGNAL_TABLE = 'v2_walkie_signal_events';
-        const WALKIE_VOICE_MESSAGES_TABLE = 'v2_walkie_voice_messages';
-        const WALKIE_VOICE_BUCKET = 'walkie_voice_notes';
         const PUSH_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/send-push-alert`;
         const APP_API_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/app-api`;
-        const OUTLOOK_API_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/outlook-api`;
         const LEAF_ASSISTANT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/inventory-assistant`;
         const PUSH_VAPID_PUBLIC_KEY = 'BAnr5wnptNgeqol-aJzw1eW_4CnuHpQNlvJ3vmo4VGVfuRsHNO5bRZdT-8NN8qUL5bTlUxYrx592fbG26EYjEN4';
         const PUSH_ALERT_NEW_REQUEST_USERS = new Set(['dylan_collyge','jd_jones']);
@@ -2914,7 +2894,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const PUSH_DELIVERY_RETRY_DELAYS_MS = [0, 1500, 6000, 15000];
         const PUSH_MOBILE_REFRESH_STORAGE_KEY = 'gnc_mobile_push_refresh_v1';
         const CHAT_REALTIME_TABLES = [CHAT_CONVERSATIONS_TABLE, CHAT_PARTICIPANTS_TABLE, CHAT_MESSAGES_TABLE];
-        const WALKIE_REALTIME_TABLES = [WALKIE_CHANNELS_TABLE, WALKIE_CHANNEL_MEMBERS_TABLE, WALKIE_CALLS_TABLE, WALKIE_CALL_MEMBERS_TABLE, WALKIE_SIGNAL_TABLE, WALKIE_VOICE_MESSAGES_TABLE];
+        const WALKIE_REALTIME_TABLES = [WALKIE_CHANNELS_TABLE, WALKIE_CHANNEL_MEMBERS_TABLE, WALKIE_CALLS_TABLE, WALKIE_CALL_MEMBERS_TABLE, WALKIE_SIGNAL_TABLE];
         const CHAT_BACKGROUND_POLL_MS = 60000;
         const CHAT_BACKGROUND_HEALTHY_POLL_MS = 180000;
         const WALKIE_LISTENER_CAP = 6;
@@ -2953,7 +2933,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -4081,14 +4061,31 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             } catch (error) {}
             const cutoff = new Date(now - (APP_LIVE_EVENT_RETENTION_DAYS * 86400000)).toISOString();
             try {
-                await appApiDbFetch(APP_LIVE_EVENTS_TABLE, 'DELETE', null, `created_at=lt.${encodeURIComponent(cutoff)}`, { timeoutMs: SUPABASE_WRITE_TIMEOUT_MS });
+                await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/${APP_LIVE_EVENTS_TABLE}?created_at=lt.${encodeURIComponent(cutoff)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        apikey: SUPABASE_KEY,
+                        Authorization: 'Bearer ' + SUPABASE_KEY,
+                        Prefer: 'return=minimal'
+                    }
+                }, SUPABASE_WRITE_TIMEOUT_MS, 'live event prune');
             } catch (error) {}
         }
 
         async function postAppLiveEvent(entry = null) {
             if (!entry || appLiveEventSchemaUnavailable || navigator.onLine === false) return false;
             try {
-                await appApiDbFetch(APP_LIVE_EVENTS_TABLE, 'POST', entry, 'on_conflict=id', { timeoutMs: SUPABASE_WRITE_TIMEOUT_MS });
+                const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/${APP_LIVE_EVENTS_TABLE}`, {
+                    method: 'POST',
+                    headers: {
+                        apikey: SUPABASE_KEY,
+                        Authorization: 'Bearer ' + SUPABASE_KEY,
+                        'Content-Type': 'application/json',
+                        Prefer: 'return=minimal'
+                    },
+                    body: JSON.stringify(entry)
+                }, SUPABASE_WRITE_TIMEOUT_MS, 'live event write');
+                if (!response.ok) throw new Error(await getResponseError(response, `Live event write failed (${response.status})`));
                 maybePruneAppLiveEvents().catch(() => {});
                 return true;
             } catch (error) {
@@ -11131,57 +11128,9 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             return Array.isArray(body) ? body.map(normalizeOne) : normalizeOne(body);
         }
 
-        function isAppApiSessionRequiredError(error = null) {
-            const payload = error && error.payload && typeof error.payload === 'object' ? error.payload : {};
-            const code = String(firstNonEmptyValue(payload.code, error && error.code, '') || '').trim();
-            return code === 'PASSWORD_CHANGE_REQUIRED' || code === 'ACCOUNT_LOCKED' || code === 'ACCOUNT_DISABLED';
-        }
-
-        async function appApiDbFetch(table, method = 'GET', body = null, query = '', requestOptions = {}) {
-            const payload = await postAppFunctionJson(APP_API_FUNCTION_URL, {
-                action: 'db',
-                table,
-                method,
-                body,
-                query
-            }, {
-                timeoutMs: Number(requestOptions && requestOptions.timeoutMs) || (method === 'GET' ? SUPABASE_READ_TIMEOUT_MS : SUPABASE_WRITE_TIMEOUT_MS),
-                label: `${table} ${method}`
-            });
-            return payload && Object.prototype.hasOwnProperty.call(payload, 'data') ? payload.data : null;
-        }
-
-        async function appApiUploadFile(prefix = 'default', file = null, fileName = '', requestOptions = {}) {
-            if (!file) throw new Error('No file was provided.');
-            const form = new FormData();
-            form.append('prefix', String(prefix || 'default'));
-            form.append('fileName', String(fileName || (file && file.name) || 'upload'));
-            if (requestOptions && requestOptions.filePath) form.append('filePath', String(requestOptions.filePath || ''));
-            form.append('file', file);
-            const headers = {
-                'apikey': SUPABASE_PUBLISHABLE_KEY,
-                'Authorization': 'Bearer ' + SUPABASE_PUBLISHABLE_KEY
-            };
-            const sessionToken = getCurrentAppSessionToken();
-            if (sessionToken) headers['x-gnc-session'] = sessionToken;
-            const response = await fetchWithTimeout(APP_API_FUNCTION_URL, {
-                method: 'POST',
-                headers,
-                body: form
-            }, Number(requestOptions && requestOptions.timeoutMs || SUPABASE_UPLOAD_TIMEOUT_MS), String(requestOptions && requestOptions.label || 'Upload File'));
-            const text = await response.text();
-            let payload = null;
-            try { payload = text ? JSON.parse(text) : null; } catch (error) { payload = text || null; }
-            if (!response.ok) {
-                const message = payload && typeof payload === 'object' ? String(payload.error || payload.message || `Upload failed (${response.status})`).trim() : `Upload failed (${response.status})`;
-                throw new Error(message || `Upload failed (${response.status})`);
-            }
-            return payload || {};
-        }
-
         async function supabaseFetch(table, method='GET', body=null, query='select=*', requestOptions = {}) {
             if(method==='GET'){
-                const readKey = `app-api:${String(table || '').trim()}:${String(query || '').trim()}`;
+                const readKey = `legacy:${String(table || '').trim()}:${String(query || '').trim()}`;
                 try {
                     return await runDedupeSupabaseRead(readKey, async () => {
                         startGlobalProgress();
@@ -11189,7 +11138,10 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                             let allData=[]; let offset=0; const limit=1000; let hasMore=true;
                     while(hasMore){
                         let queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
-                        const data = await appApiDbFetch(table, 'GET', null, queryString, requestOptions);
+                        const url=`${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
+                        const response=await fetchWithTimeout(url,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}}, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
+                        if(!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
+                        const text=await response.text(); const data=text?JSON.parse(text):[];
                         if(Array.isArray(data)&&data.length>0){ allData=allData.concat(data); offset+=data.length; if(data.length<limit) hasMore=false; }
                         else { hasMore=false; }
                     }
@@ -11199,22 +11151,24 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                         }
                     });
                 } catch(e){
-                    if (isAppApiSessionRequiredError(e)) {
-                        console.warn('App API session required.', e);
-                        showToast('Sign In Required', e && e.message ? e.message : 'Please sign in again.', true);
-                    }
                     return [];
                 }
             }
             startGlobalProgress();
             try {
                     const writeTimeoutMs = Math.max(1000, Number(requestOptions && requestOptions.timeoutMs) || SUPABASE_WRITE_TIMEOUT_MS);
+                    const options={method:method,headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}};
+                    if(method==='POST') options.headers['Prefer']=table==='v2_active_request' ? 'return=minimal' : 'return=minimal,resolution=merge-duplicates';
+                    else if(method==='PATCH' || method==='DELETE') options.headers['Prefer']='return=minimal';
+                    else options.headers['Prefer']='return=representation';
                     let liveEventBody = body;
-                    const normalizedBody = body && table==='v2_active_request' && (method==='POST' || method==='PATCH') ? normalizeActiveRequestWriteBody(body) : body;
-                    liveEventBody = normalizedBody;
-                    const result = await appApiDbFetch(table, method, normalizedBody, query, { timeoutMs: writeTimeoutMs });
+                    if(body){ const normalizedBody = table==='v2_active_request' && (method==='POST' || method==='PATCH') ? normalizeActiveRequestWriteBody(body) : body; liveEventBody = normalizedBody; options.body=JSON.stringify(normalizedBody); }
+                    const response=await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/${table}${query?'?'+query:''}`,options,writeTimeoutMs, `${table} ${method}`);
+                    if(!response.ok) throw new Error(await getResponseError(response, `Supabase write failed (${response.status})`));
+                    const text=await response.text();
+                    const result = text?JSON.parse(text):{};
                     queueAppLiveEventForWrite(table, method, liveEventBody, query);
-                    return result || {};
+                    return result;
             } catch(e){
                 throw e;
             } finally { stopGlobalProgress(); }
@@ -11865,13 +11819,10 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 'gnc_pin_v3',
                 'gnc_role_v3',
                 LOGIN_DISPLAY_NAME_STORAGE_KEY,
-                VERIFIED_LOGIN_STORAGE_KEY,
-                'gnc_bio_pin',
-                'gnc_bio_enabled'
+                VERIFIED_LOGIN_STORAGE_KEY
             ].forEach((key) => {
                 try { localStorage.removeItem(key); } catch (error) {}
             });
-            try { sessionStorage.removeItem(APP_SESSION_RECORD_STORAGE_KEY); } catch (error) {}
         }
 
         function clearInMemorySessionIdentity() {
@@ -11984,10 +11935,39 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             }
             if (navigator.onLine === false) return { ok: false, reason: 'offline', message: 'Leaf is unavailable offline right now.' };
             const username = String(currentUser || normalizeSessionIdentity(localStorage.getItem('gnc_user_v3')) || '').trim();
-            if (!username) {
-                return { ok: false, reason: 'missing-session', message: 'Leaf could not find your app session. Please sign in again.' };
+            const password = String(localStorage.getItem('gnc_pin_v3') || '').trim();
+            if (!username || !password) {
+                return { ok: false, reason: 'missing-credentials', message: 'Leaf could not find your saved login for session verification. Please sign in again.' };
             }
-            return { ok: false, reason: 'missing-session', message: 'Your secure app session expired. Please sign in again.' };
+            try {
+                const payload = await postAppFunctionJson(APP_API_FUNCTION_URL, {
+                    action: 'login',
+                    username,
+                    password
+                }, {
+                    includeSession: false,
+                    timeoutMs: 14000,
+                    label: 'Leaf session login'
+                });
+                if (payload && payload.ok && payload.session && payload.session.token) {
+                    persistAppSessionRecord({
+                        token: payload.session.token,
+                        expiresAt: Number(payload.session.expiresAt || 0),
+                        username: String(firstNonEmptyValue(payload.session.username, username) || '').trim(),
+                        displayName: String(firstNonEmptyValue(payload.session.displayName, currentUserDisplay, username) || '').trim(),
+                        role: String(firstNonEmptyValue(payload.session.role, currentRole) || '').trim()
+                    });
+                    return { ok: true, token: getCurrentAppSessionToken(), source: 'bootstrap' };
+                }
+                return { ok: false, reason: 'missing-session-token', message: 'Leaf could not start a verified session. Please sign out and back in.' };
+            } catch (error) {
+                const message = String(error && error.message || '').trim();
+                return {
+                    ok: false,
+                    reason: 'login-bootstrap-failed',
+                    message: message ? `Leaf session setup failed: ${message}` : 'Leaf session setup failed. Please try again.'
+                };
+            }
         }
 
         function getLeafSpeechRecognitionCtor() {
@@ -12481,6 +12461,9 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 }, 0);
                 queueVisibleTrackedViewRefresh('saved-session-recovery', 40, 180);
                 queueVisibleDatasetCatchup(isTouchConstrainedDevice() ? 260 : 140);
+                if (sessionRecord && sessionRecord.username && sessionRecord.password) {
+                    scheduleBackgroundLoginValidation(sessionRecord.username, sessionRecord.password);
+                }
                 return true;
             } catch (recoveryError) {
                 try {
@@ -12566,8 +12549,6 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
 
         function readVerifiedLoginRecord() {
             try {
-                localStorage.removeItem(VERIFIED_LOGIN_STORAGE_KEY);
-                return null;
                 const raw = localStorage.getItem(VERIFIED_LOGIN_STORAGE_KEY);
                 if (!raw) return null;
                 const parsed = JSON.parse(raw);
@@ -12590,8 +12571,23 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
         }
 
         function persistVerifiedLoginRecord(username, password, role, displayName = '') {
-            try { localStorage.removeItem(VERIFIED_LOGIN_STORAGE_KEY); } catch (error) {}
-            return false;
+            const normalizedUsername = String(username || '').trim().toLowerCase();
+            const normalizedPassword = String(password || '').trim();
+            const normalizedRole = String(role || '').trim();
+            const normalizedDisplayName = String(displayName || username || '').trim();
+            if (!normalizedUsername || !normalizedPassword || !normalizedRole) return false;
+            try {
+                localStorage.setItem(VERIFIED_LOGIN_STORAGE_KEY, JSON.stringify({
+                    username: normalizedUsername,
+                    displayName: normalizedDisplayName || normalizedUsername,
+                    password: normalizedPassword,
+                    role: normalizedRole,
+                    verifiedAt: new Date().toISOString()
+                }));
+                return true;
+            } catch (error) {
+                return false;
+            }
         }
 
         async function tryLocalCachedLoginRecord(username, password) {
@@ -12619,16 +12615,6 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
 
         function getPersistedSessionRestoreRecord() {
             if (hasExplicitLogoutMarker()) return null;
-            const appSessionRecord = readPersistedAppSessionRecord();
-            if (appSessionRecord && appSessionRecord.username && appSessionRecord.role) {
-                return {
-                    username: normalizeSessionIdentity(appSessionRecord.username),
-                    displayName: appSessionRecord.displayName || appSessionRecord.username,
-                    password: '',
-                    role: appSessionRecord.role,
-                    source: 'app-session'
-                };
-            }
             const savedUser = normalizeSessionIdentity(localStorage.getItem('gnc_user_v3'));
             const savedPassword = String(localStorage.getItem('gnc_pin_v3') || '').trim();
             const savedRole = String(localStorage.getItem('gnc_role_v3') || '').trim();
@@ -12752,7 +12738,18 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
         }
 
         function scheduleBackgroundLoginValidation(username = '', password = '') {
-            return null;
+            const normalizedUsername = normalizeSessionIdentity(username);
+            const normalizedPassword = String(password || '').trim();
+            if (!normalizedUsername || !normalizedPassword || navigator.onLine === false) return;
+            setTimeout(async () => {
+                try {
+                    const result = await fetchRemoteLoginUser(normalizedUsername, normalizedPassword);
+                    if (!result || !result.ok || !result.user) return;
+                    const remoteRole = String(firstNonEmptyValue(result.user.role, result.user.ROLE, currentRole, '')).trim() || currentRole;
+                    persistVerifiedLoginRecord(normalizedUsername, normalizedPassword, remoteRole, currentUserDisplay || normalizedUsername);
+                    try { localStorage.setItem('gnc_role_v3', remoteRole); } catch (error) {}
+                } catch (error) {}
+            }, 2200);
         }
 
         function getLoginReadHeaders() {
@@ -12784,33 +12781,17 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
         }
 
         async function fetchRemoteLoginUser(normalizedUsername, normalizedPassword) {
-            const payload = await postAppFunctionJson(APP_API_FUNCTION_URL, {
-                action: 'login',
-                username: normalizedUsername,
-                password: normalizedPassword
-            }, {
-                includeSession: false,
-                timeoutMs: LOGIN_READ_TIMEOUT_MS,
-                label: 'Login'
-            });
-            if (!payload || !payload.ok) return { ok: false, reason: payload && payload.reason ? payload.reason : 'mismatch', lockedUntil: payload && payload.lockedUntil };
-            if (payload.session && payload.session.token) {
-                persistAppSessionRecord({
-                    token: payload.session.token,
-                    expiresAt: Number(payload.session.expiresAt || 0),
-                    username: String(firstNonEmptyValue(payload.session.username, normalizedUsername) || '').trim(),
-                    displayName: String(firstNonEmptyValue(payload.session.displayName, normalizedUsername) || '').trim(),
-                    role: String(firstNonEmptyValue(payload.session.role, payload.user && payload.user.role, '') || '').trim()
-                });
+            const exactUrl = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password&username=eq.${encodeURIComponent(normalizedUsername)}&limit=1`;
+            let rows = await fetchLoginRowsWithRetry(exactUrl, 'Login');
+            if ((!Array.isArray(rows) || rows.length === 0) && normalizedUsername) {
+                const fallbackUrl = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password&username=ilike.${encodeURIComponent(normalizedUsername)}&limit=3`;
+                rows = await fetchLoginRowsWithRetry(fallbackUrl, 'Login');
             }
-            const userRecord = {
-                username: String(firstNonEmptyValue(payload.user && payload.user.username, payload.session && payload.session.username, normalizedUsername) || '').trim(),
-                displayName: String(firstNonEmptyValue(payload.session && payload.session.displayName, payload.user && payload.user.username, normalizedUsername) || '').trim(),
-                role: String(firstNonEmptyValue(payload.user && payload.user.role, payload.session && payload.session.role, 'User') || 'User').trim(),
-                mustChangePassword: !!(payload.session && payload.session.mustChangePassword),
-                session: payload.session
-            };
-            return { ok: true, user: userRecord, source: 'remote', mustChangePassword: userRecord.mustChangePassword, session: payload.session };
+            const matchedUser = Array.isArray(rows)
+                ? rows.find((row) => String(row.username || '').trim().toLowerCase() === normalizedUsername && String(row.password || '').trim() === normalizedPassword)
+                : null;
+            if (!matchedUser) return { ok: false, reason: 'mismatch' };
+            return { ok: true, user: matchedUser, source: 'remote' };
         }
 
         function getLoginFailureMessage(error) {
@@ -12830,6 +12811,16 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             try {
                 const normalizedUsername = String(username || '').trim().toLowerCase();
                 const normalizedPassword = String(password || '').trim();
+                const cachedUser = await tryLocalCachedLoginRecord(normalizedUsername, normalizedPassword);
+                if (cachedUser) {
+                    scheduleLoginCachePrefetch(cachedUser);
+                    return { ok: true, user: cachedUser, source: 'local-cache' };
+                }
+                const verifiedUser = await tryVerifiedLoginRecord(normalizedUsername, normalizedPassword);
+                if (verifiedUser) {
+                    scheduleLoginCachePrefetch(verifiedUser);
+                    return { ok: true, user: verifiedUser, source: 'verified-cache', backgroundValidation: navigator.onLine !== false };
+                }
                 if (navigator.onLine === false) {
                     return { ok: false, reason: 'network', error: new Error('No network connection.') };
                 }
@@ -13119,9 +13110,9 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             };
         }
 
-        let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let mlImageJobsInventory=[]; let growerScoutReportsInventory=[]; let growerScoutAssetsInventory=[]; let cavInventory=[]; let cavAvBlankKeyInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={}; let diagnosticIssueCardTabs=new Map(); let outlookMessages=[]; let outlookActiveMessage=null; let outlookLoading=false; let outlookLastError='';
+        let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let mlImageJobsInventory=[]; let growerScoutReportsInventory=[]; let growerScoutAssetsInventory=[]; let cavInventory=[]; let cavAvBlankKeyInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={}; let diagnosticIssueCardTabs=new Map();
 let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null; let chatVoiceHoldPointerId=''; let chatVoiceHoldForComposer=false; let chatVoiceHoldFinishPending=''; let chatVoiceHoldStartPromise=null;
-        let walkieChannels=[]; let walkieChannelMembers=[]; let walkieCalls=[]; let walkieCallMembers=[]; let walkieVoiceMessages=[]; let walkieUsers=[]; let walkieSignalsSeen=new Set(); let walkieDataLoaded=false; let walkieLoadPromise=null; let walkieSchemaReady=null; let walkieSchemaProbePromise=null; let walkieSchemaWarningShown=false; let activeWalkieChannelId=''; let pendingWalkieOpenChannelId=''; let pendingWalkieOpenCallId=''; let walkieComposeOpen=false; let walkieUserSearchTerm=''; let walkieComposeTitle=''; let walkieSelectedUsers=new Set(); let walkieLastRenderSignature=''; let walkieDeviceId=''; let activeWalkieCallId=''; let walkieJoinedCallId=''; let walkieActiveMembershipId=''; let walkiePeerConnections=new Map(); let walkieRemoteAudioElements=new Map(); let walkieLocalStream=null; let walkieHeartbeatTimer=null; let walkieSpeakerHeartbeatTimer=null; let walkieReconnectTimer=null; let walkieActiveSpeakerIntent=false; let walkiePressedPointerId=''; let walkieForegroundNoticeShown=false; let globalVoiceRecorder=null; let globalVoiceStream=null; let globalVoiceChunks=[]; let globalVoiceStartAt=0; let globalVoicePointerId='';
+let walkieChannels=[]; let walkieChannelMembers=[]; let walkieCalls=[]; let walkieCallMembers=[]; let walkieUsers=[]; let walkieSignalsSeen=new Set(); let walkieDataLoaded=false; let walkieLoadPromise=null; let walkieSchemaReady=null; let walkieSchemaProbePromise=null; let walkieSchemaWarningShown=false; let activeWalkieChannelId=''; let pendingWalkieOpenChannelId=''; let pendingWalkieOpenCallId=''; let walkieComposeOpen=false; let walkieUserSearchTerm=''; let walkieComposeTitle=''; let walkieSelectedUsers=new Set(); let walkieLastRenderSignature=''; let walkieDeviceId=''; let activeWalkieCallId=''; let walkieJoinedCallId=''; let walkieActiveMembershipId=''; let walkiePeerConnections=new Map(); let walkieRemoteAudioElements=new Map(); let walkieLocalStream=null; let walkieHeartbeatTimer=null; let walkieSpeakerHeartbeatTimer=null; let walkieReconnectTimer=null; let walkieActiveSpeakerIntent=false; let walkiePressedPointerId=''; let walkieForegroundNoticeShown=false;
         let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let requestHistoryInventoryById=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let flyerFolderHistoryInventoryById=new Map(); let mlImageJobsInventoryById=new Map(); let growerScoutReportsInventoryById=new Map(); let growerScoutAssetsByReportId=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map();
         let activeGrowerScoutTab='note'; let growerScoutRecorder=null; let growerScoutRecorderStream=null; let growerScoutRecordingActive=false; let growerScoutRecordingStartedAt=0; let growerScoutRecordingTimer=null; let growerScoutRecordMimeType=''; let growerScoutAudioChunks=[]; let growerScoutAudioBlob=null; let growerScoutAudioDurationSeconds=0; let growerScoutSubmitInFlight=false;
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
@@ -13623,7 +13614,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.03').trim() || 'V2026.05.17.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.02').trim() || 'V2026.05.17.02';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -13699,7 +13690,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             'move-up': { eyebrow: 'Amazon Filters', title: 'Move Up' },
             advertisement: { eyebrow: 'Marketing Studio', title: 'Advertisement' },
             diagnostics: { eyebrow: 'AI Diagnostics', title: 'Diagnostics' },
-            outlook: { eyebrow: 'Microsoft Mail', title: 'Outlook' },
             detail: { eyebrow: 'Amazon Actions', title: 'Item Detail' },
             hours: { eyebrow: 'Amazon Actions', title: 'Labor Hours' }
         };
@@ -14217,7 +14207,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (document && document.body) document.body.classList.add('performance-lean-shell');
             initializeNativeBackNavigation();
             ensureLoginInteractionHealth({ forceReset: true });
-            try { localStorage.removeItem('gnc_bio_pin'); localStorage.removeItem('gnc_bio_enabled'); } catch (error) {}
+            if (localStorage.getItem('gnc_bio_enabled')==='true' && window.PublicKeyCredential) {
+                const bioBtn=document.getElementById('btn-fingerprint'); if (bioBtn) bioBtn.classList.remove('hidden');
+            }
             updateDockAssignableTeamOptions();
             initializeViewportHeightSync();
             initializeViewportModeSync();
@@ -14299,7 +14291,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             review: { container: 'review-content', crumb: 'review-crumb' },
             'move-up': { container: 'move-up-content', crumb: 'move-up-crumb' },
             diagnostics: { container: 'diagnostics-content', crumb: 'diagnostics-crumb' },
-            outlook: { container: 'outlook-content', crumb: 'outlook-crumb' },
             grower: { container: 'grower-content', crumb: 'grower-crumb' },
             'pest-management': { container: 'pest-management-content', crumb: 'pest-management-crumb' },
             advertisement: { container: 'advertisement-status' }
@@ -15105,14 +15096,17 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const safeLimit = Math.max(1, Number(limit) || 1000);
             const safeOffset = Math.max(0, Number(offset) || 0);
             const queryString = query ? `${query}&limit=${safeLimit}&offset=${safeOffset}` : `limit=${safeLimit}&offset=${safeOffset}`;
-            const rows = await appApiDbFetch(table, 'GET', null, queryString, {
-                timeoutMs: SUPABASE_READ_TIMEOUT_MS,
-                label: `${table} read`
-            });
+            const url = `${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
+            const headers = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' };
+            if (options && options.count === true) headers.Prefer = 'count=exact';
+            const response = await fetchWithTimeout(url, { method: 'GET', headers }, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
+            if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
+            const text = await response.text();
+            const rows = text ? JSON.parse(text) : [];
             return {
                 offset: safeOffset,
                 rows: Array.isArray(rows) ? rows : [],
-                total: null
+                total: parseSupabaseContentRangeTotal(response)
             };
         }
 
@@ -15221,11 +15215,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 for (const attemptLimit of attemptLimits) {
                     try {
                         const queryString = query ? `${query}&limit=${attemptLimit}&offset=${offset}` : `limit=${attemptLimit}&offset=${offset}`;
-                        const rows = await appApiDbFetch(table, 'GET', null, queryString, {
-                            timeoutMs: SUPABASE_READ_TIMEOUT_MS,
-                            label: `${table} read`
-                        });
-                        return Array.isArray(rows) ? rows : [];
+                        const url = `${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
+                        const response = await fetchWithTimeout(url, { method: 'GET', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' } }, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
+                        if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
+                        const text = await response.text();
+                        return text ? JSON.parse(text) : [];
                     } catch (error) {
                         lastError = error;
                         const message = String(error && error.message || '');
@@ -17687,12 +17681,33 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         async function promptToEnableBiometrics(user,pin) {
-            showToast('Security Update', 'Biometric saved-password login is disabled. Use your app password to sign in.', true);
+            if(!confirm("Would you like to enable Fingerprint/FaceID login for future use?"))return;
+            try{
+                const publicKey={challenge:new Uint8Array(32),rp:{name:"GREENLEAF NURSERY COMPANY"},user:{id:new Uint8Array(16),name:user,displayName:user},pubKeyCredParams:[{type:"public-key",alg:-7}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required"},timeout:60000};
+                await navigator.credentials.create({publicKey});
+                localStorage.setItem('gnc_bio_enabled','true');
+                localStorage.setItem('gnc_bio_user',user);
+                localStorage.setItem('gnc_bio_pin',pin);
+                showToast("Success","Fingerprint login enabled!");
+            }catch(err){}
         }
 
         async function loginWithBiometric() {
-            try { localStorage.removeItem('gnc_bio_pin'); localStorage.removeItem('gnc_bio_enabled'); } catch (error) {}
-            showToast('Security Update', 'Biometric saved-password login has been turned off. Please enter your password.', true);
+            try{
+                const publicKey={challenge:new Uint8Array(32),timeout:60000,userVerification:"required"};
+                await navigator.credentials.get({publicKey});
+                const savedUser=localStorage.getItem('gnc_bio_user');
+                const savedPin=localStorage.getItem('gnc_bio_pin');
+                if(savedUser&&savedPin){
+                    document.getElementById('username-input').value=savedUser;
+                    document.getElementById('pin-code').value=savedPin;
+                    handleLogin(true);
+                }else{
+                    showToast("Error","Credentials lost.",true);
+                }
+            }catch(err){
+                showToast("Error","Fingerprint cancelled.",true);
+            }
         }
 
         function normalizeRepMatchToken(value='') {
@@ -21049,9 +21064,8 @@ function toggleDriveQuickRequestItem(domId) {
             const password = String(sessionRecord.password || '').trim();
             const role = String(sessionRecord.role || '').trim();
             const displayName = String(firstNonEmptyValue(sessionRecord.displayName, sessionRecord.username, normalizedUsername) || '').trim();
-            const restoredFromAppSession = sessionRecord.source === 'app-session';
-            if (!normalizedUsername || !role || (!password && !restoredFromAppSession)) return false;
-            if (!restoredFromAppSession && shouldRequirePasswordChangeForUser(normalizedUsername, password, false, displayName)) {
+            if (!normalizedUsername || !password || !role) return false;
+            if (shouldRequirePasswordChangeForUser(normalizedUsername, password, false, displayName)) {
                 showForcedPasswordChangeGate(normalizedUsername, password, role, displayName);
                 return true;
             }
@@ -21060,7 +21074,7 @@ function toggleDriveQuickRequestItem(domId) {
             const loginInputs = document.getElementById('login-inputs');
             const spinner = document.getElementById('loading-spinner');
             if (usernameInput) usernameInput.value = displayName || normalizedUsername;
-            if (pinInput) pinInput.value = '';
+            if (pinInput) pinInput.value = password;
             if (loginInputs) loginInputs.classList.add('hidden');
             if (spinner) spinner.classList.remove('hidden');
             beginInitialAppLoad('Restoring your workspace...');
@@ -21069,7 +21083,7 @@ function toggleDriveQuickRequestItem(domId) {
             currentRole = role;
             safeRole = String(currentRole).toUpperCase().replace(/\s+/g,'');
             try {
-                await finalizeLogin(currentUser, '', false, { restoredSession: true, skipBiometricPrompt: true, sessionSource: sessionRecord.source || 'startup-restore' });
+                await finalizeLogin(currentUser, password, false, { restoredSession: true, skipBiometricPrompt: true, sessionSource: sessionRecord.source || 'startup-restore' });
                 showToast('Success', 'Signed in from saved session.');
                 return true;
             } catch (error) {
@@ -21111,7 +21125,7 @@ function toggleDriveQuickRequestItem(domId) {
                         showToast('Success', 'Signed in with saved verified login.');
                     }
                     safeRole=String(currentRole).toUpperCase().replace(/\s+/g,'');
-                    if((result && result.mustChangePassword) || (userRecord && userRecord.mustChangePassword) || shouldRequirePasswordChangeForUser(currentUser,inputPass,isBiometricLogin,currentUserDisplay)){
+                    if(shouldRequirePasswordChangeForUser(currentUser,inputPass,isBiometricLogin,currentUserDisplay)){
                         showForcedPasswordChangeGate(currentUser, inputPass, currentRole, currentUserDisplay);
                     }
                     else{
@@ -21129,18 +21143,6 @@ function toggleDriveQuickRequestItem(domId) {
                     setBootingSession(false);
                     alert("MISMATCH DETECTED!\n\nIncorrect Username or Password.");
                     document.getElementById('pin-code').value="";
-                    resetLoginUiState();
-                } else if (result && result.reason === 'locked') {
-                    finishInitialAppLoad();
-                    setBootingSession(false);
-                    const lockedUntil = result.lockedUntil ? new Date(result.lockedUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '15 minutes';
-                    alert(`ACCOUNT LOCKED\n\nToo many failed attempts. Try again after ${lockedUntil}.`);
-                    document.getElementById('pin-code').value="";
-                    resetLoginUiState();
-                } else if (result && result.reason === 'disabled') {
-                    finishInitialAppLoad();
-                    setBootingSession(false);
-                    alert("ACCOUNT DISABLED\n\nContact an administrator before signing in.");
                     resetLoginUiState();
                 } else {
                     finishInitialAppLoad();
@@ -21161,44 +21163,16 @@ function toggleDriveQuickRequestItem(domId) {
         async function submitNewPassword() {
             const newPass=document.getElementById('new-password').value.trim();
             const confirmPass=document.getElementById('confirm-password').value.trim();
-            if(!newPass||newPass.length<8){ alert("Password must be at least 8 characters!"); return; }
+            if(!newPass||newPass.length<4){ alert("Password must be at least 4 characters!"); return; }
             if(newPass!==confirmPass){ alert("Passwords do not match!"); return; }
             document.getElementById('view-change-password').style.display='none';
             document.getElementById('view-login').style.display='flex';
             document.getElementById('login-inputs').classList.add('hidden');
             document.getElementById('loading-spinner').classList.remove('hidden');
-            try{
-                const payload = await postAppFunctionJson(APP_API_FUNCTION_URL, {
-                    action: 'password_change',
-                    newPassword: newPass,
-                    confirmPassword: confirmPass
-                }, {
-                    timeoutMs: SUPABASE_WRITE_TIMEOUT_MS,
-                    label: 'Password Change'
-                });
-                if (payload && payload.session && payload.session.token) {
-                    persistAppSessionRecord({
-                        token: payload.session.token,
-                        expiresAt: Number(payload.session.expiresAt || 0),
-                        username: String(firstNonEmptyValue(payload.session.username, currentUser) || '').trim(),
-                        displayName: String(firstNonEmptyValue(payload.session.displayName, currentUserDisplay, currentUser) || '').trim(),
-                        role: String(firstNonEmptyValue(payload.session.role, currentRole) || '').trim()
-                    });
-                }
-            }catch(e){
-                finishInitialAppLoad();
-                setBootingSession(false);
-                showToast('Password Change Failed', e && e.message ? e.message : 'Could not update password.', true);
-                document.getElementById('view-login').style.display='none';
-                document.getElementById('view-change-password').style.display='flex';
-                document.getElementById('login-inputs').classList.remove('hidden');
-                document.getElementById('loading-spinner').classList.add('hidden');
-                return;
-            }
+            try{ await supabaseFetch('v2_app_users','PATCH',{password:newPass},`username=ilike.*${encodeURIComponent(currentUser)}*`); }catch(e){}
             localStorage.setItem('gnc_pw_changed_'+currentUser,'true');
             if (normalizeSessionIdentity(localStorage.getItem('gnc_bio_user')) === normalizeSessionIdentity(currentUser)) {
-                localStorage.removeItem('gnc_bio_pin');
-                localStorage.removeItem('gnc_bio_enabled');
+                localStorage.setItem('gnc_bio_pin', newPass);
             }
             document.getElementById('new-password').value="";
             document.getElementById('confirm-password').value="";
@@ -21392,10 +21366,10 @@ function toggleDriveQuickRequestItem(domId) {
             setBootingSession(false);
             clearExplicitLogoutMarker();
             localStorage.setItem('gnc_user_v3',user);
-            localStorage.removeItem('gnc_pin_v3');
+            localStorage.setItem('gnc_pin_v3',pass);
             localStorage.setItem('gnc_role_v3',currentRole);
             localStorage.setItem(LOGIN_DISPLAY_NAME_STORAGE_KEY, currentUserDisplay || currentUser || user);
-            try { localStorage.removeItem(VERIFIED_LOGIN_STORAGE_KEY); } catch (error) {}
+            persistVerifiedLoginRecord(user, pass, currentRole, currentUserDisplay || currentUser || user);
             document.getElementById('header-user').innerText=currentUserDisplay || currentUser;
             const roleAccess = getRoleAccessState();
             const deferHeavyLoginWarm = isTouchConstrainedDevice();
@@ -21403,7 +21377,7 @@ function toggleDriveQuickRequestItem(domId) {
             const shellWarmDelay = deferHeavyLoginWarm ? 900 : 0;
             const queueWarmDelay = deferHeavyLoginWarm ? (isRestoredSession ? 420 : 260) : 0;
             const postShellUiDelay = deferHeavyLoginWarm ? (isRestoredSession ? 260 : 180) : 40;
-            const shouldPromptBiometric = false;
+            const shouldPromptBiometric = !loginOptions.skipBiometricPrompt && !deferHeavyLoginWarm && !isBiometricLogin && window.PublicKeyCredential && localStorage.getItem('gnc_bio_enabled')!=='true';
             setLoginProgress(Math.max(currentProgress, 30), 'Preparing your workspace...');
 
             const hadWarmDataBeforeLocalWarm = hasWarmAppData();
@@ -21526,8 +21500,9 @@ function toggleDriveQuickRequestItem(domId) {
             if (shouldUseRealtime() && hasHealthyRealtimeSubscriptions(activeRealtimeTables)) return;
             const checkTime=new Date().toISOString();
             try {
-                {
-                    const data=await supabaseFetch('v2_master_inventory','GET',null,`select=*&last_updated=gt.${encodeURIComponent(lastSyncTime)}`);
+                const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?select=*&last_updated=gt.${lastSyncTime}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                if(response.ok) {
+                    const data=await response.json();
                     if(data&&data.length>0){
                         let updated=false;
                         data.forEach(updatedRow=>{
@@ -21543,8 +21518,9 @@ function toggleDriveQuickRequestItem(domId) {
                     }
                 }
 
-                {
-                    const reqData = await supabaseFetch('v2_active_request','GET',null,'select=*');
+                const reqRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_active_request?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                if(reqRes.ok) {
+                    const reqData = await reqRes.json();
                     let hash = JSON.stringify(reqData);
                     if(hash !== localStorage.getItem('last_req_hash')) {
                         processAndLoadData({ requestsData: formatFetchedRows(reqData, 'v2_active_request') });
@@ -21555,8 +21531,9 @@ function toggleDriveQuickRequestItem(domId) {
                     }
                 }
 
-                {
-                    const soData = await supabaseFetch('v2_sales_office','GET',null,'select=*');
+                const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                if(soRes.ok) {
+                    const soData = await soRes.json();
                     let soHash = JSON.stringify(soData);
                     if(soHash !== localStorage.getItem('last_so_hash')) {
                                                 salesOfficeInventory = soData.map((item, idx) => {
@@ -24039,7 +24016,7 @@ function toggleDriveQuickRequestItem(domId) {
             return dockAssignableUsersPromise;
         }
 
-        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','av','request','reserves','sales-office','reports','hours','low-stock','review','move-up','advertisement','diagnostics','grower','pest-management','outlook','chat'];
+        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','av','request','reserves','sales-office','reports','hours','low-stock','review','move-up','advertisement','diagnostics','grower','pest-management','chat'];
         const ROLE_VIEW_ELEMENT_IDS = Object.freeze({
             drive: ['drawer-drive-btn', 'home-tile-drive'],
             tasks: ['drawer-tasks-btn', 'home-tile-tasks'],
@@ -24057,7 +24034,6 @@ function toggleDriveQuickRequestItem(domId) {
             'move-up': ['drawer-move-up-btn', 'home-tile-move-up'],
             advertisement: ['drawer-advertisement-btn', 'home-tile-advertisement'],
             diagnostics: ['drawer-diagnostics-btn', 'home-tile-diagnostics'],
-            outlook: ['drawer-outlook-btn', 'home-tile-outlook'],
             grower: ['drawer-grower-btn', 'home-tile-grower'],
             'pest-management': ['drawer-pest-management-btn', 'home-tile-pest-management'],
             chat: ['drawer-chat-btn', 'home-tile-chat', 'footer-chat-btn'],
@@ -24091,7 +24067,7 @@ function toggleDriveQuickRequestItem(domId) {
             const isKnownLimitedRole = isRep || isQcSupervisor || isQc || isForeman || isGrower || isTakeBackRole;
             const isAdmin = normalizedRole.includes('ADMIN') || normalizedRole.includes('MANAGER') || isCsr || (!isKnownLimitedRole);
             const isTakeBackOnly = isTakeBackRole && !isAdmin;
-            const allowedViews = new Set(['home', 'outlook']);
+            const allowedViews = new Set(['home']);
             if (isTakeBackOnly) {
                 allowedViews.add('take-back');
             } else if (isForeman && !isAdmin) {
@@ -24119,7 +24095,6 @@ function toggleDriveQuickRequestItem(domId) {
             const targetView = String(viewId || '').trim();
             if (!targetView || targetView === 'home' || targetView === 'detail') return true;
             if (targetView === 'walkie') return false;
-            if (targetView === 'outlook') return !!currentUser;
             if (targetView === 'diagnostics') return isStrictDylanCollygeUser();
             if (targetView === 'pest-management') return isStrictDylanCollygeUser();
             const access = getRoleAccessState();
@@ -24376,7 +24351,14 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function chatApiGet(table, query = 'select=*', label = 'Chat') {
-            return await supabaseFetch(table, 'GET', null, query, { timeoutMs: SUPABASE_READ_TIMEOUT_MS, label });
+            const url = `${SUPABASE_URL}/rest/v1/${table}?${query}`;
+            const response = await fetchWithTimeout(url, {
+                method: 'GET',
+                headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
+            }, SUPABASE_READ_TIMEOUT_MS, label);
+            if (!response.ok) throw new Error(await getResponseError(response, `${label} read failed (${response.status})`));
+            const text = await response.text();
+            return text ? JSON.parse(text) : [];
         }
 
         function maybeWarnChatSchemaMissing() {
@@ -24695,10 +24677,20 @@ function toggleDriveQuickRequestItem(domId) {
             const safeUser = String(getCurrentChatUsername() || 'user').replace(/[^a-zA-Z0-9_-]+/g, '-');
             const extension = getChatVoiceMimeExtension(blob.type || chatVoiceRecordMimeType || '');
             const fileName = `${safeUser}-${Date.now()}-${generateChatUuid().slice(0, 8)}.${extension}`;
-            const uploadResult = await appApiUploadFile('chat-voice-', blob, `${safeConversationId}-${safeTitle}-${fileName}`, { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS, label: 'Voice upload' });
-            const filePath = String(firstNonEmptyValue(uploadResult.filePath, uploadResult.imagePath, '') || '').trim();
+            const filePath = `${fileDate}/${safeConversationId}/${safeTitle}/${fileName}`;
+            const uploadResult = await withTimeout(
+                supabaseClient.storage.from(CHAT_VOICE_BUCKET).upload(filePath, blob, {
+                    contentType: blob.type || 'audio/webm',
+                    upsert: false
+                }),
+                SUPABASE_UPLOAD_TIMEOUT_MS,
+                'Voice upload'
+            );
+            const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
+            if (uploadError) throw uploadError;
+            const { data: publicUrlData } = supabaseClient.storage.from(CHAT_VOICE_BUCKET).getPublicUrl(filePath);
             return {
-                audioUrl: String(firstNonEmptyValue(uploadResult.publicUrl, uploadResult.imageUrl, '') || '').trim(),
+                audioUrl: String(publicUrlData && publicUrlData.publicUrl || '').trim(),
                 storagePath: filePath
             };
         }
@@ -25737,8 +25729,7 @@ function toggleDriveQuickRequestItem(domId) {
                         chatApiGet(WALKIE_CHANNEL_MEMBERS_TABLE, 'select=id&limit=1', 'Walkie members'),
                         chatApiGet(WALKIE_CALLS_TABLE, 'select=id&limit=1', 'Walkie calls'),
                         chatApiGet(WALKIE_CALL_MEMBERS_TABLE, 'select=id&limit=1', 'Walkie listeners'),
-                        chatApiGet(WALKIE_SIGNAL_TABLE, 'select=id&limit=1', 'Walkie signals'),
-                        chatApiGet(WALKIE_VOICE_MESSAGES_TABLE, 'select=id&limit=1', 'Walkie voice')
+                        chatApiGet(WALKIE_SIGNAL_TABLE, 'select=id&limit=1', 'Walkie signals')
                     ]);
                     walkieSchemaReady = true;
                     return true;
@@ -25852,25 +25843,6 @@ function toggleDriveQuickRequestItem(domId) {
             };
         }
 
-        function normalizeWalkieVoiceMessage(row = null) {
-            const id = String(chatField(row, 'id', 'ID') || '').trim();
-            const channelId = String(chatField(row, 'channel_id', 'channelId') || '').trim();
-            const audioUrl = String(chatField(row, 'audio_url', 'audioUrl') || '').trim();
-            if (!id || !channelId || !audioUrl) return null;
-            const recipients = chatField(row, 'recipient_usernames', 'recipientUsernames');
-            return {
-                id,
-                channelId,
-                senderUsername: normalizePushUsername(chatField(row, 'sender_username', 'senderUsername')),
-                senderDisplay: String(chatField(row, 'sender_display', 'senderDisplay') || '').trim(),
-                recipientUsernames: Array.isArray(recipients) ? recipients.map((value) => normalizePushUsername(value)).filter(Boolean) : [],
-                audioUrl,
-                audioPath: String(chatField(row, 'audio_path', 'audioPath') || '').trim(),
-                durationSeconds: Math.max(0, Number(chatField(row, 'duration_seconds', 'durationSeconds')) || 0),
-                createdAt: String(chatField(row, 'created_at', 'createdAt') || '').trim()
-            };
-        }
-
         function getWalkieCurrentUsername() {
             return getCurrentChatUsername();
         }
@@ -25942,109 +25914,6 @@ function toggleDriveQuickRequestItem(domId) {
             });
         }
 
-        function getDefaultGlobalWalkieChannel() {
-            return (walkieChannels || []).find((channel) => /sales/i.test(String(channel.title || '')))
-                || (walkieChannels || []).find((channel) => /shipping|quality/i.test(String(channel.title || '')))
-                || getSortedWalkieChannels()[0]
-                || null;
-        }
-
-        async function startGlobalVoiceMessage(event = null) {
-            if (!currentUser) return false;
-            if (event && event.pointerId) globalVoicePointerId = String(event.pointerId);
-            const button = document.getElementById('global-ptt-button');
-            try {
-                if (globalVoiceRecorder && globalVoiceRecorder.state !== 'inactive') return false;
-                await fetchWalkieData(false).catch(() => false);
-                globalVoiceChunks = [];
-                globalVoiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                const mimeType = MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : '';
-                globalVoiceRecorder = new MediaRecorder(globalVoiceStream, mimeType ? { mimeType } : undefined);
-                globalVoiceRecorder.ondataavailable = (recordEvent) => {
-                    if (recordEvent.data && recordEvent.data.size > 0) globalVoiceChunks.push(recordEvent.data);
-                };
-                globalVoiceStartAt = Date.now();
-                globalVoiceRecorder.start();
-                if (button) button.classList.add('bg-red-600');
-                showToast('Push To Talk', 'Recording voice message...');
-            } catch (error) {
-                showToast('Microphone Blocked', error && error.message ? error.message : 'Could not start microphone.', true);
-                stopGlobalVoiceStream();
-            }
-            return false;
-        }
-
-        function stopGlobalVoiceStream() {
-            if (globalVoiceStream) {
-                globalVoiceStream.getTracks().forEach((track) => {
-                    try { track.stop(); } catch (error) {}
-                });
-            }
-            globalVoiceStream = null;
-        }
-
-        async function finishGlobalVoiceMessage(event = null, cancel = false) {
-            if (event && globalVoicePointerId && event.pointerId && String(event.pointerId) !== globalVoicePointerId) return false;
-            globalVoicePointerId = '';
-            const button = document.getElementById('global-ptt-button');
-            if (button) button.classList.remove('bg-red-600');
-            const recorder = globalVoiceRecorder;
-            if (!recorder || recorder.state === 'inactive') {
-                stopGlobalVoiceStream();
-                return false;
-            }
-            const stopped = new Promise((resolve) => {
-                recorder.onstop = () => resolve(true);
-            });
-            try { recorder.stop(); } catch (error) {}
-            await stopped.catch(() => false);
-            stopGlobalVoiceStream();
-            if (cancel) {
-                globalVoiceChunks = [];
-                return false;
-            }
-            const durationSeconds = Math.max(1, Math.round((Date.now() - globalVoiceStartAt) / 1000));
-            const blob = new Blob(globalVoiceChunks, { type: globalVoiceChunks[0] && globalVoiceChunks[0].type || 'audio/webm' });
-            globalVoiceChunks = [];
-            if (!blob.size || durationSeconds < 1) return false;
-            try {
-                const channel = activeWalkieChannelId ? (walkieChannels || []).find((item) => item.id === activeWalkieChannelId) : getDefaultGlobalWalkieChannel();
-                if (!channel) throw new Error('No Walkie channel is available. Open Walkie and create a channel first.');
-                const recipients = getWalkieChannelMembers(channel.id).map((member) => member.username).filter((username) => username && username !== getWalkieCurrentUsername());
-                const fileName = `${getWalkieCurrentUsername()}-${channel.id}-${Date.now()}.webm`;
-                const uploadResult = await appApiUploadFile('walkie-voice-', blob, fileName, { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS, label: 'Walkie voice upload' });
-                const messageId = generateChatUuid();
-                const payload = {
-                    id: messageId,
-                    channel_id: channel.id,
-                    sender_username: getWalkieCurrentUsername(),
-                    sender_display: currentUserDisplay || currentUser,
-                    recipient_usernames: recipients,
-                    audio_bucket: WALKIE_VOICE_BUCKET,
-                    audio_path: String(firstNonEmptyValue(uploadResult.filePath, uploadResult.imagePath, '') || '').trim(),
-                    audio_url: String(firstNonEmptyValue(uploadResult.publicUrl, uploadResult.imageUrl, '') || '').trim(),
-                    duration_seconds: durationSeconds,
-                    status: 'sent'
-                };
-                await supabaseFetch(WALKIE_VOICE_MESSAGES_TABLE, 'POST', payload, 'on_conflict=id', { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
-                if (recipients.length) {
-                    sendPushNotification('walkie_voice_message', channel.id, '', getWalkieChannelTitle(channel), recipients.length, {
-                        recipients,
-                        channelId: channel.id,
-                        messageId,
-                        sentBy: currentUserDisplay || currentUser,
-                        title: getWalkieChannelTitle(channel)
-                    }).catch(() => {});
-                }
-                showToast('Voice Sent', `Saved to ${getWalkieChannelTitle(channel)}.`);
-                walkieDataLoaded = false;
-                if (isViewVisible('walkie')) renderWalkie();
-            } catch (error) {
-                showToast('Voice Failed', error && error.message ? error.message : 'Could not save the voice message.', true);
-            }
-            return false;
-        }
-
         function updateFooterWalkieBadge() {
             const badge = document.getElementById('footer-walkie-badge');
             if (!badge) return;
@@ -26076,7 +25945,6 @@ function toggleDriveQuickRequestItem(domId) {
                     walkieChannelMembers = [];
                     walkieCalls = [];
                     walkieCallMembers = [];
-                    walkieVoiceMessages = [];
                     activeWalkieChannelId = '';
                     activeWalkieCallId = '';
                     walkieJoinedCallId = '';
@@ -26086,16 +25954,14 @@ function toggleDriveQuickRequestItem(domId) {
                     return true;
                 }
                 const idList = channelIds.join(',');
-                const [channelRows, allMemberRows, liveCallRows, voiceRows] = await Promise.all([
+                const [channelRows, allMemberRows, liveCallRows] = await Promise.all([
                     chatApiGet(WALKIE_CHANNELS_TABLE, `select=*&id=in.(${idList})&order=last_activity_at.desc`, 'Walkie channels'),
                     chatApiGet(WALKIE_CHANNEL_MEMBERS_TABLE, `select=*&channel_id=in.(${idList})&order=display_name.asc`, 'Walkie channel members'),
-                    chatApiGet(WALKIE_CALLS_TABLE, `select=*&channel_id=in.(${idList})&status=eq.live&order=created_at.desc`, 'Walkie calls'),
-                    chatApiGet(WALKIE_VOICE_MESSAGES_TABLE, `select=*&channel_id=in.(${idList})&order=created_at.desc&limit=40`, 'Walkie voice').catch(() => [])
+                    chatApiGet(WALKIE_CALLS_TABLE, `select=*&channel_id=in.(${idList})&status=eq.live&order=created_at.desc`, 'Walkie calls')
                 ]);
                 walkieChannels = (Array.isArray(channelRows) ? channelRows : []).map(normalizeWalkieChannel).filter(Boolean);
                 walkieChannelMembers = (Array.isArray(allMemberRows) ? allMemberRows : []).map(normalizeWalkieChannelMember).filter(Boolean);
                 walkieCalls = (Array.isArray(liveCallRows) ? liveCallRows : []).map(normalizeWalkieCall).filter(Boolean);
-                walkieVoiceMessages = (Array.isArray(voiceRows) ? voiceRows : []).map(normalizeWalkieVoiceMessage).filter(Boolean);
                 const callIds = [...new Set(walkieCalls.map((call) => call.id).filter(Boolean))];
                 if (callIds.length) {
                     const callMemberRows = await chatApiGet(WALKIE_CALL_MEMBERS_TABLE, `select=*&call_id=in.(${callIds.join(',')})&order=joined_at.asc`, 'Walkie listeners').catch(() => []);
@@ -26903,25 +26769,6 @@ function toggleDriveQuickRequestItem(domId) {
             const joined = !!(liveCall && walkieJoinedCallId === liveCall.id && getWalkieCurrentMembership(liveCall.id));
             const currentSpeaker = liveCall ? getWalkieDisplaySpeaker(liveCall) : '';
             const overCap = !!(liveCall && liveMembers.length > Math.max(WALKIE_LISTENER_CAP, liveCall.listenerCap || WALKIE_LISTENER_CAP));
-            const savedMessages = (walkieVoiceMessages || [])
-                .filter((message) => message.channelId === channel.id)
-                .slice()
-                .sort((a, b) => (Date.parse(b.createdAt || '') || 0) - (Date.parse(a.createdAt || '') || 0))
-                .slice(0, 12);
-            const savedMessagesHtml = savedMessages.length ? savedMessages.map((message) => {
-                const sender = message.senderDisplay || getWalkieUserDisplayName(message.senderUsername);
-                const duration = message.durationSeconds ? formatChatVoiceDuration(Math.round(message.durationSeconds)) : '';
-                return `<div class="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                    <div class="mb-2 flex items-center justify-between gap-3">
-                        <div class="min-w-0">
-                            <div class="truncate text-sm font-black text-slate-900">${escapeHtml(sender || 'Voice message')}</div>
-                            <div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(formatChatTime(message.createdAt) || 'Saved')}${duration ? ' / ' + escapeHtml(duration) : ''}</div>
-                        </div>
-                        <i class="ph-bold ph-waveform text-xl text-[#007a4d]"></i>
-                    </div>
-                    <audio class="w-full" controls preload="none" src="${escapeHtml(message.audioUrl)}"></audio>
-                </div>`;
-            }).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center text-sm font-bold text-slate-400">No saved voice messages yet.</div>';
             return `<div class="space-y-4">
                 <div class="rounded-2xl border border-green-100 bg-white p-4 shadow-sm">
                     <div class="flex items-center justify-between gap-3">
@@ -26951,16 +26798,6 @@ function toggleDriveQuickRequestItem(domId) {
                         ${!liveCall ? `<button type="button" class="w-full rounded-2xl bg-[#007a4d] px-4 py-4 text-sm font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99]" onclick="startWalkieCall('${esc(channel.id)}')"><i class="ph-bold ph-play text-lg align-middle"></i><span class="ml-2 align-middle">Start Live Walkie</span></button>` : joined ? `<button type="button" class="w-full rounded-[28px] ${walkieActiveSpeakerIntent ? 'bg-red-600' : 'bg-[#007a4d]'} px-4 py-5 text-sm font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99]" onpointerdown="handleWalkiePttPress(event)" onpointerup="handleWalkiePttRelease(event)" onpointercancel="handleWalkiePttRelease(event)" onpointerleave="handleWalkiePttRelease(event)"><i class="ph-bold ph-microphone-stage text-lg align-middle"></i><span class="ml-2 align-middle">${walkieActiveSpeakerIntent ? 'Release To Stop' : 'Hold To Talk'}</span></button>
                             <button type="button" class="w-full rounded-2xl border border-red-200 bg-white px-4 py-4 text-sm font-black uppercase tracking-[0.16em] text-red-600 shadow-sm active:scale-[.99]" onclick="leaveWalkieCall({ releaseStream: true })"><i class="ph-bold ph-sign-out text-lg align-middle"></i><span class="ml-2 align-middle">Leave Live Session</span></button>` : `<button type="button" class="w-full rounded-2xl bg-[#007a4d] px-4 py-4 text-sm font-black uppercase tracking-[0.16em] text-white shadow-sm active:scale-[.99]" onclick="joinWalkieCall('${esc(liveCall.id)}','${esc(channel.id)}')"><i class="ph-bold ph-headphones text-lg align-middle"></i><span class="ml-2 align-middle">Join Live Session</span></button>`}
                     </div>
-                </div>
-                <div class="rounded-2xl border border-green-100 bg-white p-4 shadow-sm">
-                    <div class="mb-3 flex items-center justify-between gap-3">
-                        <div>
-                            <div class="text-xs font-black uppercase tracking-[0.16em] text-[#007a4d]">Saved voice</div>
-                            <div class="text-sm font-bold text-slate-500">Messages stay here for anyone who was out of the app.</div>
-                        </div>
-                        <div class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">${savedMessages.length} note${savedMessages.length === 1 ? '' : 's'}</div>
-                    </div>
-                    <div class="space-y-3">${savedMessagesHtml}</div>
                 </div>
             </div>`;
         }
@@ -26995,8 +26832,7 @@ function toggleDriveQuickRequestItem(domId) {
                 search: walkieUserSearchTerm,
                 selected: Array.from(walkieSelectedUsers).sort(),
                 title: walkieComposeTitle,
-                speaking: walkieActiveSpeakerIntent,
-                voice: walkieVoiceMessages.map((item) => [item.id, item.channelId, item.createdAt, item.audioUrl]).slice(0, 40)
+                speaking: walkieActiveSpeakerIntent
             });
             const html = walkieComposeOpen ? renderWalkieComposer() : (activeWalkieChannelId ? renderActiveWalkieChannel() : renderWalkieList());
             if (walkieLastRenderSignature !== signature || container.dataset.renderUiState !== 'content') {
@@ -27631,7 +27467,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (canAccessView(target)) switchView(target);
         }
 
-        const TRACKED_VIEW_IDS = ['drive','tasks','review','move-up','advertisement','diagnostics','outlook','grower','pest-management','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
+        const TRACKED_VIEW_IDS = ['drive','tasks','review','move-up','advertisement','diagnostics','grower','pest-management','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
 
         function getAffectedViewsForDatasets(changedKeys = []) {
             const changedSet = new Set((changedKeys || []).filter(Boolean));
@@ -28438,16 +28274,25 @@ function toggleDriveQuickRequestItem(domId) {
                     extension: extension.replace(/^\./, '')
                 });
                 const filePath = `${NCR_PHOTO_PATH_PREFIX}/${new Date().toISOString().split('T')[0]}/${fileName}`;
-                const uploadResult = await appApiUploadFile('req-', entry.file, fileName, { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS, label: 'NCR photo upload', filePath });
-                const uploadedPath = String(firstNonEmptyValue(uploadResult.filePath, uploadResult.imagePath, filePath) || '').trim();
-                const publicUrl = String(firstNonEmptyValue(uploadResult.publicUrl, uploadResult.imageUrl, '') || '').trim();
+                const uploadResult = await withTimeout(
+                    supabaseClient.storage.from(NCR_PHOTO_BUCKET).upload(filePath, entry.file, {
+                        contentType: entry.mimeType || entry.file.type || 'application/octet-stream',
+                        upsert: true
+                    }),
+                    SUPABASE_UPLOAD_TIMEOUT_MS,
+                    'NCR photo upload'
+                );
+                const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
+                if (uploadError) throw uploadError;
+                const { data: publicUrlData } = supabaseClient.storage.from(NCR_PHOTO_BUCKET).getPublicUrl(filePath);
+                const publicUrl = String(publicUrlData && publicUrlData.publicUrl || '').trim();
                 if (!publicUrl) throw new Error('Could not resolve NCR photo URL.');
                 entry.uploadedUrl = publicUrl;
                 entry.uploadedName = fileName;
                 uploadedUrls.push(publicUrl);
                 queueMlImageJobForUploadedRowPhoto(item, 'ncr-', {
                     imageBucket: NCR_PHOTO_BUCKET,
-                    imagePath: uploadedPath,
+                    imagePath: filePath,
                     imageUrl: publicUrl,
                     uploadToken: String(firstNonEmptyValue(entry.id, createPendingPhotoToken()) || '').replace(/[^a-zA-Z0-9_-]/g, '')
                 }).catch((error) => console.warn('ML queue background task failed for NCR photo.', error));
@@ -30107,8 +29952,6 @@ function toggleDriveQuickRequestItem(domId) {
                 renderAdvertisement();
             } else if (viewId === 'diagnostics') {
                 renderDiagnostics();
-            } else if (viewId === 'outlook') {
-                renderOutlook();
             } else if (viewId === 'grower') {
                 renderGrowerScout();
             } else if (viewId === 'pest-management') {
@@ -43587,9 +43430,6 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             item.ML_COMPLETED_AT = String(firstNonEmptyValue(item.ML_COMPLETED_AT, item.ml_completed_at, '')).trim();
             item.APPROVED_AT = String(firstNonEmptyValue(item.APPROVED_AT, item.approved_at, '')).trim();
             item.LAST_ERROR = String(firstNonEmptyValue(item.LAST_ERROR, item.last_error, '')).trim();
-            item.HIDDEN_FROM_ACTION_QUEUE = item.HIDDEN_FROM_ACTION_QUEUE === true || item.hidden_from_action_queue === true || String(firstNonEmptyValue(item.HIDDEN_FROM_ACTION_QUEUE, item.hidden_from_action_queue, '')).toLowerCase() === 'true';
-            item.DUPLICATE_OF_UNIQUE_ID = String(firstNonEmptyValue(item.DUPLICATE_OF_UNIQUE_ID, item.duplicate_of_unique_id, '')).trim();
-            item.DIAGNOSTIC_GROUP_KEY = String(firstNonEmptyValue(item.DIAGNOSTIC_GROUP_KEY, item.diagnostic_group_key, '')).trim();
             item.DIAGNOSTIC_REFERENCE_ASSET_ID = String(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_ASSET_ID, item.diagnostic_reference_asset_id, '')).trim();
             item.DIAGNOSTIC_REFERENCE_KIND = String(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_KIND, item.diagnostic_reference_kind, '')).trim();
             item.DIAGNOSTIC_REFERENCE_FILE_NAME = String(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_FILE_NAME, item.diagnostic_reference_file_name, '')).trim();
@@ -43744,57 +43584,6 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const block = firstNonEmptyValue(sourceRow && sourceRow.BLOCKALPHA, item && item.BLOCK, '');
             const season = firstNonEmptyValue(sourceRow && sourceRow.SEASON, item && item.SEASON, '');
             return { itemcode, contsize, loc, lot, block, season, sourceRow };
-        }
-
-        function isMlModelTrainingHoldRow(row = null) {
-            const item = normalizeMlImageJobRow(row);
-            if (!item) return false;
-            const note = String(firstNonEmptyValue(item.LAST_ERROR, item.RECOMMENDED_TREATMENT, item.DIAGNOSIS, '') || '').toLowerCase();
-            return !!item.HIDDEN_FROM_ACTION_QUEUE
-                || note.includes('required after diagnostics model training')
-                || note.includes('no diagnostics model')
-                || note.includes('no model checkpoint');
-        }
-
-        function getMlDiagnosticGroupKey(row = null) {
-            const item = normalizeMlImageJobRow(row);
-            if (!item) return '';
-            if (item.DIAGNOSTIC_GROUP_KEY) return item.DIAGNOSTIC_GROUP_KEY;
-            const meta = getMlJobDriveModeMeta(item);
-            return [
-                item.ML_ROW_SOURCE_TABLE,
-                item.ML_SOURCE_UNIQUE_ID,
-                meta.itemcode,
-                getMlJobDisplayCommonName(item),
-                meta.contsize,
-                meta.loc,
-                meta.lot
-            ].map((value) => String(value || '').trim().toLowerCase()).join('|');
-        }
-
-        function buildMlDiagnosticGroups(rows = []) {
-            const groups = new Map();
-            (Array.isArray(rows) ? rows : []).forEach((row) => {
-                const item = normalizeMlImageJobRow(row);
-                if (!item || isMlModelTrainingHoldRow(item)) return;
-                const groupKey = getMlDiagnosticGroupKey(item) || item.UNIQUE_ID;
-                if (!groups.has(groupKey)) {
-                    groups.set(groupKey, {
-                        key: groupKey,
-                        primary: item,
-                        rows: [],
-                        latestAt: String(firstNonEmptyValue(item.UPDATED_AT, item.CREATED_AT, '') || '')
-                    });
-                }
-                const group = groups.get(groupKey);
-                group.rows.push(item);
-                const itemTime = String(firstNonEmptyValue(item.UPDATED_AT, item.CREATED_AT, '') || '');
-                if (itemTime > group.latestAt) {
-                    group.latestAt = itemTime;
-                    group.primary = item;
-                }
-            });
-            return Array.from(groups.values()).sort((a, b) => String(b.latestAt || '').localeCompare(String(a.latestAt || '')));
         }
 
         function getDiagnosticIssueCardTab(uid = '') {
@@ -44170,12 +43959,18 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
         }
 
         async function uploadGrowerScoutBlob(bucket, blob, filePath, contentType = '') {
-            const bucketName = String(bucket || '').trim();
-            const prefix = bucketName === GROWER_SCOUT_AUDIO_BUCKET
-                ? 'grower-audio-'
-                : (bucketName === GROWER_SCOUT_PHOTOS_BUCKET ? 'grower-photo-' : 'grower-file-');
-            const uploadResult = await appApiUploadFile(prefix, blob, filePath, { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS, label: 'Grower scout upload', filePath });
-            return String(firstNonEmptyValue(uploadResult.publicUrl, uploadResult.imageUrl, '') || '').trim();
+            const uploadResult = await withTimeout(
+                supabaseClient.storage.from(bucket).upload(filePath, blob, {
+                    contentType: contentType || blob.type || 'application/octet-stream',
+                    cacheControl: '31536000',
+                    upsert: true
+                }),
+                SUPABASE_UPLOAD_TIMEOUT_MS,
+                'Grower scout upload'
+            );
+            if (uploadResult && uploadResult.error) throw uploadResult.error;
+            const { data: publicUrlData } = supabaseClient.storage.from(bucket).getPublicUrl(filePath);
+            return String(publicUrlData && publicUrlData.publicUrl || '').trim();
         }
 
         function buildGrowerScoutAssetPayload(reportId = '', kind = 'photo', bucket = '', storagePath = '', publicUrl = '', file = null) {
@@ -44914,16 +44709,20 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 const blob = await prepareMlCaptureBlob(file);
                 const uniqueId = `ml_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
                 const clean = (value) => String(value || 'capture').replace(/[^a-zA-Z0-9_-]+/g, '').slice(0, 48) || 'capture';
-                const fileName = `${clean(currentUser)}-${uniqueId}.jpg`;
-                const uploadResult = await appApiUploadFile('ml-', blob, fileName, { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS, label: 'ML photo upload' });
-                const filePath = String(firstNonEmptyValue(uploadResult.filePath, uploadResult.imagePath, '') || '').trim();
-                const publicUrl = String(firstNonEmptyValue(uploadResult.publicUrl, uploadResult.imageUrl, '') || '').trim();
+                const filePath = `${new Date().toISOString().split('T')[0]}/${clean(currentUser)}-${uniqueId}.jpg`;
+                const uploadResult = await withTimeout(supabaseClient.storage.from(ML_CAPTURE_PHOTO_BUCKET).upload(filePath, blob, {
+                    contentType: 'image/jpeg',
+                    cacheControl: '31536000',
+                    upsert: true
+                }), SUPABASE_UPLOAD_TIMEOUT_MS, 'ML photo upload');
+                if (uploadResult && uploadResult.error) throw uploadResult.error;
+                const { data: publicUrlData } = supabaseClient.storage.from(ML_CAPTURE_PHOTO_BUCKET).getPublicUrl(filePath);
                 const payload = {
                     unique_id: uniqueId,
                     status: 'pending_ml',
                     image_bucket: ML_CAPTURE_PHOTO_BUCKET,
                     image_path: filePath,
-                    image_url: publicUrl,
+                    image_url: publicUrlData && publicUrlData.publicUrl ? publicUrlData.publicUrl : '',
                     source_table: 'mobile_ai_capture',
                     season: String(seasonInput && seasonInput.value || getDefaultMlCaptureSeason()).trim().toUpperCase(),
                     block: String(blockInput && blockInput.value || '').trim(),
@@ -44966,37 +44765,6 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             if (getCurrentVisibleViewId() === 'home') scheduleHomeRender(true);
             if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 120);
             if (isViewVisible('tasks') && isTaskDiagnosticsView(activeTaskTab)) scheduleTasksRender(0, 0, true);
-            return false;
-        }
-
-        async function requeueHiddenDiagnosticModelJobs(button = null) {
-            if (!canUseMlAdminViews()) {
-                showToast('Restricted', 'Only Dylan can requeue diagnostics jobs.', true);
-                return false;
-            }
-            const previousLabel = button ? button.innerText : '';
-            if (button) {
-                button.disabled = true;
-                button.innerText = 'Requeueing...';
-            }
-            try {
-                await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'PATCH', {
-                    status: 'pending_ml',
-                    hidden_from_action_queue: false,
-                    duplicate_of_unique_id: null,
-                    last_error: null,
-                    updated_at: new Date().toISOString()
-                }, 'hidden_from_action_queue=eq.true&duplicate_of_unique_id=is.null', { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
-                await refreshMlJobsNow();
-                showToast('Requeued', 'Hidden diagnostics jobs are back in the ML queue.');
-            } catch (error) {
-                showToast('Requeue Failed', error && error.message ? error.message : 'Could not requeue diagnostics jobs.', true);
-            } finally {
-                if (button) {
-                    button.disabled = false;
-                    button.innerText = previousLabel || 'Requeue';
-                }
-            }
             return false;
         }
 
@@ -45523,9 +45291,15 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const nowIso = new Date().toISOString();
             const ext = pathlibSafeExtension(file.name, file.type, 'jpg');
             const safeName = sanitizeDiagnosticCaseSegment(file.name.replace(/\.[^.]+$/, ''), 'LAB-REPORT');
-            const uploadResult = await appApiUploadFile('diagnostic-lab-', file, `${caseId}-${safeName}-${Date.now()}.${ext}`, { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS, label: 'diagnostic lab report upload' });
-            const filePath = String(firstNonEmptyValue(uploadResult.filePath, uploadResult.imagePath, '') || '').trim();
-            const publicUrl = String(firstNonEmptyValue(uploadResult.publicUrl, uploadResult.imageUrl, '') || '').trim();
+            const filePath = `${new Date().toISOString().slice(0, 10)}/${caseId}/${safeName}-${Date.now()}.${ext}`;
+            const uploadResult = await withTimeout(supabaseClient.storage.from(DIAGNOSTIC_LAB_REPORT_BUCKET).upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: true,
+                contentType: file.type || undefined
+            }), SUPABASE_UPLOAD_TIMEOUT_MS, 'diagnostic lab report upload');
+            if (uploadResult.error) throw uploadResult.error;
+            const { data: publicUrlData } = supabaseClient.storage.from(DIAGNOSTIC_LAB_REPORT_BUCKET).getPublicUrl(filePath);
+            const publicUrl = publicUrlData && publicUrlData.publicUrl ? publicUrlData.publicUrl : '';
             const payload = {
                 status: 'approved',
                 diagnostic_review_decision: 'lab_report_uploaded',
@@ -45746,11 +45520,9 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
         }
 
         function renderDiagnosticCard(row = null) {
-            const groupRows = row && Array.isArray(row.rows) ? row.rows.map((entry) => normalizeMlImageJobRow(entry)).filter(Boolean) : [];
-            const item = normalizeMlImageJobRow(groupRows.length ? (row.primary || groupRows[0]) : row);
+            const item = normalizeMlImageJobRow(row);
             if (!item) return '';
-            const groupedPhotoCsv = groupRows.length ? mergePhotoCsvList(groupRows.map((entry) => getMlJobPhotoCsv(entry))) : '';
-            const photoCsv = groupedPhotoCsv || getMlJobPhotoCsv(item);
+            const photoCsv = getMlJobPhotoCsv(item);
             const photoUrls = getPhotoUrlList(photoCsv);
             const imageUrl = photoUrls[0] || getMlJobImageUrl(item);
             const photoHtml = imageUrl ? `<button type="button" class="flex-shrink-0" onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(photoCsv || imageUrl)}', '${escJsAttrValue(getMlJobDisplayCommonName(item))}'); return false;"><img src="${esc(getDirectImageUrl(imageUrl, 'gallery-tile'))}" alt="" class="h-20 w-20 rounded-xl object-cover border border-slate-200 bg-slate-100 active:scale-95 transition-transform" loading="lazy" decoding="async"></button>` : '<div class="h-20 w-20 rounded-xl border border-dashed border-slate-300 bg-slate-50 flex-shrink-0"></div>';
@@ -45758,7 +45530,6 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const title = getMlJobDisplayCommonName(item);
             const metaInfo = getMlJobDriveModeMeta(item);
             const meta = [metaInfo.itemcode ? `Item ${metaInfo.itemcode}` : '', metaInfo.contsize, metaInfo.loc ? `Loc ${metaInfo.loc}` : '', metaInfo.lot ? `Lot ${metaInfo.lot}` : '', metaInfo.block ? `Block ${metaInfo.block}` : '', metaInfo.season, item.ML_GRADE].filter(Boolean).join(' | ');
-            const groupBadgeHtml = groupRows.length > 1 ? `<span class="rounded-full border border-purple-200 bg-purple-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-purple-700">${esc(String(groupRows.length))} jobs / ${esc(String(photoUrls.length || groupRows.length))} photos</span>` : '';
             const issueText = firstNonEmptyValue(
                 item.DIAGNOSIS,
                 item.STATUS === 'processing' ? 'ML worker is processing this image.' : '',
@@ -45780,7 +45551,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 <div class="flex items-start gap-3">
                     ${photoHtml}
                     <div class="min-w-0 flex-1">
-                        <div class="flex flex-wrap gap-2 mb-2"><span class="rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${statusClass}">${esc(item.STATUS.replace(/_/g, ' '))}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${esc(formatMlTimestamp(firstNonEmptyValue(item.ML_COMPLETED_AT, item.UPDATED_AT, item.CREATED_AT)))}</span>${groupBadgeHtml}</div>
+                        <div class="flex flex-wrap gap-2 mb-2"><span class="rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${statusClass}">${esc(item.STATUS.replace(/_/g, ' '))}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${esc(formatMlTimestamp(firstNonEmptyValue(item.ML_COMPLETED_AT, item.UPDATED_AT, item.CREATED_AT)))}</span></div>
                         <div class="text-base font-black text-slate-900 leading-tight break-words">${esc(title)}</div>
                         <div class="mt-1 text-[12px] font-bold text-slate-500 break-words">${esc(meta)}</div>
                     </div>
@@ -45802,8 +45573,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const container = document.getElementById('diagnostics-content');
             const crumb = document.getElementById('diagnostics-crumb');
             if (!container) return;
-            const rawPendingRows = getMlJobsByStatus(['pending_ml', 'processing']);
-            const pendingGroups = buildMlDiagnosticGroups(rawPendingRows);
+            const pendingRows = getMlJobsByStatus(['pending_ml', 'processing']);
             const issueRows = getMlJobsByStatus(['pending_approval', 'approved']).filter((row) => isMlDiagnosticIssueRow(row));
             const failedRows = getMlJobsByStatus(['ml_failed']).slice(0, 20);
             const finishedRows = issueRows.concat(failedRows).slice(0, 60);
@@ -45813,126 +45583,16 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 acc[status] = (acc[status] || 0) + 1;
                 return acc;
             }, {});
-            const hiddenTrainingCount = rawPendingRows.filter((row) => isMlModelTrainingHoldRow(row)).length;
-            if (crumb) crumb.innerText = `AI Diagnostics | ${pendingGroups.length} Pending${hiddenTrainingCount ? ` | ${hiddenTrainingCount} Waiting Model` : ''}`;
-            const pendingHtml = pendingGroups.length ? pendingGroups.map(renderDiagnosticCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-[12px] font-semibold text-slate-400">No pending diagnostic jobs.</div>';
+            if (crumb) crumb.innerText = `AI Diagnostics | ${pendingRows.length} Pending`;
+            const pendingHtml = pendingRows.length ? pendingRows.map(renderDiagnosticCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-[12px] font-semibold text-slate-400">No pending diagnostic jobs.</div>';
             const finishedHtml = finishedRows.length ? finishedRows.map(renderDiagnosticCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-[12px] font-semibold text-slate-400">No completed diagnostic reports.</div>';
             const statusSummaryHtml = ['pending_ml', 'processing', 'pending_approval', 'approved', 'ml_failed'].map((status) => `<div class="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">${esc(status.replace(/_/g, ' '))}</div><div class="mt-1 text-xl font-black text-slate-900">${esc(String(statusCounts[status] || 0))}</div></div>`).join('');
-            const trainingNotice = hiddenTrainingCount ? `<section class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] font-bold text-amber-800"><div>${esc(String(hiddenTrainingCount))} non-actionable job${hiddenTrainingCount === 1 ? '' : 's'} are hidden until the diagnostics model is trained.</div><button type="button" class="mt-3 rounded-xl border border-amber-300 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-amber-800 active:scale-95" onclick="return requeueHiddenDiagnosticModelJobs(this)">Requeue Hidden Jobs</button></section>` : '';
-            const signature = `diagnostics:${getDatasetLoadSignature('mlJobs')}:${pendingGroups.length}:${hiddenTrainingCount}:${finishedRows.length}:${JSON.stringify(statusCounts)}:${finishedRows.map((row) => `${row.UNIQUE_ID}:${row.STATUS}:${row.UPDATED_AT}:${row.LAST_ERROR}`).join('|')}`;
+            const signature = `diagnostics:${getDatasetLoadSignature('mlJobs')}:${pendingRows.length}:${finishedRows.length}:${JSON.stringify(statusCounts)}:${finishedRows.map((row) => `${row.UNIQUE_ID}:${row.STATUS}:${row.UPDATED_AT}:${row.LAST_ERROR}`).join('|')}`;
             const html = `<div class="space-y-5">
                 <section class="grid grid-cols-2 gap-2 sm:grid-cols-5">${statusSummaryHtml}</section>
-                ${trainingNotice}
                 <section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Pending Diagnostics</div>${pendingHtml}</section>
                 <section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Diagnostic Issues</div>${finishedHtml}</section>
             </div>`;
-            setContainerHtmlWithSignature(container, html, signature);
-        }
-
-        async function callOutlookApi(action = '', payload = {}, options = {}) {
-            return await postAppFunctionJson(OUTLOOK_API_FUNCTION_URL, {
-                action,
-                ...(payload || {})
-            }, {
-                timeoutMs: Number(options && options.timeoutMs || 24000),
-                label: String(options && options.label || 'Outlook')
-            });
-        }
-
-        async function connectOutlookAccount() {
-            if (!currentUser) {
-                showToast('Login Required', 'Sign in before connecting Outlook.', true);
-                return false;
-            }
-            try {
-                const result = await callOutlookApi('start_auth', {}, { label: 'Outlook Connect' });
-                const authUrl = String(result && result.authUrl || '').trim();
-                if (!authUrl) throw new Error('Outlook did not return a sign-in link.');
-                window.open(authUrl, '_blank', 'noopener,noreferrer');
-                showToast('Outlook', 'Microsoft sign-in opened. Return here after connecting.');
-            } catch (error) {
-                showToast('Outlook Setup Needed', error && error.message ? error.message : 'Could not start Outlook sign-in.', true);
-            }
-            return false;
-        }
-
-        async function refreshOutlookInbox() {
-            outlookLoading = true;
-            outlookLastError = '';
-            renderOutlook();
-            try {
-                const result = await callOutlookApi('list_messages', { top: 25 }, { label: 'Outlook Inbox' });
-                outlookMessages = Array.isArray(result && result.messages) ? result.messages : [];
-                outlookLoading = false;
-                renderOutlook();
-            } catch (error) {
-                outlookLoading = false;
-                outlookLastError = String(error && error.message || 'Could not load Outlook inbox.');
-                renderOutlook();
-            }
-            return false;
-        }
-
-        async function openOutlookMessage(messageId = '') {
-            const safeId = String(messageId || '').trim();
-            if (!safeId) return false;
-            outlookLoading = true;
-            renderOutlook();
-            try {
-                const result = await callOutlookApi('read_message', { messageId: safeId }, { label: 'Outlook Message' });
-                outlookActiveMessage = result && result.message ? result.message : null;
-                outlookLoading = false;
-                renderOutlook();
-            } catch (error) {
-                outlookLoading = false;
-                outlookLastError = String(error && error.message || 'Could not open Outlook message.');
-                renderOutlook();
-            }
-            return false;
-        }
-
-        async function sendOutlookReply(messageId = '') {
-            const safeId = String(messageId || '').trim();
-            const input = document.getElementById('outlook-reply-body');
-            const comment = String(input && input.value || '').trim();
-            if (!safeId || !comment) {
-                showToast('Reply Needed', 'Type a reply before sending.', true);
-                return false;
-            }
-            try {
-                await callOutlookApi('reply_message', { messageId: safeId, comment }, { label: 'Outlook Reply' });
-                if (input) input.value = '';
-                showToast('Sent', 'Outlook reply sent.');
-                refreshOutlookInbox().catch(() => {});
-            } catch (error) {
-                showToast('Reply Failed', error && error.message ? error.message : 'Could not send Outlook reply.', true);
-            }
-            return false;
-        }
-
-        function renderOutlook() {
-            if (!currentUser) {
-                switchView('home');
-                return;
-            }
-            const container = document.getElementById('outlook-content');
-            if (!container) return;
-            if (!outlookMessages.length && !outlookLoading && !outlookLastError) {
-                setContainerHtmlWithSignature(container, `<div class="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm"><div class="text-lg font-black text-slate-900">Connect Outlook</div><div class="mt-2 text-sm font-semibold text-slate-500">Use your own Microsoft login to read and reply to mail inside the app.</div><div class="mt-4 grid gap-2 sm:grid-cols-2"><button type="button" class="rounded-xl bg-blue-700 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white" onclick="return connectOutlookAccount()">Connect Microsoft</button><button type="button" class="rounded-xl border border-blue-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-blue-700" onclick="return refreshOutlookInbox()">Load Inbox</button></div></div>`, 'outlook:empty');
-                return;
-            }
-            const errorHtml = outlookLastError ? `<div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[12px] font-bold text-red-700">${esc(outlookLastError)}</div>` : '';
-            const messagesHtml = outlookMessages.length
-                ? outlookMessages.map((message) => {
-                    const id = String(message.id || '').trim();
-                    const sender = String(message.from && message.from.emailAddress && (message.from.emailAddress.name || message.from.emailAddress.address) || 'Unknown Sender');
-                    return `<button type="button" class="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm active:scale-[.99]" onclick="return openOutlookMessage('${escJsAttrValue(id)}')"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-sm font-black text-slate-900 truncate">${esc(message.subject || '(No subject)')}</div><div class="mt-1 text-[11px] font-bold text-slate-500 truncate">${esc(sender)}</div></div><span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">${message.isRead ? 'Read' : 'New'}</span></div><div class="mt-2 line-clamp-2 text-[12px] font-semibold text-slate-500">${esc(message.bodyPreview || '')}</div></button>`;
-                }).join('')
-                : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-[12px] font-semibold text-slate-400">No Outlook messages loaded.</div>';
-            const activeBodyText = outlookActiveMessage ? String(firstNonEmptyValue(outlookActiveMessage.body && outlookActiveMessage.body.content, outlookActiveMessage.bodyPreview, '') || '').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
-            const activeHtml = outlookActiveMessage ? `<section class="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-blue-700">Open Message</div><div class="mt-2 text-lg font-black text-slate-900">${esc(outlookActiveMessage.subject || '(No subject)')}</div><div class="mt-2 max-h-72 overflow-auto rounded-xl border border-slate-100 bg-slate-50 p-3 text-sm font-semibold text-slate-700">${esc(activeBodyText)}</div><textarea id="outlook-reply-body" class="mt-3 min-h-[110px] w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-bold text-slate-900 outline-none focus:border-blue-400" placeholder="Type reply..."></textarea><button type="button" class="mt-3 w-full rounded-xl bg-blue-700 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white" onclick="return sendOutlookReply('${escJsAttrValue(outlookActiveMessage.id || '')}')">Send Reply</button></section>` : '';
-            const signature = `outlook:${outlookLoading}:${outlookLastError}:${outlookMessages.map((message) => `${message.id}:${message.isRead}`).join('|')}:${outlookActiveMessage && outlookActiveMessage.id || ''}`;
-            const html = `<div class="space-y-4">${errorHtml}<div class="grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-blue-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-blue-700" onclick="return refreshOutlookInbox()">${outlookLoading ? 'Loading...' : 'Refresh Inbox'}</button><button type="button" class="rounded-xl border border-blue-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-blue-700" onclick="return connectOutlookAccount()">Reconnect</button></div>${activeHtml}<section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Inbox</div>${messagesHtml}</section></div>`;
             setContainerHtmlWithSignature(container, html, signature);
         }
 
@@ -46819,7 +46479,6 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const btnTakeBack=document.getElementById('batch-btn-take-back');
             const btnEndCap=document.getElementById('batch-btn-endcap');
             const btnBloomOrder=document.getElementById('batch-btn-bloom-order');
-            const pttButton=document.getElementById('global-ptt-button');
             const hasItems=selectedItems.size>0;
             const items=getCartSelectedItems();
             const actionVisibility=getBloomPickerActionVisibility(items);
@@ -46842,7 +46501,6 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             if(btnBloomOrder)btnBloomOrder.classList.toggle('hidden', !actionVisibility.showBloomOrder);
             if(helper)helper.classList.toggle('hidden', !hasItems || actionVisibility.canUseInventoryActions || actionVisibility.canUseBloomOrders);
             if(bar)bar.classList.toggle('hidden', !hasItems||!cartPanelOpen);
-            if(pttButton)pttButton.classList.toggle('hidden', !currentUser);
             syncBloomShareMenuUi(actionVisibility);
             updateFooterNavState();
             syncGlobalHeaderChrome({ reason: 'selection', force: true });
@@ -55922,9 +55580,16 @@ ${folderNote ? `Folder Note: ${folderNote}
         async function saveAdvertisementExportToSupabase(blob, format = 'png') {
             const uniqueId = `ad_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
             const cleanFormat = format === 'jpeg' || format === 'jpg' ? 'jpg' : 'png';
-            const uploadResult = await appApiUploadFile('marketing-', blob, `${uniqueId}.${cleanFormat}`, { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS, label: 'Marketing material upload' });
-            const filePath = String(firstNonEmptyValue(uploadResult.filePath, uploadResult.imagePath, '') || '').trim();
-            const publicUrl = String(firstNonEmptyValue(uploadResult.publicUrl, uploadResult.imageUrl, '') || '').trim();
+            const datePath = new Date().toISOString().slice(0, 10);
+            const filePath = `${datePath}/${uniqueId}.${cleanFormat}`;
+            const uploadResult = await withTimeout(supabaseClient.storage.from(MARKETING_MATERIALS_BUCKET).upload(filePath, blob, {
+                contentType: blob.type || (cleanFormat === 'jpg' ? 'image/jpeg' : 'image/png'),
+                cacheControl: '31536000',
+                upsert: true
+            }), SUPABASE_UPLOAD_TIMEOUT_MS, 'Marketing material upload');
+            if (uploadResult && uploadResult.error) throw uploadResult.error;
+            const { data: publicUrlData } = supabaseClient.storage.from(MARKETING_MATERIALS_BUCKET).getPublicUrl(filePath);
+            const publicUrl = String(publicUrlData && publicUrlData.publicUrl || '').trim();
             if (!publicUrl) throw new Error('Could not resolve the marketing material URL.');
             const designJson = advertisementCanvas ? advertisementCanvas.toJSON(ADVERTISEMENT_CUSTOM_PROPS) : {};
             designJson.gncAdvertisement = {
@@ -58110,12 +57775,22 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 return;
                             }
                             try {
+                                const bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
                                 const fileName = targetFileName;
-                                const uploadResult = await appApiUploadFile(prefix, blob, fileName, { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS, label: 'Photo upload' });
-                                const bucketName = String(firstNonEmptyValue(uploadResult.bucketName, uploadResult.imageBucket, PHOTO_BUCKETS[prefix], PHOTO_BUCKETS.default) || '').trim();
-                                const filePath = String(firstNonEmptyValue(uploadResult.filePath, uploadResult.imagePath, '') || '').trim();
-                                const publicUrl = String(firstNonEmptyValue(uploadResult.publicUrl, uploadResult.imageUrl, '') || '').trim();
-                                if (!publicUrl) throw new Error('Photo uploaded without a public URL.');
+                                const filePath = new Date().toISOString().split('T')[0] + '/' + fileName;
+                                const uploadResult = await withTimeout(
+                                    supabaseClient.storage.from(bucketName).upload(filePath, blob, {
+                                        contentType: 'image/jpeg',
+                                        cacheControl: '31536000',
+                                        upsert: true
+                                    }),
+                                    SUPABASE_UPLOAD_TIMEOUT_MS,
+                                    'Photo upload'
+                                );
+                                const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
+                                if (uploadError) throw uploadError;
+                                const { data: publicUrlData } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
+                                const publicUrl = publicUrlData.publicUrl;
                                 applyUploadedPhotoEverywhere(itemToUpload, prefix, publicUrl, fileName);
                                 if (detailUploadItem && detailUploadItem !== itemToUpload) {
                                     applyUploadedPhotoFieldsToItem(detailUploadItem, prefix, publicUrl, fileName);
