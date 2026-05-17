@@ -74,7 +74,7 @@ export function getRoleAccessState(role = "") {
 }
 
 function getSessionSecret() {
-  return String(Deno.env.get("APP_SESSION_SECRET") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
+  return String(Deno.env.get("APP_SESSION_SECRET") || "").trim();
 }
 
 function getSessionTtlSeconds() {
