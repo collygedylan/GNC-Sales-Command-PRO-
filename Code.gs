@@ -77,6 +77,7 @@ const DRIVE_AROUND_HISTORY_ROW_TABLE = 'v2_drive_around_report_rows';
 const DRIVE_AROUND_HISTORY_FOLDER_ID = '1hswTWk4GooXIAXFmfdx9I6IyqLJ1LqSA';
 const DRIVE_AROUND_HISTORY_MAX_FILES_PER_RUN = 2500;
 const DRIVE_AROUND_HISTORY_MAX_PARSED_FILES_PER_RUN = 12;
+const DRIVE_AROUND_HISTORY_PENDING_FETCH_LIMIT = 1000;
 const DRIVE_AROUND_HISTORY_SUPPORTED_EXTENSIONS = Object.freeze(['.csv', '.xls', '.xlsx']);
 const DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER = 'runDriveAroundHistoryBackfillChunk_';
 const GOOGLE_SHEETS_MIME_TYPE = 'application/vnd.google-apps.spreadsheet';
@@ -878,11 +879,51 @@ function fetchExistingDriveAroundHistoryManifestMap_() {
   return byId;
 }
 
+function fetchPendingDriveAroundHistoryManifestRows_(limit) {
+  const safeLimit = Math.max(1, Math.min(DRIVE_AROUND_HISTORY_PENDING_FETCH_LIMIT, Number(limit) || DRIVE_AROUND_HISTORY_PENDING_FETCH_LIMIT));
+  const query = [
+    'select=file_id,file_name,report_date,drive_modified_time,row_count,hold_row_count,status,error_message,raw',
+    'status=in.(indexed,failed)',
+    'order=file_name.desc',
+    `limit=${safeLimit}`
+  ].join('&');
+  const url = `${SUPABASE_URL}/rest/v1/${DRIVE_AROUND_HISTORY_TABLE}?${query}`;
+  const res = UrlFetchApp.fetch(url, {
+    method: 'get',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY
+    },
+    muteHttpExceptions: true
+  });
+  if (res.getResponseCode() !== 200) {
+    throw new Error(`Pending Drive Around history lookup failed (${res.getResponseCode()}): ${res.getContentText()}`);
+  }
+  const rows = JSON.parse(res.getContentText() || '[]');
+  return Array.isArray(rows) ? rows : [];
+}
+
 function driveAroundHistoryManifestHasRows_(manifestRow) {
   if (!manifestRow) return false;
   const status = String(manifestRow.status || '').trim().toLowerCase();
   const rowCount = Number(manifestRow.row_count || 0);
+  if (status === 'empty') return true;
   return rowCount > 0 && ['row_indexed', 'processed', 'complete'].indexOf(status) !== -1;
+}
+
+function getDriveAroundHistoryManifestFolderPath_(manifestRow, fallback) {
+  const safeFallback = String(fallback || '').trim();
+  const raw = manifestRow && manifestRow.raw;
+  if (!raw) return safeFallback;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      return String(parsed && parsed.folder_path || safeFallback).trim() || safeFallback;
+    } catch (err) {
+      return safeFallback;
+    }
+  }
+  return String(raw && raw.folder_path || safeFallback).trim() || safeFallback;
 }
 
 function normalizeDriveAroundHistoryHeaderKey_(header) {
@@ -1021,6 +1062,34 @@ function buildDriveAroundHistoryManifestRow_(file, folderPath, nowIso) {
   };
 }
 
+function parseDriveAroundHistoryFileIntoState_(file, folderPath, seedManifestRow, state) {
+  const fileName = String(file.getName() || '').trim();
+  const manifestRow = buildDriveAroundHistoryManifestRow_(file, folderPath, state.nowIso);
+  if (seedManifestRow && seedManifestRow.report_date) manifestRow.report_date = seedManifestRow.report_date;
+  try {
+    const rawData = extractDataFromFile(file, state.rootFolderId);
+    const snapshotRows = buildDriveAroundHistorySnapshotRows_(file, rawData, manifestRow, state.nowIso);
+    manifestRow.row_count = snapshotRows.length;
+    manifestRow.hold_row_count = snapshotRows.filter(function(row) {
+      return String(row && row.holdstopcode || '').trim().toUpperCase() === 'H';
+    }).length;
+    manifestRow.status = snapshotRows.length ? 'row_indexed' : 'empty';
+    manifestRow.error_message = null;
+    state.manifestRows.push(manifestRow);
+    Array.prototype.push.apply(state.snapshotRows, snapshotRows);
+    state.parsedFiles++;
+    state.rowsParsed += snapshotRows.length;
+    console.log(`[DRIVE AROUND HISTORY] Parsed ${fileName}: ${snapshotRows.length} row snapshot${snapshotRows.length === 1 ? '' : 's'}.`);
+  } catch (err) {
+    const errorMessage = err && err.message ? err.message : String(err);
+    manifestRow.status = 'failed';
+    manifestRow.error_message = errorMessage;
+    state.manifestRows.push(manifestRow);
+    state.parseFailedFiles.push({ name: fileName, error: errorMessage });
+    console.error(`[DRIVE AROUND HISTORY] ${fileName} failed: ${errorMessage}`);
+  }
+}
+
 function collectDriveAroundHistoryManifestRows_(folder, folderPath, existingManifestById, state) {
   if (state.filesSeen >= state.maxFiles) return;
   const files = listDriveFilesWithRetry_(folder, `Drive Around history ${folderPath}`);
@@ -1053,28 +1122,7 @@ function collectDriveAroundHistoryManifestRows_(folder, folderPath, existingMani
       if (!existingManifest) state.manifestRows.push(manifestRow);
       continue;
     }
-    try {
-      const rawData = extractDataFromFile(file, state.rootFolderId);
-      const snapshotRows = buildDriveAroundHistorySnapshotRows_(file, rawData, manifestRow, state.nowIso);
-      manifestRow.row_count = snapshotRows.length;
-      manifestRow.hold_row_count = snapshotRows.filter(function(row) {
-        return String(row && row.holdstopcode || '').trim().toUpperCase() === 'H';
-      }).length;
-      manifestRow.status = snapshotRows.length ? 'row_indexed' : 'empty';
-      manifestRow.error_message = null;
-      state.manifestRows.push(manifestRow);
-      Array.prototype.push.apply(state.snapshotRows, snapshotRows);
-      state.parsedFiles++;
-      state.rowsParsed += snapshotRows.length;
-      console.log(`[DRIVE AROUND HISTORY] Parsed ${fileName}: ${snapshotRows.length} row snapshot${snapshotRows.length === 1 ? '' : 's'}.`);
-    } catch (err) {
-      const errorMessage = err && err.message ? err.message : String(err);
-      manifestRow.status = 'failed';
-      manifestRow.error_message = errorMessage;
-      state.manifestRows.push(manifestRow);
-      state.parseFailedFiles.push({ name: fileName, error: errorMessage });
-      console.error(`[DRIVE AROUND HISTORY] ${fileName} failed: ${errorMessage}`);
-    }
+    parseDriveAroundHistoryFileIntoState_(file, folderPath, existingManifest, state);
   }
   const subfolders = listDriveSubfoldersWithRetry_(folder, `Drive Around history ${folderPath}`);
   while (subfolders.hasNext() && state.filesSeen < state.maxFiles) {
@@ -1084,17 +1132,63 @@ function collectDriveAroundHistoryManifestRows_(folder, folderPath, existingMani
   }
 }
 
+function collectPendingDriveAroundHistoryRows_(pendingRows, state) {
+  const rows = Array.isArray(pendingRows) ? pendingRows : [];
+  rows.forEach(function(manifestRow, index) {
+    if (state.parsedFiles >= state.maxParsedFiles) {
+      state.remainingUnparsed = Math.max(state.remainingUnparsed, rows.length - index);
+      return;
+    }
+    const fileId = String(manifestRow && manifestRow.file_id || '').trim();
+    if (!fileId) return;
+    state.filesSeen++;
+    try {
+      const file = DriveApp.getFileById(fileId);
+      const fileName = String(file.getName() || '').trim();
+      const mimeType = String(file.getMimeType() || '').trim();
+      if (!isDriveAroundHistoricalFileSupported_(fileName, mimeType)) {
+        state.skippedUnsupported++;
+        return;
+      }
+      const folderPath = getDriveAroundHistoryManifestFolderPath_(manifestRow, 'Drive Around History');
+      parseDriveAroundHistoryFileIntoState_(file, folderPath, manifestRow, state);
+    } catch (err) {
+      const errorMessage = err && err.message ? err.message : String(err);
+      state.manifestRows.push({
+        file_id: fileId,
+        file_name: String(manifestRow && manifestRow.file_name || fileId),
+        mime_type: null,
+        report_date: manifestRow && manifestRow.report_date || null,
+        drive_modified_time: manifestRow && manifestRow.drive_modified_time || null,
+        web_view_link: null,
+        processed_at: state.nowIso,
+        row_count: Number(manifestRow && manifestRow.row_count || 0),
+        hold_row_count: Number(manifestRow && manifestRow.hold_row_count || 0),
+        status: 'failed',
+        error_message: errorMessage,
+        raw: {
+          source: 'apps_script_drive_around_history_pending_parse',
+          source_folder_id: DRIVE_AROUND_HISTORY_FOLDER_ID,
+          prior_raw: manifestRow && manifestRow.raw || null,
+          indexed_at: state.nowIso
+        }
+      });
+      state.parseFailedFiles.push({ name: String(manifestRow && manifestRow.file_name || fileId), error: errorMessage });
+      console.error(`[DRIVE AROUND HISTORY] ${fileId} failed: ${errorMessage}`);
+    }
+  });
+}
+
 function syncDriveAroundHistoricalFileIndex_(options) {
   const safeOptions = options || {};
   const maxFiles = Math.max(1, Number(safeOptions.maxFiles) || DRIVE_AROUND_HISTORY_MAX_FILES_PER_RUN);
   const parseRows = safeOptions.parseRows !== false;
   const maxParsedFiles = Math.max(1, Number(safeOptions.maxParsedFiles) || DRIVE_AROUND_HISTORY_MAX_PARSED_FILES_PER_RUN);
+  const pendingOnly = safeOptions.pendingOnly === true;
   const rootFolderId = String(safeOptions.folderId || DRIVE_AROUND_HISTORY_FOLDER_ID || FOLDERS.MASTER_PROCESSED || '').trim();
   if (!rootFolderId) throw new Error('Missing Drive Around history folder ID.');
   const started = new Date();
   const nowIso = started.toISOString();
-  const rootFolder = getDriveFolderByIdWithRetry_(rootFolderId, 'Drive Around historical processed folder');
-  const existingManifestById = fetchExistingDriveAroundHistoryManifestMap_();
   const state = {
     nowIso: nowIso,
     rootFolderId: rootFolderId,
@@ -1111,7 +1205,14 @@ function syncDriveAroundHistoricalFileIndex_(options) {
     manifestRows: [],
     snapshotRows: []
   };
-  collectDriveAroundHistoryManifestRows_(rootFolder, rootFolder.getName(), existingManifestById, state);
+  if (pendingOnly && parseRows) {
+    const pendingRows = fetchPendingDriveAroundHistoryManifestRows_(Math.max(DRIVE_AROUND_HISTORY_PENDING_FETCH_LIMIT, maxParsedFiles + 1));
+    collectPendingDriveAroundHistoryRows_(pendingRows, state);
+  } else {
+    const rootFolder = getDriveFolderByIdWithRetry_(rootFolderId, 'Drive Around historical processed folder');
+    const existingManifestById = fetchExistingDriveAroundHistoryManifestMap_();
+    collectDriveAroundHistoryManifestRows_(rootFolder, rootFolder.getName(), existingManifestById, state);
+  }
   if (state.manifestRows.length) {
     pushToSupabase(DRIVE_AROUND_HISTORY_TABLE, state.manifestRows);
   }
@@ -1130,6 +1231,7 @@ function syncDriveAroundHistoricalFileIndex_(options) {
     skippedExisting: state.skippedExisting,
     skippedUnsupported: state.skippedUnsupported,
     remainingUnparsed: state.remainingUnparsed,
+    pendingOnly: pendingOnly,
     parseFailedFiles: state.parseFailedFiles,
     tableName: DRIVE_AROUND_HISTORY_TABLE,
     runId: Utilities.getUuid().replace(/-/g, '').slice(0, 10)
@@ -1169,6 +1271,7 @@ function startDriveAroundHistoryBackfill() {
 function runDriveAroundHistoryBackfillChunk_() {
   const result = syncDriveAroundHistoricalFileIndex_({
     parseRows: true,
+    pendingOnly: true,
     maxParsedFiles: DRIVE_AROUND_HISTORY_MAX_PARSED_FILES_PER_RUN
   });
   if (Number(result && result.remainingUnparsed || 0) > 0) {

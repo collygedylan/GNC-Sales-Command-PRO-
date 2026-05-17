@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.17.17';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.17.18';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2067,7 +2067,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.17').trim() || 'V2026.05.17.17';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.18').trim() || 'V2026.05.17.18';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2368,7 +2368,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div class="text-lg font-black text-slate-900">Phone</div>
                                 <span class="rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-[#007a4d]">Directory</span>
                             </div>
-                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Calls</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">In-app data calls</div>
                         </button>
                         <button type="button" id="communication-email-placeholder" class="rounded-2xl border border-indigo-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openCommunicationPlaceholder('email')">
                             <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700"><i class="ph-bold ph-envelope-simple text-2xl"></i></div>
@@ -2486,6 +2486,26 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div class="text-lg font-black text-slate-900">Task</div>
                             <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Production task rows</div>
                         </button>
+                        <button type="button" id="production-open-propagation" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openProductionWorkflow('propagation')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-tree-structure text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Propagation</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Cuttings and starts</div>
+                        </button>
+                        <button type="button" id="production-open-planting" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openProductionWorkflow('planting')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-potted-plant text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Planting</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Planting workflow</div>
+                        </button>
+                        <button type="button" id="production-open-can-filling" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openProductionWorkflow('can-filling')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-cylinder text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Can Filling</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Can fill runs</div>
+                        </button>
+                        <button type="button" id="production-open-order-pulling" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openProductionWorkflow('order-pulling')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-package text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Order Pulling</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Pulling queues</div>
+                        </button>
                         <button type="button" id="production-open-shear-list" class="rounded-2xl border border-lime-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('shear-list')">
                             <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-lime-50 text-lime-700"><i class="ph-bold ph-scissors text-2xl"></i></div>
                             <div class="text-lg font-black text-slate-900">Shear List</div>
@@ -2497,6 +2517,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">GDD and chill hours</div>
                         </button>
                     </div>
+                    <div id="production-workflow-panel" class="hidden mt-4"></div>
                     <div id="production-empty-state" class="hidden rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No production modules are available for this login.</div>
                 </div>
 
@@ -3280,7 +3301,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.17';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.18';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10816,7 +10837,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             loading: false,
             error: '',
             rows: [],
-            search: ''
+            search: '',
+            calling: ''
         };
 
         function getCommunicationPhoneValue(user = null) {
@@ -10837,11 +10859,6 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return String(raw || '').trim();
         }
 
-        function getCommunicationPhoneHref(phone = '') {
-            const cleaned = String(phone || '').replace(/[^\d+]/g, '');
-            return cleaned ? `tel:${cleaned}` : '';
-        }
-
         function getCommunicationUserDisplay(user = null) {
             return String(firstNonEmptyValue(
                 user && user.display_name,
@@ -10851,6 +10868,38 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 user && user.username,
                 ''
             ) || '').trim() || 'Unknown User';
+        }
+
+        async function startCommunicationDataCall(username = '') {
+            const safeUsername = normalizePushUsername(username);
+            if (!safeUsername) return false;
+            if (safeUsername === normalizePushUsername(currentUser || '')) {
+                showToast('Phone', 'Choose another app user to call.', true);
+                return false;
+            }
+            if (communicationPhoneState.calling) return false;
+            communicationPhoneState.calling = safeUsername;
+            renderCommunicationPhoneDirectory();
+            try {
+                await ensureWalkieSchemaReady();
+                await fetchWalkieData(true);
+                const channel = await createWalkieChannelForRecipients([safeUsername]);
+                activeWalkieChannelId = channel && channel.id ? channel.id : '';
+                pendingWalkieOpenChannelId = activeWalkieChannelId;
+                walkieComposeOpen = false;
+                walkieLastRenderSignature = '';
+                switchView('walkie');
+                if (activeWalkieChannelId) {
+                    await startWalkieCall(activeWalkieChannelId);
+                    showToast('Calling', `Started an in-app call with ${getWalkieUserDisplayName(safeUsername) || safeUsername}.`, false);
+                }
+            } catch (error) {
+                showToast('Call Failed', error && error.message ? error.message : 'Could not start the in-app call.', true);
+            } finally {
+                communicationPhoneState.calling = '';
+                renderCommunicationPhoneDirectory();
+            }
+            return false;
         }
 
         function renderCommunicationPhoneDirectory() {
@@ -10866,8 +10915,12 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 return;
             }
             const search = String(communicationPhoneState.search || '').trim().toLowerCase();
+            const currentUsername = normalizePushUsername(currentUser || '');
             const rows = (communicationPhoneState.rows || [])
-                .filter((user) => getCommunicationPhoneValue(user))
+                .filter((user) => {
+                    const username = normalizePushUsername(user && user.username);
+                    return username && username !== currentUsername;
+                })
                 .filter((user) => {
                     if (!search) return true;
                     const haystack = [
@@ -10885,24 +10938,24 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     const username = String(firstNonEmptyValue(user && user.username, '') || '').trim();
                     const role = String(firstNonEmptyValue(user && user.role, '') || '').trim();
                     const phone = getCommunicationPhoneValue(user);
-                    const href = getCommunicationPhoneHref(phone);
+                    const calling = communicationPhoneState.calling === normalizePushUsername(username);
                     return `<div class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm">
                         <div class="flex items-center justify-between gap-3">
                             <div class="min-w-0">
                                 <div class="truncate text-base font-black text-slate-900">${escapeHtml(display)}</div>
                                 <div class="mt-1 text-[11px] font-bold text-slate-400">${escapeHtml(username)}${role ? ` | ${escapeHtml(role)}` : ''}</div>
-                                <div class="mt-1 text-sm font-bold text-slate-600">${escapeHtml(phone)}</div>
+                                <div class="mt-1 text-sm font-bold text-slate-600">${phone ? escapeHtml(phone) : 'App audio call'}</div>
                             </div>
-                            <a class="shrink-0 rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" href="${escapeHtml(href)}"><i class="ph-bold ph-phone text-base align-middle"></i><span class="ml-1 align-middle">Call</span></a>
+                            <button type="button" class="shrink-0 rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95 disabled:opacity-60" ${calling ? 'disabled' : ''} onclick="return startCommunicationDataCall('${escapeHtml(username)}')"><i class="ph-bold ph-phone-call text-base align-middle"></i><span class="ml-1 align-middle">${calling ? 'Calling' : 'Call'}</span></button>
                         </div>
                     </div>`;
                 }).join('')
-                : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No users with phone numbers found. Add a phone/mobile value to v2_app_users to enable calling.</div>';
+                : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No matching app users found.</div>';
             setContainerHtml(container, `<div class="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4 shadow-sm">
                 <div class="mb-3 flex items-center justify-between gap-3">
                     <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Phone Directory</div>
-                        <div class="text-sm font-bold text-slate-500">Uses the device dialer on iOS, Android, and Windows.</div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">In-App Phone</div>
+                        <div class="text-sm font-bold text-slate-500">Uses app data audio and push alerts instead of the device dialer.</div>
                     </div>
                     <button type="button" class="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return refreshCommunicationPhoneDirectory()">Refresh</button>
                 </div>
@@ -14214,7 +14267,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.17').trim() || 'V2026.05.17.17';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.18').trim() || 'V2026.05.17.18';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -30686,6 +30739,77 @@ function toggleDriveQuickRequestItem(domId) {
             return !!isVisible;
         }
 
+        let productionWorkflowActive = '';
+        const PRODUCTION_WORKFLOW_META = {
+            propagation: {
+                title: 'Propagation',
+                eyebrow: 'Cuttings and starts',
+                icon: 'ph-tree-structure',
+                empty: 'No active propagation rows yet.'
+            },
+            planting: {
+                title: 'Planting',
+                eyebrow: 'Planting workflow',
+                icon: 'ph-potted-plant',
+                empty: 'No active planting rows yet.'
+            },
+            'can-filling': {
+                title: 'Can Filling',
+                eyebrow: 'Can fill runs',
+                icon: 'ph-cylinder',
+                empty: 'No active can filling rows yet.'
+            },
+            'order-pulling': {
+                title: 'Order Pulling',
+                eyebrow: 'Pulling queues',
+                icon: 'ph-package',
+                empty: 'No active order pulling rows yet.'
+            }
+        };
+
+        function renderProductionWorkflowPanel() {
+            const panel = document.getElementById('production-workflow-panel');
+            if (!panel) return;
+            const meta = PRODUCTION_WORKFLOW_META[productionWorkflowActive];
+            if (!meta) {
+                panel.classList.add('hidden');
+                setContainerHtml(panel, '');
+                return;
+            }
+            panel.classList.remove('hidden');
+            setContainerHtml(panel, `<section class="rounded-2xl border border-[#007a4d] bg-white p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex min-w-0 items-center gap-3">
+                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ${escapeHtml(meta.icon)} text-2xl"></i></div>
+                        <div class="min-w-0">
+                            <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">${escapeHtml(meta.eyebrow)}</div>
+                            <div class="truncate text-xl font-black text-slate-900">${escapeHtml(meta.title)}</div>
+                        </div>
+                    </div>
+                    <button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return closeProductionWorkflow()">Close</button>
+                </div>
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                    <button type="button" class="rounded-xl border border-[#007a4d] bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white">Active</button>
+                    <button type="button" class="rounded-xl border border-green-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Complete</button>
+                </div>
+                <div class="mt-4 rounded-2xl border border-dashed border-green-200 bg-emerald-50/30 p-8 text-center text-sm font-bold text-slate-400">${escapeHtml(meta.empty)}</div>
+            </section>`);
+        }
+
+        function openProductionWorkflow(key = '') {
+            const safeKey = String(key || '').trim().toLowerCase();
+            if (!PRODUCTION_WORKFLOW_META[safeKey]) return false;
+            productionWorkflowActive = safeKey;
+            renderProductionWorkflowPanel();
+            return false;
+        }
+
+        function closeProductionWorkflow() {
+            productionWorkflowActive = '';
+            renderProductionWorkflowPanel();
+            return false;
+        }
+
         function renderSalesHub() {
             const visibleCount = [
                 setHubButtonVisibility('sales-open-av', canAccessView('av')),
@@ -30713,11 +30837,16 @@ function toggleDriveQuickRequestItem(domId) {
                 setHubButtonVisibility('production-open-take-back', canAccessView('take-back')),
                 setHubButtonVisibility('production-open-moves', canAccessView('moves')),
                 setHubButtonVisibility('production-open-tasks', canAccessView('tasks')),
+                setHubButtonVisibility('production-open-propagation', canAccessView('production')),
+                setHubButtonVisibility('production-open-planting', canAccessView('production')),
+                setHubButtonVisibility('production-open-can-filling', canAccessView('production')),
+                setHubButtonVisibility('production-open-order-pulling', canAccessView('production')),
                 setHubButtonVisibility('production-open-shear-list', canAccessView('shear-list')),
                 setHubButtonVisibility('production-open-weather-hold', canAccessView('weather-hold'))
             ].filter(Boolean).length;
             const emptyState = document.getElementById('production-empty-state');
             if (emptyState) emptyState.classList.toggle('hidden', visibleCount > 0);
+            renderProductionWorkflowPanel();
         }
 
         let inventoryMainTab = 'sales';
