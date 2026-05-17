@@ -1444,9 +1444,11 @@ Scouting note:
         season = first_non_empty(job.get("season"), default="")
         app_grade = map_model_grade_to_app_grade(plant_prediction.grade, season)
         low_confidence = plant_prediction.confidence < self.config.confidence_threshold
+        diagnostics_low_confidence = diagnostics_prediction.confidence < self.config.confidence_threshold
         diagnostic_issue_found = bool(reference_prediction) or (
             bool(self.models.diagnostics and self.models.diagnostics.available)
             and is_actionable_diagnostic_text(diagnostics_prediction.diagnosis)
+            and not diagnostics_low_confidence
         )
         grading_result_ready = bool(
             self.models.plant.available
@@ -1467,6 +1469,7 @@ Scouting note:
             plant_prediction.reason,
             diagnostics_prediction.reason,
             "Low confidence" if low_confidence else "",
+            "Low diagnostics confidence" if diagnostics_low_confidence and diagnostics_prediction.diagnosis else "",
             "No inventory match" if not matched_entry else "",
         ]
         reason = "; ".join(bit for bit in reason_bits if bit)
