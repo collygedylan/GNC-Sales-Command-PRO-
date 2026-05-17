@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.17.11';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.17.12';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2030,7 +2030,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.11').trim() || 'V2026.05.17.11';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.12').trim() || 'V2026.05.17.12';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2535,7 +2535,10 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div id="shear-list-crumb" class="text-xs font-bold text-lime-700 uppercase tracking-[0.16em]">Open Shear Rows</div>
                                 <div class="text-xl font-black text-slate-900">Shear List</div>
                             </div>
-                            <button type="button" class="rounded-xl border border-lime-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-lime-700 shadow-sm active:scale-95" onclick="return reloadShearListData()"><i class="ph-bold ph-arrows-clockwise text-base align-middle"></i><span class="align-middle ml-1">Refresh</span></button>
+                            <div class="flex shrink-0 items-center gap-2">
+                                <button id="shear-list-back-btn" type="button" class="hidden rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-95" onclick="return backShearListDrill()"><i class="ph-bold ph-caret-left text-base align-middle"></i><span class="align-middle ml-1">Back</span></button>
+                                <button type="button" class="rounded-xl border border-lime-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-lime-700 shadow-sm active:scale-95" onclick="return reloadShearListData()"><i class="ph-bold ph-arrows-clockwise text-base align-middle"></i><span class="align-middle ml-1">Refresh</span></button>
+                            </div>
                         </div>
                     </div>
                     <div id="shear-list-content"></div>
@@ -3169,7 +3172,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const GROWER_SCOUT_REPORTS_TABLE = 'v2_grower_scout_reports';
         const GROWER_SCOUT_ASSETS_TABLE = 'v2_grower_scout_assets';
         const SHEAR_LIST_TABLE = 'v2_shear_list';
-        const SHEAR_LIST_SELECT_FIELDS = 'unique_id,source_unique_id,status,percent_to_shear,itemcode,commonname,contsize,locationcode,lotcode,season,blockalpha,ptravailable,holdstopcode,holdstopreason,created_by_username,created_by_display,created_at,updated_at,completed_by_username,completed_by_display,completed_at,snapshot';
+        const SHEAR_LIST_SELECT_FIELDS = '*';
         const GROWER_SCOUT_AUDIO_BUCKET = 'grower_scout_audio';
         const GROWER_SCOUT_PHOTOS_BUCKET = 'grower_scout_photos';
         const GROWER_SCOUT_FILES_BUCKET = 'grower_scout_files';
@@ -3237,7 +3240,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.11';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.12';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -14003,7 +14006,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.11').trim() || 'V2026.05.17.11';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.12').trim() || 'V2026.05.17.12';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -16040,7 +16043,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (viewId === 'production') return { required: [], background: [], label: 'Loading production...' };
             if (viewId === 'sales-inventory') return { required: [], background: [], label: 'Loading inventory...' };
             if (viewId === 'weather-hold') return { required: [], background: [], label: 'Loading weather and hold risk...' };
-            if (viewId === 'shear-list') return { required: [], background: [], label: 'Loading shear list...' };
+            if (viewId === 'shear-list') return { required: [], background: [{ key: 'master', mode: 'full' }], label: 'Loading shear list...' };
             if (viewId === 'disease-pest') return { required: [], background: [], label: 'Loading disease and pest management...' };
             if (viewId === 'chat') return { required: [], background: [], label: 'Loading chat...' };
             if (viewId === 'walkie') return { required: [], background: [], label: 'Loading walkie...' };
@@ -30739,7 +30742,10 @@ function toggleDriveQuickRequestItem(domId) {
             error: '',
             lastLoadedAt: 0,
             promise: null,
-            rows: []
+            rows: [],
+            drillLevel: 'blocks',
+            selectedBlock: '',
+            selectedLocation: ''
         };
 
         function getShearListValue(row = null, field = '', fallback = '') {
@@ -30807,12 +30813,13 @@ function toggleDriveQuickRequestItem(domId) {
             return snapshot;
         }
 
-        function buildShearListPayload(item = null, percent = 0) {
+        function buildShearListPayload(item = null, percent = 0, instructions = '') {
             const uniqueId = buildShearListUniqueId(item);
             const sourceUid = buildShearListSourceUid(item);
             if (!uniqueId || !sourceUid || !item) return null;
             const now = new Date().toISOString();
-            return {
+            const safeInstructions = String(instructions || '').trim();
+            const payload = {
                 unique_id: uniqueId,
                 source_unique_id: sourceUid,
                 status: 'open',
@@ -30834,6 +30841,8 @@ function toggleDriveQuickRequestItem(domId) {
                 updated_at: now,
                 snapshot: buildShearListSnapshot(item)
             };
+            if (safeInstructions) payload.instructions = safeInstructions;
+            return payload;
         }
 
         async function loadShearListData(force = false) {
@@ -30859,6 +30868,181 @@ function toggleDriveQuickRequestItem(domId) {
             return shearListState.promise;
         }
 
+        function getOpenShearListRows() {
+            return (shearListState.rows || [])
+                .filter((row) => String(getShearListValue(row, 'status', 'open') || 'open').toLowerCase() === 'open')
+                .sort((left, right) => {
+                    const blockDiff = getShearListBlockValue(left).localeCompare(getShearListBlockValue(right), undefined, { numeric: true, sensitivity: 'base' });
+                    if (blockDiff) return blockDiff;
+                    const locDiff = getShearListLocationValue(left).localeCompare(getShearListLocationValue(right), undefined, { numeric: true, sensitivity: 'base' });
+                    if (locDiff) return locDiff;
+                    return String(getShearListValue(left, 'commonname', '') || '').localeCompare(String(getShearListValue(right, 'commonname', '') || ''), undefined, { numeric: true, sensitivity: 'base' });
+                });
+        }
+
+        function getShearListDisplayValue(value = '', fallback = '-') {
+            const safeValue = String(value == null ? '' : value).trim();
+            return safeValue || fallback;
+        }
+
+        function getShearListBlockValue(row = null) {
+            return getShearListDisplayValue(getShearListValue(row, 'blockalpha', ''), 'No Block');
+        }
+
+        function getShearListLocationValue(row = null) {
+            return getShearListDisplayValue(getShearListValue(row, 'locationcode', ''), 'No Location');
+        }
+
+        function getShearListNumericValue(value = 0) {
+            const number = Number(String(value == null ? '' : value).replace(/,/g, ''));
+            return Number.isFinite(number) ? number : 0;
+        }
+
+        function getShearListCompareKey(value = '') {
+            return String(value == null ? '' : value).trim().toLowerCase();
+        }
+
+        function groupShearListRows(rows = [], keyGetter = null, labelGetter = null) {
+            const groupsByKey = new Map();
+            (rows || []).forEach((row) => {
+                const key = String(keyGetter ? keyGetter(row) : '').trim() || 'Unknown';
+                const label = String(labelGetter ? labelGetter(row) : key).trim() || key;
+                if (!groupsByKey.has(key)) {
+                    groupsByKey.set(key, { key, label, rows: [], totalPtr: 0, locations: new Set() });
+                }
+                const group = groupsByKey.get(key);
+                group.rows.push(row);
+                group.totalPtr += getShearListNumericValue(getShearListValue(row, 'ptravailable', 0));
+                group.locations.add(getShearListLocationValue(row));
+            });
+            return Array.from(groupsByKey.values()).sort((left, right) => left.label.localeCompare(right.label, undefined, { numeric: true, sensitivity: 'base' }));
+        }
+
+        function setShearListDrill(level = 'blocks', block = '', location = '') {
+            shearListState.drillLevel = ['blocks', 'locations', 'rows'].includes(level) ? level : 'blocks';
+            shearListState.selectedBlock = String(block || '').trim();
+            shearListState.selectedLocation = String(location || '').trim();
+            renderShearList();
+            return false;
+        }
+
+        function openShearListBlock(block = '') {
+            return setShearListDrill('locations', block, '');
+        }
+
+        function openShearListLocation(block = '', location = '') {
+            return setShearListDrill('rows', block || shearListState.selectedBlock, location);
+        }
+
+        function backShearListDrill() {
+            if (shearListState.drillLevel === 'rows') return setShearListDrill('locations', shearListState.selectedBlock, '');
+            if (shearListState.drillLevel === 'locations') return setShearListDrill('blocks', '', '');
+            return false;
+        }
+
+        function reconcileShearListDrillState(rows = []) {
+            if (!rows.length) {
+                shearListState.drillLevel = 'blocks';
+                shearListState.selectedBlock = '';
+                shearListState.selectedLocation = '';
+                return;
+            }
+            if (shearListState.drillLevel === 'locations' || shearListState.drillLevel === 'rows') {
+                const blockRows = rows.filter((row) => getShearListBlockValue(row) === shearListState.selectedBlock);
+                if (!blockRows.length) {
+                    shearListState.drillLevel = 'blocks';
+                    shearListState.selectedBlock = '';
+                    shearListState.selectedLocation = '';
+                    return;
+                }
+                if (shearListState.drillLevel === 'rows') {
+                    const locationRows = blockRows.filter((row) => getShearListLocationValue(row) === shearListState.selectedLocation);
+                    if (!locationRows.length) {
+                        shearListState.drillLevel = 'locations';
+                        shearListState.selectedLocation = '';
+                    }
+                }
+            }
+        }
+
+        function findShearListDriveCompareRows(row = null, limit = 12) {
+            const sourceUid = String(getShearListValue(row, 'source_unique_id', '') || '').trim();
+            const itemCode = getShearListCompareKey(getShearListValue(row, 'itemcode', ''));
+            const commonName = getShearListCompareKey(getShearListValue(row, 'commonname', ''));
+            const contSize = getShearListCompareKey(getShearListValue(row, 'contsize', ''));
+            const masterRows = Array.isArray(fullInventory) ? fullInventory : [];
+            const matchedRows = [];
+            const seenKeys = new Set();
+            masterRows.forEach((candidate) => {
+                if (!candidate) return;
+                const candidateUid = String(firstNonEmptyValue(candidate.UNIQUE_ID, candidate.unique_id, '') || '').trim();
+                if (sourceUid && candidateUid && candidateUid === sourceUid) return;
+                const candidateItemCode = getShearListCompareKey(firstNonEmptyValue(candidate.ITEMCODE, candidate.itemcode, ''));
+                const candidateCommon = getShearListCompareKey(firstNonEmptyValue(candidate.COMMONNAME, candidate.commonname, ''));
+                const candidateCont = getShearListCompareKey(firstNonEmptyValue(candidate.CONTSIZE, candidate.contsize, ''));
+                const matches = itemCode
+                    ? candidateItemCode === itemCode
+                    : (commonName && contSize && candidateCommon === commonName && candidateCont === contSize);
+                if (!matches) return;
+                const dedupeKey = candidateUid || [
+                    candidateItemCode,
+                    getShearListCompareKey(firstNonEmptyValue(candidate.LOCATIONCODE, candidate.locationcode, '')),
+                    getShearListCompareKey(firstNonEmptyValue(candidate.LOTCODE, candidate.lotcode, ''))
+                ].join('|');
+                if (seenKeys.has(dedupeKey)) return;
+                seenKeys.add(dedupeKey);
+                matchedRows.push(candidate);
+            });
+            matchedRows.sort((left, right) => {
+                const ptrDiff = getShearListNumericValue(firstNonEmptyValue(right.PTRAVAILABLE, right.ptravailable, 0)) - getShearListNumericValue(firstNonEmptyValue(left.PTRAVAILABLE, left.ptravailable, 0));
+                if (ptrDiff) return ptrDiff;
+                return String(firstNonEmptyValue(left.LOCATIONCODE, left.locationcode, '') || '').localeCompare(String(firstNonEmptyValue(right.LOCATIONCODE, right.locationcode, '') || ''), undefined, { numeric: true, sensitivity: 'base' });
+            });
+            return {
+                rows: matchedRows.slice(0, limit),
+                total: matchedRows.length,
+                hasDriveRows: masterRows.length > 0,
+                matchMode: itemCode ? 'itemcode' : 'commonname + contsize'
+            };
+        }
+
+        function renderShearListCompareHtml(row = null) {
+            const compare = findShearListDriveCompareRows(row);
+            if (!compare.hasDriveRows) {
+                return `<div class="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-[11px] font-bold text-slate-500">Drive Mode rows are still loading for comparison.</div>`;
+            }
+            const summaryText = compare.total
+                ? `Drive Mode Compare (${compare.total} other location${compare.total === 1 ? '' : 's'})`
+                : 'Drive Mode Compare (0 other locations)';
+            const rowsHtml = compare.rows.length
+                ? compare.rows.map((candidate) => {
+                    const loc = firstNonEmptyValue(candidate.LOCATIONCODE, candidate.locationcode, 'No Loc');
+                    const lot = firstNonEmptyValue(candidate.LOTCODE, candidate.lotcode, '-');
+                    const season = firstNonEmptyValue(candidate.SEASON, candidate.season, '-');
+                    const block = firstNonEmptyValue(candidate.BLOCKALPHA, candidate.blockalpha, '-');
+                    const ptr = firstNonEmptyValue(candidate.PTRAVAILABLE, candidate.ptravailable, 0);
+                    return `<div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2">
+                        <div class="min-w-0">
+                            <div class="truncate text-[12px] font-black text-slate-800">Loc ${escapeHtml(loc)} <span class="text-slate-400">| Lot ${escapeHtml(lot)}</span></div>
+                            <div class="mt-0.5 text-[10px] font-bold uppercase tracking-[0.10em] text-slate-400">Block ${escapeHtml(block)} | ${escapeHtml(season)}</div>
+                        </div>
+                        <div class="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-700">PTR ${escapeHtml(String(ptr))}</div>
+                    </div>`;
+                }).join('')
+                : '<div class="rounded-lg border border-dashed border-slate-200 bg-white px-3 py-3 text-[11px] font-bold text-slate-400">No other matching Drive Mode locations found.</div>';
+            const moreHtml = compare.total > compare.rows.length
+                ? `<div class="text-[10px] font-bold text-slate-400">Showing top ${compare.rows.length} of ${compare.total} matches by PTR available.</div>`
+                : '';
+            return `<details class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <summary class="cursor-pointer text-[11px] font-black uppercase tracking-[0.12em] text-slate-700">${escapeHtml(summaryText)}</summary>
+                <div class="mt-3 space-y-2">
+                    <div class="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Matched by ${escapeHtml(compare.matchMode)}</div>
+                    ${rowsHtml}
+                    ${moreHtml}
+                </div>
+            </details>`;
+        }
+
         function renderShearListCard(row = null) {
             const uniqueId = getShearListRowId(row);
             const commonName = getShearListValue(row, 'commonname', 'Unknown');
@@ -30872,6 +31056,10 @@ function toggleDriveQuickRequestItem(domId) {
             const percent = getShearListValue(row, 'percent_to_shear', '0');
             const createdBy = getShearListValue(row, 'created_by_display', getShearListValue(row, 'created_by_username', 'Unknown'));
             const createdAt = formatWeatherHoldDate(getShearListValue(row, 'created_at', ''));
+            const instructions = String(getShearListValue(row, 'instructions', '') || '').trim();
+            const instructionsHtml = instructions
+                ? `<div class="mt-3 rounded-xl border border-lime-100 bg-lime-50 px-3 py-3 text-[12px] font-bold text-slate-700"><div class="mb-1 text-[10px] font-black uppercase tracking-[0.14em] text-lime-700">Instructions</div>${escapeHtml(instructions)}</div>`
+                : '';
             return `<div class="rounded-2xl border border-lime-100 bg-white p-4 shadow-sm">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
@@ -30886,8 +31074,35 @@ function toggleDriveQuickRequestItem(domId) {
                     <span class="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">Block ${escapeHtml(blockAlpha)}</span>
                 </div>
                 <div class="mt-3 text-[11px] font-semibold text-slate-500">Added by ${escapeHtml(createdBy)}${createdAt !== '-' ? ` on ${escapeHtml(createdAt)}` : ''}</div>
+                ${instructionsHtml}
+                ${renderShearListCompareHtml(row)}
                 <button type="button" class="mt-4 w-full rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="return completeShearListRow('${escapeHtml(uniqueId)}', this)">Mark Complete</button>
             </div>`;
+        }
+
+        function renderShearListBlockCard(group = null) {
+            if (!group) return '';
+            const openArgs = escJsAttrValue(group.key);
+            return `<button type="button" class="drill-item w-full rounded-2xl border border-lime-100 bg-white p-4 text-left shadow-sm" onclick="return openShearListBlock('${openArgs}')">
+                <span class="min-w-0">
+                    <span class="block text-lg font-black text-slate-900">Block ${escapeHtml(group.label)}</span>
+                    <span class="mt-1 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">${group.rows.length} row${group.rows.length === 1 ? '' : 's'} | ${group.locations.size} location${group.locations.size === 1 ? '' : 's'} | PTR ${escapeHtml(String(group.totalPtr))}</span>
+                </span>
+                <i class="ph-bold ph-caret-right text-slate-300"></i>
+            </button>`;
+        }
+
+        function renderShearListLocationCard(group = null) {
+            if (!group) return '';
+            const blockArg = escJsAttrValue(shearListState.selectedBlock);
+            const locationArg = escJsAttrValue(group.key);
+            return `<button type="button" class="drill-item w-full rounded-2xl border border-lime-100 bg-white p-4 text-left shadow-sm" onclick="return openShearListLocation('${blockArg}', '${locationArg}')">
+                <span class="min-w-0">
+                    <span class="block text-lg font-black text-slate-900">${escapeHtml(group.label)}</span>
+                    <span class="mt-1 block text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">${group.rows.length} item${group.rows.length === 1 ? '' : 's'} | Block ${escapeHtml(shearListState.selectedBlock)} | PTR ${escapeHtml(String(group.totalPtr))}</span>
+                </span>
+                <i class="ph-bold ph-caret-right text-slate-300"></i>
+            </button>`;
         }
 
         function renderShearList() {
@@ -30907,16 +31122,34 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (shearListState.error) {
                 if (crumb) crumb.innerText = 'Setup Required';
-                setContainerHtml(container, `<div class="rounded-2xl border border-amber-200 bg-white p-8 text-center"><div class="font-black text-amber-700">Shear List table needed</div><div class="mt-2 text-sm font-semibold text-slate-500">Run shear_list_migration.sql in Supabase, then tap Refresh.</div><button type="button" class="mt-4 rounded-xl bg-[#007a4d] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-white" onclick="return reloadShearListData()">Retry</button></div>`);
+                setContainerHtml(container, `<div class="rounded-2xl border border-amber-200 bg-white p-8 text-center"><div class="font-black text-amber-700">Shear List table needed</div><div class="mt-2 text-sm font-semibold text-slate-500">Run shear_list_migration.sql and shear_list_instructions_migration.sql in Supabase, then tap Refresh.</div><button type="button" class="mt-4 rounded-xl bg-[#007a4d] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-white" onclick="return reloadShearListData()">Retry</button></div>`);
                 return;
             }
-            const rows = (shearListState.rows || []).filter((row) => String(getShearListValue(row, 'status', 'open') || 'open').toLowerCase() === 'open');
-            if (crumb) crumb.innerText = `${rows.length} Open Shear Row${rows.length === 1 ? '' : 's'}`;
+            const rows = getOpenShearListRows();
+            reconcileShearListDrillState(rows);
+            const backBtn = document.getElementById('shear-list-back-btn');
+            if (backBtn) backBtn.classList.toggle('hidden', shearListState.drillLevel === 'blocks');
             if (!rows.length) {
+                if (crumb) crumb.innerText = 'Shear List > Blocks';
                 setContainerHtml(container, '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No open shear rows.</div>');
                 return;
             }
-            setContainerHtml(container, `<div class="space-y-3">${rows.map(renderShearListCard).join('')}</div>`);
+            if (shearListState.drillLevel === 'locations') {
+                const blockRows = rows.filter((row) => getShearListBlockValue(row) === shearListState.selectedBlock);
+                const groups = groupShearListRows(blockRows, getShearListLocationValue, getShearListLocationValue);
+                if (crumb) crumb.innerText = `Shear List > Block ${shearListState.selectedBlock} > Locations`;
+                setContainerHtml(container, `<div class="space-y-3">${groups.map(renderShearListLocationCard).join('')}</div>`);
+                return;
+            }
+            if (shearListState.drillLevel === 'rows') {
+                const locationRows = rows.filter((row) => getShearListBlockValue(row) === shearListState.selectedBlock && getShearListLocationValue(row) === shearListState.selectedLocation);
+                if (crumb) crumb.innerText = `Shear List > Block ${shearListState.selectedBlock} > ${shearListState.selectedLocation}`;
+                setContainerHtml(container, `<div class="space-y-3">${locationRows.map(renderShearListCard).join('')}</div>`);
+                return;
+            }
+            const groups = groupShearListRows(rows, getShearListBlockValue, getShearListBlockValue);
+            if (crumb) crumb.innerText = `Shear List > Blocks (${rows.length})`;
+            setContainerHtml(container, `<div class="space-y-3">${groups.map(renderShearListBlockCard).join('')}</div>`);
         }
 
         function reloadShearListData() {
@@ -48649,6 +48882,8 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                     <div class="mt-1 text-[11px] font-bold text-slate-500">${escapeHtml(contSize)} | Loc ${escapeHtml(loc)} | Lot ${escapeHtml(lot)} | PTR ${escapeHtml(String(ptr))}</div>
                     <label class="mt-3 block text-[10px] font-black uppercase tracking-[0.14em] text-lime-700">Percent To Shear</label>
                     <input type="number" min="1" max="100" step="1" inputmode="numeric" class="shear-percent-input input-field !mb-0 border-lime-200 bg-white text-center text-lg font-black" value="100" data-dom-id="${escapeHtml(domId)}" data-source-uid="${escapeHtml(sourceUid)}">
+                    <label class="mt-3 block text-[10px] font-black uppercase tracking-[0.14em] text-lime-700">Instructions Optional</label>
+                    <textarea class="shear-instructions-input input-field !mb-0 min-h-[78px] border-lime-200 bg-white text-sm font-bold" placeholder="Add shear instructions..." data-source-uid="${escapeHtml(sourceUid)}"></textarea>
                 </div>`;
             }).join('');
             modal.classList.remove('hidden');
@@ -48663,6 +48898,12 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 return false;
             }
             const payloads = [];
+            const instructionInputsBySourceUid = new Map(
+                Array.from(document.querySelectorAll('.shear-instructions-input')).map((entry) => [
+                    String(entry && entry.dataset ? entry.dataset.sourceUid || '' : '').trim(),
+                    entry
+                ])
+            );
             for (const input of inputs) {
                 const domId = String(input.dataset.domId || '').trim();
                 const sourceUid = String(input.dataset.sourceUid || '').trim();
@@ -48674,7 +48915,9 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                     try { input.focus(); } catch (error) {}
                     return false;
                 }
-                const payload = buildShearListPayload(item, percent);
+                const instructionInput = instructionInputsBySourceUid.get(sourceUid) || null;
+                const instructions = instructionInput ? String(instructionInput.value || '').trim() : '';
+                const payload = buildShearListPayload(item, percent, instructions);
                 if (payload) payloads.push(payload);
             }
             if (!payloads.length) {
@@ -48692,7 +48935,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 if (isViewVisible('shear-list')) renderShearList();
                 showToast('Added', `${payloads.length} row${payloads.length === 1 ? '' : 's'} added to Shear List.`);
             } catch (error) {
-                showToast('Setup Needed', 'Run shear_list_migration.sql in Supabase before adding shear rows.', true);
+                showToast('Setup Needed', 'Run shear_list_migration.sql and shear_list_instructions_migration.sql in Supabase before adding shear rows.', true);
                 if (submitBtn) submitBtn.innerText = 'Add Rows';
             }
             return false;
