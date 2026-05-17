@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.17.14';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.17.15';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1561,8 +1561,10 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         <div id="photo-modal-gallery" class="w-full max-h-[85vh] mt-10 overflow-x-auto overflow-y-hidden snap-x snap-mandatory scrollbar-none"></div>
         <button id="photo-modal-next" type="button" class="hidden absolute right-4 top-1/2 -translate-y-1/2 z-50 items-center justify-center w-12 h-12 rounded-full bg-black/45 text-white text-2xl shadow-lg active:scale-95" onclick="event.stopPropagation(); stepPhotoModal(1)" aria-label="Next photo"><i class="ph-bold ph-caret-right"></i></button>
         <div id="photo-modal-actions" class="absolute bottom-20 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 pointer-events-none">
+            <button id="photo-modal-bottom-prev" type="button" class="hidden pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-sm active:scale-95" onclick="event.stopPropagation(); stepPhotoModal(-1); return false;"><i class="ph-bold ph-caret-left text-sm"></i>Prev</button>
             <a id="photo-modal-open-link" class="hidden pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-sm active:scale-95" href="#" target="_blank" rel="noopener noreferrer"><i class="ph-bold ph-link text-sm"></i>Open Link</a>
             <button id="photo-modal-copy-link" type="button" class="hidden pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-sm active:scale-95" onclick="return copyCurrentPhotoModalLink()"><i class="ph-bold ph-copy text-sm"></i>Copy Link</button>
+            <button id="photo-modal-bottom-next" type="button" class="hidden pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-lg backdrop-blur-sm active:scale-95" onclick="event.stopPropagation(); stepPhotoModal(1); return false;">Next<i class="ph-bold ph-caret-right text-sm"></i></button>
         </div>
         <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe for more</div>
     </div>
@@ -2065,7 +2067,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.14').trim() || 'V2026.05.17.14';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.15').trim() || 'V2026.05.17.15';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -3275,7 +3277,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.14';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.15';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -14050,7 +14052,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.14').trim() || 'V2026.05.17.14';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.15').trim() || 'V2026.05.17.15';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -21310,11 +21312,15 @@ function toggleDriveQuickRequestItem(domId) {
             const counter = document.getElementById('photo-modal-counter');
             const prevBtn = document.getElementById('photo-modal-prev');
             const nextBtn = document.getElementById('photo-modal-next');
+            const bottomPrevBtn = document.getElementById('photo-modal-bottom-prev');
+            const bottomNextBtn = document.getElementById('photo-modal-bottom-next');
             const total = photoModalState.urls.length;
             if (counter) counter.innerText = total ? `${photoModalState.index + 1} / ${total}` : '';
-            const showNav = total > 1 && !window.matchMedia('(pointer: coarse)').matches;
+            const showNav = total > 1;
             if (prevBtn) prevBtn.classList.toggle('hidden', !showNav);
             if (nextBtn) nextBtn.classList.toggle('hidden', !showNav);
+            if (bottomPrevBtn) bottomPrevBtn.classList.toggle('hidden', !showNav);
+            if (bottomNextBtn) bottomNextBtn.classList.toggle('hidden', !showNav);
             syncPhotoModalLinkActions();
             primePhotoModalAroundIndex(photoModalState.index);
         }
