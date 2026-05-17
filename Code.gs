@@ -72,6 +72,11 @@ const SUPABASE_URL = 'https://kzrnyjsosryejjejliii.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0';
 const APP_LIVE_EVENTS_TABLE = 'v2_app_live_events';
 const EMIT_APP_LIVE_EVENTS = true;
+const DRIVE_AROUND_HISTORY_TABLE = 'v2_drive_around_report_files';
+const DRIVE_AROUND_HISTORY_FOLDER_ID = '1hswTWk4GooXIAXFmfdx9I6IyqLJ1LqSA';
+const DRIVE_AROUND_HISTORY_MAX_FILES_PER_RUN = 2500;
+const DRIVE_AROUND_HISTORY_SUPPORTED_EXTENSIONS = Object.freeze(['.csv', '.xls', '.xlsx']);
+const GOOGLE_SHEETS_MIME_TYPE = 'application/vnd.google-apps.spreadsheet';
 
 const FOLDERS = {
   MASTER_DROP: '1MWLYsQJ41bZVcg1SzDIw93uNmQpzPn48',
@@ -127,13 +132,14 @@ const ALLOWED_DB_COLUMNS = new Set([
 
 function runSOCOnly() { return processLatestFileOnlyFolder(FOLDERS.SOC_DROP, FOLDERS.SOC_PROCESSED, 'v2_soc_master', buildStandardPayload, { deltaMode: true }); }
 function runDriveAroundOnly() { return processSnapshotBatchFolder(FOLDERS.MASTER_DROP, FOLDERS.MASTER_PROCESSED, 'v2_master_inventory', buildMasterPayload); }
+function runDriveAroundHistoryOnly() { return syncDriveAroundHistoricalFileIndex_(); }
 function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, 'v2_reserves', buildStandardPayload, { deltaMode: true }); }
 function runCavOnly() { return processLatestFileOnlyFolder(FOLDERS.CAV_DROP, FOLDERS.CAV_PROCESSED, 'v2_cav_import', buildCavPayload, { deltaMode: true }); }
 function runDiseaseDriveToSupabaseSyncOnly() { return runDiseaseDriveToSupabaseSync(); }
 
 const MANUAL_SYNC_STATUS_KEY = 'MANUAL_SYNC_STATUS';
 const MANUAL_SYNC_TRIGGER_HANDLER = 'runQueuedManualSyncStage_';
-const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'cav', 'disease']);
+const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'drive_history', 'soc', 'reserves', 'cav', 'disease']);
 const MANUAL_SYNC_EXECUTION_BUDGET_MS = 285000;
 const MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS = 120000;
 const MANUAL_SYNC_QUEUED_STALE_MS = 5 * 60 * 1000;
@@ -213,6 +219,7 @@ function getAppLiveEventAreaForTable_(tableName) {
   if (safeTable === 'v2_reserves') return 'reserves';
   if (safeTable === 'v2_cav_import') return 'av';
   if (safeTable === 'v2_disease_training_assets') return 'diagnostics';
+  if (safeTable === DRIVE_AROUND_HISTORY_TABLE || safeTable === 'v2_hold_release_cycles') return 'weather-hold';
   if (safeTable === 'v2_sales_office') return 'sales-office';
   if (safeTable === 'v2_active_request') return 'request';
   return '';
@@ -289,6 +296,7 @@ function emitManualSyncLiveEvent_(status) {
 
 const MANUAL_SYNC_STAGE_DEFINITIONS = Object.freeze({
   drive: { label: 'Drive Around', run: runDriveAroundOnly },
+  drive_history: { label: 'Drive Around History', run: runDriveAroundHistoryOnly },
   soc: { label: 'SOC', run: runSOCOnly },
   reserves: { label: 'Reserves', run: runReservesOnly },
   cav: { label: 'CAV', run: runCavOnly },
@@ -401,7 +409,8 @@ function scheduleManualSyncStageTrigger_() {
 function getManualSyncStageOrder_(jobName) {
   const normalized = String(jobName || '').trim().toLowerCase();
   if (normalized === 'all' || normalized === 'drive_soc_reserves') return MANUAL_SYNC_STAGE_ORDER_DEFAULT.slice();
-  if (normalized === 'drive') return ['drive'];
+  if (normalized === 'drive') return ['drive', 'drive_history'];
+  if (normalized === 'drive_history' || normalized === 'drivearound_history' || normalized === 'drive_around_history') return ['drive_history'];
   if (normalized === 'soc') return ['soc'];
   if (normalized === 'reserves') return ['reserves'];
   if (normalized === 'cav') return ['cav'];
@@ -774,6 +783,193 @@ function listDriveFilesWithRetry_(folder, label) {
   return withDriveRetry_(`Drive folder listing: ${label}`, function() {
     return folder.getFiles();
   });
+}
+
+function listDriveSubfoldersWithRetry_(folder, label) {
+  return withDriveRetry_(`Drive subfolder listing: ${label}`, function() {
+    return folder.getFolders();
+  });
+}
+
+function parseDriveAroundReportDateString_(fileName) {
+  const text = String(fileName || '').trim();
+  const patterns = [
+    /(20\d{2})[-_. ]([01]?\d)[-_. ]([0-3]?\d)/,
+    /([01]?\d)[-_. ]([0-3]?\d)[-_. ](20\d{2})/
+  ];
+  for (let i = 0; i < patterns.length; i++) {
+    const match = text.match(patterns[i]);
+    if (!match) continue;
+    let year;
+    let month;
+    let day;
+    if (String(match[1]).length === 4) {
+      year = Number(match[1]);
+      month = Number(match[2]);
+      day = Number(match[3]);
+    } else {
+      year = Number(match[3]);
+      month = Number(match[1]);
+      day = Number(match[2]);
+    }
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+    if (parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day) {
+      return Utilities.formatDate(parsed, 'UTC', 'yyyy-MM-dd');
+    }
+  }
+  return null;
+}
+
+function isDriveAroundHistoricalFileSupported_(fileName, mimeType) {
+  const safeMimeType = String(mimeType || '').trim();
+  if (safeMimeType === GOOGLE_SHEETS_MIME_TYPE) return true;
+  const lowerName = String(fileName || '').trim().toLowerCase();
+  return DRIVE_AROUND_HISTORY_SUPPORTED_EXTENSIONS.some(function(extension) {
+    return lowerName.endsWith(extension);
+  });
+}
+
+function getDriveFileIsoDateSafe_(file, getterName) {
+  try {
+    const value = file && typeof file[getterName] === 'function' ? file[getterName]() : null;
+    return value && typeof value.toISOString === 'function' ? value.toISOString() : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+function getDriveFileSizeSafe_(file) {
+  try {
+    return file && typeof file.getSize === 'function' ? Number(file.getSize()) || 0 : 0;
+  } catch (err) {
+    return 0;
+  }
+}
+
+function fetchExistingDriveAroundHistoryFileIds_() {
+  const limit = SUPABASE_FETCH_PAGE_SIZE;
+  let offset = 0;
+  const ids = {};
+  while (true) {
+    const url = `${SUPABASE_URL}/rest/v1/${DRIVE_AROUND_HISTORY_TABLE}?select=file_id&limit=${limit}&offset=${offset}`;
+    const res = UrlFetchApp.fetch(url, {
+      method: 'get',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      },
+      muteHttpExceptions: true
+    });
+    if (res.getResponseCode() !== 200) {
+      throw new Error(`Drive Around history lookup failed (${res.getResponseCode()}): ${res.getContentText()}`);
+    }
+    const batch = JSON.parse(res.getContentText() || '[]');
+    if (!Array.isArray(batch) || !batch.length) break;
+    batch.forEach(function(row) {
+      const fileId = String(row && row.file_id || '').trim();
+      if (fileId) ids[fileId] = true;
+    });
+    if (batch.length < limit) break;
+    offset += limit;
+  }
+  return ids;
+}
+
+function buildDriveAroundHistoryManifestRow_(file, folderPath, nowIso) {
+  const fileId = String(file.getId() || '').trim();
+  const fileName = String(file.getName() || '').trim();
+  const mimeType = String(file.getMimeType() || '').trim();
+  const modifiedAt = getDriveFileIsoDateSafe_(file, 'getLastUpdated');
+  return {
+    file_id: fileId,
+    file_name: fileName,
+    mime_type: mimeType || null,
+    report_date: parseDriveAroundReportDateString_(fileName),
+    drive_modified_time: modifiedAt,
+    web_view_link: file.getUrl(),
+    processed_at: nowIso,
+    row_count: 0,
+    hold_row_count: 0,
+    status: 'indexed',
+    error_message: null,
+    raw: {
+      source: 'apps_script_drive_around_history_index',
+      source_folder_id: DRIVE_AROUND_HISTORY_FOLDER_ID,
+      folder_path: String(folderPath || ''),
+      size_bytes: getDriveFileSizeSafe_(file),
+      created_at: getDriveFileIsoDateSafe_(file, 'getDateCreated'),
+      indexed_at: nowIso
+    }
+  };
+}
+
+function collectDriveAroundHistoryManifestRows_(folder, folderPath, existingIds, state) {
+  if (state.filesSeen >= state.maxFiles) return;
+  const files = listDriveFilesWithRetry_(folder, `Drive Around history ${folderPath}`);
+  while (files.hasNext() && state.filesSeen < state.maxFiles) {
+    const file = files.next();
+    state.filesSeen++;
+    const fileName = String(file.getName() || '').trim();
+    const mimeType = String(file.getMimeType() || '').trim();
+    if (!isDriveAroundHistoricalFileSupported_(fileName, mimeType)) {
+      state.skippedUnsupported++;
+      continue;
+    }
+    const fileId = String(file.getId() || '').trim();
+    if (fileId && existingIds[fileId]) {
+      state.skippedExisting++;
+      continue;
+    }
+    state.rows.push(buildDriveAroundHistoryManifestRow_(file, folderPath, state.nowIso));
+  }
+  const subfolders = listDriveSubfoldersWithRetry_(folder, `Drive Around history ${folderPath}`);
+  while (subfolders.hasNext() && state.filesSeen < state.maxFiles) {
+    const subfolder = subfolders.next();
+    const subfolderName = String(subfolder.getName() || '').trim();
+    collectDriveAroundHistoryManifestRows_(subfolder, `${folderPath}/${subfolderName || 'Unnamed'}`, existingIds, state);
+  }
+}
+
+function syncDriveAroundHistoricalFileIndex_(options) {
+  const safeOptions = options || {};
+  const maxFiles = Math.max(1, Number(safeOptions.maxFiles) || DRIVE_AROUND_HISTORY_MAX_FILES_PER_RUN);
+  const rootFolderId = String(safeOptions.folderId || DRIVE_AROUND_HISTORY_FOLDER_ID || FOLDERS.MASTER_PROCESSED || '').trim();
+  if (!rootFolderId) throw new Error('Missing Drive Around history folder ID.');
+  const started = new Date();
+  const nowIso = started.toISOString();
+  const rootFolder = getDriveFolderByIdWithRetry_(rootFolderId, 'Drive Around historical processed folder');
+  const existingIds = fetchExistingDriveAroundHistoryFileIds_();
+  const state = {
+    nowIso: nowIso,
+    maxFiles: maxFiles,
+    filesSeen: 0,
+    skippedExisting: 0,
+    skippedUnsupported: 0,
+    rows: []
+  };
+  collectDriveAroundHistoryManifestRows_(rootFolder, rootFolder.getName(), existingIds, state);
+  if (state.rows.length) {
+    pushToSupabase(DRIVE_AROUND_HISTORY_TABLE, state.rows);
+  }
+  const summary = {
+    filesSeen: state.filesSeen,
+    filesProcessed: state.rows.length,
+    upsertCount: state.rows.length,
+    totalRows: state.rows.length,
+    deleteCount: 0,
+    tempFilesRemoved: 0,
+    skippedExisting: state.skippedExisting,
+    skippedUnsupported: state.skippedUnsupported,
+    tableName: DRIVE_AROUND_HISTORY_TABLE,
+    runId: Utilities.getUuid().replace(/-/g, '').slice(0, 10)
+  };
+  emitTableSyncLiveEvent_(DRIVE_AROUND_HISTORY_TABLE, summary);
+  console.log(
+    `[DONE] ${DRIVE_AROUND_HISTORY_TABLE}: ${state.rows.length} new historical file manifest` +
+    `${state.rows.length === 1 ? '' : 's'} indexed | ${state.skippedExisting} existing skipped | ` +
+    `${state.skippedUnsupported} unsupported skipped | ${state.filesSeen} file${state.filesSeen === 1 ? '' : 's'} scanned.`
+  );
+  return summary;
 }
 
 function trashDriveFileWithRetry_(file, label) {
