@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.16.02';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.16.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2015,7 +2015,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.16.02').trim() || 'V2026.05.16.02';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.16.03').trim() || 'V2026.05.16.03';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2930,7 +2930,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.16.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.16.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -13611,7 +13611,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.16.02').trim() || 'V2026.05.16.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.16.03').trim() || 'V2026.05.16.03';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -44685,16 +44685,26 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
 
         function isMlDiagnosticIssueRow(row = null) {
             const item = normalizeMlImageJobRow(row);
-            if (!item || normalizeMlStatus(item.STATUS) !== 'pending_approval') return false;
-            if (item.MANUAL_REVIEW) return true;
+            if (!item) return false;
+            const status = normalizeMlStatus(item.STATUS);
+            if (!['pending_approval', 'approved'].includes(status)) return false;
             const diagnosis = String(firstNonEmptyValue(item.DIAGNOSIS, '') || '').trim().toLowerCase();
+            const treatment = String(firstNonEmptyValue(item.RECOMMENDED_TREATMENT, '') || '').trim().toLowerCase();
+            const workerNote = String(firstNonEmptyValue(item.LAST_ERROR, '') || '').trim().toLowerCase();
             if (!diagnosis) return false;
+            const noModelOnly = diagnosis.includes('manual review required')
+                && (treatment.includes('no diagnostics model') || workerNote.includes('no diagnostics model') || workerNote.includes('no model checkpoint'));
+            if (noModelOnly) return false;
+            if (item.MANUAL_REVIEW) return true;
             const healthyPhrases = [
                 'no visible issue',
+                'no disease issue',
+                'no issue',
                 'no disease',
                 'healthy',
                 'no treatment recommended',
-                'no diagnosis returned'
+                'no diagnosis returned',
+                'no diagnostics model'
             ];
             return !healthyPhrases.some((phrase) => diagnosis === phrase || diagnosis.includes(phrase));
         }
@@ -44865,7 +44875,9 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const crumb = document.getElementById('diagnostics-crumb');
             if (!container) return;
             const pendingRows = getMlJobsByStatus(['pending_ml', 'processing']);
-            const finishedRows = getMlJobsByStatus(['pending_approval', 'approved', 'ml_failed']).slice(0, 60);
+            const issueRows = getMlJobsByStatus(['pending_approval', 'approved']).filter((row) => isMlDiagnosticIssueRow(row));
+            const failedRows = getMlJobsByStatus(['ml_failed']).slice(0, 20);
+            const finishedRows = issueRows.concat(failedRows).slice(0, 60);
             const allRows = Array.isArray(mlImageJobsInventory) ? mlImageJobsInventory.map((row, idx) => normalizeMlImageJobRow(row, idx)).filter(Boolean) : [];
             const statusCounts = allRows.reduce((acc, row) => {
                 const status = normalizeMlStatus(row.STATUS);
@@ -44880,7 +44892,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const html = `<div class="space-y-5">
                 <section class="grid grid-cols-2 gap-2 sm:grid-cols-5">${statusSummaryHtml}</section>
                 <section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Pending Diagnostics</div>${pendingHtml}</section>
-                <section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Approved Diagnostics</div>${finishedHtml}</section>
+                <section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Diagnostic Issues</div>${finishedHtml}</section>
             </div>`;
             setContainerHtmlWithSignature(container, html, signature);
         }

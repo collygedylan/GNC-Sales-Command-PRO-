@@ -140,6 +140,27 @@ def map_model_grade_to_app_grade(model_grade: Any, selected_season: Any) -> str:
     return "X"
 
 
+def is_actionable_diagnostic_text(value: Any) -> bool:
+    text = normalize_key(value)
+    if not text:
+        return False
+    non_actionable_phrases = [
+        "manual review required",
+        "no visible issue",
+        "no issue",
+        "no disease",
+        "healthy",
+        "no treatment recommended",
+        "no diagnosis returned",
+        "no diagnostics model",
+        "diagnostics model is not configured",
+        "model is not configured",
+        "waiting for ml worker",
+        "worker has not processed",
+    ]
+    return not any(phrase in text for phrase in non_actionable_phrases)
+
+
 def parse_label_entry(label: Any) -> Dict[str, str]:
     if isinstance(label, dict):
         return {
@@ -1410,9 +1431,7 @@ Scouting note:
     def build_result_payload(self, job: Dict[str, Any], image_path: pathlib.Path) -> Dict[str, Any]:
         plant_prediction = self.models.plant.predict(image_path)
         diagnostics_prediction = self.models.diagnostics.predict(image_path) if self.models.diagnostics else Prediction(
-            diagnosis="Manual review required",
-            treatment="No diagnostics model is configured.",
-            manual_review=True,
+            manual_review=False,
             reason="No diagnostics model is configured.",
         )
         reference_prediction = self.disease_reference_cache.prediction_for_job(job)
@@ -1425,7 +1444,18 @@ Scouting note:
         season = first_non_empty(job.get("season"), default="")
         app_grade = map_model_grade_to_app_grade(plant_prediction.grade, season)
         low_confidence = plant_prediction.confidence < self.config.confidence_threshold
-        manual_review = bool(plant_prediction.manual_review or diagnostics_prediction.manual_review or low_confidence or not matched_entry)
+        diagnostic_issue_found = bool(reference_prediction) or (
+            bool(self.models.diagnostics and self.models.diagnostics.available)
+            and is_actionable_diagnostic_text(diagnostics_prediction.diagnosis)
+        )
+        grading_result_ready = bool(
+            self.models.plant.available
+            and matched_entry
+            and not low_confidence
+            and normalize_grade(plant_prediction.grade)
+        )
+        should_request_approval = bool(diagnostic_issue_found or grading_result_ready)
+        manual_review = bool(diagnostic_issue_found and diagnostics_prediction.manual_review)
 
         genus = plant_prediction.genus
         common_name = plant_prediction.common_name
@@ -1440,17 +1470,19 @@ Scouting note:
             "No inventory match" if not matched_entry else "",
         ]
         reason = "; ".join(bit for bit in reason_bits if bit)
+        diagnosis_default = "Manual review required" if diagnostic_issue_found else "No disease issue detected from available references."
+        treatment_default = "Review image before logging quantities." if diagnostic_issue_found else "No treatment recommended."
 
         return {
-            "status": "pending_approval",
+            "status": "pending_approval" if should_request_approval else "approved",
             "ml_genus": genus or None,
             "ml_common_name": common_name or None,
             "ml_grade_raw": plant_prediction.grade or None,
             "ml_grade": app_grade,
             "ml_confidence": round(float(plant_prediction.confidence or 0.0), 4),
             "matched_inventory_key": matched_entry.key if matched_entry else None,
-            "diagnosis": first_non_empty(diagnostics_prediction.diagnosis, plant_prediction.diagnosis, default="Manual review required" if manual_review else "No visible issue detected."),
-            "recommended_treatment": first_non_empty(diagnostics_prediction.treatment, plant_prediction.treatment, default="Review image before logging quantities." if manual_review else "No treatment recommended."),
+            "diagnosis": first_non_empty(diagnostics_prediction.diagnosis, plant_prediction.diagnosis, default=diagnosis_default),
+            "recommended_treatment": first_non_empty(diagnostics_prediction.treatment, plant_prediction.treatment, default=treatment_default),
             "manual_review": manual_review,
             "ml_completed_at": iso_now(),
             "processing_started_at": None,
