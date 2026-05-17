@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.17.07';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.17.08';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1662,6 +1662,22 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <button class="text-gray-500 font-bold py-2 px-4 mt-2" onclick="document.getElementById('endcap-modal').classList.add('hidden')">Cancel</button>
         </div>
     </div>
+    <div id="shear-list-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md text-left flex flex-col max-h-[90vh]">
+            <div class="flex items-start justify-between gap-3 border-b border-lime-100 pb-3">
+                <div>
+                    <h3 class="font-black text-xl text-lime-700">Add To Shear List</h3>
+                    <p class="mt-1 text-[11px] font-semibold text-slate-500">Enter the percentage of each selected row that needs to be sheared.</p>
+                </div>
+                <button type="button" class="h-10 w-10 rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm active:scale-95" onclick="return closeShearListModal()"><i class="ph-bold ph-x text-lg"></i></button>
+            </div>
+            <div id="shear-list-modal-rows" class="mt-4 flex flex-col gap-3 overflow-y-auto pr-1"></div>
+            <div class="mt-5 grid grid-cols-2 gap-2">
+                <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-600 shadow-sm active:scale-95" onclick="return closeShearListModal()">Cancel</button>
+                <button id="shear-list-submit-btn" type="button" class="rounded-xl border border-lime-200 bg-lime-600 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="return submitShearList()">Add Rows</button>
+            </div>
+        </div>
+    </div>
     <div id="dock-mistake-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-black text-2xl mb-1 text-red-600">Flag Dock Issue</h3>
@@ -2015,7 +2031,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.07').trim() || 'V2026.05.17.07';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.08').trim() || 'V2026.05.17.08';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2039,6 +2055,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <div id="drawer-force-sync-btn" class="drawer-item text-green-600 font-bold" onclick="fetchBackgroundData('force'); toggleMenu();"><i class="ph-bold ph-arrows-clockwise"></i> Force Data Sync</div>
             <div id="drawer-enable-push-btn" class="drawer-item text-blue-600 font-bold" onclick="manuallyEnablePushNotifications(); toggleMenu();"><i class="ph-bold ph-bell-ringing"></i> Enable Notifications</div>
             <div id="drawer-communication-btn" class="drawer-item text-sky-600 font-bold" onclick="switchView('communication'); toggleMenu();"><i class="ph-bold ph-chat-circle-dots"></i> Communication</div>
+            <div id="drawer-sales-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" onclick="switchView('sales'); toggleMenu();"><i class="ph-bold ph-handshake"></i> Sales</div>
+            <div id="drawer-qc-btn" class="drawer-item text-orange-700 font-bold role-access hidden" onclick="switchView('qc'); toggleMenu();"><i class="ph-bold ph-shield-check"></i> QC</div>
             <div id="drawer-walkie-btn" class="drawer-item text-emerald-700 font-bold hidden" onclick="switchView('walkie'); toggleMenu();"><i class="ph-bold ph-radio"></i> Walkie</div>
             <hr class="my-2">
             <div id="drawer-drive-btn" class="drawer-item role-access role-admin role-qc-supervisor hidden" onclick="switchView('drive'); toggleMenu();"><i class="ph-bold ph-car"></i> Drive Mode</div>
@@ -2115,13 +2133,15 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                             <div id="home-dashboard-grid" class="grid grid-cols-2 gap-3 mb-8">
                                 <div id="home-tile-drive" onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-qc-supervisor hidden"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
-                                <div id="home-tile-tasks" onclick="switchView('tasks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
-                                <div id="home-tile-docks" onclick="switchView('docks')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-qc-supervisor role-qc hidden"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
+                                <div id="home-tile-tasks" onclick="switchView('tasks')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
+                                <div id="home-tile-docks" onclick="switchView('docks')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
                                 <div id="home-tile-take-back" onclick="switchView('take-back')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-arrow-u-up-left text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Take Back</span></div>
-                                <div id="home-tile-av" onclick="switchView('av')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
-                                <div id="home-tile-request" onclick="switchView('request')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-request-enabled hidden"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
-                                <div id="home-tile-communication" onclick="switchView('communication')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer"><i class="ph-bold ph-chat-circle-dots text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Communication</span></div>
+                                <div id="home-tile-av" onclick="switchView('av')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
+                                <div id="home-tile-request" onclick="switchView('request')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-chat-circle-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Requests</span></div>
+                                <div id="home-tile-communication" onclick="switchView('communication')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-chat-circle-dots text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Communication</span></div>
                                 <div id="home-tile-walkie" onclick="switchView('walkie')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer hidden"><i class="ph-bold ph-radio text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Walkie</span></div>
+                                <div id="home-tile-sales" onclick="switchView('sales')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-handshake text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales</span></div>
+                                <div id="home-tile-qc" onclick="switchView('qc')" class="bg-white border-2 border-orange-600 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-shield-check text-3xl text-orange-700"></i><span class="font-bold text-sm text-orange-700 uppercase tracking-wide">QC</span></div>
                                 <div id="home-tile-reserves" onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
                                 <div id="home-tile-office" onclick="switchView('office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-buildings text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Office</span></div>
                                 <div id="home-tile-sales-inventory" onclick="switchView('sales-inventory')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-storefront text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Inventory</span></div>
@@ -2223,6 +2243,71 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div id="request-crumb" class="text-xs font-bold text-[#007a4d] mb-3 empty:hidden"></div>
                     </div>
                     <div id="request-content"></div>
+                </div>
+
+                <div id="view-sales" class="hidden">
+                    <div class="freeze-panel">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <div>
+                                <div class="text-xs font-bold text-[#007a4d] uppercase tracking-[0.16em]">Sales</div>
+                                <div class="text-xl font-black text-slate-900">Sales</div>
+                            </div>
+                            <div class="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Hub</div>
+                        </div>
+                    </div>
+                    <div id="sales-hub-grid" class="grid gap-3 md:grid-cols-2">
+                        <button type="button" id="sales-open-av" class="rounded-2xl border border-teal-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('av')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-teal-700"><i class="ph-bold ph-notebook text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">AV</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Available stock</div>
+                        </button>
+                        <button type="button" id="sales-open-docks" class="rounded-2xl border border-orange-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('docks')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-700"><i class="ph-bold ph-truck text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Docks</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Orders and dock rows</div>
+                        </button>
+                        <button type="button" id="sales-open-communication" class="rounded-2xl border border-sky-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('communication')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-700"><i class="ph-bold ph-chat-circle-dots text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Communication</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Chat, phone, email</div>
+                        </button>
+                        <button type="button" id="sales-open-request" class="rounded-2xl border border-blue-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('request')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700"><i class="ph-bold ph-chat-circle-text text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Request</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Pending requests</div>
+                        </button>
+                        <button type="button" id="sales-open-tasks" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('tasks')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-clipboard-text text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Task</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Assigned work</div>
+                        </button>
+                        <button type="button" id="sales-open-weather-hold" class="rounded-2xl border border-sky-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('weather-hold')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-700"><i class="ph-bold ph-cloud-sun text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Weather &amp; Hold Risk</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">10-year hourly history</div>
+                        </button>
+                    </div>
+                    <div id="sales-empty-state" class="hidden rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No sales modules are available for this login.</div>
+                </div>
+
+                <div id="view-qc" class="hidden">
+                    <div class="freeze-panel">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <div>
+                                <div class="text-xs font-bold text-orange-700 uppercase tracking-[0.16em]">QC</div>
+                                <div class="text-xl font-black text-slate-900">Quality Control</div>
+                            </div>
+                            <div class="rounded-full border border-orange-100 bg-orange-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-orange-700">Hub</div>
+                        </div>
+                    </div>
+                    <div id="qc-hub-grid" class="grid gap-3 md:grid-cols-2">
+                        <button type="button" id="qc-open-docks" class="rounded-2xl border border-orange-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('docks')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-700"><i class="ph-bold ph-truck text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Docks</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Quality dock workflow</div>
+                        </button>
+                    </div>
+                    <div id="qc-empty-state" class="hidden rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No QC modules are available for this login.</div>
                 </div>
 
                 <div id="view-communication" class="hidden">
@@ -2359,6 +2444,16 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div class="text-lg font-black text-slate-900">Moves</div>
                             <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Move candidates</div>
                         </button>
+                        <button type="button" id="production-open-tasks" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('tasks')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-clipboard-text text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Task</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Production task rows</div>
+                        </button>
+                        <button type="button" id="production-open-shear-list" class="rounded-2xl border border-lime-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('shear-list')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-lime-50 text-lime-700"><i class="ph-bold ph-scissors text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Shear List</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Rows to shear</div>
+                        </button>
                         <button type="button" id="production-open-weather-hold" class="rounded-2xl border border-sky-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('weather-hold')">
                             <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-700"><i class="ph-bold ph-cloud-sun text-2xl"></i></div>
                             <div class="text-lg font-black text-slate-900">Weather &amp; Hold Risk</div>
@@ -2404,6 +2499,19 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         </div>
                     </div>
                     <div id="weather-hold-content"></div>
+                </div>
+
+                <div id="view-shear-list" class="hidden">
+                    <div class="freeze-panel">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <div>
+                                <div id="shear-list-crumb" class="text-xs font-bold text-lime-700 uppercase tracking-[0.16em]">Open Shear Rows</div>
+                                <div class="text-xl font-black text-slate-900">Shear List</div>
+                            </div>
+                            <button type="button" class="rounded-xl border border-lime-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-lime-700 shadow-sm active:scale-95" onclick="return reloadShearListData()"><i class="ph-bold ph-arrows-clockwise text-base align-middle"></i><span class="align-middle ml-1">Refresh</span></button>
+                        </div>
+                    </div>
+                    <div id="shear-list-content"></div>
                 </div>
 
                 <div id="view-disease-pest" class="hidden">
@@ -3001,6 +3109,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <button id="batch-btn-flyer" onclick="initiateBatchAction('flyer')" class="flex-1 min-w-[60px] bg-indigo-100 text-indigo-700 p-2 rounded-lg text-[10px] font-bold hover:bg-indigo-200 hidden"><i class="ph-bold ph-megaphone block text-lg mb-1"></i> Flyer</button>
                     <button id="batch-btn-take-back" onclick="initiateBatchAction('take_back')" class="flex-1 min-w-[74px] bg-emerald-100 text-emerald-700 p-2 rounded-lg text-[10px] font-bold hover:bg-emerald-200 hidden"><i class="ph-bold ph-arrow-u-up-left block text-lg mb-1"></i> Take Back</button>
                     <button id="batch-btn-endcap" onclick="initiateBatchAction('endcap')" class="flex-1 min-w-[70px] bg-yellow-100 text-yellow-700 p-2 rounded-lg text-[10px] font-bold hover:bg-yellow-200 shadow-sm hidden"><i class="ph-bold ph-storefront block text-lg mb-1"></i> End Cap</button>
+                    <button id="batch-btn-shear" onclick="initiateBatchAction('shear')" class="flex-1 min-w-[70px] bg-lime-100 text-lime-700 p-2 rounded-lg text-[10px] font-bold hover:bg-lime-200 shadow-sm hidden"><i class="ph-bold ph-scissors block text-lg mb-1"></i> Shear</button>
                 </div>
                 <div id="cart-helper-text" class="hidden">Bloom Picker orders are for AV open stock rows. Assign, Request, Flyer, and End Cap work on inventory rows.</div>
             </div>
@@ -3032,6 +3141,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const DISEASE_TRAINING_ASSETS_TABLE = 'v2_disease_training_assets';
         const GROWER_SCOUT_REPORTS_TABLE = 'v2_grower_scout_reports';
         const GROWER_SCOUT_ASSETS_TABLE = 'v2_grower_scout_assets';
+        const SHEAR_LIST_TABLE = 'v2_shear_list';
+        const SHEAR_LIST_SELECT_FIELDS = 'unique_id,source_unique_id,status,percent_to_shear,itemcode,commonname,contsize,locationcode,lotcode,season,blockalpha,ptravailable,holdstopcode,holdstopreason,created_by_username,created_by_display,created_at,updated_at,completed_by_username,completed_by_display,completed_at,snapshot';
         const GROWER_SCOUT_AUDIO_BUCKET = 'grower_scout_audio';
         const GROWER_SCOUT_PHOTOS_BUCKET = 'grower_scout_photos';
         const GROWER_SCOUT_FILES_BUCKET = 'grower_scout_files';
@@ -3099,7 +3210,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.07';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.08';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -3141,6 +3252,9 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             diagnostics: { realtimeTables: [ML_IMAGE_JOBS_TABLE], pollMs: 'visible-default' },
             grower: { realtimeTables: [GROWER_SCOUT_REPORTS_TABLE, GROWER_SCOUT_ASSETS_TABLE], pollMs: 'visible-default' },
             'pest-management': { realtimeTables: [GROWER_SCOUT_REPORTS_TABLE, GROWER_SCOUT_ASSETS_TABLE], pollMs: 'visible-default' },
+            'shear-list': { realtimeTables: [SHEAR_LIST_TABLE], pollMs: 'visible-default' },
+            sales: { realtimeTables: [], pollMs: 'visible-default' },
+            qc: { realtimeTables: [], pollMs: 'visible-default' },
             'low-stock': { realtimeTables: [], pollMs: 'visible-default' },
             hours: { realtimeTables: [], pollMs: 0 }
         });
@@ -4103,6 +4217,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             if (safeTable === REQUEST_HISTORY_TABLE) return 'request';
             if (safeTable === 'v2_sales_office') return 'sales-office';
             if (safeTable === 'v2_take_back_queue') return 'take-back';
+            if (safeTable === SHEAR_LIST_TABLE) return 'shear-list';
             if (safeTable === FLYER_FOLDER_ROWS_TABLE) return 'tasks';
             if (safeTable === FLYER_FOLDER_HISTORY_TABLE) return 'tasks';
             if (safeTable === ML_IMAGE_JOBS_TABLE) return 'diagnostics';
@@ -6377,7 +6492,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         function closeLoginBlockingLayers() {
             try { closePhotoModal(); } catch (e) {}
             try { toggleMenu(false); } catch (e) {}
-            ['tab-select-modal', 'assign-modal', 'flyer-assignee-modal', 'endcap-modal', 'dock-mistake-modal', 'dock-allocation-modal', 'dock-info-modal', 'sales-office-av-modal', 'request-publish-modal', 'ncr-email-modal', 'hold-release-modal', 'ncr-rep-outreach-modal', 'request-rep-modal', 'bloom-share-modal', 'bloom-crop-update-modal', 'bloom-picker-modal', 'take-back-done-confirm-modal', 'drawer-overlay', 'side-drawer'].forEach(forceHideUiLayer);
+            ['tab-select-modal', 'assign-modal', 'flyer-assignee-modal', 'endcap-modal', 'shear-list-modal', 'dock-mistake-modal', 'dock-allocation-modal', 'dock-info-modal', 'sales-office-av-modal', 'request-publish-modal', 'ncr-email-modal', 'hold-release-modal', 'ncr-rep-outreach-modal', 'request-rep-modal', 'bloom-share-modal', 'bloom-crop-update-modal', 'bloom-picker-modal', 'take-back-done-confirm-modal', 'drawer-overlay', 'side-drawer'].forEach(forceHideUiLayer);
         }
 
         function resetLoginUiState() {
@@ -8603,6 +8718,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
         function isAppLiveEventDatasetLoadedForTable(tableName = '') {
             if (tableName === 'v2_take_back_queue') return !!takeBackDataLoaded;
+            if (tableName === SHEAR_LIST_TABLE) return !!shearListState.loaded;
             return getAppLiveEventDatasetKeys(tableName).some((key) => isDatasetLoaded(key, 'initial'));
         }
 
@@ -8807,6 +8923,19 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 markViewDirty('take-back');
                 scheduleTakeBackRender(48);
                 recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'take-back');
+                return true;
+            }
+
+            if (tableName === SHEAR_LIST_TABLE) {
+                const rawRow = eventType === 'DELETE' ? (payload.old || {}) : (payload.new || {});
+                const uniqueId = String(firstNonEmptyValue(rawRow.unique_id, rawRow.UNIQUE_ID, '')).trim();
+                if (!uniqueId) return false;
+                if (eventType === 'DELETE') removeShearListRowFromCache(uniqueId);
+                else cacheShearListRow(rawRow);
+                shearListState.loaded = true;
+                markViewDirty('shear-list');
+                if (isViewVisible('shear-list')) renderShearList();
+                recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'shear-list');
                 return true;
             }
 
@@ -10609,6 +10738,8 @@ bindFastInvokeById('drawer-home-btn', 'openDrawerView', ['home'], 'Home');
 bindFastInvokeById('drawer-force-sync-btn', 'forceSyncAndCloseMenu', [], 'Force Data Sync');
 bindFastInvokeById('drawer-enable-push-btn', 'manuallyEnablePushNotifications', [], 'Enable Notifications');
 bindFastInvokeById('drawer-communication-btn', 'openDrawerView', ['communication'], 'Communication');
+bindFastInvokeById('drawer-sales-btn', 'openDrawerView', ['sales'], 'Sales');
+bindFastInvokeById('drawer-qc-btn', 'openDrawerView', ['qc'], 'QC');
 bindFastInvokeById('drawer-walkie-btn', 'openDrawerView', ['walkie'], 'Walkie');
 bindFastInvokeById('drawer-drive-btn', 'openDrawerView', ['drive'], 'Drive Mode');
             bindFastInvokeById('drawer-tasks-btn', 'openDrawerView', ['tasks'], 'My Tasks');
@@ -10635,9 +10766,11 @@ bindFastInvokeById('drawer-reserves-btn', 'openDrawerView', ['reserves'], 'Reser
             bindFastInvokeById('home-tile-docks', 'switchView', ['docks'], 'Docks');
             bindFastInvokeById('home-tile-take-back', 'switchView', ['take-back'], 'Take Back');
             bindFastInvokeById('home-tile-av', 'switchView', ['av'], 'AV');
-bindFastInvokeById('home-tile-request', 'switchView', ['request'], 'Requests');
+            bindFastInvokeById('home-tile-request', 'switchView', ['request'], 'Requests');
 bindFastInvokeById('home-tile-communication', 'switchView', ['communication'], 'Communication');
 bindFastInvokeById('home-tile-walkie', 'switchView', ['walkie'], 'Walkie');
+bindFastInvokeById('home-tile-sales', 'switchView', ['sales'], 'Sales');
+bindFastInvokeById('home-tile-qc', 'switchView', ['qc'], 'QC');
 bindFastInvokeById('home-tile-reserves', 'switchView', ['reserves'], 'Reserves');
             bindFastInvokeById('home-tile-office', 'switchView', ['office'], 'Office');
             bindFastInvokeById('home-tile-sales-inventory', 'switchView', ['sales-inventory'], 'Sales Inventory');
@@ -13794,7 +13927,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.07').trim() || 'V2026.05.17.07';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.08').trim() || 'V2026.05.17.08';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -13859,10 +13992,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             reserves: { eyebrow: 'Amazon Search', title: 'Reserves' },
             docks: { eyebrow: 'Amazon Search', title: 'Docks' },
             drive: { eyebrow: 'Amazon Search', title: 'Drive Mode' },
+            sales: { eyebrow: 'Sales', title: 'Sales' },
+            qc: { eyebrow: 'Quality Control', title: 'QC' },
             communication: { eyebrow: 'Communication', title: 'Communication' },
             production: { eyebrow: 'Production', title: 'Production' },
             'sales-inventory': { eyebrow: 'Sales Inventory', title: 'Sales Inventory' },
             'weather-hold': { eyebrow: 'Park Hill Weather', title: 'Weather & Hold Risk' },
+            'shear-list': { eyebrow: 'Production', title: 'Shear List' },
             'disease-pest': { eyebrow: 'Disease & Pest', title: 'Disease & Pest Management' },
             request: { eyebrow: 'Amazon Filters', title: 'Requests' },
             tasks: { eyebrow: 'Amazon Filters', title: 'My Tasks' },
@@ -14479,6 +14615,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             diagnostics: { container: 'diagnostics-content', crumb: 'diagnostics-crumb' },
             grower: { container: 'grower-content', crumb: 'grower-crumb' },
             'pest-management': { container: 'pest-management-content', crumb: 'pest-management-crumb' },
+            'shear-list': { container: 'shear-list-content', crumb: 'shear-list-crumb' },
             advertisement: { container: 'advertisement-status' }
         };
 
@@ -15821,10 +15958,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             if (viewId === 'docks') return { required: [{ key: 'soc', mode: 'initial' }], background: [{ key: 'soc', mode: 'full' }], label: 'Loading dock rows...' };
             if (viewId === 'request') return { required: [{ key: 'requests', mode: 'initial' }, { key: 'requestHistory', mode: 'initial' }], background: [{ key: 'requests', mode: 'full' }, { key: 'requestHistory', mode: 'full' }], label: 'Loading requests...' };
+            if (viewId === 'sales') return { required: [], background: [], label: 'Loading sales...' };
+            if (viewId === 'qc') return { required: [], background: [], label: 'Loading QC...' };
             if (viewId === 'communication') return { required: [], background: [], label: 'Loading communication...' };
             if (viewId === 'production') return { required: [], background: [], label: 'Loading production...' };
             if (viewId === 'sales-inventory') return { required: [], background: [], label: 'Loading sales inventory...' };
             if (viewId === 'weather-hold') return { required: [], background: [], label: 'Loading weather and hold risk...' };
+            if (viewId === 'shear-list') return { required: [], background: [], label: 'Loading shear list...' };
             if (viewId === 'disease-pest') return { required: [], background: [], label: 'Loading disease and pest management...' };
             if (viewId === 'chat') return { required: [], background: [], label: 'Loading chat...' };
             if (viewId === 'walkie') return { required: [], background: [], label: 'Loading walkie...' };
@@ -24208,15 +24348,18 @@ function toggleDriveQuickRequestItem(domId) {
             return dockAssignableUsersPromise;
         }
 
-        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','production','weather-hold','av','request','reserves','sales-office','office','sales-inventory','reports','hours','low-stock','review','move-up','advertisement','diagnostics','disease-pest','grower','pest-management','communication','chat'];
+        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','production','weather-hold','shear-list','sales','qc','av','request','reserves','sales-office','office','sales-inventory','reports','hours','low-stock','review','move-up','advertisement','diagnostics','disease-pest','grower','pest-management','communication','chat'];
         const ROLE_VIEW_ELEMENT_IDS = Object.freeze({
             drive: ['drawer-drive-btn', 'home-tile-drive'],
-            tasks: ['drawer-tasks-btn', 'home-tile-tasks'],
-            docks: ['drawer-docks-btn', 'home-tile-docks'],
+            tasks: ['drawer-tasks-btn'],
+            docks: ['drawer-docks-btn'],
             'take-back': ['drawer-take-back-btn'],
             production: ['drawer-production-btn', 'home-tile-production'],
-            av: ['drawer-av-btn', 'home-tile-av'],
-            request: ['drawer-request-btn', 'home-tile-request', 'footer-request-btn'],
+            'shear-list': [],
+            sales: ['drawer-sales-btn', 'home-tile-sales'],
+            qc: ['drawer-qc-btn', 'home-tile-qc'],
+            av: ['drawer-av-btn'],
+            request: ['drawer-request-btn', 'footer-request-btn'],
             reserves: ['drawer-reserves-btn', 'home-tile-reserves'],
             office: ['drawer-office-btn', 'home-tile-office'],
             'sales-inventory': ['drawer-sales-inventory-btn', 'home-tile-sales-inventory'],
@@ -24233,7 +24376,7 @@ function toggleDriveQuickRequestItem(domId) {
             'disease-pest': ['drawer-disease-pest-btn', 'home-tile-disease-pest'],
             grower: ['drawer-grower-btn'],
             'pest-management': ['drawer-pest-management-btn'],
-            communication: ['drawer-communication-btn', 'home-tile-communication', 'footer-communication-btn'],
+            communication: ['drawer-communication-btn', 'footer-communication-btn'],
             chat: [],
             walkie: ['drawer-walkie-btn', 'home-tile-walkie', 'footer-walkie-btn']
         });
@@ -24270,10 +24413,11 @@ function toggleDriveQuickRequestItem(domId) {
                 allowedViews.add('take-back');
                 allowedViews.add('production');
                 allowedViews.add('weather-hold');
+                allowedViews.add('shear-list');
             } else if (isForeman && !isAdmin) {
-                ['drive', 'take-back', 'production', 'weather-hold', 'communication', 'chat', 'hours', 'grower'].forEach(viewId => allowedViews.add(viewId));
+                ['drive', 'take-back', 'production', 'weather-hold', 'shear-list', 'tasks', 'communication', 'chat', 'hours', 'grower'].forEach(viewId => allowedViews.add(viewId));
             } else if (isGrower && !isAdmin) {
-                ['production', 'weather-hold', 'grower', 'communication', 'chat'].forEach(viewId => allowedViews.add(viewId));
+                ['production', 'weather-hold', 'shear-list', 'tasks', 'grower', 'communication', 'chat'].forEach(viewId => allowedViews.add(viewId));
             } else {
                 allowedViews.add('communication');
                 allowedViews.add('chat');
@@ -24281,22 +24425,24 @@ function toggleDriveQuickRequestItem(domId) {
                     allowedViews.add('take-back');
                     allowedViews.add('production');
                     allowedViews.add('weather-hold');
+                    allowedViews.add('shear-list');
                 }
             }
             if (isAdmin) {
                 ROLE_ACCESS_VIEWS.forEach(viewId => allowedViews.add(viewId));
             } else if (isRep) {
-                ['av', 'docks', 'request', 'sales-office', 'office'].forEach(viewId => allowedViews.add(viewId));
+                ['sales', 'av', 'docks', 'request', 'tasks', 'weather-hold', 'communication', 'chat', 'sales-office', 'office'].forEach(viewId => allowedViews.add(viewId));
             } else if (isQcSupervisor) {
-                ['drive', 'docks'].forEach(viewId => allowedViews.add(viewId));
+                ['qc', 'drive', 'docks'].forEach(viewId => allowedViews.add(viewId));
             } else if (isQc) {
-                ['docks'].forEach(viewId => allowedViews.add(viewId));
+                ['qc', 'docks'].forEach(viewId => allowedViews.add(viewId));
             }
             if (canUseMovesModule()) {
                 allowedViews.add('moves');
                 allowedViews.add('office');
                 allowedViews.add('production');
                 allowedViews.add('weather-hold');
+                allowedViews.add('shear-list');
             }
             if (isStrictDylanCollygeUser()) allowedViews.add('disease-pest');
             return { isAdmin, isRep, isQcSupervisor, isQc, isCsr, isForeman, isGrower, isTakeBackOnly, isRequestRepScopedUser, allowedViews };
@@ -27679,7 +27825,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (canAccessView(target)) switchView(target);
         }
 
-        const TRACKED_VIEW_IDS = ['drive','tasks','review','move-up','advertisement','diagnostics','grower','pest-management','communication','production','weather-hold','sales-inventory','disease-pest','office','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
+        const TRACKED_VIEW_IDS = ['drive','tasks','review','move-up','advertisement','diagnostics','grower','pest-management','communication','sales','qc','production','weather-hold','shear-list','sales-inventory','disease-pest','office','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
 
         function getAffectedViewsForDatasets(changedKeys = []) {
             const changedSet = new Set((changedKeys || []).filter(Boolean));
@@ -30154,11 +30300,34 @@ function toggleDriveQuickRequestItem(domId) {
             return !!isVisible;
         }
 
+        function renderSalesHub() {
+            const visibleCount = [
+                setHubButtonVisibility('sales-open-av', canAccessView('av')),
+                setHubButtonVisibility('sales-open-docks', canAccessView('docks')),
+                setHubButtonVisibility('sales-open-communication', canAccessView('communication')),
+                setHubButtonVisibility('sales-open-request', canAccessView('request')),
+                setHubButtonVisibility('sales-open-tasks', canAccessView('tasks')),
+                setHubButtonVisibility('sales-open-weather-hold', canAccessView('weather-hold'))
+            ].filter(Boolean).length;
+            const emptyState = document.getElementById('sales-empty-state');
+            if (emptyState) emptyState.classList.toggle('hidden', visibleCount > 0);
+        }
+
+        function renderQcHub() {
+            const visibleCount = [
+                setHubButtonVisibility('qc-open-docks', canAccessView('docks'))
+            ].filter(Boolean).length;
+            const emptyState = document.getElementById('qc-empty-state');
+            if (emptyState) emptyState.classList.toggle('hidden', visibleCount > 0);
+        }
+
         function renderProductionHub() {
             const visibleCount = [
                 setHubButtonVisibility('production-open-grower', canAccessView('grower')),
                 setHubButtonVisibility('production-open-take-back', canAccessView('take-back')),
                 setHubButtonVisibility('production-open-moves', canAccessView('moves')),
+                setHubButtonVisibility('production-open-tasks', canAccessView('tasks')),
+                setHubButtonVisibility('production-open-shear-list', canAccessView('shear-list')),
                 setHubButtonVisibility('production-open-weather-hold', canAccessView('weather-hold'))
             ].filter(Boolean).length;
             const emptyState = document.getElementById('production-empty-state');
@@ -30248,11 +30417,12 @@ function toggleDriveQuickRequestItem(domId) {
             if (weatherHoldState.promise && !force) return weatherHoldState.promise;
             weatherHoldState.loading = true;
             weatherHoldState.error = '';
+            const weatherCutoff = new Date(Date.now() - (45 * 24 * 60 * 60 * 1000)).toISOString();
             weatherHoldState.promise = (async () => {
                 const [weatherRows, holdEvents, holdProfiles] = await Promise.all([
-                    supabaseFetch('v2_weather_hourly', 'GET', null, 'select=observed_at,local_time,temperature_f,relative_humidity,precipitation_in,wind_speed_mph,gdd_base_50,chill_hours&station_key=eq.park_hill_ok&order=observed_at.desc'),
-                    supabaseFetch('v2_hold_learning_events', 'GET', null, 'select=hold_started_on,hold_detected_at,itemcode,commonname,genus,contsize,locationcode,lotcode,season,blockalpha,holdstopreason,hold_reason_category,gdd_base_50_30d,gdd_base_50_season,chill_hours_30d,chill_hours_season,precipitation_in_30d,avg_temperature_f_30d,weather_features_refreshed_at&order=hold_started_on.desc'),
-                    supabaseFetch('v2_hold_learning_profiles', 'GET', null, 'select=commonname,genus,contsize,hold_reason_category,sample_count,first_hold_on,last_hold_on,avg_gdd_base_50_30d,median_gdd_base_50_30d,avg_chill_hours_30d,avg_precipitation_in_30d,avg_temperature_f_30d,updated_at&order=updated_at.desc')
+                    supabaseFetch('v2_weather_hourly', 'GET', null, `select=observed_at,local_time,temperature_f,relative_humidity,precipitation_in,wind_speed_mph,gdd_base_50,chill_hours&station_key=eq.park_hill_ok&observed_at=gte.${encodeURIComponent(weatherCutoff)}&order=observed_at.desc&limit=1200`),
+                    supabaseFetch('v2_hold_learning_events', 'GET', null, 'select=hold_started_on,hold_detected_at,itemcode,commonname,genus,contsize,locationcode,lotcode,season,blockalpha,holdstopreason,hold_reason_category,gdd_base_50_30d,gdd_base_50_season,chill_hours_30d,chill_hours_season,precipitation_in_30d,avg_temperature_f_30d,weather_features_refreshed_at&order=hold_started_on.desc&limit=250'),
+                    supabaseFetch('v2_hold_learning_profiles', 'GET', null, 'select=commonname,genus,contsize,hold_reason_category,sample_count,first_hold_on,last_hold_on,avg_gdd_base_50_30d,median_gdd_base_50_30d,avg_chill_hours_30d,avg_precipitation_in_30d,avg_temperature_f_30d,updated_at&order=updated_at.desc&limit=200')
                 ]);
                 weatherHoldState.weatherRows = Array.isArray(weatherRows) ? weatherRows : [];
                 weatherHoldState.holdEvents = Array.isArray(holdEvents) ? holdEvents : [];
@@ -30331,6 +30501,229 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
+        let shearListState = {
+            loaded: false,
+            loading: false,
+            error: '',
+            lastLoadedAt: 0,
+            promise: null,
+            rows: []
+        };
+
+        function getShearListValue(row = null, field = '', fallback = '') {
+            if (!row || !field) return fallback;
+            const lowerField = String(field || '').trim().toLowerCase();
+            const upperField = lowerField.toUpperCase();
+            return firstNonEmptyValue(row[lowerField], row[upperField], fallback);
+        }
+
+        function getShearListRowId(row = null) {
+            return String(getShearListValue(row, 'unique_id', '') || '').trim();
+        }
+
+        function removeShearListRowFromCache(uniqueId = '') {
+            const safeId = String(uniqueId || '').trim();
+            if (!safeId) return false;
+            const previousLength = shearListState.rows.length;
+            shearListState.rows = (shearListState.rows || []).filter((row) => getShearListRowId(row) !== safeId);
+            return shearListState.rows.length !== previousLength;
+        }
+
+        function cacheShearListRow(row = null) {
+            if (!row || typeof row !== 'object') return false;
+            const safeId = getShearListRowId(row);
+            if (!safeId) return false;
+            const status = String(getShearListValue(row, 'status', 'open') || 'open').trim().toLowerCase();
+            if (status && status !== 'open') return removeShearListRowFromCache(safeId);
+            const nextRows = Array.isArray(shearListState.rows) ? shearListState.rows : [];
+            const index = nextRows.findIndex((existing) => getShearListRowId(existing) === safeId);
+            if (index === -1) {
+                shearListState.rows = [row, ...nextRows];
+                return true;
+            }
+            shearListState.rows = nextRows.map((existing, rowIndex) => rowIndex === index ? Object.assign({}, existing, row) : existing);
+            return true;
+        }
+
+        function buildShearListSourceUid(item = null) {
+            return String(firstNonEmptyValue(
+                item && item.MASTER_UNIQUE_ID,
+                item && item.master_unique_id,
+                item && item.SOURCE_UNIQUE_ID,
+                item && item.source_unique_id,
+                item && item.UNIQUE_ID,
+                item && item.unique_id,
+                ''
+            ) || '').trim();
+        }
+
+        function buildShearListUniqueId(item = null) {
+            const sourceUid = buildShearListSourceUid(item);
+            if (!sourceUid) return '';
+            return `shear-${sourceUid}`.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+        }
+
+        function buildShearListSnapshot(item = null) {
+            if (!item) return {};
+            const fields = ['UNIQUE_ID','ITEMCODE','COMMONNAME','GENUS','CONTSIZE','LOCATIONCODE','LOTCODE','SEASON','BLOCKALPHA','PTRAVAILABLE','S_LTS','PRIORITY','SOURCE','HOLDSTOPCODE','HOLDSTOPREASON','DESIGCUST'];
+            const snapshot = {};
+            fields.forEach((field) => {
+                const lower = field.toLowerCase();
+                const value = firstNonEmptyValue(item[field], item[lower], '');
+                if (value !== '') snapshot[lower] = value;
+            });
+            return snapshot;
+        }
+
+        function buildShearListPayload(item = null, percent = 0) {
+            const uniqueId = buildShearListUniqueId(item);
+            const sourceUid = buildShearListSourceUid(item);
+            if (!uniqueId || !sourceUid || !item) return null;
+            const now = new Date().toISOString();
+            return {
+                unique_id: uniqueId,
+                source_unique_id: sourceUid,
+                status: 'open',
+                percent_to_shear: Number(percent) || 0,
+                itemcode: firstNonEmptyValue(item.ITEMCODE, item.itemcode, ''),
+                commonname: firstNonEmptyValue(item.COMMONNAME, item.commonname, ''),
+                contsize: firstNonEmptyValue(item.CONTSIZE, item.contsize, ''),
+                locationcode: firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, ''),
+                lotcode: firstNonEmptyValue(item.LOTCODE, item.lotcode, ''),
+                season: firstNonEmptyValue(item.SEASON, item.season, ''),
+                blockalpha: firstNonEmptyValue(item.BLOCKALPHA, item.blockalpha, ''),
+                ptravailable: Number(firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, 0)) || 0,
+                holdstopcode: firstNonEmptyValue(item.HOLDSTOPCODE, item.holdstopcode, ''),
+                holdstopreason: firstNonEmptyValue(item.HOLDSTOPREASON, item.holdstopreason, ''),
+                created_by_username: currentUser || '',
+                created_by_display: currentUserDisplay || currentUser || '',
+                updated_by_username: currentUser || '',
+                updated_by_display: currentUserDisplay || currentUser || '',
+                updated_at: now,
+                snapshot: buildShearListSnapshot(item)
+            };
+        }
+
+        async function loadShearListData(force = false) {
+            const staleMs = 2 * 60 * 1000;
+            if (!force && shearListState.loaded && (Date.now() - shearListState.lastLoadedAt) < staleMs) return shearListState;
+            if (shearListState.promise && !force) return shearListState.promise;
+            shearListState.loading = true;
+            shearListState.error = '';
+            shearListState.promise = (async () => {
+                const rows = await supabaseFetch(SHEAR_LIST_TABLE, 'GET', null, `select=${SHEAR_LIST_SELECT_FIELDS}&status=eq.open&order=created_at.desc`);
+                shearListState.rows = Array.isArray(rows) ? rows : [];
+                shearListState.loaded = true;
+                shearListState.lastLoadedAt = Date.now();
+                return shearListState;
+            })().catch((error) => {
+                shearListState.error = error && error.message ? error.message : 'Shear List could not load.';
+                shearListState.loaded = true;
+                return shearListState;
+            }).finally(() => {
+                shearListState.loading = false;
+                shearListState.promise = null;
+            });
+            return shearListState.promise;
+        }
+
+        function renderShearListCard(row = null) {
+            const uniqueId = getShearListRowId(row);
+            const commonName = getShearListValue(row, 'commonname', 'Unknown');
+            const contSize = getShearListValue(row, 'contsize', '-');
+            const itemCode = getShearListValue(row, 'itemcode', '-');
+            const locationCode = getShearListValue(row, 'locationcode', 'No Loc');
+            const lotCode = getShearListValue(row, 'lotcode', '-');
+            const season = getShearListValue(row, 'season', '-');
+            const blockAlpha = getShearListValue(row, 'blockalpha', '-');
+            const ptr = getShearListValue(row, 'ptravailable', '0');
+            const percent = getShearListValue(row, 'percent_to_shear', '0');
+            const createdBy = getShearListValue(row, 'created_by_display', getShearListValue(row, 'created_by_username', 'Unknown'));
+            const createdAt = formatWeatherHoldDate(getShearListValue(row, 'created_at', ''));
+            return `<div class="rounded-2xl border border-lime-100 bg-white p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="font-black text-slate-900 text-lg leading-tight">${escapeHtml(commonName)}</div>
+                        <div class="mt-1 text-[12px] font-bold text-slate-500">${escapeHtml(contSize)} | Loc ${escapeHtml(locationCode)} | Lot ${escapeHtml(lotCode)} | ${escapeHtml(season)}</div>
+                    </div>
+                    <span class="rounded-full border border-lime-200 bg-lime-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-lime-700">${escapeHtml(String(percent))}%</span>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">
+                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">Item ${escapeHtml(itemCode)}</span>
+                    <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">PTR ${escapeHtml(String(ptr))}</span>
+                    <span class="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">Block ${escapeHtml(blockAlpha)}</span>
+                </div>
+                <div class="mt-3 text-[11px] font-semibold text-slate-500">Added by ${escapeHtml(createdBy)}${createdAt !== '-' ? ` on ${escapeHtml(createdAt)}` : ''}</div>
+                <button type="button" class="mt-4 w-full rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="return completeShearListRow('${escapeHtml(uniqueId)}', this)">Mark Complete</button>
+            </div>`;
+        }
+
+        function renderShearList() {
+            const container = document.getElementById('shear-list-content');
+            const crumb = document.getElementById('shear-list-crumb');
+            if (!container) return;
+            if (!shearListState.loaded && !shearListState.loading) {
+                setContainerHtml(container, '<div class="p-4 space-y-3"><div class="skeleton h-28 w-full rounded-xl"></div><div class="skeleton h-28 w-full rounded-xl"></div><div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">Loading shear list...</div></div>');
+                loadShearListData(false).then(() => {
+                    if (isViewVisible('shear-list')) renderShearList();
+                });
+                return;
+            }
+            if (shearListState.loading && !shearListState.loaded) {
+                setContainerHtml(container, '<div class="p-4 space-y-3"><div class="skeleton h-28 w-full rounded-xl"></div><div class="skeleton h-28 w-full rounded-xl"></div><div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">Loading shear list...</div></div>');
+                return;
+            }
+            if (shearListState.error) {
+                if (crumb) crumb.innerText = 'Setup Required';
+                setContainerHtml(container, `<div class="rounded-2xl border border-amber-200 bg-white p-8 text-center"><div class="font-black text-amber-700">Shear List table needed</div><div class="mt-2 text-sm font-semibold text-slate-500">Run shear_list_migration.sql in Supabase, then tap Refresh.</div><button type="button" class="mt-4 rounded-xl bg-[#007a4d] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-white" onclick="return reloadShearListData()">Retry</button></div>`);
+                return;
+            }
+            const rows = (shearListState.rows || []).filter((row) => String(getShearListValue(row, 'status', 'open') || 'open').toLowerCase() === 'open');
+            if (crumb) crumb.innerText = `${rows.length} Open Shear Row${rows.length === 1 ? '' : 's'}`;
+            if (!rows.length) {
+                setContainerHtml(container, '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No open shear rows.</div>');
+                return;
+            }
+            setContainerHtml(container, `<div class="space-y-3">${rows.map(renderShearListCard).join('')}</div>`);
+        }
+
+        function reloadShearListData() {
+            shearListState.loaded = false;
+            shearListState.error = '';
+            const container = document.getElementById('shear-list-content');
+            if (container) setContainerHtml(container, '<div class="p-4 space-y-3"><div class="skeleton h-28 w-full rounded-xl"></div><div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">Refreshing shear list...</div></div>');
+            loadShearListData(true).then(() => {
+                if (isViewVisible('shear-list')) renderShearList();
+            });
+            return false;
+        }
+
+        async function completeShearListRow(uniqueId = '', button = null) {
+            const safeId = String(uniqueId || '').trim();
+            if (!safeId) return false;
+            if (button) button.innerText = 'SAVING...';
+            const now = new Date().toISOString();
+            try {
+                await supabaseFetch(SHEAR_LIST_TABLE, 'PATCH', {
+                    status: 'complete',
+                    completed_by_username: currentUser || '',
+                    completed_by_display: currentUserDisplay || currentUser || '',
+                    completed_at: now,
+                    updated_by_username: currentUser || '',
+                    updated_by_display: currentUserDisplay || currentUser || '',
+                    updated_at: now
+                }, `unique_id=eq.${encodeURIComponent(safeId)}`);
+                removeShearListRowFromCache(safeId);
+                renderShearList();
+                showToast('Completed', 'Shear row removed from the open list.');
+            } catch (error) {
+                showToast('Error', error && error.message ? error.message : 'Could not complete shear row.', true);
+            } finally {
+                if (button) button.innerText = 'Mark Complete';
+            }
+            return false;
+        }
+
         function renderViewContent(viewId, forceReset = false, forceRender = false) {
             const state = ensureViewRenderState(viewId);
             if (!forceReset && !forceRender && state.initialized && !state.dirty) {
@@ -30370,6 +30763,10 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (viewId === 'request') {
                 if (forceReset || !state.initialized) resetRequestView(false);
                 renderRequest();
+            } else if (viewId === 'sales') {
+                renderSalesHub();
+            } else if (viewId === 'qc') {
+                renderQcHub();
             } else if (viewId === 'communication') {
                 renderCommunicationHub();
             } else if (viewId === 'production') {
@@ -30378,6 +30775,8 @@ function toggleDriveQuickRequestItem(domId) {
                 renderSalesInventoryHub();
             } else if (viewId === 'weather-hold') {
                 renderWeatherHold();
+            } else if (viewId === 'shear-list') {
+                renderShearList();
             } else if (viewId === 'disease-pest') {
                 renderDiseasePestHub();
             } else if (viewId === 'chat') {
@@ -38141,6 +38540,7 @@ function toggleDriveQuickRequestItem(domId) {
                     showFlyer: false,
                     showTakeBack: canUseForemanTakeBack,
                     showEndCap: false,
+                    showShear: false,
                     showBloomOrder: false,
                     canUseInventoryActions: canUseForemanTakeBack,
                     canUseBloomOrders: false
@@ -38156,6 +38556,7 @@ function toggleDriveQuickRequestItem(domId) {
                     showFlyer: canUseFlyerFromBloom,
                     showTakeBack: false,
                     showEndCap: false,
+                    showShear: false,
                     showBloomOrder: canUseBloomOrders,
                     canUseInventoryActions,
                     canUseBloomOrders
@@ -38171,6 +38572,7 @@ function toggleDriveQuickRequestItem(domId) {
                     showFlyer: canUseFlyerFromBloom,
                     showTakeBack: canUseInventoryActions,
                     showEndCap: false,
+                    showShear: false,
                     showBloomOrder: canUseBloomOrders,
                     canUseInventoryActions,
                     canUseBloomOrders
@@ -38185,6 +38587,7 @@ function toggleDriveQuickRequestItem(domId) {
                 showFlyer: canUseFlyerFromBloom,
                 showTakeBack: canUseInventoryActions,
                 showEndCap: canUseInventoryActions,
+                showShear: canUseInventoryActions && access.isAdmin,
                 showBloomOrder: canUseBloomOrders,
                 canUseInventoryActions,
                 canUseBloomOrders
@@ -46902,6 +47305,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const btnFlyer=document.getElementById('batch-btn-flyer');
             const btnTakeBack=document.getElementById('batch-btn-take-back');
             const btnEndCap=document.getElementById('batch-btn-endcap');
+            const btnShear=document.getElementById('batch-btn-shear');
             const btnBloomOrder=document.getElementById('batch-btn-bloom-order');
             const hasItems=selectedItems.size>0;
             const items=getCartSelectedItems();
@@ -46922,6 +47326,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             if(btnFlyer)btnFlyer.classList.toggle('hidden', !actionVisibility.showFlyer);
             if(btnTakeBack)btnTakeBack.classList.toggle('hidden', !actionVisibility.showTakeBack);
             if(btnEndCap)btnEndCap.classList.toggle('hidden', !actionVisibility.showEndCap);
+            if(btnShear)btnShear.classList.toggle('hidden', !actionVisibility.showShear);
             if(btnBloomOrder)btnBloomOrder.classList.toggle('hidden', !actionVisibility.showBloomOrder);
             if(helper)helper.classList.toggle('hidden', !hasItems || actionVisibility.canUseInventoryActions || actionVisibility.canUseBloomOrders);
             if(bar)bar.classList.toggle('hidden', !hasItems||!cartPanelOpen);
@@ -47886,8 +48291,12 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
                 return;
             }
             const canUseFlyerFromBloom = canUseDriveQuickRequest() && items.some((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
-            if ((access.isRep || access.isCsr) && (action === 'assign' || action === 'endcap' || (action === 'flyer' && !canUseFlyerFromBloom))) {
+            if ((access.isRep || access.isCsr) && (action === 'assign' || action === 'endcap' || action === 'shear' || (action === 'flyer' && !canUseFlyerFromBloom))) {
                 showToast('Restricted', access.isRep ? 'REP users can only Copy, Email, Text, Request, and Submit Order from Bloom Picker.' : 'CSR users can only Copy, Email, Request, Submit Order, and Take Back from Bloom Picker.', true);
+                return;
+            }
+            if (action === 'shear' && !access.isAdmin) {
+                showToast('Restricted', 'Only admin users can add rows to the Shear List.', true);
                 return;
             }
             const requestOnly = items.every((item) => isRequestLikeItem(item));
@@ -47906,6 +48315,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             if(action==='flyer'){pendingActionOptions = null; createCartFlyers();return}
             if(action==='take_back'){pendingActionOptions = null; addSelectedItemsToTakeBack();return}
             if(action==='endcap'){pendingActionOptions = null; openEndCapModal();return}
+            if(action==='shear'){pendingActionOptions = null; openShearListModal();return}
             if(requestOnly){pendingActionOptions = batchActionOptions; executeBatchAction(action,'request', batchActionOptions); pendingActionOptions = null; return}
             if(docksOnly){pendingActionOptions = batchActionOptions; executeBatchAction(action,'docks', batchActionOptions); pendingActionOptions = null; return}
             pendingAction=action;
@@ -47967,6 +48377,93 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             showToast("Processing...","Creating End Cap...",false);
             clearSelection();
             Promise.all(updates).then(()=>{showToast("Success","End Cap created!");switchView('tasks');setTaskTab('endcap')}).catch(err=>{showToast("Error","Network error.",true)})
+        }
+
+        function closeShearListModal() {
+            const modal = document.getElementById('shear-list-modal');
+            const rows = document.getElementById('shear-list-modal-rows');
+            const submitBtn = document.getElementById('shear-list-submit-btn');
+            if (modal) modal.classList.add('hidden');
+            if (rows) rows.innerHTML = '';
+            if (submitBtn) submitBtn.innerText = 'Add Rows';
+            return false;
+        }
+
+        function openShearListModal() {
+            const access = getRoleAccessState();
+            if (!access.isAdmin) {
+                showToast('Restricted', 'Only admin users can add rows to the Shear List.', true);
+                return false;
+            }
+            const items = getCartSelectedItems().filter((item) => item && canUseCartInventoryActions([item]));
+            if (!items.length) {
+                showToast('Bloom Picker Empty', 'Select one or more inventory rows first.', true);
+                return false;
+            }
+            toggleCartPanel(false);
+            const modal = document.getElementById('shear-list-modal');
+            const rowsEl = document.getElementById('shear-list-modal-rows');
+            if (!modal || !rowsEl) return false;
+            rowsEl.innerHTML = items.map((item) => {
+                const domId = String(firstNonEmptyValue(item.DOM_ID, item.dom_id, '') || '').trim();
+                const sourceUid = buildShearListSourceUid(item);
+                const commonName = firstNonEmptyValue(item.COMMONNAME, item.commonname, 'Unknown');
+                const contSize = firstNonEmptyValue(item.CONTSIZE, item.contsize, '-');
+                const loc = firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, 'No Loc');
+                const lot = firstNonEmptyValue(item.LOTCODE, item.lotcode, '-');
+                const ptr = firstNonEmptyValue(item.PTRAVAILABLE, item.ptravailable, '0');
+                return `<div class="rounded-2xl border border-lime-100 bg-lime-50/50 p-3 shadow-sm">
+                    <div class="font-black text-slate-900 leading-tight">${escapeHtml(commonName)}</div>
+                    <div class="mt-1 text-[11px] font-bold text-slate-500">${escapeHtml(contSize)} | Loc ${escapeHtml(loc)} | Lot ${escapeHtml(lot)} | PTR ${escapeHtml(String(ptr))}</div>
+                    <label class="mt-3 block text-[10px] font-black uppercase tracking-[0.14em] text-lime-700">Percent To Shear</label>
+                    <input type="number" min="1" max="100" step="1" inputmode="numeric" class="shear-percent-input input-field !mb-0 border-lime-200 bg-white text-center text-lg font-black" value="100" data-dom-id="${escapeHtml(domId)}" data-source-uid="${escapeHtml(sourceUid)}">
+                </div>`;
+            }).join('');
+            modal.classList.remove('hidden');
+            return false;
+        }
+
+        async function submitShearList() {
+            const submitBtn = document.getElementById('shear-list-submit-btn');
+            const inputs = Array.from(document.querySelectorAll('.shear-percent-input'));
+            if (!inputs.length) {
+                showToast('No Rows', 'No shear rows are selected.', true);
+                return false;
+            }
+            const payloads = [];
+            for (const input of inputs) {
+                const domId = String(input.dataset.domId || '').trim();
+                const sourceUid = String(input.dataset.sourceUid || '').trim();
+                const item = (domId && findItemByDomId(domId)) || (sourceUid && findItemByUniqueId(sourceUid));
+                const percent = Number(input.value);
+                if (!item) continue;
+                if (!Number.isFinite(percent) || percent < 1 || percent > 100) {
+                    showToast('Check Percent', 'Shear percentages must be from 1 to 100.', true);
+                    try { input.focus(); } catch (error) {}
+                    return false;
+                }
+                const payload = buildShearListPayload(item, percent);
+                if (payload) payloads.push(payload);
+            }
+            if (!payloads.length) {
+                showToast('No Rows', 'Could not resolve the selected rows.', true);
+                return false;
+            }
+            if (submitBtn) submitBtn.innerText = 'SAVING...';
+            try {
+                await supabaseFetch(SHEAR_LIST_TABLE, 'POST', payloads, 'on_conflict=unique_id');
+                payloads.forEach((payload) => cacheShearListRow(payload));
+                shearListState.loaded = true;
+                markViewDirty('shear-list');
+                clearSelection();
+                closeShearListModal();
+                if (isViewVisible('shear-list')) renderShearList();
+                showToast('Added', `${payloads.length} row${payloads.length === 1 ? '' : 's'} added to Shear List.`);
+            } catch (error) {
+                showToast('Setup Needed', 'Run shear_list_migration.sql in Supabase before adding shear rows.', true);
+                if (submitBtn) submitBtn.innerText = 'Add Rows';
+            }
+            return false;
         }
 
         function setRepRequestAction(uid, action) {

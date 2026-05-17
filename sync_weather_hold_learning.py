@@ -15,12 +15,13 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List
 from zoneinfo import ZoneInfo
 
 
 OPEN_METEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
+OPEN_METEO_ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 DEFAULT_LATITUDE = 35.8615
 DEFAULT_LONGITUDE = -94.9586
 DEFAULT_TIMEZONE = "America/Chicago"
@@ -57,6 +58,13 @@ def env_int(name: str, default: int) -> int:
     return int(raw)
 
 
+def env_bool(name: str, default: bool = False) -> bool:
+    raw = first_non_empty(os.environ.get(name))
+    if not raw:
+        return default
+    return raw.lower() in {"1", "true", "yes", "y", "on"}
+
+
 def json_request(url: str, method: str = "GET", payload: Any = None, headers: Dict[str, str] | None = None, timeout: int = 60) -> Any:
     data = None
     request_headers = dict(headers or {})
@@ -91,6 +99,39 @@ def fetch_open_meteo_hourly(latitude: float, longitude: float, timezone_name: st
             print(f"Open-Meteo rejected {past_days} past days; retrying with 14 days. HTTP {exc.code}", file=sys.stderr)
             return fetch_open_meteo_hourly(latitude, longitude, timezone_name, 14)
         raise
+
+
+def fetch_open_meteo_archive_hourly(latitude: float, longitude: float, timezone_name: str, start_date: date, end_date: date) -> Dict[str, Any]:
+    query = {
+        "latitude": str(latitude),
+        "longitude": str(longitude),
+        "hourly": ",".join(HOURLY_FIELDS),
+        "temperature_unit": "fahrenheit",
+        "wind_speed_unit": "mph",
+        "precipitation_unit": "inch",
+        "timezone": timezone_name,
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+    }
+    url = OPEN_METEO_ARCHIVE_URL + "?" + urllib.parse.urlencode(query)
+    return json_request(url, timeout=120)
+
+
+def iter_date_chunks(start_date: date, end_date: date, chunk_days: int) -> Iterable[tuple[date, date]]:
+    safe_chunk_days = max(1, int(chunk_days or 1))
+    current = start_date
+    while current <= end_date:
+        chunk_end = min(end_date, current + timedelta(days=safe_chunk_days - 1))
+        yield current, chunk_end
+        current = chunk_end + timedelta(days=1)
+
+
+def subtract_years(value: date, years: int) -> date:
+    safe_years = max(1, int(years or 1))
+    try:
+        return value.replace(year=value.year - safe_years)
+    except ValueError:
+        return value.replace(year=value.year - safe_years, month=2, day=28)
 
 
 def parse_local_hour(value: str, timezone_name: str) -> datetime:
@@ -194,6 +235,30 @@ class SupabaseRest:
             timeout=120,
         )
 
+    def count_weather_rows_since(self, table: str, station_key: str, observed_at_gte: str) -> int:
+        query = urllib.parse.urlencode({
+            "select": "unique_id",
+            "station_key": f"eq.{station_key}",
+            "observed_at": f"gte.{observed_at_gte}",
+            "limit": "1",
+        })
+        endpoint = f"{self.url}/rest/v1/{urllib.parse.quote(table, safe='')}?{query}"
+        headers = self.headers("count=exact")
+        headers["Range"] = "0-0"
+        request = urllib.request.Request(endpoint, headers=headers, method="GET")
+        with urllib.request.urlopen(request, timeout=60) as response:
+            content_range = response.headers.get("Content-Range", "")
+            response.read()
+        if "/" not in content_range:
+            return 0
+        total = content_range.rsplit("/", 1)[-1].strip()
+        if not total or total == "*":
+            return 0
+        try:
+            return int(total)
+        except ValueError:
+            return 0
+
 
 def run() -> int:
     supabase_url = first_non_empty(os.environ.get("SUPABASE_URL"))
@@ -206,16 +271,50 @@ def run() -> int:
     timezone_name = first_non_empty(os.environ.get("WEATHER_TIMEZONE"), default=DEFAULT_TIMEZONE)
     station_key = first_non_empty(os.environ.get("WEATHER_STATION_KEY"), default=DEFAULT_STATION_KEY)
     lookback_days = env_int("WEATHER_LOOKBACK_DAYS", 92)
+    history_years = env_int("WEATHER_HISTORY_YEARS", 10)
+    history_chunk_days = env_int("WEATHER_HISTORY_CHUNK_DAYS", 365)
+    history_min_coverage = env_float("WEATHER_HISTORY_MIN_COVERAGE", 0.9)
+    history_force = env_bool("WEATHER_HISTORY_FORCE", False)
+    history_max_chunks = env_int("WEATHER_HISTORY_MAX_CHUNKS", 0)
     refresh_limit = env_int("HOLD_WEATHER_REFRESH_LIMIT", 2000)
 
     started = time.time()
+    supabase = SupabaseRest(supabase_url, supabase_key)
+
+    local_today = datetime.now(ZoneInfo(timezone_name)).date()
+    history_start = subtract_years(local_today, history_years)
+    history_end = local_today - timedelta(days=1)
+    if history_years > 0 and history_start <= history_end:
+        expected_history_hours = max(1, ((history_end - history_start).days + 1) * 24)
+        observed_at_gte = datetime.combine(history_start, datetime.min.time(), ZoneInfo(timezone_name)).astimezone(timezone.utc).isoformat()
+        existing_history_hours = supabase.count_weather_rows_since("v2_weather_hourly", station_key, observed_at_gte)
+        coverage_ratio = existing_history_hours / expected_history_hours
+        should_backfill_history = history_force or coverage_ratio < history_min_coverage
+        print(
+            f"Weather history coverage since {history_start}: {existing_history_hours}/{expected_history_hours} "
+            f"hours ({coverage_ratio:.1%}). Backfill needed: {should_backfill_history}."
+        )
+        if should_backfill_history:
+            history_upserted = 0
+            chunk_count = 0
+            for chunk_start, chunk_end in iter_date_chunks(history_start, history_end, history_chunk_days):
+                chunk_count += 1
+                if history_max_chunks and chunk_count > history_max_chunks:
+                    print(f"Stopping historical backfill after {history_max_chunks} chunks by WEATHER_HISTORY_MAX_CHUNKS.")
+                    break
+                print(f"Fetching historical Open-Meteo archive {chunk_start} to {chunk_end}.")
+                archive_payload = fetch_open_meteo_archive_hourly(latitude, longitude, timezone_name, chunk_start, chunk_end)
+                archive_rows = hourly_rows_from_response(archive_payload, station_key, latitude, longitude, timezone_name)
+                history_upserted += supabase.upsert("v2_weather_hourly", archive_rows, on_conflict="unique_id")
+                print(f"Upserted {len(archive_rows)} archive rows for {chunk_start} to {chunk_end}.")
+            print(f"Historical weather backfill upserted {history_upserted} rows.")
+
     print(f"Fetching Open-Meteo weather for {station_key} ({latitude}, {longitude}) with {lookback_days} day lookback.")
     weather_payload = fetch_open_meteo_hourly(latitude, longitude, timezone_name, lookback_days)
     rows = hourly_rows_from_response(weather_payload, station_key, latitude, longitude, timezone_name)
     if not rows:
         raise RuntimeError("Open-Meteo returned no hourly weather rows.")
 
-    supabase = SupabaseRest(supabase_url, supabase_key)
     upserted = supabase.upsert("v2_weather_hourly", rows, on_conflict="unique_id")
     print(f"Upserted {upserted} hourly weather rows.")
 

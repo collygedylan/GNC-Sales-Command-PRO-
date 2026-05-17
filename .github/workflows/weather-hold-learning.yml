@@ -13,7 +13,7 @@ jobs:
   sync-weather-hold-learning:
     name: Update Park Hill weather and hold features
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 45
 
     steps:
       - name: Check out repository
@@ -33,5 +33,9 @@ jobs:
           WEATHER_LONGITUDE: "-94.9586"
           WEATHER_TIMEZONE: America/Chicago
           WEATHER_LOOKBACK_DAYS: "92"
+          WEATHER_HISTORY_YEARS: "10"
+          WEATHER_HISTORY_CHUNK_DAYS: "365"
+          WEATHER_HISTORY_MIN_COVERAGE: "0.90"
+          WEATHER_HISTORY_FORCE: "false"
           HOLD_WEATHER_REFRESH_LIMIT: "2000"
         run: python sync_weather_hold_learning.py
