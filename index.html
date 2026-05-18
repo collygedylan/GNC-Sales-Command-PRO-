@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.17.21';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.17.22';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2067,7 +2067,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.21').trim() || 'V2026.05.17.21';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.22').trim() || 'V2026.05.17.22';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -3301,7 +3301,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.21';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.22';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9045,8 +9045,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 const rawRow = eventType === 'DELETE' ? (payload.old || {}) : (payload.new || {});
                 const uniqueId = String(firstNonEmptyValue(rawRow.unique_id, rawRow.UNIQUE_ID, '')).trim();
                 if (!uniqueId) return false;
-                if (eventType === 'DELETE') removeSpreadCountRecordFromCache(uniqueId);
-                else cacheSpreadCountRecord(rawRow);
+                const changed = eventType === 'DELETE'
+                    ? removeSpreadCountRecordFromCache(uniqueId)
+                    : cacheSpreadCountRecord(rawRow);
+                if (!changed) return false;
                 spreadCountState.loaded = true;
                 markViewDirty('sales-inventory');
                 if (isViewVisible('sales-inventory')) renderProductionInventoryCountingContent();
@@ -14267,7 +14269,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.21').trim() || 'V2026.05.17.21';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.22').trim() || 'V2026.05.17.22';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -30879,7 +30881,13 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function setProductionInventoryCountingTab(tab = 'bunch') {
-            productionInventoryCountingTab = String(tab || '').trim().toLowerCase() === 'spread' ? 'spread' : 'bunch';
+            const nextTab = String(tab || '').trim().toLowerCase() === 'spread' ? 'spread' : 'bunch';
+            if (productionInventoryCountingTab !== nextTab) {
+                productionInventoryCountingTab = nextTab;
+                resetSpreadCountRuntimeState(nextTab);
+            } else {
+                productionInventoryCountingTab = nextTab;
+            }
             renderSalesInventoryHub();
             return false;
         }
@@ -30897,6 +30905,8 @@ function toggleDriveQuickRequestItem(domId) {
             { key: 'east_west', label: 'East -> West', shortLabel: 'E -> W' },
             { key: 'west_east', label: 'West -> East', shortLabel: 'W -> E' }
         ];
+        const SPREAD_COUNT_NORTH_SOUTH_BLOCKS = new Set(['A', 'B', 'C', 'D', 'L']);
+        const SPREAD_COUNT_NORTH_SOUTH_LOCATIONS = new Set(['21.E', '22.E', '23.E', '24.E']);
 
         let spreadCountState = {
             loaded: false,
@@ -30907,6 +30917,7 @@ function toggleDriveQuickRequestItem(domId) {
             rows: [],
             recordsByUniqueId: new Map(),
             recordsBySourceUid: new Map(),
+            countType: 'bunch',
             drillLevel: 'blocks',
             selectedBlock: '',
             selectedLocation: '',
@@ -30914,6 +30925,44 @@ function toggleDriveQuickRequestItem(domId) {
             orderByLocation: Object.create(null),
             draftCountsBySourceUid: Object.create(null)
         };
+
+        function normalizeSpreadCountType(type = '') {
+            return String(type || '').trim().toLowerCase() === 'spread' ? 'spread' : 'bunch';
+        }
+
+        function getActiveSpreadCountType() {
+            return normalizeSpreadCountType(productionInventoryCountingTab);
+        }
+
+        function getSpreadCountTypeTitle(type = getActiveSpreadCountType()) {
+            return normalizeSpreadCountType(type) === 'spread' ? 'Spread Count' : 'Bunch Count';
+        }
+
+        function getSpreadCountTypeIcon(type = getActiveSpreadCountType()) {
+            return normalizeSpreadCountType(type) === 'spread' ? 'ph-arrows-left-right' : 'ph-plant';
+        }
+
+        function getSpreadCountTypePrefix(type = getActiveSpreadCountType()) {
+            return normalizeSpreadCountType(type) === 'spread' ? 'spread-count' : 'bunch-count';
+        }
+
+        function resetSpreadCountRuntimeState(type = getActiveSpreadCountType()) {
+            spreadCountState.loaded = false;
+            spreadCountState.loading = false;
+            spreadCountState.error = '';
+            spreadCountState.lastLoadedAt = 0;
+            spreadCountState.promise = null;
+            spreadCountState.rows = [];
+            spreadCountState.recordsByUniqueId = new Map();
+            spreadCountState.recordsBySourceUid = new Map();
+            spreadCountState.countType = normalizeSpreadCountType(type);
+            spreadCountState.drillLevel = 'blocks';
+            spreadCountState.selectedBlock = '';
+            spreadCountState.selectedLocation = '';
+            spreadCountState.directionByLocation = Object.create(null);
+            spreadCountState.orderByLocation = Object.create(null);
+            spreadCountState.draftCountsBySourceUid = Object.create(null);
+        }
 
         function getSpreadCountValue(row = null, field = '', fallback = '') {
             if (!row || !field) return fallback;
@@ -30945,10 +30994,14 @@ function toggleDriveQuickRequestItem(domId) {
             ) || '').trim();
         }
 
-        function buildSpreadCountUniqueId(row = null) {
+        function getSpreadCountRecordType(row = null) {
+            return normalizeSpreadCountType(getSpreadCountValue(row, 'count_type', 'spread'));
+        }
+
+        function buildSpreadCountUniqueId(row = null, countType = getActiveSpreadCountType()) {
             const sourceUid = getSpreadCountSourceUid(row);
             if (!sourceUid) return '';
-            return `spread-count-${sourceUid}`.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+            return `${getSpreadCountTypePrefix(countType)}-${sourceUid}`.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
         }
 
         function getSpreadCountRecordId(row = null) {
@@ -30962,7 +31015,9 @@ function toggleDriveQuickRequestItem(domId) {
         function rebuildSpreadCountIndexes() {
             const byUniqueId = new Map();
             const bySourceUid = new Map();
+            const activeType = normalizeSpreadCountType(spreadCountState.countType || getActiveSpreadCountType());
             (spreadCountState.rows || []).forEach((row) => {
+                if (getSpreadCountRecordType(row) !== activeType) return;
                 const uniqueId = getSpreadCountRecordId(row);
                 const sourceUid = String(getSpreadCountValue(row, 'source_unique_id', '') || '').trim();
                 if (uniqueId) byUniqueId.set(uniqueId, row);
@@ -30974,6 +31029,8 @@ function toggleDriveQuickRequestItem(domId) {
 
         function cacheSpreadCountRecord(row = null) {
             if (!row || typeof row !== 'object') return false;
+            const activeType = normalizeSpreadCountType(spreadCountState.countType || getActiveSpreadCountType());
+            if (getSpreadCountRecordType(row) !== activeType) return false;
             const uniqueId = getSpreadCountRecordId(row);
             if (!uniqueId) return false;
             const nextRows = Array.isArray(spreadCountState.rows) ? spreadCountState.rows : [];
@@ -30993,25 +31050,30 @@ function toggleDriveQuickRequestItem(domId) {
             return spreadCountState.rows.length !== previousLength;
         }
 
-        async function loadSpreadCountData(force = false) {
+        async function loadSpreadCountData(force = false, countType = getActiveSpreadCountType()) {
+            const safeType = normalizeSpreadCountType(countType);
             const staleMs = 3 * 60 * 1000;
-            if (!force && spreadCountState.loaded && (Date.now() - spreadCountState.lastLoadedAt) < staleMs) return spreadCountState;
-            if (spreadCountState.promise && !force) return spreadCountState.promise;
+            if (!force && spreadCountState.loaded && spreadCountState.countType === safeType && (Date.now() - spreadCountState.lastLoadedAt) < staleMs) return spreadCountState;
+            if (spreadCountState.promise && spreadCountState.countType === safeType && !force) return spreadCountState.promise;
+            spreadCountState.countType = safeType;
             spreadCountState.loading = true;
             spreadCountState.error = '';
             spreadCountState.promise = (async () => {
-                const rows = await supabaseFetch(SPREAD_COUNT_TABLE, 'GET', null, `select=${SPREAD_COUNT_SELECT_FIELDS}&order=blockalpha.asc,locationcode.asc,row_order.asc,updated_at.desc`);
+                const rows = await supabaseFetch(SPREAD_COUNT_TABLE, 'GET', null, `select=${SPREAD_COUNT_SELECT_FIELDS}&count_type=eq.${encodeURIComponent(safeType)}&order=blockalpha.asc,locationcode.asc,row_order.asc,updated_at.desc`);
+                if (spreadCountState.countType !== safeType) return spreadCountState;
                 spreadCountState.rows = Array.isArray(rows) ? rows : [];
                 rebuildSpreadCountIndexes();
                 spreadCountState.loaded = true;
                 spreadCountState.lastLoadedAt = Date.now();
                 return spreadCountState;
             })().catch((error) => {
-                spreadCountState.error = error && error.message ? error.message : 'Spread Count rows could not load.';
+                if (spreadCountState.countType !== safeType) return spreadCountState;
+                spreadCountState.error = error && error.message ? error.message : `${getSpreadCountTypeTitle(safeType)} rows could not load.`;
                 spreadCountState.loaded = true;
                 rebuildSpreadCountIndexes();
                 return spreadCountState;
             }).finally(() => {
+                if (spreadCountState.countType !== safeType) return;
                 spreadCountState.loading = false;
                 spreadCountState.promise = null;
             });
@@ -31019,20 +31081,21 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function ensureSpreadCountInventoryData() {
+            const activeType = getActiveSpreadCountType();
             const fullLoaded = typeof isDatasetLoaded === 'function' ? isDatasetLoaded('master', 'full') : (Array.isArray(fullInventory) && fullInventory.length > 0);
             if (!fullLoaded && typeof loadDatasetTargetsWithLimit === 'function') {
                 loadDatasetTargetsWithLimit([{ key: 'master', mode: 'full' }], {
                     interruptible: true,
                     requeueOnInteraction: true,
                     preserveRequestedMode: true,
-                    retryReason: 'spread-count-master-load'
+                    retryReason: `${activeType}-count-master-load`
                 }, 1).then(() => {
-                    if (isViewVisible('sales-inventory') && productionInventoryCountingTab === 'spread') renderProductionInventoryCountingContent();
+                    if (isViewVisible('sales-inventory') && productionInventoryTab === 'counting') renderProductionInventoryCountingContent();
                 }).catch(() => {});
             }
-            if (!spreadCountState.loaded && !spreadCountState.loading) {
-                loadSpreadCountData(false).then(() => {
-                    if (isViewVisible('sales-inventory') && productionInventoryCountingTab === 'spread') renderProductionInventoryCountingContent();
+            if ((!spreadCountState.loaded || spreadCountState.countType !== activeType) && !spreadCountState.loading) {
+                loadSpreadCountData(false, activeType).then(() => {
+                    if (isViewVisible('sales-inventory') && productionInventoryTab === 'counting') renderProductionInventoryCountingContent();
                 }).catch(() => {});
             }
             return fullLoaded;
@@ -31096,18 +31159,43 @@ function toggleDriveQuickRequestItem(domId) {
             return SPREAD_COUNT_DIRECTIONS.find((item) => item.key === safeDirection) || SPREAD_COUNT_DIRECTIONS[0];
         }
 
+        function normalizeSpreadCountDirectionCode(value = '') {
+            return String(value || '').trim().toUpperCase();
+        }
+
+        function getSpreadCountAllowedDirections(block = spreadCountState.selectedBlock, location = spreadCountState.selectedLocation) {
+            const blockKey = normalizeSpreadCountDirectionCode(block);
+            const locationKey = normalizeSpreadCountDirectionCode(location);
+            const isNorthSouth = SPREAD_COUNT_NORTH_SOUTH_BLOCKS.has(blockKey) || SPREAD_COUNT_NORTH_SOUTH_LOCATIONS.has(locationKey);
+            const allowedKeys = isNorthSouth ? ['north_south', 'south_north'] : ['east_west', 'west_east'];
+            return SPREAD_COUNT_DIRECTIONS.filter((direction) => allowedKeys.includes(direction.key));
+        }
+
+        function getSpreadCountDefaultDirection(block = spreadCountState.selectedBlock, location = spreadCountState.selectedLocation) {
+            const allowedDirections = getSpreadCountAllowedDirections(block, location);
+            return allowedDirections.length ? allowedDirections[0].key : SPREAD_COUNT_DIRECTIONS[0].key;
+        }
+
+        function getSpreadCountSafeDirection(direction = '', block = spreadCountState.selectedBlock, location = spreadCountState.selectedLocation) {
+            const safeDirection = String(direction || '').trim();
+            const allowedDirections = getSpreadCountAllowedDirections(block, location);
+            const match = allowedDirections.find((item) => item.key === safeDirection);
+            return match ? match.key : getSpreadCountDefaultDirection(block, location);
+        }
+
         function getSpreadCountDirectionForLocation(block = spreadCountState.selectedBlock, location = spreadCountState.selectedLocation) {
             const locationKey = getSpreadCountLocationKey(block, location);
-            if (spreadCountState.directionByLocation[locationKey]) return spreadCountState.directionByLocation[locationKey];
+            const cachedDirection = spreadCountState.directionByLocation[locationKey];
+            if (cachedDirection) return getSpreadCountSafeDirection(cachedDirection, block, location);
             const counts = new Map();
             getSpreadCountRowsForSelectedLocation().forEach((row) => {
                 const record = getSpreadCountRecordForSourceUid(getSpreadCountSourceUid(row));
                 const direction = String(getSpreadCountValue(record, 'direction', '') || '').trim();
-                if (!direction) return;
+                if (!direction || getSpreadCountSafeDirection(direction, block, location) !== direction) return;
                 counts.set(direction, (counts.get(direction) || 0) + 1);
             });
             const best = Array.from(counts.entries()).sort((left, right) => right[1] - left[1])[0];
-            return best ? best[0] : 'north_south';
+            return best ? best[0] : getSpreadCountDefaultDirection(block, location);
         }
 
         function getSpreadCountDefaultSortedRows(rows = []) {
@@ -31179,7 +31267,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function setSpreadCountDirection(direction = '') {
-            const safeDirection = getSpreadCountDirectionMeta(direction).key;
+            const safeDirection = getSpreadCountSafeDirection(direction);
             const locationKey = getSpreadCountLocationKey(spreadCountState.selectedBlock, spreadCountState.selectedLocation);
             spreadCountState.directionByLocation[locationKey] = safeDirection;
             renderProductionInventoryCountingContent();
@@ -31236,27 +31324,31 @@ function toggleDriveQuickRequestItem(domId) {
             return snapshot;
         }
 
-        function buildSpreadCountPayload(row = null, countValue = '', rowOrder = 0, direction = '') {
+        function buildSpreadCountPayload(row = null, countValue = '', rowOrder = 0, direction = '', countType = getActiveSpreadCountType()) {
             if (!row) return null;
             const sourceUid = getSpreadCountSourceUid(row);
-            const uniqueId = buildSpreadCountUniqueId(row);
+            const safeType = normalizeSpreadCountType(countType);
+            const uniqueId = buildSpreadCountUniqueId(row, safeType);
             if (!sourceUid || !uniqueId) return null;
             const textValue = String(countValue == null ? '' : countValue).trim();
             const countedQty = textValue === '' ? null : getSpreadCountNumber(textValue, null);
             if (textValue !== '' && countedQty === null) return null;
             const now = new Date().toISOString();
+            const blockValue = firstNonEmptyValue(row.BLOCKALPHA, row.blockalpha, '');
+            const locationValue = firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, '');
             return {
                 unique_id: uniqueId,
+                count_type: safeType,
                 source_unique_id: sourceUid,
                 itemcode: firstNonEmptyValue(row.ITEMCODE, row.itemcode, ''),
                 commonname: firstNonEmptyValue(row.COMMONNAME, row.commonname, ''),
                 genus: firstNonEmptyValue(row.GENUS, row.genus, ''),
                 contsize: firstNonEmptyValue(row.CONTSIZE, row.contsize, ''),
-                locationcode: firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, ''),
+                locationcode: locationValue,
                 lotcode: firstNonEmptyValue(row.LOTCODE, row.lotcode, ''),
                 season: firstNonEmptyValue(row.SEASON, row.season, ''),
-                blockalpha: firstNonEmptyValue(row.BLOCKALPHA, row.blockalpha, ''),
-                direction: getSpreadCountDirectionMeta(direction).key,
+                blockalpha: blockValue,
+                direction: getSpreadCountSafeDirection(direction, getSpreadCountDisplayValue(blockValue, 'No Block'), getSpreadCountDisplayValue(locationValue, 'No Location')),
                 row_order: Math.max(1, Number(rowOrder) || 1),
                 counted_qty: countedQty,
                 counted_by_username: currentUser || '',
@@ -31270,12 +31362,13 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function saveSpreadCountRow(sourceUid = '', button = null) {
+            const countTitle = getSpreadCountTypeTitle();
             const safeUid = String(sourceUid || '').trim();
             const rows = getSpreadCountOrderedRows(getSpreadCountRowsForSelectedLocation());
             const rowIndex = rows.findIndex((row) => getSpreadCountSourceUid(row) === safeUid);
             const row = rowIndex >= 0 ? rows[rowIndex] : null;
             if (!row) {
-                showToast('Missing Row', 'That Spread Count row is not loaded anymore.', true);
+                showToast('Missing Row', `That ${countTitle} row is not loaded anymore.`, true);
                 return false;
             }
             const input = findSpreadCountInput(safeUid);
@@ -31295,10 +31388,10 @@ function toggleDriveQuickRequestItem(domId) {
                 await supabaseFetch(SPREAD_COUNT_TABLE, 'POST', payload, 'on_conflict=unique_id');
                 cacheSpreadCountRecord(payload);
                 markViewDirty('sales-inventory');
-                showToast('Saved', 'Spread Count row saved.');
+                showToast('Saved', `${countTitle} row saved.`);
                 renderProductionInventoryCountingContent();
             } catch (error) {
-                showToast('Error', error && error.message ? error.message : 'Could not save Spread Count.', true);
+                showToast('Error', error && error.message ? error.message : `Could not save ${countTitle}.`, true);
                 if (button) {
                     button.disabled = false;
                     button.innerText = 'Save Count';
@@ -31308,6 +31401,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function saveVisibleSpreadCountRows(button = null) {
+            const countTitle = getSpreadCountTypeTitle();
             const rows = getSpreadCountOrderedRows(getSpreadCountRowsForSelectedLocation());
             const direction = getSpreadCountDirectionForLocation();
             const payloads = rows.map((row, index) => {
@@ -31331,10 +31425,10 @@ function toggleDriveQuickRequestItem(domId) {
                 await supabaseFetch(SPREAD_COUNT_TABLE, 'POST', payloads, 'on_conflict=unique_id');
                 payloads.forEach(cacheSpreadCountRecord);
                 markViewDirty('sales-inventory');
-                showToast('Saved', 'Spread Count location saved.');
+                showToast('Saved', `${countTitle} location saved.`);
                 renderProductionInventoryCountingContent();
             } catch (error) {
-                showToast('Error', error && error.message ? error.message : 'Could not save Spread Count location.', true);
+                showToast('Error', error && error.message ? error.message : `Could not save ${countTitle} location.`, true);
                 if (button) {
                     button.disabled = false;
                     button.innerText = 'Save Location';
@@ -31346,7 +31440,7 @@ function toggleDriveQuickRequestItem(domId) {
         function refreshSpreadCountData() {
             spreadCountState.loaded = false;
             spreadCountState.error = '';
-            loadSpreadCountData(true).then(() => {
+            loadSpreadCountData(true, getActiveSpreadCountType()).then(() => {
                 if (isViewVisible('sales-inventory')) renderProductionInventoryCountingContent();
             }).catch(() => {});
             if (typeof loadDatasetTargetsWithLimit === 'function') {
@@ -31360,8 +31454,9 @@ function toggleDriveQuickRequestItem(domId) {
 
         function renderSpreadCountDirectionControls() {
             const activeDirection = getSpreadCountDirectionForLocation();
-            return `<div class="grid grid-cols-2 gap-2 md:grid-cols-4">
-                ${SPREAD_COUNT_DIRECTIONS.map((direction) => {
+            const allowedDirections = getSpreadCountAllowedDirections();
+            return `<div class="grid grid-cols-2 gap-2">
+                ${allowedDirections.map((direction) => {
                     const active = direction.key === activeDirection;
                     return `<button type="button" class="rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] shadow-sm active:scale-95 ${active ? 'border-[#007a4d] bg-[#007a4d] text-white' : 'border-green-200 bg-white text-[#007a4d]'}" onclick="return setSpreadCountDirection('${escJsAttrValue(direction.key)}')">${escapeHtml(direction.label)}</button>`;
                 }).join('')}
@@ -31411,10 +31506,14 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function renderSpreadCountContent(container) {
+            const activeType = getActiveSpreadCountType();
+            if (spreadCountState.countType !== activeType && !spreadCountState.loading) resetSpreadCountRuntimeState(activeType);
+            const countTitle = getSpreadCountTypeTitle(activeType);
+            const countIcon = getSpreadCountTypeIcon(activeType);
             const hasFullInventory = ensureSpreadCountInventoryData();
             const sourceRows = getSpreadCountSourceRows();
             const loadingNotice = !hasFullInventory
-                ? '<div class="mb-3 rounded-xl border border-sky-100 bg-sky-50 px-3 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-sky-700">Loading all Drive Mode rows for Spread Count...</div>'
+                ? `<div class="mb-3 rounded-xl border border-sky-100 bg-sky-50 px-3 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-sky-700">Loading all Drive Mode rows for ${escapeHtml(countTitle)}...</div>`
                 : '';
             const savingNotice = spreadCountState.loading
                 ? '<div class="mb-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Loading saved counts...</div>'
@@ -31424,19 +31523,19 @@ function toggleDriveQuickRequestItem(domId) {
                 : '';
             const baseHeader = `<div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="flex min-w-0 items-center gap-3">
-                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-arrows-left-right text-2xl"></i></div>
+                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ${escapeHtml(countIcon)} text-2xl"></i></div>
                     <div class="min-w-0">
                         <div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Counting</div>
-                        <div class="text-lg font-black text-slate-900">Spread Count</div>
+                        <div class="text-lg font-black text-slate-900">${escapeHtml(countTitle)}</div>
                     </div>
                 </div>
                 <button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return refreshSpreadCountData()"><i class="ph-bold ph-arrows-clockwise align-middle"></i><span class="ml-1 align-middle">Refresh</span></button>
             </div>`;
             if (!sourceRows.length) {
-                setContainerHtml(container, `${baseHeader}${loadingNotice}${savingNotice}${errorNotice}<div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center text-sm font-bold text-slate-400">${hasFullInventory ? 'No Drive Mode rows are available for Spread Count.' : 'Drive Mode rows are loading.'}</div>`);
+                setContainerHtml(container, `${baseHeader}${loadingNotice}${savingNotice}${errorNotice}<div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center text-sm font-bold text-slate-400">${hasFullInventory ? `No Drive Mode rows are available for ${escapeHtml(countTitle)}.` : 'Drive Mode rows are loading.'}</div>`);
                 return;
             }
-            const crumbParts = ['Spread Count'];
+            const crumbParts = [countTitle];
             if (spreadCountState.selectedBlock) crumbParts.push(`Block ${spreadCountState.selectedBlock}`);
             if (spreadCountState.selectedLocation) crumbParts.push(spreadCountState.selectedLocation);
             const backHtml = spreadCountState.drillLevel !== 'blocks'
@@ -31490,21 +31589,7 @@ function toggleDriveQuickRequestItem(domId) {
         function renderProductionInventoryCountingContent() {
             const container = document.getElementById('production-inventory-counting-content');
             if (!container) return;
-            const isSpread = productionInventoryCountingTab === 'spread';
-            if (isSpread) {
-                renderSpreadCountContent(container);
-                return;
-            }
-            const title = isSpread ? 'Spread Count' : 'Bunch Count';
-            const icon = isSpread ? 'ph-arrows-left-right' : 'ph-plant';
-            setContainerHtml(container, `<div class="flex items-center gap-3">
-                <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ${icon} text-2xl"></i></div>
-                <div class="min-w-0">
-                    <div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Counting</div>
-                    <div class="text-lg font-black text-slate-900">${escapeHtml(title)}</div>
-                </div>
-            </div>
-            <div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center text-sm font-bold text-slate-400">No active ${escapeHtml(title)} rows.</div>`);
+            renderSpreadCountContent(container);
         }
 
         function renderProductionInventory84Content() {

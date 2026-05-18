@@ -3,6 +3,7 @@ create extension if not exists pgcrypto with schema extensions;
 
 create table if not exists public.v2_spread_counts (
     unique_id text primary key,
+    count_type text not null default 'spread',
     source_unique_id text not null,
     itemcode text,
     commonname text,
@@ -23,16 +24,20 @@ create table if not exists public.v2_spread_counts (
     snapshot jsonb not null default '{}'::jsonb,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
+    constraint v2_spread_counts_count_type_check check (count_type in ('spread', 'bunch')),
     constraint v2_spread_counts_direction_check check (direction in ('north_south', 'south_north', 'east_west', 'west_east')),
     constraint v2_spread_counts_row_order_check check (row_order >= 1),
     constraint v2_spread_counts_counted_qty_check check (counted_qty is null or counted_qty >= 0)
 );
 
-create unique index if not exists idx_v2_spread_counts_source_unique_id
-    on public.v2_spread_counts (source_unique_id);
+create unique index if not exists idx_v2_spread_counts_count_type_source_unique_id
+    on public.v2_spread_counts (count_type, source_unique_id);
 
 create index if not exists idx_v2_spread_counts_block_location_order
     on public.v2_spread_counts (blockalpha, locationcode, row_order);
+
+create index if not exists idx_v2_spread_counts_count_type_block_location_order
+    on public.v2_spread_counts (count_type, blockalpha, locationcode, row_order);
 
 create index if not exists idx_v2_spread_counts_itemcode
     on public.v2_spread_counts (itemcode);
