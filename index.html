@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.18.02';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.18.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -49970,8 +49970,15 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const reportHtml = reportText
                 ? `<div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-[12px] font-semibold leading-relaxed text-slate-700 whitespace-pre-wrap">${esc(reportText)}</div>`
                 : `<div class="rounded-xl border border-dashed border-slate-300 bg-white px-3 py-6 text-center text-[12px] font-semibold text-slate-400">No rewritten lab report is attached yet. Run <span class="font-black">diagnostic_reference_report_migration.sql</span>, then let the ML worker reprocess lab reports.</div>`;
-            const reportMetaHtml = (item.DIAGNOSTIC_REFERENCE_FILE_NAME || item.DIAGNOSTIC_REFERENCE_LABEL)
-                ? `<div class="mb-2 flex flex-wrap gap-2"><span class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">${esc(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_LABEL, 'Lab Report'))}</span>${item.DIAGNOSTIC_REFERENCE_FILE_NAME ? `<span class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">${esc(item.DIAGNOSTIC_REFERENCE_FILE_NAME)}</span>` : ''}</div>`
+            const referenceScore = Number(item.DIAGNOSTIC_REFERENCE_SCORE);
+            const referenceScoreHtml = Number.isFinite(referenceScore) && referenceScore > 0
+                ? `<span class="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-emerald-700">Match ${esc(String(Math.round(referenceScore)))}</span>`
+                : '';
+            const referenceLinkHtml = item.DIAGNOSTIC_REFERENCE_PUBLIC_URL
+                ? `<a href="${esc(item.DIAGNOSTIC_REFERENCE_PUBLIC_URL)}" target="_blank" rel="noopener" class="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-blue-700" onclick="event.stopPropagation()">Open Source</a>`
+                : '';
+            const reportMetaHtml = (item.DIAGNOSTIC_REFERENCE_FILE_NAME || item.DIAGNOSTIC_REFERENCE_LABEL || referenceScoreHtml || referenceLinkHtml)
+                ? `<div class="mb-2 flex flex-wrap gap-2"><span class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">${esc(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_LABEL, 'Lab Report'))}</span>${item.DIAGNOSTIC_REFERENCE_FILE_NAME ? `<span class="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">${esc(item.DIAGNOSTIC_REFERENCE_FILE_NAME)}</span>` : ''}${referenceScoreHtml}${referenceLinkHtml}</div>`
                 : '';
             const photosHtml = photoUrls.length
                 ? `<div class="grid grid-cols-3 gap-2 sm:grid-cols-5">${photoUrls.map((url, index) => `<button type="button" class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm active:scale-95" onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(photoCsv)}', '${escJsAttrValue(title)}'); requestAnimationFrame(() => snapPhotoModalToIndex(${index}, false)); return false;"><img src="${esc(getDirectImageUrl(url, 'gallery-tile'))}" alt="" class="aspect-square w-full object-cover" loading="lazy" decoding="async"></button>`).join('')}</div>`
@@ -50052,8 +50059,26 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             if (searchTerm) rows = filterBySearch(rows, searchTerm, 'tasks');
             if (crumb) crumb.innerText = `Diagnostics | ${rows.length} Issue${rows.length === 1 ? '' : 's'}`;
             const prefixHtml = `<div class="mb-3 flex flex-col gap-2 rounded-2xl border border-red-100 bg-red-50/70 p-4 sm:flex-row sm:items-center sm:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-red-700">Diagnostics</div><div class="mt-1 text-sm font-bold text-red-900">Photos with a returned issue or manual-review flag appear here for Dylan.</div></div><button type="button" class="min-h-[42px] rounded-xl border border-red-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-red-700 shadow-sm active:scale-95" onclick="return refreshMlJobsNow()"><i class="ph-bold ph-arrows-clockwise align-middle"></i><span class="align-middle ml-1">Refresh</span></button></div>`;
+            const tabSignature = rows.map((row) => {
+                const normalized = normalizeMlImageJobRow(row) || {};
+                const uid = String(normalized.UNIQUE_ID || '').trim();
+                return `${uid}:${getDiagnosticIssueCardTab(uid)}`;
+            }).join('|');
+            const renderSignature = buildRowsRenderSignature(`tasks-diagnostics-review|${searchTerm}|${tabSignature}`, rows, [
+                'DIAGNOSTIC_REFERENCE_REPORT_REWRITE',
+                'DIAGNOSTIC_REFERENCE_REPORT_TEXT',
+                'DIAGNOSTIC_REFERENCE_FILE_NAME',
+                'DIAGNOSTIC_REFERENCE_LABEL',
+                'DIAGNOSTIC_REFERENCE_PUBLIC_URL',
+                'DIAGNOSTIC_REFERENCE_SCORE',
+                'DIAGNOSTIC_LAB_CASE_ID',
+                'DIAGNOSTIC_LAB_STATUS',
+                'DIAGNOSTIC_LAB_REPORT_URL',
+                'DIAGNOSTIC_REVIEWER_REPORT'
+            ]);
             renderMarkupChunkedByKey('tasks-diagnostics-review', container, null, rows, '', (row) => renderTaskDiagnosticIssueCard(row), {
                 prefixHtml,
+                renderSignature,
                 approxCardHeight: 300,
                 emptyHtml: '<div class="p-8 text-center text-gray-400">No diagnostic issue rows need review.</div>'
             });
