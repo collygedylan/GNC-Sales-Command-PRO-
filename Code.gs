@@ -145,7 +145,7 @@ function runDiseaseDriveToSupabaseSyncOnly() { return runDiseaseDriveToSupabaseS
 
 const MANUAL_SYNC_STATUS_KEY = 'MANUAL_SYNC_STATUS';
 const MANUAL_SYNC_TRIGGER_HANDLER = 'runQueuedManualSyncStage_';
-const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'drive_history', 'soc', 'reserves', 'cav', 'disease']);
+const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'cav', 'disease']);
 const MANUAL_SYNC_EXECUTION_BUDGET_MS = 285000;
 const MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS = 120000;
 const MANUAL_SYNC_QUEUED_STALE_MS = 5 * 60 * 1000;
@@ -335,6 +335,12 @@ function clearManualSyncStatus() {
   console.log('[MANUAL SYNC] Stored status cleared.');
 }
 
+function stopDriveAroundHistoryBackfill() {
+  removeDriveAroundHistoryBackfillTrigger_();
+  console.log('[DRIVE AROUND HISTORY] Backfill trigger removed. Historical Drive Around files will not process unless startDriveAroundHistoryBackfill() is run manually.');
+  return { stopped: true };
+}
+
 function resetAndRunFullManualSync() {
   clearManualSyncStatus();
   return runDriveSocReservesSequence();
@@ -415,7 +421,7 @@ function scheduleManualSyncStageTrigger_() {
 function getManualSyncStageOrder_(jobName) {
   const normalized = String(jobName || '').trim().toLowerCase();
   if (normalized === 'all' || normalized === 'drive_soc_reserves') return MANUAL_SYNC_STAGE_ORDER_DEFAULT.slice();
-  if (normalized === 'drive') return ['drive', 'drive_history'];
+  if (normalized === 'drive') return ['drive'];
   if (normalized === 'drive_history' || normalized === 'drivearound_history' || normalized === 'drive_around_history') return ['drive_history'];
   if (normalized === 'soc') return ['soc'];
   if (normalized === 'reserves') return ['reserves'];
