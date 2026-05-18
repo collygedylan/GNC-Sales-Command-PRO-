@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.18.09';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.18.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -7067,7 +7067,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             if (isFlyerFolderRow(item)) {
                 const sourceRow = findCurrentFlyerFolderSourceRow(item);
                 const sourcePhotoCsv = getFlyerFolderSourcePhotoCsv(sourceRow);
-                if (sourcePhotoCsv) return removeInvalidSharedPhotoLinksFromFolderCsv(sourceRow || item, sourcePhotoCsv);
+                if (sourceRow) return removeInvalidSharedPhotoLinksFromFolderCsv(sourceRow, sourcePhotoCsv);
             }
             return removeInvalidSharedPhotoLinksFromFolderCsv(item, mergePhotoCsvList([
                 item.FLYER_PHOTO_LINK,
@@ -20107,15 +20107,11 @@ function toggleDriveQuickRequestItem(domId) {
         function getFlyerFolderSourcePhotoCsv(sourceRow = null) {
             if (!sourceRow) return '';
             return String(mergePhotoCsvList([
-                getDriveCustomerOutreachPhotoCsv(sourceRow),
                 getSharedAppPhotoLinkCsv(sourceRow, { includePending: false }),
                 sourceRow.ROW_PHOTO_LINK,
                 sourceRow.SAVED_PHOTO_LINK,
                 sourceRow.PHOTO_LINK,
-                sourceRow.PHOTOLINK,
-                sourceRow.REQ_PHOTO_LINK,
-                sourceRow.DOCK_PHOTO_LINK,
-                sourceRow.FLYER_PHOTO_LINK
+                sourceRow.PHOTOLINK
             ]) || '').trim();
         }
 
@@ -20126,10 +20122,7 @@ function toggleDriveQuickRequestItem(domId) {
                 sourceRow.ROW_PHOTO_NAME,
                 sourceRow.SAVED_PHOTO_NAME,
                 sourceRow.PHOTO_NAME,
-                sourceRow.PHOTONAME,
-                sourceRow.REQ_PHOTO_NAME,
-                sourceRow.DOCK_PHOTO_NAME,
-                sourceRow.FLYER_PHOTO_NAME
+                sourceRow.PHOTONAME
             ]) || '').trim();
         }
 
@@ -20160,24 +20153,23 @@ function toggleDriveQuickRequestItem(domId) {
             target.FLYER_CALIPER = snapshot.CALIPER || '';
             target.FLYER_PICK = snapshot.PICK || '';
             target.FLYER_INITIAL_PTR = snapshot.INITIAL_PTR || '';
-            if (sourcePhotoCsv) {
-                target.FLYER_PHOTO_LINK = sourcePhotoCsv;
-                target.FLYERPHOTO_LINK = sourcePhotoCsv;
-                target.SAVED_PHOTO_LINK = sourcePhotoCsv;
-                target.PHOTO_LINK = sourcePhotoCsv;
-                target.PHOTOLINK = sourcePhotoCsv;
-                target.ROW_PHOTO_LINK = sourcePhotoCsv;
-            }
-            if (sourcePhotoName) {
-                target.FLYER_PHOTO_NAME = sourcePhotoName;
-                target.SAVED_PHOTO_NAME = sourcePhotoName;
-                target.PHOTO_NAME = sourcePhotoName;
-                target.PHOTONAME = sourcePhotoName;
-                target.ROW_PHOTO_NAME = sourcePhotoName;
-            }
+            target.FLYER_PHOTO_LINK = sourcePhotoCsv || '';
+            target.FLYERPHOTO_LINK = sourcePhotoCsv || '';
+            target.SAVED_PHOTO_LINK = sourcePhotoCsv || '';
+            target.PHOTO_LINK = sourcePhotoCsv || '';
+            target.PHOTOLINK = sourcePhotoCsv || '';
+            target['PHOTO LINK'] = sourcePhotoCsv || '';
+            target.ROW_PHOTO_LINK = sourcePhotoCsv || '';
+            target.FLYER_PHOTO_NAME = sourcePhotoName || '';
+            target.FLYERPHOTONAME = sourcePhotoName || '';
+            target.SAVED_PHOTO_NAME = sourcePhotoName || '';
+            target.PHOTO_NAME = sourcePhotoName || '';
+            target.PHOTONAME = sourcePhotoName || '';
+            target['PHOTO NAME'] = sourcePhotoName || '';
+            target.ROW_PHOTO_NAME = sourcePhotoName || '';
             target.SNAPSHOT = Object.assign({}, normalizeFlyerFolderSnapshot(target.SNAPSHOT), snapshot, {
-                PHOTO_LINK: sourcePhotoCsv || snapshot.PHOTO_LINK || '',
-                PHOTO_NAME: sourcePhotoName || snapshot.PHOTO_NAME || ''
+                PHOTO_LINK: sourcePhotoCsv || '',
+                PHOTO_NAME: sourcePhotoName || ''
             });
             normalizeRowPhotoFields(target);
             buildSearchIndex(target);
@@ -20189,8 +20181,8 @@ function toggleDriveQuickRequestItem(domId) {
             const snapshot = buildFlyerFolderSnapshot(sourceRow, { includeCurrentAvData: true });
             const sourcePhotoCsv = getFlyerFolderSourcePhotoCsv(sourceRow);
             const sourcePhotoName = getFlyerFolderSourcePhotoName(sourceRow);
-            snapshot.PHOTO_LINK = sourcePhotoCsv || snapshot.PHOTO_LINK || '';
-            snapshot.PHOTO_NAME = sourcePhotoName || snapshot.PHOTO_NAME || '';
+            snapshot.PHOTO_LINK = sourcePhotoCsv || '';
+            snapshot.PHOTO_NAME = sourcePhotoName || '';
             const matchNumber = parseAppNumber(snapshot.MATCH);
             const locMatchQtyNumber = parseAppNumber(snapshot.LOC_MATCH_QTY);
             const initialPtrNumber = parseAppNumber(snapshot.INITIAL_PTR);
@@ -62473,10 +62465,26 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const shouldCreateSalesOfficeRow = ['ssn-','lsn-','na-','req-','flyer-'].includes(prefix) && salesRuleAssignment === 'season' && salesOfficeRowId !== '' && !seasonHoldStopBlocked;
                     if (shouldCreateSalesOfficeRow) {
                         const salesRuleView = prefix === 'flyer-' ? 'flyer' : '';
-                        const salesOfficeAvNote = prefix === 'req-' ? firstNonEmptyValue(itemToSave.AV_NOTE, getItemDisplayValue(salesRuleItem, 'AV_NOTE', salesRuleView), '') : getItemDisplayValue(salesRuleItem, 'AV_NOTE', salesRuleView);
-                        const salesOfficeSalesNote = prefix === 'req-' ? firstNonEmptyValue(itemToSave.REQ_COMMENTS, getItemDisplayValue(salesRuleItem, 'SALES_NOTE', salesRuleView), '') : getItemDisplayValue(salesRuleItem, 'SALES_NOTE', salesRuleView);
-                        const salesOfficeSpec = prefix === 'req-' ? firstNonEmptyValue(itemToSave.REQ_SPEC, getItemDisplayValue(salesRuleItem, 'SPEC', salesRuleView), '') : getItemDisplayValue(salesRuleItem, 'SPEC', salesRuleView);
-                        const salesOfficeCaliper = prefix === 'req-' ? firstNonEmptyValue(itemToSave.REQ_CALIPER, getItemDisplayValue(salesRuleItem, 'CALIPER', salesRuleView), '') : getItemDisplayValue(salesRuleItem, 'CALIPER', salesRuleView);
+                        const salesOfficeAvNote = prefix === 'req-'
+                            ? firstNonEmptyValue(itemToSave.AV_NOTE, getItemDisplayValue(salesRuleItem, 'AV_NOTE', salesRuleView), '')
+                            : (prefix === 'flyer-'
+                                ? firstNonEmptyValue(getItemDisplayValue(itemToSave, 'AV_NOTE', 'flyer'), itemToSave.AV_NOTE, itemToSave.FLYER_AV_NOTE, getItemDisplayValue(salesRuleItem, 'AV_NOTE', 'drive'), '')
+                                : getItemDisplayValue(salesRuleItem, 'AV_NOTE', salesRuleView));
+                        const salesOfficeSalesNote = prefix === 'req-'
+                            ? firstNonEmptyValue(itemToSave.REQ_COMMENTS, getItemDisplayValue(salesRuleItem, 'SALES_NOTE', salesRuleView), '')
+                            : (prefix === 'flyer-'
+                                ? firstNonEmptyValue(getItemDisplayValue(itemToSave, 'SALES_NOTE', 'flyer'), getItemDisplayValue(salesRuleItem, 'SALES_NOTE', 'drive'), '')
+                                : getItemDisplayValue(salesRuleItem, 'SALES_NOTE', salesRuleView));
+                        const salesOfficeSpec = prefix === 'req-'
+                            ? firstNonEmptyValue(itemToSave.REQ_SPEC, getItemDisplayValue(salesRuleItem, 'SPEC', salesRuleView), '')
+                            : (prefix === 'flyer-'
+                                ? firstNonEmptyValue(getItemDisplayValue(itemToSave, 'SPEC', 'flyer'), itemToSave.SPEC, itemToSave.FLYER_SPEC, getItemDisplayValue(salesRuleItem, 'SPEC', 'drive'), '')
+                                : getItemDisplayValue(salesRuleItem, 'SPEC', salesRuleView));
+                        const salesOfficeCaliper = prefix === 'req-'
+                            ? firstNonEmptyValue(itemToSave.REQ_CALIPER, getItemDisplayValue(salesRuleItem, 'CALIPER', salesRuleView), '')
+                            : (prefix === 'flyer-'
+                                ? firstNonEmptyValue(getItemDisplayValue(itemToSave, 'CALIPER', 'flyer'), itemToSave.CALIPER, itemToSave.FLYER_CALIPER, getItemDisplayValue(salesRuleItem, 'CALIPER', 'drive'), '')
+                                : getItemDisplayValue(salesRuleItem, 'CALIPER', salesRuleView));
                         artifacts.soPayload = {
                             unique_id: salesOfficeRowId,
                             master_id: salesRuleId || salesOfficeRowId,
