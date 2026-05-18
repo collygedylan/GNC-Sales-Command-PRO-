@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.18.13';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.18.14';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -45308,20 +45308,74 @@ function toggleDriveQuickRequestItem(domId) {
             return eligibleRows.filter((row) => taskCustomerOutreachSelectedRowIds.has(getTaskCustomerOutreachRowId(row)));
         }
 
+        function getTaskCustomerOutreachAliasValues(value = '') {
+            const normalized = normalizeRepMatchToken(value);
+            const compact = normalized.replace(/\s+/g, '');
+            const aliases = {
+                fgrt: ['fast growing trees', 'fast growing tree', 'fast growing', 'fgt'],
+                fgt: ['fast growing trees', 'fast growing tree', 'fast growing', 'fgrt'],
+                fastgrowingtrees: ['fgrt', 'fgt', 'fast growing tree', 'fast growing'],
+                fastgrowingtree: ['fgrt', 'fgt', 'fast growing trees', 'fast growing']
+            };
+            const values = new Set([value, normalized, compact]);
+            (aliases[compact] || aliases[normalized] || []).forEach((alias) => values.add(alias));
+            return Array.from(values).map((entry) => String(entry || '').trim()).filter(Boolean);
+        }
+
+        function buildTaskCustomerOutreachCustomerTokens(value = '') {
+            const tokens = new Set();
+            getTaskCustomerOutreachAliasValues(value).forEach((candidate) => {
+                const normalized = normalizeRepMatchToken(candidate);
+                if (!normalized) return;
+                const compact = normalized.replace(/\s+/g, '');
+                tokens.add(normalized);
+                if (compact) tokens.add(compact);
+                const words = normalized.split(/\s+/).filter(Boolean);
+                if (words.length > 1) {
+                    tokens.add(words.map((word) => word.charAt(0)).join(''));
+                }
+            });
+            return Array.from(tokens).filter(Boolean);
+        }
+
+        function isTaskCustomerOutreachSubsequence(shortToken = '', longToken = '') {
+            const needle = String(shortToken || '').replace(/\s+/g, '');
+            const haystack = String(longToken || '').replace(/\s+/g, '');
+            if (needle.length < 4 || haystack.length < needle.length) return false;
+            let cursor = 0;
+            for (const char of haystack) {
+                if (char === needle.charAt(cursor)) cursor += 1;
+                if (cursor >= needle.length) return true;
+            }
+            return false;
+        }
+
+        function isTaskCustomerOutreachTokenMatch(left = '', right = '') {
+            const leftToken = String(left || '').trim();
+            const rightToken = String(right || '').trim();
+            if (!leftToken || !rightToken) return false;
+            const leftCompact = leftToken.replace(/\s+/g, '');
+            const rightCompact = rightToken.replace(/\s+/g, '');
+            if (leftToken === rightToken || leftCompact === rightCompact) return true;
+            if (leftToken.includes(rightToken) || rightToken.includes(leftToken)) return true;
+            if (leftCompact.includes(rightCompact) || rightCompact.includes(leftCompact)) return true;
+            return isTaskCustomerOutreachSubsequence(leftCompact, rightCompact) || isTaskCustomerOutreachSubsequence(rightCompact, leftCompact);
+        }
+
         function isTaskCustomerOutreachCardMatch(card = null, customerFilterValue = activeTaskCustomerFilter, customerLabel = '') {
             const safeCustomer = normalizeTaskCustomerFilterValue(customerFilterValue);
             if (safeCustomer === 'all') return true;
             const targetTokens = [
                 customerLabel,
                 safeCustomer
-            ].map((value) => normalizeRepMatchToken(value)).filter(Boolean);
+            ].flatMap((value) => buildTaskCustomerOutreachCustomerTokens(value));
             if (!targetTokens.length) return true;
             const cardTokens = [
                 card && card.customerName,
                 card && card.consigneeName,
                 card && card.label
-            ].map((value) => normalizeRepMatchToken(value)).filter(Boolean);
-            return cardTokens.some((cardToken) => targetTokens.some((targetToken) => cardToken === targetToken || cardToken.includes(targetToken) || targetToken.includes(cardToken)));
+            ].flatMap((value) => buildTaskCustomerOutreachCustomerTokens(value));
+            return cardTokens.some((cardToken) => targetTokens.some((targetToken) => isTaskCustomerOutreachTokenMatch(cardToken, targetToken)));
         }
 
         function getTaskCustomerOutreachMatchingCardsForRow(row = null, customerFilterValue = activeTaskCustomerFilter) {
