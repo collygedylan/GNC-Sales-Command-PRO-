@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.17.22';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.17.24';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2067,7 +2067,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.22').trim() || 'V2026.05.17.22';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.24').trim() || 'V2026.05.17.24';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -3232,7 +3232,10 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const GROWER_SCOUT_ASSETS_TABLE = 'v2_grower_scout_assets';
         const SHEAR_LIST_TABLE = 'v2_shear_list';
         const SHEAR_LIST_SELECT_FIELDS = '*';
+        const PRODUCTION_WORKFLOW_ROWS_TABLE = 'v2_production_workflow_rows';
+        const PRODUCTION_WORKFLOW_ROWS_SELECT_FIELDS = '*';
         const SPREAD_COUNT_TABLE = 'v2_spread_counts';
+        const BUNCH_COUNT_TABLE = 'v2_bunch_counts';
         const SPREAD_COUNT_SELECT_FIELDS = '*';
         const GROWER_SCOUT_AUDIO_BUCKET = 'grower_scout_audio';
         const GROWER_SCOUT_PHOTOS_BUCKET = 'grower_scout_photos';
@@ -3301,7 +3304,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.22';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.24';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -3344,8 +3347,9 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             grower: { realtimeTables: [GROWER_SCOUT_REPORTS_TABLE, GROWER_SCOUT_ASSETS_TABLE], pollMs: 'visible-default' },
             'pest-management': { realtimeTables: [GROWER_SCOUT_REPORTS_TABLE, GROWER_SCOUT_ASSETS_TABLE], pollMs: 'visible-default' },
             'shear-list': { realtimeTables: [SHEAR_LIST_TABLE], pollMs: 'visible-default' },
-            'sales-inventory': { realtimeTables: [SPREAD_COUNT_TABLE], pollMs: 'visible-default' },
+            'sales-inventory': { realtimeTables: [SPREAD_COUNT_TABLE, BUNCH_COUNT_TABLE], pollMs: 'visible-default' },
             sales: { realtimeTables: [], pollMs: 'visible-default' },
+            production: { realtimeTables: [PRODUCTION_WORKFLOW_ROWS_TABLE], pollMs: 'visible-default' },
             qc: { realtimeTables: [], pollMs: 'visible-default' },
             'low-stock': { realtimeTables: [], pollMs: 'visible-default' },
             hours: { realtimeTables: [], pollMs: 0 }
@@ -4310,7 +4314,8 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             if (safeTable === 'v2_sales_office') return 'sales-office';
             if (safeTable === 'v2_take_back_queue') return 'take-back';
             if (safeTable === SHEAR_LIST_TABLE) return 'shear-list';
-            if (safeTable === SPREAD_COUNT_TABLE) return 'sales-inventory';
+            if (safeTable === PRODUCTION_WORKFLOW_ROWS_TABLE) return 'production';
+            if (safeTable === SPREAD_COUNT_TABLE || safeTable === BUNCH_COUNT_TABLE) return 'sales-inventory';
             if (safeTable === FLYER_FOLDER_ROWS_TABLE) return 'tasks';
             if (safeTable === FLYER_FOLDER_HISTORY_TABLE) return 'tasks';
             if (safeTable === ML_IMAGE_JOBS_TABLE) return 'diagnostics';
@@ -9041,7 +9046,26 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 return true;
             }
 
-            if (tableName === SPREAD_COUNT_TABLE) {
+            if (tableName === PRODUCTION_WORKFLOW_ROWS_TABLE) {
+                const rawRow = eventType === 'DELETE' ? (payload.old || {}) : (payload.new || {});
+                const uniqueId = String(firstNonEmptyValue(rawRow.unique_id, rawRow.UNIQUE_ID, '')).trim();
+                if (!uniqueId) return false;
+                if (eventType === 'DELETE') removeProductionWorkflowRowFromCache(uniqueId);
+                else cacheProductionWorkflowRow(rawRow);
+                productionWorkflowState.loaded = true;
+                markViewDirty('production');
+                if (isViewVisible('production')) renderProductionWorkflowPanel();
+                recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'production-workflow');
+                return true;
+            }
+
+            if (tableName === SPREAD_COUNT_TABLE || tableName === BUNCH_COUNT_TABLE) {
+                const activeCountTable = typeof getActiveSpreadCountTableName === 'function' ? getActiveSpreadCountTableName() : SPREAD_COUNT_TABLE;
+                if (tableName !== activeCountTable) {
+                    markViewDirty('sales-inventory');
+                    recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'count-table');
+                    return true;
+                }
                 const rawRow = eventType === 'DELETE' ? (payload.old || {}) : (payload.new || {});
                 const uniqueId = String(firstNonEmptyValue(rawRow.unique_id, rawRow.UNIQUE_ID, '')).trim();
                 if (!uniqueId) return false;
@@ -9052,7 +9076,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 spreadCountState.loaded = true;
                 markViewDirty('sales-inventory');
                 if (isViewVisible('sales-inventory')) renderProductionInventoryCountingContent();
-                recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'spread-count');
+                recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'count-table');
                 return true;
             }
 
@@ -14269,7 +14293,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.22').trim() || 'V2026.05.17.22';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.24').trim() || 'V2026.05.17.24';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -30731,8 +30755,13 @@ function toggleDriveQuickRequestItem(domId) {
             dailyWeatherRows: [],
             holdEvents: [],
             holdProfiles: [],
-            holdCycles: []
+            holdCycles: [],
+            inventorySearch: '',
+            inventoryContsize: '',
+            inventoryDrillLevel: 'items',
+            selectedInventoryItemKey: ''
         };
+        let weatherHoldInventoryFilterTimer = null;
 
         function setHubButtonVisibility(buttonId = '', isVisible = false) {
             const button = document.getElementById(buttonId);
@@ -30747,13 +30776,24 @@ function toggleDriveQuickRequestItem(domId) {
                 title: 'Propagation',
                 eyebrow: 'Cuttings and starts',
                 icon: 'ph-tree-structure',
-                empty: 'No active propagation rows yet.'
+                empty: 'No active propagation rows yet.',
+                mode: 'drive',
+                quantityLabel: 'Amount / Percent',
+                quantityPlaceholder: 'Enter amount',
+                addLabel: 'Move To Propagation',
+                listLabel: 'Propagation List'
             },
             planting: {
                 title: 'Planting',
                 eyebrow: 'Planting workflow',
                 icon: 'ph-potted-plant',
-                empty: 'No active planting rows yet.'
+                empty: 'No active planting rows yet.',
+                mode: 'drive',
+                quantityLabel: 'Amount Planted',
+                quantityPlaceholder: 'Enter planted amount',
+                addLabel: 'Move To Planting',
+                listLabel: 'Planting List',
+                needsBay: true
             },
             'can-filling': {
                 title: 'Can Filling',
@@ -30769,6 +30809,657 @@ function toggleDriveQuickRequestItem(domId) {
             }
         };
 
+        let productionWorkflowState = {
+            loaded: false,
+            loading: false,
+            error: '',
+            lastLoadedAt: 0,
+            promise: null,
+            workflowType: '',
+            rows: [],
+            activeTab: 'drive',
+            driveSearch: '',
+            driveContsize: '',
+            driveDrillLevel: 'items',
+            selectedDriveItemKey: '',
+            drillLevel: 'blocks',
+            selectedBlock: '',
+            selectedLocation: ''
+        };
+        let productionWorkflowFilterTimer = null;
+
+        function isProductionWorkflowDriveType(type = productionWorkflowActive) {
+            const safeType = String(type || '').trim().toLowerCase();
+            return safeType === 'propagation' || safeType === 'planting';
+        }
+
+        function resetProductionWorkflowRuntimeState(type = productionWorkflowActive) {
+            productionWorkflowState.loaded = false;
+            productionWorkflowState.loading = false;
+            productionWorkflowState.error = '';
+            productionWorkflowState.lastLoadedAt = 0;
+            productionWorkflowState.promise = null;
+            productionWorkflowState.workflowType = String(type || '').trim().toLowerCase();
+            productionWorkflowState.rows = [];
+            productionWorkflowState.activeTab = 'drive';
+            productionWorkflowState.driveSearch = '';
+            productionWorkflowState.driveContsize = '';
+            productionWorkflowState.driveDrillLevel = 'items';
+            productionWorkflowState.selectedDriveItemKey = '';
+            productionWorkflowState.drillLevel = 'blocks';
+            productionWorkflowState.selectedBlock = '';
+            productionWorkflowState.selectedLocation = '';
+        }
+
+        function getProductionWorkflowValue(row = null, field = '', fallback = '') {
+            if (!row || !field) return fallback;
+            const lower = String(field || '').trim().toLowerCase();
+            const upper = lower.toUpperCase();
+            return firstNonEmptyValue(row[lower], row[upper], fallback);
+        }
+
+        function getProductionWorkflowRowId(row = null) {
+            return String(getProductionWorkflowValue(row, 'unique_id', '') || '').trim();
+        }
+
+        function getProductionWorkflowSourceUid(row = null) {
+            return String(firstNonEmptyValue(
+                row && row.MASTER_UNIQUE_ID,
+                row && row.master_unique_id,
+                row && row.SOURCE_UNIQUE_ID,
+                row && row.source_unique_id,
+                row && row.UNIQUE_ID,
+                row && row.unique_id,
+                row && row.DOM_ID,
+                ''
+            ) || '').trim();
+        }
+
+        function getProductionWorkflowUniqueId(item = null, type = productionWorkflowActive) {
+            const sourceUid = getProductionWorkflowSourceUid(item);
+            const safeType = String(type || '').trim().toLowerCase();
+            if (!sourceUid || !safeType) return '';
+            return `${safeType}-${sourceUid}`.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+        }
+
+        function getProductionWorkflowDisplayValue(value = '', fallback = '-') {
+            const text = String(value == null ? '' : value).trim();
+            return text || fallback;
+        }
+
+        function getProductionWorkflowBlockValue(row = null) {
+            return getProductionWorkflowDisplayValue(getProductionWorkflowValue(row, 'blockalpha', ''), 'No Block');
+        }
+
+        function getProductionWorkflowLocationValue(row = null) {
+            return getProductionWorkflowDisplayValue(getProductionWorkflowValue(row, 'locationcode', ''), 'No Location');
+        }
+
+        function removeProductionWorkflowRowFromCache(uniqueId = '') {
+            const safeId = String(uniqueId || '').trim();
+            if (!safeId) return false;
+            const previousLength = productionWorkflowState.rows.length;
+            productionWorkflowState.rows = (productionWorkflowState.rows || []).filter((row) => getProductionWorkflowRowId(row) !== safeId);
+            return productionWorkflowState.rows.length !== previousLength;
+        }
+
+        function cacheProductionWorkflowRow(row = null) {
+            if (!row || typeof row !== 'object') return false;
+            const safeId = getProductionWorkflowRowId(row);
+            if (!safeId) return false;
+            const status = String(getProductionWorkflowValue(row, 'status', 'open') || 'open').trim().toLowerCase();
+            if (status && status !== 'open') return removeProductionWorkflowRowFromCache(safeId);
+            const nextRows = Array.isArray(productionWorkflowState.rows) ? productionWorkflowState.rows : [];
+            const index = nextRows.findIndex((existing) => getProductionWorkflowRowId(existing) === safeId);
+            if (index === -1) productionWorkflowState.rows = [row, ...nextRows];
+            else productionWorkflowState.rows = nextRows.map((existing, rowIndex) => rowIndex === index ? Object.assign({}, existing, row) : existing);
+            return true;
+        }
+
+        async function loadProductionWorkflowRows(force = false, type = productionWorkflowActive) {
+            const safeType = String(type || '').trim().toLowerCase();
+            if (!isProductionWorkflowDriveType(safeType)) return productionWorkflowState;
+            const staleMs = 3 * 60 * 1000;
+            if (!force && productionWorkflowState.loaded && productionWorkflowState.workflowType === safeType && (Date.now() - productionWorkflowState.lastLoadedAt) < staleMs) return productionWorkflowState;
+            if (productionWorkflowState.promise && productionWorkflowState.workflowType === safeType && !force) return productionWorkflowState.promise;
+            productionWorkflowState.workflowType = safeType;
+            productionWorkflowState.loading = true;
+            productionWorkflowState.error = '';
+            productionWorkflowState.promise = (async () => {
+                const rows = await supabaseFetch(PRODUCTION_WORKFLOW_ROWS_TABLE, 'GET', null, `select=${PRODUCTION_WORKFLOW_ROWS_SELECT_FIELDS}&workflow_type=eq.${encodeURIComponent(safeType)}&status=eq.open&order=blockalpha.asc,locationcode.asc,updated_at.desc`);
+                if (productionWorkflowState.workflowType !== safeType) return productionWorkflowState;
+                productionWorkflowState.rows = Array.isArray(rows) ? rows : [];
+                productionWorkflowState.loaded = true;
+                productionWorkflowState.lastLoadedAt = Date.now();
+                return productionWorkflowState;
+            })().catch((error) => {
+                if (productionWorkflowState.workflowType !== safeType) return productionWorkflowState;
+                productionWorkflowState.error = error && error.message ? error.message : 'Production workflow rows could not load.';
+                productionWorkflowState.loaded = true;
+                return productionWorkflowState;
+            }).finally(() => {
+                if (productionWorkflowState.workflowType !== safeType) return;
+                productionWorkflowState.loading = false;
+                productionWorkflowState.promise = null;
+            });
+            return productionWorkflowState.promise;
+        }
+
+        function ensureProductionWorkflowData() {
+            const safeType = String(productionWorkflowActive || '').trim().toLowerCase();
+            if (!isProductionWorkflowDriveType(safeType)) return false;
+            const fullLoaded = typeof isDatasetLoaded === 'function' ? isDatasetLoaded('master', 'full') : (Array.isArray(fullInventory) && fullInventory.length > 0);
+            if (!fullLoaded && typeof loadDatasetTargetsWithLimit === 'function') {
+                loadDatasetTargetsWithLimit([{ key: 'master', mode: 'full' }], {
+                    interruptible: true,
+                    requeueOnInteraction: true,
+                    preserveRequestedMode: true,
+                    retryReason: `${safeType}-production-workflow-full-load`
+                }, 1).then(() => {
+                    if (isViewVisible('production') && productionWorkflowActive === safeType) renderProductionWorkflowPanel();
+                }).catch(() => {});
+            }
+            if ((!productionWorkflowState.loaded || productionWorkflowState.workflowType !== safeType) && !productionWorkflowState.loading) {
+                loadProductionWorkflowRows(false, safeType).then(() => {
+                    if (isViewVisible('production') && productionWorkflowActive === safeType) renderProductionWorkflowPanel();
+                }).catch(() => {});
+            }
+            return fullLoaded;
+        }
+
+        function getProductionWorkflowSourceRows() {
+            const rows = Array.isArray(fullInventory) ? fullInventory : [];
+            const seen = new Set();
+            return rows.filter((row) => {
+                if (!row || typeof row !== 'object') return false;
+                if (typeof hasCompletionDateValue === 'function' && hasCompletionDateValue(row)) return false;
+                const sourceUid = getProductionWorkflowSourceUid(row);
+                if (!sourceUid || seen.has(sourceUid)) return false;
+                seen.add(sourceUid);
+                return !!String(firstNonEmptyValue(row.COMMONNAME, row.commonname, row.ITEMCODE, row.itemcode, '') || '').trim();
+            });
+        }
+
+        function getProductionWorkflowContsizeOptions() {
+            const values = new Set();
+            getProductionWorkflowSourceRows().forEach((row) => {
+                const size = String(firstNonEmptyValue(row.CONTSIZE, row.contsize, '') || '').trim();
+                if (size) values.add(size);
+            });
+            return Array.from(values).sort((left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' }));
+        }
+
+        function getProductionWorkflowFilteredRows() {
+            const search = String(productionWorkflowState.driveSearch || '').trim().toLowerCase();
+            const contsize = String(productionWorkflowState.driveContsize || '').trim().toLowerCase();
+            return getProductionWorkflowSourceRows().filter((row) => {
+                if (contsize && String(firstNonEmptyValue(row.CONTSIZE, row.contsize, '') || '').trim().toLowerCase() !== contsize) return false;
+                if (search) {
+                    const haystack = [
+                        firstNonEmptyValue(row.COMMONNAME, row.commonname, ''),
+                        firstNonEmptyValue(row.GENUS, row.genus, ''),
+                        firstNonEmptyValue(row.CONTSIZE, row.contsize, ''),
+                        firstNonEmptyValue(row.ITEMCODE, row.itemcode, ''),
+                        firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, ''),
+                        firstNonEmptyValue(row.LOTCODE, row.lotcode, '')
+                    ].map((value) => String(value || '').toLowerCase()).join(' ');
+                    if (!haystack.includes(search)) return false;
+                }
+                return true;
+            });
+        }
+
+        function setProductionWorkflowTab(tab = 'drive') {
+            productionWorkflowState.activeTab = String(tab || '').trim().toLowerCase() === 'list' ? 'list' : 'drive';
+            renderProductionWorkflowPanel();
+            return false;
+        }
+
+        function setProductionWorkflowFilter(field = '', value = '') {
+            const safeField = String(field || '').trim();
+            if (!['driveSearch', 'driveContsize'].includes(safeField)) return false;
+            productionWorkflowState[safeField] = String(value || '').trim();
+            productionWorkflowState.driveDrillLevel = 'items';
+            productionWorkflowState.selectedDriveItemKey = '';
+            if (safeField === 'driveSearch') {
+                if (productionWorkflowFilterTimer) clearTimeout(productionWorkflowFilterTimer);
+                productionWorkflowFilterTimer = setTimeout(() => {
+                    renderProductionWorkflowPanel();
+                    const input = document.getElementById('production-workflow-search-input');
+                    if (input) {
+                        try {
+                            input.focus({ preventScroll: true });
+                            const length = String(input.value || '').length;
+                            input.setSelectionRange(length, length);
+                        } catch (_) {}
+                    }
+                }, 120);
+                return false;
+            }
+            renderProductionWorkflowPanel();
+            return false;
+        }
+
+        function getProductionWorkflowItemKey(row = null) {
+            const itemCode = String(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, '') || '').trim().toLowerCase();
+            const commonName = String(firstNonEmptyValue(row && row.COMMONNAME, row && row.commonname, '') || '').trim().toLowerCase();
+            const contSize = String(firstNonEmptyValue(row && row.CONTSIZE, row && row.contsize, '') || '').trim().toLowerCase();
+            return [itemCode || 'no-item', commonName || 'unknown', contSize || 'no-size'].join('::');
+        }
+
+        function groupProductionWorkflowItems(rows = []) {
+            const groups = new Map();
+            (Array.isArray(rows) ? rows : []).forEach((row) => {
+                const key = getProductionWorkflowItemKey(row);
+                if (!groups.has(key)) {
+                    groups.set(key, {
+                        key,
+                        commonName: firstNonEmptyValue(row.COMMONNAME, row.commonname, 'Unknown'),
+                        contSize: firstNonEmptyValue(row.CONTSIZE, row.contsize, '-'),
+                        itemCode: firstNonEmptyValue(row.ITEMCODE, row.itemcode, '-'),
+                        rows: [],
+                        locations: new Set(),
+                        lots: new Set(),
+                        totalPtr: 0
+                    });
+                }
+                const group = groups.get(key);
+                group.rows.push(row);
+                group.locations.add(String(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, 'No Loc') || 'No Loc'));
+                group.lots.add(String(firstNonEmptyValue(row.LOTCODE, row.lotcode, '-') || '-'));
+                group.totalPtr += getShearDrivePtr(row);
+            });
+            return Array.from(groups.values()).sort((left, right) => {
+                const commonDiff = String(left.commonName || '').localeCompare(String(right.commonName || ''), undefined, { numeric: true, sensitivity: 'base' });
+                if (commonDiff) return commonDiff;
+                const sizeDiff = String(left.contSize || '').localeCompare(String(right.contSize || ''), undefined, { numeric: true, sensitivity: 'base' });
+                if (sizeDiff) return sizeDiff;
+                return String(left.itemCode || '').localeCompare(String(right.itemCode || ''), undefined, { numeric: true, sensitivity: 'base' });
+            });
+        }
+
+        function openProductionWorkflowItem(key = '') {
+            const safeKey = String(key || '').trim();
+            if (!safeKey) return false;
+            productionWorkflowState.selectedDriveItemKey = safeKey;
+            productionWorkflowState.driveDrillLevel = 'rows';
+            renderProductionWorkflowPanel();
+            return false;
+        }
+
+        function backProductionWorkflowItems() {
+            productionWorkflowState.selectedDriveItemKey = '';
+            productionWorkflowState.driveDrillLevel = 'items';
+            renderProductionWorkflowPanel();
+            return false;
+        }
+
+        function getProductionWorkflowSelectedRows() {
+            const key = String(productionWorkflowState.selectedDriveItemKey || '').trim();
+            if (!key) return [];
+            return getProductionWorkflowFilteredRows().filter((row) => getProductionWorkflowItemKey(row) === key);
+        }
+
+        function isProductionWorkflowRowOpen(item = null, type = productionWorkflowActive) {
+            const sourceUid = getProductionWorkflowSourceUid(item);
+            const safeType = String(type || '').trim().toLowerCase();
+            if (!sourceUid || !safeType) return false;
+            return (productionWorkflowState.rows || []).some((row) => String(getProductionWorkflowValue(row, 'workflow_type', '') || '').trim().toLowerCase() === safeType && String(getProductionWorkflowValue(row, 'source_unique_id', '') || '').trim() === sourceUid && String(getProductionWorkflowValue(row, 'status', 'open') || 'open').trim().toLowerCase() === 'open');
+        }
+
+        function buildProductionWorkflowSnapshot(item = null) {
+            const fields = ['UNIQUE_ID','ITEMCODE','COMMONNAME','GENUS','CONTSIZE','LOCATIONCODE','LOTCODE','SEASON','BLOCKALPHA','PTRAVAILABLE','SOURCE','HOLDSTOPCODE','HOLDSTOPREASON'];
+            const snapshot = {};
+            fields.forEach((field) => {
+                const value = firstNonEmptyValue(item && item[field], item && item[field.toLowerCase()], '');
+                if (value !== '') snapshot[field.toLowerCase()] = value;
+            });
+            return snapshot;
+        }
+
+        function buildProductionWorkflowPayload(item = null, quantity = '', bayNumber = '', instructions = '') {
+            const safeType = String(productionWorkflowActive || '').trim().toLowerCase();
+            const sourceUid = getProductionWorkflowSourceUid(item);
+            const uniqueId = getProductionWorkflowUniqueId(item, safeType);
+            if (!item || !safeType || !sourceUid || !uniqueId) return null;
+            const quantityText = String(quantity == null ? '' : quantity).trim();
+            const quantityNumber = quantityText === '' ? null : getShearDecisionNumber(quantityText, null);
+            if (quantityText !== '' && quantityNumber === null) return null;
+            const now = new Date().toISOString();
+            return {
+                unique_id: uniqueId,
+                workflow_type: safeType,
+                source_unique_id: sourceUid,
+                status: 'open',
+                itemcode: firstNonEmptyValue(item.ITEMCODE, item.itemcode, ''),
+                commonname: firstNonEmptyValue(item.COMMONNAME, item.commonname, ''),
+                genus: firstNonEmptyValue(item.GENUS, item.genus, ''),
+                contsize: firstNonEmptyValue(item.CONTSIZE, item.contsize, ''),
+                locationcode: firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, ''),
+                lotcode: firstNonEmptyValue(item.LOTCODE, item.lotcode, ''),
+                season: firstNonEmptyValue(item.SEASON, item.season, ''),
+                blockalpha: firstNonEmptyValue(item.BLOCKALPHA, item.blockalpha, ''),
+                ptravailable: getShearDrivePtr(item),
+                quantity: quantityNumber,
+                baynumber: String(bayNumber || '').trim(),
+                instructions: String(instructions || '').trim(),
+                created_by_username: currentUser || '',
+                created_by_display: currentUserDisplay || currentUser || '',
+                updated_by_username: currentUser || '',
+                updated_by_display: currentUserDisplay || currentUser || '',
+                updated_at: now,
+                snapshot: buildProductionWorkflowSnapshot(item)
+            };
+        }
+
+        function renderProductionWorkflowItemCard(group = null) {
+            if (!group) return '';
+            const openCount = group.rows.filter((row) => isProductionWorkflowRowOpen(row)).length;
+            const lotChips = typeof renderShearDriveLotPtrChips === 'function' ? renderShearDriveLotPtrChips(group.rows, 6) : '';
+            return `<button type="button" class="w-full rounded-2xl border border-[#007a4d] bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openProductionWorkflowItem('${escJsAttrValue(group.key)}')">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="text-lg font-black leading-tight text-slate-900">${escapeHtml(group.commonName)}</div>
+                        <div class="mt-1 text-[12px] font-bold text-slate-500">${escapeHtml(group.contSize)} | Item ${escapeHtml(group.itemCode)}</div>
+                    </div>
+                    <span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">PTR ${escapeHtml(formatShearDecisionNumber(group.totalPtr))}</span>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">
+                    <span class="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">${escapeHtml(String(group.locations.size))} Location${group.locations.size === 1 ? '' : 's'}</span>
+                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">${escapeHtml(String(group.rows.length))} Row${group.rows.length === 1 ? '' : 's'}</span>
+                    <span class="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">${escapeHtml(String(group.lots.size))} Lot${group.lots.size === 1 ? '' : 's'}</span>
+                    ${openCount ? `<span class="rounded-full bg-lime-50 px-2.5 py-1 text-lime-700">${escapeHtml(String(openCount))} Open</span>` : ''}
+                </div>
+                ${lotChips ? `<div class="mt-3">${lotChips}</div>` : ''}
+            </button>`;
+        }
+
+        function renderProductionWorkflowDriveRowCard(row = null) {
+            if (!row) return '';
+            const meta = PRODUCTION_WORKFLOW_META[productionWorkflowActive] || {};
+            const uid = getProductionWorkflowSourceUid(row);
+            const domKey = getShearDecisionDomKey(`${productionWorkflowActive}-${uid}`);
+            const commonName = firstNonEmptyValue(row.COMMONNAME, row.commonname, 'Unknown');
+            const contSize = firstNonEmptyValue(row.CONTSIZE, row.contsize, '-');
+            const itemCode = firstNonEmptyValue(row.ITEMCODE, row.itemcode, '-');
+            const loc = firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, 'No Loc');
+            const lot = firstNonEmptyValue(row.LOTCODE, row.lotcode, '-');
+            const season = firstNonEmptyValue(row.SEASON, row.season, '-');
+            const ptr = getShearDrivePtr(row);
+            const alreadyOpen = isProductionWorkflowRowOpen(row);
+            const bayHtml = meta.needsBay ? `<label class="block">
+                <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Bay Number Optional</span>
+                <input id="production-workflow-bay-${escapeHtml(domKey)}" class="mt-1 w-full rounded-xl border border-green-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-[#007a4d]" placeholder="Bay #">
+            </label>` : '';
+            return `<div class="rounded-2xl border border-[#007a4d] bg-white p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="text-lg font-black leading-tight text-slate-900">${escapeHtml(commonName)}</div>
+                        <div class="mt-1 text-[12px] font-bold text-slate-500">${escapeHtml(contSize)} | Loc ${escapeHtml(loc)} | Lot ${escapeHtml(lot)} | ${escapeHtml(season)}</div>
+                    </div>
+                    <span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">PTR ${escapeHtml(formatShearDecisionNumber(ptr))}</span>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">
+                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">Item ${escapeHtml(itemCode)}</span>
+                    <span class="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">Lot ${escapeHtml(lot)}</span>
+                    <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">Loc ${escapeHtml(loc)}</span>
+                </div>
+                <div class="mt-3 grid grid-cols-1 gap-2 md:grid-cols-[150px_150px_minmax(0,1fr)_auto] md:items-end">
+                    <label class="block">
+                        <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-[#007a4d]">${escapeHtml(meta.quantityLabel || 'Amount')}</span>
+                        <input id="production-workflow-qty-${escapeHtml(domKey)}" type="number" min="0" step="1" inputmode="numeric" class="mt-1 w-full rounded-xl border border-green-200 bg-white px-3 py-2 text-base font-black text-slate-900 outline-none focus:border-[#007a4d]" value="" placeholder="${escapeHtml(meta.quantityPlaceholder || 'Enter amount')}">
+                    </label>
+                    ${bayHtml}
+                    <label class="block">
+                        <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Instructions Optional</span>
+                        <input id="production-workflow-instructions-${escapeHtml(domKey)}" class="mt-1 w-full rounded-xl border border-green-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-[#007a4d]" placeholder="Add instructions...">
+                    </label>
+                    <button type="button" class="rounded-xl ${alreadyOpen ? 'border border-slate-200 bg-slate-50 text-slate-400' : 'bg-[#007a4d] text-white'} px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] shadow-sm active:scale-95" ${alreadyOpen ? 'disabled' : ''} onclick="return addProductionWorkflowRow('${escJsAttrValue(uid)}', this)">${alreadyOpen ? 'Already Open' : escapeHtml(meta.addLabel || 'Add')}</button>
+                </div>
+            </div>`;
+        }
+
+        function renderProductionWorkflowDriveMode() {
+            const fullLoaded = ensureProductionWorkflowData();
+            const rows = getProductionWorkflowFilteredRows();
+            const groups = groupProductionWorkflowItems(rows);
+            const meta = PRODUCTION_WORKFLOW_META[productionWorkflowActive] || {};
+            const showingRows = productionWorkflowState.driveDrillLevel === 'rows' && !!String(productionWorkflowState.selectedDriveItemKey || '').trim();
+            const contsizeOptions = getProductionWorkflowContsizeOptions();
+            const contsizeHtml = `<option value="">All Sizes</option>${contsizeOptions.map((size) => `<option value="${escapeHtml(size)}" ${productionWorkflowState.driveContsize === size ? 'selected' : ''}>${escapeHtml(size)}</option>`).join('')}`;
+            const bodyHtml = showingRows
+                ? (() => {
+                    const selectedRows = getProductionWorkflowSelectedRows();
+                    return `<div class="mb-3 flex items-center justify-between gap-2"><button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return backProductionWorkflowItems()"><i class="ph-bold ph-arrow-left"></i> Items</button><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">${escapeHtml(String(selectedRows.length))} Drive Mode rows</div></div>${selectedRows.length ? selectedRows.map(renderProductionWorkflowDriveRowCard).join('') : `<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No ${escapeHtml(meta.title || 'workflow')} rows match this item anymore.</div>`}`;
+                })()
+                : (groups.length
+                    ? groups.slice(0, 140).map(renderProductionWorkflowItemCard).join('')
+                    : `<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No Drive Mode items match these filters.</div>`);
+            const moreHtml = !showingRows && groups.length > 140
+                ? `<div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Showing 140 of ${escapeHtml(String(groups.length))} item cards. Search common name or choose a size to narrow it down.</div>`
+                : '';
+            return `<div class="space-y-3">
+                <div class="rounded-2xl border border-green-200 bg-emerald-50/40 p-3 shadow-sm">
+                    <div class="grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_180px]">
+                        <label class="block">
+                            <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Commonname Search</span>
+                            <input id="production-workflow-search-input" type="search" class="mt-1 w-full rounded-xl border border-green-200 bg-white px-3 py-2 text-sm font-black text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeHtml(productionWorkflowState.driveSearch || '')}" placeholder="Search common, size, item, lot, location..." autocomplete="off" oninput="return setProductionWorkflowFilter('driveSearch', this.value)">
+                        </label>
+                        <label class="block">
+                            <span class="block text-[9px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Contsize</span>
+                            <select class="mt-1 w-full rounded-xl border border-green-200 bg-white px-3 py-2 text-sm font-black text-slate-900 outline-none focus:border-[#007a4d]" onchange="return setProductionWorkflowFilter('driveContsize', this.value)">${contsizeHtml}</select>
+                        </label>
+                    </div>
+                    <div class="mt-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">${showingRows ? 'Viewing all rows for selected item' : `${escapeHtml(String(groups.length))} item card${groups.length === 1 ? '' : 's'} from ${escapeHtml(String(rows.length))} Drive Mode rows`}</div>
+                </div>
+                ${!fullLoaded ? '<div class="rounded-xl border border-sky-100 bg-sky-50 px-3 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-sky-700">Loading all Drive Mode rows...</div>' : ''}
+                ${bodyHtml}
+                ${moreHtml}
+            </div>`;
+        }
+
+        function groupProductionWorkflowRows(rows = [], keyGetter = null, labelGetter = null) {
+            const groups = new Map();
+            (rows || []).forEach((row) => {
+                const key = String(keyGetter ? keyGetter(row) : '').trim() || 'Unknown';
+                const label = String(labelGetter ? labelGetter(row) : key).trim() || key;
+                if (!groups.has(key)) groups.set(key, { key, label, rows: [], locations: new Set(), totalQty: 0 });
+                const group = groups.get(key);
+                group.rows.push(row);
+                group.locations.add(getProductionWorkflowLocationValue(row));
+                group.totalQty += getShearDecisionNumber(getProductionWorkflowValue(row, 'quantity', 0), 0) || 0;
+            });
+            return Array.from(groups.values()).sort((left, right) => left.label.localeCompare(right.label, undefined, { numeric: true, sensitivity: 'base' }));
+        }
+
+        function setProductionWorkflowListDrill(level = 'blocks', block = '', location = '') {
+            productionWorkflowState.drillLevel = ['blocks', 'locations', 'rows'].includes(level) ? level : 'blocks';
+            productionWorkflowState.selectedBlock = String(block || '').trim();
+            productionWorkflowState.selectedLocation = String(location || '').trim();
+            renderProductionWorkflowPanel();
+            return false;
+        }
+
+        function openProductionWorkflowBlock(block = '') {
+            return setProductionWorkflowListDrill('locations', block, '');
+        }
+
+        function openProductionWorkflowLocation(block = '', location = '') {
+            return setProductionWorkflowListDrill('rows', block || productionWorkflowState.selectedBlock, location);
+        }
+
+        function backProductionWorkflowListDrill() {
+            if (productionWorkflowState.drillLevel === 'rows') return setProductionWorkflowListDrill('locations', productionWorkflowState.selectedBlock, '');
+            if (productionWorkflowState.drillLevel === 'locations') return setProductionWorkflowListDrill('blocks', '', '');
+            return false;
+        }
+
+        function renderProductionWorkflowOpenRow(row = null) {
+            const uniqueId = getProductionWorkflowRowId(row);
+            const commonName = getProductionWorkflowValue(row, 'commonname', 'Unknown');
+            const contSize = getProductionWorkflowValue(row, 'contsize', '-');
+            const itemCode = getProductionWorkflowValue(row, 'itemcode', '-');
+            const loc = getProductionWorkflowValue(row, 'locationcode', 'No Loc');
+            const lot = getProductionWorkflowValue(row, 'lotcode', '-');
+            const qty = getProductionWorkflowValue(row, 'quantity', '');
+            const bay = getProductionWorkflowValue(row, 'baynumber', '');
+            const instructions = getProductionWorkflowValue(row, 'instructions', '');
+            const addedBy = getProductionWorkflowValue(row, 'created_by_display', getProductionWorkflowValue(row, 'created_by_username', ''));
+            return `<div class="rounded-2xl border border-[#007a4d] bg-white p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="text-lg font-black leading-tight text-slate-900">${escapeHtml(commonName)}</div>
+                        <div class="mt-1 text-[12px] font-bold text-slate-500">${escapeHtml(contSize)} | Loc ${escapeHtml(loc)} | Lot ${escapeHtml(lot)}</div>
+                    </div>
+                    <span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Qty ${escapeHtml(String(qty || '-'))}</span>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">
+                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">Item ${escapeHtml(itemCode)}</span>
+                    ${bay ? `<span class="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">Bay ${escapeHtml(bay)}</span>` : ''}
+                    ${addedBy ? `<span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">Added ${escapeHtml(addedBy)}</span>` : ''}
+                </div>
+                ${instructions ? `<div class="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[12px] font-bold text-emerald-800">${escapeHtml(instructions)}</div>` : ''}
+                <button type="button" class="mt-4 w-full rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="return completeProductionWorkflowRow('${escJsAttrValue(uniqueId)}', this)">Complete</button>
+            </div>`;
+        }
+
+        function renderProductionWorkflowOpenList() {
+            ensureProductionWorkflowData();
+            const rows = (productionWorkflowState.rows || []).filter((row) => String(getProductionWorkflowValue(row, 'workflow_type', '') || '').trim().toLowerCase() === productionWorkflowActive && String(getProductionWorkflowValue(row, 'status', 'open') || 'open').trim().toLowerCase() === 'open');
+            if (!rows.length) return `<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No open ${escapeHtml(PRODUCTION_WORKFLOW_META[productionWorkflowActive].title || 'workflow')} rows.</div>`;
+            if (productionWorkflowState.drillLevel === 'locations') {
+                const blockRows = rows.filter((row) => getProductionWorkflowBlockValue(row) === productionWorkflowState.selectedBlock);
+                const groups = groupProductionWorkflowRows(blockRows, getProductionWorkflowLocationValue, getProductionWorkflowLocationValue);
+                return `<div class="mb-3"><button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return backProductionWorkflowListDrill()"><i class="ph-bold ph-arrow-left"></i> Blocks</button></div><div class="space-y-3">${groups.map((group) => `<button type="button" class="w-full rounded-2xl border border-[#007a4d] bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openProductionWorkflowLocation('${escJsAttrValue(productionWorkflowState.selectedBlock)}', '${escJsAttrValue(group.key)}')"><div class="flex items-center justify-between gap-3"><div><div class="text-lg font-black text-slate-900">Loc ${escapeHtml(group.label)}</div><div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(String(group.rows.length))} Row${group.rows.length === 1 ? '' : 's'} | Qty ${escapeHtml(formatShearDecisionNumber(group.totalQty))}</div></div><i class="ph-bold ph-caret-right text-xl text-slate-300"></i></div></button>`).join('')}</div>`;
+            }
+            if (productionWorkflowState.drillLevel === 'rows') {
+                const rowList = rows.filter((row) => getProductionWorkflowBlockValue(row) === productionWorkflowState.selectedBlock && getProductionWorkflowLocationValue(row) === productionWorkflowState.selectedLocation);
+                return `<div class="mb-3"><button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return backProductionWorkflowListDrill()"><i class="ph-bold ph-arrow-left"></i> Locations</button></div><div class="space-y-3">${rowList.map(renderProductionWorkflowOpenRow).join('')}</div>`;
+            }
+            const groups = groupProductionWorkflowRows(rows, getProductionWorkflowBlockValue, (row) => `Block ${getProductionWorkflowBlockValue(row)}`);
+            return `<div class="space-y-3">${groups.map((group) => `<button type="button" class="w-full rounded-2xl border border-[#007a4d] bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openProductionWorkflowBlock('${escJsAttrValue(group.key)}')"><div class="flex items-center justify-between gap-3"><div><div class="text-lg font-black text-slate-900">${escapeHtml(group.label)}</div><div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(String(group.rows.length))} Row${group.rows.length === 1 ? '' : 's'} | ${escapeHtml(String(group.locations.size))} Location${group.locations.size === 1 ? '' : 's'} | Qty ${escapeHtml(formatShearDecisionNumber(group.totalQty))}</div></div><i class="ph-bold ph-caret-right text-xl text-slate-300"></i></div></button>`).join('')}</div>`;
+        }
+
+        function renderProductionWorkflowDrivePanel() {
+            const meta = PRODUCTION_WORKFLOW_META[productionWorkflowActive] || {};
+            const isList = productionWorkflowState.activeTab === 'list';
+            return `<section class="rounded-2xl border border-[#007a4d] bg-white p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex min-w-0 items-center gap-3">
+                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ${escapeHtml(meta.icon || 'ph-leaf')} text-2xl"></i></div>
+                        <div class="min-w-0">
+                            <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">${escapeHtml(meta.eyebrow || 'Production')}</div>
+                            <div class="truncate text-xl font-black text-slate-900">${escapeHtml(meta.title || 'Production')}</div>
+                        </div>
+                    </div>
+                    <button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return closeProductionWorkflow()">Close</button>
+                </div>
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                    <button type="button" class="rounded-xl border px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] ${isList ? 'border-green-200 bg-white text-[#007a4d]' : 'border-[#007a4d] bg-[#007a4d] text-white'}" onclick="return setProductionWorkflowTab('drive')">Drive Mode</button>
+                    <button type="button" class="rounded-xl border px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] ${isList ? 'border-[#007a4d] bg-[#007a4d] text-white' : 'border-green-200 bg-white text-[#007a4d]'}" onclick="return setProductionWorkflowTab('list')">${escapeHtml(meta.listLabel || 'Open List')}</button>
+                </div>
+                <div class="mt-4">${isList ? renderProductionWorkflowOpenList() : renderProductionWorkflowDriveMode()}</div>
+            </section>`;
+        }
+
+        async function addProductionWorkflowRow(sourceUid = '', button = null) {
+            const safeUid = String(sourceUid || '').trim();
+            const row = getProductionWorkflowSourceRows().find((item) => getProductionWorkflowSourceUid(item) === safeUid);
+            if (!row) {
+                showToast('Missing Row', 'That Drive Mode row is not loaded anymore.', true);
+                return false;
+            }
+            if (isProductionWorkflowRowOpen(row)) {
+                showToast('Already Added', 'That row is already open in this workflow.');
+                renderProductionWorkflowPanel();
+                return false;
+            }
+            const meta = PRODUCTION_WORKFLOW_META[productionWorkflowActive] || {};
+            const domKey = getShearDecisionDomKey(`${productionWorkflowActive}-${safeUid}`);
+            const qtyInput = document.getElementById(`production-workflow-qty-${domKey}`);
+            const bayInput = document.getElementById(`production-workflow-bay-${domKey}`);
+            const instructionsInput = document.getElementById(`production-workflow-instructions-${domKey}`);
+            const quantity = String(qtyInput && qtyInput.value || '').trim();
+            if (!quantity || getShearDecisionNumber(quantity, null) === null) {
+                showToast('Amount Needed', 'Enter the amount before moving this row.', true);
+                try { if (qtyInput) qtyInput.focus(); } catch (_) {}
+                return false;
+            }
+            const bay = String(bayInput && bayInput.value || '').trim();
+            const instructions = String(instructionsInput && instructionsInput.value || '').trim();
+            const itemCode = firstNonEmptyValue(row.ITEMCODE, row.itemcode, '-');
+            const commonName = firstNonEmptyValue(row.COMMONNAME, row.commonname, 'Unknown');
+            const contSize = firstNonEmptyValue(row.CONTSIZE, row.contsize, '-');
+            const lotCode = firstNonEmptyValue(row.LOTCODE, row.lotcode, '-');
+            const locationCode = firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, 'No Loc');
+            const confirmMessage = [
+                `Confirm ${meta.title || 'Production'} Row`,
+                '',
+                `Amount: ${quantity}`,
+                `Item Code: ${itemCode}`,
+                `Common Name: ${commonName}`,
+                `Cont Size: ${contSize}`,
+                `Lot Code: ${lotCode}`,
+                `Location Code: ${locationCode}`,
+                bay ? `Bay Number: ${bay}` : ''
+            ].filter((line) => line !== '').join('\n');
+            if (!window.confirm(confirmMessage)) return false;
+            const payload = buildProductionWorkflowPayload(row, quantity, bay, instructions);
+            if (!payload) {
+                showToast('Cannot Add', 'This row does not have a stable Drive Mode ID.', true);
+                return false;
+            }
+            if (button) {
+                button.disabled = true;
+                button.innerText = 'ADDING...';
+            }
+            try {
+                await supabaseFetch(PRODUCTION_WORKFLOW_ROWS_TABLE, 'POST', payload, 'on_conflict=unique_id');
+                cacheProductionWorkflowRow(payload);
+                markViewDirty('production');
+                showToast('Added', `Row moved to ${meta.title || 'Production'}.`);
+                renderProductionWorkflowPanel();
+            } catch (error) {
+                if (button) {
+                    button.disabled = false;
+                    button.innerText = meta.addLabel || 'Add';
+                }
+                showToast('Error', error && error.message ? error.message : 'Could not add production row.', true);
+            }
+            return false;
+        }
+
+        async function completeProductionWorkflowRow(uniqueId = '', button = null) {
+            const safeId = String(uniqueId || '').trim();
+            if (!safeId) return false;
+            if (button) {
+                button.disabled = true;
+                button.innerText = 'COMPLETING...';
+            }
+            try {
+                await supabaseFetch(PRODUCTION_WORKFLOW_ROWS_TABLE, 'PATCH', {
+                    status: 'complete',
+                    completed_by_username: currentUser || '',
+                    completed_by_display: currentUserDisplay || currentUser || '',
+                    completed_at: new Date().toISOString(),
+                    updated_by_username: currentUser || '',
+                    updated_by_display: currentUserDisplay || currentUser || '',
+                    updated_at: new Date().toISOString()
+                }, `unique_id=eq.${encodeURIComponent(safeId)}`);
+                removeProductionWorkflowRowFromCache(safeId);
+                markViewDirty('production');
+                showToast('Complete', 'Production row completed.');
+                renderProductionWorkflowPanel();
+            } catch (error) {
+                if (button) {
+                    button.disabled = false;
+                    button.innerText = 'Complete';
+                }
+                showToast('Error', error && error.message ? error.message : 'Could not complete production row.', true);
+            }
+            return false;
+        }
+
         function renderProductionWorkflowPanel() {
             const panel = document.getElementById('production-workflow-panel');
             if (!panel) return;
@@ -30779,6 +31470,12 @@ function toggleDriveQuickRequestItem(domId) {
                 return;
             }
             panel.classList.remove('hidden');
+            const isDriveEnabled = meta.mode === 'drive';
+            if (isDriveEnabled) {
+                setContainerHtml(panel, renderProductionWorkflowDrivePanel());
+                ensureProductionWorkflowData();
+                return;
+            }
             setContainerHtml(panel, `<section class="rounded-2xl border border-[#007a4d] bg-white p-4 shadow-sm">
                 <div class="flex items-start justify-between gap-3">
                     <div class="flex min-w-0 items-center gap-3">
@@ -30801,6 +31498,7 @@ function toggleDriveQuickRequestItem(domId) {
         function openProductionWorkflow(key = '') {
             const safeKey = String(key || '').trim().toLowerCase();
             if (!PRODUCTION_WORKFLOW_META[safeKey]) return false;
+            if (productionWorkflowActive !== safeKey) resetProductionWorkflowRuntimeState(safeKey);
             productionWorkflowActive = safeKey;
             renderProductionWorkflowPanel();
             return false;
@@ -30906,7 +31604,7 @@ function toggleDriveQuickRequestItem(domId) {
             { key: 'west_east', label: 'West -> East', shortLabel: 'W -> E' }
         ];
         const SPREAD_COUNT_NORTH_SOUTH_BLOCKS = new Set(['A', 'B', 'C', 'D', 'L']);
-        const SPREAD_COUNT_NORTH_SOUTH_LOCATIONS = new Set(['21.E', '22.E', '23.E', '24.E']);
+        const SPREAD_COUNT_NORTH_SOUTH_LOCATIONS = new Set(['20.E', '21.E', '22.E', '23.E']);
 
         let spreadCountState = {
             loaded: false,
@@ -30932,6 +31630,10 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getActiveSpreadCountType() {
             return normalizeSpreadCountType(productionInventoryCountingTab);
+        }
+
+        function getActiveSpreadCountTableName(type = getActiveSpreadCountType()) {
+            return normalizeSpreadCountType(type) === 'spread' ? SPREAD_COUNT_TABLE : BUNCH_COUNT_TABLE;
         }
 
         function getSpreadCountTypeTitle(type = getActiveSpreadCountType()) {
@@ -31015,9 +31717,7 @@ function toggleDriveQuickRequestItem(domId) {
         function rebuildSpreadCountIndexes() {
             const byUniqueId = new Map();
             const bySourceUid = new Map();
-            const activeType = normalizeSpreadCountType(spreadCountState.countType || getActiveSpreadCountType());
             (spreadCountState.rows || []).forEach((row) => {
-                if (getSpreadCountRecordType(row) !== activeType) return;
                 const uniqueId = getSpreadCountRecordId(row);
                 const sourceUid = String(getSpreadCountValue(row, 'source_unique_id', '') || '').trim();
                 if (uniqueId) byUniqueId.set(uniqueId, row);
@@ -31029,8 +31729,6 @@ function toggleDriveQuickRequestItem(domId) {
 
         function cacheSpreadCountRecord(row = null) {
             if (!row || typeof row !== 'object') return false;
-            const activeType = normalizeSpreadCountType(spreadCountState.countType || getActiveSpreadCountType());
-            if (getSpreadCountRecordType(row) !== activeType) return false;
             const uniqueId = getSpreadCountRecordId(row);
             if (!uniqueId) return false;
             const nextRows = Array.isArray(spreadCountState.rows) ? spreadCountState.rows : [];
@@ -31059,7 +31757,8 @@ function toggleDriveQuickRequestItem(domId) {
             spreadCountState.loading = true;
             spreadCountState.error = '';
             spreadCountState.promise = (async () => {
-                const rows = await supabaseFetch(SPREAD_COUNT_TABLE, 'GET', null, `select=${SPREAD_COUNT_SELECT_FIELDS}&count_type=eq.${encodeURIComponent(safeType)}&order=blockalpha.asc,locationcode.asc,row_order.asc,updated_at.desc`);
+                const tableName = getActiveSpreadCountTableName(safeType);
+                const rows = await supabaseFetch(tableName, 'GET', null, `select=${SPREAD_COUNT_SELECT_FIELDS}&order=blockalpha.asc,locationcode.asc,row_order.asc,updated_at.desc`);
                 if (spreadCountState.countType !== safeType) return spreadCountState;
                 spreadCountState.rows = Array.isArray(rows) ? rows : [];
                 rebuildSpreadCountIndexes();
@@ -31338,7 +32037,6 @@ function toggleDriveQuickRequestItem(domId) {
             const locationValue = firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, '');
             return {
                 unique_id: uniqueId,
-                count_type: safeType,
                 source_unique_id: sourceUid,
                 itemcode: firstNonEmptyValue(row.ITEMCODE, row.itemcode, ''),
                 commonname: firstNonEmptyValue(row.COMMONNAME, row.commonname, ''),
@@ -31385,7 +32083,7 @@ function toggleDriveQuickRequestItem(domId) {
                 button.innerText = 'SAVING...';
             }
             try {
-                await supabaseFetch(SPREAD_COUNT_TABLE, 'POST', payload, 'on_conflict=unique_id');
+                await supabaseFetch(getActiveSpreadCountTableName(), 'POST', payload, 'on_conflict=unique_id');
                 cacheSpreadCountRecord(payload);
                 markViewDirty('sales-inventory');
                 showToast('Saved', `${countTitle} row saved.`);
@@ -31422,7 +32120,7 @@ function toggleDriveQuickRequestItem(domId) {
                 button.innerText = 'SAVING...';
             }
             try {
-                await supabaseFetch(SPREAD_COUNT_TABLE, 'POST', payloads, 'on_conflict=unique_id');
+                await supabaseFetch(getActiveSpreadCountTableName(), 'POST', payloads, 'on_conflict=unique_id');
                 payloads.forEach(cacheSpreadCountRecord);
                 markViewDirty('sales-inventory');
                 showToast('Saved', `${countTitle} location saved.`);
@@ -31738,6 +32436,251 @@ function toggleDriveQuickRequestItem(domId) {
             return `<div class="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">${escapeHtml(label)}</div><div class="mt-2 text-2xl font-black text-slate-900">${escapeHtml(value)}</div>${subtext ? `<div class="mt-1 text-[11px] font-bold text-slate-500">${escapeHtml(subtext)}</div>` : ''}</div>`;
         }
 
+        function ensureWeatherHoldInventoryData() {
+            const fullLoaded = typeof isDatasetLoaded === 'function' ? isDatasetLoaded('master', 'full') : (Array.isArray(fullInventory) && fullInventory.length > 0);
+            if (!fullLoaded && typeof loadDatasetTargetsWithLimit === 'function') {
+                loadDatasetTargetsWithLimit([{ key: 'master', mode: 'full' }], {
+                    interruptible: true,
+                    requeueOnInteraction: true,
+                    preserveRequestedMode: true,
+                    retryReason: 'weather-hold-drive-mode-full-load'
+                }, 1).then(() => {
+                    if (isViewVisible('weather-hold')) renderWeatherHold();
+                }).catch(() => {});
+            }
+            return fullLoaded;
+        }
+
+        function getWeatherHoldInventoryBaseRows() {
+            const rows = Array.isArray(fullInventory) ? fullInventory : [];
+            const seen = new Set();
+            return rows.filter((row) => {
+                if (!row || typeof row !== 'object') return false;
+                if (typeof hasCompletionDateValue === 'function' && hasCompletionDateValue(row)) return false;
+                const sourceUid = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, row.MASTER_UNIQUE_ID, row.master_unique_id, row.DOM_ID, '') || '').trim();
+                if (sourceUid && seen.has(sourceUid)) return false;
+                if (sourceUid) seen.add(sourceUid);
+                return !!String(firstNonEmptyValue(row.COMMONNAME, row.commonname, row.ITEMCODE, row.itemcode, '') || '').trim();
+            });
+        }
+
+        function getWeatherHoldInventoryItemKey(row = null) {
+            const itemCode = String(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, '') || '').trim().toLowerCase();
+            const commonName = String(firstNonEmptyValue(row && row.COMMONNAME, row && row.commonname, '') || '').trim().toLowerCase();
+            const contSize = String(firstNonEmptyValue(row && row.CONTSIZE, row && row.contsize, '') || '').trim().toLowerCase();
+            return [itemCode || 'no-item', commonName || 'unknown', contSize || 'no-size'].join('::');
+        }
+
+        function setWeatherHoldInventoryFilter(field = '', value = '') {
+            const safeField = String(field || '').trim();
+            if (!['inventorySearch', 'inventoryContsize'].includes(safeField)) return false;
+            weatherHoldState[safeField] = String(value || '').trim();
+            weatherHoldState.inventoryDrillLevel = 'items';
+            weatherHoldState.selectedInventoryItemKey = '';
+            if (safeField === 'inventorySearch') {
+                if (weatherHoldInventoryFilterTimer) clearTimeout(weatherHoldInventoryFilterTimer);
+                weatherHoldInventoryFilterTimer = setTimeout(() => {
+                    renderWeatherHold();
+                    const input = document.getElementById('weather-hold-inventory-search');
+                    if (input) {
+                        try {
+                            input.focus({ preventScroll: true });
+                            const length = String(input.value || '').length;
+                            input.setSelectionRange(length, length);
+                        } catch (_) {}
+                    }
+                }, 120);
+                return false;
+            }
+            renderWeatherHold();
+            return false;
+        }
+
+        function getWeatherHoldInventoryContsizeOptions() {
+            const values = new Set();
+            getWeatherHoldInventoryBaseRows().forEach((row) => {
+                const size = String(firstNonEmptyValue(row.CONTSIZE, row.contsize, '') || '').trim();
+                if (size) values.add(size);
+            });
+            return Array.from(values).sort((left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' }));
+        }
+
+        function getWeatherHoldInventoryFilteredRows() {
+            const search = String(weatherHoldState.inventorySearch || '').trim().toLowerCase();
+            const contsize = String(weatherHoldState.inventoryContsize || '').trim().toLowerCase();
+            return getWeatherHoldInventoryBaseRows().filter((row) => {
+                const rowContsize = String(firstNonEmptyValue(row.CONTSIZE, row.contsize, '') || '').trim().toLowerCase();
+                if (contsize && rowContsize !== contsize) return false;
+                if (search) {
+                    const haystack = [
+                        firstNonEmptyValue(row.COMMONNAME, row.commonname, ''),
+                        firstNonEmptyValue(row.GENUS, row.genus, ''),
+                        firstNonEmptyValue(row.CONTSIZE, row.contsize, ''),
+                        firstNonEmptyValue(row.ITEMCODE, row.itemcode, ''),
+                        firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, ''),
+                        firstNonEmptyValue(row.LOTCODE, row.lotcode, '')
+                    ].map((value) => String(value || '').toLowerCase()).join(' ');
+                    if (!haystack.includes(search)) return false;
+                }
+                return true;
+            });
+        }
+
+        function groupWeatherHoldInventoryCards(rows = []) {
+            const groups = new Map();
+            (Array.isArray(rows) ? rows : []).forEach((row) => {
+                const key = getWeatherHoldInventoryItemKey(row);
+                if (!groups.has(key)) {
+                    groups.set(key, {
+                        key,
+                        commonName: firstNonEmptyValue(row.COMMONNAME, row.commonname, 'Unknown'),
+                        contSize: firstNonEmptyValue(row.CONTSIZE, row.contsize, '-'),
+                        itemCode: firstNonEmptyValue(row.ITEMCODE, row.itemcode, '-'),
+                        rows: [],
+                        locations: new Set(),
+                        lots: new Set(),
+                        seasons: new Set(),
+                        totalPtr: 0
+                    });
+                }
+                const group = groups.get(key);
+                group.rows.push(row);
+                group.locations.add(String(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, 'No Loc') || 'No Loc'));
+                group.lots.add(String(firstNonEmptyValue(row.LOTCODE, row.lotcode, '-') || '-'));
+                group.seasons.add(String(firstNonEmptyValue(row.SEASON, row.season, '-') || '-'));
+                group.totalPtr += getShearDrivePtr(row);
+            });
+            const list = Array.from(groups.values());
+            list.forEach((group) => {
+                group.sample = group.rows[0] || null;
+                group.recovery = group.sample ? getShearDecisionRecoveryEstimate(group.sample) : { label: 'No learned hold recovery profile yet.' };
+            });
+            return list.sort((left, right) => {
+                const commonDiff = String(left.commonName || '').localeCompare(String(right.commonName || ''), undefined, { numeric: true, sensitivity: 'base' });
+                if (commonDiff) return commonDiff;
+                const sizeDiff = String(left.contSize || '').localeCompare(String(right.contSize || ''), undefined, { numeric: true, sensitivity: 'base' });
+                if (sizeDiff) return sizeDiff;
+                return String(left.itemCode || '').localeCompare(String(right.itemCode || ''), undefined, { numeric: true, sensitivity: 'base' });
+            });
+        }
+
+        function openWeatherHoldInventoryItem(key = '') {
+            const safeKey = String(key || '').trim();
+            if (!safeKey) return false;
+            weatherHoldState.selectedInventoryItemKey = safeKey;
+            weatherHoldState.inventoryDrillLevel = 'rows';
+            renderWeatherHold();
+            return false;
+        }
+
+        function backWeatherHoldInventoryItems() {
+            weatherHoldState.selectedInventoryItemKey = '';
+            weatherHoldState.inventoryDrillLevel = 'items';
+            renderWeatherHold();
+            return false;
+        }
+
+        function getWeatherHoldInventorySelectedRows() {
+            const key = String(weatherHoldState.selectedInventoryItemKey || '').trim();
+            if (!key) return [];
+            return getWeatherHoldInventoryFilteredRows()
+                .filter((row) => getWeatherHoldInventoryItemKey(row) === key)
+                .sort((left, right) => {
+                    const ptrDiff = getShearDrivePtr(right) - getShearDrivePtr(left);
+                    if (ptrDiff) return ptrDiff;
+                    const locDiff = String(firstNonEmptyValue(left.LOCATIONCODE, left.locationcode, '') || '').localeCompare(String(firstNonEmptyValue(right.LOCATIONCODE, right.locationcode, '') || ''), undefined, { numeric: true, sensitivity: 'base' });
+                    if (locDiff) return locDiff;
+                    return String(firstNonEmptyValue(left.LOTCODE, left.lotcode, '') || '').localeCompare(String(firstNonEmptyValue(right.LOTCODE, right.lotcode, '') || ''), undefined, { numeric: true, sensitivity: 'base' });
+                });
+        }
+
+        function renderWeatherHoldInventoryCard(group = null) {
+            if (!group) return '';
+            const lotChips = typeof renderShearDriveLotPtrChips === 'function' ? renderShearDriveLotPtrChips(group.rows, 6) : '';
+            const recoveryText = getShearRecoveryDisplayText(group.recovery);
+            return `<button type="button" class="w-full rounded-2xl border border-[#007a4d] bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openWeatherHoldInventoryItem('${escJsAttrValue(group.key)}')">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="text-lg font-black leading-tight text-slate-900">${escapeHtml(group.commonName)}</div>
+                        <div class="mt-1 text-[12px] font-bold text-slate-500">${escapeHtml(group.contSize)} | Item ${escapeHtml(group.itemCode)}</div>
+                    </div>
+                    <span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">PTR ${escapeHtml(formatShearDecisionNumber(group.totalPtr))}</span>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">
+                    <span class="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">${escapeHtml(String(group.locations.size))} Location${group.locations.size === 1 ? '' : 's'}</span>
+                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">${escapeHtml(String(group.rows.length))} Row${group.rows.length === 1 ? '' : 's'}</span>
+                    <span class="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">${escapeHtml(Array.from(group.seasons).slice(0, 4).join(', ') || '-')}</span>
+                </div>
+                ${lotChips ? `<div class="mt-3">${lotChips}</div>` : ''}
+                <div class="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700">${escapeHtml(recoveryText)}</div>
+            </button>`;
+        }
+
+        function renderWeatherHoldInventoryRowCard(row = null) {
+            if (!row) return '';
+            const commonName = firstNonEmptyValue(row.COMMONNAME, row.commonname, 'Unknown');
+            const contSize = firstNonEmptyValue(row.CONTSIZE, row.contsize, '-');
+            const itemCode = firstNonEmptyValue(row.ITEMCODE, row.itemcode, '-');
+            const loc = firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, 'No Loc');
+            const lot = firstNonEmptyValue(row.LOTCODE, row.lotcode, '-');
+            const season = firstNonEmptyValue(row.SEASON, row.season, '-');
+            const block = firstNonEmptyValue(row.BLOCKALPHA, row.blockalpha, '-');
+            const ptr = getShearDrivePtr(row);
+            const holdReason = firstNonEmptyValue(row.HOLDSTOPREASON, row.holdstopreason, '');
+            const recovery = getShearDecisionRecoveryEstimate(row);
+            return `<div class="rounded-2xl border border-[#007a4d] bg-white p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="text-lg font-black leading-tight text-slate-900">${escapeHtml(commonName)}</div>
+                        <div class="mt-1 text-[12px] font-bold text-slate-500">${escapeHtml(contSize)} | Item ${escapeHtml(itemCode)}</div>
+                    </div>
+                    <span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">PTR ${escapeHtml(formatShearDecisionNumber(ptr))}</span>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">
+                    <span class="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">Loc ${escapeHtml(loc)}</span>
+                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">Lot ${escapeHtml(lot)}</span>
+                    <span class="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">${escapeHtml(season)}</span>
+                    <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">Block ${escapeHtml(block)}</span>
+                </div>
+                ${holdReason ? `<div class="mt-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-[12px] font-bold text-amber-800">${escapeHtml(holdReason)}</div>` : ''}
+                <div class="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700">${escapeHtml(getShearRecoveryDisplayText(recovery))}</div>
+            </div>`;
+        }
+
+        function renderWeatherHoldInventoryLookup() {
+            const fullLoaded = ensureWeatherHoldInventoryData();
+            const rows = getWeatherHoldInventoryFilteredRows();
+            const groups = groupWeatherHoldInventoryCards(rows);
+            const showingRows = weatherHoldState.inventoryDrillLevel === 'rows' && !!String(weatherHoldState.selectedInventoryItemKey || '').trim();
+            const contsizeOptions = getWeatherHoldInventoryContsizeOptions();
+            const contsizeHtml = `<option value="">All Sizes</option>${contsizeOptions.map((size) => `<option value="${escapeHtml(size)}" ${weatherHoldState.inventoryContsize === size ? 'selected' : ''}>${escapeHtml(size)}</option>`).join('')}`;
+            const bodyHtml = showingRows
+                ? (() => {
+                    const selectedRows = getWeatherHoldInventorySelectedRows();
+                    return `<div class="mb-3 flex items-center justify-between gap-2"><button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return backWeatherHoldInventoryItems()"><i class="ph-bold ph-arrow-left"></i> Items</button><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">${escapeHtml(String(selectedRows.length))} Drive Mode rows</div></div>${selectedRows.length ? selectedRows.map(renderWeatherHoldInventoryRowCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No rows match this item anymore.</div>'}`;
+                })()
+                : (groups.length
+                    ? groups.slice(0, 160).map(renderWeatherHoldInventoryCard).join('')
+                    : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No Drive Mode items match these filters.</div>');
+            const moreHtml = !showingRows && groups.length > 160
+                ? `<div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Showing 160 of ${escapeHtml(String(groups.length))} item cards. Search common name or choose a size to narrow it down.</div>`
+                : '';
+            return `<section class="space-y-3">
+                <div class="flex flex-wrap items-end gap-2">
+                    <label class="min-w-[220px] flex-1">
+                        <span class="block text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Drive Mode Hold Risk Lookup</span>
+                        <input id="weather-hold-inventory-search" type="search" class="mt-1 w-full rounded-xl border border-green-200 bg-white px-3 py-3 text-sm font-black text-slate-900 outline-none focus:border-[#007a4d]" value="${escapeHtml(weatherHoldState.inventorySearch || '')}" placeholder="Search common name, item, location..." autocomplete="off" oninput="return setWeatherHoldInventoryFilter('inventorySearch', this.value)">
+                    </label>
+                    <label class="min-w-[160px]">
+                        <span class="block text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Contsize</span>
+                        <select class="mt-1 w-full rounded-xl border border-green-200 bg-white px-3 py-3 text-sm font-black text-slate-900 outline-none focus:border-[#007a4d]" onchange="return setWeatherHoldInventoryFilter('inventoryContsize', this.value)">${contsizeHtml}</select>
+                    </label>
+                </div>
+                ${!fullLoaded ? '<div class="rounded-xl border border-sky-100 bg-sky-50 px-3 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-sky-700">Loading full Drive Mode inventory...</div>' : ''}
+                <div class="space-y-3">${bodyHtml}${moreHtml}</div>
+            </section>`;
+        }
+
         async function loadWeatherHoldData(force = false) {
             const staleMs = 15 * 60 * 1000;
             if (!force && weatherHoldState.loaded && (Date.now() - weatherHoldState.lastLoadedAt) < staleMs) return weatherHoldState;
@@ -31830,7 +32773,7 @@ function toggleDriveQuickRequestItem(domId) {
             const emptyProfileHtml = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No hold learning profiles loaded yet.</div>';
             const emptyCycleHtml = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No Drive Around hold release cycles loaded yet.</div>';
             const emptyEventHtml = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No hold learning events loaded yet.</div>';
-            setContainerHtml(container, `<div class="space-y-5"><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">${metricHtml}</div><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">When Items Go On Hold</div><div class="grid gap-3 lg:grid-cols-2">${profileRows || emptyProfileHtml}</div></section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-rose-700">GDD To Come Off Hold</div><div class="grid gap-3 lg:grid-cols-2">${cycleRows || emptyCycleHtml}</div></section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">Recent Hold Events</div>${eventRows || emptyEventHtml}</section></div>`);
+            setContainerHtml(container, `<div class="space-y-5"><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">${metricHtml}</div>${renderWeatherHoldInventoryLookup()}<section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">When Items Go On Hold</div><div class="grid gap-3 lg:grid-cols-2">${profileRows || emptyProfileHtml}</div></section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-rose-700">GDD To Come Off Hold</div><div class="grid gap-3 lg:grid-cols-2">${cycleRows || emptyCycleHtml}</div></section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">Recent Hold Events</div>${eventRows || emptyEventHtml}</section></div>`);
         }
 
         function reloadWeatherHoldData() {
