@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.18.01';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.18.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2067,7 +2067,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.18.01').trim() || 'V2026.05.18.01';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.18.02').trim() || 'V2026.05.18.02';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -2104,7 +2104,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <div id="drawer-request-btn" class="drawer-item text-blue-600 font-bold role-access role-admin role-rep role-request-enabled hidden" onclick="switchView('request'); toggleMenu();"><i class="ph-bold ph-chat-circle-text"></i> Requests</div>
             <div id="drawer-reserves-btn" class="drawer-item text-indigo-600 font-bold role-access role-admin hidden" onclick="switchView('reserves'); toggleMenu();"><i class="ph-bold ph-bookmark-simple"></i> Reserves</div>
             <div id="drawer-office-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin role-rep hidden" onclick="switchView('office'); toggleMenu();"><i class="ph-bold ph-buildings"></i> Office</div>
-            <div id="drawer-sales-inventory-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin hidden" onclick="switchView('sales-inventory'); toggleMenu();"><i class="ph-bold ph-storefront"></i> Inventory</div>
+            <div id="drawer-sales-inventory-btn" class="drawer-item text-emerald-700 font-bold role-access role-admin hidden" onclick="openInventoryHubView(); toggleMenu();"><i class="ph-bold ph-storefront"></i> Inventory</div>
             <div id="drawer-production-btn" class="drawer-item text-emerald-700 font-bold role-access hidden" onclick="switchView('production'); toggleMenu();"><i class="ph-bold ph-plant"></i> Production</div>
             <div id="drawer-disease-pest-btn" class="drawer-item text-red-700 font-bold role-access hidden" onclick="switchView('disease-pest'); toggleMenu();"><i class="ph-bold ph-bug"></i> Disease &amp; Pest Management</div>
             <div id="drawer-sales-office-btn" class="drawer-item text-purple-600 font-bold role-access role-admin role-rep hidden" onclick="openSalesOfficeView(); toggleMenu();"><i class="ph-bold ph-briefcase"></i> Sales Office</div>
@@ -2179,7 +2179,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div id="home-tile-qc" onclick="switchView('qc')" class="bg-white border-2 border-orange-600 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-shield-check text-3xl text-orange-700"></i><span class="font-bold text-sm text-orange-700 uppercase tracking-wide">QC</span></div>
                                 <div id="home-tile-reserves" onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
                                 <div id="home-tile-office" onclick="switchView('office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-buildings text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Office</span></div>
-                                <div id="home-tile-sales-inventory" onclick="switchView('sales-inventory')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-storefront text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Inventory</span></div>
+                                <div id="home-tile-sales-inventory" onclick="openInventoryHubView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-storefront text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Inventory</span></div>
                                 <div id="home-tile-84rd" onclick="open84RdInventoryView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-map-trifold text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">84 R.D</span></div>
                                 <div id="home-tile-production" onclick="switchView('production')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-plant text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Production</span></div>
                                 <div id="home-tile-disease-pest" onclick="switchView('disease-pest')" class="bg-white border-2 border-red-600 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-bug text-3xl text-red-700"></i><span class="font-bold text-sm text-red-700 uppercase tracking-wide">Disease &amp; Pest</span></div>
@@ -2337,6 +2337,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         </div>
                     </div>
                     <div id="qc-hub-grid" class="grid gap-3 md:grid-cols-2">
+                        <button type="button" id="qc-open-drive" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('drive')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-car text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Drive Mode</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Inventory row lookup</div>
+                        </button>
                         <button type="button" id="qc-open-docks" class="rounded-2xl border border-orange-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('docks')">
                             <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-700"><i class="ph-bold ph-truck text-2xl"></i></div>
                             <div class="text-lg font-black text-slate-900">Docks</div>
@@ -2521,6 +2526,10 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div id="production-empty-state" class="hidden rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No production modules are available for this login.</div>
                 </div>
 
+                <div id="view-production-workflow" class="hidden">
+                    <div id="production-workflow-page-content"></div>
+                </div>
+
                 <div id="view-sales-inventory" class="hidden">
                     <div class="freeze-panel">
                         <div class="flex items-center justify-between gap-3 mb-3">
@@ -2530,7 +2539,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             </div>
                             <div class="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Hub</div>
                         </div>
-                        <div class="grid grid-cols-2 gap-2 mb-3">
+                        <div id="inventory-main-tab-row" class="grid grid-cols-2 gap-2 mb-3">
                             <button type="button" id="inventory-tab-sales" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] bg-[#007a4d] text-white border-[#007a4d] shadow-sm" onclick="return setInventoryMainTab('sales')">Sales Inventory</button>
                             <button type="button" id="inventory-tab-production" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] bg-white text-[#007a4d] border-green-200 shadow-sm" onclick="return setInventoryMainTab('production')">Production Inventory</button>
                         </div>
@@ -2551,7 +2560,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div id="sales-inventory-empty-state" class="hidden rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No sales inventory modules are available for this login.</div>
                     </div>
                     <div id="inventory-production-panel" class="hidden space-y-3">
-                        <div class="grid grid-cols-2 gap-2">
+                        <div id="production-inventory-tab-row" class="grid grid-cols-2 gap-2">
                             <button type="button" id="production-inventory-tab-counting" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] bg-[#007a4d] text-white border-[#007a4d] shadow-sm" onclick="return setProductionInventoryTab('counting')">Counting</button>
                             <button type="button" id="production-inventory-tab-84rd" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] bg-white text-[#007a4d] border-green-200 shadow-sm" onclick="return setProductionInventoryTab('84rd')">84 R.D</button>
                         </div>
@@ -3304,7 +3313,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.18.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.18.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -3347,8 +3356,9 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             'shear-list': ['shear-list', 'inventory', 'reserves'],
             'sales-inventory': ['sales-inventory', 'inventory'],
             production: ['production', 'inventory'],
+            'production-workflow': ['production', 'inventory'],
             sales: ['request', 'docks', 'av', 'sales-office', 'inventory', 'reserves'],
-            qc: ['docks'],
+            qc: ['docks', 'inventory'],
             office: ['sales-office'],
             inventory: ['sales-inventory', 'sales-office', 'production'],
             'weather-hold': ['inventory', 'reserves'],
@@ -3377,6 +3387,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             'sales-inventory': { realtimeTables: [SPREAD_COUNT_TABLE, BUNCH_COUNT_TABLE], pollMs: 'visible-default' },
             sales: { realtimeTables: [], pollMs: 'visible-default' },
             production: { realtimeTables: [PRODUCTION_WORKFLOW_ROWS_TABLE], pollMs: 'visible-default' },
+            'production-workflow': { realtimeTables: [PRODUCTION_WORKFLOW_ROWS_TABLE], pollMs: 'visible-default' },
             qc: { realtimeTables: [], pollMs: 'visible-default' },
             office: { realtimeTables: [], pollMs: 'visible-default' },
             inventory: { realtimeTables: [], pollMs: 'visible-default' },
@@ -9138,7 +9149,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 else cacheProductionWorkflowRow(rawRow);
                 productionWorkflowState.loaded = true;
                 markViewDirty('production');
-                if (isViewVisible('production')) renderProductionWorkflowPanel();
+                markViewDirty('production-workflow');
+                if (isViewVisible('production-workflow')) renderProductionWorkflowPanel();
                 recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'production-workflow');
                 return true;
             }
@@ -10923,6 +10935,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
 
         function openDrawerView(viewId = 'home') {
+            if (String(viewId || '').trim() === 'sales-inventory') inventory84DirectMode = false;
             switchView(viewId);
             setMenuOpenState(false);
             return false;
@@ -10946,7 +10959,13 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return false;
         }
 
+        function openInventoryHubView() {
+            inventory84DirectMode = false;
+            return switchView('sales-inventory');
+        }
+
         function open84RdInventoryView() {
+            inventory84DirectMode = true;
             inventoryMainTab = 'production';
             productionInventoryTab = '84rd';
             productionInventory84Tab = 'block';
@@ -11165,10 +11184,10 @@ bindFastInvokeById('drawer-drive-btn', 'openDrawerView', ['drive'], 'Drive Mode'
             bindFastInvokeById('drawer-docks-btn', 'openDrawerView', ['docks'], 'Docks');
             bindFastInvokeById('drawer-take-back-btn', 'openDrawerView', ['take-back'], 'Take Back');
             bindFastInvokeById('drawer-av-btn', 'openDrawerView', ['av'], 'AV');
-bindFastInvokeById('drawer-request-btn', 'openDrawerView', ['request'], 'Requests');
-bindFastInvokeById('drawer-reserves-btn', 'openDrawerView', ['reserves'], 'Reserves');
+            bindFastInvokeById('drawer-request-btn', 'openDrawerView', ['request'], 'Requests');
+            bindFastInvokeById('drawer-reserves-btn', 'openDrawerView', ['reserves'], 'Reserves');
             bindFastInvokeById('drawer-office-btn', 'openDrawerView', ['office'], 'Office');
-            bindFastInvokeById('drawer-sales-inventory-btn', 'openDrawerView', ['sales-inventory'], 'Inventory');
+            bindFastInvokeById('drawer-sales-inventory-btn', 'openInventoryHubView', [], 'Inventory');
             bindFastInvokeById('drawer-production-btn', 'openDrawerView', ['production'], 'Production');
             bindFastInvokeById('drawer-disease-pest-btn', 'openDrawerView', ['disease-pest'], 'Disease & Pest Management');
             bindFastInvokeById('drawer-sales-office-btn', 'openDrawerSalesOffice', [], 'Sales Office');
@@ -11192,7 +11211,7 @@ bindFastInvokeById('home-tile-sales', 'switchView', ['sales'], 'Sales');
 bindFastInvokeById('home-tile-qc', 'switchView', ['qc'], 'QC');
 bindFastInvokeById('home-tile-reserves', 'switchView', ['reserves'], 'Reserves');
             bindFastInvokeById('home-tile-office', 'switchView', ['office'], 'Office');
-            bindFastInvokeById('home-tile-sales-inventory', 'switchView', ['sales-inventory'], 'Inventory');
+            bindFastInvokeById('home-tile-sales-inventory', 'openInventoryHubView', [], 'Inventory');
             bindFastInvokeById('home-tile-84rd', 'open84RdInventoryView', [], '84 R.D');
             bindFastInvokeById('home-tile-production', 'switchView', ['production'], 'Production');
             bindFastInvokeById('home-tile-disease-pest', 'switchView', ['disease-pest'], 'Disease & Pest Management');
@@ -14388,7 +14407,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.18.01').trim() || 'V2026.05.18.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.18.02').trim() || 'V2026.05.18.02';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,
@@ -14457,6 +14476,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             qc: { eyebrow: 'Quality Control', title: 'QC' },
             communication: { eyebrow: 'Communication', title: 'Communication' },
             production: { eyebrow: 'Production', title: 'Production' },
+            'production-workflow': { eyebrow: 'Production', title: 'Production Workflow' },
             'sales-inventory': { eyebrow: 'Inventory', title: 'Inventory' },
             'weather-hold': { eyebrow: 'Park Hill Weather', title: 'Weather & Hold Risk' },
             'shear-list': { eyebrow: 'Production', title: 'Shear List' },
@@ -16423,6 +16443,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (viewId === 'qc') return { required: [], background: [], label: 'Loading QC...' };
             if (viewId === 'communication') return { required: [], background: [], label: 'Loading communication...' };
             if (viewId === 'production') return { required: [], background: [], label: 'Loading production...' };
+            if (viewId === 'production-workflow') return { required: [], background: [{ key: 'master', mode: 'full' }], label: 'Loading production workflow...' };
             if (viewId === 'sales-inventory') return { required: [], background: [], label: 'Loading inventory...' };
             if (viewId === 'weather-hold') return { required: [], background: [], label: 'Loading weather and hold risk...' };
             if (viewId === 'shear-list') return { required: [], background: [{ key: 'master', mode: 'full' }, { key: 'reserves', mode: 'full' }], label: 'Loading shear list...' };
@@ -24904,13 +24925,14 @@ function toggleDriveQuickRequestItem(domId) {
             return dockAssignableUsersPromise;
         }
 
-        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','production','weather-hold','shear-list','sales','qc','av','request','reserves','sales-office','office','sales-inventory','reports','hours','low-stock','review','move-up','advertisement','diagnostics','disease-pest','grower','pest-management','communication','chat'];
+        const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','production','production-workflow','weather-hold','shear-list','sales','qc','av','request','reserves','sales-office','office','sales-inventory','reports','hours','low-stock','review','move-up','advertisement','diagnostics','disease-pest','grower','pest-management','communication','chat'];
         const ROLE_VIEW_ELEMENT_IDS = Object.freeze({
             drive: ['drawer-drive-btn', 'home-tile-drive'],
             tasks: ['drawer-tasks-btn'],
             docks: ['drawer-docks-btn'],
             'take-back': ['drawer-take-back-btn'],
             production: ['drawer-production-btn', 'home-tile-production'],
+            'production-workflow': [],
             'shear-list': [],
             sales: ['drawer-sales-btn', 'home-tile-sales'],
             qc: ['drawer-qc-btn', 'home-tile-qc'],
@@ -24968,19 +24990,21 @@ function toggleDriveQuickRequestItem(domId) {
             if (isTakeBackOnly) {
                 allowedViews.add('take-back');
                 allowedViews.add('production');
+                allowedViews.add('production-workflow');
                 allowedViews.add('sales-inventory');
                 allowedViews.add('weather-hold');
                 allowedViews.add('shear-list');
             } else if (isForeman && !isAdmin) {
-                ['drive', 'take-back', 'production', 'sales-inventory', 'weather-hold', 'shear-list', 'tasks', 'communication', 'chat', 'hours', 'grower'].forEach(viewId => allowedViews.add(viewId));
+                ['drive', 'take-back', 'production', 'production-workflow', 'sales-inventory', 'weather-hold', 'shear-list', 'tasks', 'communication', 'chat', 'hours', 'grower'].forEach(viewId => allowedViews.add(viewId));
             } else if (isGrower && !isAdmin) {
-                ['production', 'sales-inventory', 'weather-hold', 'shear-list', 'tasks', 'grower', 'communication', 'chat'].forEach(viewId => allowedViews.add(viewId));
+                ['production', 'production-workflow', 'sales-inventory', 'weather-hold', 'shear-list', 'tasks', 'grower', 'communication', 'chat'].forEach(viewId => allowedViews.add(viewId));
             } else {
                 allowedViews.add('communication');
                 allowedViews.add('chat');
                 if (!isRep) {
                     allowedViews.add('take-back');
                     allowedViews.add('production');
+                    allowedViews.add('production-workflow');
                     allowedViews.add('weather-hold');
                     allowedViews.add('shear-list');
                 }
@@ -24992,12 +25016,13 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (isQcSupervisor) {
                 ['qc', 'drive', 'docks'].forEach(viewId => allowedViews.add(viewId));
             } else if (isQc) {
-                ['qc', 'docks'].forEach(viewId => allowedViews.add(viewId));
+                ['qc', 'drive', 'docks'].forEach(viewId => allowedViews.add(viewId));
             }
             if (canUseMovesModule()) {
                 allowedViews.add('moves');
                 allowedViews.add('office');
                 allowedViews.add('production');
+                allowedViews.add('production-workflow');
                 allowedViews.add('sales-inventory');
                 allowedViews.add('weather-hold');
                 allowedViews.add('shear-list');
@@ -28383,7 +28408,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (canAccessView(target)) switchView(target);
         }
 
-        const TRACKED_VIEW_IDS = ['drive','tasks','review','move-up','advertisement','diagnostics','grower','pest-management','communication','sales','qc','production','weather-hold','shear-list','sales-inventory','disease-pest','office','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
+        const TRACKED_VIEW_IDS = ['drive','tasks','review','move-up','advertisement','diagnostics','grower','pest-management','communication','sales','qc','production','production-workflow','weather-hold','shear-list','sales-inventory','disease-pest','office','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
 
         function getAffectedViewsForDatasets(changedKeys = []) {
             const changedSet = new Set((changedKeys || []).filter(Boolean));
@@ -31051,12 +31076,12 @@ function toggleDriveQuickRequestItem(domId) {
                     preserveRequestedMode: true,
                     retryReason: `${safeType}-production-workflow-full-load`
                 }, 1).then(() => {
-                    if (isViewVisible('production') && productionWorkflowActive === safeType) renderProductionWorkflowPanel();
+                    if (isViewVisible('production-workflow') && productionWorkflowActive === safeType) renderProductionWorkflowPanel();
                 }).catch(() => {});
             }
             if ((!productionWorkflowState.loaded || productionWorkflowState.workflowType !== safeType) && !productionWorkflowState.loading) {
                 loadProductionWorkflowRows(false, safeType).then(() => {
-                    if (isViewVisible('production') && productionWorkflowActive === safeType) renderProductionWorkflowPanel();
+                    if (isViewVisible('production-workflow') && productionWorkflowActive === safeType) renderProductionWorkflowPanel();
                 }).catch(() => {});
             }
             return fullLoaded;
@@ -31512,6 +31537,7 @@ function toggleDriveQuickRequestItem(domId) {
                 await supabaseFetch(PRODUCTION_WORKFLOW_ROWS_TABLE, 'POST', payload, 'on_conflict=unique_id');
                 cacheProductionWorkflowRow(payload);
                 markViewDirty('production');
+                markViewDirty('production-workflow');
                 showToast('Added', `Row moved to ${meta.title || 'Production'}.`);
                 renderProductionWorkflowPanel();
             } catch (error) {
@@ -31543,6 +31569,7 @@ function toggleDriveQuickRequestItem(domId) {
                 }, `unique_id=eq.${encodeURIComponent(safeId)}`);
                 removeProductionWorkflowRowFromCache(safeId);
                 markViewDirty('production');
+                markViewDirty('production-workflow');
                 showToast('Complete', 'Production row completed.');
                 renderProductionWorkflowPanel();
             } catch (error) {
@@ -31556,7 +31583,14 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function renderProductionWorkflowPanel() {
-            const panel = document.getElementById('production-workflow-panel');
+            const pageVisible = isViewVisible('production-workflow');
+            const inlinePanel = document.getElementById('production-workflow-panel');
+            if (!pageVisible && inlinePanel) {
+                inlinePanel.classList.add('hidden');
+                setContainerHtml(inlinePanel, '');
+                return;
+            }
+            const panel = document.getElementById('production-workflow-page-content') || inlinePanel;
             if (!panel) return;
             const meta = PRODUCTION_WORKFLOW_META[productionWorkflowActive];
             if (!meta) {
@@ -31593,15 +31627,24 @@ function toggleDriveQuickRequestItem(domId) {
         function openProductionWorkflow(key = '') {
             const safeKey = String(key || '').trim().toLowerCase();
             if (!PRODUCTION_WORKFLOW_META[safeKey]) return false;
+            if (!canAccessView('production-workflow')) {
+                showToast('Access Restricted', 'This production module is not available for your login.', true);
+                return false;
+            }
             if (productionWorkflowActive !== safeKey) resetProductionWorkflowRuntimeState(safeKey);
             productionWorkflowActive = safeKey;
+            markViewDirty('production-workflow');
+            switchView('production-workflow');
             renderProductionWorkflowPanel();
             return false;
         }
 
         function closeProductionWorkflow() {
             productionWorkflowActive = '';
-            renderProductionWorkflowPanel();
+            markViewDirty('production');
+            markViewDirty('production-workflow');
+            if (restorePreviousViewFromHistory()) return false;
+            switchView('production');
             return false;
         }
 
@@ -31620,6 +31663,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function renderQcHub() {
             const visibleCount = [
+                setHubButtonVisibility('qc-open-drive', canAccessView('drive')),
                 setHubButtonVisibility('qc-open-docks', canAccessView('docks'))
             ].filter(Boolean).length;
             const emptyState = document.getElementById('qc-empty-state');
@@ -31641,10 +31685,15 @@ function toggleDriveQuickRequestItem(domId) {
             ].filter(Boolean).length;
             const emptyState = document.getElementById('production-empty-state');
             if (emptyState) emptyState.classList.toggle('hidden', visibleCount > 0);
-            renderProductionWorkflowPanel();
+            const panel = document.getElementById('production-workflow-panel');
+            if (panel) {
+                panel.classList.add('hidden');
+                setContainerHtml(panel, '');
+            }
         }
 
         let inventoryMainTab = 'sales';
+        let inventory84DirectMode = false;
         let productionInventoryTab = 'counting';
         let productionInventoryCountingTab = 'bunch';
         let productionInventory84Tab = 'block';
@@ -32407,21 +32456,32 @@ function toggleDriveQuickRequestItem(domId) {
 
         function renderSalesInventoryHub() {
             const canUseSalesInventory = canAccessView('review') || canAccessView('move-up');
-            if (!canUseSalesInventory && inventoryMainTab === 'sales') inventoryMainTab = 'production';
+            const direct84Mode = !!inventory84DirectMode;
+            if (direct84Mode) {
+                inventoryMainTab = 'production';
+                productionInventoryTab = '84rd';
+            } else if (!canUseSalesInventory && inventoryMainTab === 'sales') {
+                inventoryMainTab = 'production';
+            }
+            const mainTabRow = document.getElementById('inventory-main-tab-row');
+            const productionTabRow = document.getElementById('production-inventory-tab-row');
             const salesPanel = document.getElementById('inventory-sales-panel');
             const productionPanel = document.getElementById('inventory-production-panel');
             const countingPanel = document.getElementById('production-inventory-counting-panel');
             const rdPanel = document.getElementById('production-inventory-84rd-panel');
-            const showSales = inventoryMainTab !== 'production';
-            const showCounting = productionInventoryTab !== '84rd';
+            const showSales = !direct84Mode && inventoryMainTab !== 'production';
+            const showProduction = direct84Mode || !showSales;
+            const showCounting = !direct84Mode && productionInventoryTab !== '84rd';
 
+            if (mainTabRow) mainTabRow.classList.toggle('hidden', direct84Mode);
+            if (productionTabRow) productionTabRow.classList.toggle('hidden', direct84Mode);
             if (salesPanel) salesPanel.classList.toggle('hidden', !showSales);
-            if (productionPanel) productionPanel.classList.toggle('hidden', showSales);
-            if (countingPanel) countingPanel.classList.toggle('hidden', !showCounting);
-            if (rdPanel) rdPanel.classList.toggle('hidden', showCounting);
+            if (productionPanel) productionPanel.classList.toggle('hidden', !showProduction);
+            if (countingPanel) countingPanel.classList.toggle('hidden', !showProduction || !showCounting);
+            if (rdPanel) rdPanel.classList.toggle('hidden', !showProduction || showCounting);
 
             setInventoryPillActive('inventory-tab-sales', showSales);
-            setInventoryPillActive('inventory-tab-production', !showSales);
+            setInventoryPillActive('inventory-tab-production', showProduction);
             setInventoryPillActive('production-inventory-tab-counting', showCounting);
             setInventoryPillActive('production-inventory-tab-84rd', !showCounting);
             setInventoryPillActive('production-inventory-counting-tab-bunch', productionInventoryCountingTab !== 'spread');
@@ -34450,6 +34510,8 @@ function toggleDriveQuickRequestItem(domId) {
                 renderCommunicationHub();
             } else if (viewId === 'production') {
                 renderProductionHub();
+            } else if (viewId === 'production-workflow') {
+                renderProductionWorkflowPanel();
             } else if (viewId === 'sales-inventory') {
                 renderSalesInventoryHub();
             } else if (viewId === 'weather-hold') {
@@ -34879,6 +34941,9 @@ function toggleDriveQuickRequestItem(domId) {
             if (currentView === 'detail') {
                 goBackFromDetail();
                 return false;
+            }
+            if (currentView && currentView !== 'home') {
+                if (restorePreviousViewFromHistory()) return false;
             }
             if (currentView === 'drive') {
                 if (activeDriveTab === 'name') {
@@ -50095,7 +50160,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const crumb = document.getElementById('diagnostics-crumb');
             if (!container) return;
             const pendingRows = getMlJobsByStatus(['pending_ml', 'processing']);
-            const issueRows = getMlJobsByStatus(['pending_approval', 'approved']).filter((row) => isMlDiagnosticIssueRow(row));
+            const issueRows = getMlJobsByStatus(['pending_approval']).filter((row) => isMlDiagnosticIssueRow(row));
             const failedRows = getMlJobsByStatus(['ml_failed']).slice(0, 20);
             const finishedRows = issueRows.concat(failedRows).slice(0, 60);
             const allRows = Array.isArray(mlImageJobsInventory) ? mlImageJobsInventory.map((row, idx) => normalizeMlImageJobRow(row, idx)).filter(Boolean) : [];
@@ -50106,7 +50171,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             }, {});
             if (crumb) crumb.innerText = `AI Diagnostics | ${pendingRows.length} Pending`;
             const pendingHtml = pendingRows.length ? pendingRows.map(renderDiagnosticCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-[12px] font-semibold text-slate-400">No pending diagnostic jobs.</div>';
-            const finishedHtml = finishedRows.length ? finishedRows.map(renderDiagnosticCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-[12px] font-semibold text-slate-400">No completed diagnostic reports.</div>';
+            const finishedHtml = finishedRows.length ? finishedRows.map(renderDiagnosticCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-[12px] font-semibold text-slate-400">No diagnostic issues awaiting review.</div>';
             const statusSummaryHtml = ['pending_ml', 'processing', 'pending_approval', 'approved', 'ml_failed'].map((status) => `<div class="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">${esc(status.replace(/_/g, ' '))}</div><div class="mt-1 text-xl font-black text-slate-900">${esc(String(statusCounts[status] || 0))}</div></div>`).join('');
             const signature = `diagnostics:${getDatasetLoadSignature('mlJobs')}:${pendingRows.length}:${finishedRows.length}:${JSON.stringify(statusCounts)}:${finishedRows.map((row) => `${row.UNIQUE_ID}:${row.STATUS}:${row.UPDATED_AT}:${row.LAST_ERROR}`).join('|')}`;
             const html = `<div class="space-y-5">
