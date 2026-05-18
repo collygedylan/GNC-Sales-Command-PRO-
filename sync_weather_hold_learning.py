@@ -375,7 +375,7 @@ def run() -> int:
     history_force = env_bool("WEATHER_HISTORY_FORCE", False)
     history_max_chunks = env_int("WEATHER_HISTORY_MAX_CHUNKS", 0)
     refresh_limit = env_int("HOLD_WEATHER_REFRESH_LIMIT", 2000)
-    history_refresh_limit = env_int("HOLD_HISTORY_REFRESH_LIMIT", 100000)
+    history_refresh_limit = env_int("HOLD_HISTORY_REFRESH_LIMIT", 15000)
 
     started = time.time()
     supabase = SupabaseRest(supabase_url, supabase_key)

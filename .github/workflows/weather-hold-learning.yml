@@ -42,5 +42,5 @@ jobs:
           WEATHER_HISTORY_MIN_COVERAGE: "0.90"
           WEATHER_HISTORY_FORCE: "false"
           HOLD_WEATHER_REFRESH_LIMIT: "2000"
-          HOLD_HISTORY_REFRESH_LIMIT: "100000"
+          HOLD_HISTORY_REFRESH_LIMIT: "15000"
         run: python sync_weather_hold_learning.py

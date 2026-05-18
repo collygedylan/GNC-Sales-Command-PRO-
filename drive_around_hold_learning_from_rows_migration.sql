@@ -116,6 +116,13 @@ create index if not exists idx_v2_drive_around_report_rows_item_key_date_hold
 create index if not exists idx_v2_drive_around_report_rows_date_item_key
   on public.v2_drive_around_report_rows (report_date, item_key);
 
+create index if not exists idx_v2_drive_around_report_rows_item_order
+  on public.v2_drive_around_report_rows (item_key, report_date, file_name, row_number);
+
+create index if not exists idx_v2_drive_around_report_rows_hold_date_item_partial
+  on public.v2_drive_around_report_rows (report_date desc, item_key)
+  where upper(trim(coalesce(holdstopcode, ''))) = 'H';
+
 create index if not exists idx_v2_hold_learning_events_source_rows
   on public.v2_hold_learning_events (source_table, source_unique_id);
 
@@ -402,7 +409,313 @@ begin
 end;
 $$;
 
+create or replace function public.v2_refresh_hold_learning_from_drive_around_rows_range(
+  p_start_date date,
+  p_end_date date,
+  p_limit integer default 15000
+)
+returns table(hold_events_upserted integer, release_cycles_upserted integer)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  event_count integer := 0;
+  cycle_count integer := 0;
+  safe_start date := coalesce(p_start_date, current_date - 180);
+  safe_end date := coalesce(p_end_date, current_date);
+  safe_limit integer := greatest(1, least(coalesce(p_limit, 15000), 50000));
+begin
+  if to_regclass('public.v2_drive_around_report_rows') is null then
+    raise exception 'public.v2_drive_around_report_rows does not exist. Run drive_around_report_rows_migration.sql and import Drive Around history first.';
+  end if;
+
+  if safe_start > safe_end then
+    raise exception 'Start date % must be on or before end date %.', safe_start, safe_end;
+  end if;
+
+  create temp table tmp_v2_drive_around_hold_starts on commit drop as
+  with hold_candidates as (
+    select r.*
+    from public.v2_drive_around_report_rows r
+    where r.report_date >= safe_start
+      and r.report_date <= safe_end
+      and nullif(trim(coalesce(r.item_key, '')), '') is not null
+      and upper(trim(coalesce(r.holdstopcode, ''))) = 'H'
+    order by r.report_date desc, r.file_name desc, r.row_number desc
+    limit safe_limit
+  )
+  select h.*
+  from hold_candidates h
+  left join lateral (
+    select p.holdstopcode
+    from public.v2_drive_around_report_rows p
+    where p.item_key = h.item_key
+      and (
+        p.report_date < h.report_date
+        or (
+          p.report_date = h.report_date
+          and (
+            p.file_name < h.file_name
+            or (p.file_name = h.file_name and p.row_number < h.row_number)
+          )
+        )
+      )
+    order by p.report_date desc, p.file_name desc, p.row_number desc
+    limit 1
+  ) previous_row on true
+  where coalesce(upper(trim(previous_row.holdstopcode)), '') <> 'H';
+
+  insert into public.v2_hold_learning_events (
+    unique_id,
+    source_table,
+    source_unique_id,
+    import_file_name,
+    hold_started_on,
+    hold_detected_at,
+    itemcode,
+    commonname,
+    genus,
+    contsize,
+    locationcode,
+    lotcode,
+    season,
+    blockalpha,
+    salesyear,
+    holdstopcode,
+    holdstopreason,
+    holdstopbegindate_raw,
+    hold_reason_category,
+    weather_station_key,
+    created_at,
+    updated_at
+  )
+  select
+    'hold_history_' || encode(digest(concat_ws('|',
+      s.item_key,
+      s.report_date::text,
+      coalesce(s.file_id, ''),
+      coalesce(s.row_number::text, ''),
+      lower(coalesce(s.holdstopreason, ''))
+    ), 'sha256'), 'hex') as unique_id,
+    'v2_drive_around_report_rows' as source_table,
+    s.unique_id as source_unique_id,
+    s.file_name as import_file_name,
+    s.report_date as hold_started_on,
+    now() as hold_detected_at,
+    nullif(trim(s.itemcode), '') as itemcode,
+    nullif(trim(s.commonname), '') as commonname,
+    nullif(trim(s.genus), '') as genus,
+    nullif(trim(s.contsize), '') as contsize,
+    nullif(trim(s.locationcode), '') as locationcode,
+    nullif(trim(s.lotcode), '') as lotcode,
+    nullif(trim(s.season), '') as season,
+    nullif(trim(s.blockalpha), '') as blockalpha,
+    nullif(trim(s.salesyear), '') as salesyear,
+    'H' as holdstopcode,
+    nullif(trim(s.holdstopreason), '') as holdstopreason,
+    nullif(trim(s.holdstopbegindate_raw), '') as holdstopbegindate_raw,
+    coalesce(nullif(trim(s.hold_reason_category), ''), public.v2_classify_hold_reason(s.holdstopreason)) as hold_reason_category,
+    'park_hill_ok' as weather_station_key,
+    now() as created_at,
+    now() as updated_at
+  from tmp_v2_drive_around_hold_starts s
+  on conflict (unique_id) do update set
+    source_table = excluded.source_table,
+    source_unique_id = excluded.source_unique_id,
+    import_file_name = excluded.import_file_name,
+    hold_started_on = excluded.hold_started_on,
+    itemcode = excluded.itemcode,
+    commonname = excluded.commonname,
+    genus = excluded.genus,
+    contsize = excluded.contsize,
+    locationcode = excluded.locationcode,
+    lotcode = excluded.lotcode,
+    season = excluded.season,
+    blockalpha = excluded.blockalpha,
+    salesyear = excluded.salesyear,
+    holdstopcode = excluded.holdstopcode,
+    holdstopreason = excluded.holdstopreason,
+    holdstopbegindate_raw = excluded.holdstopbegindate_raw,
+    hold_reason_category = excluded.hold_reason_category,
+    weather_station_key = excluded.weather_station_key,
+    updated_at = now();
+
+  get diagnostics event_count = row_count;
+
+  create temp table tmp_v2_drive_around_hold_cycles on commit drop as
+  select
+    s.*,
+    release_row.unique_id as release_unique_id,
+    release_row.file_id as release_file_id,
+    release_row.file_name as release_file_name,
+    release_row.report_date as hold_released_on,
+    greatest((release_row.report_date - s.report_date), 0) as hold_days,
+    coalesce((
+      select round(sum(coalesce(d.daily_gdd_base_50, 0))::numeric, 3)
+      from public.v2_weather_daily d
+      where d.station_key = 'park_hill_ok'
+        and d.date >= s.report_date
+        and d.date <= release_row.report_date
+    ), 0) as gdd_base_50_to_release
+  from tmp_v2_drive_around_hold_starts s
+  join lateral (
+    select r.*
+    from public.v2_drive_around_report_rows r
+    where r.item_key = s.item_key
+      and upper(trim(coalesce(r.holdstopcode, ''))) <> 'H'
+      and (
+        r.report_date > s.report_date
+        or (
+          r.report_date = s.report_date
+          and (
+            r.file_name > s.file_name
+            or (r.file_name = s.file_name and r.row_number > s.row_number)
+          )
+        )
+      )
+    order by r.report_date asc, r.file_name asc, r.row_number asc
+    limit 1
+  ) release_row on true;
+
+  insert into public.v2_hold_release_cycles (
+    unique_id,
+    item_key,
+    itemcode,
+    commonname,
+    genus,
+    contsize,
+    locationcode,
+    lotcode,
+    season,
+    blockalpha,
+    salesyear,
+    holdstopreason,
+    hold_reason_category,
+    hold_started_on,
+    hold_released_on,
+    hold_days,
+    gdd_base_50_to_release,
+    start_file_id,
+    start_file_name,
+    release_file_id,
+    release_file_name,
+    source_file_ids,
+    source_file_names,
+    snapshot,
+    created_at,
+    updated_at
+  )
+  select
+    'hold_cycle_history_' || encode(digest(concat_ws('|',
+      c.item_key,
+      c.report_date::text,
+      coalesce(c.file_id, ''),
+      coalesce(c.release_file_id, ''),
+      lower(coalesce(c.holdstopreason, ''))
+    ), 'sha256'), 'hex') as unique_id,
+    c.item_key,
+    nullif(trim(c.itemcode), '') as itemcode,
+    nullif(trim(c.commonname), '') as commonname,
+    nullif(trim(c.genus), '') as genus,
+    nullif(trim(c.contsize), '') as contsize,
+    nullif(trim(c.locationcode), '') as locationcode,
+    nullif(trim(c.lotcode), '') as lotcode,
+    nullif(trim(c.season), '') as season,
+    nullif(trim(c.blockalpha), '') as blockalpha,
+    nullif(trim(c.salesyear), '') as salesyear,
+    nullif(trim(c.holdstopreason), '') as holdstopreason,
+    coalesce(nullif(trim(c.hold_reason_category), ''), public.v2_classify_hold_reason(c.holdstopreason)) as hold_reason_category,
+    c.report_date as hold_started_on,
+    c.hold_released_on,
+    c.hold_days,
+    c.gdd_base_50_to_release,
+    c.file_id as start_file_id,
+    c.file_name as start_file_name,
+    c.release_file_id,
+    c.release_file_name,
+    array_remove(array[c.file_id, c.release_file_id]::text[], null::text) as source_file_ids,
+    array_remove(array[c.file_name, c.release_file_name]::text[], null::text) as source_file_names,
+    jsonb_build_object(
+      'source', 'v2_drive_around_report_rows',
+      'start_unique_id', c.unique_id,
+      'release_unique_id', c.release_unique_id,
+      'start_raw', coalesce(c.raw, '{}'::jsonb)
+    ) as snapshot,
+    now() as created_at,
+    now() as updated_at
+  from tmp_v2_drive_around_hold_cycles c
+  on conflict (unique_id) do update set
+    item_key = excluded.item_key,
+    itemcode = excluded.itemcode,
+    commonname = excluded.commonname,
+    genus = excluded.genus,
+    contsize = excluded.contsize,
+    locationcode = excluded.locationcode,
+    lotcode = excluded.lotcode,
+    season = excluded.season,
+    blockalpha = excluded.blockalpha,
+    salesyear = excluded.salesyear,
+    holdstopreason = excluded.holdstopreason,
+    hold_reason_category = excluded.hold_reason_category,
+    hold_started_on = excluded.hold_started_on,
+    hold_released_on = excluded.hold_released_on,
+    hold_days = excluded.hold_days,
+    gdd_base_50_to_release = excluded.gdd_base_50_to_release,
+    start_file_id = excluded.start_file_id,
+    start_file_name = excluded.start_file_name,
+    release_file_id = excluded.release_file_id,
+    release_file_name = excluded.release_file_name,
+    source_file_ids = excluded.source_file_ids,
+    source_file_names = excluded.source_file_names,
+    snapshot = excluded.snapshot,
+    updated_at = now();
+
+  get diagnostics cycle_count = row_count;
+
+  update public.v2_hold_learning_events e
+  set
+    released_on = c.hold_released_on,
+    hold_days = c.hold_days,
+    gdd_base_50_to_release = c.gdd_base_50_to_release,
+    updated_at = now()
+  from tmp_v2_drive_around_hold_cycles c
+  where e.source_table = 'v2_drive_around_report_rows'
+    and e.source_unique_id = c.unique_id;
+
+  if to_regprocedure('public.v2_refresh_hold_learning_weather_features(integer)') is not null then
+    perform public.v2_refresh_hold_learning_weather_features(least(safe_limit, 5000));
+  end if;
+
+  if to_regprocedure('public.v2_refresh_hold_learning_profiles()') is not null then
+    perform public.v2_refresh_hold_learning_profiles();
+  end if;
+
+  hold_events_upserted := event_count;
+  release_cycles_upserted := cycle_count;
+  return next;
+end;
+$$;
+
+create or replace function public.v2_refresh_hold_learning_from_drive_around_rows(p_limit integer default 15000)
+returns table(hold_events_upserted integer, release_cycles_upserted integer)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  return query
+  select *
+  from public.v2_refresh_hold_learning_from_drive_around_rows_range(
+    (current_date - interval '180 days')::date,
+    current_date,
+    least(coalesce(p_limit, 15000), 15000)
+  );
+end;
+$$;
+
 grant execute on function public.v2_refresh_hold_learning_from_drive_around_rows(integer) to anon, authenticated, service_role;
+grant execute on function public.v2_refresh_hold_learning_from_drive_around_rows_range(date, date, integer) to anon, authenticated, service_role;
 
 alter table public.v2_hold_learning_events enable row level security;
 alter table public.v2_hold_release_cycles enable row level security;
@@ -450,5 +763,16 @@ exception
   when undefined_object then null;
 end $$;
 
+-- Dashboard-safe starter refresh. This processes recent history only.
+-- For older history, run the date-range examples below one at a time.
 select *
-from public.v2_refresh_hold_learning_from_drive_around_rows(100000);
+from public.v2_refresh_hold_learning_from_drive_around_rows(15000);
+
+-- Optional historical backfill examples. Run one line at a time if you need
+-- to fill older years through the Supabase SQL Editor timeout window.
+--
+-- select * from public.v2_refresh_hold_learning_from_drive_around_rows_range('2026-01-01', '2026-05-18', 15000);
+-- select * from public.v2_refresh_hold_learning_from_drive_around_rows_range('2025-07-01', '2025-12-31', 15000);
+-- select * from public.v2_refresh_hold_learning_from_drive_around_rows_range('2025-01-01', '2025-06-30', 15000);
+-- select * from public.v2_refresh_hold_learning_from_drive_around_rows_range('2024-07-01', '2024-12-31', 15000);
+-- select * from public.v2_refresh_hold_learning_from_drive_around_rows_range('2024-01-01', '2024-06-30', 15000);
