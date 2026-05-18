@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.17.24';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.18.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2067,7 +2067,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.17.24').trim() || 'V2026.05.17.24';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.05.18.01').trim() || 'V2026.05.18.01';</script>
                             <button type="button" class="leaf-launch-btn leaf-launch-btn--header" onclick="openLeafAssistant()" aria-label="Open Leaf assistant"><i class="ph-bold ph-leaf"></i><span>Leaf</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -3304,7 +3304,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.17.24';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.05.18.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -3325,9 +3325,36 @@ const QUOTA_SAFE_VISIBLE_POLL_STANDALONE_MS = 240000;
 const QUOTA_SAFE_VISIBLE_POLL_BROWSER_MS = 360000;
 const QUOTA_SAFE_HEALTHY_REALTIME_POLL_MS = 600000;
 const QUOTA_SAFE_CHAT_HEALTHY_POLL_MS = 180000;
-const QUOTA_SAFE_DIRECT_REALTIME_VIEW_IDS = new Set(['chat', 'request']);
+const QUOTA_SAFE_DIRECT_REALTIME_VIEW_IDS = new Set(['chat', 'communication', 'request']);
 const LIVE_SYNC_POLL_STANDALONE_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_POLL_STANDALONE_MS : 60000;
 const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_POLL_BROWSER_MS : 90000;
+        const APP_LIVE_EVENT_VIEW_AREAS = Object.freeze({
+            home: ['request', 'sales-office', 'tasks', 'diagnostics', 'grower', 'production', 'sales-inventory', 'shear-list', 'take-back'],
+            drive: ['inventory', 'av', 'reserves', 'request', 'sales-office'],
+            tasks: ['tasks', 'request', 'sales-office', 'diagnostics', 'grower'],
+            reports: ['request'],
+            'sales-office': ['sales-office'],
+            moves: ['sales-office'],
+            'take-back': ['take-back'],
+            av: ['av', 'inventory', 'reserves'],
+            reserves: ['reserves'],
+            docks: ['docks'],
+            review: ['inventory'],
+            'move-up': ['inventory', 'sales-office'],
+            diagnostics: ['diagnostics'],
+            grower: ['grower'],
+            'pest-management': ['grower'],
+            'shear-list': ['shear-list', 'inventory', 'reserves'],
+            'sales-inventory': ['sales-inventory', 'inventory'],
+            production: ['production', 'inventory'],
+            sales: ['request', 'docks', 'av', 'sales-office', 'inventory', 'reserves'],
+            qc: ['docks'],
+            office: ['sales-office'],
+            inventory: ['sales-inventory', 'sales-office', 'production'],
+            'weather-hold': ['inventory', 'reserves'],
+            'low-stock': ['inventory'],
+            communication: ['chat']
+        });
         const LIVE_SYNC_VIEW_POLICY = Object.freeze({
             home: { realtimeTables: [ML_IMAGE_JOBS_TABLE], pollMs: 'visible-default' },
             chat: { realtimeTables: ['v2_chat_conversations', 'v2_chat_participants', 'v2_chat_messages'], pollMs: 60000 },
@@ -3351,6 +3378,10 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             sales: { realtimeTables: [], pollMs: 'visible-default' },
             production: { realtimeTables: [PRODUCTION_WORKFLOW_ROWS_TABLE], pollMs: 'visible-default' },
             qc: { realtimeTables: [], pollMs: 'visible-default' },
+            office: { realtimeTables: [], pollMs: 'visible-default' },
+            inventory: { realtimeTables: [], pollMs: 'visible-default' },
+            communication: { realtimeTables: [], pollMs: 'visible-default' },
+            'weather-hold': { realtimeTables: [], pollMs: 'visible-default' },
             'low-stock': { realtimeTables: [], pollMs: 'visible-default' },
             hours: { realtimeTables: [], pollMs: 0 }
         });
@@ -3392,6 +3423,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
         let liveSyncMode = 'idle';
         let realtimeStartupUntil = 0;
         let realtimeTableStatus = Object.create(null);
+        let appLiveEventAreaStatus = Object.create(null);
         let appLiveEventClientId = '';
         let appLiveEventSchemaUnavailable = false;
         let appLiveEventSchemaWarningShown = false;
@@ -4190,6 +4222,58 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             return next;
         }
 
+        function normalizeAppLiveEventAreaList(areas = []) {
+            const raw = Array.isArray(areas) ? areas : [areas];
+            const next = [];
+            const seen = new Set();
+            raw.forEach((area) => {
+                const key = String(area || '').trim();
+                if (!key || seen.has(key)) return;
+                seen.add(key);
+                next.push(key);
+            });
+            return next;
+        }
+
+        function getAppLiveEventRealtimeAreasForView(viewId = '') {
+            const safeViewId = resolveRealtimeContextViewId(viewId || activeRealtimeContextViewId || activeRealtimeViewId || 'home');
+            return normalizeAppLiveEventAreaList(APP_LIVE_EVENT_VIEW_AREAS[safeViewId] || APP_LIVE_EVENT_VIEW_AREAS.home || []);
+        }
+
+        function setAppLiveEventAreaStatus(area = '', status = '') {
+            const key = String(area || '*').trim() || '*';
+            const nextStatus = String(status || '').trim().toUpperCase();
+            if (nextStatus) appLiveEventAreaStatus[key] = nextStatus;
+            else delete appLiveEventAreaStatus[key];
+            const statuses = Object.values(appLiveEventAreaStatus || {});
+            if (statuses.includes('SUBSCRIBED')) {
+                setRealtimeTableStatus(APP_LIVE_EVENTS_TABLE, 'SUBSCRIBED');
+                return;
+            }
+            if (statuses.length) {
+                setRealtimeTableStatus(APP_LIVE_EVENTS_TABLE, statuses[statuses.length - 1]);
+                return;
+            }
+            setRealtimeTableStatus(APP_LIVE_EVENTS_TABLE, '');
+        }
+
+        function buildRealtimeChannelName(tableName = '', area = '') {
+            const safeTable = String(tableName || '').trim() || 'table';
+            const safeArea = String(area || '').trim();
+            const suffix = safeArea ? `-${safeArea.replace(/[^a-z0-9_-]/gi, '_')}` : '';
+            return `realtime-${safeTable}${suffix}`;
+        }
+
+        function buildRealtimeChangeOptions(tableName = '', area = '') {
+            const options = { event: '*', schema: 'public', table: String(tableName || '').trim() };
+            const safeArea = String(area || '').trim();
+            if (options.table === APP_LIVE_EVENTS_TABLE && safeArea) {
+                options.event = 'INSERT';
+                options.filter = `area=eq.${safeArea}`;
+            }
+            return options;
+        }
+
         function getAppLiveEventClientId() {
             if (appLiveEventClientId) return appLiveEventClientId;
             try {
@@ -4473,7 +4557,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
                     appLiveEventSchemaUnavailable = true;
                     if (!appLiveEventSchemaWarningShown) {
                         appLiveEventSchemaWarningShown = true;
-                        console.warn('Live event table is not installed yet. Run quota_safe_live_sync_migration.sql to enable quota-safe live updates.');
+                        console.warn('Live event table is not installed yet. Run supabase_pro_realtime_budget_migration.sql to enable quota-safe live updates.');
                     }
                 } else {
                     console.warn('Live event write skipped', error);
@@ -4574,7 +4658,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
 
         function getRealtimeSubscriptionTablesForView(viewId = '') {
             const policy = getLiveSyncPolicy(viewId);
-            const includeChatRealtime = policy.viewId === 'chat';
+            const includeChatRealtime = policy.viewId === 'chat' || policy.viewId === 'communication';
             return normalizeRealtimeTableList([...(shouldUseAppLiveEventsRealtime(policy.viewId) ? [APP_LIVE_EVENTS_TABLE] : []), ...(policy.realtimeTables || []), ...(includeChatRealtime ? CHAT_REALTIME_TABLES : [])]);
         }
 
@@ -9433,6 +9517,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }
             clearRequestViewLiveSync();
             realtimeTableStatus = Object.create(null);
+            appLiveEventAreaStatus = Object.create(null);
             realtimeStartupUntil = 0;
             liveSyncMode = 'idle';
             updateSyncDiagnostics();
@@ -9724,16 +9809,18 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             realtimeStartupUntil = Date.now() + REALTIME_STARTUP_GRACE_MS;
             liveSyncMode = 'queued';
             updateSyncDiagnostics('queued');
-            tableList.forEach((tableName) => {
+            const createRealtimeChannel = (tableName, area = '') => {
+                const safeArea = String(area || '').trim();
                 const channel = supabaseClient
-                    .channel(`realtime-${tableName}`)
-                    .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, (payload) => {
+                    .channel(buildRealtimeChannelName(tableName, safeArea))
+                    .on('postgres_changes', buildRealtimeChangeOptions(tableName, safeArea), (payload) => {
                         queueRealtimeChange(tableName, payload);
                     })
                     .subscribe((status) => {
                         const channelStatus = String(status || '').trim().toUpperCase();
                         const isRequiredTable = isRealtimeRequiredTableForCurrentView(tableName);
-                        setRealtimeTableStatus(tableName, channelStatus);
+                        if (tableName === APP_LIVE_EVENTS_TABLE && safeArea) setAppLiveEventAreaStatus(safeArea, channelStatus);
+                        else setRealtimeTableStatus(tableName, channelStatus);
                         if (channelStatus === 'SUBSCRIBED') {
                             clearRealtimeReconnectTimer();
                             const corePolicy = getLiveSyncPolicy(activeRealtimeContextViewId);
@@ -9773,6 +9860,14 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                         }
                     });
                 realtimeChannels.push(channel);
+            };
+            tableList.forEach((tableName) => {
+                if (tableName === APP_LIVE_EVENTS_TABLE && isQuotaSafeRealtimeMode()) {
+                    const areas = getAppLiveEventRealtimeAreasForView(activeRealtimeContextViewId);
+                    areas.forEach((area) => createRealtimeChannel(tableName, area));
+                    return;
+                }
+                createRealtimeChannel(tableName);
             });
         }
         function performLogout() {
@@ -14293,7 +14388,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.17.24').trim() || 'V2026.05.17.24';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.05.18.01').trim() || 'V2026.05.18.01';
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
             return String(firstNonEmptyValue(
                 item && item.PLANTGROUPCODE,

@@ -168,11 +168,6 @@ using (true);
 
 grant select, insert, update, delete on public.v2_bunch_counts to anon, authenticated, service_role;
 
-do $$
-begin
-    alter publication supabase_realtime add table public.v2_bunch_counts;
-exception
-    when duplicate_object then null;
-    when undefined_object then null;
-end;
-$$;
+-- Realtime for this table is signaled through public.v2_app_live_events.
+-- Run supabase_pro_realtime_budget_migration.sql after schema changes to keep
+-- the publication inside the Supabase Pro realtime budget.

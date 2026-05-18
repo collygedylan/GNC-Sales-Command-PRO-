@@ -932,13 +932,9 @@ for update
 using (true)
 with check (true);
 
-do $$
-begin
-    alter publication supabase_realtime add table public.v2_shear_list;
-exception
-    when duplicate_object then null;
-    when undefined_object then null;
-end $$;
+-- Realtime for this table is signaled through public.v2_app_live_events.
+-- Run supabase_pro_realtime_budget_migration.sql after schema changes to keep
+-- the publication inside the Supabase Pro realtime budget.
 
 
 -- ============================================================================

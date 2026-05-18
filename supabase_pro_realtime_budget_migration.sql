@@ -1,10 +1,9 @@
--- Quota-safe Supabase Realtime setup for the GNC app.
--- Run this in Supabase SQL Editor after deploying PWA shell V2026.05.11.10.
+-- Supabase Pro realtime budget migration for the GNC app.
+-- Run this after schema migrations that add new tables.
 --
--- Goal:
---   1. Keep one tiny live signal stream: public.v2_app_live_events.
---   2. Keep direct realtime only for Request plus chat/walkie communication tables.
---   3. Remove high-volume inventory/task/reporting tables from direct Realtime.
+-- This does NOT drop application tables or delete app data.
+-- It keeps realtime on a small live-events table plus direct request/chat/walkie
+-- tables, then removes every other public table from the realtime publication.
 
 create extension if not exists pgcrypto;
 
@@ -52,10 +51,13 @@ create policy "Allow app live event cleanup"
   for delete
   using (true);
 
-create or replace function public.prune_v2_app_live_events(retention_days integer default 3)
+grant select, insert, delete on public.v2_app_live_events to anon, authenticated, service_role;
+
+create or replace function public.prune_v2_app_live_events(retention_days integer default 2)
 returns integer
 language plpgsql
 security definer
+set search_path = public
 as $$
 declare
   deleted_count integer;
@@ -69,17 +71,10 @@ end;
 $$;
 
 do $$
-begin
-  alter publication supabase_realtime add table public.v2_app_live_events;
-exception
-  when duplicate_object then null;
-  when undefined_object then null;
-end $$;
-
-do $$
 declare
   target_table text;
-  direct_realtime_tables text[] := array[
+  allowed_realtime_tables text[] := array[
+    'v2_app_live_events',
     'v2_active_request',
     'v2_request_history',
     'v2_chat_conversations',
@@ -92,7 +87,7 @@ declare
     'v2_walkie_signal_events'
   ];
 begin
-  foreach target_table in array direct_realtime_tables loop
+  foreach target_table in array allowed_realtime_tables loop
     if exists (
       select 1
       from information_schema.tables
@@ -109,44 +104,19 @@ begin
       execute format('alter publication supabase_realtime add table public.%I', target_table);
     end if;
   end loop;
-end $$;
 
-do $$
-declare
-  target_table text;
-  high_volume_tables text[] := array[
-    'v2_master_inventory',
-    'v2_sales_office',
-    'v2_flyer_folder_rows',
-    'v2_flyer_folder_history',
-    'v2_take_back_queue',
-    'v2_dock_team_status',
-    'v2_dock_item_status',
-    'v2_dock_issue_status',
-    'v2_dock_issue_allocations',
-    'v2_reserves',
-    'v2_soc_master',
-    'v2_cav_import',
-    'v2_av_notes',
-    'v2_ml_image_jobs',
-    'v2_labor_hours',
-    'marketing_materials'
-  ];
-begin
-  foreach target_table in array high_volume_tables loop
-    if exists (
-      select 1
-      from pg_publication_tables
-      where pubname = 'supabase_realtime'
-        and schemaname = 'public'
-        and tablename = target_table
-    ) then
-      execute format('alter publication supabase_realtime drop table public.%I', target_table);
-    end if;
+  for target_table in
+    select tablename
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and not (tablename = any (allowed_realtime_tables))
+  loop
+    execute format('alter publication supabase_realtime drop table public.%I', target_table);
   end loop;
 end $$;
 
-select public.prune_v2_app_live_events(3);
+select public.prune_v2_app_live_events(2) as pruned_app_live_events;
 
 select
   schemaname,
