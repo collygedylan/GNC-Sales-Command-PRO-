@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.18.08';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.18.09';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -8750,9 +8750,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 scheduleDeferredVisibleDirtyViewRefresh('realtime:request-ui', Math.max(24, nextDelay), Math.max(160, REQUEST_REALTIME_UI_DELAY_MS));
                 return;
             }
-            if (isViewVisible('request')) queueInteractiveViewRender('request', false, true, nextDelay, Math.max(120, REQUEST_REALTIME_UI_DELAY_MS));
+            if (isViewVisible('request')) scheduleRequestRender(nextDelay, REQUEST_REALTIME_UI_DELAY_MS, true);
             if (isViewVisible('reports')) queueInteractiveViewRender('reports', false, true, nextDelay, Math.max(120, REQUEST_REALTIME_UI_DELAY_MS));
-            if (isViewVisible('tasks')) queueInteractiveViewRender('tasks', false, true, nextDelay, Math.max(120, REQUEST_REALTIME_UI_DELAY_MS));
+            if (isViewVisible('tasks')) scheduleTasksRender(nextDelay, 0, true);
         }
 
         function refreshActiveRequestDetailFromRealtimeRow(row = null, eventType = '') {
@@ -11793,6 +11793,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                         syncFlyerFolderRowsForSourceRow(masterItem, { remote: true }).catch((error) => {
                             logRowSyncIssue('flyer folder photo sync failed', error);
                         });
+                        syncNcrCurrentCropRowsFromSource(masterItem, { remote: true, maxRemote: 8 });
                         return result;
                     }).catch((error) => {
                         logRowSyncIssue('shared photo master persist failed', error);
@@ -13932,7 +13933,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
         let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let mlImageJobsInventory=[]; let growerScoutReportsInventory=[]; let growerScoutAssetsInventory=[]; let cavInventory=[]; let cavAvBlankKeyInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={}; let diagnosticIssueCardTabs=new Map();
 let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null; let chatVoiceHoldPointerId=''; let chatVoiceHoldForComposer=false; let chatVoiceHoldFinishPending=''; let chatVoiceHoldStartPromise=null;
 let walkieChannels=[]; let walkieChannelMembers=[]; let walkieCalls=[]; let walkieCallMembers=[]; let walkieUsers=[]; let walkieSignalsSeen=new Set(); let walkieDataLoaded=false; let walkieLoadPromise=null; let walkieSchemaReady=null; let walkieSchemaProbePromise=null; let walkieSchemaWarningShown=false; let activeWalkieChannelId=''; let pendingWalkieOpenChannelId=''; let pendingWalkieOpenCallId=''; let walkieComposeOpen=false; let walkieUserSearchTerm=''; let walkieComposeTitle=''; let walkieSelectedUsers=new Set(); let walkieLastRenderSignature=''; let walkieDeviceId=''; let activeWalkieCallId=''; let walkieJoinedCallId=''; let walkieActiveMembershipId=''; let walkiePeerConnections=new Map(); let walkieRemoteAudioElements=new Map(); let walkieLocalStream=null; let walkieHeartbeatTimer=null; let walkieSpeakerHeartbeatTimer=null; let walkieReconnectTimer=null; let walkieActiveSpeakerIntent=false; let walkiePressedPointerId=''; let walkieForegroundNoticeShown=false;
-        let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let requestHistoryInventoryById=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let flyerFolderHistoryInventoryById=new Map(); let mlImageJobsInventoryById=new Map(); let growerScoutReportsInventoryById=new Map(); let growerScoutAssetsByReportId=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map();
+        let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let requestHistoryInventoryById=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let flyerFolderHistoryInventoryById=new Map(); let mlImageJobsInventoryById=new Map(); let growerScoutReportsInventoryById=new Map(); let growerScoutAssetsByReportId=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map(); let ncrCurrentCropInheritancePatchIds=new Set();
         let activeGrowerScoutTab='note'; let growerScoutRecorder=null; let growerScoutRecorderStream=null; let growerScoutRecordingActive=false; let growerScoutRecordingStartedAt=0; let growerScoutRecordingTimer=null; let growerScoutRecordMimeType=''; let growerScoutAudioChunks=[]; let growerScoutAudioBlob=null; let growerScoutAudioDurationSeconds=0; let growerScoutSubmitInFlight=false;
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
 let reviewSearchTerm=''; let moveUpSearchTerm=''; let reviewBrowseMode='item'; let moveUpBrowseMode='item'; let selectedReviewBlockAlpha=null; let selectedReviewLocationCode=null; let selectedMoveUpBlockAlpha=null; let selectedMoveUpLocationCode=null; let reviewDerivedRenderCache={ key: '', filteredRows: [], cardRows: null, blockRows: null, blockGroups: null, itemGroups: null }; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set(); let holdReleaseOverrideColumnsReady=null; let holdReleaseOverrideColumnsProbePromise=null; let holdReleaseOverrideSchemaWarningShown=false;
@@ -17254,6 +17255,289 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function getNcrCurrentSeasonSummaryByItemCode() {
             return getCachedNcrActionabilitySummaryByItemCode();
+        }
+
+        function normalizeNcrInheritanceKeyPart(value = '') {
+            return String(value || '').trim().toUpperCase();
+        }
+
+        function getNcrLocationNoteText(item = null) {
+            return String(firstNonEmptyValue(
+                item && item.LOCATIONNOTE,
+                item && item.locationnote,
+                item && item.LOCATION_NOTE,
+                item && item.location_note,
+                ''
+            ) || '').trim();
+        }
+
+        function hasNcrLocationNote(item = null) {
+            return /\bNCR\b/i.test(getNcrLocationNoteText(item));
+        }
+
+        function getNcrSourceLocationCode(item = null) {
+            return String(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, '') || '').trim();
+        }
+
+        function getNcrCurrentCropLocationKey(item = null) {
+            const itemCode = normalizeNcrInheritanceKeyPart(getNcrItemCode(item));
+            const locationCode = normalizeNcrInheritanceKeyPart(getNcrSourceLocationCode(item));
+            if (!itemCode || !locationCode) return '';
+            return `${itemCode}||${locationCode}`;
+        }
+
+        function getNcrCurrentCropDataTimestampMs(item = null) {
+            const candidates = [
+                getEffectiveAvRuleUpdatedAt(item),
+                item && item.AV_RULE_BUNDLE_UPDATED_AT,
+                item && item.DATE_COMPLETED,
+                item && item.date_completed,
+                item && item.UPDATED_AT,
+                item && item.updated_at
+            ];
+            let winner = 0;
+            candidates.forEach((value) => {
+                const iso = getValidIsoTimestamp(value);
+                const ms = iso ? Date.parse(iso) : Date.parse(String(value || ''));
+                if (Number.isFinite(ms) && ms > winner) winner = ms;
+            });
+            return winner;
+        }
+
+        function getNcrReusablePhotoCsv(item = null) {
+            return mergePhotoCsvList([
+                getSharedAppPhotoLinkCsvRaw(item, { includePending: false }),
+                item && item.ROW_PHOTO_LINK,
+                item && item.REQUEST_PHOTO_LINK,
+                item && item.REQ_PHOTO_LINK,
+                item && item.FLYER_PHOTO_LINK
+            ]);
+        }
+
+        function getNcrReusablePhotoNameCsv(item = null) {
+            return mergePhotoCsvList([
+                getSharedAppPhotoName(item),
+                item && item.SAVED_PHOTO_NAME,
+                item && item.photo_name,
+                item && item.REQ_PHOTO_NAME,
+                item && item.FLYER_PHOTO_NAME
+            ]);
+        }
+
+        function hasNcrReusableCropData(item = null) {
+            if (!item) return false;
+            if (parsePhotoCsvValues(getNcrReusablePhotoCsv(item)).length) return true;
+            return !!(
+                normalizeRuleText(firstNonEmptyValue(item.SPEC, item.REQ_SPEC, item.FLYER_SPEC, '')) ||
+                normalizeRuleText(firstNonEmptyValue(item.CALIPER, item.REQ_CALIPER, item.FLYER_CALIPER, '')) ||
+                normalizeRuleText(firstNonEmptyValue(item.AV_NOTE, item.REQ_AV_NOTE, item.FLYER_AV_NOTE, '')) ||
+                normalizeRuleText(firstNonEmptyValue(item.MATCH, item.REQ_MATCH, '')) ||
+                normalizeRuleText(firstNonEmptyValue(item.PICK, item.REQ_PICK, item.PIC_NOTE, ''))
+            );
+        }
+
+        function isNcrCurrentCropInheritanceTarget(item = null, now = new Date()) {
+            if (!item || !hasNcrLocationNote(item)) return false;
+            if (!getNcrCurrentCropLocationKey(item)) return false;
+            if (!isNcrCurrentOrOlderCrop(item, now)) return false;
+            return isNcrNewCropReleaseSeasonCode(getNcrSeasonCode(item));
+        }
+
+        function isNcrFutureOrMoveUpSourceForCurrent(source = null, target = null, now = new Date()) {
+            if (!source || !target || !hasNcrReusableCropData(source)) return false;
+            const sourceId = String(firstNonEmptyValue(source.UNIQUE_ID, source.unique_id, '') || '').trim();
+            const targetId = String(firstNonEmptyValue(target.UNIQUE_ID, target.unique_id, '') || '').trim();
+            if (sourceId && targetId && sourceId === targetId) return false;
+            if (getNcrCurrentCropLocationKey(source) !== getNcrCurrentCropLocationKey(target)) return false;
+            const sourcePosition = getNcrCropPosition(source);
+            const targetPosition = getNcrCropPosition(target);
+            if (sourcePosition.salesYear == null || targetPosition.salesYear == null) return isNcrReleaseCandidateRow(source, now) || isNcrMoveUpCandidateRow(source, now);
+            if (sourcePosition.salesYear > targetPosition.salesYear) return true;
+            if (sourcePosition.salesYear === targetPosition.salesYear && sourcePosition.seasonRank > targetPosition.seasonRank) return true;
+            return isNcrReleaseCandidateRow(source, now) || isNcrMoveUpCandidateRow(source, now);
+        }
+
+        function scoreNcrCurrentCropSource(source = null, target = null, now = new Date()) {
+            if (!source || !target) return 0;
+            let score = 0;
+            const photoCount = parsePhotoCsvValues(getNcrReusablePhotoCsv(source)).length;
+            if (photoCount) score += Math.min(photoCount, 5) * 25;
+            if (normalizeRuleText(firstNonEmptyValue(source.SPEC, source.REQ_SPEC, source.FLYER_SPEC, ''))) score += 20;
+            if (normalizeRuleText(firstNonEmptyValue(source.AV_NOTE, source.REQ_AV_NOTE, source.FLYER_AV_NOTE, ''))) score += 12;
+            if (normalizeRuleText(firstNonEmptyValue(source.MATCH, source.REQ_MATCH, ''))) score += 10;
+            if (normalizeNcrInheritanceKeyPart(source.CONTSIZE) === normalizeNcrInheritanceKeyPart(target.CONTSIZE)) score += 18;
+            if (normalizeNcrInheritanceKeyPart(source.COMMONNAME) === normalizeNcrInheritanceKeyPart(target.COMMONNAME)) score += 18;
+            if (isNcrReleaseCandidateRow(source, now)) score += 10;
+            if (isNcrMoveUpCandidateRow(source, now)) score += 8;
+            score += Math.min(Math.floor(getNcrCurrentCropDataTimestampMs(source) / 86400000), 100000);
+            return score;
+        }
+
+        function shouldApplyNcrCurrentCropValue(target = null, targetValue = '', sourceMs = 0) {
+            const normalizedTarget = normalizeRuleText(targetValue);
+            if (!normalizedTarget) return true;
+            const targetMs = getNcrCurrentCropDataTimestampMs(target);
+            return sourceMs > 0 && (!targetMs || sourceMs > targetMs + 60000);
+        }
+
+        function shouldApplyNcrCurrentCropNumber(target = null, targetValue = '', sourceMs = 0) {
+            const numeric = parseAppNumber(targetValue);
+            if (numeric == null || numeric === 0) return true;
+            const targetMs = getNcrCurrentCropDataTimestampMs(target);
+            return sourceMs > 0 && (!targetMs || sourceMs > targetMs + 60000);
+        }
+
+        function buildNcrCurrentCropInheritancePayload(source = null, target = null) {
+            if (!source || !target) return null;
+            const sourceMs = getNcrCurrentCropDataTimestampMs(source);
+            const completedAt = getValidIsoTimestamp(getEffectiveAvRuleUpdatedAt(source)) || getValidIsoTimestamp(source.DATE_COMPLETED || source.date_completed) || new Date().toISOString();
+            const payload = {};
+            const changeFlags = {};
+            const photoCsv = getNcrReusablePhotoCsv(source);
+            if (photoCsv && shouldApplyNcrCurrentCropValue(target, getSharedAppPhotoLinkCsvRaw(target, { includePending: false }), sourceMs)) {
+                payload.photo_link = photoCsv;
+                payload.photo_name = getNcrReusablePhotoNameCsv(source) || null;
+                changeFlags.photo = true;
+            }
+            const sourceSpec = normalizeRuleText(firstNonEmptyValue(source.SPEC, source.REQ_SPEC, source.FLYER_SPEC, ''));
+            if (sourceSpec && shouldApplyNcrCurrentCropValue(target, firstNonEmptyValue(target.SPEC, target.REQ_SPEC, target.FLYER_SPEC, ''), sourceMs)) {
+                payload.spec = sourceSpec;
+                changeFlags.spec = true;
+            }
+            const sourceCaliper = normalizeRuleText(firstNonEmptyValue(source.CALIPER, source.REQ_CALIPER, source.FLYER_CALIPER, ''));
+            if (sourceCaliper && shouldApplyNcrCurrentCropValue(target, firstNonEmptyValue(target.CALIPER, target.REQ_CALIPER, target.FLYER_CALIPER, ''), sourceMs)) {
+                payload.caliper = sourceCaliper;
+                changeFlags.caliper = true;
+            }
+            const sourceAvNote = normalizeRuleText(firstNonEmptyValue(source.AV_NOTE, source.REQ_AV_NOTE, source.FLYER_AV_NOTE, ''));
+            if (sourceAvNote && shouldApplyNcrCurrentCropValue(target, firstNonEmptyValue(target.AV_NOTE, target.REQ_AV_NOTE, target.FLYER_AV_NOTE, ''), sourceMs)) {
+                payload.av_note = sourceAvNote.toUpperCase();
+                changeFlags.avNote = true;
+            }
+            const sourcePick = normalizeRuleText(firstNonEmptyValue(source.PICK, source.REQ_PICK, source.PIC_NOTE, source.FLYER_PICK, ''));
+            if (sourcePick && shouldApplyNcrCurrentCropValue(target, firstNonEmptyValue(target.PICK, target.REQ_PICK, target.PIC_NOTE, target.FLYER_PICK, ''), sourceMs)) {
+                payload.pic_note = sourcePick;
+            }
+            const sourceMatch = parseAppNumber(firstNonEmptyValue(source.MATCH, source.REQ_MATCH, ''));
+            if (sourceMatch != null && shouldApplyNcrCurrentCropNumber(target, firstNonEmptyValue(target.MATCH, target.REQ_MATCH, ''), sourceMs)) {
+                payload.match = sourceMatch;
+                const locMatchQty = calculateLocMatchQtyValue(target, sourceMatch, { currentAsBaseline: true });
+                if (locMatchQty != null) payload.loc_match_qty = locMatchQty;
+                const ptrAvailable = parseAppNumber(firstNonEmptyValue(target.PTRAVAILABLE, target.ptravailable, ''));
+                if (ptrAvailable != null) payload.initial_ptr = ptrAvailable;
+                changeFlags.match = true;
+            }
+            if (!Object.keys(payload).length) return null;
+            payload.date_completed = completedAt;
+            applyAvRuleTouchPayload(target, payload, changeFlags, completedAt);
+            return payload;
+        }
+
+        function queueNcrCurrentCropInheritanceUiRefresh() {
+            invalidateResolvedViewStateCaches();
+            invalidateMasterDerivedInventories();
+            ['drive', 'av', 'review', 'move-up', 'low-stock', 'tasks'].forEach((viewId) => markViewDirty(viewId));
+            if (isViewVisible('drive')) queueInteractiveViewRender('drive', false, true, 0, 80);
+            if (isViewVisible('av')) queueInteractiveViewRender('av', false, true, 0, 80);
+            if (isViewVisible('review')) queueInteractiveViewRender('review', false, true, 0, 80);
+            if (isViewVisible('move-up')) queueInteractiveViewRender('move-up', false, true, 0, 80);
+            if (isViewVisible('tasks')) scheduleTasksRender(0, 0, true);
+        }
+
+        function persistNcrCurrentCropInheritance(target = null, payload = null, source = null) {
+            const targetId = String(firstNonEmptyValue(target && target.UNIQUE_ID, target && target.unique_id, '') || '').trim();
+            if (!targetId || !payload || typeof payload !== 'object') return Promise.resolve(false);
+            const sourceId = String(firstNonEmptyValue(source && source.UNIQUE_ID, source && source.unique_id, '') || '').trim();
+            const persistKey = `${targetId}::${sourceId || 'source'}`;
+            if (ncrCurrentCropInheritancePatchIds.has(persistKey)) return Promise.resolve(false);
+            ncrCurrentCropInheritancePatchIds.add(persistKey);
+            return runDetailWriteWithRetry('v2_master_inventory', 'PATCH', payload, `unique_id=eq.${encodeURIComponent(targetId)}`, {
+                timeoutMs: getDetailRowWriteTimeoutMs(),
+                retries: DETAIL_ROW_WRITE_RETRY_COUNT,
+                retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
+            }).then((result) => {
+                syncRowDataAcrossViews(target);
+                broadcastRowSyncSnapshot(target, 'ncr-current-');
+                queueNcrCurrentCropInheritanceUiRefresh();
+                return result;
+            }).catch((error) => {
+                logRowSyncIssue('ncr current crop inheritance failed', error);
+                return false;
+            }).finally(() => {
+                setTimeout(() => ncrCurrentCropInheritancePatchIds.delete(persistKey), 9000);
+            });
+        }
+
+        function applyNcrCurrentCropInheritance(target = null, source = null, options = {}) {
+            if (!target || !source) return false;
+            const payload = buildNcrCurrentCropInheritancePayload(source, target);
+            if (!payload) return false;
+            applyMasterSyncPayloadToLocalRow(target, payload);
+            target.NCR_INHERITED_FROM_UNIQUE_ID = String(firstNonEmptyValue(source.UNIQUE_ID, source.unique_id, '') || '').trim();
+            target.NCR_INHERITED_AT = new Date().toISOString();
+            syncRowDataAcrossViews(target);
+            broadcastRowSyncSnapshot(target, 'ncr-current-');
+            if (options && options.remote) persistNcrCurrentCropInheritance(target, payload, source);
+            return true;
+        }
+
+        function syncNcrCurrentCropRowsFromSource(sourceRow = null, options = {}) {
+            if (!sourceRow || !Array.isArray(fullInventory) || !fullInventory.length) return 0;
+            const now = new Date();
+            const sourceKey = getNcrCurrentCropLocationKey(sourceRow);
+            if (!sourceKey || !hasNcrReusableCropData(sourceRow)) return 0;
+            const maxRemote = Math.max(0, Number(options && options.maxRemote) || 8);
+            let changed = 0;
+            let remoteCount = 0;
+            fullInventory.forEach((target) => {
+                if (!isNcrCurrentCropInheritanceTarget(target, now)) return;
+                if (getNcrCurrentCropLocationKey(target) !== sourceKey) return;
+                if (!isNcrFutureOrMoveUpSourceForCurrent(sourceRow, target, now)) return;
+                const useRemote = !!(options && options.remote) && remoteCount < maxRemote;
+                if (applyNcrCurrentCropInheritance(target, sourceRow, { remote: useRemote })) {
+                    changed += 1;
+                    if (useRemote) remoteCount += 1;
+                }
+            });
+            if (changed) queueNcrCurrentCropInheritanceUiRefresh();
+            return changed;
+        }
+
+        function hydrateNcrCurrentCropRowsFromSources(options = {}) {
+            if (!Array.isArray(fullInventory) || !fullInventory.length) return 0;
+            const now = new Date();
+            const sourcesByLocation = new Map();
+            fullInventory.forEach((source) => {
+                const key = getNcrCurrentCropLocationKey(source);
+                if (!key || !hasNcrReusableCropData(source)) return;
+                if (!sourcesByLocation.has(key)) sourcesByLocation.set(key, []);
+                sourcesByLocation.get(key).push(source);
+            });
+            let changed = 0;
+            let remoteCount = 0;
+            const maxRemote = Math.max(0, Number(options && options.maxRemote) || 10);
+            fullInventory.forEach((target) => {
+                if (!isNcrCurrentCropInheritanceTarget(target, now)) return;
+                const candidates = sourcesByLocation.get(getNcrCurrentCropLocationKey(target)) || [];
+                let bestSource = null;
+                let bestScore = -1;
+                candidates.forEach((source) => {
+                    if (!isNcrFutureOrMoveUpSourceForCurrent(source, target, now)) return;
+                    const score = scoreNcrCurrentCropSource(source, target, now);
+                    if (score > bestScore) {
+                        bestSource = source;
+                        bestScore = score;
+                    }
+                });
+                if (!bestSource) return;
+                const useRemote = !!(options && options.remote) && remoteCount < maxRemote;
+                if (applyNcrCurrentCropInheritance(target, bestSource, { remote: useRemote })) {
+                    changed += 1;
+                    if (useRemote) remoteCount += 1;
+                }
+            });
+            if (changed) queueNcrCurrentCropInheritanceUiRefresh();
+            return changed;
         }
 
         function buildReviewCardGroups(rows = []) {
@@ -23133,6 +23417,7 @@ function toggleDriveQuickRequestItem(domId) {
                 applyMasterAppTabAssignments(fullInventory);
                 avRuleClearOps = res._fromCache ? [] : collectMasterAvRuleClearOps(fullInventory);
                 rebuildMasterInventoryIndexes();
+                hydrateNcrCurrentCropRowsFromSources({ remote: !res._fromCache, maxRemote: 12 });
                 invalidateMasterDerivedInventories();
             }
 
@@ -23217,6 +23502,7 @@ function toggleDriveQuickRequestItem(domId) {
                         allowHealthyRealtime: true
                     });
                 }
+                if (hasRequests) triggerRequestRealtimeUiRefresh(0);
             }
 
             if (hasSalesOffice || (hasMaster && salesOfficeInventory.length)) {
@@ -29635,6 +29921,7 @@ function toggleDriveQuickRequestItem(domId) {
             });
             applyMasterSyncPayloadToLocalRow(masterItem, payload);
             syncRowDataAcrossViews(masterItem);
+            syncNcrCurrentCropRowsFromSource(masterItem, { remote: true, maxRemote: 8 });
             invalidateResolvedViewStateCaches();
             ['drive','av','review','low-stock','tasks'].forEach((viewId) => markViewDirty(viewId));
             refreshPhotoAcrossViews(masterItem, 'ncr-');
@@ -35619,6 +35906,9 @@ function toggleDriveQuickRequestItem(domId) {
                 syncTaskModeControls(normalizedView);
                 syncTaskSubviewControls(normalizedView);
                 syncTaskSharedFilterArea();
+                markViewDirty('tasks');
+                if (isNcrApprovalTaskView(normalizedView)) scheduleNcrApprovalTaskRowsRefresh(normalizedView, { force: true });
+                scheduleTasksRender(0, 0, true);
                 return false;
             }
             const nextUsesBlockDrill = taskViewUsesBlockDrill(normalizedView);
@@ -35627,6 +35917,7 @@ function toggleDriveQuickRequestItem(domId) {
             beginDirectNavigationActivity();
             activeTaskView = normalizedView;
             activeTaskTab = normalizedView;
+            markViewDirty('tasks');
             if (!isNcrApprovalTaskView(normalizedView) && !isTaskDiagnosticsView(normalizedView)) lastNonApprovalTaskView = normalizedView;
             taskTabDropdownOpen = false;
             taskSubviewDropdownOpen = false;
@@ -62398,6 +62689,16 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 })
                                 .catch((error) => console.warn('Flyer folder source sync skipped', error));
                         }, 52);
+                    });
+                    const ncrCurrentCropSyncIds = new Set();
+                    flyerFolderSyncCandidates.forEach((candidate) => {
+                        const uid = String(firstNonEmptyValue(candidate && candidate.UNIQUE_ID, candidate && candidate.unique_id, '') || '').trim();
+                        const sourceTable = String(firstNonEmptyValue(candidate && candidate.SOURCE_TABLE, candidate && candidate.source_table, 'v2_master_inventory') || '').trim().toLowerCase();
+                        if (!uid || sourceTable !== 'v2_master_inventory' || ncrCurrentCropSyncIds.has(uid)) return;
+                        ncrCurrentCropSyncIds.add(uid);
+                        deferNonCriticalWork(`ncr-current-crop-sync-${uid}`, () => {
+                            syncNcrCurrentCropRowsFromSource(candidate, { remote: true, maxRemote: 8 });
+                        }, 68);
                     });
                     recordInternalPerfDuration('saveDurations', savePerfStartedAt, `${prefix}${isComplete ? ':complete' : (isSilentAutoSave ? ':autosave' : ':save')}`);
 
