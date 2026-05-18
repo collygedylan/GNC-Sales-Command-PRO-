@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.18.11';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.18.12';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -57121,7 +57121,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const safeView = normalizeTaskViewValue(tab);
             if (safeView === 'ncr') return getNcrTaskQueueItems();
             if (isNcrApprovalTaskView(safeView)) return getNcrApprovalTaskQueueItems(safeView);
-            const keepCompletedInTaskTab = safeView === 'colorwalk' || safeView === 'flyer';
+            const keepCompletedInTaskTab = safeView === 'colorwalk' || safeView === 'flyer' || safeView === 'cust';
             const useSharedQueue = shouldUseSharedTaskQueue(safeView);
             const owner = String(targetUser || '').trim();
             const cacheKey = [
