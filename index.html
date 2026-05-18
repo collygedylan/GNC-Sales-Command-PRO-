@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.18.03';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.18.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -49354,6 +49354,56 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             return false;
         }
 
+        async function runDiagnosticsMlWorkerNow(button = null) {
+            if (!canUseMlAdminViews()) {
+                showToast('Restricted', 'Only Dylan can manually run the ML worker.', true);
+                return false;
+            }
+            const previousHtml = button ? button.innerHTML : '';
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin align-middle"></i><span class="align-middle ml-1">Starting...</span>';
+            }
+            const touchedQueues = [];
+            const nowIso = new Date().toISOString();
+            try {
+                const pendingJobs = await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'GET', null, 'select=unique_id&status=eq.pending_ml&order=updated_at.asc');
+                const pendingJobId = pendingJobs && pendingJobs[0] ? String(firstNonEmptyValue(pendingJobs[0].unique_id, pendingJobs[0].UNIQUE_ID, '')).trim() : '';
+                if (pendingJobId) {
+                    await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'PATCH', {
+                        status: 'pending_ml',
+                        updated_at: nowIso
+                    }, `unique_id=eq.${encodeURIComponent(pendingJobId)}`, { timeoutMs: SUPABASE_WRITE_TIMEOUT_MS });
+                    touchedQueues.push('photo jobs');
+                }
+
+                const pendingAssets = await supabaseFetch(DISEASE_TRAINING_ASSETS_TABLE, 'GET', null, 'select=unique_id&processed_status=eq.pending_ml&order=updated_at.asc');
+                const pendingAssetId = pendingAssets && pendingAssets[0] ? String(firstNonEmptyValue(pendingAssets[0].unique_id, pendingAssets[0].UNIQUE_ID, '')).trim() : '';
+                if (pendingAssetId) {
+                    await supabaseFetch(DISEASE_TRAINING_ASSETS_TABLE, 'PATCH', {
+                        processed_status: 'pending_ml',
+                        updated_at: nowIso
+                    }, `unique_id=eq.${encodeURIComponent(pendingAssetId)}`, { timeoutMs: SUPABASE_WRITE_TIMEOUT_MS });
+                    touchedQueues.push('lab reports');
+                }
+
+                await refreshMlJobsNow();
+                if (touchedQueues.length) {
+                    showToast('ML Worker Started', `Wake signal sent for ${touchedQueues.join(' and ')}.`);
+                } else {
+                    showToast('Nothing Pending', 'No pending ML rows were found. Requeue rows first, or wait for new uploads.', true);
+                }
+            } catch (error) {
+                showToast('ML Worker Not Started', error && error.message ? error.message : 'Could not wake the ML worker.', true);
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = previousHtml || '<i class="ph-bold ph-play-circle align-middle"></i><span class="align-middle ml-1">Run ML Worker</span>';
+                }
+            }
+            return false;
+        }
+
         async function approveMlImageJob(uniqueId = '', button = null) {
             if (!canUseMlAdminViews()) {
                 showToast('Restricted', 'Only Dylan can approve ML grading rows.', true);
@@ -50058,7 +50108,7 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             let rows = getTaskDiagnosticIssueRows();
             if (searchTerm) rows = filterBySearch(rows, searchTerm, 'tasks');
             if (crumb) crumb.innerText = `Diagnostics | ${rows.length} Issue${rows.length === 1 ? '' : 's'}`;
-            const prefixHtml = `<div class="mb-3 flex flex-col gap-2 rounded-2xl border border-red-100 bg-red-50/70 p-4 sm:flex-row sm:items-center sm:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-red-700">Diagnostics</div><div class="mt-1 text-sm font-bold text-red-900">Photos with a returned issue or manual-review flag appear here for Dylan.</div></div><button type="button" class="min-h-[42px] rounded-xl border border-red-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-red-700 shadow-sm active:scale-95" onclick="return refreshMlJobsNow()"><i class="ph-bold ph-arrows-clockwise align-middle"></i><span class="align-middle ml-1">Refresh</span></button></div>`;
+            const prefixHtml = `<div class="mb-3 flex flex-col gap-2 rounded-2xl border border-red-100 bg-red-50/70 p-4 sm:flex-row sm:items-center sm:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-red-700">Diagnostics</div><div class="mt-1 text-sm font-bold text-red-900">Photos with a returned issue or manual-review flag appear here for Dylan.</div></div><div class="grid grid-cols-1 gap-2 sm:grid-cols-2"><button type="button" class="min-h-[42px] rounded-xl border border-red-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-red-700 shadow-sm active:scale-95 disabled:opacity-60" onclick="return refreshMlJobsNow()"><i class="ph-bold ph-arrows-clockwise align-middle"></i><span class="align-middle ml-1">Refresh</span></button><button type="button" class="min-h-[42px] rounded-xl bg-[#007a4d] px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95 disabled:opacity-60" onclick="return runDiagnosticsMlWorkerNow(this)"><i class="ph-bold ph-play-circle align-middle"></i><span class="align-middle ml-1">Run ML Worker</span></button></div></div>`;
             const tabSignature = rows.map((row) => {
                 const normalized = normalizeMlImageJobRow(row) || {};
                 const uid = String(normalized.UNIQUE_ID || '').trim();
