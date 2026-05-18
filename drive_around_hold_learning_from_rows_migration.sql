@@ -87,6 +87,7 @@ create table if not exists public.v2_hold_release_cycles (
 
 create table if not exists public.v2_hold_learning_profiles (
   unique_id text primary key,
+  itemcode text,
   commonname text not null,
   genus text,
   contsize text,
@@ -109,6 +110,9 @@ create table if not exists public.v2_hold_learning_profiles (
   avg_days_to_release numeric,
   updated_at timestamptz not null default now()
 );
+
+alter table public.v2_hold_learning_profiles
+  add column if not exists itemcode text;
 
 create index if not exists idx_v2_drive_around_report_rows_item_key_date_hold
   on public.v2_drive_around_report_rows (item_key, report_date, holdstopcode);
@@ -134,6 +138,12 @@ create index if not exists idx_v2_hold_release_cycles_rows_item
 
 create index if not exists idx_v2_hold_release_cycles_rows_reason
   on public.v2_hold_release_cycles (hold_reason_category, hold_started_on desc);
+
+create index if not exists idx_v2_hold_learning_profiles_item_reason
+  on public.v2_hold_learning_profiles (itemcode, hold_reason_category);
+
+create index if not exists idx_v2_hold_learning_profiles_item_size_reason
+  on public.v2_hold_learning_profiles (itemcode, contsize, hold_reason_category);
 
 create or replace function public.v2_classify_hold_reason(p_reason text)
 returns text
@@ -406,6 +416,186 @@ begin
   hold_events_upserted := event_count;
   release_cycles_upserted := cycle_count;
   return next;
+end;
+$$;
+
+create or replace function public.v2_refresh_hold_learning_profiles()
+returns integer
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  refreshed integer := 0;
+begin
+  insert into public.v2_hold_learning_profiles (
+    unique_id,
+    itemcode,
+    commonname,
+    genus,
+    contsize,
+    hold_reason_category,
+    sample_count,
+    first_hold_on,
+    last_hold_on,
+    avg_gdd_base_50_7d,
+    avg_gdd_base_50_14d,
+    avg_gdd_base_50_30d,
+    avg_gdd_base_50_season,
+    median_gdd_base_50_30d,
+    avg_chill_hours_30d,
+    avg_chill_hours_season,
+    avg_precipitation_in_30d,
+    avg_temperature_f_30d,
+    release_sample_count,
+    avg_gdd_base_50_to_release,
+    median_gdd_base_50_to_release,
+    avg_days_to_release,
+    updated_at
+  )
+  with event_base as (
+    select
+      lower(trim(coalesce(itemcode, ''))) as itemcode_key,
+      lower(trim(coalesce(commonname, 'unknown'))) as common_key,
+      lower(trim(coalesce(contsize, ''))) as contsize_key,
+      coalesce(nullif(trim(hold_reason_category), ''), 'unknown') as reason_key,
+      coalesce(nullif(trim(commonname), ''), 'Unknown') as commonname_display,
+      nullif(trim(max(genus) over (
+        partition by
+          lower(trim(coalesce(itemcode, ''))),
+          lower(trim(coalesce(commonname, 'unknown'))),
+          lower(trim(coalesce(contsize, ''))),
+          coalesce(nullif(trim(hold_reason_category), ''), 'unknown')
+      )), '') as genus_display,
+      nullif(trim(contsize), '') as contsize_display,
+      hold_started_on,
+      gdd_base_50_7d,
+      gdd_base_50_14d,
+      gdd_base_50_30d,
+      gdd_base_50_season,
+      chill_hours_30d,
+      chill_hours_season,
+      precipitation_in_30d,
+      avg_temperature_f_30d
+    from public.v2_hold_learning_events
+    where commonname is not null
+      and hold_reason_category is not null
+  ),
+  event_stats as (
+    select
+      itemcode_key,
+      common_key,
+      contsize_key,
+      reason_key,
+      max(commonname_display) as commonname_display,
+      max(genus_display) as genus_display,
+      max(contsize_display) as contsize_display,
+      count(*)::integer as sample_count,
+      min(hold_started_on) as first_hold_on,
+      max(hold_started_on) as last_hold_on,
+      round(avg(gdd_base_50_7d), 3) as avg_gdd_base_50_7d,
+      round(avg(gdd_base_50_14d), 3) as avg_gdd_base_50_14d,
+      round(avg(gdd_base_50_30d), 3) as avg_gdd_base_50_30d,
+      round(avg(gdd_base_50_season), 3) as avg_gdd_base_50_season,
+      round((percentile_cont(0.5) within group (order by gdd_base_50_30d))::numeric, 3) as median_gdd_base_50_30d,
+      round(avg(chill_hours_30d), 3) as avg_chill_hours_30d,
+      round(avg(chill_hours_season), 3) as avg_chill_hours_season,
+      round(avg(precipitation_in_30d), 3) as avg_precipitation_in_30d,
+      round(avg(avg_temperature_f_30d), 2) as avg_temperature_f_30d
+    from event_base
+    group by itemcode_key, common_key, contsize_key, reason_key
+  ),
+  release_base as (
+    select
+      lower(trim(coalesce(itemcode, ''))) as itemcode_key,
+      lower(trim(coalesce(commonname, 'unknown'))) as common_key,
+      lower(trim(coalesce(contsize, ''))) as contsize_key,
+      coalesce(nullif(trim(hold_reason_category), ''), 'unknown') as reason_key,
+      gdd_base_50_to_release,
+      hold_days
+    from public.v2_hold_release_cycles
+    where hold_released_on is not null
+      and commonname is not null
+      and hold_reason_category is not null
+      and (
+        gdd_base_50_to_release is not null
+        or hold_days is not null
+      )
+  ),
+  release_stats as (
+    select
+      itemcode_key,
+      common_key,
+      contsize_key,
+      reason_key,
+      count(*)::integer as release_sample_count,
+      round(avg(gdd_base_50_to_release), 3) as avg_gdd_base_50_to_release,
+      round((percentile_cont(0.5) within group (order by gdd_base_50_to_release))::numeric, 3) as median_gdd_base_50_to_release,
+      round(avg(hold_days), 2) as avg_days_to_release
+    from release_base
+    group by itemcode_key, common_key, contsize_key, reason_key
+  )
+  select
+    'hold_profile_' || encode(digest(concat_ws('|',
+      e.itemcode_key,
+      e.common_key,
+      e.contsize_key,
+      e.reason_key
+    ), 'sha256'), 'hex') as unique_id,
+    nullif(e.itemcode_key, '') as itemcode,
+    e.commonname_display as commonname,
+    e.genus_display as genus,
+    e.contsize_display as contsize,
+    e.reason_key as hold_reason_category,
+    e.sample_count,
+    e.first_hold_on,
+    e.last_hold_on,
+    e.avg_gdd_base_50_7d,
+    e.avg_gdd_base_50_14d,
+    e.avg_gdd_base_50_30d,
+    e.avg_gdd_base_50_season,
+    e.median_gdd_base_50_30d,
+    e.avg_chill_hours_30d,
+    e.avg_chill_hours_season,
+    e.avg_precipitation_in_30d,
+    e.avg_temperature_f_30d,
+    coalesce(r.release_sample_count, 0) as release_sample_count,
+    r.avg_gdd_base_50_to_release,
+    r.median_gdd_base_50_to_release,
+    r.avg_days_to_release,
+    now()
+  from event_stats e
+  left join release_stats r
+    on r.itemcode_key = e.itemcode_key
+   and r.common_key = e.common_key
+   and r.contsize_key = e.contsize_key
+   and r.reason_key = e.reason_key
+  on conflict (unique_id) do update set
+    itemcode = excluded.itemcode,
+    commonname = excluded.commonname,
+    genus = excluded.genus,
+    contsize = excluded.contsize,
+    hold_reason_category = excluded.hold_reason_category,
+    sample_count = excluded.sample_count,
+    first_hold_on = excluded.first_hold_on,
+    last_hold_on = excluded.last_hold_on,
+    avg_gdd_base_50_7d = excluded.avg_gdd_base_50_7d,
+    avg_gdd_base_50_14d = excluded.avg_gdd_base_50_14d,
+    avg_gdd_base_50_30d = excluded.avg_gdd_base_50_30d,
+    avg_gdd_base_50_season = excluded.avg_gdd_base_50_season,
+    median_gdd_base_50_30d = excluded.median_gdd_base_50_30d,
+    avg_chill_hours_30d = excluded.avg_chill_hours_30d,
+    avg_chill_hours_season = excluded.avg_chill_hours_season,
+    avg_precipitation_in_30d = excluded.avg_precipitation_in_30d,
+    avg_temperature_f_30d = excluded.avg_temperature_f_30d,
+    release_sample_count = excluded.release_sample_count,
+    avg_gdd_base_50_to_release = excluded.avg_gdd_base_50_to_release,
+    median_gdd_base_50_to_release = excluded.median_gdd_base_50_to_release,
+    avg_days_to_release = excluded.avg_days_to_release,
+    updated_at = now();
+
+  get diagnostics refreshed = row_count;
+  return refreshed;
 end;
 $$;
 

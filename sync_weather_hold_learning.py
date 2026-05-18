@@ -93,6 +93,7 @@ def json_request(url: str, method: str = "GET", payload: Any = None, headers: Di
 
 
 def fetch_open_meteo_hourly(latitude: float, longitude: float, timezone_name: str, past_days: int) -> Dict[str, Any]:
+    forecast_days = max(1, min(16, env_int("WEATHER_FORECAST_DAYS", 16)))
     query = {
         "latitude": str(latitude),
         "longitude": str(longitude),
@@ -103,7 +104,7 @@ def fetch_open_meteo_hourly(latitude: float, longitude: float, timezone_name: st
         "precipitation_unit": "inch",
         "timezone": timezone_name,
         "past_days": str(max(1, min(92, past_days))),
-        "forecast_days": "2",
+        "forecast_days": str(forecast_days),
     }
     url = OPEN_METEO_FORECAST_URL + "?" + urllib.parse.urlencode(query)
     try:
