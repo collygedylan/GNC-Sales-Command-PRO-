@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.18.07';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.18.08';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -7064,6 +7064,11 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
 
         function getFlyerVisiblePhotoLinkCsvRaw(item) {
             if (!item) return '';
+            if (isFlyerFolderRow(item)) {
+                const sourceRow = findCurrentFlyerFolderSourceRow(item);
+                const sourcePhotoCsv = getFlyerFolderSourcePhotoCsv(sourceRow);
+                if (sourcePhotoCsv) return removeInvalidSharedPhotoLinksFromFolderCsv(sourceRow || item, sourcePhotoCsv);
+            }
             return removeInvalidSharedPhotoLinksFromFolderCsv(item, mergePhotoCsvList([
                 item.FLYER_PHOTO_LINK,
                 item.FLYERPHOTO_LINK
@@ -8303,11 +8308,27 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (row && row.REQUEST_HISTORY) return;
                 if (sameLinkedRow(row)) applyRequestSnapshotData(row);
             });
+            flyerFolderInventory.forEach((row) => {
+                if (!row) return;
+                const rowMasterId = getFlyerFolderSourceMasterId(row);
+                const canonicalExactKey = getMasterInventoryExactKey(canonicalMaster);
+                const rowExactKey = getMasterInventoryExactKey(row);
+                const sameSource = (rowMasterId && rowMasterId === masterId) || (canonicalExactKey && rowExactKey && rowExactKey === canonicalExactKey);
+                if (!sameSource) return;
+                syncMasterFieldsToRow(canonicalMaster, row, EXACT_ROW_SYNC_KEYS, { attachMasterLink: false, exactPhotoClone: true, photoPrefix: 'flyer-' });
+                hydrateFlyerFolderRowFromCurrentSource(row);
+            });
 
             if (activeItem) {
                 const isActiveSalesOfficeRow = Array.isArray(salesOfficeInventory) && salesOfficeInventory.includes(activeItem);
                 if (!isOrderSnapshot(activeItem) && isActiveSalesOfficeRow && (sameMasterRow(activeItem) || sameLinkedRow(activeItem))) {
                     syncMasterFieldsToSalesOfficeRow(canonicalMaster, activeItem);
+                } else if (isFlyerFolderRow(activeItem)) {
+                    const rowMasterId = getFlyerFolderSourceMasterId(activeItem);
+                    const canonicalExactKey = getMasterInventoryExactKey(canonicalMaster);
+                    const rowExactKey = getMasterInventoryExactKey(activeItem);
+                    const sameSource = (rowMasterId && rowMasterId === masterId) || (canonicalExactKey && rowExactKey && rowExactKey === canonicalExactKey);
+                    if (sameSource) hydrateFlyerFolderRowFromCurrentSource(activeItem);
                 } else if (sameMasterRow(activeItem)) applyExactRowData(activeItem);
                 else if (!isOrderSnapshot(activeItem) && sameLinkedRow(activeItem)) {
                     if (isRequestSnapshot(activeItem)) applyRequestSnapshotData(activeItem);
@@ -11768,6 +11789,11 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                         timeoutMs: getDetailRowWriteTimeoutMs(),
                         retries: DETAIL_ROW_WRITE_RETRY_COUNT,
                         retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
+                    }).then((result) => {
+                        syncFlyerFolderRowsForSourceRow(masterItem, { remote: true }).catch((error) => {
+                            logRowSyncIssue('flyer folder photo sync failed', error);
+                        });
+                        return result;
                     }).catch((error) => {
                         logRowSyncIssue('shared photo master persist failed', error);
                         return false;
@@ -19521,7 +19547,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getAllFlyerTaskItems() {
-            const activeSnapshotItems = Array.isArray(flyerFolderInventory) ? flyerFolderInventory.filter(Boolean) : [];
+            const activeSnapshotItems = Array.isArray(flyerFolderInventory) ? flyerFolderInventory.filter(Boolean).map((item) => hydrateFlyerFolderRowFromCurrentSource(item)) : [];
             const activeIds = new Set(activeSnapshotItems.map((item) => String(item && item.UNIQUE_ID || '').trim()).filter(Boolean));
             const historySnapshotItems = (Array.isArray(flyerFolderHistoryInventory) ? flyerFolderHistoryInventory : [])
                 .filter(Boolean)
@@ -19706,7 +19732,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function buildFlyerFolderRowPayload(item = null, folderName = '', flyerAssignedTo = '', primaryAssignee = '', createdAt = new Date().toISOString()) {
-            const snapshot = buildFlyerFolderSnapshot(item);
+            const snapshot = buildFlyerFolderSnapshot(item, { includeCurrentAvData: true });
             const uniqueId = buildFlyerFolderRowId(folderName, item);
             const matchNumber = parseAppNumber(snapshot.MATCH);
             const locMatchQtyNumber = parseAppNumber(snapshot.LOC_MATCH_QTY);
@@ -19756,6 +19782,224 @@ function toggleDriveQuickRequestItem(domId) {
                 created_at: createdAt,
                 updated_at: createdAt
             };
+        }
+
+        function getFlyerFolderSourceMasterId(item = null) {
+            return String(firstNonEmptyValue(
+                item && item.MASTER_UNIQUE_ID,
+                item && item.MASTER_ID,
+                item && item.master_unique_id,
+                item && item.master_id,
+                item && item.SNAPSHOT && item.SNAPSHOT.UNIQUE_ID,
+                item && item.snapshot && item.snapshot.UNIQUE_ID,
+                ''
+            ) || '').trim();
+        }
+
+        function findCurrentFlyerFolderSourceRow(item = null) {
+            if (!item) return null;
+            if (!masterInventoryById.size && fullInventory.length) rebuildMasterInventoryIndexes();
+            const masterId = getFlyerFolderSourceMasterId(item);
+            if (masterId) {
+                const linkedById = masterInventoryById.get(masterId);
+                if (linkedById) return linkedById;
+            }
+            const exactKey = getMasterInventoryExactKey(item);
+            if (exactKey) {
+                const linkedByExactKey = masterInventoryByExactKey.get(exactKey);
+                if (linkedByExactKey) return linkedByExactKey;
+            }
+            const itemCode = String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '') || '').trim().toUpperCase();
+            const locationCode = String(firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, '') || '').trim().toUpperCase();
+            const lotCode = String(firstNonEmptyValue(item && item.LOTCODE, item && item.lotcode, '') || '').trim().toUpperCase();
+            if (!itemCode || !locationCode || !lotCode) return null;
+            return (Array.isArray(fullInventory) ? fullInventory : []).find((row) => (
+                String(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, '') || '').trim().toUpperCase() === itemCode
+                && String(firstNonEmptyValue(row && row.LOCATIONCODE, row && row.locationcode, '') || '').trim().toUpperCase() === locationCode
+                && String(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, '') || '').trim().toUpperCase() === lotCode
+            )) || null;
+        }
+
+        function getFlyerFolderSourcePhotoCsv(sourceRow = null) {
+            if (!sourceRow) return '';
+            return String(mergePhotoCsvList([
+                getDriveCustomerOutreachPhotoCsv(sourceRow),
+                getSharedAppPhotoLinkCsv(sourceRow, { includePending: false }),
+                sourceRow.ROW_PHOTO_LINK,
+                sourceRow.SAVED_PHOTO_LINK,
+                sourceRow.PHOTO_LINK,
+                sourceRow.PHOTOLINK,
+                sourceRow.REQ_PHOTO_LINK,
+                sourceRow.DOCK_PHOTO_LINK,
+                sourceRow.FLYER_PHOTO_LINK
+            ]) || '').trim();
+        }
+
+        function getFlyerFolderSourcePhotoName(sourceRow = null) {
+            if (!sourceRow) return '';
+            return String(mergePhotoCsvList([
+                getSharedAppPhotoName(sourceRow),
+                sourceRow.ROW_PHOTO_NAME,
+                sourceRow.SAVED_PHOTO_NAME,
+                sourceRow.PHOTO_NAME,
+                sourceRow.PHOTONAME,
+                sourceRow.REQ_PHOTO_NAME,
+                sourceRow.DOCK_PHOTO_NAME,
+                sourceRow.FLYER_PHOTO_NAME
+            ]) || '').trim();
+        }
+
+        function hydrateFlyerFolderRowFromCurrentSource(item = null, options = {}) {
+            if (!item || !isFlyerFolderRow(item)) return item;
+            const opts = options || {};
+            const target = opts.clone ? { ...item } : item;
+            const sourceRow = findCurrentFlyerFolderSourceRow(target);
+            if (!sourceRow) {
+                normalizeRowPhotoFields(target);
+                buildSearchIndex(target);
+                return target;
+            }
+            const snapshot = buildFlyerFolderSnapshot(sourceRow, { includeCurrentAvData: true });
+            const sourcePhotoCsv = getFlyerFolderSourcePhotoCsv(sourceRow);
+            const sourcePhotoName = getFlyerFolderSourcePhotoName(sourceRow);
+            const directFields = ['ITEMCODE','COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','PRIORITY','PTRAVAILABLE','S_LTS','HOLDSTOPCODE','PLANTGROUPCODE','LOCATIONNOTE','AV_NOTE','MATCH','LOC_MATCH_QTY','SPEC','CALIPER','PICK','INITIAL_PTR'];
+            directFields.forEach((key) => {
+                if (Object.prototype.hasOwnProperty.call(snapshot, key)) target[key] = snapshot[key];
+            });
+            target.MASTER_UNIQUE_ID = String(firstNonEmptyValue(sourceRow.UNIQUE_ID, target.MASTER_UNIQUE_ID, '') || '').trim();
+            target.MASTER_ID = target.MASTER_UNIQUE_ID;
+            target.FLYER_SOURCE_TABLE = 'v2_master_inventory';
+            target.FLYER_AV_NOTE = snapshot.AV_NOTE || '';
+            target.FLYER_MATCH = snapshot.MATCH || '';
+            target.FLYER_LOC_MATCH_QTY = snapshot.LOC_MATCH_QTY || '';
+            target.FLYER_SPEC = snapshot.SPEC || '';
+            target.FLYER_CALIPER = snapshot.CALIPER || '';
+            target.FLYER_PICK = snapshot.PICK || '';
+            target.FLYER_INITIAL_PTR = snapshot.INITIAL_PTR || '';
+            if (sourcePhotoCsv) {
+                target.FLYER_PHOTO_LINK = sourcePhotoCsv;
+                target.FLYERPHOTO_LINK = sourcePhotoCsv;
+                target.SAVED_PHOTO_LINK = sourcePhotoCsv;
+                target.PHOTO_LINK = sourcePhotoCsv;
+                target.PHOTOLINK = sourcePhotoCsv;
+                target.ROW_PHOTO_LINK = sourcePhotoCsv;
+            }
+            if (sourcePhotoName) {
+                target.FLYER_PHOTO_NAME = sourcePhotoName;
+                target.SAVED_PHOTO_NAME = sourcePhotoName;
+                target.PHOTO_NAME = sourcePhotoName;
+                target.PHOTONAME = sourcePhotoName;
+                target.ROW_PHOTO_NAME = sourcePhotoName;
+            }
+            target.SNAPSHOT = Object.assign({}, normalizeFlyerFolderSnapshot(target.SNAPSHOT), snapshot, {
+                PHOTO_LINK: sourcePhotoCsv || snapshot.PHOTO_LINK || '',
+                PHOTO_NAME: sourcePhotoName || snapshot.PHOTO_NAME || ''
+            });
+            normalizeRowPhotoFields(target);
+            buildSearchIndex(target);
+            return target;
+        }
+
+        function buildFlyerFolderLivePatchFromSource(sourceRow = null, flyerRow = null) {
+            if (!sourceRow) return null;
+            const snapshot = buildFlyerFolderSnapshot(sourceRow, { includeCurrentAvData: true });
+            const sourcePhotoCsv = getFlyerFolderSourcePhotoCsv(sourceRow);
+            const sourcePhotoName = getFlyerFolderSourcePhotoName(sourceRow);
+            snapshot.PHOTO_LINK = sourcePhotoCsv || snapshot.PHOTO_LINK || '';
+            snapshot.PHOTO_NAME = sourcePhotoName || snapshot.PHOTO_NAME || '';
+            const matchNumber = parseAppNumber(snapshot.MATCH);
+            const locMatchQtyNumber = parseAppNumber(snapshot.LOC_MATCH_QTY);
+            const initialPtrNumber = parseAppNumber(snapshot.INITIAL_PTR);
+            const mergedSnapshot = Object.assign({}, normalizeFlyerFolderSnapshot(firstNonEmptyValue(flyerRow && flyerRow.SNAPSHOT, flyerRow && flyerRow.snapshot, {})), snapshot);
+            return {
+                master_unique_id: String(firstNonEmptyValue(sourceRow.UNIQUE_ID, snapshot.UNIQUE_ID, '') || '').trim() || null,
+                source_table: 'v2_master_inventory',
+                itemcode: snapshot.ITEMCODE || null,
+                commonname: snapshot.COMMONNAME || null,
+                contsize: snapshot.CONTSIZE || null,
+                locationcode: snapshot.LOCATIONCODE || null,
+                lotcode: snapshot.LOTCODE || null,
+                priority: snapshot.PRIORITY || null,
+                ptravailable: snapshot.PTRAVAILABLE || null,
+                s_lts: snapshot.S_LTS || null,
+                holdstopcode: snapshot.HOLDSTOPCODE || null,
+                plantgroupcode: snapshot.PLANTGROUPCODE || null,
+                locationnote: snapshot.LOCATIONNOTE || null,
+                av_note: snapshot.AV_NOTE || null,
+                match: matchNumber == null ? null : matchNumber,
+                loc_match_qty: locMatchQtyNumber == null ? null : locMatchQtyNumber,
+                spec: snapshot.SPEC || null,
+                caliper: snapshot.CALIPER || null,
+                pick: snapshot.PICK || null,
+                initial_ptr: initialPtrNumber == null ? null : initialPtrNumber,
+                flyer_av_note: snapshot.AV_NOTE || null,
+                flyer_match: matchNumber == null ? null : matchNumber,
+                flyer_loc_match_qty: locMatchQtyNumber == null ? null : locMatchQtyNumber,
+                flyer_spec: snapshot.SPEC || null,
+                flyer_caliper: snapshot.CALIPER || null,
+                flyer_pick: snapshot.PICK || null,
+                flyer_initial_ptr: initialPtrNumber == null ? null : initialPtrNumber,
+                flyer_photo_link: snapshot.PHOTO_LINK || null,
+                flyer_photo_name: snapshot.PHOTO_NAME || null,
+                snapshot: mergedSnapshot,
+                updated_at: new Date().toISOString()
+            };
+        }
+
+        async function syncFlyerFolderRowsForSourceRow(sourceRow = null, options = {}) {
+            if (!sourceRow) return [];
+            const sourceTable = String(firstNonEmptyValue(sourceRow.SOURCE_TABLE, sourceRow.source_table, 'v2_master_inventory') || '').trim().toLowerCase();
+            if (sourceTable && sourceTable !== 'v2_master_inventory') return [];
+            const masterId = String(firstNonEmptyValue(sourceRow.UNIQUE_ID, sourceRow.unique_id, '') || '').trim();
+            if (!masterId) return [];
+            const exactKey = getMasterInventoryExactKey(sourceRow);
+            const localMatches = (Array.isArray(flyerFolderInventory) ? flyerFolderInventory : []).filter((row) => {
+                if (!row) return false;
+                const rowMasterId = getFlyerFolderSourceMasterId(row);
+                if (rowMasterId && rowMasterId === masterId) return true;
+                return !!(exactKey && getMasterInventoryExactKey(row) === exactKey);
+            });
+            localMatches.forEach((row) => hydrateFlyerFolderRowFromCurrentSource(row));
+            const shouldRemote = !!(options && options.remote !== false);
+            if (!shouldRemote) return localMatches;
+            let remoteRows = localMatches;
+            if (!remoteRows.length) {
+                remoteRows = await supabaseFetch(
+                    FLYER_FOLDER_ROWS_TABLE,
+                    'GET',
+                    null,
+                    `select=unique_id,master_unique_id,snapshot&master_unique_id=eq.${encodeURIComponent(masterId)}`
+                ).catch(() => []);
+            }
+            if ((!remoteRows || !remoteRows.length) && exactKey) {
+                const itemCode = String(firstNonEmptyValue(sourceRow.ITEMCODE, sourceRow.itemcode, '') || '').trim();
+                const locationCode = String(firstNonEmptyValue(sourceRow.LOCATIONCODE, sourceRow.locationcode, '') || '').trim();
+                const lotCode = String(firstNonEmptyValue(sourceRow.LOTCODE, sourceRow.lotcode, '') || '').trim();
+                if (itemCode && locationCode && lotCode) {
+                    remoteRows = await supabaseFetch(
+                        FLYER_FOLDER_ROWS_TABLE,
+                        'GET',
+                        null,
+                        `select=unique_id,master_unique_id,snapshot&itemcode=eq.${encodeURIComponent(itemCode)}&locationcode=eq.${encodeURIComponent(locationCode)}&lotcode=eq.${encodeURIComponent(lotCode)}`
+                    ).catch(() => []);
+                }
+            }
+            const uniqueRows = [];
+            const seenIds = new Set();
+            (Array.isArray(remoteRows) ? remoteRows : []).forEach((row) => {
+                const uid = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
+                if (!uid || seenIds.has(uid)) return;
+                seenIds.add(uid);
+                uniqueRows.push(row);
+            });
+            const payload = buildFlyerFolderLivePatchFromSource(sourceRow, localMatches[0] || uniqueRows[0] || null);
+            if (!payload || !uniqueRows.length) return localMatches;
+            await Promise.allSettled(uniqueRows.map((row) => {
+                const uid = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
+                if (!uid) return Promise.resolve(false);
+                return runDetailWriteWithRetry(FLYER_FOLDER_ROWS_TABLE, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(uid)}`);
+            }));
+            return localMatches;
         }
 
         function normalizeFlyerFolderRow(rawRow = null, idx = 0) {
@@ -19825,6 +20069,7 @@ function toggleDriveQuickRequestItem(domId) {
             item.SAVED_PHOTO_LINK = item.FLYER_PHOTO_LINK;
             item.SAVED_PHOTO_NAME = item.FLYER_PHOTO_NAME;
             normalizeRowPhotoFields(item);
+            hydrateFlyerFolderRowFromCurrentSource(item);
             buildSearchIndex(item);
             return item;
         }
@@ -22986,6 +23231,10 @@ function toggleDriveQuickRequestItem(domId) {
 
             if (hasFlyerRows) {
                 flyerFolderInventory = (res.flyerFolderRowsData || []).map((item, idx) => normalizeFlyerFolderRow(item, idx)).filter(Boolean);
+                flyerFolderInventoryById = rebuildInventoryByIdMap(flyerFolderInventory);
+            }
+            if (hasMaster && flyerFolderInventory.length) {
+                flyerFolderInventory.forEach((item) => hydrateFlyerFolderRowFromCurrentSource(item));
                 flyerFolderInventoryById = rebuildInventoryByIdMap(flyerFolderInventory);
             }
 
@@ -58090,7 +58339,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             const flyerFolderRows = [];
             if (safeTab === 'flyer') {
                 const folderTabValue = getFlyerFolderTabValue(activeFlyerFolderTab);
-                const visibleFlyerItems = tabItems.filter((item) => folderTabValue === (isFlyerFolderArchived(item) ? 'archive' : 'active'));
+                const visibleFlyerItems = tabItems
+                    .filter((item) => folderTabValue === (isFlyerFolderArchived(item) ? 'archive' : 'active'))
+                    .map((item) => hydrateFlyerFolderRowFromCurrentSource(item));
                 const folderMeta = new Map();
                 visibleFlyerItems.forEach((item) => {
                     const folderName = getFlyerFolderName(item);
@@ -58537,7 +58788,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             const itemsByFlyerFolder = canReuseHotDerivedState && activeTaskTab === 'flyer' ? hotState.itemsByFlyerFolder : new Map();
             const flyerFolderRows = canReuseHotDerivedState && activeTaskTab === 'flyer' ? hotState.flyerFolderRows : [];
             if (activeTaskTab === 'flyer' && !canReuseHotDerivedState) {
-                const visibleFlyerItems = tabItems.filter((item) => getFlyerFolderTabValue(activeFlyerFolderTab) === (isFlyerFolderArchived(item) ? 'archive' : 'active'));
+                const visibleFlyerItems = tabItems
+                    .filter((item) => getFlyerFolderTabValue(activeFlyerFolderTab) === (isFlyerFolderArchived(item) ? 'archive' : 'active'))
+                    .map((item) => hydrateFlyerFolderRowFromCurrentSource(item));
                 const folderMeta = new Map();
                 visibleFlyerItems.forEach((item) => {
                     const folderName = getFlyerFolderName(item);
@@ -58964,7 +59217,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         return `<div class="request-swipe-row flyer-folder-swipe-row"><button type="button" class="request-swipe-action" style="${actionStyle}" onclick="event.preventDefault(); event.stopPropagation(); return setFlyerFolderArchiveState('${safeFolder}', '${nextTab}', { currentTab: '${currentTab}' })">${actionLabel}</button><div class="request-swipe-surface" onclick="return handleFlyerFolderSurfaceClick(event, this, '${safeFolder}', '${currentTab}')"><div class="bg-white border border-indigo-200 rounded-xl shadow-sm mb-3 p-4 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center cursor-pointer active:scale-95 transition-transform"><div class="min-w-0 pr-3"><div class="font-bold text-lg text-indigo-800 truncate">${folderRow.folderName}</div><div class="text-xs font-semibold text-indigo-500 mt-1 truncate">${folderRow.assignees}</div></div><div class="flex shrink-0 items-center justify-between gap-3 sm:justify-end"><div class="text-right shrink-0"><div class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${folderRow.meta.count} Rows</div><div class="text-[11px] font-semibold text-gray-500 mt-2">${folderRow.meta.complete} Complete</div></div><button type="button" data-fast-press-ignore class="min-h-[38px] rounded-lg border px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] shadow-sm active:scale-95 ${visibleActionTone}" onclick="event.preventDefault(); event.stopPropagation(); return setFlyerFolderArchiveState('${safeFolder}', '${nextTab}', { currentTab: '${currentTab}' })">${actionLabel}</button></div></div></div></div>`;
                     }, { prefixHtml: flyerTabsHtml, approxCardHeight: 128, emptyHtml: emptyFoldersHtml, onComplete: () => decorateFlyerTaskRows() });
                 } else if (taskViewLevel === 1) {
-                    const folderItems = itemsByFlyerFolder.get(selectedFlyerFolder) || [];
+                    const folderItems = (itemsByFlyerFolder.get(selectedFlyerFolder) || []).map((item) => hydrateFlyerFolderRowFromCurrentSource(item));
                     const folderAssignees = getFlyerFolderAssignedNames(selectedFlyerFolder, folderItems, activeFlyerFolderTab).join(', ') || 'Unassigned';
                     const folderActionButton = getFlyerFolderTabValue(activeFlyerFolderTab) === 'archive'
                         ? `<button data-fast-press-ignore class="w-full sm:w-auto min-h-[42px] px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.14em] transition-colors duration-150 bg-white border border-emerald-200 text-emerald-700 shadow-sm hover:bg-emerald-50" onclick="event.preventDefault(); event.stopPropagation(); return setFlyerFolderArchiveState('${esc(selectedFlyerFolder || '')}', 'active', { currentTab: 'archive', keepOpen: true })">Restore Folder</button>`
@@ -59741,11 +59994,13 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function getAdvertisementFlyerRowPhotoEntries(row = null) {
             if (!row) return [];
-            const linkedRow = findLinkedMasterRow(row) || row;
-            const rowId = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, row.DOM_ID, '') || '').trim();
+            const displayRow = hydrateFlyerFolderRowFromCurrentSource(row, { clone: true }) || row;
+            const linkedRow = findCurrentFlyerFolderSourceRow(displayRow) || findLinkedMasterRow(displayRow) || displayRow;
+            const rowId = String(firstNonEmptyValue(displayRow.UNIQUE_ID, displayRow.unique_id, displayRow.DOM_ID, '') || '').trim();
             const photoCsv = mergePhotoCsvList([
-                getFlyerVisiblePhotoLinkCsv(row, { includePending: false }),
-                getRowPhotoLink(row, 'flyer'),
+                getFlyerFolderSourcePhotoCsv(linkedRow),
+                getFlyerVisiblePhotoLinkCsv(displayRow, { includePending: false }),
+                getRowPhotoLink(displayRow, 'flyer'),
                 getSharedAppPhotoLinkCsv(linkedRow, { includePending: false })
             ]);
             const seen = new Set();
@@ -59757,7 +60012,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             }).map((url, index) => ({
                 key: `${rowId || 'row'}::${index}::${url}`,
                 rowId,
-                row,
+                row: displayRow,
                 url,
                 index
             }));
@@ -62129,6 +62384,21 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (isCoordinatedAutoSave && savePayloadSignature) rememberAutoSaveSignature(rowSaveKey, savePayloadSignature);
 
                     propagateCommittedEdit(targetTable, itemToSave, changedDatasetKeys, visibleAffectedViews, { prefix, delay: 0, typingDelay: 120, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
+                    const flyerFolderSyncCandidates = [itemToSave, artifacts && artifacts.masterSyncItem].filter(Boolean);
+                    const flyerFolderSyncIds = new Set();
+                    flyerFolderSyncCandidates.forEach((candidate) => {
+                        const uid = String(firstNonEmptyValue(candidate && candidate.UNIQUE_ID, candidate && candidate.unique_id, '') || '').trim();
+                        const sourceTable = String(firstNonEmptyValue(candidate && candidate.SOURCE_TABLE, candidate && candidate.source_table, 'v2_master_inventory') || '').trim().toLowerCase();
+                        if (!uid || sourceTable !== 'v2_master_inventory' || flyerFolderSyncIds.has(uid)) return;
+                        flyerFolderSyncIds.add(uid);
+                        deferNonCriticalWork(`flyer-folder-source-sync-${uid}`, () => {
+                            syncFlyerFolderRowsForSourceRow(candidate, { remote: true })
+                                .then(() => {
+                                    if (isViewVisible('tasks') && activeTaskTab === 'flyer') queueInteractiveViewRender('tasks', false, false, 0, 140);
+                                })
+                                .catch((error) => console.warn('Flyer folder source sync skipped', error));
+                        }, 52);
+                    });
                     recordInternalPerfDuration('saveDurations', savePerfStartedAt, `${prefix}${isComplete ? ':complete' : (isSilentAutoSave ? ':autosave' : ':save')}`);
 
                     const productivityHistoryEntry = isComplete && !wasAlreadyComplete
