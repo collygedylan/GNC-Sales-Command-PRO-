@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.18.14';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.18.15';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -54822,6 +54822,78 @@ ${folderNote ? `Folder Note: ${folderNote}
             return `${locationCode} PICK APPROVED`;
         }
 
+        function getRequestUniversalSeasonCode(item = null, linkedItem = null) {
+            const seasonCandidate = String(firstNonEmptyValue(
+                item && item.SEASON,
+                item && item.season,
+                item && item.SEASONCODE,
+                item && item.seasoncode,
+                linkedItem && linkedItem.SEASON,
+                linkedItem && linkedItem.season,
+                linkedItem && linkedItem.SEASONCODE,
+                linkedItem && linkedItem.seasoncode,
+                ''
+            ) || '').trim().toUpperCase();
+            const seasonMatch = seasonCandidate.match(/\b(U1|U2|U3)\b/);
+            if (seasonMatch) return seasonMatch[1];
+            const lotCandidate = String(firstNonEmptyValue(
+                item && item.LOTCODE,
+                item && item.lotcode,
+                linkedItem && linkedItem.LOTCODE,
+                linkedItem && linkedItem.lotcode,
+                ''
+            ) || '').trim().toUpperCase();
+            const lotMatch = lotCandidate.match(/\b(?:\d{2}\.)?(U1|U2|U3)\b/);
+            return lotMatch ? lotMatch[1] : '';
+        }
+
+        function isRequestUniversalSeasonRow(item = null, linkedItem = null) {
+            return ['U1', 'U2', 'U3'].includes(getRequestUniversalSeasonCode(item, linkedItem));
+        }
+
+        function getRequestUniversalPickNote(item = null, linkedItem = null) {
+            const locationCode = String(firstNonEmptyValue(
+                item && item.LOCATIONCODE,
+                item && item.LOCATION,
+                item && item.locationcode,
+                linkedItem && linkedItem.LOCATIONCODE,
+                linkedItem && linkedItem.LOCATION,
+                linkedItem && linkedItem.locationcode,
+                ''
+            ) || '').trim();
+            return locationCode ? `${locationCode} PICK APPROVED` : '';
+        }
+
+        function appendPickNoteText(currentNote = '', noteToAdd = '') {
+            const currentText = String(currentNote || '').trim();
+            const addText = String(noteToAdd || '').trim();
+            if (!addText) return currentText;
+            const currentToken = normalizeRepMatchToken(currentText);
+            const addToken = normalizeRepMatchToken(addText);
+            if (currentToken && addToken && currentToken.includes(addToken)) return currentText;
+            return currentText ? `${currentText} / ${addText}` : addText;
+        }
+
+        function applyRequestUniversalSeasonPickNote(item = null, linkedItem = null, options = {}) {
+            if (!item || !isRequestUniversalSeasonRow(item, linkedItem)) return false;
+            const basePickNote = getRequestUniversalPickNote(item, linkedItem);
+            if (!basePickNote) return false;
+            item.REQ_PICK = appendPickNoteText(item.REQ_PICK, basePickNote);
+            item.REQ_PIC_NOTE = item.REQ_PICK;
+            item.req_pic_note = item.REQ_PICK;
+            if (options && options.askForTape && !normalizeRepMatchToken(item.REQ_PICK).includes('pull clown tape')) {
+                const addTape = window.confirm('Add PULL CLOWN TAPE to the pick note for this U-season request?');
+                if (addTape) {
+                    item.REQ_PICK = appendPickNoteText(item.REQ_PICK, 'PULL CLOWN TAPE');
+                    item.REQ_PIC_NOTE = item.REQ_PICK;
+                    item.req_pic_note = item.REQ_PICK;
+                }
+            }
+            const reqPickEl = document.getElementById('req-pick');
+            if (reqPickEl && reqPickEl.value !== item.REQ_PICK) reqPickEl.value = item.REQ_PICK;
+            return true;
+        }
+
         function getShareNotesValue(item, sourceView = '') {
             const preferFlyerFields = shouldPreferFlyerOwnedFields(item, sourceView);
             return firstNonEmptyValue(
@@ -62619,6 +62691,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                         if (String(itemToSave.S_LTS || '').trim() === '') itemToSave.S_LTS = requestMasterItem.S_LTS;
                         itemToSave.PLANTGROUPCODE = itemToSave.PLANTGROUPCODE || requestMasterItem.PLANTGROUPCODE;
                         itemToSave.CONTSIZE = itemToSave.CONTSIZE || requestMasterItem.CONTSIZE;
+                    }
+                    if (isComplete) {
+                        applyRequestUniversalSeasonPickNote(itemToSave, requestMasterItem, { askForTape: true });
                     }
                     let assignment = String(itemToSave.APP_TAB_ASSIGNMENT || (requestMasterItem ? requestMasterItem.APP_TAB_ASSIGNMENT : '') || '').toLowerCase();
                     requestAssignment = assignment;
