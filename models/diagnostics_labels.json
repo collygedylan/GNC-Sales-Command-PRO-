@@ -1,19 +1,49 @@
 [
   {
+    "diagnosis": "abioitic disorder",
+    "label": "abioitic disorder",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
     "diagnosis": "abiotic",
     "label": "abiotic",
-    "sample_count": 28,
+    "sample_count": 102,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "agrobacterium tumefaciens",
+    "label": "agrobacterium tumefaciens",
+    "sample_count": 6,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
     "diagnosis": "anthracnose",
     "label": "anthracnose",
-    "sample_count": 20,
+    "sample_count": 32,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "anthracnose basal rot",
+    "label": "anthracnose basal rot",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "anthracnose stem blight",
+    "label": "anthracnose stem blight",
+    "sample_count": 4,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
     "diagnosis": "aphanidermatum",
     "label": "aphanidermatum",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "biotrytis",
+    "label": "biotrytis",
     "sample_count": 4,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
@@ -24,27 +54,39 @@
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
+    "diagnosis": "black spot pathogen",
+    "label": "black spot pathogen",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
     "diagnosis": "bot",
     "label": "bot",
-    "sample_count": 4,
+    "sample_count": 14,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "bot; peronspora sparsa",
+    "label": "bot; peronspora sparsa",
+    "sample_count": 8,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
     "diagnosis": "botryosphaeria",
     "label": "botryosphaeria",
-    "sample_count": 2,
+    "sample_count": 6,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
     "diagnosis": "botrytis",
     "label": "botrytis",
-    "sample_count": 10,
+    "sample_count": 18,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
     "diagnosis": "canker",
     "label": "canker",
-    "sample_count": 68,
+    "sample_count": 128,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
@@ -54,9 +96,45 @@
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
+    "diagnosis": "ceratobasidium",
+    "label": "ceratobasidium",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "cercocospora stem blight",
+    "label": "cercocospora stem blight",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "cercospora",
+    "label": "cercospora",
+    "sample_count": 38,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "cerospira",
+    "label": "cerospira",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "cerospora",
+    "label": "cerospora",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
     "diagnosis": "colletotrichum",
     "label": "colletotrichum",
-    "sample_count": 42,
+    "sample_count": 62,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "coniothyrium",
+    "label": "coniothyrium",
+    "sample_count": 4,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
@@ -72,20 +150,80 @@
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
+    "diagnosis": "crown rot",
+    "label": "crown rot",
+    "sample_count": 10,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
     "diagnosis": "curvularia; sclerotinia",
     "label": "curvularia; sclerotinia",
     "sample_count": 4,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
+    "diagnosis": "cylindeosporium",
+    "label": "cylindeosporium",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "cylindrocladium",
+    "label": "cylindrocladium",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "dactylonectria",
+    "label": "dactylonectria",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "diaspidiotus",
+    "label": "diaspidiotus",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "didymellaalternia",
+    "label": "didymellaalternia",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
     "diagnosis": "dieback",
     "label": "dieback",
-    "sample_count": 16,
+    "sample_count": 28,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "diplocarpon",
+    "label": "diplocarpon",
+    "sample_count": 4,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
     "diagnosis": "diplodia",
     "label": "diplodia",
+    "sample_count": 12,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "downy mildew peronospora",
+    "label": "downy mildew peronospora",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "edema",
+    "label": "edema",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "enviromental cause",
+    "label": "enviromental cause",
     "sample_count": 4,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
@@ -96,9 +234,33 @@
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
+    "diagnosis": "flee beetles",
+    "label": "flee beetles",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "fungi",
+    "label": "fungi",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
     "diagnosis": "fusarium",
     "label": "fusarium",
-    "sample_count": 38,
+    "sample_count": 90,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "fusarium oxysporum",
+    "label": "fusarium oxysporum",
+    "sample_count": 2,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "fusearium oxysporum",
+    "label": "fusearium oxysporum",
+    "sample_count": 2,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
@@ -108,9 +270,15 @@
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
+    "diagnosis": "graft failure",
+    "label": "graft failure",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
     "diagnosis": "healthy/no pathogen found",
     "label": "healthy/no pathogen found",
-    "sample_count": 22,
+    "sample_count": 26,
     "treatment": "No treatment recommended. Keep monitoring crop condition."
   },
   {
@@ -120,9 +288,15 @@
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
+    "diagnosis": "hosta",
+    "label": "hosta",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
     "diagnosis": "insect damage",
     "label": "insect damage",
-    "sample_count": 4,
+    "sample_count": 8,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
@@ -140,12 +314,18 @@
   {
     "diagnosis": "leaf spot",
     "label": "leaf spot",
-    "sample_count": 18,
+    "sample_count": 54,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
     "diagnosis": "mites",
     "label": "mites",
+    "sample_count": 28,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "moth",
+    "label": "moth",
     "sample_count": 4,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
@@ -156,9 +336,39 @@
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
+    "diagnosis": "nothing detected",
+    "label": "nothing detected",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "paraphaeosphaeria",
+    "label": "paraphaeosphaeria",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "peronospora",
+    "label": "peronospora",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "peronospora sparsa",
+    "label": "peronospora sparsa",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "peronospora sparsa; bot",
+    "label": "peronospora sparsa; bot",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
     "diagnosis": "pestalotiopsis",
     "label": "pestalotiopsis",
-    "sample_count": 8,
+    "sample_count": 14,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
@@ -168,15 +378,57 @@
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
+    "diagnosis": "phoma",
+    "label": "phoma",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
     "diagnosis": "phomopsis",
     "label": "phomopsis",
-    "sample_count": 12,
+    "sample_count": 56,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "phyllosticta; neopestalotiopsis",
+    "label": "phyllosticta; neopestalotiopsis",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "phytohthora",
+    "label": "phytohthora",
+    "sample_count": 2,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
     "diagnosis": "phytophthora",
     "label": "phytophthora",
-    "sample_count": 90,
+    "sample_count": 172,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "phytophthore citrophthora",
+    "label": "phytophthore citrophthora",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "phytotoxic reaction",
+    "label": "phytotoxic reaction",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "potexvirus",
+    "label": "potexvirus",
+    "sample_count": 2,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "prunus persica",
+    "label": "prunus persica",
+    "sample_count": 2,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
@@ -186,15 +438,27 @@
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
+    "diagnosis": "pseudomonnas",
+    "label": "pseudomonnas",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
     "diagnosis": "psyllids insect damage",
     "label": "psyllids insect damage",
     "sample_count": 2,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
+    "diagnosis": "puthium splendens",
+    "label": "puthium splendens",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
     "diagnosis": "pythium",
     "label": "pythium",
-    "sample_count": 18,
+    "sample_count": 46,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
@@ -204,15 +468,27 @@
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
+    "diagnosis": "redbud downy mildew; plasmopara cercidis",
+    "label": "redbud downy mildew; plasmopara cercidis",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
     "diagnosis": "rhizoctonia",
     "label": "rhizoctonia",
-    "sample_count": 20,
+    "sample_count": 76,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "rhodococcus fascians",
+    "label": "rhodococcus fascians",
+    "sample_count": 4,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
     "diagnosis": "root rot",
     "label": "root rot",
-    "sample_count": 4,
+    "sample_count": 8,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
@@ -222,8 +498,32 @@
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
+    "diagnosis": "saprophyte",
+    "label": "saprophyte",
+    "sample_count": 12,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "scale",
+    "label": "scale",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
     "diagnosis": "sclerotinia",
     "label": "sclerotinia",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "solanacearum",
+    "label": "solanacearum",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "sphaerotheca",
+    "label": "sphaerotheca",
     "sample_count": 4,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
@@ -236,7 +536,13 @@
   {
     "diagnosis": "stem rot",
     "label": "stem rot",
-    "sample_count": 4,
+    "sample_count": 12,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "suspected bacteria",
+    "label": "suspected bacteria",
+    "sample_count": 2,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
@@ -246,15 +552,69 @@
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
+    "diagnosis": "thielaviopsis",
+    "label": "thielaviopsis",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
     "diagnosis": "thrips family thirpidae",
     "label": "thrips family thirpidae",
     "sample_count": 2,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
+    "diagnosis": "tip blight",
+    "label": "tip blight",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "tobravirus tobacco rattle virus trv",
+    "label": "tobravirus tobacco rattle virus trv",
+    "sample_count": 2,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "tubakia",
+    "label": "tubakia",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "twig blight diaporthe",
+    "label": "twig blight diaporthe",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "undetermined injury",
+    "label": "undetermined injury",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "undetermined injuryunidentified agent",
+    "label": "undetermined injuryunidentified agent",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "various fungi",
+    "label": "various fungi",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
     "diagnosis": "virus/mosaic",
     "label": "virus/mosaic",
     "sample_count": 20,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
+    "diagnosis": "white smut",
+    "label": "white smut",
+    "sample_count": 2,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
@@ -266,7 +626,7 @@
   {
     "diagnosis": "xanthomonas",
     "label": "xanthomonas",
-    "sample_count": 4,
+    "sample_count": 30,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   }
 ]
