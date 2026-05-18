@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.18.06';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.18.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -35076,9 +35076,6 @@ function toggleDriveQuickRequestItem(domId) {
                 goBackFromDetail();
                 return false;
             }
-            if (currentView && currentView !== 'home') {
-                if (restorePreviousViewFromHistory()) return false;
-            }
             if (currentView === 'drive') {
                 if (activeDriveTab === 'name') {
                     if (driveViewLevel >= 3 && selectedDriveSeason) {
@@ -35279,8 +35276,48 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             if (currentView === 'shear-list') {
-                if (shearListState && shearListState.drillLevel && shearListState.drillLevel !== 'blocks') {
+                if (shearListState && String(shearListState.activeTab || 'open').toLowerCase() === 'drive' && shearListState.driveDrillLevel === 'rows' && String(shearListState.selectedDriveItemKey || '').trim()) {
+                    backShearDriveItems();
+                    updateGlobalBackButton();
+                    return false;
+                }
+                if (shearListState && String(shearListState.activeTab || 'open').toLowerCase() !== 'drive' && shearListState.drillLevel && shearListState.drillLevel !== 'blocks') {
                     backShearListDrill();
+                    updateGlobalBackButton();
+                    return false;
+                }
+                if (restorePreviousViewFromHistory()) return false;
+                switchView('home');
+                return false;
+            }
+            if (currentView === 'production-workflow') {
+                if (productionWorkflowState && String(productionWorkflowState.activeTab || 'drive').toLowerCase() === 'drive' && productionWorkflowState.driveDrillLevel === 'rows' && String(productionWorkflowState.selectedDriveItemKey || '').trim()) {
+                    backProductionWorkflowItems();
+                    updateGlobalBackButton();
+                    return false;
+                }
+                if (productionWorkflowState && String(productionWorkflowState.activeTab || 'drive').toLowerCase() === 'list' && productionWorkflowState.drillLevel && productionWorkflowState.drillLevel !== 'blocks') {
+                    backProductionWorkflowListDrill();
+                    updateGlobalBackButton();
+                    return false;
+                }
+                if (restorePreviousViewFromHistory()) return false;
+                switchView('production');
+                return false;
+            }
+            if (currentView === 'weather-hold') {
+                if (weatherHoldState && weatherHoldState.inventoryDrillLevel === 'rows' && String(weatherHoldState.selectedInventoryItemKey || '').trim()) {
+                    backWeatherHoldInventoryItems();
+                    updateGlobalBackButton();
+                    return false;
+                }
+                if (restorePreviousViewFromHistory()) return false;
+                switchView('production');
+                return false;
+            }
+            if (currentView === 'sales-inventory') {
+                if (inventoryMainTab === 'production' && productionInventoryTab === 'counting' && spreadCountState && spreadCountState.drillLevel && spreadCountState.drillLevel !== 'blocks') {
+                    backSpreadCountDrill();
                     updateGlobalBackButton();
                     return false;
                 }
