@@ -40,7 +40,15 @@ create index if not exists idx_v2_bunch_counts_counted_at
 
 do $$
 begin
-    if to_regclass('public.v2_spread_counts') is not null then
+    if to_regclass('public.v2_spread_counts') is not null
+        and exists (
+            select 1
+            from information_schema.columns
+            where table_schema = 'public'
+              and table_name = 'v2_spread_counts'
+              and column_name = 'count_type'
+        )
+    then
         insert into public.v2_bunch_counts (
             unique_id,
             source_unique_id,
