@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.18.12';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.18.13';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -14254,6 +14254,7 @@ const FIELD_SAVE_GRACE_MS = 1400;
 let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='all'; let activeAvReserveDetailTab='customer'; let selectedAvReserveDetailCustomerKey=null;
 let selectedAvSeasons=new Set(['S1']); let avSeasonDefaultsInitialized=false; let avSourceDropdownOpen=false; let avSeasonDropdownOpen=false; let avGenusFilterOpen=false; let avContSizeFilterOpen=false; let avHoldDropdownOpen=false; let avPhotoDropdownOpen=false; let avSeasonSearchTerm=''; let selectedAvGenusNames=new Set(); let avGenusSearchTerm=''; let avGenusSelectionMode='all'; let selectedAvContSizes=new Set(); let avContSizeSearchTerm=''; let avContSizeSelectionMode='all'; let avHoldFilterMode='all'; let avHoldStopOnly=false; let avFilterItemsCache=[]; let avFilterGenusOptions=[]; let avFilterContSizeOptions=[]; let avPhotoOutreachMinSLts=''; let avPhotoOutreachSelectedRepKeys=new Set(); let avPhotoOutreachRepStateKey=''; let avPhotoOutreachSendBusy=false;
 let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKeys=new Set(); let driveCustomerOutreachSelectedSourceRowIds=new Set(); let driveCustomerOutreachStateKey=''; let driveCustomerOutreachRecipientMode='selected'; let driveCustomerOutreachSelectedAllRepKeys=new Set(); let driveCustomerOutreachAllRepStateKey=''; let driveCustomerOutreachSendBusy=false; let driveCustomerOutreachReserveRows=[]; let driveCustomerOutreachReserveRowsKey=''; let driveCustomerOutreachReserveRowsLoadedKey=''; let driveCustomerOutreachReserveRowsLoading=false; let driveCustomerOutreachReserveRowsError=''; let driveCustomerOutreachReserveFetchToken=0;
+let taskCustomerOutreachOpen=false; let taskCustomerOutreachSelectedRowIds=new Set(); let taskCustomerOutreachStateKey=''; let taskCustomerOutreachSendBusy=false;
         let taskTeamSelectorCacheKey=''; let taskTeamSelectorCacheHtml=''; let taskTeamSelectorEmptyHtml='';
 
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null; let moveUpViewLevel=0; let selectedMoveUpItemCode=null; let selectedMoveUpCommonName=null; let selectedMoveUpContSize=null;
@@ -45235,6 +45236,306 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
+        function getTaskCustomerOutreachCustomerLabel() {
+            const safeCustomer = normalizeTaskCustomerFilterValue(activeTaskCustomerFilter);
+            if (safeCustomer === 'all') return 'All Customers';
+            const option = getTaskCustomerFilterOptions(null, 'cust').find((entry) => entry.value === safeCustomer);
+            return String(firstNonEmptyValue(option && option.label, activeTaskCustomerFilter, safeCustomer) || safeCustomer).trim();
+        }
+
+        function getTaskCustomerOutreachRowId(row = null) {
+            const rowId = getDriveCustomerOutreachRowId(row);
+            if (rowId) return rowId;
+            return [
+                firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, ''),
+                firstNonEmptyValue(row && row.COMMONNAME, row && row.commonname, ''),
+                firstNonEmptyValue(row && row.CONTSIZE, row && row.contsize, ''),
+                firstNonEmptyValue(row && row.LOCATIONCODE, row && row.locationcode, ''),
+                firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, '')
+            ].map((value) => String(value || '').trim()).filter(Boolean).join('|');
+        }
+
+        function dedupeTaskCustomerOutreachRows(rows = []) {
+            const rowMap = new Map();
+            (Array.isArray(rows) ? rows : []).forEach((row) => {
+                const rowId = getTaskCustomerOutreachRowId(row);
+                if (!rowId || rowMap.has(rowId)) return;
+                rowMap.set(rowId, row);
+            });
+            return Array.from(rowMap.values());
+        }
+
+        function hasTaskCustomerOutreachPhoto(row = null) {
+            return extractSharePhotoUrls(getDriveCustomerOutreachPhotoCsv(row), row).length > 0;
+        }
+
+        function syncTaskCustomerOutreachDefaultSelections(rows = []) {
+            const rowIds = dedupeTaskCustomerOutreachRows(rows).map(getTaskCustomerOutreachRowId).filter(Boolean);
+            const stateKey = [
+                activeTaskTab,
+                activeTaskSubview,
+                activeTaskCustomerFilter,
+                taskViewLevel,
+                selectedTaskBlock || '',
+                selectedTaskLoc || '',
+                rowIds.join('~')
+            ].join('|');
+            if (stateKey !== taskCustomerOutreachStateKey) {
+                taskCustomerOutreachStateKey = stateKey;
+                taskCustomerOutreachSelectedRowIds = new Set(rowIds);
+            }
+        }
+
+        function getTaskCustomerOutreachScopeRows(tabItems = [], itemsByLocation = new Map(), locationRowsByBlock = new Map()) {
+            if (activeTaskTab !== 'cust') return [];
+            if (taskViewLevel === 2 && selectedTaskLoc) return dedupeTaskCustomerOutreachRows(itemsByLocation.get(selectedTaskLoc) || []);
+            if (taskViewLevel === 1 && selectedTaskBlock) {
+                const locationRows = locationRowsByBlock.get(selectedTaskBlock) || [];
+                const rows = [];
+                locationRows.forEach((locationRow) => {
+                    const loc = String(firstNonEmptyValue(locationRow && locationRow.locationCode, locationRow && locationRow.LOCATIONCODE, '') || '').trim();
+                    if (!loc) return;
+                    rows.push(...(itemsByLocation.get(loc) || []));
+                });
+                return dedupeTaskCustomerOutreachRows(rows);
+            }
+            return dedupeTaskCustomerOutreachRows(tabItems);
+        }
+
+        function getTaskCustomerOutreachSelectedRows(rows = []) {
+            const eligibleRows = dedupeTaskCustomerOutreachRows(rows).filter(hasTaskCustomerOutreachPhoto);
+            syncTaskCustomerOutreachDefaultSelections(eligibleRows);
+            return eligibleRows.filter((row) => taskCustomerOutreachSelectedRowIds.has(getTaskCustomerOutreachRowId(row)));
+        }
+
+        function isTaskCustomerOutreachCardMatch(card = null, customerFilterValue = activeTaskCustomerFilter, customerLabel = '') {
+            const safeCustomer = normalizeTaskCustomerFilterValue(customerFilterValue);
+            if (safeCustomer === 'all') return true;
+            const targetTokens = [
+                customerLabel,
+                safeCustomer
+            ].map((value) => normalizeRepMatchToken(value)).filter(Boolean);
+            if (!targetTokens.length) return true;
+            const cardTokens = [
+                card && card.customerName,
+                card && card.consigneeName,
+                card && card.label
+            ].map((value) => normalizeRepMatchToken(value)).filter(Boolean);
+            return cardTokens.some((cardToken) => targetTokens.some((targetToken) => cardToken === targetToken || cardToken.includes(targetToken) || targetToken.includes(cardToken)));
+        }
+
+        function getTaskCustomerOutreachMatchingCardsForRow(row = null, customerFilterValue = activeTaskCustomerFilter) {
+            const customerLabel = getTaskCustomerOutreachCustomerLabel();
+            return getDriveCustomerOutreachCustomerCards(row).filter((card) => isTaskCustomerOutreachCardMatch(card, customerFilterValue, customerLabel));
+        }
+
+        function getTaskCustomerOutreachRepGroups(rows = [], customerFilterValue = activeTaskCustomerFilter) {
+            const repGroups = new Map();
+            dedupeTaskCustomerOutreachRows(rows).forEach((row) => {
+                const rowId = getTaskCustomerOutreachRowId(row);
+                if (!rowId) return;
+                const cards = getTaskCustomerOutreachMatchingCardsForRow(row, customerFilterValue);
+                cards.forEach((card) => {
+                    const repName = String(card && card.repName || '').trim();
+                    const repEmail = resolveRequestRecipientEmail(repName);
+                    if (!repName || !repEmail) return;
+                    const repKey = getDriveCustomerOutreachRepKey(repName, repEmail);
+                    if (!repGroups.has(repKey)) {
+                        repGroups.set(repKey, {
+                            key: repKey,
+                            repName,
+                            repEmail,
+                            cards: [],
+                            cardKeys: new Set(),
+                            sourceRows: [],
+                            sourceRowIds: new Set()
+                        });
+                    }
+                    const group = repGroups.get(repKey);
+                    if (!group.cardKeys.has(card.key)) {
+                        group.cardKeys.add(card.key);
+                        group.cards.push(card);
+                    }
+                    if (!group.sourceRowIds.has(rowId)) {
+                        group.sourceRowIds.add(rowId);
+                        group.sourceRows.push(row);
+                    }
+                });
+            });
+            return Array.from(repGroups.values()).sort((left, right) => String(left.repName || '').localeCompare(String(right.repName || ''), undefined, { numeric: true, sensitivity: 'base' }));
+        }
+
+        function buildTaskCustomerOutreachEmailText(customers = [], sourceRows = [], options = {}) {
+            const customerLabel = String(firstNonEmptyValue(options && options.customerLabel, getTaskCustomerOutreachCustomerLabel()) || '').trim();
+            const customerLines = customers.length
+                ? customers.map((card) => `- ${card.label} (${card.repName}) - ${getDriveCustomerOutreachCustomerQtyLabel(card)}`).join('\n')
+                : '- No matching customer / consignee rows selected';
+            return `Task CUST Customer Send\nCustomer: ${customerLabel}\n\nCustomer / Consignee:\n${customerLines}\n\nPhoto Rows:\n${formatInventoryItemsText(sourceRows, '', { includePhotoUrls: true })}`.trim();
+        }
+
+        function buildTaskCustomerOutreachEmailHtml(customers = [], sourceRows = [], options = {}) {
+            const customerLabel = String(firstNonEmptyValue(options && options.customerLabel, getTaskCustomerOutreachCustomerLabel()) || '').trim();
+            const customerHtml = customers.length
+                ? customers.map((card) => `<li>${escapeShareHtml(card.label)} <span style="color:#64748b;">(${escapeShareHtml(card.repName)} - ${escapeShareHtml(getDriveCustomerOutreachCustomerQtyLabel(card))})</span></li>`).join('')
+                : '<li>No matching customer / consignee rows selected</li>';
+            return `<div><div style="font-weight:700;margin:0 0 12px 0;">Task CUST Customer Send - ${escapeShareHtml(customerLabel)}</div><div style="font-weight:700;margin:0 0 6px 0;">Customer / Consignee</div><ul style="margin:0 0 16px 18px;padding:0;">${customerHtml}</ul>${formatInventoryItemsHtml(sourceRows, 'Photo Rows')}</div>`;
+        }
+
+        function renderTaskCustomerOutreachPanel(scopeRows = []) {
+            if (activeTaskTab !== 'cust' || !canUseCustomerConsigneeOutreach()) return '';
+            const safeCustomer = normalizeTaskCustomerFilterValue(activeTaskCustomerFilter);
+            const customerLabel = getTaskCustomerOutreachCustomerLabel();
+            const eligibleRows = dedupeTaskCustomerOutreachRows(scopeRows).filter(hasTaskCustomerOutreachPhoto);
+            syncTaskCustomerOutreachDefaultSelections(eligibleRows);
+            const selectedRows = eligibleRows.filter((row) => taskCustomerOutreachSelectedRowIds.has(getTaskCustomerOutreachRowId(row)));
+            const repGroups = safeCustomer === 'all' ? [] : getTaskCustomerOutreachRepGroups(selectedRows, safeCustomer);
+            const selectedCount = selectedRows.length;
+            const totalPhotoRows = eligibleRows.length;
+            const panelOpen = !!taskCustomerOutreachOpen;
+            const sendDisabled = safeCustomer === 'all' || !selectedCount || !repGroups.length || taskCustomerOutreachSendBusy;
+            const compactNote = safeCustomer === 'all'
+                ? 'Select a customer name first, then send photo rows from that customer.'
+                : `${totalPhotoRows} photo row${totalPhotoRows === 1 ? '' : 's'} available for ${customerLabel}.`;
+            const openLabel = panelOpen ? 'Hide Send Panel' : 'Send';
+            if (!panelOpen) {
+                return `<div class="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Customer Send</div><div class="mt-1 text-sm font-bold text-slate-700">${esc(compactNote)}</div></div><button type="button" class="min-h-[44px] rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="return toggleTaskCustomerOutreachPanel()"><i class="ph-bold ph-paper-plane-tilt align-middle"></i><span class="ml-1 align-middle">${esc(openLabel)}</span></button></div></div>`;
+            }
+            const rowHtml = eligibleRows.map((row) => {
+                const rowId = getTaskCustomerOutreachRowId(row);
+                const checked = taskCustomerOutreachSelectedRowIds.has(rowId) ? 'checked' : '';
+                const photos = extractSharePhotoUrls(getDriveCustomerOutreachPhotoCsv(row), row);
+                const thumbUrl = photos[0] ? getDirectImageUrl(photos[0].url, 'card-thumb') : '';
+                const photoThumb = thumbUrl
+                    ? `<img src="${esc(thumbUrl)}" alt="" loading="lazy" decoding="async" class="h-16 w-16 shrink-0 rounded-xl border border-emerald-100 object-cover">`
+                    : `<div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Photo</div>`;
+                const commonName = firstNonEmptyValue(row && row.COMMONNAME, row && row.commonname, 'Item');
+                const contSize = firstNonEmptyValue(row && row.CONTSIZE, row && row.contsize, '');
+                const itemCode = firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, '');
+                const loc = firstNonEmptyValue(row && row.LOCATIONCODE, row && row.locationcode, '');
+                const lot = firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, '');
+                const spec = getDriveCustomerOutreachSpec(row);
+                return `<label class="flex items-start gap-3 rounded-xl border border-emerald-200 bg-white px-3 py-3 shadow-sm"><input type="checkbox" class="mt-5 h-5 w-5 shrink-0 accent-[#007a4d]" ${checked} onclick='event.stopPropagation(); return toggleTaskCustomerOutreachRow(${JSON.stringify(rowId)})'>${photoThumb}<span class="min-w-0 flex-1"><span class="block break-words text-[13px] font-black text-slate-900">${esc(commonName)} ${esc(contSize)}</span><span class="mt-1 block text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d]">Item ${esc(itemCode)} &bull; Loc ${esc(loc)} &bull; Lot ${esc(lot)}</span><span class="mt-1 block text-[10px] font-bold text-slate-500">${photos.length} photo${photos.length === 1 ? '' : 's'}${spec ? ` &bull; Spec: ${esc(spec)}` : ''}</span></span></label>`;
+            }).join('') || `<div class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-[12px] font-bold text-slate-400">No rows with photos are available in this Task CUST view.</div>`;
+            const repHtml = safeCustomer === 'all'
+                ? `<div class="rounded-xl border border-dashed border-amber-200 bg-amber-50 px-4 py-4 text-[12px] font-bold text-amber-800">Choose a customer name before sending.</div>`
+                : (repGroups.map((group) => `<div class="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm"><div class="text-[12px] font-black text-slate-800">${esc(group.repName)}</div><div class="mt-0.5 text-[10px] font-bold text-slate-400">${esc(group.repEmail)}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]">${group.sourceRows.length} selected row${group.sourceRows.length === 1 ? '' : 's'} &bull; ${group.cards.length} customer/order match${group.cards.length === 1 ? '' : 'es'}</div></div>`).join('') || `<div class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-4 text-center text-[12px] font-bold text-slate-400">No sales reps matched this customer in v2_reserves.</div>`);
+            return `<div class="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm"><div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Task CUST Customer Send</div><div class="mt-1 text-lg font-black text-slate-900">${esc(customerLabel)}</div><div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700">${selectedCount}/${totalPhotoRows} photo rows selected &bull; ${repGroups.length} rep${repGroups.length === 1 ? '' : 's'} matched</div></div><button type="button" class="min-h-[40px] rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm active:scale-95" onclick="return toggleTaskCustomerOutreachPanel()">Hide</button></div><div class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(260px,0.85fr)]"><div><div class="mb-2 flex items-center justify-between gap-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Rows To Send</div><div class="flex gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setTaskCustomerOutreachRowsSelected(true)">All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setTaskCustomerOutreachRowsSelected(false)">None</button></div></div><div class="grid grid-cols-1 gap-2">${rowHtml}</div></div><div><div class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Sales Reps</div><div class="grid grid-cols-1 gap-2">${repHtml}</div></div></div><button type="button" class="mt-4 w-full rounded-2xl px-4 py-3 text-[12px] font-black uppercase tracking-[0.14em] shadow-sm ${sendDisabled ? 'pointer-events-none bg-slate-200 text-slate-400' : 'bg-[#007a4d] text-white active:scale-[0.99]'}" onclick="return sendTaskCustomerOutreachEmails()">${taskCustomerOutreachSendBusy ? 'Sending...' : 'Send Selected Rows'}</button></div>`;
+        }
+
+        function toggleTaskCustomerOutreachPanel() {
+            taskCustomerOutreachOpen = !taskCustomerOutreachOpen;
+            scheduleTasksRender(0, 0, true);
+            return false;
+        }
+
+        function toggleTaskCustomerOutreachRow(rowId = '') {
+            const safeRowId = String(rowId || '').trim();
+            if (!safeRowId) return false;
+            if (taskCustomerOutreachSelectedRowIds.has(safeRowId)) taskCustomerOutreachSelectedRowIds.delete(safeRowId);
+            else taskCustomerOutreachSelectedRowIds.add(safeRowId);
+            taskCustomerOutreachOpen = true;
+            scheduleTasksRender(0, 0, true);
+            return false;
+        }
+
+        function setTaskCustomerOutreachRowsSelected(selected = true) {
+            const { tabItems, itemsByLocation, locationRowsByBlock } = buildResolvedTaskState({ skipSelectorSync: true });
+            const eligibleRows = getTaskCustomerOutreachScopeRows(tabItems, itemsByLocation, locationRowsByBlock).filter(hasTaskCustomerOutreachPhoto);
+            taskCustomerOutreachSelectedRowIds = selected ? new Set(eligibleRows.map(getTaskCustomerOutreachRowId).filter(Boolean)) : new Set();
+            taskCustomerOutreachOpen = true;
+            scheduleTasksRender(0, 0, true);
+            return false;
+        }
+
+        async function sendTaskCustomerOutreachEmails() {
+            if (!canUseCustomerConsigneeOutreach()) {
+                showToast('Restricted', 'Only Dylan, JD, or Kayla can send Customer / Consignee emails.', true);
+                return false;
+            }
+            if (taskCustomerOutreachSendBusy) return false;
+            const safeCustomer = normalizeTaskCustomerFilterValue(activeTaskCustomerFilter);
+            if (safeCustomer === 'all') {
+                showToast('Select Customer', 'Choose a customer name in Task CUST before sending.', true);
+                return false;
+            }
+            const { tabItems, itemsByLocation, locationRowsByBlock } = buildResolvedTaskState({ skipSelectorSync: true });
+            const scopeRows = getTaskCustomerOutreachScopeRows(tabItems, itemsByLocation, locationRowsByBlock);
+            const selectedRows = getTaskCustomerOutreachSelectedRows(scopeRows);
+            if (!selectedRows.length) {
+                showToast('Select Rows', 'Pick at least one row with a photo.', true);
+                return false;
+            }
+            const repGroups = getTaskCustomerOutreachRepGroups(selectedRows, safeCustomer);
+            if (!repGroups.length) {
+                showToast('No Sales Reps', 'No sales reps matched this customer in v2_reserves.', true);
+                return false;
+            }
+            taskCustomerOutreachSendBusy = true;
+            taskCustomerOutreachOpen = true;
+            scheduleTasksRender(0, 0, true);
+            try {
+                const brandLabel = getDriveCustomerOutreachEmailBrandLabel();
+                const customerLabel = getTaskCustomerOutreachCustomerLabel();
+                const sourceLabel = 'Task CUST';
+                let sentCount = 0;
+                for (const group of repGroups) {
+                    const recipientEmails = dedupeRequestEmailRecipients([group.repEmail, ...REQUEST_EMAIL_INTERNAL_RECIPIENTS]);
+                    const customerPayload = group.cards.map((card) => ({
+                        customername: card.customerName,
+                        consigneename: card.consigneeName,
+                        label: card.label,
+                        rows: card.rows.length,
+                        qty: card.qty,
+                        has_qty: !!card.hasQty,
+                        qty_label: getDriveCustomerOutreachCustomerQtyLabel(card)
+                    }));
+                    const itemPayload = buildDriveCustomerOutreachItemsPayload(group.sourceRows);
+                    const subject = `${brandLabel} - ${customerLabel} - ${group.sourceRows.length} Photo Row${group.sourceRows.length === 1 ? '' : 's'}`;
+                    const payload = {
+                        type: 'email',
+                        emailType: 'drive_customer_outreach',
+                        brandLabel,
+                        fromName: brandLabel,
+                        subject,
+                        repName: group.repName,
+                        salesRepName: group.repName,
+                        repEmail: group.repEmail,
+                        salesRepEmail: group.repEmail,
+                        dylanEmail: REQUEST_EMAIL_INTERNAL_RECIPIENTS[0],
+                        jdEmail: REQUEST_EMAIL_INTERNAL_RECIPIENTS[1],
+                        internalRecipients: REQUEST_EMAIL_INTERNAL_RECIPIENTS.slice(),
+                        recipientEmails,
+                        recipients: recipientEmails.map((email) => ({ email, role: email === group.repEmail ? 'sales-rep' : 'internal' })),
+                        commonname: customerLabel,
+                        itemcode: `${group.sourceRows.length} rows`,
+                        season: '',
+                        sourceLabel,
+                        customers: customerPayload,
+                        customerConsigneeRows: customerPayload,
+                        sourceRows: itemPayload,
+                        items: itemPayload,
+                        formattedItemsText: buildTaskCustomerOutreachEmailText(group.cards, group.sourceRows, { customerLabel }),
+                        formattedItemsHtml: buildTaskCustomerOutreachEmailHtml(group.cards, group.sourceRows, { customerLabel })
+                    };
+                    const responseData = await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Task CUST Customer Outreach Email');
+                    if (responseData && responseData.ok === false) {
+                        const error = new Error(`Email failed (${responseData.status || 0})`);
+                        error.responseData = responseData;
+                        throw error;
+                    }
+                    sentCount += 1;
+                }
+                showToast('Sent', `Sent ${sentCount} rep email${sentCount === 1 ? '' : 's'} with Dylan and JD copied.`);
+            } catch (error) {
+                console.error('Task CUST customer outreach email failed', error);
+                showToast('Email Error', 'Task CUST customer email could not be sent.', true);
+            } finally {
+                taskCustomerOutreachSendBusy = false;
+                scheduleTasksRender(0, 0, true);
+            }
+            return false;
+        }
+
         function resolveDetailItemBySource(uid, sourceView = '') {
             const normalizedSourceView = String(sourceView || '').trim();
             const normalizedUid = String(uid || '').trim();
@@ -59610,13 +59911,18 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return;
             }
 
+            const buildTaskCustomerOutreachPrefix = (scopeRows = tabItems) => activeTaskTab === 'cust'
+                ? renderTaskCustomerOutreachPanel(scopeRows)
+                : '';
+
             if (taskViewLevel === 0) {
                 renderMarkupChunkedByKey('tasks-blocks', container, null, blockRows, '', (blockRow) => {
                     return `<div class="bg-white border border-green-200 rounded-xl shadow-sm mb-3 p-4 flex justify-between items-center cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('openTaskBlockView', [blockRow.blockAlpha], 'Open block ' + blockRow.blockAlpha)}><div class="flex items-center gap-3"><div class="bg-green-100 text-[#007a4d] px-3 py-1.5 rounded-lg font-black text-lg">${blockRow.blockAlpha}</div><span class="font-bold text-lg text-gray-700">Block ${blockRow.blockAlpha}</span></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg">${blockRow.count} Items</span></div>`;
-                }, { approxCardHeight: 88, emptyHtml: `<div class="p-8 text-center text-gray-400">No task blocks found.</div>` });
+                }, { prefixHtml: buildTaskCustomerOutreachPrefix(tabItems), approxCardHeight: 88, emptyHtml: `<div class="p-8 text-center text-gray-400">No task blocks found.</div>` });
             } else if (taskViewLevel === 1) {
                 const locRows = locationRowsByBlock.get(selectedTaskBlock) || [];
-                const prefixHtml = `<div class="back-btn" ${buildFastInvokeAttrs('backToTaskBlockList', [], 'Back to Blocks')}><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>`;
+                const blockScopeRows = getTaskCustomerOutreachScopeRows(tabItems, itemsByLocation, locationRowsByBlock);
+                const prefixHtml = `<div class="back-btn" ${buildFastInvokeAttrs('backToTaskBlockList', [], 'Back to Blocks')}><i class="ph-bold ph-arrow-left"></i> Back to Blocks</div>${buildTaskCustomerOutreachPrefix(blockScopeRows)}`;
                 renderMarkupChunkedByKey('tasks-locations', container, null, locRows, '', (locationRow) => {
                     return `<div class="drill-item" ${buildFastInvokeAttrs('openTaskLocationView', [locationRow.locationCode], 'Open location ' + locationRow.locationCode)}><span class="font-bold text-lg text-gray-800">${locationRow.locationCode} <span class="text-gray-400 text-sm font-normal">(${locationRow.count})</span></span><i class="ph-bold ph-caret-right text-gray-300"></i></div>`;
                 }, { prefixHtml, approxCardHeight: 72, emptyHtml: `<div class="p-8 text-center text-gray-400">No locations found for this block.</div>` });
@@ -59624,7 +59930,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const locationItems = shouldRenderTaskLocationDetailFilters
                     ? taskLocationDetailItems
                     : (itemsByLocation.get(selectedTaskLoc) || []);
-                const prefixHtml = `<div class="back-btn" ${buildFastInvokeAttrs('backToTaskLocationList', [], 'Back to Locations')}><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>`;
+                const prefixHtml = `<div class="back-btn" ${buildFastInvokeAttrs('backToTaskLocationList', [], 'Back to Locations')}><i class="ph-bold ph-arrow-left"></i> Back to Locations</div>${buildTaskCustomerOutreachPrefix(locationItems)}`;
                 const renderRow = (item) => generateCard(item, 'tasks', getTaskRowColorClass(item, activeTaskTab));
                 const emptyHtml = shouldRenderTaskLocationDetailFilters && hasActiveTaskLocationDetailFilters()
                     ? `<div class="p-8 text-center text-gray-400">No rows match current filters.</div>`
