@@ -375,6 +375,7 @@ def run() -> int:
     history_force = env_bool("WEATHER_HISTORY_FORCE", False)
     history_max_chunks = env_int("WEATHER_HISTORY_MAX_CHUNKS", 0)
     refresh_limit = env_int("HOLD_WEATHER_REFRESH_LIMIT", 2000)
+    history_refresh_limit = env_int("HOLD_HISTORY_REFRESH_LIMIT", 100000)
 
     started = time.time()
     supabase = SupabaseRest(supabase_url, supabase_key)
@@ -424,6 +425,19 @@ def run() -> int:
     daily_upserted = supabase.upsert("v2_weather_daily", daily_rows, on_conflict="unique_id")
     print(f"Upserted {upserted} hourly weather rows.")
     print(f"Upserted {daily_upserted} daily weather rows.")
+
+    try:
+        history_refreshed = supabase.rpc(
+            "v2_refresh_hold_learning_from_drive_around_rows",
+            {"p_limit": history_refresh_limit},
+        )
+        print(f"Refreshed Drive Around hold learning from v2_drive_around_report_rows: {history_refreshed}")
+    except RuntimeError as exc:
+        message = str(exc)
+        missing_rpc = "PGRST202" in message or "Could not find the function" in message or "does not exist" in message
+        if not missing_rpc:
+            raise
+        print("Drive Around row-history hold learning RPC is not installed yet; skipping row-history refresh.")
 
     refreshed = supabase.rpc("v2_refresh_hold_learning_weather_features", {"p_limit": refresh_limit})
     print(f"Refreshed hold weather features: {refreshed}")

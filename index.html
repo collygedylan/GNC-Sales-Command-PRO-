@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.18.04';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.18.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -30878,6 +30878,7 @@ function toggleDriveQuickRequestItem(domId) {
             holdCycles: [],
             inventorySearch: '',
             inventoryContsize: '',
+            inventoryVisibleCount: 240,
             inventoryDrillLevel: 'items',
             selectedInventoryItemKey: ''
         };
@@ -30940,6 +30941,7 @@ function toggleDriveQuickRequestItem(domId) {
             activeTab: 'drive',
             driveSearch: '',
             driveContsize: '',
+            driveVisibleCount: 240,
             driveDrillLevel: 'items',
             selectedDriveItemKey: '',
             drillLevel: 'blocks',
@@ -30964,6 +30966,7 @@ function toggleDriveQuickRequestItem(domId) {
             productionWorkflowState.activeTab = 'drive';
             productionWorkflowState.driveSearch = '';
             productionWorkflowState.driveContsize = '';
+            productionWorkflowState.driveVisibleCount = 240;
             productionWorkflowState.driveDrillLevel = 'items';
             productionWorkflowState.selectedDriveItemKey = '';
             productionWorkflowState.drillLevel = 'blocks';
@@ -31092,7 +31095,6 @@ function toggleDriveQuickRequestItem(domId) {
             const seen = new Set();
             return rows.filter((row) => {
                 if (!row || typeof row !== 'object') return false;
-                if (typeof hasCompletionDateValue === 'function' && hasCompletionDateValue(row)) return false;
                 const sourceUid = getProductionWorkflowSourceUid(row);
                 if (!sourceUid || seen.has(sourceUid)) return false;
                 seen.add(sourceUid);
@@ -31141,6 +31143,7 @@ function toggleDriveQuickRequestItem(domId) {
             productionWorkflowState[safeField] = String(value || '').trim();
             productionWorkflowState.driveDrillLevel = 'items';
             productionWorkflowState.selectedDriveItemKey = '';
+            productionWorkflowState.driveVisibleCount = 240;
             if (safeField === 'driveSearch') {
                 if (productionWorkflowFilterTimer) clearTimeout(productionWorkflowFilterTimer);
                 productionWorkflowFilterTimer = setTimeout(() => {
@@ -31156,6 +31159,12 @@ function toggleDriveQuickRequestItem(domId) {
                 }, 120);
                 return false;
             }
+            renderProductionWorkflowPanel();
+            return false;
+        }
+
+        function showMoreProductionWorkflowDriveItems() {
+            productionWorkflowState.driveVisibleCount = Math.min(10000, Math.max(240, Number(productionWorkflowState.driveVisibleCount) || 240) + 240);
             renderProductionWorkflowPanel();
             return false;
         }
@@ -31345,6 +31354,8 @@ function toggleDriveQuickRequestItem(domId) {
             const groups = groupProductionWorkflowItems(rows);
             const meta = PRODUCTION_WORKFLOW_META[productionWorkflowActive] || {};
             const showingRows = productionWorkflowState.driveDrillLevel === 'rows' && !!String(productionWorkflowState.selectedDriveItemKey || '').trim();
+            const visibleCount = Math.max(240, Math.min(groups.length, Number(productionWorkflowState.driveVisibleCount) || 240));
+            const visibleGroups = groups.slice(0, visibleCount);
             const contsizeOptions = getProductionWorkflowContsizeOptions();
             const contsizeHtml = `<option value="">All Sizes</option>${contsizeOptions.map((size) => `<option value="${escapeHtml(size)}" ${productionWorkflowState.driveContsize === size ? 'selected' : ''}>${escapeHtml(size)}</option>`).join('')}`;
             const bodyHtml = showingRows
@@ -31353,10 +31364,10 @@ function toggleDriveQuickRequestItem(domId) {
                     return `<div class="mb-3 flex items-center justify-between gap-2"><button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return backProductionWorkflowItems()"><i class="ph-bold ph-arrow-left"></i> Items</button><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">${escapeHtml(String(selectedRows.length))} Drive Mode rows</div></div>${selectedRows.length ? selectedRows.map(renderProductionWorkflowDriveRowCard).join('') : `<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No ${escapeHtml(meta.title || 'workflow')} rows match this item anymore.</div>`}`;
                 })()
                 : (groups.length
-                    ? groups.slice(0, 140).map(renderProductionWorkflowItemCard).join('')
+                    ? visibleGroups.map(renderProductionWorkflowItemCard).join('')
                     : `<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No Drive Mode items match these filters.</div>`);
-            const moreHtml = !showingRows && groups.length > 140
-                ? `<div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Showing 140 of ${escapeHtml(String(groups.length))} item cards. Search common name or choose a size to narrow it down.</div>`
+            const moreHtml = !showingRows && groups.length > visibleGroups.length
+                ? `<button type="button" class="w-full rounded-xl border border-emerald-200 bg-white px-4 py-3 text-center text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return showMoreProductionWorkflowDriveItems()">Show More Items (${escapeHtml(String(visibleGroups.length))} of ${escapeHtml(String(groups.length))})</button>`
                 : '';
             return `<div class="space-y-3">
                 <div class="rounded-2xl border border-green-200 bg-emerald-50/40 p-3 shadow-sm">
@@ -32611,7 +32622,6 @@ function toggleDriveQuickRequestItem(domId) {
             const seen = new Set();
             return rows.filter((row) => {
                 if (!row || typeof row !== 'object') return false;
-                if (typeof hasCompletionDateValue === 'function' && hasCompletionDateValue(row)) return false;
                 const sourceUid = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, row.MASTER_UNIQUE_ID, row.master_unique_id, row.DOM_ID, '') || '').trim();
                 if (sourceUid && seen.has(sourceUid)) return false;
                 if (sourceUid) seen.add(sourceUid);
@@ -32632,6 +32642,7 @@ function toggleDriveQuickRequestItem(domId) {
             weatherHoldState[safeField] = String(value || '').trim();
             weatherHoldState.inventoryDrillLevel = 'items';
             weatherHoldState.selectedInventoryItemKey = '';
+            weatherHoldState.inventoryVisibleCount = 240;
             if (safeField === 'inventorySearch') {
                 if (weatherHoldInventoryFilterTimer) clearTimeout(weatherHoldInventoryFilterTimer);
                 weatherHoldInventoryFilterTimer = setTimeout(() => {
@@ -32647,6 +32658,12 @@ function toggleDriveQuickRequestItem(domId) {
                 }, 120);
                 return false;
             }
+            renderWeatherHold();
+            return false;
+        }
+
+        function showMoreWeatherHoldInventoryItems() {
+            weatherHoldState.inventoryVisibleCount = Math.min(10000, Math.max(240, Number(weatherHoldState.inventoryVisibleCount) || 240) + 240);
             renderWeatherHold();
             return false;
         }
@@ -32807,6 +32824,8 @@ function toggleDriveQuickRequestItem(domId) {
             const rows = getWeatherHoldInventoryFilteredRows();
             const groups = groupWeatherHoldInventoryCards(rows);
             const showingRows = weatherHoldState.inventoryDrillLevel === 'rows' && !!String(weatherHoldState.selectedInventoryItemKey || '').trim();
+            const visibleCount = Math.max(240, Math.min(groups.length, Number(weatherHoldState.inventoryVisibleCount) || 240));
+            const visibleGroups = groups.slice(0, visibleCount);
             const contsizeOptions = getWeatherHoldInventoryContsizeOptions();
             const contsizeHtml = `<option value="">All Sizes</option>${contsizeOptions.map((size) => `<option value="${escapeHtml(size)}" ${weatherHoldState.inventoryContsize === size ? 'selected' : ''}>${escapeHtml(size)}</option>`).join('')}`;
             const bodyHtml = showingRows
@@ -32815,10 +32834,10 @@ function toggleDriveQuickRequestItem(domId) {
                     return `<div class="mb-3 flex items-center justify-between gap-2"><button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]" onclick="return backWeatherHoldInventoryItems()"><i class="ph-bold ph-arrow-left"></i> Items</button><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">${escapeHtml(String(selectedRows.length))} Drive Mode rows</div></div>${selectedRows.length ? selectedRows.map(renderWeatherHoldInventoryRowCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No rows match this item anymore.</div>'}`;
                 })()
                 : (groups.length
-                    ? groups.slice(0, 160).map(renderWeatherHoldInventoryCard).join('')
+                    ? visibleGroups.map(renderWeatherHoldInventoryCard).join('')
                     : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No Drive Mode items match these filters.</div>');
-            const moreHtml = !showingRows && groups.length > 160
-                ? `<div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Showing 160 of ${escapeHtml(String(groups.length))} item cards. Search common name or choose a size to narrow it down.</div>`
+            const moreHtml = !showingRows && groups.length > visibleGroups.length
+                ? `<button type="button" class="w-full rounded-xl border border-emerald-200 bg-white px-4 py-3 text-center text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return showMoreWeatherHoldInventoryItems()">Show More Items (${escapeHtml(String(visibleGroups.length))} of ${escapeHtml(String(groups.length))})</button>`
                 : '';
             return `<section class="space-y-3">
                 <div class="flex flex-wrap items-end gap-2">
@@ -32832,6 +32851,7 @@ function toggleDriveQuickRequestItem(domId) {
                     </label>
                 </div>
                 ${!fullLoaded ? '<div class="rounded-xl border border-sky-100 bg-sky-50 px-3 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-sky-700">Loading full Drive Mode inventory...</div>' : ''}
+                ${!showingRows ? `<div class="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${escapeHtml(String(groups.length))} item card${groups.length === 1 ? '' : 's'} from ${escapeHtml(String(rows.length))} Drive Mode row${rows.length === 1 ? '' : 's'}</div>` : ''}
                 <div class="space-y-3">${bodyHtml}${moreHtml}</div>
             </section>`;
         }
@@ -32955,6 +32975,7 @@ function toggleDriveQuickRequestItem(domId) {
             driveSearch: '',
             driveShippingDays: 14,
             driveMinShipping: '',
+            driveVisibleCount: 240,
             driveDrillLevel: 'items',
             selectedDriveItemKey: '',
             drillLevel: 'blocks',
@@ -33656,6 +33677,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (['driveSeason', 'driveLotcode', 'driveSearch'].includes(safeField)) {
                 shearListState.driveDrillLevel = 'items';
                 shearListState.selectedDriveItemKey = '';
+                shearListState.driveVisibleCount = 240;
             }
             if (safeField === 'driveSearch') {
                 if (shearDriveFilterRenderTimer) clearTimeout(shearDriveFilterRenderTimer);
@@ -33670,6 +33692,12 @@ function toggleDriveQuickRequestItem(domId) {
                 }, 160);
                 return false;
             }
+            renderShearList();
+            return false;
+        }
+
+        function showMoreShearDriveItems() {
+            shearListState.driveVisibleCount = Math.min(10000, Math.max(240, Number(shearListState.driveVisibleCount) || 240) + 240);
             renderShearList();
             return false;
         }
@@ -33701,7 +33729,6 @@ function toggleDriveQuickRequestItem(domId) {
             const seen = new Set();
             return rows.filter((item) => {
                 if (!item) return false;
-                if (typeof hasCompletionDateValue === 'function' && hasCompletionDateValue(item)) return false;
                 const uid = getShearDriveRowUid(item);
                 if (uid && seen.has(uid)) return false;
                 if (uid) seen.add(uid);
@@ -34066,7 +34093,8 @@ function toggleDriveQuickRequestItem(domId) {
             const rows = getShearDriveFilteredRows();
             const itemGroups = groupShearDriveItemCards(rows);
             const showingItemRows = shearListState.driveDrillLevel === 'rows' && !!String(shearListState.selectedDriveItemKey || '').trim();
-            const limitedGroups = itemGroups.slice(0, 120);
+            const visibleCount = Math.max(240, Math.min(itemGroups.length, Number(shearListState.driveVisibleCount) || 240));
+            const limitedGroups = itemGroups.slice(0, visibleCount);
             const seasonHtml = `<option value="">All Seasons</option>${seasonOptions.map((season) => `<option value="${escapeHtml(season)}" ${shearListState.driveSeason === season ? 'selected' : ''}>${escapeHtml(season)}</option>`).join('')}`;
             const lotHtml = `<option value="">All Lots</option>${lotOptions.map((lot) => `<option value="${escapeHtml(lot)}" ${shearListState.driveLotcode === lot ? 'selected' : ''}>${escapeHtml(lot)}</option>`).join('')}`;
             const reserveNote = Array.isArray(reservesInventory) && reservesInventory.length
@@ -34078,7 +34106,7 @@ function toggleDriveQuickRequestItem(domId) {
                     ? limitedGroups.map(renderShearDriveItemCard).join('')
                     : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No Drive Mode items match these filters.</div>');
             const moreHtml = !showingItemRows && itemGroups.length > limitedGroups.length
-                ? `<div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">Showing ${limitedGroups.length} of ${itemGroups.length} item cards from ${rows.length} Drive Mode rows. Tighten search, season, lot, or shipping filters for faster picking.</div>`
+                ? `<button type="button" class="w-full rounded-xl border border-emerald-200 bg-white px-4 py-3 text-center text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return showMoreShearDriveItems()">Show More Items (${escapeHtml(String(limitedGroups.length))} of ${escapeHtml(String(itemGroups.length))})</button>`
                 : '';
             return `<div class="space-y-3">
                 <div class="rounded-2xl border border-lime-200 bg-lime-50/40 p-3 shadow-sm">
