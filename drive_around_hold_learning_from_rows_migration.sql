@@ -332,6 +332,8 @@ begin
     'hold_cycle_history_' || encode(digest(concat_ws('|',
       c.item_key,
       c.report_date::text,
+      coalesce(c.unique_id, ''),
+      coalesce(c.release_unique_id, ''),
       coalesce(c.file_id, ''),
       coalesce(c.release_file_id, ''),
       lower(coalesce(c.holdstopreason, ''))
@@ -800,6 +802,8 @@ begin
     'hold_cycle_history_' || encode(digest(concat_ws('|',
       c.item_key,
       c.report_date::text,
+      coalesce(c.unique_id, ''),
+      coalesce(c.release_unique_id, ''),
       coalesce(c.file_id, ''),
       coalesce(c.release_file_id, ''),
       lower(coalesce(c.holdstopreason, ''))
