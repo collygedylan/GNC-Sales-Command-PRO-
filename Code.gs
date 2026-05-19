@@ -91,6 +91,8 @@ const FOLDERS = {
   SOC_PROCESSED: '13hwbF-5wUDruKnjFujjtsyuyrPFgsqpo',
   RESERVES_DROP: '1Xiyp6WQGAF-4Tm-KwSwi9RsBqulFcSAG',
   RESERVES_PROCESSED: '1u4Vk5L92zmcXXT2qNWzImWTud73Bpole',
+  CUSTOMER_REP_DROP: '1Fgsu1Xnpt_SW9CneVh1gPOdTu338p5W8',
+  CUSTOMER_REP_PROCESSED: '1_62SsOENs5DSEU6JIyGi3ZsC3Z8IDGUd',
   CAV_DROP: '1K-y4thhw_iu2UEEZGRc39LzlpUZtcOBZ',
   CAV_PROCESSED: '1reWKO3GzeFhwsy_ot7Sjb2RPiFs448A5',
   DISEASE_ROOT: '1SpE0YA8Otu6otpjJULoJClBqk31Dv1wJ'
@@ -98,6 +100,7 @@ const FOLDERS = {
 
 const DISEASE_ASSET_BUCKET = 'disease_training_assets';
 const DISEASE_ASSET_TABLE = 'v2_disease_training_assets';
+const CUSTOMER_REP_MAP_TABLE = 'v2_customer_consignee_sales_reps';
 const DISEASE_PROCESSED_FOLDER_NAME = 'Processed';
 const DISEASE_SYNC_MAX_FILES_PER_RUN = 25;
 const DISEASE_SYNC_PROPERTY_PREFIX = 'DISEASE_SYNC_';
@@ -140,12 +143,13 @@ function runSOCOnly() { return processLatestFileOnlyFolder(FOLDERS.SOC_DROP, FOL
 function runDriveAroundOnly() { return processSnapshotBatchFolder(FOLDERS.MASTER_DROP, FOLDERS.MASTER_PROCESSED, 'v2_master_inventory', buildMasterPayload); }
 function runDriveAroundHistoryOnly() { return syncDriveAroundHistoricalFileIndex_({ parseRows: true }); }
 function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, 'v2_reserves', buildStandardPayload, { deltaMode: true }); }
+function runCustomerRepMapOnly() { return processLatestFileOnlyFolder(FOLDERS.CUSTOMER_REP_DROP, FOLDERS.CUSTOMER_REP_PROCESSED, CUSTOMER_REP_MAP_TABLE, buildCustomerRepMapPayload, { deltaMode: true, selectColumnsBuilder: getCustomerRepMapSelectColumns_ }); }
 function runCavOnly() { return processLatestFileOnlyFolder(FOLDERS.CAV_DROP, FOLDERS.CAV_PROCESSED, 'v2_cav_import', buildCavPayload, { deltaMode: true }); }
 function runDiseaseDriveToSupabaseSyncOnly() { return runDiseaseDriveToSupabaseSync(); }
 
 const MANUAL_SYNC_STATUS_KEY = 'MANUAL_SYNC_STATUS';
 const MANUAL_SYNC_TRIGGER_HANDLER = 'runQueuedManualSyncStage_';
-const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'cav', 'disease']);
+const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'customer_rep_map', 'cav', 'disease']);
 const MANUAL_SYNC_EXECUTION_BUDGET_MS = 285000;
 const MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS = 120000;
 const MANUAL_SYNC_QUEUED_STALE_MS = 5 * 60 * 1000;
@@ -223,6 +227,7 @@ function getAppLiveEventAreaForTable_(tableName) {
   if (safeTable === 'v2_master_inventory') return 'inventory';
   if (safeTable === 'v2_soc_master') return 'docks';
   if (safeTable === 'v2_reserves') return 'reserves';
+  if (safeTable === CUSTOMER_REP_MAP_TABLE) return 'customer-rep-map';
   if (safeTable === 'v2_cav_import') return 'av';
   if (safeTable === 'v2_disease_training_assets') return 'diagnostics';
   if (safeTable === DRIVE_AROUND_HISTORY_TABLE || safeTable === DRIVE_AROUND_HISTORY_ROW_TABLE || safeTable === 'v2_hold_release_cycles') return 'weather-hold';
@@ -305,6 +310,7 @@ const MANUAL_SYNC_STAGE_DEFINITIONS = Object.freeze({
   drive_history: { label: 'Drive Around History', run: runDriveAroundHistoryOnly },
   soc: { label: 'SOC', run: runSOCOnly },
   reserves: { label: 'Reserves', run: runReservesOnly },
+  customer_rep_map: { label: 'Customer Rep Map', run: runCustomerRepMapOnly },
   cav: { label: 'CAV', run: runCavOnly },
   disease: { label: 'Disease Lab Assets', run: runDiseaseDriveToSupabaseSyncOnly }
 });
@@ -1654,8 +1660,68 @@ function getCavPayloadSelectColumns_() {
   ];
 }
 
+const CUSTOMER_REP_MAP_COLUMNS = Object.freeze([
+  'customeridentityid', 'customername', 'customergroup', 'customergroupname',
+  'customeraddress_1', 'customeraddress_2', 'customercity', 'customerstate',
+  'customerzip', 'customercounty', 'customercountry', 'creditmanagerid',
+  'creditmanagername', 'customerstatus', 'sortname', 'requirepo', 'ediworequired',
+  'top10', 'mailings', 'majoracct', 'autoemail_inv', 'syninvoiceemail',
+  'termscode', 'termsdescription', 'delayed_due_1', 'delayed_due_2',
+  'tax_exempt_number', 'tax_exempt_date', 'combine_for_vip',
+  'customerpurchasediscount', 'discount_applies', 'discounttype',
+  'majorcommtype', 'groupapprovalrequired', 'edicustomer', 'edirollup',
+  'ackversion', 'delversion', 'invversion', 'creditstatus', 'creditrating',
+  'creditlimit', 'consigneegroup', 'consigneegroupname', 'consigneeid',
+  'consigneename', 'consigneeaddress_1', 'consigneeaddress_2', 'consigneecity',
+  'consigneestate', 'consigneezip', 'consigneecounty', 'consigneecountry',
+  'salesrepid', 'salesrepname', 'territorycode', 'territorydesc',
+  'cadisc_percent', 'custmajoracct', 'autoemailack', 'synemailack',
+  'consigneetype', 'storenumber', 'tagcode', 'qacode', 'consigneestatus',
+  'phfreightzone', 'txfreightzone', 'ncfreightzone', 'phpriceschedule',
+  'txpriceschedule', 'ncpriceschedule', 'taxcode', 'nsy_lic_no', 'nsy_lic_exp',
+  'generalloadinstr', 'okloadinst', 'txloadinst', 'ncloadinst',
+  'driverdirections', 'consigneedeliverynote', 'primarycontactid',
+  'primarycontactname', 'primarycontactphone', 'primarycontactcell',
+  'primarycontactfax', 'primarycontactemail', 'secondarycontactid',
+  'secondarycontactname', 'secondarycontactphone', 'secondarycontactcell',
+  'secondarycontactfax', 'secondarycontactemail', 'principalcontactid',
+  'principalcontactname', 'principalcontactphone', 'principalcontactcell',
+  'principalcontactfax', 'principalcontactemail', 'billingcontactid',
+  'billingcontactname', 'billingcontactphone', 'billingcontactcell',
+  'billingcontactfax', 'billingcontactemail', 'shippingcontactid',
+  'shippingcontactname', 'shippingcontactphone', 'shippingcontactcell',
+  'shippingcontactfax', 'shippingcontactemail', 'shipcontactcommentstring',
+  'cust_notes', 'sendstatements', 'emailstatements', 'statementsent'
+]);
+
+const CUSTOMER_REP_MAP_COLUMN_SET = new Set(CUSTOMER_REP_MAP_COLUMNS);
+
+function normalizeCustomerRepMapColumnKey_(header) {
+  const raw = String(header || '').trim();
+  const upper = raw.toUpperCase().replace(/\s+/g, '');
+  const specialMap = {
+    'TAX_EXEMPT_#': 'tax_exempt_number',
+    'TAXEXEMPT#': 'tax_exempt_number',
+    'CADISC%': 'cadisc_percent',
+    'CADISC_PERCENT': 'cadisc_percent'
+  };
+  if (specialMap[upper]) return specialMap[upper];
+  return raw
+    .toLowerCase()
+    .replace(/%/g, '_percent')
+    .replace(/#/g, '_number')
+    .replace(/[^a-z0-9_]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+}
+
+function getCustomerRepMapSelectColumns_() {
+  return ['unique_id', 'row_hash'];
+}
+
 function getPayloadSelectColumns_(tableName, rawData) {
   if (tableName === 'v2_master_inventory') return getMasterPayloadSelectColumns_(rawData);
+  if (tableName === CUSTOMER_REP_MAP_TABLE) return getCustomerRepMapSelectColumns_();
   if (tableName === 'v2_cav_import') return getCavPayloadSelectColumns_();
   return getStandardPayloadSelectColumns_(rawData);
 }
@@ -2950,6 +3016,90 @@ function buildStandardPayload(rawData, tableName, existingRows, syncStartTime, f
     }
     stats.unchangedRows++;
   }
+
+  return { upserts, seenIds, totalRows, stats };
+}
+
+function buildCustomerRepMapPayload(rawData, tableName, existingRows, syncStartTime, fileName) {
+  const rawHeaders = Array.isArray(rawData) && Array.isArray(rawData[0]) ? rawData[0].map(function(header) { return String(header || '').trim(); }) : [];
+  const normalizedHeaders = rawHeaders.map(normalizeCustomerRepMapColumnKey_);
+  const getIdx = function(columnName) {
+    return normalizedHeaders.indexOf(String(columnName || '').trim().toLowerCase());
+  };
+  const customerIdIdx = getIdx('customeridentityid');
+  const customerNameIdx = getIdx('customername');
+  const consigneeIdIdx = getIdx('consigneeid');
+  const consigneeNameIdx = getIdx('consigneename');
+  const salesRepIdIdx = getIdx('salesrepid');
+  const salesRepNameIdx = getIdx('salesrepname');
+  const territoryIdx = getIdx('territorycode');
+
+  const upserts = [];
+  const seenIds = new Set();
+  const existingMap = buildExistingRowMap_(existingRows);
+  const stats = createDeltaSyncStats_();
+  stats.sourceRows = Math.max(0, (rawData.length || 1) - 1);
+  let totalRows = 0;
+  const stagedRows = {};
+
+  for (let i = 1; i < rawData.length; i++) {
+    const row = rawData[i] || [];
+    const customerName = customerNameIdx > -1 ? String(row[customerNameIdx] || '').trim() : '';
+    const consigneeName = consigneeNameIdx > -1 ? String(row[consigneeNameIdx] || '').trim() : '';
+    const salesRepName = salesRepNameIdx > -1 ? String(row[salesRepNameIdx] || '').trim() : '';
+    if (!customerName && !consigneeName && !salesRepName) {
+      stats.skippedRows++;
+      continue;
+    }
+    totalRows++;
+    stats.validIdentityRows++;
+
+    const identityParts = [
+      customerIdIdx > -1 ? row[customerIdIdx] : '',
+      customerName,
+      consigneeIdIdx > -1 ? row[consigneeIdIdx] : '',
+      consigneeName,
+      salesRepIdIdx > -1 ? row[salesRepIdIdx] : '',
+      salesRepName,
+      territoryIdx > -1 ? row[territoryIdx] : ''
+    ].map(function(value) { return String(value || '').trim(); });
+    const identitySource = identityParts.join('|') || `${fileName}|${i}`;
+    const identityDigest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, identitySource, Utilities.Charset.UTF_8);
+    const uniqueId = 'cust_rep_' + Utilities.base64EncodeWebSafe(identityDigest).replace(/=+$/g, '').slice(0, 48);
+    const obj = {
+      unique_id: uniqueId,
+      filename: fileName,
+      source_file_name: fileName,
+      source_row_number: i + 1,
+      imported_at: syncStartTime,
+      updated_at: syncStartTime
+    };
+    for (let c = 0; c < normalizedHeaders.length; c++) {
+      const key = normalizedHeaders[c];
+      if (!CUSTOMER_REP_MAP_COLUMN_SET.has(key)) continue;
+      const value = String(row[c] || '').trim();
+      obj[key] = (value === '' || value.toUpperCase() === 'NULL') ? null : value;
+    }
+    obj.row_hash = buildRowSyncHash_(obj, ['imported_at', 'updated_at']);
+    stagedRows[uniqueId] = obj;
+  }
+
+  Object.keys(stagedRows).forEach(function(uniqueId) {
+    const obj = stagedRows[uniqueId];
+    seenIds.add(uniqueId);
+    const existingRow = existingMap[uniqueId];
+    if (!existingRow) {
+      stats.insertedRows++;
+      upserts.push(obj);
+      return;
+    }
+    if (String(existingRow.row_hash || existingRow.ROW_HASH || '').trim() !== String(obj.row_hash || '').trim()) {
+      stats.changedRows++;
+      upserts.push(obj);
+      return;
+    }
+    stats.unchangedRows++;
+  });
 
   return { upserts, seenIds, totalRows, stats };
 }

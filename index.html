@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.18.19';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.18.20';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -3343,10 +3343,11 @@ const QUOTA_SAFE_DIRECT_REALTIME_VIEW_IDS = new Set(['chat', 'communication', 'r
 const LIVE_SYNC_POLL_STANDALONE_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_POLL_STANDALONE_MS : 60000;
 const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_POLL_BROWSER_MS : 90000;
         const APP_LIVE_EVENT_VIEW_AREAS = Object.freeze({
-            home: ['request', 'sales-office', 'tasks', 'diagnostics', 'grower', 'production', 'sales-inventory', 'shear-list', 'take-back'],
-            drive: ['inventory', 'av', 'reserves', 'request', 'sales-office'],
-            tasks: ['tasks', 'request', 'sales-office', 'diagnostics', 'grower'],
-            reports: ['request'],
+            home: ['request', 'sales-office', 'tasks', 'diagnostics', 'grower', 'production', 'sales-inventory', 'shear-list', 'take-back', 'customer-rep-map'],
+            drive: ['inventory', 'av', 'reserves', 'request', 'sales-office', 'customer-rep-map'],
+            tasks: ['tasks', 'request', 'sales-office', 'diagnostics', 'grower', 'customer-rep-map'],
+            request: ['request', 'customer-rep-map'],
+            reports: ['request', 'customer-rep-map'],
             'sales-office': ['sales-office'],
             moves: ['sales-office'],
             'take-back': ['take-back'],
@@ -3362,7 +3363,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             'sales-inventory': ['sales-inventory', 'inventory'],
             production: ['production', 'inventory'],
             'production-workflow': ['production', 'inventory'],
-            sales: ['request', 'docks', 'av', 'sales-office', 'inventory', 'reserves'],
+            sales: ['request', 'docks', 'av', 'sales-office', 'inventory', 'reserves', 'customer-rep-map'],
             qc: ['docks', 'inventory'],
             office: ['sales-office'],
             inventory: ['sales-inventory', 'sales-office', 'production'],
@@ -4422,6 +4423,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
             if (safeTable === GROWER_SCOUT_REPORTS_TABLE || safeTable === GROWER_SCOUT_ASSETS_TABLE) return 'grower';
             if (safeTable === 'v2_master_inventory') return 'inventory';
             if (safeTable === 'v2_reserves') return 'reserves';
+            if (safeTable === 'v2_customer_consignee_sales_reps') return 'customer-rep-map';
             if (safeTable === 'v2_soc_master') return 'docks';
             if (safeTable === 'v2_cav_import' || safeTable === 'v2_view_av_hot_price_keys' || safeTable === 'v2_av_notes') return 'av';
             if (safeTable === 'v2_dock_team_status' || safeTable === 'v2_dock_item_status' || safeTable === 'v2_dock_issue_status' || safeTable === 'v2_dock_issue_allocations') return 'docks';
@@ -4440,7 +4442,7 @@ const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_
 
         function getAppLiveEventDatasetKeys(tableName = '', eventRow = null) {
             const safeTable = String(tableName || '').trim();
-            if (safeTable === 'manual_sync') return ['master', 'avOpen', 'soc', 'reserves', 'cav', 'cavAvBlankKeys', 'salesOffice', 'avHotPriceKeys'];
+            if (safeTable === 'manual_sync') return ['master', 'avOpen', 'soc', 'reserves', 'customerRepMap', 'cav', 'cavAvBlankKeys', 'salesOffice', 'avHotPriceKeys'];
             const tableKeys = getDatasetKeysForTable(safeTable);
             if (tableKeys.length) return tableKeys;
             const payload = normalizeAppLiveEventPayload(eventRow && (eventRow.payload || eventRow.PAYLOAD));
@@ -13753,6 +13755,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 requestsData: buildCacheRows(requestsInventory),
                 requestHistoryData: buildCacheRows(requestHistoryInventory),
                 reservesData: inlineReserveRows,
+                customerRepMapData: buildCacheRows(customerRepMapRows),
                 socData: buildCacheRows(socInventory),
                 salesOfficeData: buildCacheRows(salesOfficeInventory),
                 flyerFolderRowsData: buildCacheRows(flyerFolderInventory),
@@ -13788,6 +13791,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 requests: { initialLoaded: hasRows(cachedRes.requestsData), fullLoaded: false },
                 requestHistory: { initialLoaded: hasRows(cachedRes.requestHistoryData), fullLoaded: false },
                 reserves: { initialLoaded: hasRows(cachedRes.reservesData), fullLoaded: false },
+                customerRepMap: { initialLoaded: hasRows(cachedRes.customerRepMapData), fullLoaded: hasRows(cachedRes.customerRepMapData) },
                 soc: { initialLoaded: hasRows(cachedRes.socData), fullLoaded: false },
                 salesOffice: { initialLoaded: hasRows(cachedRes.salesOfficeData), fullLoaded: false },
                 flyerRows: { initialLoaded: hasRows(cachedRes.flyerFolderRowsData), fullLoaded: false },
@@ -13946,6 +13950,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
                 requests: createDatasetLoadEntry(),
                 requestHistory: createDatasetLoadEntry(),
                 reserves: createDatasetLoadEntry(),
+                customerRepMap: createDatasetLoadEntry(),
                 soc: createDatasetLoadEntry(),
                 salesOffice: createDatasetLoadEntry(),
                 flyerRows: createDatasetLoadEntry(),
@@ -13958,7 +13963,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             };
         }
 
-        let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let mlImageJobsInventory=[]; let growerScoutReportsInventory=[]; let growerScoutAssetsInventory=[]; let cavInventory=[]; let cavAvBlankKeyInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={}; let diagnosticIssueCardTabs=new Map();
+        let fullInventory=[]; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let customerRepMapRows=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let mlImageJobsInventory=[]; let growerScoutReportsInventory=[]; let growerScoutAssetsInventory=[]; let cavInventory=[]; let cavAvBlankKeyInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={}; let diagnosticIssueCardTabs=new Map();
 let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null; let chatVoiceHoldPointerId=''; let chatVoiceHoldForComposer=false; let chatVoiceHoldFinishPending=''; let chatVoiceHoldStartPromise=null;
 let walkieChannels=[]; let walkieChannelMembers=[]; let walkieCalls=[]; let walkieCallMembers=[]; let walkieUsers=[]; let walkieSignalsSeen=new Set(); let walkieDataLoaded=false; let walkieLoadPromise=null; let walkieSchemaReady=null; let walkieSchemaProbePromise=null; let walkieSchemaWarningShown=false; let activeWalkieChannelId=''; let pendingWalkieOpenChannelId=''; let pendingWalkieOpenCallId=''; let walkieComposeOpen=false; let walkieUserSearchTerm=''; let walkieComposeTitle=''; let walkieSelectedUsers=new Set(); let walkieLastRenderSignature=''; let walkieDeviceId=''; let activeWalkieCallId=''; let walkieJoinedCallId=''; let walkieActiveMembershipId=''; let walkiePeerConnections=new Map(); let walkieRemoteAudioElements=new Map(); let walkieLocalStream=null; let walkieHeartbeatTimer=null; let walkieSpeakerHeartbeatTimer=null; let walkieReconnectTimer=null; let walkieActiveSpeakerIntent=false; let walkiePressedPointerId=''; let walkieForegroundNoticeShown=false;
         let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let requestHistoryInventoryById=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let flyerFolderHistoryInventoryById=new Map(); let mlImageJobsInventoryById=new Map(); let growerScoutReportsInventoryById=new Map(); let growerScoutAssetsByReportId=new Map(); let cavInventoryById=new Map(); let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map(); let ncrCurrentCropInheritancePatchIds=new Set();
@@ -15122,6 +15127,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             requests: { table: 'v2_active_request', sourceTable: 'v2_active_request', initialQuery: 'select=*&order=unique_id.desc', fullQuery: 'select=*&order=unique_id.desc' },
             requestHistory: { table: REQUEST_HISTORY_TABLE, sourceTable: 'v2_active_request', initialQuery: () => `select=${REQUEST_HISTORY_SELECT_FIELDS}&order=updated_at.desc`, fullQuery: () => `select=${REQUEST_HISTORY_SELECT_FIELDS}&order=updated_at.desc` },
             reserves: { table: 'v2_reserves', sourceTable: 'v2_reserves', initialQuery: buildReserveDatasetQuery, fullQuery: buildReserveDatasetQuery, initialLimit: getReserveDatasetInitialLimit },
+            customerRepMap: { table: 'v2_customer_consignee_sales_reps', sourceTable: 'v2_customer_consignee_sales_reps', initialQuery: 'select=unique_id,customername,consigneename,salesrepname,salesrepid,customeridentityid,consigneeid,territorycode,territorydesc&order=customername.asc', fullQuery: 'select=unique_id,customername,consigneename,salesrepname,salesrepid,customeridentityid,consigneeid,territorycode,territorydesc&order=customername.asc', initialFetchAll: true },
             soc: { table: 'v2_soc_master', sourceTable: 'v2_soc_master', initialQuery: 'select=*', fullQuery: 'select=*' },
             salesOffice: { table: 'v2_sales_office', sourceTable: 'v2_sales_office', initialQuery: 'select=*', fullQuery: 'select=*' },
             flyerRows: { table: FLYER_FOLDER_ROWS_TABLE, sourceTable: FLYER_FOLDER_ROWS_TABLE, initialQuery: () => `select=${FLYER_FOLDER_ROW_SELECT_FIELDS}&order=created_at.desc`, fullQuery: () => `select=${FLYER_FOLDER_ROW_SELECT_FIELDS}&order=created_at.desc` },
@@ -16132,6 +16138,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (key === 'requests') return { requestsData: formatted };
             if (key === 'requestHistory') return { requestHistoryData: formatted };
             if (key === 'reserves') return { reservesData: formatted };
+            if (key === 'customerRepMap') return { customerRepMapData: formatted };
             if (key === 'soc') return { socData: formatted };
             if (key === 'salesOffice') return { salesOfficeData: formatted };
             if (key === 'flyerRows') return { flyerFolderRowsData: formatted };
@@ -16267,6 +16274,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         }
                     } else if (key === 'flyerRows' && isOptionalFlyerRowsMissingError(error)) rows = handleMissingOptionalFlyerRowsTable(error);
                     else if ((key === 'requestHistory' || key === 'flyerHistory') && isOptionalTableMissingError(error, definition.table)) rows = handleMissingOptionalHistoryTable(key, error);
+                    else if (key === 'customerRepMap' && isOptionalTableMissingError(error, definition.table)) rows = [];
                     else throw error;
                 }
                 if (shouldPauseInterruptibleRefresh(options)) {
@@ -16292,6 +16300,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     if (requestModalCustomerOptionsReady) buildRequestModalCustomerOptionsCache(true);
                     refreshRequestModalCustomerStepIfVisible();
                     persistUserScopedDatasetCache('reserves').catch(() => {});
+                } else if (key === 'customerRepMap') {
+                    const payload = buildDatasetPayload(key, rows);
+                    processAndLoadData(payload);
+                    requestModalCustomerOptionsCacheKey = '';
+                    requestModalCustomerOptionsReady = areRequestModalCustomerDatasetsReady();
+                    if (requestModalCustomerOptionsReady) buildRequestModalCustomerOptionsCache(true);
+                    refreshRequestModalCustomerStepIfVisible();
                 } else {
                     const payload = buildDatasetPayload(key, rows);
                     if (key === 'master' && !wantsFull && definition.mergeInitialRows === true && Array.isArray(payload.data)) {
@@ -20924,11 +20939,11 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getRequestModalCustomerOptionsCacheSignature() {
-            return `${resolvedViewStateEpoch}|${getDatasetLoadSignature('reserves')}`;
+            return `${resolvedViewStateEpoch}|${getDatasetLoadSignature('reserves')}|${getDatasetLoadSignature('customerRepMap')}`;
         }
 
         function areRequestModalCustomerDatasetsReady() {
-            return isDatasetLoaded('reserves', 'full');
+            return isDatasetLoaded('reserves', 'full') || isDatasetLoaded('customerRepMap', 'full');
         }
 
         function refreshRequestModalCustomerStepIfVisible() {
@@ -20960,6 +20975,28 @@ function toggleDriveQuickRequestItem(domId) {
             }).map((entry) => buildRequestModalCustomerSearchOption(entry.customerName, entry.consigneeName)).filter(Boolean);
         }
 
+        function getCustomerRepMapRepValue(row = null) {
+            return firstNonEmptyValue(row && row.SALESREPNAME, row && row.SALESREP, row && row.SALES_REP, row && row.SALESREPID, row && row.salesrepname, row && row.salesrepid, '');
+        }
+
+        function getCustomerRepMapCustomerValue(row = null) {
+            return firstNonEmptyValue(row && row.CUSTOMERNAME, row && row.CUSTOMER, row && row.customername, '');
+        }
+
+        function getCustomerRepMapConsigneeValue(row = null) {
+            return firstNonEmptyValue(row && row.CONSIGNEENAME, row && row.CONSIGNEE, row && row.consigneename, '');
+        }
+
+        function appendCustomerRepMapOption(optionMap, row = null) {
+            if (!optionMap || !row) return false;
+            const option = buildRequestModalCustomerSearchOption(getCustomerRepMapCustomerValue(row), getCustomerRepMapConsigneeValue(row));
+            if (!option) return false;
+            const optionKey = `${normalizeRepMatchToken(option.customerName)}|||${normalizeRepMatchToken(option.consigneeName)}|||${normalizeRepMatchToken(option.label)}`;
+            if (!optionKey || optionMap.has(optionKey)) return false;
+            optionMap.set(optionKey, option);
+            return true;
+        }
+
         function mergeRequestModalCustomerOptions() {
             const optionMap = new Map();
             Array.from(arguments).forEach((optionList) => {
@@ -20980,13 +21017,13 @@ function toggleDriveQuickRequestItem(domId) {
             const repBuckets = new Map();
             const appendRow = (item = null) => {
                 if (!item) return;
-                const repLabel = resolveCanonicalRequestRepName(firstNonEmptyValue(item.SALESREPNAME, item.SALESREP, item.SALES_REP, item.SALESREPID, ''));
+                const repLabel = resolveCanonicalRequestRepName(firstNonEmptyValue(item.SALESREPNAME, item.SALESREP, item.SALES_REP, item.SALESREPID, item.salesrepname, item.salesrepid, ''));
                 if (!repLabel) return;
                 const repKey = normalizeRepMatchToken(repLabel);
                 if (!repKey) return;
                 const option = buildRequestModalCustomerSearchOption(
-                    firstNonEmptyValue(item.CUSTOMERNAME, item.CUSTOMER, ''),
-                    firstNonEmptyValue(item.CONSIGNEENAME, item.CONSIGNEE, '')
+                    firstNonEmptyValue(item.CUSTOMERNAME, item.CUSTOMER, item.customername, ''),
+                    firstNonEmptyValue(item.CONSIGNEENAME, item.CONSIGNEE, item.consigneename, '')
                 );
                 if (!option) return;
                 if (!repBuckets.has(repKey)) repBuckets.set(repKey, new Map());
@@ -20995,6 +21032,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (!repMap.has(optionKey)) repMap.set(optionKey, option);
             };
             (reservesInventory || []).forEach(appendRow);
+            (customerRepMapRows || []).forEach(appendRow);
             const finalizedCache = new Map();
             repBuckets.forEach((optionMap, repKey) => {
                 finalizedCache.set(repKey, Array.from(optionMap.values()).sort((a, b) => String(a.label || '').localeCompare(String(b.label || ''))));
@@ -21017,8 +21055,9 @@ function toggleDriveQuickRequestItem(domId) {
             requestModalCustomerOptionsLoading = true;
             requestModalCustomerOptionsReady = areRequestModalCustomerDatasetsReady();
             requestModalCustomerOptionsError = '';
-            requestModalCustomerOptionsLoadPromise = Promise.all([
-                ensureDatasetLoaded('reserves', 'full')
+            requestModalCustomerOptionsLoadPromise = Promise.allSettled([
+                ensureDatasetLoaded('reserves', 'full'),
+                ensureDatasetLoaded('customerRepMap', 'full')
             ]).then(() => {
                 requestModalCustomerOptionsReady = areRequestModalCustomerDatasetsReady();
                 requestModalCustomerOptionsError = requestModalCustomerOptionsReady ? '' : 'Customer / consignee suggestions are still unavailable.';
@@ -21046,16 +21085,16 @@ function toggleDriveQuickRequestItem(domId) {
             const cachedOptions = Array.isArray(cache.get(repKey)) ? cache.get(repKey) : null;
             if (cachedOptions && cachedOptions.length) return mergeRequestModalCustomerOptions(cachedOptions, overrideOptions);
             const optionMap = new Map();
-            (reservesInventory || []).forEach((item) => {
+            const appendMatchingRow = (item) => {
                 const repValue = firstNonEmptyValue(item && item.SALESREPNAME, item && item.SALESREP, item && item.SALES_REP, item && item.SALESREPID, '');
                 if (!doesRequestRepMatchValue(repValue, canonicalRepName)) return;
-                const option = buildRequestModalCustomerSearchOption(
-                    firstNonEmptyValue(item && item.CUSTOMERNAME, item && item.CUSTOMER, ''),
-                    firstNonEmptyValue(item && item.CONSIGNEENAME, item && item.CONSIGNEE, '')
-                );
-                if (!option || !option.customerName) return;
-                const optionKey = `${normalizeRepMatchToken(option.customerName)}|||${normalizeRepMatchToken(option.consigneeName)}|||${normalizeRepMatchToken(option.label)}`;
-                if (optionKey && !optionMap.has(optionKey)) optionMap.set(optionKey, option);
+                appendCustomerRepMapOption(optionMap, item);
+            };
+            (reservesInventory || []).forEach(appendMatchingRow);
+            (customerRepMapRows || []).forEach((item) => {
+                const repValue = getCustomerRepMapRepValue(item);
+                if (!doesRequestRepMatchValue(repValue, canonicalRepName)) return;
+                appendCustomerRepMapOption(optionMap, item);
             });
             if (optionMap.size) {
                 const options = mergeRequestModalCustomerOptions(Array.from(optionMap.values()), overrideOptions);
@@ -23463,6 +23502,7 @@ function toggleDriveQuickRequestItem(domId) {
             const hasRequests = hasKey('requestsData');
             const hasRequestHistory = hasKey('requestHistoryData');
             const hasReserves = hasKey('reservesData');
+            const hasCustomerRepMap = hasKey('customerRepMapData');
             const hasSoc = hasKey('socData');
             const hasSalesOffice = hasKey('salesOfficeData');
             const hasFlyerRows = hasKey('flyerFolderRowsData');
@@ -23474,13 +23514,14 @@ function toggleDriveQuickRequestItem(domId) {
             const hasCavAvBlankKeys = hasKey('cavAvBlankKeysData');
             const hasAvHotPrice = hasKey('avHotPriceKeysData');
             const hasAvNotes = hasKey('avNotesData');
-            const didStructuralDataChange = hasMaster || hasAvOpen || hasRequests || hasRequestHistory || hasReserves || hasSoc || hasSalesOffice || hasFlyerRows || hasFlyerHistory || hasMlJobs || hasGrowerScoutReports || hasGrowerScoutAssets || hasCav || hasCavAvBlankKeys || hasAvHotPrice || hasAvNotes;
+            const didStructuralDataChange = hasMaster || hasAvOpen || hasRequests || hasRequestHistory || hasReserves || hasCustomerRepMap || hasSoc || hasSalesOffice || hasFlyerRows || hasFlyerHistory || hasMlJobs || hasGrowerScoutReports || hasGrowerScoutAssets || hasCav || hasCavAvBlankKeys || hasAvHotPrice || hasAvNotes;
             const changedDatasetKeys = [];
             if (hasMaster) changedDatasetKeys.push('master');
             if (hasAvOpen) changedDatasetKeys.push('avOpen');
             if (hasRequests) changedDatasetKeys.push('requests');
             if (hasRequestHistory) changedDatasetKeys.push('requestHistory');
             if (hasReserves) changedDatasetKeys.push('reserves');
+            if (hasCustomerRepMap) changedDatasetKeys.push('customerRepMap');
             if (hasSoc) changedDatasetKeys.push('soc');
             if (hasSalesOffice) changedDatasetKeys.push('salesOffice');
             if (hasFlyerRows) changedDatasetKeys.push('flyerRows');
@@ -23645,6 +23686,17 @@ function toggleDriveQuickRequestItem(domId) {
                 reservesInventory = canUseFastReserveWarm
                     ? buildReserveInventoryRowsFast(reserveSource)
                     : reserveSource.map((item,idx)=>hydrateReserveInventoryRow(item, idx));
+            }
+
+            if (hasCustomerRepMap) {
+                customerRepMapRows = (res.customerRepMapData || []).map((item, idx) => {
+                    if (!item) return null;
+                    item.DOM_ID = 'crm_' + (item.UNIQUE_ID || idx);
+                    return item;
+                }).filter(Boolean);
+                requestModalCustomerOptionsCacheKey = '';
+                requestModalCustomerOptionsReady = areRequestModalCustomerDatasetsReady();
+                if (requestModalCustomerOptionsReady) buildRequestModalCustomerOptionsCache(true);
             }
 
             if (hasCav) {
@@ -45477,7 +45529,51 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getTaskCustomerOutreachMatchingCardsForRow(row = null, customerFilterValue = activeTaskCustomerFilter) {
             const customerLabel = getTaskCustomerOutreachCustomerLabel();
-            return getDriveCustomerOutreachCustomerCards(row).filter((card) => isTaskCustomerOutreachCardMatch(card, customerFilterValue, customerLabel));
+            return mergeTaskCustomerOutreachCards(
+                getDriveCustomerOutreachCustomerCards(row).filter((card) => isTaskCustomerOutreachCardMatch(card, customerFilterValue, customerLabel)),
+                getCustomerRepMapCardsForCustomer(customerFilterValue, customerLabel)
+            );
+        }
+
+        function mergeTaskCustomerOutreachCards() {
+            const cardMap = new Map();
+            Array.from(arguments).forEach((cardList) => {
+                (Array.isArray(cardList) ? cardList : []).forEach((card) => {
+                    if (!card) return;
+                    const cardKey = card.key || [card.repName, card.customerName, card.consigneeName, card.label].map((value) => normalizeRepMatchToken(value)).join('||');
+                    if (!cardKey || cardMap.has(cardKey)) return;
+                    cardMap.set(cardKey, card);
+                });
+            });
+            return Array.from(cardMap.values());
+        }
+
+        function getCustomerRepMapCardsForCustomer(customerFilterValue = activeTaskCustomerFilter, customerLabel = getTaskCustomerOutreachCustomerLabel()) {
+            const cards = new Map();
+            (customerRepMapRows || []).forEach((row) => {
+                const customerName = String(getCustomerRepMapCustomerValue(row) || '').trim();
+                const consigneeName = String(getCustomerRepMapConsigneeValue(row) || '').trim();
+                const label = buildRequestCustomerValue(customerName, consigneeName) || customerName || consigneeName;
+                const repName = resolveCanonicalRequestRepName(getCustomerRepMapRepValue(row)) || String(getCustomerRepMapRepValue(row) || '').trim();
+                if (!label || !repName) return;
+                const card = {
+                    key: ['customer-map', repName, customerName, consigneeName, label].map((value) => normalizeRepMatchToken(value)).join('||'),
+                    repName,
+                    customerName,
+                    consigneeName,
+                    label,
+                    rows: [row],
+                    qty: 0,
+                    hasQty: false
+                };
+                if (!isTaskCustomerOutreachCardMatch(card, customerFilterValue, customerLabel)) return;
+                if (!cards.has(card.key)) cards.set(card.key, card);
+            });
+            return Array.from(cards.values()).sort((a, b) => {
+                const repCompare = String(a.repName || '').localeCompare(String(b.repName || ''), undefined, { sensitivity: 'base' });
+                if (repCompare) return repCompare;
+                return String(a.label || '').localeCompare(String(b.label || ''), undefined, { sensitivity: 'base' });
+            });
         }
 
         function getTaskCustomerOutreachRepGroups(rows = [], customerFilterValue = activeTaskCustomerFilter) {
@@ -45536,6 +45632,9 @@ function toggleDriveQuickRequestItem(domId) {
             if (activeTaskTab !== 'cust' || !canUseCustomerConsigneeOutreach()) return '';
             const safeCustomer = normalizeTaskCustomerFilterValue(activeTaskCustomerFilter);
             const customerLabel = getTaskCustomerOutreachCustomerLabel();
+            if (safeCustomer !== 'all' && !isDatasetLoaded('customerRepMap', 'full')) {
+                ensureDatasetLoaded('customerRepMap', 'full').then(() => scheduleTasksRender(40, 0, true)).catch(() => {});
+            }
             const eligibleRows = dedupeTaskCustomerOutreachRows(scopeRows).filter(hasTaskCustomerOutreachPhoto);
             syncTaskCustomerOutreachDefaultSelections(eligibleRows);
             const selectedRows = eligibleRows.filter((row) => taskCustomerOutreachSelectedRowIds.has(getTaskCustomerOutreachRowId(row)));
@@ -45569,7 +45668,7 @@ function toggleDriveQuickRequestItem(domId) {
             }).join('') || `<div class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-[12px] font-bold text-slate-400">No rows with photos are available in this Task CUST view.</div>`;
             const repHtml = safeCustomer === 'all'
                 ? `<div class="rounded-xl border border-dashed border-amber-200 bg-amber-50 px-4 py-4 text-[12px] font-bold text-amber-800">Choose a customer name before sending.</div>`
-                : (repGroups.map((group) => `<div class="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm"><div class="text-[12px] font-black text-slate-800">${esc(group.repName)}</div><div class="mt-0.5 text-[10px] font-bold text-slate-400">${esc(group.repEmail)}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]">${group.sourceRows.length} selected row${group.sourceRows.length === 1 ? '' : 's'} &bull; ${group.cards.length} customer/order match${group.cards.length === 1 ? '' : 'es'}</div></div>`).join('') || `<div class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-4 text-center text-[12px] font-bold text-slate-400">No sales reps matched this customer in v2_reserves.</div>`);
+                : (repGroups.map((group) => `<div class="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm"><div class="text-[12px] font-black text-slate-800">${esc(group.repName)}</div><div class="mt-0.5 text-[10px] font-bold text-slate-400">${esc(group.repEmail)}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]">${group.sourceRows.length} selected row${group.sourceRows.length === 1 ? '' : 's'} &bull; ${group.cards.length} customer/order match${group.cards.length === 1 ? '' : 'es'}</div></div>`).join('') || `<div class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-4 text-center text-[12px] font-bold text-slate-400">No sales reps matched this customer yet.</div>`);
             return `<div class="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm"><div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Task CUST Customer Send</div><div class="mt-1 text-lg font-black text-slate-900">${esc(customerLabel)}</div><div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700">${selectedCount}/${totalPhotoRows} photo rows selected &bull; ${repGroups.length} rep${repGroups.length === 1 ? '' : 's'} matched</div></div><button type="button" class="min-h-[40px] rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm active:scale-95" onclick="return toggleTaskCustomerOutreachPanel()">Hide</button></div><div class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(260px,0.85fr)]"><div><div class="mb-2 flex items-center justify-between gap-2"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Rows To Send</div><div class="flex gap-2"><button type="button" class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700" onclick="return setTaskCustomerOutreachRowsSelected(true)">All</button><button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return setTaskCustomerOutreachRowsSelected(false)">None</button></div></div><div class="grid grid-cols-1 gap-2">${rowHtml}</div></div><div><div class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Sales Reps</div><div class="grid grid-cols-1 gap-2">${repHtml}</div></div></div><button type="button" class="mt-4 w-full rounded-2xl px-4 py-3 text-[12px] font-black uppercase tracking-[0.14em] shadow-sm ${sendDisabled ? 'pointer-events-none bg-slate-200 text-slate-400' : 'bg-[#007a4d] text-white active:scale-[0.99]'}" onclick="return sendTaskCustomerOutreachEmails()">${taskCustomerOutreachSendBusy ? 'Sending...' : 'Send Selected Rows'}</button></div>`;
         }
 
@@ -45609,6 +45708,9 @@ function toggleDriveQuickRequestItem(domId) {
                 showToast('Select Customer', 'Choose a customer name in Task CUST before sending.', true);
                 return false;
             }
+            if (!isDatasetLoaded('customerRepMap', 'full')) {
+                await ensureDatasetLoaded('customerRepMap', 'full').catch(() => false);
+            }
             const { tabItems, itemsByLocation, locationRowsByBlock } = buildResolvedTaskState({ skipSelectorSync: true });
             const scopeRows = getTaskCustomerOutreachScopeRows(tabItems, itemsByLocation, locationRowsByBlock);
             const selectedRows = getTaskCustomerOutreachSelectedRows(scopeRows);
@@ -45618,7 +45720,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const repGroups = getTaskCustomerOutreachRepGroups(selectedRows, safeCustomer);
             if (!repGroups.length) {
-                showToast('No Sales Reps', 'No sales reps matched this customer in v2_reserves.', true);
+                showToast('No Sales Reps', 'No sales reps matched this customer in reserves or the customer master list.', true);
                 return false;
             }
             taskCustomerOutreachSendBusy = true;
