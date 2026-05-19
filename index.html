@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.18.16';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.18.17';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2311,6 +2311,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700"><i class="ph-bold ph-chat-circle-text text-2xl"></i></div>
                             <div class="text-lg font-black text-slate-900">Request</div>
                             <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Pending requests</div>
+                        </button>
+                        <button type="button" id="sales-open-bloom-orders" class="rounded-2xl border border-purple-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openSalesOfficeView()">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-purple-700"><i class="ph-bold ph-handbag text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Bloom Picker Orders</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Order review</div>
                         </button>
                         <button type="button" id="sales-open-tasks" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('tasks')">
                             <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-clipboard-text text-2xl"></i></div>
@@ -32302,8 +32307,8 @@ function toggleDriveQuickRequestItem(domId) {
                 { id: 'home-sales-open-docks', view: 'docks', icon: 'ph-truck', iconBg: 'bg-orange-50', iconColor: 'text-orange-700', title: 'Docks', subtitle: 'My orders and dock rows' },
                 { id: 'home-sales-open-communication', view: 'communication', icon: 'ph-chat-circle-dots', iconBg: 'bg-sky-50', iconColor: 'text-sky-700', title: 'Communication', subtitle: 'Chat, phone, email' },
                 { id: 'home-sales-open-request', view: 'request', icon: 'ph-chat-circle-text', iconBg: 'bg-blue-50', iconColor: 'text-blue-700', title: 'Request', subtitle: 'My pending requests' },
-                { id: 'home-sales-open-tasks', view: 'tasks', icon: 'ph-clipboard-text', iconBg: 'bg-emerald-50', iconColor: 'text-[#007a4d]', title: 'Task', subtitle: 'Assigned work' },
-                { id: 'home-sales-open-weather-hold', view: 'weather-hold', icon: 'ph-cloud-sun', iconBg: 'bg-sky-50', iconColor: 'text-sky-700', title: 'Weather & Hold Risk', subtitle: '10-year hourly history' }
+                { id: 'home-sales-open-weather-hold', view: 'weather-hold', icon: 'ph-cloud-sun', iconBg: 'bg-sky-50', iconColor: 'text-sky-700', title: 'Weather & Hold Risk', subtitle: '10-year hourly history' },
+                { id: 'home-sales-open-bloom-orders', view: 'sales-office', action: 'return openSalesOfficeView()', icon: 'ph-handbag', iconBg: 'bg-purple-50', iconColor: 'text-purple-700', title: 'Bloom Picker Orders', subtitle: 'Order review' }
             ];
             const cardsHtml = cards.map(renderSalesHubCardMarkup).filter(Boolean).join('');
             const bodyHtml = cardsHtml || '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No sales modules are available for this login.</div>';
@@ -32327,12 +32332,14 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function renderSalesHub() {
+            const access = getRoleAccessState();
             const visibleCount = [
                 setHubButtonVisibility('sales-open-av', canAccessView('av')),
                 setHubButtonVisibility('sales-open-docks', canAccessView('docks')),
                 setHubButtonVisibility('sales-open-communication', canAccessView('communication')),
                 setHubButtonVisibility('sales-open-request', canAccessView('request')),
-                setHubButtonVisibility('sales-open-tasks', canAccessView('tasks')),
+                setHubButtonVisibility('sales-open-bloom-orders', canAccessView('sales-office')),
+                setHubButtonVisibility('sales-open-tasks', canAccessView('tasks') && !access.isRep),
                 setHubButtonVisibility('sales-open-weather-hold', canAccessView('weather-hold'))
             ].filter(Boolean).length;
             const emptyState = document.getElementById('sales-empty-state');
