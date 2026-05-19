@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.18.21';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.19.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1983,10 +1983,10 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             <div class="flex flex-col gap-4">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                     <div id="bloom-order-reserve-picker" class="hidden md:col-span-2">
-                        <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">My Reserves Quick Filter</label>
-                        <input type="text" id="bloom-order-party-quick-filter" class="input-field border-green-200 !mb-0" placeholder="Choose a customer and consignee from My Reserves" list="bloom-order-party-options" oninput="handleBloomPickerReserveQuickPickInput()">
+                        <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer / Consignee Quick Pick</label>
+                        <input type="text" id="bloom-order-party-quick-filter" class="input-field border-green-200 !mb-0" placeholder="Choose a customer and consignee" list="bloom-order-party-options" oninput="handleBloomPickerReserveQuickPickInput()">
                         <datalist id="bloom-order-party-options"></datalist>
-                        <div id="bloom-order-reserve-picker-hint" class="mt-1 ml-1 text-[10px] font-semibold text-slate-400">Only this rep&apos;s My Reserves customer and consignee pairs appear here.</div>
+                        <div id="bloom-order-reserve-picker-hint" class="mt-1 ml-1 text-[10px] font-semibold text-slate-400">Customer and consignee pairs appear here when loaded.</div>
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 ml-1">Customer Name</label>
@@ -20960,7 +20960,7 @@ function toggleDriveQuickRequestItem(domId) {
         function buildRequestModalCustomerSearchOption(customer = '', consignee = '') {
             const customerName = String(customer || '').trim();
             const consigneeName = String(consignee || '').trim();
-            const label = String(customerName || consigneeName || '').trim();
+            const label = String(customerName ? buildRequestCustomerValue(customerName, consigneeName) : consigneeName || '').trim();
             if (!label) return null;
             return {
                 label,
@@ -21251,7 +21251,21 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getBloomPickerReserveFieldValue(item = {}, fields = []) {
-            return firstNonEmptyValue(...fields.map((field) => item && item[field]), '');
+            if (!item || typeof item !== 'object') return '';
+            const directValues = fields.map((field) => item && item[field]);
+            const directValue = firstNonEmptyValue(...directValues, '');
+            if (directValue) return directValue;
+            const keyLookup = {};
+            Object.keys(item || {}).forEach((key) => {
+                keyLookup[String(key || '').toLowerCase()] = key;
+            });
+            for (const field of fields) {
+                const matchedKey = keyLookup[String(field || '').toLowerCase()];
+                if (matchedKey && item[matchedKey] !== null && item[matchedKey] !== undefined && String(item[matchedKey]).trim() !== '') {
+                    return item[matchedKey];
+                }
+            }
+            return '';
         }
 
         function mergeBloomPickerMetaValue(currentValue = '', nextValue = '') {
@@ -21274,45 +21288,52 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getBloomPickerReservePartyOptions() {
-            if (!getRoleAccessState().isRep) return [];
+            const access = getRoleAccessState();
+            const shouldScopeToRep = !!(access && access.isRep && !access.isAdmin);
+            const currentRepName = currentUserDisplay || currentUser || '';
             const optionMap = new Map();
-            reservesInventory
-                .filter((item) => isMyRep(firstNonEmptyValue(item && item.SALESREPNAME, item && item.SALESREP, item && item.SALES_REP, item && item.SALESREPID, '')))
-                .forEach((item) => {
-                    const customerName = String(getBloomPickerReserveFieldValue(item, ['CUSTOMERNAME', 'CUSTOMER']) || '').trim();
-                    const consigneeName = String(getBloomPickerReserveFieldValue(item, ['CONSIGNEENAME', 'CONSIGNEE']) || '').trim();
-                    const resolvedCustomer = customerName || consigneeName;
-                    if (!resolvedCustomer) return;
-                    const key = buildBloomPickerReservePartyKey(resolvedCustomer, consigneeName);
-                    const existing = optionMap.get(key) || {
-                        key,
-                        customerName: resolvedCustomer,
-                        consigneeName,
-                        salesRepName: '',
-                        customerIdentityId: '',
-                        consigneeIdentityId: '',
-                        consigneeCity: '',
-                        consigneeState: '',
-                        consigneeZip: '',
-                        zoneCode: '',
-                        tagCode: '',
-                        consigneeAddress1: '',
-                        rowCount: 0
-                    };
-                    existing.customerName = firstNonEmptyValue(existing.customerName, resolvedCustomer, '');
-                    existing.consigneeName = firstNonEmptyValue(existing.consigneeName, consigneeName, '');
-                    existing.salesRepName = mergeBloomPickerMetaValue(existing.salesRepName, getBloomPickerReserveFieldValue(item, ['SALESREPNAME', 'SALESREP', 'SALES_REP', 'SALESREPID']));
-                    existing.customerIdentityId = mergeBloomPickerMetaValue(existing.customerIdentityId, getBloomPickerReserveFieldValue(item, ['CUSTOMERIDENTITYID', 'CUSTOMER_IDENTITY_ID', 'CUSTOMERID', 'CUSTOMER_ID']));
-                    existing.consigneeIdentityId = mergeBloomPickerMetaValue(existing.consigneeIdentityId, getBloomPickerReserveFieldValue(item, ['CONSIGNEEIDENTITYID', 'CONSIGNEE_IDENTITY_ID', 'CONSIGNEEID', 'CONSIGNEE_ID']));
-                    existing.consigneeCity = mergeBloomPickerMetaValue(existing.consigneeCity, getBloomPickerReserveFieldValue(item, ['CONSIGNEECITY', 'CITY']));
-                    existing.consigneeState = mergeBloomPickerMetaValue(existing.consigneeState, getBloomPickerReserveFieldValue(item, ['CONSIGNEESTATE', 'STATE']));
-                    existing.consigneeZip = mergeBloomPickerMetaValue(existing.consigneeZip, getBloomPickerReserveFieldValue(item, ['CONSIGNEEZIP', 'ZIPCODE', 'ZIP_CODE', 'ZIP']));
-                    existing.zoneCode = mergeBloomPickerMetaValue(existing.zoneCode, getBloomPickerReserveFieldValue(item, ['ZONECODE', 'ZONE_CODE']));
-                    existing.tagCode = mergeBloomPickerMetaValue(existing.tagCode, getBloomPickerReserveFieldValue(item, ['TAGCODE', 'TAG_CODE']));
-                    existing.consigneeAddress1 = mergeBloomPickerMetaValue(existing.consigneeAddress1, getBloomPickerReserveFieldValue(item, ['CONSIGNEEADDRESS_1', 'CONSIGNEEADDRESS1', 'ADDRESS_1', 'ADDRESS1']));
-                    existing.rowCount += 1;
-                    optionMap.set(key, existing);
-                });
+            const appendOption = (item = null, source = 'reserves') => {
+                if (!item) return;
+                const repValue = source === 'customer-map'
+                    ? getCustomerRepMapRepValue(item)
+                    : getBloomPickerReserveFieldValue(item, ['SALESREPNAME', 'SALESREP', 'SALES_REP', 'SALESREPID', 'salesrepname', 'salesrepid']);
+                if (shouldScopeToRep && !doesRequestRepMatchValue(repValue, currentRepName) && !isMyRep(repValue)) return;
+                const customerName = String(source === 'customer-map' ? getCustomerRepMapCustomerValue(item) : getBloomPickerReserveFieldValue(item, ['CUSTOMERNAME', 'CUSTOMER', 'customername', 'customer']) || '').trim();
+                const consigneeName = String(source === 'customer-map' ? getCustomerRepMapConsigneeValue(item) : getBloomPickerReserveFieldValue(item, ['CONSIGNEENAME', 'CONSIGNEE', 'consigneename', 'consignee']) || '').trim();
+                const resolvedCustomer = customerName || consigneeName;
+                if (!resolvedCustomer) return;
+                const key = buildBloomPickerReservePartyKey(resolvedCustomer, consigneeName);
+                const existing = optionMap.get(key) || {
+                    key,
+                    customerName: resolvedCustomer,
+                    consigneeName,
+                    salesRepName: '',
+                    customerIdentityId: '',
+                    consigneeIdentityId: '',
+                    consigneeCity: '',
+                    consigneeState: '',
+                    consigneeZip: '',
+                    zoneCode: '',
+                    tagCode: '',
+                    consigneeAddress1: '',
+                    rowCount: 0
+                };
+                existing.customerName = firstNonEmptyValue(existing.customerName, resolvedCustomer, '');
+                existing.consigneeName = firstNonEmptyValue(existing.consigneeName, consigneeName, '');
+                existing.salesRepName = mergeBloomPickerMetaValue(existing.salesRepName, repValue);
+                existing.customerIdentityId = mergeBloomPickerMetaValue(existing.customerIdentityId, getBloomPickerReserveFieldValue(item, ['CUSTOMERIDENTITYID', 'CUSTOMER_IDENTITY_ID', 'CUSTOMERID', 'CUSTOMER_ID', 'customeridentityid', 'customerid']));
+                existing.consigneeIdentityId = mergeBloomPickerMetaValue(existing.consigneeIdentityId, getBloomPickerReserveFieldValue(item, ['CONSIGNEEIDENTITYID', 'CONSIGNEE_IDENTITY_ID', 'CONSIGNEEID', 'CONSIGNEE_ID', 'consigneeidentityid', 'consigneeid']));
+                existing.consigneeCity = mergeBloomPickerMetaValue(existing.consigneeCity, getBloomPickerReserveFieldValue(item, ['CONSIGNEECITY', 'CITY', 'consigneecity', 'city']));
+                existing.consigneeState = mergeBloomPickerMetaValue(existing.consigneeState, getBloomPickerReserveFieldValue(item, ['CONSIGNEESTATE', 'STATE', 'consigneestate', 'state']));
+                existing.consigneeZip = mergeBloomPickerMetaValue(existing.consigneeZip, getBloomPickerReserveFieldValue(item, ['CONSIGNEEZIP', 'ZIPCODE', 'ZIP_CODE', 'ZIP', 'consigneezip', 'zipcode', 'zip']));
+                existing.zoneCode = mergeBloomPickerMetaValue(existing.zoneCode, getBloomPickerReserveFieldValue(item, ['ZONECODE', 'ZONE_CODE', 'PHFREIGHTZONE', 'TXFREIGHTZONE', 'NCFREIGHTZONE', 'zonecode', 'phfreightzone', 'txfreightzone', 'ncfreightzone']));
+                existing.tagCode = mergeBloomPickerMetaValue(existing.tagCode, getBloomPickerReserveFieldValue(item, ['TAGCODE', 'TAG_CODE', 'tagcode']));
+                existing.consigneeAddress1 = mergeBloomPickerMetaValue(existing.consigneeAddress1, getBloomPickerReserveFieldValue(item, ['CONSIGNEEADDRESS_1', 'CONSIGNEEADDRESS1', 'ADDRESS_1', 'ADDRESS1', 'consigneeaddress_1', 'consigneeaddress1', 'address_1', 'address1']));
+                existing.rowCount += 1;
+                optionMap.set(key, existing);
+            };
+            (reservesInventory || []).forEach((item) => appendOption(item, 'reserves'));
+            (customerRepMapRows || []).forEach((item) => appendOption(item, 'customer-map'));
             return [...optionMap.values()]
                 .map((option) => ({
                     ...option,
@@ -21359,13 +21380,17 @@ function toggleDriveQuickRequestItem(domId) {
             const quickInput = document.getElementById('bloom-order-party-quick-filter');
             const quickWrap = document.getElementById('bloom-order-reserve-picker');
             const hint = document.getElementById('bloom-order-reserve-picker-hint');
-            const isRep = getRoleAccessState().isRep;
-            if (quickWrap) quickWrap.classList.toggle('hidden', !isRep);
-            if (!isRep) {
+            const hasOptions = bloomPickerReservePartyOptions.length > 0;
+            const access = getRoleAccessState();
+            if (quickWrap) quickWrap.classList.toggle('hidden', !hasOptions);
+            if (!hasOptions) {
                 populateBloomPickerDatalist('bloom-order-party-options', []);
                 populateBloomPickerDatalist('bloom-order-customer-options', []);
                 populateBloomPickerDatalist('bloom-order-consignee-options', []);
                 if (quickInput) quickInput.value = '';
+                if (customerInput) customerInput.placeholder = 'Enter customer name';
+                if (consigneeInput) consigneeInput.placeholder = 'Enter consignee name';
+                if (hint) hint.textContent = 'No customer / consignee pairs are loaded yet. You can still type manually.';
                 return;
             }
             const customerToken = normalizeRepMatchToken(customerInput && customerInput.value);
@@ -21381,8 +21406,8 @@ function toggleDriveQuickRequestItem(domId) {
             if (consigneeInput) consigneeInput.placeholder = bloomPickerReservePartyOptions.length ? 'Choose or type consignee name' : 'Enter consignee name';
             if (hint) {
                 hint.textContent = bloomPickerReservePartyOptions.length
-                    ? `${bloomPickerReservePartyOptions.length} customer folder${bloomPickerReservePartyOptions.length === 1 ? '' : 's'} from this rep's My Reserves.`
-                    : 'No My Reserves customer folders are loaded for this rep yet. You can still type manually.';
+                    ? `${bloomPickerReservePartyOptions.length} customer / consignee pair${bloomPickerReservePartyOptions.length === 1 ? '' : 's'} loaded${access.isRep && !access.isAdmin ? ' for this rep' : ''}.`
+                    : 'No customer / consignee pairs are loaded yet. You can still type manually.';
             }
         }
 
@@ -21483,8 +21508,8 @@ function toggleDriveQuickRequestItem(domId) {
         function buildBloomPickerOrderMetaPayload(option = null, customer = '', consignee = '') {
             const payload = {
                 salesrepname: firstNonEmptyValue(option && option.salesRepName, getRoleAccessState().isRep ? (currentUserDisplay || currentUser || '') : '', ''),
-                customername: String(customer || '').trim(),
-                consigneename: String(consignee || '').trim(),
+                customername: String(firstNonEmptyValue(customer, option && option.customerName, '') || '').trim(),
+                consigneename: String(firstNonEmptyValue(consignee, option && option.consigneeName, '') || '').trim(),
                 customeridentityid: firstNonEmptyValue(option && option.customerIdentityId, ''),
                 consigneeidentityid: firstNonEmptyValue(option && option.consigneeIdentityId, ''),
                 consigneecity: firstNonEmptyValue(option && option.consigneeCity, ''),
@@ -21622,6 +21647,16 @@ function toggleDriveQuickRequestItem(domId) {
             bloomPickerFolderManuallyEdited = false;
             renderBloomPickerOrderList();
             loadBloomPickerReservePartyOptions();
+            Promise.allSettled([
+                ensureDatasetLoaded('reserves', 'full'),
+                ensureDatasetLoaded('customerRepMap', 'full')
+            ]).then(() => {
+                const modalEl = document.getElementById('bloom-picker-modal');
+                if (!modalEl || modalEl.classList.contains('hidden')) return;
+                loadBloomPickerReservePartyOptions();
+                syncBloomPickerReserveSelectionFromInputs();
+                syncBloomPickerFolderName(false);
+            }).catch(() => {});
             syncBloomPickerFolderName(true);
             const modal = document.getElementById('bloom-picker-modal');
             const listContainer = document.getElementById('bloom-picker-list-container');
@@ -21630,7 +21665,7 @@ function toggleDriveQuickRequestItem(domId) {
                 modal.scrollTop = 0;
             }
             if (listContainer) listContainer.scrollTop = 0;
-            const preferredInput = getRoleAccessState().isRep ? document.getElementById('bloom-order-party-quick-filter') : document.getElementById('bloom-order-customer');
+            const preferredInput = bloomPickerReservePartyOptions.length ? document.getElementById('bloom-order-party-quick-filter') : document.getElementById('bloom-order-customer');
             if (preferredInput) setTimeout(() => { try { preferredInput.focus(); } catch (e) {} }, 0);
             return false;
         }
@@ -21648,15 +21683,17 @@ function toggleDriveQuickRequestItem(domId) {
             const customer = String(customerInput && customerInput.value || '').trim();
             const consignee = String(consigneeInput && consigneeInput.value || '').trim();
             const selectedReserveParty = syncBloomPickerReserveSelectionFromInputs();
-            const orderMetaPayload = buildBloomPickerOrderMetaPayload(selectedReserveParty, customer, consignee);
-            const orderCustomer = buildBloomPickerOrderCustomerValue(customer, consignee, orderMetaPayload);
+            const resolvedCustomer = String(firstNonEmptyValue(customer, selectedReserveParty && selectedReserveParty.customerName, '') || '').trim();
+            const resolvedConsignee = String(firstNonEmptyValue(consignee, selectedReserveParty && selectedReserveParty.consigneeName, '') || '').trim();
+            const orderMetaPayload = buildBloomPickerOrderMetaPayload(selectedReserveParty, resolvedCustomer, resolvedConsignee);
+            const orderCustomer = buildBloomPickerOrderCustomerValue(resolvedCustomer, resolvedConsignee, orderMetaPayload);
             const orderNumber = String(orderInput && orderInput.value || '').trim();
             let folderName = String(folderInput && folderInput.value || '').trim();
             if (!orderCustomer) { showToast('Required', 'Enter the customer or consignee for this Bloom Picker order.', true); return false; }
             if (!orderNumber) { showToast('Required', 'Enter an order number before submitting.', true); return false; }
             if (!folderName) folderName = syncBloomPickerFolderName(true);
             if (!folderName) {
-                folderName = buildBloomPickerFolderName(customer, consignee);
+                folderName = buildBloomPickerFolderName(resolvedCustomer, resolvedConsignee);
                 if (folderInput) folderInput.value = folderName;
             }
             const schemaReady = await ensureSalesOfficeOrderColumnsReady(true);
@@ -54045,7 +54082,14 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             const options = getRequestModalCustomerOptionsForRep(tempSelectedReqRep);
             let html = options
                 .filter((option) => !val || String(option.searchToken || '').includes(val))
-                .map((option) => `<div class="bg-orange-50 text-orange-800 font-bold p-3 rounded-lg border border-orange-200 shadow-sm text-left cursor-pointer active:bg-orange-100 mb-2" ${buildFastInvokeAttrs('setCustomerInput', [option.label], 'Select customer ' + option.label)}>${option.label}</div>`)
+                .map((option) => {
+                    const primaryLabel = String(option.customerName || option.label || '').trim();
+                    const secondaryLabel = String(option.consigneeName || '').trim();
+                    const hasDistinctConsignee = secondaryLabel && normalizeRepMatchToken(secondaryLabel) !== normalizeRepMatchToken(primaryLabel);
+                    const combinedLabel = String(option.label || buildRequestCustomerValue(primaryLabel, secondaryLabel) || primaryLabel || secondaryLabel || '').trim();
+                    const secondaryHtml = hasDistinctConsignee ? `<div class="mt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-orange-500">${esc(secondaryLabel)}</div>` : '';
+                    return `<div class="bg-orange-50 text-orange-900 font-bold p-3 rounded-lg border border-orange-200 shadow-sm text-left cursor-pointer active:bg-orange-100 mb-2" ${buildFastInvokeAttrs('setCustomerInput', [combinedLabel], 'Select customer ' + combinedLabel)}><div class="text-sm font-black">${esc(primaryLabel || combinedLabel)}</div>${secondaryHtml}</div>`;
+                })
                 .join('');
             if (html === '') {
                 const hasOptions = options.length > 0;
