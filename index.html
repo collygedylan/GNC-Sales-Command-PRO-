@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.18.17';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.18.19';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -14961,15 +14961,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function getGlobalHeaderChromeState() {
             ensureGlobalHeaderSearchPlaceholders();
             const currentView = getCurrentVisibleViewId();
-            const isRepSalesHome = currentView === 'home' && shouldUseRepSalesHomeHub();
-            const baseMeta = isRepSalesHome
-                ? { eyebrow: 'Sales', title: 'Sales' }
-                : (AMAZON_HEADER_META[currentView] || { title: formatGlobalHeaderTitle(currentView) });
+            const baseMeta = AMAZON_HEADER_META[currentView] || { title: formatGlobalHeaderTitle(currentView) };
             const meta = currentView === 'moves' && activeMovesTab === 'office'
                 ? { eyebrow: 'Moves', title: 'Inventory Office' }
                 : baseMeta;
             const resolvedTitle = meta.title || formatGlobalHeaderTitle(currentView);
-            const showHomeBack = currentView === 'home' && !isRepSalesHome && (shouldShowHomeProductivityBackButton() || cartPanelOpen || bloomShareMenuOpen || bloomCropUpdateModalOpen);
+            const showHomeBack = currentView === 'home' && (shouldShowHomeProductivityBackButton() || cartPanelOpen || bloomShareMenuOpen || bloomCropUpdateModalOpen);
             const searchContainerId = currentView === 'tasks'
                 ? (shouldShowTaskHeaderSearch() ? GLOBAL_HEADER_SEARCH_CONFIG.tasks : '')
                 : GLOBAL_HEADER_SEARCH_CONFIG[currentView];
@@ -32301,27 +32298,36 @@ function toggleDriveQuickRequestItem(domId) {
             </button>`;
         }
 
-        function getRepSalesHomeHubHtml() {
+        function renderRepHomeDashboardTileMarkup(card = {}) {
+            if (!card || !canAccessView(card.view)) return '';
+            const id = card.id ? ` id="${escapeHtml(card.id)}"` : '';
+            const action = card.action || `return switchView('${escapeHtml(card.view)}')`;
+            return `<button type="button"${id} class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer min-h-[96px]" onclick="${action}">
+                <i class="ph-bold ${escapeHtml(card.icon || 'ph-square')} text-3xl text-[#007a4d]"></i>
+                <span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide text-center">${escapeHtml(card.title || '')}</span>
+            </button>`;
+        }
+
+        function getRepHomeDashboardHtml() {
             const cards = [
-                { id: 'home-sales-open-av', view: 'av', action: 'return openSalesAvModule()', icon: 'ph-notebook', iconBg: 'bg-teal-50', iconColor: 'text-teal-700', title: 'AV', subtitle: 'My reserve stock' },
-                { id: 'home-sales-open-docks', view: 'docks', icon: 'ph-truck', iconBg: 'bg-orange-50', iconColor: 'text-orange-700', title: 'Docks', subtitle: 'My orders and dock rows' },
-                { id: 'home-sales-open-communication', view: 'communication', icon: 'ph-chat-circle-dots', iconBg: 'bg-sky-50', iconColor: 'text-sky-700', title: 'Communication', subtitle: 'Chat, phone, email' },
-                { id: 'home-sales-open-request', view: 'request', icon: 'ph-chat-circle-text', iconBg: 'bg-blue-50', iconColor: 'text-blue-700', title: 'Request', subtitle: 'My pending requests' },
-                { id: 'home-sales-open-weather-hold', view: 'weather-hold', icon: 'ph-cloud-sun', iconBg: 'bg-sky-50', iconColor: 'text-sky-700', title: 'Weather & Hold Risk', subtitle: '10-year hourly history' },
-                { id: 'home-sales-open-bloom-orders', view: 'sales-office', action: 'return openSalesOfficeView()', icon: 'ph-handbag', iconBg: 'bg-purple-50', iconColor: 'text-purple-700', title: 'Bloom Picker Orders', subtitle: 'Order review' }
+                { id: 'home-sales-open-av', view: 'av', action: 'return openSalesAvModule()', icon: 'ph-notebook', title: 'AV' },
+                { id: 'home-sales-open-docks', view: 'docks', icon: 'ph-truck', title: 'Docks' },
+                { id: 'home-sales-open-communication', view: 'communication', icon: 'ph-chat-circle-dots', title: 'Communication' },
+                { id: 'home-sales-open-request', view: 'request', icon: 'ph-chat-circle-text', title: 'Request' },
+                { id: 'home-sales-open-weather-hold', view: 'weather-hold', icon: 'ph-cloud-sun', title: 'Weather & Hold Risk' },
+                { id: 'home-sales-open-bloom-orders', view: 'sales-office', action: 'return openSalesOfficeView()', icon: 'ph-handbag', title: 'Bloom Picker Orders' }
             ];
-            const cardsHtml = cards.map(renderSalesHubCardMarkup).filter(Boolean).join('');
-            const bodyHtml = cardsHtml || '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No sales modules are available for this login.</div>';
-            return `<div class="freeze-panel">
-                <div class="flex items-center justify-between gap-3 mb-3">
-                    <div>
-                        <div class="text-xs font-bold text-[#007a4d] uppercase tracking-[0.16em]">Sales</div>
-                        <div class="text-xl font-black text-slate-900">Sales</div>
-                    </div>
-                    <div class="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Hub</div>
-                </div>
-            </div>
-            <div class="grid gap-3 md:grid-cols-2">${bodyHtml}</div>`;
+            const cardsHtml = cards.map(renderRepHomeDashboardTileMarkup).filter(Boolean).join('');
+            return cardsHtml
+                ? `<div id="home-rep-dashboard-modules">
+                    <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
+                    <div id="home-rep-dashboard-grid" class="grid grid-cols-2 gap-3 mb-8">${cardsHtml}</div>
+                </div>`
+                : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No home modules are available for this login.</div>';
+        }
+
+        function getRepSalesHomeHubHtml() {
+            return getRepHomeDashboardHtml();
         }
 
         function openSalesAvModule() {
@@ -51507,10 +51513,10 @@ if (normalizedSourceView === 'review' || normalizedSourceView === 'move-up' || (
             if (shouldUseRepSalesHomeHub()) {
                 activeHomeTab = 'dashboard';
                 selectedProductivityUser = '';
-                if (dashboardHero) dashboardHero.classList.add('hidden');
+                if (dashboardHero) dashboardHero.classList.remove('hidden');
                 if (leafHomeLaunch) leafHomeLaunch.classList.add('hidden');
                 dashboardContent.classList.add('hidden');
-                dynamicContent.innerHTML = getRepSalesHomeHubHtml();
+                dynamicContent.innerHTML = getRepHomeDashboardHtml();
                 return;
             }
             if (dashboardHero) dashboardHero.classList.remove('hidden');
