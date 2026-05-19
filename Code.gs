@@ -143,7 +143,7 @@ function runSOCOnly() { return processLatestFileOnlyFolder(FOLDERS.SOC_DROP, FOL
 function runDriveAroundOnly() { return processSnapshotBatchFolder(FOLDERS.MASTER_DROP, FOLDERS.MASTER_PROCESSED, 'v2_master_inventory', buildMasterPayload); }
 function runDriveAroundHistoryOnly() { return syncDriveAroundHistoricalFileIndex_({ parseRows: true }); }
 function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, 'v2_reserves', buildStandardPayload, { deltaMode: true }); }
-function runCustomerRepMapOnly() { return processLatestFileOnlyFolder(FOLDERS.CUSTOMER_REP_DROP, FOLDERS.CUSTOMER_REP_PROCESSED, CUSTOMER_REP_MAP_TABLE, buildCustomerRepMapPayload, { deltaMode: true, selectColumnsBuilder: getCustomerRepMapSelectColumns_ }); }
+function runCustomerRepMapOnly() { return processLatestFileOnlyFolder(FOLDERS.CUSTOMER_REP_DROP, FOLDERS.CUSTOMER_REP_PROCESSED, CUSTOMER_REP_MAP_TABLE, buildCustomerRepMapPayload, { deltaMode: true, selectColumnsBuilder: getCustomerRepMapSelectColumns_, headerMatcher: isCustomerRepMapHeaderRow_ }); }
 function runCavOnly() { return processLatestFileOnlyFolder(FOLDERS.CAV_DROP, FOLDERS.CAV_PROCESSED, 'v2_cav_import', buildCavPayload, { deltaMode: true }); }
 function runDiseaseDriveToSupabaseSyncOnly() { return runDiseaseDriveToSupabaseSync(); }
 
@@ -1715,6 +1715,19 @@ function normalizeCustomerRepMapColumnKey_(header) {
     .replace(/^_|_$/g, '');
 }
 
+function isCustomerRepMapHeaderRow_(row) {
+  if (!Array.isArray(row)) return false;
+  const normalizedHeaders = row.map(normalizeCustomerRepMapColumnKey_).filter(Boolean);
+  if (!normalizedHeaders.length) return false;
+  const knownHeaderCount = normalizedHeaders.filter(function(header) {
+    return CUSTOMER_REP_MAP_COLUMN_SET.has(header);
+  }).length;
+  const hasCustomer = normalizedHeaders.indexOf('customername') !== -1 || normalizedHeaders.indexOf('customeridentityid') !== -1;
+  const hasConsignee = normalizedHeaders.indexOf('consigneename') !== -1 || normalizedHeaders.indexOf('consigneeid') !== -1;
+  const hasSalesRep = normalizedHeaders.indexOf('salesrepname') !== -1 || normalizedHeaders.indexOf('salesrepid') !== -1;
+  return knownHeaderCount >= 5 && hasCustomer && hasConsignee && hasSalesRep;
+}
+
 function getCustomerRepMapSelectColumns_() {
   return ['unique_id', 'row_hash'];
 }
@@ -2522,7 +2535,7 @@ function processLatestFileOnlyFolder(dropFolderId, processedFolderId, tableName,
 
   try {
     const syncStartTime = new Date().toISOString();
-    const rawData = extractDataFromFile(newestFile, dropFolderId);
+    const rawData = extractDataFromFile(newestFile, dropFolderId, options);
     if (!rawData || rawData.length < 1) {
       throw new Error(`No readable rows were found in ${newestFileName}.`);
     }
@@ -3339,10 +3352,11 @@ function cleanupTempGoogleSheet_(sheetId, fileName) {
   }
 }
 
-function extractDataFromFile(file, folderId) {
+function extractDataFromFile(file, folderId, options) {
   const mime = file.getMimeType();
   const originalFileName = String(file.getName() || '').trim();
   const normalizedFileName = originalFileName.toLowerCase();
+  const headerMatcher = options && typeof options.headerMatcher === 'function' ? options.headerMatcher : null;
   let allValues = [];
   let tempSheetId = '';
 
@@ -3368,7 +3382,12 @@ function extractDataFromFile(file, folderId) {
     }
 
     let headerRowIdx = -1;
-    for (let r = 0; r < Math.min(15, allValues.length); r++) {
+    const headerScanLimit = headerMatcher ? Math.min(50, allValues.length) : Math.min(15, allValues.length);
+    for (let r = 0; r < headerScanLimit; r++) {
+      if (headerMatcher && headerMatcher(allValues[r])) {
+        headerRowIdx = r;
+        break;
+      }
       let rowValues = allValues[r].map(cell => String(cell).toUpperCase().replace(/[^A-Z0-9]/g, ''));
       const isStandardInventoryHeader = rowValues.includes('ITEMCODE') || rowValues.includes('DOCK') || rowValues.includes('WAREHOUSEID');
       const isCavHeader = rowValues.includes('PRODUCTDESCRIPTION') && (rowValues.includes('ITEM') || rowValues.includes('AVAILABLE'));

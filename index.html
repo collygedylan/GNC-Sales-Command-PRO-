@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.05.18.20';
+        window.__APP_SHELL_VERSION__ = 'V2026.05.18.21';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -404,6 +404,7 @@ body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .
         #av-top-filters.av-top-inline [data-av-filter-shell="photo"]{order:4}
         #av-top-filters.av-top-inline [data-av-filter-shell="hold"]{order:5}
         #av-top-filters.av-top-inline [data-av-filter-shell="genus"]{order:6}
+        #av-top-filters.av-top-inline [data-av-filter-shell="customer"]{order:7}
         #av-top-filters.av-top-inline .task-top-control-shell{position:relative;height:100%;padding:.38rem .4rem;border-radius:1rem;min-width:0}
         #av-top-filters.av-top-inline .task-top-control-button{position:relative;min-height:46px;padding:.42rem .48rem;gap:.38rem;border-radius:999px}
         #av-top-filters.av-top-inline .task-top-control-button i{font-size:.82rem}
@@ -415,13 +416,15 @@ body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .
         #av-top-filters.av-top-inline [data-av-filter-shell="hold"] .task-top-control-panel,
         #av-top-filters.av-top-inline [data-av-filter-shell="season"] .task-top-control-panel,
         #av-top-filters.av-top-inline [data-av-filter-shell="genus"] .task-top-control-panel,
-        #av-top-filters.av-top-inline [data-av-filter-shell="contsize"] .task-top-control-panel{left:auto;right:0}
+        #av-top-filters.av-top-inline [data-av-filter-shell="contsize"] .task-top-control-panel,
+        #av-top-filters.av-top-inline [data-av-filter-shell="customer"] .task-top-control-panel{left:auto;right:0}
         #av-top-filters.av-top-inline [data-av-filter-shell="source"] .task-top-control-panel{width:min(14rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #av-top-filters.av-top-inline [data-av-filter-shell="photo"] .task-top-control-panel,
         #av-top-filters.av-top-inline [data-av-filter-shell="hold"] .task-top-control-panel{width:min(13rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #av-top-filters.av-top-inline [data-av-filter-shell="season"] .task-top-control-panel{width:min(14rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #av-top-filters.av-top-inline [data-av-filter-shell="genus"] .task-top-control-panel{width:min(17rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #av-top-filters.av-top-inline [data-av-filter-shell="contsize"] .task-top-control-panel{width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)))}
+        #av-top-filters.av-top-inline [data-av-filter-shell="customer"] .task-top-control-panel{width:min(20rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #av-top-filters.av-top-inline .av-filter-shell--toggle .task-top-control-button{justify-content:flex-start}
         body.viewport-compact #av-top-filters.av-top-inline .av-top-controls-row{grid-template-columns:repeat(3,minmax(0,1fr)) !important;gap:.36rem !important}
         body.viewport-compact #av-top-filters.av-top-inline .task-top-control-shell{padding:.36rem .34rem !important;border-radius:1rem !important}
@@ -14262,7 +14265,7 @@ const FIELD_SAVE_GRACE_MS = 1400;
         const VIEW_SWITCH_GRACE_MS = 480;
 
 let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='all'; let activeAvReserveDetailTab='customer'; let selectedAvReserveDetailCustomerKey=null;
-let selectedAvSeasons=new Set(['S1']); let avSeasonDefaultsInitialized=false; let avSourceDropdownOpen=false; let avSeasonDropdownOpen=false; let avGenusFilterOpen=false; let avContSizeFilterOpen=false; let avHoldDropdownOpen=false; let avPhotoDropdownOpen=false; let avSeasonSearchTerm=''; let selectedAvGenusNames=new Set(); let avGenusSearchTerm=''; let avGenusSelectionMode='all'; let selectedAvContSizes=new Set(); let avContSizeSearchTerm=''; let avContSizeSelectionMode='all'; let avHoldFilterMode='all'; let avHoldStopOnly=false; let avFilterItemsCache=[]; let avFilterGenusOptions=[]; let avFilterContSizeOptions=[]; let avPhotoOutreachMinSLts=''; let avPhotoOutreachSelectedRepKeys=new Set(); let avPhotoOutreachRepStateKey=''; let avPhotoOutreachSendBusy=false;
+let selectedAvSeasons=new Set(['S1']); let avSeasonDefaultsInitialized=false; let avSourceDropdownOpen=false; let avSeasonDropdownOpen=false; let avGenusFilterOpen=false; let avContSizeFilterOpen=false; let avHoldDropdownOpen=false; let avPhotoDropdownOpen=false; let avRepCustomerDropdownOpen=false; let avSeasonSearchTerm=''; let selectedAvGenusNames=new Set(); let avGenusSearchTerm=''; let avGenusSelectionMode='all'; let selectedAvContSizes=new Set(); let avContSizeSearchTerm=''; let avContSizeSelectionMode='all'; let selectedAvRepCustomerKey=''; let avRepCustomerSearchTerm=''; let avHoldFilterMode='all'; let avHoldStopOnly=false; let avFilterItemsCache=[]; let avFilterGenusOptions=[]; let avFilterContSizeOptions=[]; let avPhotoOutreachMinSLts=''; let avPhotoOutreachSelectedRepKeys=new Set(); let avPhotoOutreachRepStateKey=''; let avPhotoOutreachSendBusy=false;
 let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKeys=new Set(); let driveCustomerOutreachSelectedSourceRowIds=new Set(); let driveCustomerOutreachStateKey=''; let driveCustomerOutreachRecipientMode='selected'; let driveCustomerOutreachSelectedAllRepKeys=new Set(); let driveCustomerOutreachAllRepStateKey=''; let driveCustomerOutreachSendBusy=false; let driveCustomerOutreachReserveRows=[]; let driveCustomerOutreachReserveRowsKey=''; let driveCustomerOutreachReserveRowsLoadedKey=''; let driveCustomerOutreachReserveRowsLoading=false; let driveCustomerOutreachReserveRowsError=''; let driveCustomerOutreachReserveFetchToken=0;
 let taskCustomerOutreachOpen=false; let taskCustomerOutreachSelectedRowIds=new Set(); let taskCustomerOutreachStateKey=''; let taskCustomerOutreachSendBusy=false;
         let taskTeamSelectorCacheKey=''; let taskTeamSelectorCacheHtml=''; let taskTeamSelectorEmptyHtml='';
@@ -36606,6 +36609,10 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function shouldUseRepScopedAvView() {
+            return false;
+        }
+
+        function shouldShowRepAvCustomerFilter() {
             const access = getRoleAccessState();
             return !!(access && access.isRep && !access.isAdmin);
         }
@@ -36656,10 +36663,10 @@ function toggleDriveQuickRequestItem(domId) {
         function handleAVSearch() { const term=document.getElementById('av-search').value.toLowerCase(); const clearBtn=document.getElementById('av-search-clear'); if(term.length>0){clearBtn.classList.remove('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; selectedAvReserveDetailCustomerKey=null; avOpenLevel=0;} else{clearBtn.classList.add('hidden'); avResLevel=0; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; selectedAvReserveDetailCustomerKey=null; avOpenLevel=0;} scheduleTrackedSearchViewRender('av', 'av', term); }
 
         function resetAVView(shouldRender = true) {
-            activeAVTab=shouldUseRepScopedAvView() ? 'reserves' : 'open'; activeAvOpenTab='name'; activeAvHotPriceTab='all';
+            activeAVTab='open'; activeAvOpenTab='name'; activeAvHotPriceTab='all';
             avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; activeAvReserveMode='all'; activeAvReserveDetailTab='customer'; selectedAvReserveDetailCustomerKey=null;
             avOpenLevel=0; selectedAvOpenName=null; selectedAvOpenSize=null; selectedAvOpenSeason=null; selectedAvOpenLot=null;
-            selectedAvSeasons = getDefaultAvSeasonSelectionSet(); avSeasonDefaultsInitialized = true; avSourceDropdownOpen = false; avSeasonDropdownOpen = false; avHoldDropdownOpen = false; avPhotoDropdownOpen = false; avSeasonSearchTerm = ''; selectedAvGenusNames = new Set(); avGenusSearchTerm = ''; avGenusFilterOpen = false; avGenusSelectionMode = 'all'; selectedAvContSizes = new Set(); avContSizeSearchTerm = ''; avContSizeFilterOpen = false; avContSizeSelectionMode = 'all'; avHoldFilterMode = 'all'; avHoldStopOnly = false; avFilterItemsCache = []; avFilterGenusOptions = []; avFilterContSizeOptions = []; avResolvedBaseStateKey = ''; avResolvedBaseStateCache = null;
+            selectedAvSeasons = getDefaultAvSeasonSelectionSet(); avSeasonDefaultsInitialized = true; avSourceDropdownOpen = false; avSeasonDropdownOpen = false; avHoldDropdownOpen = false; avPhotoDropdownOpen = false; avRepCustomerDropdownOpen = false; selectedAvRepCustomerKey = ''; avRepCustomerSearchTerm = ''; avSeasonSearchTerm = ''; selectedAvGenusNames = new Set(); avGenusSearchTerm = ''; avGenusFilterOpen = false; avGenusSelectionMode = 'all'; selectedAvContSizes = new Set(); avContSizeSearchTerm = ''; avContSizeFilterOpen = false; avContSizeSelectionMode = 'all'; avHoldFilterMode = 'all'; avHoldStopOnly = false; avFilterItemsCache = []; avFilterGenusOptions = []; avFilterContSizeOptions = []; avResolvedBaseStateKey = ''; avResolvedBaseStateCache = null;
             document.getElementById('tab-av-open').classList.toggle('active', activeAVTab === 'open'); document.getElementById('tab-av-hotprice').classList.remove('active'); document.getElementById('tab-av-reserves').classList.toggle('active', activeAVTab === 'reserves');
             syncAvSecondaryTabs();
             document.getElementById('av-search').value=""; document.getElementById('av-search-clear').classList.add('hidden');
@@ -36667,7 +36674,9 @@ function toggleDriveQuickRequestItem(domId) {
         }
         function setAVTab(tab) {
             lastViewSwitchAt = Date.now();
-            const nextTab = shouldUseRepScopedAvView() ? 'reserves' : (tab === 'hotprice' || tab === 'reserves' ? tab : 'open');
+            const access = getRoleAccessState();
+            const requestedTab = tab === 'hotprice' || tab === 'reserves' ? tab : 'open';
+            const nextTab = access && access.isRep && !access.isAdmin && requestedTab === 'hotprice' ? 'open' : requestedTab;
             return runDirectTrackedNavigation('av', `av-tab:${nextTab}`, () => {
                 activeAVTab=nextTab;
                 avResLevel=0; selectedAvResRep=null; selectedAvResDriveUid=null; selectedAvResItemCode=null; selectedAvResName=null; selectedAvResSize=null; selectedAvResCustomerKey=null; activeAvReserveMode='all'; activeAvReserveDetailTab='customer'; selectedAvReserveDetailCustomerKey=null;
@@ -37960,6 +37969,7 @@ function toggleDriveQuickRequestItem(domId) {
         function getScopedAvReserveDemandItems(items = reservesInventory) {
             let nextItems = getScopedReservesItems(items);
             if (selectedAvResRep) nextItems = nextItems.filter((item) => isSelectedAvReserveRep(item, selectedAvResRep));
+            nextItems = filterAvReserveRowsBySelectedRepCustomer(nextItems);
             return Array.isArray(nextItems) ? nextItems : [];
         }
 
@@ -37976,6 +37986,7 @@ function toggleDriveQuickRequestItem(domId) {
                 currentUser || '',
                 currentUserDisplay || '',
                 selectedAvResRep || '',
+                selectedAvRepCustomerKey || '',
                 reserveRows.length
             ].join('|') : '';
             if (useDefaultItems && avReserveLocationRowsCacheKey === cacheKey && Array.isArray(avReserveLocationRowsCache)) {
@@ -38890,6 +38901,107 @@ function toggleDriveQuickRequestItem(domId) {
             return `${selectedCount} selected`;
         }
 
+        function getCurrentAvRepName() {
+            return resolveCanonicalRequestRepName(firstNonEmptyValue(currentUserDisplay, currentUser, ''))
+                || String(firstNonEmptyValue(currentUserDisplay, currentUser, '') || '').trim();
+        }
+
+        function getAvRepCustomerOptionKey(customerName = '', consigneeName = '') {
+            const customerToken = normalizeRepMatchToken(customerName);
+            const consigneeToken = normalizeRepMatchToken(consigneeName || customerName);
+            return customerToken ? `${customerToken}|||${consigneeToken || customerToken}` : '';
+        }
+
+        function buildAvRepCustomerOption(customerName = '', consigneeName = '') {
+            const cleanCustomer = String(customerName || '').trim();
+            const cleanConsignee = String(consigneeName || '').trim();
+            const label = buildRequestCustomerValue(cleanCustomer, cleanConsignee) || cleanCustomer || cleanConsignee;
+            const key = getAvRepCustomerOptionKey(cleanCustomer, cleanConsignee);
+            if (!key || !label) return null;
+            return {
+                key,
+                label,
+                customerName: cleanCustomer,
+                consigneeName: cleanConsignee,
+                searchToken: normalizeRepMatchToken(`${label} ${cleanCustomer} ${cleanConsignee}`)
+            };
+        }
+
+        function getAvRepCustomerOptions() {
+            if (!shouldShowRepAvCustomerFilter()) return [];
+            const repName = getCurrentAvRepName();
+            if (!repName) return [];
+            const optionMap = new Map();
+            const appendOption = (option = null) => {
+                if (!option || !option.key || optionMap.has(option.key)) return;
+                optionMap.set(option.key, option);
+            };
+            getRequestModalCustomerOptionsForRep(repName).forEach((option) => {
+                appendOption(buildAvRepCustomerOption(option && option.customerName, option && option.consigneeName));
+            });
+            getScopedReservesItems(reservesInventory).forEach((row) => {
+                appendOption(buildAvRepCustomerOption(
+                    firstNonEmptyValue(row && row.CUSTOMERNAME, row && row.CUSTOMER, ''),
+                    firstNonEmptyValue(row && row.CONSIGNEENAME, row && row.CONSIGNEE, '')
+                ));
+            });
+            (customerRepMapRows || []).forEach((row) => {
+                if (!doesRequestRepMatchValue(getCustomerRepMapRepValue(row), repName)) return;
+                appendOption(buildAvRepCustomerOption(getCustomerRepMapCustomerValue(row), getCustomerRepMapConsigneeValue(row)));
+            });
+            return [...optionMap.values()].sort((a, b) => String(a.label || '').localeCompare(String(b.label || ''), undefined, { sensitivity: 'base' }));
+        }
+
+        function getAvRepCustomerSummaryLabel(options = getAvRepCustomerOptions()) {
+            if (!shouldShowRepAvCustomerFilter()) return '';
+            if (!selectedAvRepCustomerKey) return 'All Customers';
+            const selectedOption = (Array.isArray(options) ? options : []).find((option) => option.key === selectedAvRepCustomerKey);
+            return selectedOption ? selectedOption.label : 'All Customers';
+        }
+
+        function getAvReserveRowCustomerOptionKey(row = null) {
+            return getAvRepCustomerOptionKey(
+                firstNonEmptyValue(row && row.CUSTOMERNAME, row && row.CUSTOMER, ''),
+                firstNonEmptyValue(row && row.CONSIGNEENAME, row && row.CONSIGNEE, '')
+            );
+        }
+
+        function filterAvReserveRowsBySelectedRepCustomer(rows = []) {
+            const sourceRows = Array.isArray(rows) ? rows : [];
+            if (!shouldShowRepAvCustomerFilter() || !selectedAvRepCustomerKey) return sourceRows;
+            return sourceRows.filter((row) => getAvReserveRowCustomerOptionKey(row) === selectedAvRepCustomerKey);
+        }
+
+        function buildAvReserveMatchPredicateForRows(reserveRows = []) {
+            const exactKeys = new Set();
+            const itemCodes = new Set();
+            const itemCodeOnlyMatches = new Set();
+            (Array.isArray(reserveRows) ? reserveRows : []).forEach((row) => {
+                const itemCode = getNormalizedAvReserveItemCode(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, ''));
+                if (!itemCode) return;
+                itemCodes.add(itemCode);
+                const lotCode = getNormalizedAvReserveLotCode(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, ''));
+                if (lotCode) exactKeys.add(buildAvReserveItemLotKey(itemCode, lotCode));
+                else itemCodeOnlyMatches.add(itemCode);
+            });
+            return (row = null) => {
+                const itemCode = getNormalizedAvReserveItemCode(firstNonEmptyValue(row && row.ITEMCODE, row && row.itemcode, ''));
+                if (!itemCode || !itemCodes.has(itemCode)) return false;
+                const lotCode = getNormalizedAvReserveLotCode(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, ''));
+                const exactKey = buildAvReserveItemLotKey(itemCode, lotCode);
+                return (!!exactKey && exactKeys.has(exactKey)) || itemCodeOnlyMatches.has(itemCode);
+            };
+        }
+
+        function filterAvOpenRowsBySelectedRepCustomer(rows = []) {
+            const sourceRows = Array.isArray(rows) ? rows : [];
+            if (!shouldShowRepAvCustomerFilter() || !selectedAvRepCustomerKey) return sourceRows;
+            const reserveRows = filterAvReserveRowsBySelectedRepCustomer(getScopedReservesItems(reservesInventory));
+            if (!reserveRows.length) return [];
+            const matchesSelectedCustomerReserve = buildAvReserveMatchPredicateForRows(reserveRows);
+            return sourceRows.filter(matchesSelectedCustomerReserve);
+        }
+
         function invalidateAvFilterSelectionCaches() {
             avResolvedBaseStateKey = '';
             avResolvedBaseStateCache = null;
@@ -38917,13 +39029,14 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function closeAvTopControlDropdowns(syncUi = true) {
-            const hadOpen = avSourceDropdownOpen || avSeasonDropdownOpen || avGenusFilterOpen || avContSizeFilterOpen || avHoldDropdownOpen || avPhotoDropdownOpen;
+            const hadOpen = avSourceDropdownOpen || avSeasonDropdownOpen || avGenusFilterOpen || avContSizeFilterOpen || avHoldDropdownOpen || avPhotoDropdownOpen || avRepCustomerDropdownOpen;
             avSourceDropdownOpen = false;
             avSeasonDropdownOpen = false;
             avGenusFilterOpen = false;
             avContSizeFilterOpen = false;
             avHoldDropdownOpen = false;
             avPhotoDropdownOpen = false;
+            avRepCustomerDropdownOpen = false;
             if (syncUi && hadOpen) renderAvTopControls(avFilterItemsCache);
             return false;
         }
@@ -38941,6 +39054,7 @@ function toggleDriveQuickRequestItem(domId) {
                 getDatasetLoadSignature('avOpen'),
                 getDatasetLoadSignature('reserves'),
                 getDatasetLoadSignature('avHotPriceKeys'),
+                selectedAvRepCustomerKey || '',
                 baseItems.length
             ].join('|');
             if (avSharedFilterOptionsCacheKey === cacheKey && avSharedFilterOptionsCache) {
@@ -39039,7 +39153,11 @@ function toggleDriveQuickRequestItem(domId) {
                 avContSizeFilterOpen ? '1' : '0',
                 avHoldDropdownOpen ? '1' : '0',
                 avPhotoDropdownOpen ? '1' : '0',
+                avRepCustomerDropdownOpen ? '1' : '0',
                 avHoldFilterMode,
+                shouldShowRepAvCustomerFilter() ? 'rep-customer' : 'no-rep-customer',
+                selectedAvRepCustomerKey || '',
+                String(avRepCustomerSearchTerm || '').trim().toLowerCase(),
                 [...selectedAvSeasons].sort().join('|'),
                 getOrderedAvSeasonOptions().join('|'),
                 String(avSeasonSearchTerm || '').trim().toLowerCase(),
@@ -39051,7 +39169,9 @@ function toggleDriveQuickRequestItem(domId) {
                 Array.isArray(state.sizeOptions) ? state.sizeOptions.join('|') : '',
                 String(state.seasonSelectedCount || 0),
                 String(state.genusSelectedCount || 0),
-                String(state.contSizeSelectedCount || 0)
+                String(state.contSizeSelectedCount || 0),
+                String(state.repCustomerCount || 0),
+                String(state.filteredRepCustomerCount || 0)
             ].forEach((value) => {
                 hash = updateRenderSignatureHash(hash, value);
             });
@@ -39079,7 +39199,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function ensureAvTopControlsShell(container) {
             if (!container) return false;
-            const shellSignature = 'av-top-controls-shell:v4';
+            const shellSignature = 'av-top-controls-shell:v5';
             if (container.dataset.avTopControlsShell === shellSignature) {
                 container.classList.add('av-top-inline');
                 container.classList.remove('hidden');
@@ -39149,6 +39269,17 @@ function toggleDriveQuickRequestItem(domId) {
                             <span class="flex min-w-0 flex-1 flex-col leading-none">
                                 <span class="task-top-control-title truncate">Rows</span>
                                 <span class="task-top-control-summary truncate" data-role="summary">All</span>
+                            </span>
+                            <i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i>
+                        </button>
+                        <div class="task-top-control-panel excel-filter-panel mt-2 hidden overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm" data-role="panel"><div data-role="body"></div></div>
+                    </div>
+                    <div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm hidden" data-av-filter-shell="customer">
+                        <button type="button" data-role="button" onclick="return toggleAvRepCustomerDropdown()">
+                            <i class="ph-bold ph-users-three text-sm"></i>
+                            <span class="flex min-w-0 flex-1 flex-col leading-none">
+                                <span class="task-top-control-title truncate">Customer</span>
+                                <span class="task-top-control-summary truncate" data-role="summary">All Customers</span>
                             </span>
                             <i class="ph-bold ph-caret-down text-xs opacity-70 transition-transform" data-role="caret"></i>
                         </button>
@@ -39491,10 +39622,21 @@ function toggleDriveQuickRequestItem(domId) {
             const contSizeSummary = getAvContSizeSummaryLabel(state.sizeOptions);
             const holdSummary = getAvHoldFilterSummary();
             const photoSummary = getAvPhotoSummaryLabel();
+            const repCustomerOptions = getAvRepCustomerOptions();
+            const repCustomerSummary = getAvRepCustomerSummaryLabel(repCustomerOptions);
+            const repCustomerSearchToken = normalizeRepMatchToken(avRepCustomerSearchTerm || '');
+            const filteredRepCustomerOptions = repCustomerSearchToken
+                ? repCustomerOptions.filter((option) => String(option.searchToken || '').includes(repCustomerSearchToken))
+                : repCustomerOptions;
+            state.repCustomerCount = repCustomerOptions.length;
+            state.filteredRepCustomerCount = filteredRepCustomerOptions.length;
             const controlButtonClass = (isActive = false) => `task-top-control-button inline-flex w-full items-center gap-2 rounded-full border px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.11em] sm:px-3.5 sm:text-[10px] ${isActive ? 'bg-emerald-600 border-emerald-600 text-white shadow-md' : 'bg-white border-emerald-200 text-emerald-700 shadow-sm'}`;
             const holdButtonClass = `task-top-control-button inline-flex w-full items-center gap-2 rounded-full border px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.11em] sm:px-3.5 sm:text-[10px] ${avHoldFilterMode === 'all' ? 'bg-white border-amber-300 text-amber-700 shadow-sm' : 'bg-amber-400 border-amber-500 text-amber-950 shadow-md'}`;
-            const sourceChoices = shouldUseRepScopedAvView()
-                ? [{ value: 'reserves', label: 'My Reserves', icon: 'ph-bold ph-bookmark-simple' }]
+            const sourceChoices = shouldShowRepAvCustomerFilter()
+                ? [
+                    { value: 'open', label: 'Open Stock', icon: 'ph-bold ph-plant' },
+                    { value: 'reserves', label: 'My Reserves', icon: 'ph-bold ph-bookmark-simple' }
+                ]
                 : [
                     { value: 'open', label: 'Open Stock', icon: 'ph-bold ph-plant' },
                     { value: 'hotprice', label: 'Hot Price', icon: 'ph-bold ph-tag' },
@@ -39522,6 +39664,14 @@ function toggleDriveQuickRequestItem(domId) {
             const contSizeOptionHtml = state.sizeOptions.length
                 ? buildDrivePlantMultiSelectOptionsHtml(state.filteredSizeOptions, selectedAvContSizes, 'avcontsize', 'toggleAvContSizeSelection', 'No matching container sizes.')
                 : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No CONTSIZE data available.</div>';
+            const repCustomerOptionsHtml = [
+                `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-3 text-left text-[12px] font-black uppercase tracking-[0.08em] ${selectedAvRepCustomerKey ? 'text-slate-700 hover:bg-emerald-50' : 'bg-emerald-50 text-emerald-700'}" onclick="return setAvRepCustomerFilter('')"><span class="inline-flex min-w-0 items-center gap-2"><i class="ph-bold ph-users-three text-base"></i><span class="truncate">All Customers</span></span>${selectedAvRepCustomerKey ? '' : '<i class="ph-bold ph-check text-base text-emerald-600"></i>'}</button>`,
+                ...(filteredRepCustomerOptions.length ? filteredRepCustomerOptions.map((option) => {
+                    const selected = option.key === selectedAvRepCustomerKey;
+                    const consigneeLabel = option.consigneeName && option.consigneeName !== option.customerName ? `<span class="mt-0.5 block truncate text-[10px] font-bold uppercase tracking-[0.08em] ${selected ? 'text-emerald-100' : 'text-slate-400'}">${esc(option.consigneeName)}</span>` : '';
+                    return `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-3 text-left ${selected ? 'bg-emerald-600 text-white' : 'text-slate-700 hover:bg-emerald-50'}" onclick="return setAvRepCustomerFilter('${escJsAttrValue(option.key)}')"><span class="min-w-0"><span class="block truncate text-[12px] font-black uppercase tracking-[0.08em]">${esc(option.customerName || option.label)}</span>${consigneeLabel}</span>${selected ? '<i class="ph-bold ph-check text-base"></i>' : ''}</button>`;
+                }) : ['<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No matching customers.</div>'])
+            ].join('');
             const seasonFooterHtml = buildAvExcelBulkFooterHtml('selectAllAvSeasons', 'deselectAllAvSeasons', 'closeAvSeasonDropdown', state.seasonAllSelected, selectedAvSeasons.size === 0);
             const genusFooterHtml = buildAvExcelBulkFooterHtml('selectAllAvGenus', 'deselectAllAvGenus', 'closeAvGenusDropdown', state.genusAllSelected, selectedAvGenusNames.size === 0);
             const contSizeFooterHtml = buildAvExcelBulkFooterHtml('selectAllAvContSizes', 'deselectAllAvContSizes', 'closeAvContSizeDropdown', state.contSizeAllSelected, selectedAvContSizes.size === 0);
@@ -39571,6 +39721,14 @@ function toggleDriveQuickRequestItem(domId) {
                 bodyHtml: avPhotoDropdownOpen ? `<div class="excel-filter-options">${photoOptionsHtml}</div>` : '',
                 bodySignature: `av-photo:${getAvPhotoMode()}:${avPhotoDropdownOpen ? 'open' : 'closed'}`
             });
+            syncAvTopControlShell(container, 'customer', {
+                hidden: !shouldShowRepAvCustomerFilter(),
+                buttonClass: controlButtonClass(avRepCustomerDropdownOpen || !!selectedAvRepCustomerKey),
+                summary: repCustomerSummary,
+                open: avRepCustomerDropdownOpen,
+                bodyHtml: avRepCustomerDropdownOpen ? `${buildExcelFilterSearchHtml('av-rep-customer-search', avRepCustomerSearchTerm, 'Search customer...', 'setAvRepCustomerSearchTerm', 'handleAvRepCustomerSearchKeydown')}<div class="excel-filter-options">${repCustomerOptionsHtml}</div>` : '',
+                bodySignature: `av-rep-customer:${selectedAvRepCustomerKey}:${String(avRepCustomerSearchTerm || '').trim().toLowerCase()}:${repCustomerOptions.map((option) => option.key).join('|')}:${avRepCustomerDropdownOpen ? 'open' : 'closed'}`
+            });
             lastAvTopControlsRenderSignature = renderSignature;
             if (didMountShell) scheduleStickyRailOffsetSync('av-filter-strip');
             return state;
@@ -39587,6 +39745,66 @@ function toggleDriveQuickRequestItem(domId) {
         function setAvSourceFilter(tab = 'open') {
             avSourceDropdownOpen = false;
             return setAVTab(tab);
+        }
+
+        function toggleAvRepCustomerDropdown() {
+            const nextState = !avRepCustomerDropdownOpen;
+            closeAvTopControlDropdowns(false);
+            avRepCustomerDropdownOpen = nextState;
+            renderAvTopControls(avFilterItemsCache);
+            return false;
+        }
+
+        function setAvRepCustomerFilter(customerKey = '') {
+            beginDirectNavigationActivity();
+            selectedAvRepCustomerKey = String(customerKey || '').trim();
+            avRepCustomerDropdownOpen = false;
+            avRepCustomerSearchTerm = '';
+            avResLevel = 0;
+            selectedAvResRep = null;
+            selectedAvResDriveUid = null;
+            selectedAvResItemCode = null;
+            selectedAvResName = null;
+            selectedAvResSize = null;
+            selectedAvResCustomerKey = null;
+            selectedAvReserveDetailCustomerKey = null;
+            avOpenLevel = 0;
+            selectedAvOpenName = null;
+            selectedAvOpenSize = null;
+            selectedAvOpenSeason = null;
+            selectedAvOpenLot = null;
+            invalidateAvFilterSelectionCaches();
+            scheduleAVRender(0);
+            return false;
+        }
+
+        function setAvRepCustomerSearchTerm(value = '') {
+            avRepCustomerSearchTerm = String(value || '');
+            const input = document.getElementById('av-rep-customer-search');
+            const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
+            scheduleUiRender('av-rep-customer-search-ui', () => {
+                renderAvTopControls(avFilterItemsCache);
+                requestAnimationFrame(() => {
+                    const current = document.getElementById('av-rep-customer-search');
+                    if (!current) return;
+                    if (document.activeElement !== current) current.focus();
+                    if (cursorPos !== null && typeof current.setSelectionRange === 'function') current.setSelectionRange(cursorPos, cursorPos);
+                });
+            });
+            return false;
+        }
+
+        function applyVisibleAvRepCustomerResults() {
+            const options = getAvRepCustomerOptions();
+            const searchToken = normalizeRepMatchToken(avRepCustomerSearchTerm || '');
+            const filtered = searchToken ? options.filter((option) => String(option.searchToken || '').includes(searchToken)) : options;
+            if (!filtered.length) return false;
+            return setAvRepCustomerFilter(filtered[0].key);
+        }
+
+        function handleAvRepCustomerSearchKeydown(event) {
+            if (!isEnterKeypress(event)) return;
+            handleSearchEnterApply(event, applyVisibleAvRepCustomerResults);
         }
 
         function toggleAvPhotoDropdown() {
@@ -39696,6 +39914,7 @@ function toggleDriveQuickRequestItem(domId) {
             avContSizeFilterOpen = false;
             avHoldDropdownOpen = false;
             avPhotoDropdownOpen = false;
+            avRepCustomerDropdownOpen = false;
             invalidateAvFilterSelectionCaches();
             scheduleAVRender(0);
             return false;
@@ -39712,6 +39931,7 @@ function toggleDriveQuickRequestItem(domId) {
             avContSizeFilterOpen = false;
             avHoldDropdownOpen = false;
             avPhotoDropdownOpen = false;
+            avRepCustomerDropdownOpen = false;
             syncAvSeasonControlQuick();
             invalidateAvFilterSelectionCaches();
             renderAvTopControls(avFilterItemsCache);
@@ -39730,6 +39950,7 @@ function toggleDriveQuickRequestItem(domId) {
             avContSizeFilterOpen = false;
             avHoldDropdownOpen = false;
             avPhotoDropdownOpen = false;
+            avRepCustomerDropdownOpen = false;
             syncAvSeasonControlQuick();
             invalidateAvFilterSelectionCaches();
             renderAvTopControls(avFilterItemsCache);
@@ -39854,6 +40075,7 @@ function toggleDriveQuickRequestItem(domId) {
             avContSizeFilterOpen = false;
             avHoldDropdownOpen = false;
             avPhotoDropdownOpen = false;
+            avRepCustomerDropdownOpen = false;
             invalidateAvFilterSelectionCaches();
             scheduleAVRender(0);
             return false;
@@ -39873,6 +40095,7 @@ function toggleDriveQuickRequestItem(domId) {
             avContSizeFilterOpen = true;
             avHoldDropdownOpen = false;
             avPhotoDropdownOpen = false;
+            avRepCustomerDropdownOpen = false;
             invalidateAvFilterSelectionCaches();
             scheduleAVRender(0);
             return false;
@@ -39888,6 +40111,7 @@ function toggleDriveQuickRequestItem(domId) {
             avContSizeFilterOpen = false;
             avHoldDropdownOpen = false;
             avPhotoDropdownOpen = false;
+            avRepCustomerDropdownOpen = false;
             invalidateAvFilterSelectionCaches();
             renderAvTopControls(avFilterItemsCache);
             scheduleAVRender(42, 96);
@@ -39904,6 +40128,7 @@ function toggleDriveQuickRequestItem(domId) {
             avContSizeFilterOpen = false;
             avHoldDropdownOpen = false;
             avPhotoDropdownOpen = false;
+            avRepCustomerDropdownOpen = false;
             invalidateAvFilterSelectionCaches();
             renderAvTopControls(avFilterItemsCache);
             scheduleAVRender(42, 96);
@@ -39920,6 +40145,7 @@ function toggleDriveQuickRequestItem(domId) {
             avContSizeFilterOpen = true;
             avHoldDropdownOpen = false;
             avPhotoDropdownOpen = false;
+            avRepCustomerDropdownOpen = false;
             invalidateAvFilterSelectionCaches();
             renderAvTopControls(avFilterItemsCache);
             scheduleAVRender(42, 96);
@@ -39936,6 +40162,7 @@ function toggleDriveQuickRequestItem(domId) {
             avContSizeFilterOpen = true;
             avHoldDropdownOpen = false;
             avPhotoDropdownOpen = false;
+            avRepCustomerDropdownOpen = false;
             invalidateAvFilterSelectionCaches();
             renderAvTopControls(avFilterItemsCache);
             scheduleAVRender(42, 96);
@@ -39952,6 +40179,7 @@ function toggleDriveQuickRequestItem(domId) {
             let items = [];
             if (safeTab === 'open') {
                 items = getAvOpenRowsForView();
+                items = filterAvOpenRowsBySelectedRepCustomer(items);
                 if (!ignoreSecondaryTab && activeAvOpenTab === 'photos') items = items.filter(avItemHasPhotos);
             } else if (safeTab === 'hotprice') {
                 items = getAvHotPriceRows();
@@ -40049,6 +40277,7 @@ function toggleDriveQuickRequestItem(domId) {
                 activeAvHotPriceTab,
                 activeAvReserveMode,
                 selectedAvResRep || '',
+                selectedAvRepCustomerKey || '',
                 [...selectedAvSeasons].sort().join('|'),
                 avHoldFilterMode,
                 avGenusSelectionMode,
@@ -40988,6 +41217,10 @@ function toggleDriveQuickRequestItem(domId) {
                 if (!isDatasetLoaded('avHotPriceKeys', 'full')) queueDatasetLoad('avHotPriceKeys', 'full', isTouchConstrainedDevice() ? 1800 : 750);
             }
             if (activeAVTab === 'reserves' && !isDatasetLoaded('reserves', 'full')) queueDatasetLoad('reserves', 'full', isTouchConstrainedDevice() ? 2200 : 900);
+            if (shouldShowRepAvCustomerFilter()) {
+                if (!isDatasetLoaded('reserves', 'full')) queueDatasetLoad('reserves', 'full', isTouchConstrainedDevice() ? 2200 : 900);
+                if (!isDatasetLoaded('customerRepMap', 'full')) queueDatasetLoad('customerRepMap', 'full', isTouchConstrainedDevice() ? 2200 : 900);
+            }
             const container = document.getElementById('av-content');
             const crumb = document.getElementById('av-crumb');
             const avState = getCurrentAVBaseItems();
