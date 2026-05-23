@@ -139,13 +139,126 @@ const ALLOWED_DB_COLUMNS = new Set([
   'hold_release_approved_at', 'hold_release_approved_by', 'hold_release_approved_by_display', 'hold_release_approved_holdstopbegindate'
 ]);
 
-function runSOCOnly() { return processLatestFileOnlyFolder(FOLDERS.SOC_DROP, FOLDERS.SOC_PROCESSED, 'v2_soc_master', buildStandardPayload, { deltaMode: true }); }
-function runDriveAroundOnly() { return processSnapshotBatchFolder(FOLDERS.MASTER_DROP, FOLDERS.MASTER_PROCESSED, 'v2_master_inventory', buildMasterPayload); }
+function runSOCOnly() { return processLatestFileOnlyFolder(FOLDERS.SOC_DROP, FOLDERS.SOC_PROCESSED, getRuntimeSiteSplitTableName_('v2_soc_master', 'PH'), buildStandardPayload, { deltaMode: true }); }
+function runDriveAroundOnly() {
+  return processSnapshotBatchFolder(FOLDERS.MASTER_DROP, FOLDERS.MASTER_PROCESSED, 'v2_master_inventory', buildMasterPayload);
+}
 function runDriveAroundHistoryOnly() { return syncDriveAroundHistoricalFileIndex_({ parseRows: true }); }
-function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, 'v2_reserves', buildStandardPayload, { deltaMode: true }); }
+function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, getRuntimeSiteSplitTableName_('v2_reserves', 'PH'), buildStandardPayload, { deltaMode: true }); }
 function runCustomerRepMapOnly() { return processLatestFileOnlyFolder(FOLDERS.CUSTOMER_REP_DROP, FOLDERS.CUSTOMER_REP_PROCESSED, CUSTOMER_REP_MAP_TABLE, buildCustomerRepMapPayload, { deltaMode: true, selectColumnsBuilder: getCustomerRepMapSelectColumns_, headerMatcher: isCustomerRepMapHeaderRow_ }); }
-function runCavOnly() { return processLatestFileOnlyFolder(FOLDERS.CAV_DROP, FOLDERS.CAV_PROCESSED, 'v2_cav_import', buildCavPayload, { deltaMode: true }); }
+function runCavOnly() { return processLatestFileOnlyFolder(FOLDERS.CAV_DROP, FOLDERS.CAV_PROCESSED, getRuntimeSiteSplitTableName_('v2_cav_import', 'PH'), buildCavPayload, { deltaMode: true }); }
 function runDiseaseDriveToSupabaseSyncOnly() { return runDiseaseDriveToSupabaseSync(); }
+
+const SITE_SPLIT_SITE_CODES_ = Object.freeze(['PH', 'TX', 'NC', 'HL']);
+const SITE_SPLIT_SITE_BY_WAREHOUSE_ = Object.freeze({
+  '10': 'PH',
+  '20': 'TX',
+  '40': 'NC',
+  '60': 'HL'
+});
+const SITE_SPLIT_TABLE_BASE_BY_LEGACY_ = Object.freeze({
+  v2_master_inventory: 'master_inventory',
+  v2_active_request: 'active_request',
+  v2_request_history: 'request_history',
+  v2_reserves: 'reserves',
+  v2_soc_master: 'soc_master',
+  v2_cav_import: 'cav_import',
+  v2_view_av_hot_price_keys: 'view_av_hot_price_keys',
+  v2_av_notes: 'av_notes',
+  v2_labor_hours: 'labor_hours',
+  v2_sales_office: 'sales_office',
+  v2_flyer_folder_rows: 'flyer_folder_rows',
+  v2_flyer_folder_history: 'flyer_folder_history',
+  v2_ncr_completions: 'ncr_completions',
+  v2_take_back_queue: 'take_back_queue',
+  v2_productivity_history: 'productivity_history',
+  v2_ml_image_jobs: 'ml_image_jobs',
+  v2_diagnostic_lab_cases: 'diagnostic_lab_cases',
+  v2_diagnostic_reference_reports: 'diagnostic_reference_reports',
+  v2_diagnostic_review_feedback: 'diagnostic_review_feedback',
+  v2_disease_training_assets: 'disease_training_assets',
+  v2_grower_scout_reports: 'grower_scout_reports',
+  v2_grower_scout_assets: 'grower_scout_assets',
+  v2_shear_list: 'shear_list',
+  v2_production_workflow_rows: 'production_workflow_rows',
+  v2_spread_counts: 'spread_counts',
+  v2_bunch_counts: 'bunch_counts',
+  v2_dock_team_status: 'dock_team_status',
+  v2_dock_item_status: 'dock_item_status',
+  v2_dock_issue_status: 'dock_issue_status',
+  v2_dock_issue_allocations: 'dock_issue_allocations',
+  v2_drive_around_report_files: 'drive_around_report_files',
+  v2_drive_around_report_rows: 'drive_around_report_rows',
+  v2_weather_hourly: 'weather_hourly',
+  v2_weather_daily: 'weather_daily',
+  v2_hold_learning_events: 'hold_learning_events',
+  v2_hold_release_cycles: 'hold_release_cycles',
+  v2_hold_learning_profiles: 'hold_learning_profiles'
+});
+const SITE_SPLIT_LEGACY_BY_TABLE_BASE_ = Object.freeze(Object.keys(SITE_SPLIT_TABLE_BASE_BY_LEGACY_).reduce(function(acc, legacy) {
+  acc[SITE_SPLIT_TABLE_BASE_BY_LEGACY_[legacy]] = legacy;
+  return acc;
+}, {}));
+
+function isScriptRuntimeFlagEnabled_(key) {
+  try {
+    const value = PropertiesService.getScriptProperties().getProperty(key);
+    return /^(1|true|yes)$/i.test(String(value || '').trim());
+  } catch (err) {
+    return false;
+  }
+}
+
+function isSiteSplitTablesEnabled_() {
+  return isScriptRuntimeFlagEnabled_('GNC_SITE_TABLES_ENABLED');
+}
+
+function normalizeSiteSplitSiteCode_(siteCode) {
+  const safe = String(siteCode || '').trim().toUpperCase();
+  return SITE_SPLIT_SITE_CODES_.indexOf(safe) !== -1 ? safe : 'PH';
+}
+
+function getSiteSplitTableBaseName_(tableName) {
+  const safe = String(tableName || '').trim().toLowerCase();
+  if (SITE_SPLIT_TABLE_BASE_BY_LEGACY_[safe]) return SITE_SPLIT_TABLE_BASE_BY_LEGACY_[safe];
+  const match = safe.match(/^(ph|tx|nc|hl)_(.+)$/);
+  return match && SITE_SPLIT_LEGACY_BY_TABLE_BASE_[match[2]] ? match[2] : '';
+}
+
+function getSiteSplitLegacyTableName_(tableName) {
+  const safe = String(tableName || '').trim().toLowerCase();
+  if (SITE_SPLIT_TABLE_BASE_BY_LEGACY_[safe]) return safe;
+  const base = getSiteSplitTableBaseName_(safe);
+  return base ? String(SITE_SPLIT_LEGACY_BY_TABLE_BASE_[base] || safe) : safe;
+}
+
+function resolveSiteSplitTableName_(tableName, siteCode) {
+  const safe = String(tableName || '').trim();
+  const safeLower = safe.toLowerCase();
+  const base = getSiteSplitTableBaseName_(safeLower);
+  if (!base || /^(ph|tx|nc|hl)_/.test(safeLower)) return safe;
+  return `${normalizeSiteSplitSiteCode_(siteCode).toLowerCase()}_${base}`;
+}
+
+function getRuntimeSiteSplitTableName_(tableName, siteCode) {
+  return isSiteSplitTablesEnabled_()
+    ? resolveSiteSplitTableName_(tableName, siteCode)
+    : tableName;
+}
+
+function getSiteSplitSiteFromWarehouse_(warehouseId) {
+  const safe = String(warehouseId || '').trim().replace(/\.0+$/, '');
+  return SITE_SPLIT_SITE_BY_WAREHOUSE_[safe] || 'PH';
+}
+
+function getSiteCodeFromSiteSplitTableName_(tableName) {
+  const match = String(tableName || '').trim().toLowerCase().match(/^(ph|tx|nc|hl)_/);
+  return match ? String(match[1] || '').toUpperCase() : '';
+}
+
+function isSiteSplitPhysicalTable_(tableName) {
+  return !!getSiteCodeFromSiteSplitTableName_(tableName);
+}
 
 const MANUAL_SYNC_STATUS_KEY = 'MANUAL_SYNC_STATUS';
 const MANUAL_SYNC_TRIGGER_HANDLER = 'runQueuedManualSyncStage_';
@@ -223,7 +336,7 @@ const MASTER_IMPORT_CLEAR_ON_NEW_HOLD_COLUMNS = Object.freeze([
 ]);
 
 function getAppLiveEventAreaForTable_(tableName) {
-  const safeTable = String(tableName || '').trim();
+  const safeTable = getSiteSplitLegacyTableName_(tableName);
   if (safeTable === 'v2_master_inventory') return 'inventory';
   if (safeTable === 'v2_soc_master') return 'docks';
   if (safeTable === 'v2_reserves') return 'reserves';
@@ -783,7 +896,7 @@ function shouldRetrySupabaseRead_(err) {
 }
 
 function isMasterInventoryTable_(tableName) {
-  return String(tableName || '').trim() === 'v2_master_inventory';
+  return getSiteSplitTableBaseName_(tableName) === 'master_inventory';
 }
 
 function getDriveFolderByIdWithRetry_(folderId, label) {
@@ -1389,7 +1502,7 @@ function moveDriveFileToFolderWithRetry_(file, folder, label) {
 }
 
 function getSupabaseFetchOptionsForTable_(tableName) {
-  if (tableName === 'v2_master_inventory') {
+  if (isMasterInventoryTable_(tableName)) {
     return {
       pageSize: SUPABASE_MASTER_FETCH_PAGE_SIZE,
       batchSize: SUPABASE_MASTER_FETCH_BATCH_SIZE,
@@ -1630,7 +1743,7 @@ function collectAllowedPayloadColumnsFromHeaders_(rawHeaders, fixedColumns) {
 }
 
 function tableStoresSyncHash_(tableName) {
-  return tableName === 'v2_master_inventory';
+  return isMasterInventoryTable_(tableName);
 }
 
 function getStandardPayloadSelectColumns_(rawData) {
@@ -1733,13 +1846,14 @@ function getCustomerRepMapSelectColumns_() {
 }
 
 function getPayloadSelectColumns_(tableName, rawData) {
-  if (tableName === 'v2_master_inventory') return getMasterPayloadSelectColumns_(rawData);
+  if (isMasterInventoryTable_(tableName)) return getMasterPayloadSelectColumns_(rawData);
   if (tableName === CUSTOMER_REP_MAP_TABLE) return getCustomerRepMapSelectColumns_();
-  if (tableName === 'v2_cav_import') return getCavPayloadSelectColumns_();
+  if (getSiteSplitLegacyTableName_(tableName) === 'v2_cav_import') return getCavPayloadSelectColumns_();
   return getStandardPayloadSelectColumns_(rawData);
 }
 
-function getMasterPayloadContext_(rawData) {
+function getMasterPayloadContext_(rawData, options) {
+  const safeOptions = options || {};
   const rawHeaders = Array.isArray(rawData) && Array.isArray(rawData[0])
     ? rawData[0].map(function(header) { return String(header).trim(); })
     : [];
@@ -1763,8 +1877,11 @@ function getMasterPayloadContext_(rawData) {
       desigItem: getIdx('DESIGITEM'),
       desigCust: getIdx('DESIGCUST'),
       desigLoc: getIdx('DESIGLOC'),
-      priority: getIdx('PRIORITY')
-    }
+      priority: getIdx('PRIORITY'),
+      warehouseId: getIdx('WAREHOUSEID')
+    },
+    siteScoped: !!safeOptions.siteScoped,
+    targetSite: normalizeSiteSplitSiteCode_(safeOptions.targetSite || '')
   };
 }
 
@@ -1775,6 +1892,7 @@ function getMasterRowIdentity_(row, context, idTracker) {
   const commonName = indices.commonName > -1 ? String(row[indices.commonName] || '').trim() : '';
   const contSize = indices.contSize > -1 ? String(row[indices.contSize] || '').trim() : '-';
   const lotCode = indices.lotCode > -1 ? String(row[indices.lotCode] || '').trim() : '';
+  const warehouseId = indices.warehouseId > -1 ? String(row[indices.warehouseId] || '').trim() : '';
 
   if (!itemCodeStr || itemCodeStr.toUpperCase() === 'NULL' || !locationCode || !commonName) {
     return { valid: false, uniqueId: '', contSize: contSize };
@@ -1788,12 +1906,18 @@ function getMasterRowIdentity_(row, context, idTracker) {
 
   const baseId = `${itemCodeStr}-${contSize}-${locationCode}-${lotCode}-${sourceStr}-${desigItemStr}-${desigCustStr}-${desigLocStr}-${priorityStr}`
     .replace(/[^a-zA-Z0-9-]/g, '_');
+  const rowSiteCode = warehouseId
+    ? getSiteSplitSiteFromWarehouse_(warehouseId)
+    : normalizeSiteSplitSiteCode_(context.targetSite || 'PH');
+  const scopedBaseId = rowSiteCode !== 'PH'
+    ? `${rowSiteCode}-${baseId}`
+    : baseId;
 
-  if (idTracker[baseId] === undefined) idTracker[baseId] = 0;
-  else idTracker[baseId]++;
+  if (idTracker[scopedBaseId] === undefined) idTracker[scopedBaseId] = 0;
+  else idTracker[scopedBaseId]++;
 
-  let uniqueId = baseId;
-  if (idTracker[baseId] > 0) uniqueId += '-' + idTracker[baseId];
+  let uniqueId = scopedBaseId;
+  if (idTracker[scopedBaseId] > 0) uniqueId += '-' + idTracker[scopedBaseId];
 
   return {
     valid: Boolean(uniqueId),
@@ -1802,8 +1926,11 @@ function getMasterRowIdentity_(row, context, idTracker) {
   };
 }
 
-function previewMasterSnapshotFile_(rawData) {
-  const context = getMasterPayloadContext_(rawData);
+function previewMasterSnapshotFile_(rawData, tableName) {
+  const context = getMasterPayloadContext_(rawData, {
+    siteScoped: isSiteSplitPhysicalTable_(tableName),
+    targetSite: getSiteCodeFromSiteSplitTableName_(tableName)
+  });
   const idTracker = {};
   const seenIds = new Set();
   const stats = createDeltaSyncStats_();
@@ -2420,7 +2547,7 @@ function processFolder(dropFolderId, processedFolderId, tableName, payloadBuilde
         const existingRows = fetchSupabaseRowsForFile(
           tableName,
           fileName,
-          tableName === 'v2_master_inventory' ? getMasterImportCompareColumns_().join(',') : 'unique_id'
+          isMasterInventoryTable_(tableName) ? getMasterImportCompareColumns_().join(',') : 'unique_id'
         );
 
         let results = payloadBuilderFunc(rawData, tableName, existingRows, syncStartTime, fileName);
@@ -2630,7 +2757,7 @@ function executeMasterSnapshotBatch_(tableName, parsedFiles, payloadBuilderFunc,
   const seenIds = new Set();
 
   parsedFiles.forEach(function(entry) {
-    const preview = previewMasterSnapshotFile_(entry.rawData);
+    const preview = previewMasterSnapshotFile_(entry.rawData, tableName);
     if (shouldAbortSnapshotDelete_(preview.stats, preview.totalRows)) {
       throw new Error(`0 valid snapshot identities were found in ${entry.fileName}; skipped destructive sync for ${tableName}.`);
     }
@@ -2703,6 +2830,179 @@ function executeMasterSnapshotBatch_(tableName, parsedFiles, payloadBuilderFunc,
     existingIdsFetched: existingIds.length,
     existingCompareRowsFetched: existingCompareRows.length
   };
+}
+
+function filterMasterRawDataBySite_(rawData, siteCode) {
+  const safeSite = normalizeSiteSplitSiteCode_(siteCode);
+  if (!Array.isArray(rawData) || rawData.length < 1) return rawData;
+  const context = getMasterPayloadContext_(rawData);
+  const warehouseIdx = context && context.indices ? context.indices.warehouseId : -1;
+  const filtered = [rawData[0]];
+  for (let i = 1; i < rawData.length; i++) {
+    const row = rawData[i] || [];
+    const rowSite = warehouseIdx > -1
+      ? getSiteSplitSiteFromWarehouse_(row[warehouseIdx])
+      : 'PH';
+    if (rowSite === safeSite) filtered.push(row);
+  }
+  return filtered;
+}
+
+function processSiteSplitMasterSnapshotBatchFolder_(dropFolderId, processedFolderId) {
+  const dropFolder = getDriveFolderByIdWithRetry_(dropFolderId, 'site split drive around drop folder');
+  const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, 'site split drive around processed folder');
+  const files = listDriveFilesWithRetry_(dropFolder, 'site split drive around drop folder');
+  const pendingFiles = [];
+  let tempFilesRemoved = 0;
+
+  while (files.hasNext()) {
+    const file = files.next();
+    const fileName = file.getName();
+    if (fileName.startsWith('TEMP_')) {
+      tempFilesRemoved++;
+      trashDriveFileWithRetry_(file, `site split drive around temp file ${fileName}`);
+      continue;
+    }
+    pendingFiles.push(file);
+  }
+
+  if (!pendingFiles.length) {
+    console.log('[SKIP] No files found for site split drive around.');
+    return {
+      tableName: 'site_split_master_inventory',
+      filesProcessed: 0,
+      tempFilesRemoved: tempFilesRemoved,
+      failedFiles: 0,
+      failedFileNames: [],
+      upsertCount: 0,
+      deleteCount: 0,
+      diagnosticsBySite: {}
+    };
+  }
+
+  pendingFiles.sort(function(a, b) {
+    const timeDiff = a.getLastUpdated().getTime() - b.getLastUpdated().getTime();
+    if (timeDiff !== 0) return timeDiff;
+    return String(a.getName() || '').localeCompare(String(b.getName() || ''));
+  });
+
+  const syncStartTime = new Date().toISOString();
+  const parsedFiles = [];
+  const failedFiles = [];
+  const resultsBySite = {};
+  let totalUpserts = 0;
+  let totalDeletes = 0;
+  let importSucceeded = false;
+
+  console.log(`[START] Processing site split Drive Around snapshot batch: ${pendingFiles.length} file(s)`);
+
+  try {
+    pendingFiles.forEach(function(file) {
+      const fileName = file.getName();
+      console.log(`[PARSE][SITE SPLIT] ${fileName}`);
+      const rawData = extractDataFromFile(file, dropFolderId);
+      if (!rawData || rawData.length < 1) {
+        throw new Error(`No readable rows were found in ${fileName}.`);
+      }
+      parsedFiles.push({ file: file, fileName: fileName, rawData: rawData });
+    });
+
+    let anySiteRows = false;
+    SITE_SPLIT_SITE_CODES_.forEach(function(siteCode) {
+      const tableName = resolveSiteSplitTableName_('v2_master_inventory', siteCode);
+      const siteParsedFiles = parsedFiles
+        .map(function(entry) {
+          return {
+            file: entry.file,
+            fileName: entry.fileName,
+            rawData: filterMasterRawDataBySite_(entry.rawData, siteCode)
+          };
+        })
+        .filter(function(entry) {
+          return Array.isArray(entry.rawData) && entry.rawData.length > 1;
+        });
+
+      if (!siteParsedFiles.length) {
+        console.log(`[SITE SPLIT][${siteCode}] No rows found; skipping destructive sync for ${tableName}.`);
+        resultsBySite[siteCode] = {
+          tableName: tableName,
+          skipped: true,
+          upsertCount: 0,
+          deleteCount: 0,
+          diagnostics: createDeltaSyncStats_()
+        };
+        return;
+      }
+
+      anySiteRows = true;
+      const masterResults = executeMasterSnapshotBatch_(tableName, siteParsedFiles, buildMasterPayload, syncStartTime);
+      const upserts = masterResults.upserts || [];
+      const deletes = masterResults.deletes || [];
+      totalUpserts += upserts.length;
+      totalDeletes += deletes.length;
+
+      console.log(formatDeltaSyncStats_(tableName, masterResults.combinedStats, {
+        filesProcessed: siteParsedFiles.length,
+        archivedOlderFiles: 0,
+        upserts: upserts.length
+      }));
+
+      if (upserts.length > 0) pushToSupabase(tableName, upserts);
+      if (deletes.length > 0) deleteFromSupabase(tableName, deletes);
+      emitTableSyncLiveEvent_(tableName, {
+        filesProcessed: siteParsedFiles.length,
+        tempFilesRemoved: tempFilesRemoved,
+        upsertCount: upserts.length,
+        deleteCount: deletes.length
+      });
+
+      resultsBySite[siteCode] = {
+        tableName: tableName,
+        skipped: false,
+        upsertCount: upserts.length,
+        deleteCount: deletes.length,
+        diagnostics: masterResults.combinedStats
+      };
+    });
+
+    if (!anySiteRows) throw new Error('No PH/TX/NC/HL Drive Around rows were found; skipped site split sync.');
+
+    parsedFiles.forEach(function(entry) {
+      moveDriveFileToFolderWithRetry_(entry.file, processedFolder, `site split drive around processed snapshot file ${entry.fileName}`);
+    });
+    importSucceeded = true;
+  } catch (err) {
+    const errorMessage = err && err.message ? err.message : String(err);
+    failedFiles.push.apply(failedFiles, pendingFiles.map(function(file) {
+      return { name: file.getName(), error: errorMessage };
+    }));
+    console.error(`[ERROR] Failed site split Drive Around batch: ${err && err.stack ? err.stack : errorMessage}`);
+    console.warn('[LEAVE] Keeping pending site split Drive Around files in drop folder for retry/manual review.');
+  }
+
+  console.log(
+    `[DONE] site split Drive Around: ${importSucceeded ? `${pendingFiles.length} snapshot file${pendingFiles.length === 1 ? '' : 's'} processed` : 'snapshot batch failed'}` +
+    `${failedFiles.length ? ` | ${failedFiles.length} file${failedFiles.length === 1 ? '' : 's'} left in drop` : ''}` +
+    ` | ${totalDeletes} removed row${totalDeletes === 1 ? '' : 's'}` +
+    ` | ${totalUpserts} row${totalUpserts === 1 ? '' : 's'} upserted` +
+    `${tempFilesRemoved ? ` | ${tempFilesRemoved} temp file${tempFilesRemoved === 1 ? '' : 's'} cleared` : ''}.`
+  );
+
+  return {
+    tableName: 'site_split_master_inventory',
+    filesProcessed: importSucceeded ? pendingFiles.length : 0,
+    tempFilesRemoved: tempFilesRemoved,
+    failedFiles: failedFiles.length,
+    failedFileNames: failedFiles.map(function(entry) { return entry.name; }),
+    failedFileErrors: failedFiles,
+    upsertCount: totalUpserts,
+    deleteCount: totalDeletes,
+    diagnosticsBySite: resultsBySite
+  };
+}
+
+function runSiteSplitDriveAroundOnly_() {
+  return processSiteSplitMasterSnapshotBatchFolder_(FOLDERS.MASTER_DROP, FOLDERS.MASTER_PROCESSED);
 }
 
 function processSnapshotBatchFolder(dropFolderId, processedFolderId, tableName, payloadBuilderFunc, options) {
@@ -2943,6 +3243,7 @@ function didDeltaRowChange_(existingRow, nextRow) {
 }
 
 function buildStandardPayload(rawData, tableName, existingRows, syncStartTime, fileName) {
+  const logicalTable = getSiteSplitLegacyTableName_(tableName);
   const rawHeaders = rawData[0].map(h => String(h).trim());
   const cleanHeaders = rawHeaders.map(h => String(h).toUpperCase().replace(/\s+/g, '').replace(/_/g, ''));
   const getIdx = (name) => cleanHeaders.indexOf(name.toUpperCase().replace(/\s+/g, '').replace(/_/g, ''));
@@ -2957,7 +3258,7 @@ function buildStandardPayload(rawData, tableName, existingRows, syncStartTime, f
   let transIdx = getIdx('TRANSACTIONNUMBER');
   let locIdx = getIdx('LOCATIONCODE'), lotIdx = getIdx('LOTCODE'), priIdx = getIdx('PRIORITY');
   let srcIdx = getIdx('SOURCE'), dItemIdx = getIdx('DESIGITEM');
-  let reserveStableIdIdx = tableName === 'v2_reserves' ? findReserveStableRowIdIndex_(cleanHeaders) : -1;
+  let reserveStableIdIdx = logicalTable === 'v2_reserves' ? findReserveStableRowIdIndex_(cleanHeaders) : -1;
   let upserts = [], seenIds = new Set(), idTracker = {};
   let totalRows = 0;
   let existingMap = buildExistingRowMap_(existingRows);
@@ -2970,8 +3271,8 @@ function buildStandardPayload(rawData, tableName, existingRows, syncStartTime, f
     let custVal = custIdx > -1 ? String(row[custIdx] || '').trim() : '';
     let dockVal = dockIdx > -1 ? String(row[dockIdx] || '').trim() : '';
     if (!itemCodeVal || itemCodeVal.toUpperCase() === 'NULL') continue;
-    if (tableName === 'v2_soc_master' && (!dockVal || dockVal === '0' || dockVal === '' || !custVal)) continue;
-    if (tableName === 'v2_reserves' && !custVal) continue;
+    if (logicalTable === 'v2_soc_master' && (!dockVal || dockVal === '0' || dockVal === '' || !custVal)) continue;
+    if (logicalTable === 'v2_reserves' && !custVal) continue;
 
     totalRows++;
 
@@ -2986,18 +3287,18 @@ function buildStandardPayload(rawData, tableName, existingRows, syncStartTime, f
     let srcVal = srcIdx > -1 ? String(row[srcIdx] || '').trim() : '';
     let dItemVal = dItemIdx > -1 ? String(row[dItemIdx] || '').trim() : '';
     let uniqueId = '';
-    if (tableName === 'v2_reserves' && reserveStableIdIdx > -1) {
+    if (logicalTable === 'v2_reserves' && reserveStableIdIdx > -1) {
       uniqueId = String(row[reserveStableIdIdx] || '').trim();
     }
     if (!uniqueId) {
-      let baseId = tableName === 'v2_reserves'
+      let baseId = logicalTable === 'v2_reserves'
         ? `${transVal}-${custVal}-${consVal}-${repVal}-${itemCodeVal}-${contSizeVal}-${locVal}-${lotVal}-${srcVal}-${priVal}-${dItemVal}`
         : `${dockVal}-${transVal}-${custVal}-${consVal}-${stopVal}-${itemCodeVal}-${contSizeVal}-${locVal}-${lotVal}-${srcVal}-${priVal}-${dItemVal}`;
       let cleanId = baseId.replace(/[^a-zA-Z0-9-]/g, '_');
       if (idTracker[cleanId] === undefined) idTracker[cleanId] = 0; else idTracker[cleanId]++;
       uniqueId = cleanId;
       if (idTracker[cleanId] > 0) uniqueId += '-' + idTracker[cleanId];
-      if (tableName === 'v2_reserves') stats.fallbackIdentityRows++;
+      if (logicalTable === 'v2_reserves') stats.fallbackIdentityRows++;
     }
     if (!uniqueId) {
       stats.skippedRows++;
@@ -3118,7 +3419,10 @@ function buildCustomerRepMapPayload(rawData, tableName, existingRows, syncStartT
 }
 
 function buildMasterPayload(rawData, tableName, existingRows, syncStartTime, fileName) {
-  const context = getMasterPayloadContext_(rawData);
+  const context = getMasterPayloadContext_(rawData, {
+    siteScoped: isSiteSplitPhysicalTable_(tableName),
+    targetSite: getSiteCodeFromSiteSplitTableName_(tableName)
+  });
   const rawHeaders = context.rawHeaders;
   const upserts = [];
   const seenIds = new Set();
@@ -3127,11 +3431,6 @@ function buildMasterPayload(rawData, tableName, existingRows, syncStartTime, fil
   const existingMap = buildExistingRowMap_(existingRows);
   const stats = createDeltaSyncStats_();
   stats.sourceRows = Math.max(0, (rawData.length || 1) - 1);
-
-  const bigTreeSizes = ['#7', '#10', '#15', '#25', '#45'];
-  const roundRobinTeam = ['Dylan', 'Morgan', 'Kayla'];
-
-  let rrIndex = 0;
 
   for (let i = 1; i < rawData.length; i++) {
     const row = rawData[i];
@@ -3161,12 +3460,7 @@ function buildMasterPayload(rawData, tableName, existingRows, syncStartTime, fil
       ? String(existingRow.assignedto).trim()
       : '';
 
-    if (existingAssignedTo) obj.assignedto = existingAssignedTo;
-    else if (bigTreeSizes.some(size => contSize.includes(size))) obj.assignedto = 'Dylan';
-    else {
-      obj.assignedto = roundRobinTeam[rrIndex];
-      rrIndex = (rrIndex + 1) % roundRobinTeam.length;
-    }
+    obj.assignedto = existingAssignedTo || null;
     obj.concat = buildRowSyncHash_(obj, ['assignedto']);
 
     seenIds.add(uniqueId);
@@ -4216,8 +4510,9 @@ function fetchRequestRowsForEmailFolder_(folderId) {
   let response = null;
   let status = 0;
   let bodyText = '';
+  const requestTableName = getRuntimeSiteSplitTableName_('v2_active_request', 'PH');
   const loadRows = function(selectFields) {
-    const url = `${SUPABASE_URL}/rest/v1/v2_active_request?select=${selectFields}&request_folder=eq.${encodeURIComponent(safeFolderId)}`;
+    const url = `${SUPABASE_URL}/rest/v1/${requestTableName}?select=${selectFields}&request_folder=eq.${encodeURIComponent(safeFolderId)}`;
     const result = UrlFetchApp.fetch(url, {
       method: 'get',
       muteHttpExceptions: true,
