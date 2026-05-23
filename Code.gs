@@ -1721,6 +1721,7 @@ function normalizePayloadColumnKey_(header) {
   if (key === 'holdstopend_date' || key === 'holdstop_end_date') key = 'holdstopenddate';
   if (key === 'location_note') key = 'locationnote';
   if (key === 'location_note_date') key = 'locationnotedate';
+  if (key === 'warehousei' || key === 'warehouse_id') key = 'warehouseid';
   return key;
 }
 
@@ -1865,6 +1866,9 @@ function getMasterPayloadContext_(rawData, options) {
   };
   let contSizeIdx = getIdx('CONTSIZE');
   if (contSizeIdx === -1) contSizeIdx = getIdx('PRINTEDCONTAINERCODE');
+  let warehouseIdIdx = getIdx('WAREHOUSEID');
+  if (warehouseIdIdx === -1) warehouseIdIdx = getIdx('WAREHOUSEI');
+  if (warehouseIdIdx === -1) warehouseIdIdx = getIdx('WAREHOUSE_ID');
   return {
     rawHeaders: rawHeaders,
     indices: {
@@ -1878,7 +1882,7 @@ function getMasterPayloadContext_(rawData, options) {
       desigCust: getIdx('DESIGCUST'),
       desigLoc: getIdx('DESIGLOC'),
       priority: getIdx('PRIORITY'),
-      warehouseId: getIdx('WAREHOUSEID')
+      warehouseId: warehouseIdIdx
     },
     siteScoped: !!safeOptions.siteScoped,
     targetSite: normalizeSiteSplitSiteCode_(safeOptions.targetSite || '')
