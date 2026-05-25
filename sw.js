@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.05.24.9';
+const APP_SHELL_BUILD = 'V2026.05.24.10';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const CACHE_NAME = 'greenleaf-v4.2-rebuild-' + APP_SHELL_BUILD;
@@ -23,6 +23,12 @@ function normalizeShellBuild(value = '') {
 function buildShellUrl(build = '') {
   const safeBuild = normalizeShellBuild(build) || APP_SHELL_BUILD;
   return './index.html?' + APP_SHELL_QUERY_PARAM + '=' + encodeURIComponent(safeBuild);
+}
+
+function buildNetworkShellUrl(build = '') {
+  const safeBuild = normalizeShellBuild(build) || APP_SHELL_BUILD;
+  return './index.html?' + APP_SHELL_QUERY_PARAM + '=' + encodeURIComponent(safeBuild)
+    + '&shellts=' + encodeURIComponent(String(Date.now()));
 }
 
 function getRequestUrl(requestOrUrl) {
@@ -109,10 +115,15 @@ self.addEventListener('fetch', (event) => {
       (async () => {
         const requestedBuild = getRequestedShellBuild(event.request);
         const requestedShellUrl = buildShellUrl(requestedBuild || APP_SHELL_BUILD);
-        const primaryShellUrl = requestedShellUrl;
+        const primaryShellUrl = buildNetworkShellUrl(requestedBuild || APP_SHELL_BUILD);
         const cache = await caches.open(CACHE_NAME).catch(() => null);
         try {
-          const networkResponse = await fetch(primaryShellUrl, { cache: 'reload' });
+          const networkRequest = new Request(primaryShellUrl, {
+            cache: 'no-store',
+            credentials: event.request.credentials || 'same-origin',
+            redirect: 'follow'
+          });
+          const networkResponse = await fetch(networkRequest);
           if (networkResponse && networkResponse.status === 200) {
             await cacheShellResponse(cache, requestedShellUrl, networkResponse);
           }
