@@ -33,33 +33,13 @@ export function normalizeRole(value = "") {
   return String(value || "").toUpperCase().replace(/\s+/g, "");
 }
 
-function normalizeEvalAccessUserKey(value = "") {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/@.*$/, "")
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-}
-
-function isEvalRoleValue(role = "") {
-  const compactRole = String(role || "").toUpperCase().replace(/[^A-Z0-9]+/g, "");
-  return compactRole === "EVAL" || compactRole === "EVALUATOR" || compactRole.startsWith("EVAL");
-}
-
-function isEvalAdminOverrideUser(username = "") {
-  return normalizeEvalAccessUserKey(username) === "ellen_ward";
-}
-
 export function isForcedPasswordValue(value = "") {
   return FORCED_PASSWORD_CHANGE_VALUES.has(String(value || "").trim());
 }
 
-export function getRoleAccessState(role = "", username = "") {
+export function getRoleAccessState(role = "") {
   const roleDisplay = String(role || "").toUpperCase();
   const normalizedRole = normalizeRole(role || roleDisplay);
-  const isEval = isEvalRoleValue(roleDisplay || normalizedRole);
-  const isEvalAdminOverride = isEval && isEvalAdminOverrideUser(username);
   const isRep =
     normalizedRole === "REP" ||
     normalizedRole === "SALESREP" ||
@@ -71,14 +51,10 @@ export function getRoleAccessState(role = "", username = "") {
     roleDisplay.includes("QC SUPERVISOR");
   const isQc = !isQcSupervisor && (normalizedRole === "QC" || normalizedRole.startsWith("QC"));
   const isCsr = normalizedRole === "CSR" || normalizedRole.includes("CSR");
-  const isKnownLimitedRole = isRep || isQcSupervisor || isQc || isEval;
-  const hasRoleAdminAccess = normalizedRole.includes("ADMIN") || normalizedRole.includes("MANAGER");
-  const isAdmin = isEvalAdminOverride || (hasRoleAdminAccess && (!isEval || isEvalAdminOverride)) || isCsr || (!isKnownLimitedRole);
+  const isAdmin = normalizedRole.includes("ADMIN") || normalizedRole.includes("MANAGER") || isCsr || (!isRep && !isQcSupervisor && !isQc);
   const allowedViews = new Set<string>(["home", "chat"]);
   if (isAdmin) {
-    ["drive", "tasks", "docks", "av", "request", "reserves", "sales-office", "moves", "reports", "hours", "low-stock", "review", "chat"].forEach((viewId) => allowedViews.add(viewId));
-  } else if (isEval) {
-    ["sales-inventory", "tasks", "drive", "request", "moves", "docks", "communication", "chat", "av", "sales-office", "weather-hold"].forEach((viewId) => allowedViews.add(viewId));
+    ["drive", "tasks", "docks", "av", "request", "reserves", "sales-office", "reports", "hours", "low-stock", "review", "chat"].forEach((viewId) => allowedViews.add(viewId));
   } else if (isRep) {
     ["av", "docks", "request", "sales-office"].forEach((viewId) => allowedViews.add(viewId));
   } else if (isQcSupervisor) {
@@ -86,7 +62,7 @@ export function getRoleAccessState(role = "", username = "") {
   } else if (isQc) {
     ["docks"].forEach((viewId) => allowedViews.add(viewId));
   }
-  return { isAdmin, isRep, isQcSupervisor, isQc, isEval, isEvalAdminOverride, allowedViews };
+  return { isAdmin, isRep, isQcSupervisor, isQc, allowedViews };
 }
 
 function getSessionSecret() {

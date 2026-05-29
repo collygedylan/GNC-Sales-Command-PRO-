@@ -55,8 +55,6 @@ type Intent = {
   markerToken: string;
   domains: DatasetKey[];
   mode: IntentMode;
-  siteCode?: string;
-  siteTablesEnabled?: boolean;
 };
 
 type MatchRow = {
@@ -128,49 +126,6 @@ const TABLE_NAMES: Record<DatasetKey, string> = {
   "dock-team": "v2_dock_team_status",
   future: "v2_master_inventory",
 };
-const SITE_CODES = new Set(["PH", "TX", "NC", "HL"]);
-const SITE_TABLE_BASE_BY_LEGACY: Record<string, string> = {
-  v2_master_inventory: "master_inventory",
-  v2_active_request: "active_request",
-  v2_request_history: "request_history",
-  v2_reserves: "reserves",
-  v2_soc_master: "soc_master",
-  v2_cav_import: "cav_import",
-  v2_view_av_hot_price_keys: "view_av_hot_price_keys",
-  v2_av_notes: "av_notes",
-  v2_labor_hours: "labor_hours",
-  v2_sales_office: "sales_office",
-  v2_flyer_folder_rows: "flyer_folder_rows",
-  v2_flyer_folder_history: "flyer_folder_history",
-  v2_ncr_completions: "ncr_completions",
-  v2_take_back_queue: "take_back_queue",
-  v2_productivity_history: "productivity_history",
-  v2_ml_image_jobs: "ml_image_jobs",
-  v2_diagnostic_lab_cases: "diagnostic_lab_cases",
-  v2_diagnostic_reference_reports: "diagnostic_reference_reports",
-  v2_diagnostic_review_feedback: "diagnostic_review_feedback",
-  v2_disease_training_assets: "disease_training_assets",
-  v2_grower_scout_reports: "grower_scout_reports",
-  v2_grower_scout_assets: "grower_scout_assets",
-  v2_shear_list: "shear_list",
-  v2_production_workflow_rows: "production_workflow_rows",
-  v2_spread_counts: "spread_counts",
-  v2_bunch_counts: "bunch_counts",
-  v2_dock_team_status: "dock_team_status",
-  v2_dock_item_status: "dock_item_status",
-  v2_dock_issue_status: "dock_issue_status",
-  v2_dock_issue_allocations: "dock_issue_allocations",
-  v2_drive_around_report_files: "drive_around_report_files",
-  v2_drive_around_report_rows: "drive_around_report_rows",
-  v2_weather_hourly: "weather_hourly",
-  v2_weather_daily: "weather_daily",
-  v2_hold_learning_events: "hold_learning_events",
-  v2_hold_release_cycles: "hold_release_cycles",
-  v2_hold_learning_profiles: "hold_learning_profiles",
-};
-const LEGACY_BY_SITE_TABLE_BASE = Object.fromEntries(
-  Object.entries(SITE_TABLE_BASE_BY_LEGACY).map(([legacy, base]) => [base, legacy]),
-);
 
 const NUMBER_WORDS: Record<string, string> = {
   zero: "0",
@@ -220,52 +175,6 @@ function ensureServerConfig() {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
   }
-}
-
-function normalizeSiteCode(siteCode = "") {
-  const safe = String(siteCode || "").trim().toUpperCase();
-  return SITE_CODES.has(safe) ? safe : "PH";
-}
-
-function envSiteTablesEnabled() {
-  return /^(1|true|yes)$/i.test(String(Deno.env.get("GNC_SITE_TABLES_ENABLED") || ""));
-}
-
-async function readSiteRuntimeFlag(flagName: string, envEnabled = false) {
-  if (envEnabled) return true;
-  const { data, error } = await supabase
-    .from("app_site_runtime_flags")
-    .select("enabled")
-    .eq("key", flagName)
-    .maybeSingle();
-  if (error) {
-    console.warn("site runtime flag lookup failed", { flagName, error: error.message });
-    return false;
-  }
-  return data?.enabled === true;
-}
-
-function getSiteTableBaseName(table = "") {
-  const safe = String(table || "").trim().toLowerCase();
-  if (SITE_TABLE_BASE_BY_LEGACY[safe]) return SITE_TABLE_BASE_BY_LEGACY[safe];
-  const match = safe.match(/^(ph|tx|nc|hl)_(.+)$/);
-  return match && LEGACY_BY_SITE_TABLE_BASE[match[2]] ? match[2] : "";
-}
-
-function getLegacyTableName(table = "") {
-  const safe = String(table || "").trim().toLowerCase();
-  if (SITE_TABLE_BASE_BY_LEGACY[safe]) return safe;
-  const base = getSiteTableBaseName(safe);
-  return base ? String(LEGACY_BY_SITE_TABLE_BASE[base] || safe) : safe;
-}
-
-function resolveSiteTable(table = "", siteCode = "", enabled = envSiteTablesEnabled()) {
-  const safe = String(table || "").trim();
-  const safeLower = safe.toLowerCase();
-  const base = getSiteTableBaseName(safeLower);
-  if (!base || /^(ph|tx|nc|hl)_/.test(safeLower)) return safe;
-  if (!enabled) return safe;
-  return `${normalizeSiteCode(siteCode).toLowerCase()}_${base}`;
 }
 
 function compactText(value = "") {
@@ -583,19 +492,16 @@ function isCloseTokenMatch(token: string, candidate: string) {
 }
 
 function mapTableToDataset(tableName: string): DatasetKey {
-  const logicalTable = getLegacyTableName(tableName);
-  const entry = Object.entries(TABLE_NAMES).find(([, table]) => table === logicalTable);
+  const entry = Object.entries(TABLE_NAMES).find(([, table]) => table === tableName);
   return (entry?.[0] || "master") as DatasetKey;
 }
 
 async function fetchRows(tableName: string, intent: Intent) {
-  const logicalTable = getLegacyTableName(tableName);
-  const physicalTable = resolveSiteTable(tableName, intent.siteCode, !!intent.siteTablesEnabled);
-  let query = supabase.from(physicalTable).select("*").limit(logicalTable === "v2_master_inventory" ? 650 : 500);
+  let query = supabase.from(tableName).select("*").limit(tableName === "v2_master_inventory" ? 650 : 500);
   const searchTokens = Array.from(new Set(expandAliasTokens(intent.itemTokens || []).filter(Boolean)))
     .sort((left, right) => right.length - left.length || left.localeCompare(right))
     .slice(0, 5);
-  if (searchTokens.length && logicalTable !== "v2_dock_team_status") {
+  if (searchTokens.length && tableName !== "v2_dock_team_status") {
     const fieldOptions: Record<string, string[]> = {
       v2_master_inventory: ["commonname", "itemcode", "locationcode"],
       v2_reserves: ["commonname", "itemcode", "customername", "consigneename", "salesrepname"],
@@ -603,7 +509,7 @@ async function fetchRows(tableName: string, intent: Intent) {
       v2_sales_office: ["commonname", "itemcode", "order_customer", "order_folder"],
       v2_soc_master: ["commonname", "itemcode", "locationcode", "dock_note", "dock_num", "customername", "salesrepname"],
     };
-    const orFields = fieldOptions[logicalTable] || [];
+    const orFields = fieldOptions[tableName] || [];
     const clauses: string[] = [];
     searchTokens.forEach((rawToken) => {
       const token = String(rawToken || "").replace(/[^a-z0-9_-]+/gi, "").trim();
@@ -625,17 +531,17 @@ async function fetchRows(tableName: string, intent: Intent) {
     v2_sales_office: "order_customer",
     v2_soc_master: "customername",
   };
-  if (intent.salesRep && salesRepFieldMap[logicalTable]) {
-    query = query.ilike(salesRepFieldMap[logicalTable], `%${intent.salesRep}%`);
+  if (intent.salesRep && salesRepFieldMap[tableName]) {
+    query = query.ilike(salesRepFieldMap[tableName], `%${intent.salesRep}%`);
   }
-  if (intent.customer && customerFieldMap[logicalTable]) {
-    query = query.ilike(customerFieldMap[logicalTable], `%${intent.customer}%`);
+  if (intent.customer && customerFieldMap[tableName]) {
+    query = query.ilike(customerFieldMap[tableName], `%${intent.customer}%`);
   }
-  if (intent.size && logicalTable !== "v2_dock_team_status") query = query.ilike("contsize", `%${intent.size}%`);
-  if (intent.priority && logicalTable !== "v2_dock_team_status") query = query.eq("priority", intent.priority);
-  if (intent.lot && logicalTable !== "v2_dock_team_status") query = query.ilike("lotcode", `%${intent.lot}%`);
+  if (intent.size && tableName !== "v2_dock_team_status") query = query.ilike("contsize", `%${intent.size}%`);
+  if (intent.priority && tableName !== "v2_dock_team_status") query = query.eq("priority", intent.priority);
+  if (intent.lot && tableName !== "v2_dock_team_status") query = query.ilike("lotcode", `%${intent.lot}%`);
   const { data, error } = await query;
-  if (error) throw new Error(`${physicalTable} query failed: ${String(error.message || error || "").trim()}`);
+  if (error) throw new Error(`${tableName} query failed: ${String(error.message || error || "").trim()}`);
   return Array.isArray(data) ? data : [];
 }
 
@@ -1082,7 +988,7 @@ async function queryDataset(datasetKey: DatasetKey, intent: Intent) {
 }
 
 async function handleIntent(intent: Intent, session: { username?: string; displayName?: string; role?: string }) {
-  const access = getRoleAccessState(session.role, session.username);
+  const access = getRoleAccessState(session.role);
   const userKeys = buildUserMatchKeys(session);
 
   const scopeRepRows = (matches: MatchRow[]) => access.isRep ? matches.filter((row) => matchesScopedUser(row.salesRep, userKeys)) : matches;
@@ -1161,7 +1067,7 @@ serve(async (req) => {
     ensureServerConfig();
     const session = await readAppSessionFromRequest(req);
     if (!session) return errorResponse("Unauthorized", 401);
-    const access = getRoleAccessState(session.role, session.username);
+    const access = getRoleAccessState(session.role);
     if (!(access.isAdmin || access.isRep || access.isQcSupervisor || access.isQc)) {
       return errorResponse("Unauthorized", 403);
     }
@@ -1171,15 +1077,6 @@ serve(async (req) => {
     if (!question) return errorResponse("Question is required.", 400);
 
     const intent = buildIntent(question);
-    intent.siteCode = normalizeSiteCode(
-      payload?.siteCode ||
-      payload?.site_code ||
-      payload?.site ||
-      (session as { siteCode?: string; site_code?: string; site?: string })?.siteCode ||
-      (session as { siteCode?: string; site_code?: string; site?: string })?.site_code ||
-      (session as { siteCode?: string; site_code?: string; site?: string })?.site,
-    );
-    intent.siteTablesEnabled = await readSiteRuntimeFlag("site_tables_enabled", envSiteTablesEnabled());
     const responsePayload = await handleIntent(intent, session);
     if (responsePayload instanceof Response) return responsePayload;
     const phrased = await maybePhraseAnswer(responsePayload.answer, responsePayload.matches, responsePayload.sourceLabel, question);

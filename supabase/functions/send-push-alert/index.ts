@@ -215,7 +215,7 @@ serve(async (req) => {
   const authHeader = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
   const apiKey = String(req.headers.get("apikey") || "").trim();
   const session = await readAppSessionFromRequest(req);
-  const sessionAccess = session ? getRoleAccessState(session.role, session.username) : null;
+  const sessionAccess = session ? getRoleAccessState(session.role) : null;
   const hasServiceRole = authHeader === SUPABASE_SERVICE_ROLE_KEY || apiKey === SUPABASE_SERVICE_ROLE_KEY || isServiceRoleJwt(authHeader) || isServiceRoleJwt(apiKey);
   const hasAppSession = !!(session && !session.mustChangePassword && sessionAccess);
 
