@@ -1,4 +1,9 @@
 desktop.ini
 __pycache__/
 *.pyc
+.env
+.env.*
+!.env.example
+ml_secrets.txt
+.venv/
 

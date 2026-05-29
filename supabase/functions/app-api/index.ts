@@ -18,14 +18,71 @@ const PHOTO_BUCKETS: Record<string, string> = {
   "flyer-": "flyer_photos",
   default: "flyer_photos",
 };
+const SITE_CODES = new Set(["PH", "TX", "NC", "HL"]);
+const SITE_TABLE_BASE_BY_LEGACY: Record<string, string> = {
+  v2_master_inventory: "master_inventory",
+  v2_active_request: "active_request",
+  v2_request_history: "request_history",
+  v2_reserves: "reserves",
+  v2_soc_master: "soc_master",
+  v2_cav_import: "cav_import",
+  v2_view_av_hot_price_keys: "view_av_hot_price_keys",
+  v2_av_notes: "av_notes",
+  v2_labor_hours: "labor_hours",
+  v2_sales_office: "sales_office",
+  v2_flyer_folder_rows: "flyer_folder_rows",
+  v2_flyer_folder_history: "flyer_folder_history",
+  v2_ncr_completions: "ncr_completions",
+  v2_take_back_queue: "take_back_queue",
+  v2_productivity_history: "productivity_history",
+  v2_ml_image_jobs: "ml_image_jobs",
+  v2_diagnostic_lab_cases: "diagnostic_lab_cases",
+  v2_diagnostic_reference_reports: "diagnostic_reference_reports",
+  v2_diagnostic_review_feedback: "diagnostic_review_feedback",
+  v2_disease_training_assets: "disease_training_assets",
+  v2_grower_scout_reports: "grower_scout_reports",
+  v2_grower_scout_assets: "grower_scout_assets",
+  v2_shear_list: "shear_list",
+  v2_production_workflow_rows: "production_workflow_rows",
+  v2_spread_counts: "spread_counts",
+  v2_bunch_counts: "bunch_counts",
+  v2_dock_team_status: "dock_team_status",
+  v2_dock_item_status: "dock_item_status",
+  v2_dock_issue_status: "dock_issue_status",
+  v2_dock_issue_allocations: "dock_issue_allocations",
+  v2_drive_around_report_files: "drive_around_report_files",
+  v2_drive_around_report_rows: "drive_around_report_rows",
+  v2_weather_hourly: "weather_hourly",
+  v2_weather_daily: "weather_daily",
+  v2_hold_learning_events: "hold_learning_events",
+  v2_hold_release_cycles: "hold_release_cycles",
+  v2_hold_learning_profiles: "hold_learning_profiles",
+};
+const LEGACY_BY_SITE_TABLE_BASE = Object.fromEntries(Object.entries(SITE_TABLE_BASE_BY_LEGACY).map(([legacy, base]) => [base, legacy]));
+const SITE_SCOPED_BUCKETS = new Set([
+  "season_sales_notes_photos",
+  "location_sales_notes_photos",
+  "request_photos",
+  "dock_photos",
+  "flyer_photos",
+  "marketing_materials",
+  "ml_capture_photos",
+  "diagnostic_lab_reports",
+  "disease_training_assets",
+  "grower_scout_audio",
+  "grower_scout_photos",
+  "grower_scout_files",
+]);
 const READABLE_TABLES = new Set([
   "v2_master_inventory",
   "v2_active_request",
   "v2_reserves",
   "v2_soc_master",
   "v2_sales_office",
-  "v2_cav",
+  "v2_cav_import",
+  "v2_view_av_hot_price_keys",
   "v2_av_notes",
+  "v2_labor_hours",
   "v2_dock_team_status",
   "v2_dock_item_status",
   "v2_app_users",
@@ -83,6 +140,62 @@ function withSelect(query = "", selectValue = "*") {
   return params.toString();
 }
 
+function normalizeSiteCode(siteCode = "") {
+  const safe = String(siteCode || "").trim().toUpperCase();
+  return SITE_CODES.has(safe) ? safe : "PH";
+}
+
+function envSiteTablesEnabled() {
+  return /^(1|true|yes)$/i.test(String(Deno.env.get("GNC_SITE_TABLES_ENABLED") || ""));
+}
+
+function envSiteBucketsEnabled() {
+  return /^(1|true|yes)$/i.test(String(Deno.env.get("GNC_SITE_BUCKETS_ENABLED") || Deno.env.get("GNC_SITE_TABLES_ENABLED") || ""));
+}
+
+async function readSiteRuntimeFlag(flagName: string, envEnabled = false) {
+  if (envEnabled) return true;
+  const { data, error } = await supabase
+    .from("app_site_runtime_flags")
+    .select("enabled")
+    .eq("key", flagName)
+    .maybeSingle();
+  if (error) {
+    console.warn("site runtime flag lookup failed", { flagName, error: error.message });
+    return false;
+  }
+  return data?.enabled === true;
+}
+
+function getSiteTableBaseName(table = "") {
+  const safe = String(table || "").trim().toLowerCase();
+  if (SITE_TABLE_BASE_BY_LEGACY[safe]) return SITE_TABLE_BASE_BY_LEGACY[safe];
+  const match = safe.match(/^(ph|tx|nc|hl)_(.+)$/);
+  return match && LEGACY_BY_SITE_TABLE_BASE[match[2]] ? match[2] : "";
+}
+
+function getLegacyTableName(table = "") {
+  const safe = String(table || "").trim().toLowerCase();
+  if (SITE_TABLE_BASE_BY_LEGACY[safe]) return safe;
+  const base = getSiteTableBaseName(safe);
+  return base ? String(LEGACY_BY_SITE_TABLE_BASE[base] || safe) : safe;
+}
+
+function resolveSiteTable(table = "", siteCode = "", enabled = envSiteTablesEnabled()) {
+  const safe = String(table || "").trim();
+  const safeLower = safe.toLowerCase();
+  const base = getSiteTableBaseName(safeLower);
+  if (!base || /^(ph|tx|nc|hl)_/.test(safeLower)) return safe;
+  if (!enabled) return safe;
+  return `${normalizeSiteCode(siteCode).toLowerCase()}_${base}`;
+}
+
+function resolveSiteBucket(bucket = "", siteCode = "", enabled = envSiteBucketsEnabled()) {
+  const safe = String(bucket || "").trim();
+  if (!safe || !SITE_SCOPED_BUCKETS.has(safe) || !enabled) return safe;
+  return `${normalizeSiteCode(siteCode).toLowerCase()}_${safe}`;
+}
+
 async function restRequest(table: string, method = "GET", query = "", body: unknown = null) {
   const querySuffix = String(query || "").trim();
   const url = `${SUPABASE_URL}/rest/v1/${table}${querySuffix ? `?${querySuffix}` : ""}`;
@@ -112,45 +225,59 @@ function sanitizeFileName(value = "") {
   return withoutExt.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80) || "photo";
 }
 
-function hasTableReadAccess(role = "", table = "") {
-  if (!READABLE_TABLES.has(table)) return false;
-  const access = getRoleAccessState(role);
+function hasTableReadAccess(role = "", table = "", username = "") {
+  const logicalTable = getLegacyTableName(table);
+  if (!READABLE_TABLES.has(logicalTable)) return false;
+  const access = getRoleAccessState(role, username);
   if (access.isAdmin) return true;
-  if (table === "v2_app_users") return access.isQc || access.isQcSupervisor || access.isAdmin;
+  if (logicalTable === "v2_app_users") return access.isQc || access.isQcSupervisor || access.isAdmin;
   if (access.isRep) {
-    return new Set(["v2_master_inventory", "v2_active_request", "v2_reserves", "v2_soc_master", "v2_sales_office", "v2_cav", "v2_av_notes", "v2_dock_team_status", "v2_dock_item_status"]).has(table);
+    return new Set(["v2_master_inventory", "v2_active_request", "v2_reserves", "v2_soc_master", "v2_sales_office", "v2_cav_import", "v2_view_av_hot_price_keys", "v2_av_notes", "v2_dock_team_status", "v2_dock_item_status"]).has(logicalTable);
+  }
+  if (access.isEval) {
+    return new Set(["v2_master_inventory", "v2_active_request", "v2_soc_master", "v2_sales_office", "v2_cav_import", "v2_view_av_hot_price_keys", "v2_av_notes", "v2_dock_team_status", "v2_dock_item_status", "v2_push_subscriptions"]).has(logicalTable);
   }
   if (access.isQcSupervisor) {
-    return new Set(["v2_master_inventory", "v2_soc_master", "v2_dock_team_status", "v2_dock_item_status"]).has(table);
+    return new Set(["v2_master_inventory", "v2_soc_master", "v2_dock_team_status", "v2_dock_item_status"]).has(logicalTable);
   }
   if (access.isQc) {
-    return new Set(["v2_soc_master", "v2_dock_team_status", "v2_dock_item_status"]).has(table);
+    return new Set(["v2_soc_master", "v2_dock_team_status", "v2_dock_item_status"]).has(logicalTable);
   }
   return false;
 }
 
-function hasTableWriteAccess(role = "", table = "", method = "POST", body: unknown = null) {
-  if (!WRITABLE_TABLES.has(table)) return false;
-  const access = getRoleAccessState(role);
+function hasTableWriteAccess(role = "", table = "", method = "POST", body: unknown = null, username = "") {
+  const logicalTable = getLegacyTableName(table);
+  if (!WRITABLE_TABLES.has(logicalTable)) return false;
+  const access = getRoleAccessState(role, username);
   if (access.isAdmin) return true;
-  if (table === "v2_push_subscriptions") return method === "POST";
-  if (table === "v2_labor_hours") return method === "POST";
+  if (logicalTable === "v2_push_subscriptions") return method === "POST";
+  if (logicalTable === "v2_labor_hours") return method === "POST";
   if (access.isRep) {
     return (
-      (table === "v2_active_request" && ["POST", "PATCH", "DELETE"].includes(method)) ||
-      (table === "v2_sales_office" && ["POST", "DELETE"].includes(method))
+      (logicalTable === "v2_active_request" && ["POST", "PATCH", "DELETE"].includes(method)) ||
+      (logicalTable === "v2_sales_office" && ["POST", "DELETE"].includes(method))
+    );
+  }
+  if (access.isEval) {
+    return (
+      (logicalTable === "v2_master_inventory" && method === "PATCH") ||
+      (logicalTable === "v2_active_request" && ["POST", "PATCH", "DELETE"].includes(method)) ||
+      (logicalTable === "v2_sales_office" && ["POST", "PATCH", "DELETE"].includes(method)) ||
+      (logicalTable === "v2_dock_team_status" && method === "POST") ||
+      (logicalTable === "v2_dock_item_status" && method === "POST")
     );
   }
   if (access.isQcSupervisor) {
-    if (table === "v2_dock_team_status" && method === "POST") return true;
-    if (table === "v2_dock_item_status" && method === "POST") return true;
-    if (table === "v2_master_inventory" && method === "PATCH") {
+    if (logicalTable === "v2_dock_team_status" && method === "POST") return true;
+    if (logicalTable === "v2_dock_item_status" && method === "POST") return true;
+    if (logicalTable === "v2_master_inventory" && method === "PATCH") {
       const payload = body && typeof body === "object" && !Array.isArray(body) ? Object.keys(body as Record<string, unknown>) : [];
       return payload.length > 0 && payload.every((key) => MASTER_QC_WRITABLE_FIELDS.has(String(key || "").trim().toLowerCase()));
     }
   }
   if (access.isQc) {
-    return table === "v2_dock_item_status" && method === "POST";
+    return logicalTable === "v2_dock_item_status" && method === "POST";
   }
   return false;
 }
@@ -257,19 +384,23 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
   const method = String(payload.method || "GET").trim().toUpperCase();
   const body = Object.prototype.hasOwnProperty.call(payload, "body") ? payload.body : null;
   let query = String(payload.query || "").trim();
+  const siteCode = normalizeSiteCode(String(payload.siteCode || payload.site_code || ""));
+  const siteTablesAreEnabled = await readSiteRuntimeFlag("site_tables_enabled", envSiteTablesEnabled());
+  const physicalTable = resolveSiteTable(table, siteCode, siteTablesAreEnabled);
+  const logicalTable = getLegacyTableName(table);
 
   if (!["GET", "POST", "PATCH", "DELETE"].includes(method)) return errorResponse("Unsupported method.", 400);
   if (method === "GET") {
-    if (!hasTableReadAccess(session.role, table)) return errorResponse("Forbidden", 403);
-  } else if (!hasTableWriteAccess(session.role, table, method, body)) {
+    if (!hasTableReadAccess(session.role, table, session.username)) return errorResponse("Forbidden", 403);
+  } else if (!hasTableWriteAccess(session.role, table, method, body, session.username)) {
     return errorResponse("Forbidden", 403);
   }
 
-  if (table === "v2_app_users" && method === "GET") {
+  if (logicalTable === "v2_app_users" && method === "GET") {
     query = withSelect(query, "username,role");
   }
 
-  const response = await restRequest(table, method, query, body);
+  const response = await restRequest(physicalTable, method, query, body);
   const responsePayload = await readResponsePayload(response);
   if (!response.ok) {
     return errorResponse("Database request failed.", response.status, { details: responsePayload });
@@ -279,7 +410,7 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
 
 async function handlePhotoUpload(session: Awaited<ReturnType<typeof readAppSessionFromRequest>>, req: Request) {
   if (!session) return errorResponse("Unauthorized", 401);
-  const access = getRoleAccessState(session.role);
+  const access = getRoleAccessState(session.role, session.username);
   if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
   if (access.isRep) return errorResponse("REP users cannot upload row photos.", 403);
 
@@ -288,7 +419,10 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readAppSessi
   const file = form.get("file");
   if (!(file instanceof File)) return errorResponse("No photo file was provided.", 400);
 
-  const bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
+  const siteCode = normalizeSiteCode(String(form.get("siteCode") || form.get("site_code") || ""));
+  const siteBucketsAreEnabled = await readSiteRuntimeFlag("site_buckets_enabled", envSiteBucketsEnabled());
+  const siteTablesAreEnabled = siteBucketsAreEnabled || await readSiteRuntimeFlag("site_tables_enabled", envSiteTablesEnabled());
+  const bucketName = resolveSiteBucket(PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default, siteCode, siteTablesAreEnabled);
   const originalName = sanitizeFileName(String(form.get("fileName") || file.name || "photo"));
   const fileName = `${originalName}-${Date.now()}.jpg`;
   const filePath = `${new Date().toISOString().split("T")[0]}/${fileName}`;
