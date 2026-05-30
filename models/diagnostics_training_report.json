@@ -43,7 +43,7 @@
     "fire blight; erwinia amylovora": 4,
     "flee beetles": 4,
     "fungi": 4,
-    "fusarium": 86,
+    "fusarium": 90,
     "fusarium oxysporum": 2,
     "fusearium oxysporum": 2,
     "garden fleahopper": 2,
@@ -108,80 +108,80 @@
     "winter kill; roots dead; tips flushed then dried": 2,
     "xanthomonas": 30
   },
-  "created_at": "2026-05-29T10:47:17.148997+00:00",
+  "created_at": "2026-05-30T09:13:35.346236+00:00",
   "device": "cpu",
   "epochs": 8,
   "history": [
     {
       "epoch": 1,
-      "seconds": 46.15,
-      "train_accuracy": 0.10748898678414097,
-      "train_loss": 4.311441634089936,
-      "validation_accuracy": 0.0038314176245210726,
-      "validation_loss": 4.997823413761183
+      "seconds": 37.7,
+      "train_accuracy": 0.10456942003514938,
+      "train_loss": 4.31397586799045,
+      "validation_accuracy": 0.003816793893129771,
+      "validation_loss": 4.89569158408478
     },
     {
       "epoch": 2,
-      "seconds": 46.27,
-      "train_accuracy": 0.2643171806167401,
-      "train_loss": 3.470485067367554,
-      "validation_accuracy": 0.007662835249042145,
-      "validation_loss": 5.119375886588261
+      "seconds": 37.87,
+      "train_accuracy": 0.2671353251318102,
+      "train_loss": 3.4396597245456046,
+      "validation_accuracy": 0.007633587786259542,
+      "validation_loss": 5.469123796652291
     },
     {
       "epoch": 3,
-      "seconds": 46.27,
-      "train_accuracy": 0.3903083700440529,
-      "train_loss": 2.731074581062216,
-      "validation_accuracy": 0.011494252873563218,
-      "validation_loss": 5.270975315707854
+      "seconds": 37.5,
+      "train_accuracy": 0.44024604569420034,
+      "train_loss": 2.5634392837229427,
+      "validation_accuracy": 0.003816793893129771,
+      "validation_loss": 5.939911139830378
     },
     {
       "epoch": 4,
-      "seconds": 46.3,
-      "train_accuracy": 0.5286343612334802,
-      "train_loss": 2.0465582050415914,
-      "validation_accuracy": 0.011494252873563218,
-      "validation_loss": 5.80831460843141
+      "seconds": 37.89,
+      "train_accuracy": 0.5755711775043937,
+      "train_loss": 1.9300668220737907,
+      "validation_accuracy": 0.007633587786259542,
+      "validation_loss": 5.69071261209386
     },
     {
       "epoch": 5,
-      "seconds": 46.38,
-      "train_accuracy": 0.5850220264317181,
-      "train_loss": 1.7831393307001056,
-      "validation_accuracy": 0.019157088122605363,
-      "validation_loss": 5.9756092805972045
+      "seconds": 37.34,
+      "train_accuracy": 0.6256590509666081,
+      "train_loss": 1.665063129368063,
+      "validation_accuracy": 0.019083969465648856,
+      "validation_loss": 5.571361079470802
     },
     {
       "epoch": 6,
-      "seconds": 45.77,
-      "train_accuracy": 0.6378854625550661,
-      "train_loss": 1.5234026140053367,
-      "validation_accuracy": 0.038314176245210725,
-      "validation_loss": 5.6316359344570115
+      "seconds": 37.29,
+      "train_accuracy": 0.6599297012302284,
+      "train_loss": 1.491469235328044,
+      "validation_accuracy": 0.015267175572519083,
+      "validation_loss": 5.466067288668101
     },
     {
       "epoch": 7,
-      "seconds": 45.79,
-      "train_accuracy": 0.6881057268722467,
-      "train_loss": 1.3152912667144239,
-      "validation_accuracy": 0.022988505747126436,
-      "validation_loss": 5.725954521661517
+      "seconds": 36.94,
+      "train_accuracy": 0.7170474516695958,
+      "train_loss": 1.2575801254785333,
+      "validation_accuracy": 0.04580152671755725,
+      "validation_loss": 5.610362082037307
     },
     {
       "epoch": 8,
-      "seconds": 45.79,
-      "train_accuracy": 0.7110132158590309,
-      "train_loss": 1.2488715523927747,
-      "validation_accuracy": 0.01532567049808429,
-      "validation_loss": 6.046652963791771
+      "seconds": 37.23,
+      "train_accuracy": 0.6889279437609842,
+      "train_loss": 1.3677178668431114,
+      "validation_accuracy": 0.019083969465648856,
+      "validation_loss": 5.146297192755546
     }
   ],
   "labels_path": "models/diagnostics_labels.json",
   "learning_rate": 0.0004,
   "model_path": "models/diagnostics_classifier.pt",
-  "sample_count": 1396,
-  "train_sample_count": 1135,
+  "sample_count": 1400,
+  "train_sample_count": 1138,
   "use_pretrained": true,
-  "validation_sample_count": 261
+  "validation_sample_count": 262
 }
