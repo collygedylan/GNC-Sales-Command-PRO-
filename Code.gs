@@ -4903,29 +4903,151 @@ function fetchRequestRowsForEmailRequestIds_(requestIds) {
   return rows;
 }
 
+function fetchRequestHistoryRowsForEmailFolder_(folderId) {
+  const safeFolderId = String(folderId || '').trim();
+  if (!safeFolderId) return [];
+  const requestHistoryTableName = getRuntimeSiteSplitTableName_('v2_request_history', 'PH');
+  const url = `${SUPABASE_URL}/rest/v1/${requestHistoryTableName}?select=*&request_folder=eq.${encodeURIComponent(safeFolderId)}&order=updated_at.desc`;
+  const response = UrlFetchApp.fetch(url, {
+    method: 'get',
+    muteHttpExceptions: true,
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY
+    }
+  });
+  const status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
+  const bodyText = response && response.getContentText ? response.getContentText() : '';
+  if (status < 200 || status >= 300) {
+    console.error('[REQUEST EMAIL] Could not load request history rows for gallery', {
+      folderId: safeFolderId,
+      status: status,
+      body: bodyText
+    });
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(bodyText || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.error('[REQUEST EMAIL] Could not parse request history rows for gallery', { folderId: safeFolderId, error: error && error.message ? error.message : error });
+    return [];
+  }
+}
+
+function fetchRequestHistoryRowsForEmailRequestIds_(requestIds) {
+  const safeIds = normalizeRequestGalleryIdList_(requestIds);
+  if (!safeIds.length) return [];
+  const requestHistoryTableName = getRuntimeSiteSplitTableName_('v2_request_history', 'PH');
+  const buildInFilter = function(ids) {
+    return ids.map(function(id) {
+      return '"' + String(id || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+    }).join(',');
+  };
+  let rows = [];
+  for (let offset = 0; offset < safeIds.length; offset += 50) {
+    const batchIds = safeIds.slice(offset, offset + 50);
+    const url = `${SUPABASE_URL}/rest/v1/${requestHistoryTableName}?select=*&unique_id=in.(${encodeURIComponent(buildInFilter(batchIds))})&order=updated_at.desc`;
+    const response = UrlFetchApp.fetch(url, {
+      method: 'get',
+      muteHttpExceptions: true,
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      }
+    });
+    const status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
+    const bodyText = response && response.getContentText ? response.getContentText() : '';
+    if (status < 200 || status >= 300) {
+      console.error('[REQUEST EMAIL] Could not load request history rows by IDs', {
+        requestIds: batchIds,
+        status: status,
+        body: bodyText
+      });
+      continue;
+    }
+    try {
+      const parsed = JSON.parse(bodyText || '[]');
+      if (Array.isArray(parsed)) rows = rows.concat(parsed);
+    } catch (error) {
+      console.error('[REQUEST EMAIL] Could not parse request history rows by IDs', { requestIds: batchIds, error: error && error.message ? error.message : error });
+    }
+  }
+  return rows;
+}
+
+function parseRequestRowSnapshot_(row) {
+  const rawSnapshot = row && (row.snapshot || row.SNAPSHOT);
+  if (!rawSnapshot) return {};
+  if (typeof rawSnapshot === 'object') return rawSnapshot || {};
+  try {
+    const parsed = JSON.parse(String(rawSnapshot || '{}'));
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (error) {
+    return {};
+  }
+}
+
+function mergeRequestEmailRows_(primaryRows, fallbackRows) {
+  const rows = [];
+  const indexById = {};
+  const addOrMerge = function(row) {
+    if (!row) return;
+    const id = String(firstNonEmptyRequestValue_(row.unique_id, row.UNIQUE_ID, '')).trim();
+    if (id && Object.prototype.hasOwnProperty.call(indexById, id)) {
+      const existing = rows[indexById[id]];
+      Object.keys(row).forEach(function(key) {
+        if (existing[key] == null || String(existing[key]).trim() === '') existing[key] = row[key];
+      });
+      const existingSnapshot = parseRequestRowSnapshot_(existing);
+      const nextSnapshot = parseRequestRowSnapshot_(row);
+      Object.keys(nextSnapshot).forEach(function(key) {
+        if (existingSnapshot[key] == null || String(existingSnapshot[key]).trim() === '') existingSnapshot[key] = nextSnapshot[key];
+      });
+      if (Object.keys(existingSnapshot).length) existing.snapshot = existingSnapshot;
+      return;
+    }
+    const cloned = row && typeof row === 'object' ? JSON.parse(JSON.stringify(row)) : row;
+    if (id) indexById[id] = rows.length;
+    rows.push(cloned);
+  };
+  (Array.isArray(primaryRows) ? primaryRows : []).forEach(addOrMerge);
+  (Array.isArray(fallbackRows) ? fallbackRows : []).forEach(addOrMerge);
+  return rows;
+}
+
 function buildRequestEmailItemsFromRows_(rows, payload) {
   const safeRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
   const fallbackFolderId = String(firstNonEmptyRequestValue_(payload && payload.folderId, payload && payload.requestFolder, '')).trim();
   const fallbackCustomer = String(firstNonEmptyRequestValue_(payload && payload.customer, payload && payload.requestCustomer, '')).trim();
   return safeRows.map(function(item) {
+    const snapshot = parseRequestRowSnapshot_(item);
     return {
       unique_id: firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, ''),
       folder: firstNonEmptyRequestValue_(item && item.request_folder, item && item.REQUEST_FOLDER, fallbackFolderId),
-      customer: firstNonEmptyRequestValue_(item && item.req_customer, item && item.REQ_CUSTOMER, fallbackCustomer),
-      commonname: firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, ''),
+      customer: firstNonEmptyRequestValue_(item && item.req_customer, item && item.REQ_CUSTOMER, item && item.request_customer, item && item.REQUEST_CUSTOMER, snapshot.REQ_CUSTOMER, snapshot.request_customer, fallbackCustomer),
+      commonname: firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, snapshot.COMMONNAME, snapshot.commonname, ''),
       contsize: firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, ''),
       itemcode: firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, ''),
+      lotcode: firstNonEmptyRequestValue_(item && item.lotcode, item && item.LOTCODE, snapshot.LOTCODE, snapshot.lotcode, ''),
+      season: firstNonEmptyRequestValue_(item && item.season, item && item.SEASON, snapshot.SEASON, snapshot.season, ''),
+      priority: firstNonEmptyRequestValue_(item && item.priority, item && item.PRIORITY, snapshot.PRIORITY, snapshot.priority, ''),
+      ptravailable: firstNonEmptyRequestValue_(item && item.ptravailable, item && item.PTRAVAILABLE, snapshot.PTRAVAILABLE, snapshot.ptravailable, ''),
+      s_lts: firstNonEmptyRequestValue_(item && item.s_lts, item && item.S_LTS, snapshot.S_LTS, snapshot.s_lts, ''),
       qty: firstNonEmptyRequestValue_(item && item.req_qty, item && item.REQ_QTY, ''),
       loc: firstNonEmptyRequestValue_(item && item.locationcode, item && item.LOCATIONCODE, ''),
       av_note: firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, ''),
       spec: firstNonEmptyRequestValue_(item && item.req_spec, item && item.REQ_SPEC, item && item.spec, item && item.SPEC, ''),
       caliper: firstNonEmptyRequestValue_(item && item.req_caliper, item && item.REQ_CALIPER, item && item.caliper, item && item.CALIPER, ''),
       match: firstNonEmptyRequestValue_(item && item.req_match, item && item.REQ_MATCH, item && item.match, item && item.MATCH, ''),
-      loc_match_qty: firstNonEmptyRequestValue_(item && item.loc_match_qty, item && item.LOC_MATCH_QTY, ''),
-      completed_by_username: firstNonEmptyRequestValue_(item && item.completed_by_username, item && item.COMPLETED_BY_USERNAME, ''),
-      completed_by_display: firstNonEmptyRequestValue_(item && item.completed_by_display, item && item.COMPLETED_BY_DISPLAY, item && item.completed_by, item && item.COMPLETED_BY, ''),
+      loc_match_qty: firstNonEmptyRequestValue_(item && item.loc_match_qty, item && item.LOC_MATCH_QTY, snapshot.LOC_MATCH_QTY, snapshot.loc_match_qty, ''),
+      reserve: firstNonEmptyRequestValue_(item && item.req_reserve, item && item.REQ_RESERVE, snapshot.REQ_RESERVE, snapshot.req_reserve, ''),
+      pick_note: firstNonEmptyRequestValue_(item && item.req_pic_note, item && item.REQ_PIC_NOTE, item && item.req_pick, item && item.REQ_PICK, snapshot.REQ_PICK, snapshot.req_pick, ''),
+      comments: firstNonEmptyRequestValue_(item && item.req_comments, item && item.REQ_COMMENTS, snapshot.REQ_COMMENTS, snapshot.req_comments, ''),
+      completed_by_username: firstNonEmptyRequestValue_(item && item.completed_by_username, item && item.COMPLETED_BY_USERNAME, item && item.created_by_username, item && item.CREATED_BY_USERNAME, ''),
+      completed_by_display: firstNonEmptyRequestValue_(item && item.completed_by_display, item && item.COMPLETED_BY_DISPLAY, item && item.completed_by, item && item.COMPLETED_BY, item && item.created_by_display, item && item.CREATED_BY_DISPLAY, ''),
       completed_by_email: firstNonEmptyRequestValue_(item && item.completed_by_email, item && item.COMPLETED_BY_EMAIL, ''),
-      photo: firstNonEmptyRequestValue_(item && item.req_photo_link, item && item.REQ_PHOTO_LINK, item && item.photo_link, '')
+      photo: firstNonEmptyRequestValue_(item && item.req_photo_link, item && item.REQ_PHOTO_LINK, item && item.photo_link, item && item.PHOTO_LINK, snapshot.REQ_PHOTO_LINK, snapshot.req_photo_link, snapshot.PHOTO_LINK, snapshot.photo_link, '')
     };
   }).filter(function(item) {
     return item.unique_id || item.commonname || item.itemcode;
@@ -4945,11 +5067,20 @@ function hydrateRequestCompletePayload_(payload) {
   const folderId = String(firstNonEmptyRequestValue_(safePayload.requestFolder, safePayload.folderId, '')).trim();
   const requestIds = normalizeRequestIdList_(safePayload.requestIds);
   const existingItems = getRequestEmailPayloadItems_(safePayload);
-  let rows = fetchRequestRowsForEmailFolder_(folderId).filter(function(row) {
+  let rows = mergeRequestEmailRows_(
+    fetchRequestRowsForEmailFolder_(folderId),
+    fetchRequestHistoryRowsForEmailFolder_(folderId)
+  ).filter(function(row) {
     const rowId = String(firstNonEmptyRequestValue_(row && row.unique_id, row && row.UNIQUE_ID, '')).trim();
     if (!rowId) return false;
     return !requestIds.length || requestIds.indexOf(rowId) !== -1;
   });
+  if (!rows.length && requestIds.length) {
+    rows = mergeRequestEmailRows_(
+      fetchRequestRowsForEmailRequestIds_(requestIds),
+      fetchRequestHistoryRowsForEmailRequestIds_(requestIds)
+    );
+  }
   if (requestIds.length) {
     const orderMap = new Map(requestIds.map(function(id, index) { return [id, index]; }));
     rows.sort(function(a, b) {
@@ -5296,7 +5427,10 @@ function renderRequestGalleryWebApp_(params) {
   }
 
   const requestIds = normalizeRequestGalleryIdList_(params && (params.ids || params.requestIds || params.request_ids || ''));
-  let rows = fetchRequestRowsForEmailFolder_(folderId);
+  let rows = mergeRequestEmailRows_(
+    fetchRequestRowsForEmailFolder_(folderId),
+    fetchRequestHistoryRowsForEmailFolder_(folderId)
+  );
   if (requestIds.length) {
     const idSet = {};
     requestIds.forEach(function(id) { idSet[id] = true; });
@@ -5305,7 +5439,10 @@ function renderRequestGalleryWebApp_(params) {
       return !!rowId && !!idSet[rowId];
     });
     if (!rows.length) {
-      rows = fetchRequestRowsForEmailRequestIds_(requestIds);
+      rows = mergeRequestEmailRows_(
+        fetchRequestRowsForEmailRequestIds_(requestIds),
+        fetchRequestHistoryRowsForEmailRequestIds_(requestIds)
+      );
     }
   }
   const items = buildRequestEmailItemsFromRows_(rows, { folderId: folderId });
