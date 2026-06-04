@@ -288,6 +288,8 @@ const SUPABASE_FETCH_RETRY_DELAY_MS = 900;
 const DELAYED_REQUEST_EMAIL_QUEUE_KEY = 'DELAYED_REQUEST_EMAIL_QUEUE';
 const DELAYED_REQUEST_EMAIL_TRIGGER_HANDLER = 'processDelayedRequestEmailQueue_';
 const DELAYED_REQUEST_EMAIL_MIN_DELAY_MS = 30000;
+const REQUEST_GALLERY_BASE_URL_PROPERTY = 'REQUEST_GALLERY_BASE_URL';
+const REQUEST_GALLERY_SECRET_PROPERTY = 'REQUEST_GALLERY_SECRET';
 
 const MASTER_IMPORT_BASE_COMPARE_COLUMNS = Object.freeze([
   'unique_id',
@@ -3774,6 +3776,17 @@ function jsonOutput_(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+function doGet(e) {
+  const params = e && e.parameter ? e.parameter : {};
+  const view = String(params.gallery || params.view || '').trim().toLowerCase();
+  if (view === 'request') {
+    return renderRequestGalleryWebApp_(params);
+  }
+  return HtmlService
+    .createHtmlOutput('<!doctype html><html><body style="font-family:Arial,sans-serif;"><h2>GNC Park Hill</h2><p>App script is running.</p></body></html>')
+    .setTitle('GNC Park Hill');
+}
+
 function loadDelayedRequestEmailQueue_() {
   const raw = PropertiesService.getScriptProperties().getProperty(DELAYED_REQUEST_EMAIL_QUEUE_KEY);
   if (!raw) return [];
@@ -4673,6 +4686,365 @@ function buildRequestItemsHtml_(payload) {
   return '<ul style="list-style:none; padding:0; margin:0;">' + rowsHtml + '</ul>';
 }
 
+function getRequestItemPhotoUrls_(item) {
+  return extractRequestPhotoUrls_(firstNonEmptyRequestValue_(
+    item && item.photo,
+    item && item.photo_link,
+    item && item.photo_urls,
+    item && item.req_photo_link,
+    item && item.REQ_PHOTO_LINK,
+    ''
+  ));
+}
+
+function getRequestGallerySecret_() {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const configured = String(props.getProperty(REQUEST_GALLERY_SECRET_PROPERTY) || '').trim();
+    if (configured) return configured;
+  } catch (error) {}
+  return SUPABASE_KEY || SUPABASE_URL || 'gnc-request-gallery';
+}
+
+function base64EncodeWebSafeNoPadding_(bytes) {
+  return Utilities.base64EncodeWebSafe(bytes).replace(/=+$/g, '');
+}
+
+function buildRequestGalleryToken_(folderId) {
+  const safeFolderId = String(folderId || '').trim();
+  if (!safeFolderId) return '';
+  const signature = Utilities.computeHmacSha256Signature(
+    safeFolderId,
+    getRequestGallerySecret_(),
+    Utilities.Charset.UTF_8
+  );
+  return base64EncodeWebSafeNoPadding_(signature);
+}
+
+function verifyRequestGalleryToken_(folderId, token) {
+  const expected = buildRequestGalleryToken_(folderId);
+  return !!expected && expected === String(token || '').trim();
+}
+
+function getRequestGalleryBaseUrl_() {
+  try {
+    const configured = String(PropertiesService.getScriptProperties().getProperty(REQUEST_GALLERY_BASE_URL_PROPERTY) || '').trim();
+    if (configured) return configured;
+  } catch (error) {}
+  try {
+    const serviceUrl = String(ScriptApp.getService().getUrl() || '').trim();
+    if (serviceUrl) return serviceUrl;
+  } catch (error) {}
+  return '';
+}
+
+function buildRequestGalleryUrl_(folderId) {
+  const safeFolderId = String(folderId || '').trim();
+  const baseUrl = getRequestGalleryBaseUrl_();
+  if (!safeFolderId || !baseUrl) return '';
+  const separator = baseUrl.indexOf('?') === -1 ? '?' : '&';
+  return baseUrl + separator +
+    'gallery=request&folder=' + encodeURIComponent(safeFolderId) +
+    '&token=' + encodeURIComponent(buildRequestGalleryToken_(safeFolderId));
+}
+
+function resolveRequestGalleryFolderId_(payload, items) {
+  const firstItem = Array.isArray(items) && items.length ? items[0] || {} : {};
+  return firstNonEmptyRequestValue_(
+    payload && payload.folderId,
+    payload && payload.requestFolder,
+    payload && payload.request_folder,
+    firstItem.folder,
+    firstItem.request_folder,
+    firstItem.REQUEST_FOLDER,
+    ''
+  );
+}
+
+function buildRequestGallerySlidesFromItems_(items) {
+  const safeItems = Array.isArray(items) ? items.filter(Boolean) : [];
+  const slides = [];
+  safeItems.forEach(function(item, itemIndex) {
+    const commonname = firstNonEmptyRequestValue_(item.commonname, item.COMMONNAME, 'Unknown Item');
+    const contsize = firstNonEmptyRequestValue_(item.contsize, item.CONTSIZE, '-');
+    const itemcode = firstNonEmptyRequestValue_(item.itemcode, item.ITEMCODE, '');
+    const locationcode = firstNonEmptyRequestValue_(item.loc, item.locationcode, item.LOCATIONCODE, '');
+    const lotcode = firstNonEmptyRequestValue_(item.lotcode, item.LOTCODE, '');
+    const qty = firstNonEmptyRequestValue_(item.qty, item.requested_qty, item.REQ_QTY, '');
+    const spec = firstNonEmptyRequestValue_(item.spec, item.REQ_SPEC, item.SPEC, '');
+    const caliper = firstNonEmptyRequestValue_(item.caliper, item.REQ_CALIPER, item.CALIPER, '');
+    const locMatchQty = firstNonEmptyRequestValue_(item.loc_match_qty, item.LOC_MATCH_QTY, item.locPhotoMatch, '');
+    const avNote = firstNonEmptyRequestValue_(item.av_note, item.AV_NOTE, '');
+    getRequestItemPhotoUrls_(item).forEach(function(url, photoIndex) {
+      slides.push({
+        url: url,
+        rowNumber: itemIndex + 1,
+        photoNumber: photoIndex + 1,
+        title: [commonname, contsize].filter(Boolean).join(' '),
+        subtitle: [
+          itemcode ? 'Item ' + itemcode : '',
+          locationcode ? 'Loc ' + locationcode : '',
+          lotcode ? 'Lot ' + lotcode : '',
+          qty ? 'Qty ' + qty : ''
+        ].filter(Boolean).join(' | '),
+        itemcode: itemcode,
+        commonname: commonname,
+        contsize: contsize,
+        locationcode: locationcode,
+        lotcode: lotcode,
+        qty: qty,
+        spec: spec,
+        caliper: caliper,
+        locMatchQty: locMatchQty,
+        avNote: avNote
+      });
+    });
+  });
+  return slides;
+}
+
+function buildRequestGalleryUrlForPayload_(payload) {
+  const items = getRequestEmailPayloadItems_(payload);
+  return buildRequestGalleryUrl_(resolveRequestGalleryFolderId_(payload, items));
+}
+
+function buildRequestGalleryPreviewHtml_(payload) {
+  const items = getRequestEmailPayloadItems_(payload);
+  const slides = buildRequestGallerySlidesFromItems_(items);
+  if (!slides.length) return '';
+  const galleryUrl = buildRequestGalleryUrl_(resolveRequestGalleryFolderId_(payload, items));
+  const firstSlide = slides[0] || {};
+  const targetUrl = galleryUrl || firstSlide.url || '';
+  if (!targetUrl) return '';
+  const safeTargetUrl = escapeEmailAttribute_(targetUrl);
+  const safeFirstUrl = escapeEmailAttribute_(firstSlide.url || targetUrl);
+  const photoCountText = slides.length === 1 ? '1 photo' : slides.length + ' photos';
+  const rowCountText = items.length === 1 ? '1 row' : items.length + ' rows';
+  const actionLabel = galleryUrl ? 'View Photo Gallery' : 'Open First Photo';
+  const caption = galleryUrl
+    ? 'First photo shown. Open the gallery to swipe or click through all ' + photoCountText + ' from ' + rowCountText + '.'
+    : 'First photo shown. Open this photo for the full-size image.';
+  return [
+    '<div style="margin:18px 0; padding:14px; border:1px solid #b7f2d1; border-radius:12px; background:#f0fdf4;">',
+    '<a href="' + safeTargetUrl + '" style="display:block; text-decoration:none;">',
+    '<img src="' + safeFirstUrl + '" alt="Request photo preview" width="320" style="display:block;width:100%;max-width:320px;height:auto;max-height:380px;object-fit:contain;border-radius:10px;border:1px solid #d7ded8;margin:0 auto;">',
+    '</a>',
+    '<p style="margin:12px 0 14px 0; color:#065f46; font-size:13px; line-height:1.45;">' + escapeEmailHtml_(caption) + '</p>',
+    '<div style="text-align:center;">',
+    '<a href="' + safeTargetUrl + '" style="display:inline-block; padding:11px 16px; border-radius:999px; background:#007a4d; color:#ffffff; font-weight:700; text-decoration:none;">' + escapeEmailHtml_(actionLabel) + '</a>',
+    '</div>',
+    '</div>'
+  ].join('');
+}
+
+function buildCompactRequestItemsHtml_(payload) {
+  const items = getRequestEmailPayloadItems_(payload);
+  if (!items.length) return String(payload.formattedItemsHtml || '').trim();
+  const rowsHtml = items.map(function(item, index) {
+    const commonName = escapeEmailHtml_(firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Unknown Item'));
+    const contSize = escapeEmailHtml_(firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, '-'));
+    const photoCount = getRequestItemPhotoUrls_(item).length;
+    const fields = [
+      ['Item', firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, '')],
+      ['Loc', firstNonEmptyRequestValue_(item && item.loc, item && item.locationcode, item && item.LOCATIONCODE, '')],
+      ['Lot', firstNonEmptyRequestValue_(item && item.lotcode, item && item.LOTCODE, '')],
+      ['Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
+      ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, '')],
+      ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
+      ['LOC PHOTO MATCH', firstNonEmptyRequestValue_(item && item.loc_match_qty, item && item.LOC_MATCH_QTY, item && item.locPhotoMatch, '')],
+      ['AV Note', firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, '')],
+      ['Photos', photoCount ? String(photoCount) : '0']
+    ].filter(function(field) {
+      return String(field[1] || '').trim() !== '';
+    });
+    const fieldsHtml = fields.map(function(field) {
+      const rowHtml = '<div style="margin-top:3px;"><strong>' + escapeEmailHtml_(field[0]) + ':</strong> ' + escapeEmailHtml_(field[1]) + '</div>';
+      return rowHtml + (isCaliperEmailField_(field[0]) ? buildCaliperMeasurementNoteHtml_(field[1]) : '');
+    }).join('');
+    return [
+      '<li style="margin-bottom:10px; background:#f9f9f9; padding:10px; border-left:4px solid #007a4d;">',
+      '<strong>' + (index + 1) + '. ' + commonName + ' (' + contSize + ')</strong>',
+      fieldsHtml,
+      '</li>'
+    ].join('');
+  }).join('');
+  return '<ul style="list-style:none; padding:0; margin:0;">' + rowsHtml + '</ul>';
+}
+
+function escapeRequestGalleryJson_(value) {
+  return JSON.stringify(value || [])
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026');
+}
+
+function buildRequestGalleryRowsHtml_(items) {
+  const safeItems = Array.isArray(items) ? items.filter(Boolean) : [];
+  if (!safeItems.length) {
+    return '<p class="empty">No request rows were found for this folder.</p>';
+  }
+  return safeItems.map(function(item, index) {
+    const photoCount = getRequestItemPhotoUrls_(item).length;
+    const fields = [
+      ['Item', firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, '-')],
+      ['Location', firstNonEmptyRequestValue_(item && item.loc, item && item.locationcode, item && item.LOCATIONCODE, '-')],
+      ['Lot', firstNonEmptyRequestValue_(item && item.lotcode, item && item.LOTCODE, '')],
+      ['Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
+      ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, '')],
+      ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
+      ['LOC PHOTO MATCH', firstNonEmptyRequestValue_(item && item.loc_match_qty, item && item.LOC_MATCH_QTY, item && item.locPhotoMatch, '')],
+      ['AV Note', firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, '')],
+      ['Photos', photoCount ? String(photoCount) : '0']
+    ].filter(function(field) {
+      return String(field[1] || '').trim() !== '';
+    });
+    const fieldsHtml = fields.map(function(field) {
+      return '<div class="row-field"><span>' + escapeEmailHtml_(field[0]) + '</span><strong>' + escapeEmailHtml_(field[1]) + '</strong></div>';
+    }).join('');
+    return [
+      '<article class="row-card">',
+      '<div class="row-title">' + escapeEmailHtml_(index + 1) + '. ' + escapeEmailHtml_(firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Unknown Item')) + '</div>',
+      '<div class="row-subtitle">' + escapeEmailHtml_(firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, '-')) + '</div>',
+      '<div class="row-fields">',
+      fieldsHtml,
+      '</div>',
+      '</article>'
+    ].join('');
+  }).join('');
+}
+
+function buildRequestGalleryErrorPage_(title, message) {
+  return HtmlService
+    .createHtmlOutput([
+      '<!doctype html><html><head>',
+      '<meta name="viewport" content="width=device-width, initial-scale=1">',
+      '<title>' + escapeEmailHtml_(title || 'Request Gallery') + '</title>',
+      '<style>body{margin:0;font-family:Arial,sans-serif;background:#f6faf8;color:#0f172a;padding:24px}.card{max-width:640px;margin:40px auto;background:white;border:1px solid #b7f2d1;border-radius:16px;padding:24px;box-shadow:0 16px 50px rgba(15,23,42,.08)}h1{color:#007a4d;margin:0 0 12px}p{line-height:1.5}</style>',
+      '</head><body><div class="card">',
+      '<h1>' + escapeEmailHtml_(title || 'Request Gallery') + '</h1>',
+      '<p>' + escapeEmailHtml_(message || 'This gallery could not be opened.') + '</p>',
+      '</div></body></html>'
+    ].join(''))
+    .setTitle(title || 'Request Gallery');
+}
+
+function renderRequestGalleryWebApp_(params) {
+  const folderId = String(firstNonEmptyRequestValue_(
+    params && params.folder,
+    params && params.folderId,
+    params && params.requestFolder,
+    ''
+  )).trim();
+  const token = String(params && params.token || '').trim();
+  if (!folderId || !verifyRequestGalleryToken_(folderId, token)) {
+    return buildRequestGalleryErrorPage_('Request Gallery', 'This request gallery link is missing or no longer valid.');
+  }
+
+  const rows = fetchRequestRowsForEmailFolder_(folderId).filter(function(row) {
+    return !isArchivedRequestRow_(row);
+  });
+  const items = buildRequestEmailItemsFromRows_(rows, { folderId: folderId });
+  const slides = buildRequestGallerySlidesFromItems_(items);
+  const firstItem = items.length ? items[0] || {} : {};
+  const customerLabel = firstNonEmptyRequestValue_(firstItem.customer, folderId, 'Request Folder');
+  const rowsHtml = buildRequestGalleryRowsHtml_(items);
+  const slidesJson = escapeRequestGalleryJson_(slides);
+  const safeCustomer = escapeEmailHtml_(customerLabel);
+  const photoCountLabel = slides.length === 1 ? '1 photo' : slides.length + ' photos';
+  const rowCountLabel = items.length === 1 ? '1 row' : items.length + ' rows';
+  const html = [
+    '<!doctype html>',
+    '<html>',
+    '<head>',
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">',
+    '<title>GNC Request Gallery</title>',
+    '<style>',
+    ':root{color-scheme:light;--green:#007a4d;--mint:#e9fff4;--border:#b7f2d1;--ink:#0f172a;--muted:#64748b;}',
+    '*{box-sizing:border-box}',
+    'body{margin:0;font-family:Arial,sans-serif;background:#f6faf8;color:var(--ink);}',
+    '.wrap{max-width:940px;margin:0 auto;padding:18px 14px 36px;}',
+    '.hero{background:var(--green);color:#fff;padding:18px 16px;border-radius:0 0 18px 18px;}',
+    '.hero h1{font-size:24px;line-height:1.1;margin:0 0 8px;font-weight:800;}',
+    '.hero p{margin:0;color:#d9fbe8;font-weight:700;letter-spacing:.04em;text-transform:uppercase;font-size:12px;}',
+    '.gallery{margin-top:16px;background:#fff;border:1px solid var(--border);border-radius:18px;padding:14px;box-shadow:0 12px 40px rgba(15,23,42,.08);}',
+    '.image-shell{position:relative;background:#101827;border-radius:14px;min-height:260px;display:flex;align-items:center;justify-content:center;overflow:hidden;}',
+    '.image-shell img{display:block;max-width:100%;max-height:74vh;width:auto;height:auto;object-fit:contain;}',
+    '.nav{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-top:12px;}',
+    'button{border:0;border-radius:999px;background:var(--green);color:#fff;padding:12px 16px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;}',
+    'button:disabled{opacity:.4;cursor:default}',
+    '.counter{text-align:center;font-weight:800;color:var(--green);}',
+    '.meta{margin-top:12px;border:1px solid var(--border);border-radius:14px;background:var(--mint);padding:12px;}',
+    '.meta h2{font-size:18px;margin:0 0 6px;color:var(--green);line-height:1.2;}',
+    '.meta p{margin:0;color:var(--muted);font-weight:700;line-height:1.35;}',
+    '.empty{padding:24px;text-align:center;color:var(--muted);font-weight:700;}',
+    '.rows{margin-top:16px;display:grid;gap:10px;}',
+    '.row-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px;}',
+    '.row-title{font-size:16px;font-weight:800;color:var(--green);line-height:1.2;}',
+    '.row-subtitle{color:var(--muted);font-weight:800;margin-top:3px;}',
+    '.row-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px;}',
+    '.row-field{border:1px solid #e2e8f0;border-radius:10px;padding:8px;background:#fff;}',
+    '.row-field span{display:block;color:var(--green);font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;}',
+    '.row-field strong{display:block;margin-top:3px;word-break:break-word;}',
+    '@media (max-width:560px){.wrap{padding:0 10px 28px}.hero{border-radius:0;padding:16px 14px}.hero h1{font-size:21px}.gallery{border-radius:14px;margin-top:10px}.image-shell{min-height:220px}.nav{grid-template-columns:1fr 78px 1fr}.row-fields{grid-template-columns:1fr}button{padding:12px 10px;font-size:12px}}',
+    '</style>',
+    '</head>',
+    '<body>',
+    '<div class="hero"><div class="wrap" style="padding-top:0;padding-bottom:0;">',
+    '<h1>' + safeCustomer + '</h1>',
+    '<p>' + escapeEmailHtml_(photoCountLabel + ' | ' + rowCountLabel + ' | ' + folderId) + '</p>',
+    '</div></div>',
+    '<main class="wrap">',
+    slides.length ? [
+      '<section class="gallery" id="gallery">',
+      '<div class="image-shell"><img id="galleryImage" alt="Request photo"></div>',
+      '<div class="nav">',
+      '<button type="button" id="prevBtn">Prev</button>',
+      '<div class="counter" id="counter"></div>',
+      '<button type="button" id="nextBtn">Next</button>',
+      '</div>',
+      '<div class="meta">',
+      '<h2 id="slideTitle"></h2>',
+      '<p id="slideSubtitle"></p>',
+      '</div>',
+      '</section>'
+    ].join('') : '<section class="gallery"><p class="empty">No photos were found for this request folder.</p></section>',
+    '<section class="rows">',
+    rowsHtml,
+    '</section>',
+    '</main>',
+    '<script>',
+    '(function(){',
+    'var slides=' + slidesJson + ';',
+    'if(!slides.length)return;',
+    'var index=0;',
+    'var image=document.getElementById("galleryImage");',
+    'var title=document.getElementById("slideTitle");',
+    'var subtitle=document.getElementById("slideSubtitle");',
+    'var counter=document.getElementById("counter");',
+    'var prev=document.getElementById("prevBtn");',
+    'var next=document.getElementById("nextBtn");',
+    'function render(){var slide=slides[index]||{};image.src=slide.url||"";image.alt=slide.title||"Request photo";title.textContent=slide.title||"Request photo";subtitle.textContent=slide.subtitle||"";counter.textContent=(index+1)+" / "+slides.length;}',
+    'function go(delta){index=(index+delta+slides.length)%slides.length;render();}',
+    'prev.addEventListener("click",function(){go(-1);});',
+    'next.addEventListener("click",function(){go(1);});',
+    'document.addEventListener("keydown",function(event){if(event.key==="ArrowLeft")go(-1);if(event.key==="ArrowRight")go(1);});',
+    'var startX=0;',
+    'image.addEventListener("touchstart",function(event){startX=event.touches&&event.touches.length?event.touches[0].clientX:0;},{passive:true});',
+    'image.addEventListener("touchend",function(event){var endX=event.changedTouches&&event.changedTouches.length?event.changedTouches[0].clientX:startX;var delta=endX-startX;if(Math.abs(delta)>40)go(delta>0?-1:1);},{passive:true});',
+    'render();',
+    '})();',
+    '</script>',
+    '</body>',
+    '</html>'
+  ].join('');
+  const output = HtmlService.createHtmlOutput(html).setTitle('GNC Request Gallery');
+  try {
+    output.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  } catch (error) {}
+  return output;
+}
+
 function buildRequestItemsText_(payload) {
   const formatted = String(payload.formattedItemsText || '').trim();
   if (formatted) return formatted;
@@ -4820,7 +5192,7 @@ function buildRequestEmailMessage_(payload) {
   const customer = escapeEmailHtml_(payload.customer || 'N/A');
   const folderId = escapeEmailHtml_(payload.folderId || payload.requestFolder || '');
   const itemsCount = escapeEmailHtml_(payload.itemsCount || 0);
-  const itemsHtml = buildRequestItemsHtml_(payload);
+  const itemsHtml = emailType === 'request_complete' ? buildCompactRequestItemsHtml_(payload) : buildRequestItemsHtml_(payload);
   const itemsText = buildRequestItemsText_(payload);
   const selectionSummaryHtml = buildRequestSelectionSummaryHtml_(payload);
   const selectionSummaryText = buildRequestSelectionSummaryText_(payload);
@@ -4858,11 +5230,14 @@ function buildRequestEmailMessage_(payload) {
     const folderNoteHtml = folderNote ? '<p><strong>Folder Note:</strong> ' + escapeEmailHtml_(folderNote) + '</p>' : '';
     const completedBySummary = buildRequestCompletedBySummary_(payload);
     const completedBySummaryHtml = completedBySummary ? '<p><strong>Completed By:</strong> ' + escapeEmailHtml_(completedBySummary) + '</p>' : '';
+    const galleryUrl = buildRequestGalleryUrlForPayload_(payload);
+    const galleryPreviewHtml = buildRequestGalleryPreviewHtml_(payload);
     const detailSection = itemsHtml
       ? [
           '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
           folderNoteHtml,
           completedBySummaryHtml,
+          galleryPreviewHtml,
           '<p style="font-weight:700; margin-bottom:12px;">Completed Items</p>',
           itemsHtml
         ].join('')
@@ -4884,6 +5259,7 @@ function buildRequestEmailMessage_(payload) {
         'Total Items Fulfilled: ' + String(payload.itemsCount || 0),
         folderNote ? 'Folder Note: ' + folderNote : '',
         completedBySummary ? 'Completed By: ' + completedBySummary : '',
+        galleryUrl ? 'Photo Gallery: ' + galleryUrl : '',
         itemsText
       ].filter(Boolean).join('\n\n'),
       htmlBody: buildPhoneSizedEmailHtml_([
