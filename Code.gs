@@ -288,6 +288,10 @@ const SUPABASE_FETCH_RETRY_DELAY_MS = 900;
 const DELAYED_REQUEST_EMAIL_QUEUE_KEY = 'DELAYED_REQUEST_EMAIL_QUEUE';
 const DELAYED_REQUEST_EMAIL_TRIGGER_HANDLER = 'processDelayedRequestEmailQueue_';
 const DELAYED_REQUEST_EMAIL_MIN_DELAY_MS = 30000;
+const JD_APPROVAL_EMAIL_QUEUE_KEY = 'JD_APPROVAL_EMAIL_QUEUE';
+const JD_APPROVAL_EMAIL_TRIGGER_HANDLER = 'processQueuedJdApprovalEmail_';
+const JD_APPROVAL_EMAIL_DELAY_MS = 3 * 60 * 1000;
+const JD_APPROVAL_EMAIL_MIN_DELAY_MS = 30000;
 const REQUEST_GALLERY_BASE_URL_PROPERTY = 'REQUEST_GALLERY_BASE_URL';
 const REQUEST_GALLERY_SECRET_PROPERTY = 'REQUEST_GALLERY_SECRET';
 
@@ -3918,6 +3922,260 @@ function processDelayedRequestEmailQueue_() {
   scheduleDelayedRequestEmailTrigger_(futureJobs);
 }
 
+function loadJdApprovalEmailQueue_() {
+  const raw = PropertiesService.getScriptProperties().getProperty(JD_APPROVAL_EMAIL_QUEUE_KEY);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter(function(job) {
+      return job && job.id && job.payload;
+    }) : [];
+  } catch (err) {
+    console.error('[JD APPROVAL EMAIL] Could not parse queued approval emails', err);
+    return [];
+  }
+}
+
+function saveJdApprovalEmailQueue_(jobs) {
+  const safeJobs = Array.isArray(jobs) ? jobs.filter(function(job) {
+    return job && job.id && job.payload;
+  }) : [];
+  if (!safeJobs.length) {
+    PropertiesService.getScriptProperties().deleteProperty(JD_APPROVAL_EMAIL_QUEUE_KEY);
+    return;
+  }
+  PropertiesService.getScriptProperties().setProperty(JD_APPROVAL_EMAIL_QUEUE_KEY, JSON.stringify(safeJobs));
+}
+
+function removeJdApprovalEmailTriggers_() {
+  ScriptApp.getProjectTriggers().forEach(function(trigger) {
+    if (trigger.getHandlerFunction() === JD_APPROVAL_EMAIL_TRIGGER_HANDLER) {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+}
+
+function scheduleJdApprovalEmailTrigger_(jobs) {
+  removeJdApprovalEmailTriggers_();
+  const safeJobs = Array.isArray(jobs) ? jobs.filter(Boolean) : [];
+  if (!safeJobs.length) return;
+  const nextDueAtMs = safeJobs.reduce(function(minMs, job) {
+    const dueAtMs = Number(job && job.dueAtMs) || 0;
+    if (!dueAtMs) return minMs;
+    if (!minMs || dueAtMs < minMs) return dueAtMs;
+    return minMs;
+  }, 0);
+  if (!nextDueAtMs) return;
+  const delayMs = Math.max(JD_APPROVAL_EMAIL_MIN_DELAY_MS, nextDueAtMs - Date.now());
+  ScriptApp.newTrigger(JD_APPROVAL_EMAIL_TRIGGER_HANDLER)
+    .timeBased()
+    .after(delayMs)
+    .create();
+}
+
+function shouldQueueJdApprovalEmail_(payload) {
+  const emailType = String(payload && payload.emailType || '').trim().toLowerCase();
+  const approvalStage = String(payload && (payload.approvalStage || payload.approval_stage) || '').trim().toLowerCase();
+  if (payload && payload.forceImmediate === true) return false;
+  if (payload && payload.queueJdApprovalEmail === false) return false;
+  return (emailType === 'ncr_approval' || emailType === 'hold_release_request') && approvalStage === 'jd';
+}
+
+function cloneJdApprovalEmailPayloadForQueue_(payload) {
+  const safePayload = payload && typeof payload === 'object' ? JSON.parse(JSON.stringify(payload)) : {};
+  const items = getRequestEmailPayloadItems_(safePayload).map(function(item) {
+    return item && typeof item === 'object' ? JSON.parse(JSON.stringify(item)) : item;
+  });
+  safePayload.requestItems = items;
+  safePayload.itemsCount = items.length || Number(safePayload.itemsCount || 0) || 0;
+  delete safePayload.items;
+  delete safePayload.sourceRows;
+  delete safePayload.formattedItemsHtml;
+  delete safePayload.formattedItemsText;
+  delete safePayload.queueDelivery;
+  delete safePayload.delayMs;
+  return safePayload;
+}
+
+function enqueueJdApprovalEmail_(payload) {
+  const safePayload = cloneJdApprovalEmailPayloadForQueue_(payload);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(5000);
+  try {
+    const queue = loadJdApprovalEmailQueue_();
+    const job = {
+      id: Utilities.getUuid(),
+      dueAtMs: Date.now() + JD_APPROVAL_EMAIL_DELAY_MS,
+      attempts: 0,
+      payload: safePayload
+    };
+    queue.push(job);
+    saveJdApprovalEmailQueue_(queue);
+    scheduleJdApprovalEmailTrigger_(queue);
+    return {
+      ok: true,
+      status: 202,
+      queued: true,
+      queue: 'jd_approval',
+      jobId: job.id,
+      queuedCount: queue.length,
+      dueAt: new Date(job.dueAtMs).toISOString()
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function resolveJdApprovalEmailTypeLabel_(payload) {
+  const explicitLabel = firstNonEmptyRequestValue_(
+    payload && payload.approvalLabel,
+    payload && payload.approval_label,
+    payload && payload.customer,
+    ''
+  );
+  if (explicitLabel) return explicitLabel;
+  const approvalType = String(payload && (payload.approvalType || payload.approval_type) || '').trim().toLowerCase().replace(/_/g, '-');
+  if (approvalType === 'hold' || approvalType === 'hold-release' || approvalType === 'off-hold') return 'Off Hold Approval';
+  if (approvalType === 'move-up' || approvalType === 'moveup') return 'Move Up Approval';
+  if (approvalType === 'not-on-inventory' || approvalType === 'notoninventory') return 'Not On Inventory';
+  return 'New Crop Release';
+}
+
+function collectJdApprovalBatchItems_(jobs) {
+  const items = [];
+  (Array.isArray(jobs) ? jobs : []).forEach(function(job) {
+    const payload = job && job.payload ? job.payload : {};
+    const approvalLabel = resolveJdApprovalEmailTypeLabel_(payload);
+    const payloadItems = getRequestEmailPayloadItems_(payload);
+    if (!payloadItems.length) {
+      items.push({
+        commonname: approvalLabel,
+        approval_label: approvalLabel,
+        comments: firstNonEmptyRequestValue_(payload && payload.appInstruction, payload && payload.message, '')
+      });
+      return;
+    }
+    payloadItems.forEach(function(item) {
+      const cloned = item && typeof item === 'object' ? JSON.parse(JSON.stringify(item)) : {};
+      cloned.approval_label = firstNonEmptyRequestValue_(cloned.approval_label, cloned.approvalLabel, approvalLabel);
+      cloned.completed_by_display = firstNonEmptyRequestValue_(
+        cloned.completed_by_display,
+        cloned.completedByDisplay,
+        payload && payload.completedByDisplay,
+        payload && payload.completedBy,
+        ''
+      );
+      items.push(cloned);
+    });
+  });
+  return items;
+}
+
+function buildGroupedJdApprovalEmailPayload_(jobs) {
+  const safeJobs = Array.isArray(jobs) ? jobs.filter(Boolean) : [];
+  const items = collectJdApprovalBatchItems_(safeJobs);
+  const typeMap = {};
+  safeJobs.forEach(function(job) {
+    const label = resolveJdApprovalEmailTypeLabel_(job && job.payload);
+    if (label) typeMap[label] = true;
+  });
+  const typeLabels = Object.keys(typeMap);
+  const itemCount = items.length || safeJobs.length;
+  const typeSummary = typeLabels.length ? typeLabels.join(', ') : 'Manager Approvals';
+  const plural = itemCount === 1 ? 'row' : 'rows';
+  const batchId = 'jd-approval-batch-' + Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'America/Chicago', 'yyyyMMdd-HHmmss');
+  return {
+    type: 'email',
+    emailType: 'ncr_approval',
+    approvalStage: 'jd',
+    approvalType: 'manager_batch',
+    approvalLabel: 'Manager Approval Batch',
+    customer: 'Manager Approval Batch',
+    folderId: batchId,
+    requestFolder: batchId,
+    subject: 'JD Approval Needed: ' + itemCount + ' Dylan-approved ' + plural,
+    brandLabel: 'GNC PH Manager Approvals',
+    fromName: 'GNC PH Manager Approvals',
+    repName: 'JD Jones',
+    salesRepName: 'JD Jones',
+    requestedBy: 'dylan_collyge',
+    itemsCount: itemCount,
+    requestItems: items,
+    internalRecipients: ['jd_jones@greenleafnursery.com', 'dylan_collyge@greenleafnursery.com'],
+    recipientEmails: ['jd_jones@greenleafnursery.com', 'dylan_collyge@greenleafnursery.com'],
+    appInstruction: 'JD: open the app and check Managers. Review the approval tabs for these Dylan-approved rows. Approval types included: ' + typeSummary + '.',
+    message: 'Dylan approved ' + itemCount + ' manager approval ' + plural + '. They are grouped in this one email instead of separate row emails.'
+  };
+}
+
+function requeueJdApprovalEmailJobs_(jobs) {
+  const retryJobs = (Array.isArray(jobs) ? jobs : []).map(function(job) {
+    const attempts = (Number(job && job.attempts) || 0) + 1;
+    return Object.assign({}, job, {
+      attempts: attempts,
+      dueAtMs: Date.now() + JD_APPROVAL_EMAIL_DELAY_MS
+    });
+  }).filter(function(job) {
+    return Number(job && job.attempts) <= 3;
+  });
+  if (!retryJobs.length) return;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(5000);
+  try {
+    const queue = loadJdApprovalEmailQueue_();
+    const nextQueue = queue.concat(retryJobs);
+    saveJdApprovalEmailQueue_(nextQueue);
+    scheduleJdApprovalEmailTrigger_(nextQueue);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function processQueuedJdApprovalEmail_() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(5000);
+  let dueJobs = [];
+  let futureJobs = [];
+  try {
+    const queue = loadJdApprovalEmailQueue_();
+    if (!queue.length) {
+      removeJdApprovalEmailTriggers_();
+      return;
+    }
+    const nowMs = Date.now();
+    queue.forEach(function(job) {
+      const dueAtMs = Number(job && job.dueAtMs) || 0;
+      if (dueAtMs && dueAtMs <= nowMs) dueJobs.push(job);
+      else futureJobs.push(job);
+    });
+    saveJdApprovalEmailQueue_(futureJobs);
+  } finally {
+    lock.releaseLock();
+  }
+
+  if (!dueJobs.length) {
+    scheduleJdApprovalEmailTrigger_(futureJobs);
+    return;
+  }
+
+  const groupedPayload = buildGroupedJdApprovalEmailPayload_(dueJobs);
+  let sentOk = false;
+  try {
+    const result = sendRequestEmailWithFallback_(groupedPayload);
+    sentOk = !!result && result.ok !== false;
+    if (!sentOk) {
+      console.error('[JD APPROVAL EMAIL] Grouped approval email failed', { result: result });
+    }
+  } catch (error) {
+    console.error('[JD APPROVAL EMAIL] Grouped approval email threw', { error: error && error.message ? error.message : error });
+  }
+  if (!sentOk) {
+    requeueJdApprovalEmailJobs_(dueJobs);
+  } else {
+    scheduleJdApprovalEmailTrigger_(futureJobs);
+  }
+}
+
 function escapeEmailHtml_(value) {
   return String(value == null ? '' : value)
     .replace(/&/g, '&amp;')
@@ -4015,6 +4273,7 @@ function extractRequestPhotoUrls_(value) {
 
 function buildRequestItemFieldRowsText_(item) {
   const fields = [
+    ['Approval Type', firstNonEmptyRequestValue_(item && item.approval_label, item && item.approvalLabel, item && item.approval_type, item && item.APPROVAL_TYPE, '')],
     ['Item Code', firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, '-')],
     ['Location', firstNonEmptyRequestValue_(item && item.loc, item && item.locationcode, item && item.LOCATIONCODE, '-')],
     ['Lot', firstNonEmptyRequestValue_(item && item.lotcode, item && item.LOTCODE, '')],
@@ -4047,6 +4306,7 @@ function buildRequestItemFieldRowsText_(item) {
 
 function buildRequestItemFieldRowsHtml_(item) {
   const fields = [
+    ['Approval Type', firstNonEmptyRequestValue_(item && item.approval_label, item && item.approvalLabel, item && item.approval_type, item && item.APPROVAL_TYPE, '')],
     ['Item Code', firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, '-')],
     ['Location', firstNonEmptyRequestValue_(item && item.loc, item && item.locationcode, item && item.LOCATIONCODE, '-')],
     ['Lot', firstNonEmptyRequestValue_(item && item.lotcode, item && item.LOTCODE, '')],
@@ -4568,6 +4828,81 @@ function fetchRequestRowsForEmailFolder_(folderId) {
   }
 }
 
+function normalizeRequestGalleryIdList_(value) {
+  const ids = [];
+  const seen = {};
+  const addId = function(entry) {
+    const id = String(entry == null ? '' : entry).trim();
+    if (!id || seen[id]) return;
+    seen[id] = true;
+    ids.push(id);
+  };
+  const walk = function(input) {
+    if (input == null) return;
+    if (Array.isArray(input)) {
+      input.forEach(walk);
+      return;
+    }
+    String(input || '').split(/[,\n]+/).forEach(addId);
+  };
+  walk(value);
+  return ids;
+}
+
+function fetchRequestRowsForEmailRequestIds_(requestIds) {
+  const safeIds = normalizeRequestGalleryIdList_(requestIds);
+  if (!safeIds.length) return [];
+  const baseFields = 'unique_id,request_folder,req_customer,commonname,contsize,itemcode,req_qty,locationcode,av_note,req_spec,req_caliper,req_match,loc_match_qty,req_photo_link,req_photo_name,req_archived';
+  const fieldsWithCompleter = baseFields + ',completed_by_username,completed_by_display,completed_by_email';
+  const requestTableName = getRuntimeSiteSplitTableName_('v2_active_request', 'PH');
+  const buildInFilter = function(ids) {
+    return ids.map(function(id) {
+      return '"' + String(id || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+    }).join(',');
+  };
+  const loadRows = function(selectFields, ids) {
+    const url = `${SUPABASE_URL}/rest/v1/${requestTableName}?select=${selectFields}&unique_id=in.(${encodeURIComponent(buildInFilter(ids))})`;
+    return UrlFetchApp.fetch(url, {
+      method: 'get',
+      muteHttpExceptions: true,
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      }
+    });
+  };
+  let rows = [];
+  for (let offset = 0; offset < safeIds.length; offset += 50) {
+    const batchIds = safeIds.slice(offset, offset + 50);
+    let response = loadRows(fieldsWithCompleter, batchIds);
+    let status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
+    let bodyText = response && response.getContentText ? response.getContentText() : '';
+    if (status < 200 || status >= 300) {
+      const normalizedBody = String(bodyText || '').toLowerCase();
+      if (normalizedBody.indexOf('completed_by_') !== -1 || normalizedBody.indexOf('column') !== -1) {
+        response = loadRows(baseFields, batchIds);
+        status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
+        bodyText = response && response.getContentText ? response.getContentText() : '';
+      }
+    }
+    if (status < 200 || status >= 300) {
+      console.error('[REQUEST EMAIL] Could not load request rows by IDs', {
+        requestIds: batchIds,
+        status: status,
+        body: bodyText
+      });
+      continue;
+    }
+    try {
+      const parsed = JSON.parse(bodyText || '[]');
+      if (Array.isArray(parsed)) rows = rows.concat(parsed);
+    } catch (error) {
+      console.error('[REQUEST EMAIL] Could not parse request rows by IDs', { requestIds: batchIds, error: error && error.message ? error.message : error });
+    }
+  }
+  return rows;
+}
+
 function buildRequestEmailItemsFromRows_(rows, payload) {
   const safeRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
   const fallbackFolderId = String(firstNonEmptyRequestValue_(payload && payload.folderId, payload && payload.requestFolder, '')).trim();
@@ -4613,7 +4948,7 @@ function hydrateRequestCompletePayload_(payload) {
   let rows = fetchRequestRowsForEmailFolder_(folderId).filter(function(row) {
     const rowId = String(firstNonEmptyRequestValue_(row && row.unique_id, row && row.UNIQUE_ID, '')).trim();
     if (!rowId) return false;
-    return !isArchivedRequestRow_(row);
+    return !requestIds.length || requestIds.indexOf(rowId) !== -1;
   });
   if (requestIds.length) {
     const orderMap = new Map(requestIds.map(function(id, index) { return [id, index]; }));
@@ -4738,14 +5073,16 @@ function getRequestGalleryBaseUrl_() {
   return '';
 }
 
-function buildRequestGalleryUrl_(folderId) {
+function buildRequestGalleryUrl_(folderId, requestIds) {
   const safeFolderId = String(folderId || '').trim();
   const baseUrl = getRequestGalleryBaseUrl_();
   if (!safeFolderId || !baseUrl) return '';
+  const safeRequestIds = normalizeRequestGalleryIdList_(requestIds);
   const separator = baseUrl.indexOf('?') === -1 ? '?' : '&';
   return baseUrl + separator +
     'gallery=request&folder=' + encodeURIComponent(safeFolderId) +
-    '&token=' + encodeURIComponent(buildRequestGalleryToken_(safeFolderId));
+    '&token=' + encodeURIComponent(buildRequestGalleryToken_(safeFolderId)) +
+    (safeRequestIds.length ? '&ids=' + encodeURIComponent(safeRequestIds.join(',')) : '');
 }
 
 function resolveRequestGalleryFolderId_(payload, items) {
@@ -4759,6 +5096,24 @@ function resolveRequestGalleryFolderId_(payload, items) {
     firstItem.REQUEST_FOLDER,
     ''
   );
+}
+
+function resolveRequestGalleryRequestIds_(payload, items) {
+  const ids = normalizeRequestGalleryIdList_([
+    payload && payload.requestIds,
+    payload && payload.request_ids,
+    payload && payload.uniqueIds,
+    payload && payload.unique_ids
+  ]);
+  const seen = {};
+  ids.forEach(function(id) { seen[id] = true; });
+  (Array.isArray(items) ? items : []).forEach(function(item) {
+    const id = firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, item && item.id, item && item.ID, '');
+    if (!id || seen[id]) return;
+    seen[id] = true;
+    ids.push(id);
+  });
+  return ids;
 }
 
 function buildRequestGallerySlidesFromItems_(items) {
@@ -4805,14 +5160,14 @@ function buildRequestGallerySlidesFromItems_(items) {
 
 function buildRequestGalleryUrlForPayload_(payload) {
   const items = getRequestEmailPayloadItems_(payload);
-  return buildRequestGalleryUrl_(resolveRequestGalleryFolderId_(payload, items));
+  return buildRequestGalleryUrl_(resolveRequestGalleryFolderId_(payload, items), resolveRequestGalleryRequestIds_(payload, items));
 }
 
 function buildRequestGalleryPreviewHtml_(payload) {
   const items = getRequestEmailPayloadItems_(payload);
   const slides = buildRequestGallerySlidesFromItems_(items);
   if (!slides.length) return '';
-  const galleryUrl = buildRequestGalleryUrl_(resolveRequestGalleryFolderId_(payload, items));
+  const galleryUrl = buildRequestGalleryUrl_(resolveRequestGalleryFolderId_(payload, items), resolveRequestGalleryRequestIds_(payload, items));
   const firstSlide = slides[0] || {};
   const targetUrl = galleryUrl || firstSlide.url || '';
   if (!targetUrl) return '';
@@ -4940,9 +5295,19 @@ function renderRequestGalleryWebApp_(params) {
     return buildRequestGalleryErrorPage_('Request Gallery', 'This request gallery link is missing or no longer valid.');
   }
 
-  const rows = fetchRequestRowsForEmailFolder_(folderId).filter(function(row) {
-    return !isArchivedRequestRow_(row);
-  });
+  const requestIds = normalizeRequestGalleryIdList_(params && (params.ids || params.requestIds || params.request_ids || ''));
+  let rows = fetchRequestRowsForEmailFolder_(folderId);
+  if (requestIds.length) {
+    const idSet = {};
+    requestIds.forEach(function(id) { idSet[id] = true; });
+    rows = rows.filter(function(row) {
+      const rowId = firstNonEmptyRequestValue_(row && row.unique_id, row && row.UNIQUE_ID, '');
+      return !!rowId && !!idSet[rowId];
+    });
+    if (!rows.length) {
+      rows = fetchRequestRowsForEmailRequestIds_(requestIds);
+    }
+  }
   const items = buildRequestEmailItemsFromRows_(rows, { folderId: folderId });
   const slides = buildRequestGallerySlidesFromItems_(items);
   const firstItem = items.length ? items[0] || {} : {};
@@ -6203,6 +6568,9 @@ function doPost(e) {
       const shouldQueueDelayedReply = emailType === 'request_complete' && Math.max(0, Number(payload.delayMs) || 0) > 0;
       if (shouldQueueDelayedReply) {
         return jsonOutput_(enqueueDelayedRequestEmail_(payload));
+      }
+      if (shouldQueueJdApprovalEmail_(payload)) {
+        return jsonOutput_(enqueueJdApprovalEmail_(payload));
       }
       return jsonOutput_(sendRequestEmailWithFallback_(payload));
     }
