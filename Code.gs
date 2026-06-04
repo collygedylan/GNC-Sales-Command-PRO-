@@ -4773,6 +4773,15 @@ function normalizeRequestIdList_(ids) {
     : [];
 }
 
+function getRequestEmailTableCandidates_(legacyTableName, siteCode) {
+  const legacy = String(legacyTableName || '').trim();
+  const runtime = String(getRuntimeSiteSplitTableName_(legacy, siteCode || 'PH') || '').trim();
+  const tables = [];
+  if (runtime) tables.push(runtime);
+  if (legacy && tables.indexOf(legacy) === -1) tables.push(legacy);
+  return tables;
+}
+
 function isArchivedRequestRow_(row) {
   const archivedRaw = firstNonEmptyRequestValue_(row && row.req_archived, row && row.REQ_ARCHIVED, false);
   const archivedText = String(archivedRaw == null ? '' : archivedRaw).trim().toLowerCase();
@@ -4784,11 +4793,8 @@ function fetchRequestRowsForEmailFolder_(folderId) {
   if (!safeFolderId) return [];
   const baseFields = 'unique_id,request_folder,req_customer,commonname,contsize,itemcode,req_qty,locationcode,av_note,req_spec,req_caliper,req_match,loc_match_qty,req_photo_link,req_photo_name,req_archived';
   const fieldsWithCompleter = baseFields + ',completed_by_username,completed_by_display,completed_by_email';
-  let response = null;
-  let status = 0;
-  let bodyText = '';
-  const requestTableName = getRuntimeSiteSplitTableName_('v2_active_request', 'PH');
-  const loadRows = function(selectFields) {
+  const requestTableNames = getRequestEmailTableCandidates_('v2_active_request', 'PH');
+  const loadRows = function(selectFields, requestTableName) {
     const url = `${SUPABASE_URL}/rest/v1/${requestTableName}?select=${selectFields}&request_folder=eq.${encodeURIComponent(safeFolderId)}`;
     const result = UrlFetchApp.fetch(url, {
       method: 'get',
@@ -4800,32 +4806,41 @@ function fetchRequestRowsForEmailFolder_(folderId) {
     });
     return result;
   };
-  response = loadRows(fieldsWithCompleter);
-  status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
-  bodyText = response && response.getContentText ? response.getContentText() : '';
-  if (status < 200 || status >= 300) {
-    const normalizedBody = String(bodyText || '').toLowerCase();
-    if (normalizedBody.indexOf('completed_by_') !== -1 || normalizedBody.indexOf('column') !== -1) {
-      response = loadRows(baseFields);
-      status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
-      bodyText = response && response.getContentText ? response.getContentText() : '';
+  for (let tableIndex = 0; tableIndex < requestTableNames.length; tableIndex++) {
+    const requestTableName = requestTableNames[tableIndex];
+    let response = loadRows(fieldsWithCompleter, requestTableName);
+    let status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
+    let bodyText = response && response.getContentText ? response.getContentText() : '';
+    if (status < 200 || status >= 300) {
+      const normalizedBody = String(bodyText || '').toLowerCase();
+      if (normalizedBody.indexOf('completed_by_') !== -1 || normalizedBody.indexOf('column') !== -1) {
+        response = loadRows(baseFields, requestTableName);
+        status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
+        bodyText = response && response.getContentText ? response.getContentText() : '';
+      }
+    }
+    if (status < 200 || status >= 300) {
+      console.error('[REQUEST EMAIL] Could not load request rows for delayed reply', {
+        folderId: safeFolderId,
+        tableName: requestTableName,
+        status: status,
+        body: bodyText
+      });
+      continue;
+    }
+    try {
+      const parsed = JSON.parse(bodyText || '[]');
+      const rows = Array.isArray(parsed) ? parsed : [];
+      if (rows.length || tableIndex === requestTableNames.length - 1) return rows;
+    } catch (error) {
+      console.error('[REQUEST EMAIL] Could not parse delayed request rows', {
+        folderId: safeFolderId,
+        tableName: requestTableName,
+        error: error && error.message ? error.message : error
+      });
     }
   }
-  if (status < 200 || status >= 300) {
-    console.error('[REQUEST EMAIL] Could not load request rows for delayed reply', {
-      folderId: safeFolderId,
-      status: status,
-      body: bodyText
-    });
-    return [];
-  }
-  try {
-    const parsed = JSON.parse(bodyText || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.error('[REQUEST EMAIL] Could not parse delayed request rows', { folderId: safeFolderId, error: error && error.message ? error.message : error });
-    return [];
-  }
+  return [];
 }
 
 function normalizeRequestGalleryIdList_(value) {
@@ -4854,13 +4869,13 @@ function fetchRequestRowsForEmailRequestIds_(requestIds) {
   if (!safeIds.length) return [];
   const baseFields = 'unique_id,request_folder,req_customer,commonname,contsize,itemcode,req_qty,locationcode,av_note,req_spec,req_caliper,req_match,loc_match_qty,req_photo_link,req_photo_name,req_archived';
   const fieldsWithCompleter = baseFields + ',completed_by_username,completed_by_display,completed_by_email';
-  const requestTableName = getRuntimeSiteSplitTableName_('v2_active_request', 'PH');
+  const requestTableNames = getRequestEmailTableCandidates_('v2_active_request', 'PH');
   const buildInFilter = function(ids) {
     return ids.map(function(id) {
       return '"' + String(id || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
     }).join(',');
   };
-  const loadRows = function(selectFields, ids) {
+  const loadRows = function(selectFields, ids, requestTableName) {
     const url = `${SUPABASE_URL}/rest/v1/${requestTableName}?select=${selectFields}&unique_id=in.(${encodeURIComponent(buildInFilter(ids))})`;
     return UrlFetchApp.fetch(url, {
       method: 'get',
@@ -4874,30 +4889,42 @@ function fetchRequestRowsForEmailRequestIds_(requestIds) {
   let rows = [];
   for (let offset = 0; offset < safeIds.length; offset += 50) {
     const batchIds = safeIds.slice(offset, offset + 50);
-    let response = loadRows(fieldsWithCompleter, batchIds);
-    let status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
-    let bodyText = response && response.getContentText ? response.getContentText() : '';
-    if (status < 200 || status >= 300) {
-      const normalizedBody = String(bodyText || '').toLowerCase();
-      if (normalizedBody.indexOf('completed_by_') !== -1 || normalizedBody.indexOf('column') !== -1) {
-        response = loadRows(baseFields, batchIds);
-        status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
-        bodyText = response && response.getContentText ? response.getContentText() : '';
+    for (let tableIndex = 0; tableIndex < requestTableNames.length; tableIndex++) {
+      const requestTableName = requestTableNames[tableIndex];
+      let response = loadRows(fieldsWithCompleter, batchIds, requestTableName);
+      let status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
+      let bodyText = response && response.getContentText ? response.getContentText() : '';
+      if (status < 200 || status >= 300) {
+        const normalizedBody = String(bodyText || '').toLowerCase();
+        if (normalizedBody.indexOf('completed_by_') !== -1 || normalizedBody.indexOf('column') !== -1) {
+          response = loadRows(baseFields, batchIds, requestTableName);
+          status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
+          bodyText = response && response.getContentText ? response.getContentText() : '';
+        }
       }
-    }
-    if (status < 200 || status >= 300) {
-      console.error('[REQUEST EMAIL] Could not load request rows by IDs', {
-        requestIds: batchIds,
-        status: status,
-        body: bodyText
-      });
-      continue;
-    }
-    try {
-      const parsed = JSON.parse(bodyText || '[]');
-      if (Array.isArray(parsed)) rows = rows.concat(parsed);
-    } catch (error) {
-      console.error('[REQUEST EMAIL] Could not parse request rows by IDs', { requestIds: batchIds, error: error && error.message ? error.message : error });
+      if (status < 200 || status >= 300) {
+        console.error('[REQUEST EMAIL] Could not load request rows by IDs', {
+          requestIds: batchIds,
+          tableName: requestTableName,
+          status: status,
+          body: bodyText
+        });
+        continue;
+      }
+      try {
+        const parsed = JSON.parse(bodyText || '[]');
+        const batchRows = Array.isArray(parsed) ? parsed : [];
+        if (batchRows.length || tableIndex === requestTableNames.length - 1) {
+          rows = rows.concat(batchRows);
+          break;
+        }
+      } catch (error) {
+        console.error('[REQUEST EMAIL] Could not parse request rows by IDs', {
+          requestIds: batchIds,
+          tableName: requestTableName,
+          error: error && error.message ? error.message : error
+        });
+      }
     }
   }
   return rows;
@@ -4906,48 +4933,10 @@ function fetchRequestRowsForEmailRequestIds_(requestIds) {
 function fetchRequestHistoryRowsForEmailFolder_(folderId) {
   const safeFolderId = String(folderId || '').trim();
   if (!safeFolderId) return [];
-  const requestHistoryTableName = getRuntimeSiteSplitTableName_('v2_request_history', 'PH');
-  const url = `${SUPABASE_URL}/rest/v1/${requestHistoryTableName}?select=*&request_folder=eq.${encodeURIComponent(safeFolderId)}&order=updated_at.desc`;
-  const response = UrlFetchApp.fetch(url, {
-    method: 'get',
-    muteHttpExceptions: true,
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY
-    }
-  });
-  const status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
-  const bodyText = response && response.getContentText ? response.getContentText() : '';
-  if (status < 200 || status >= 300) {
-    console.error('[REQUEST EMAIL] Could not load request history rows for gallery', {
-      folderId: safeFolderId,
-      status: status,
-      body: bodyText
-    });
-    return [];
-  }
-  try {
-    const parsed = JSON.parse(bodyText || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.error('[REQUEST EMAIL] Could not parse request history rows for gallery', { folderId: safeFolderId, error: error && error.message ? error.message : error });
-    return [];
-  }
-}
-
-function fetchRequestHistoryRowsForEmailRequestIds_(requestIds) {
-  const safeIds = normalizeRequestGalleryIdList_(requestIds);
-  if (!safeIds.length) return [];
-  const requestHistoryTableName = getRuntimeSiteSplitTableName_('v2_request_history', 'PH');
-  const buildInFilter = function(ids) {
-    return ids.map(function(id) {
-      return '"' + String(id || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
-    }).join(',');
-  };
-  let rows = [];
-  for (let offset = 0; offset < safeIds.length; offset += 50) {
-    const batchIds = safeIds.slice(offset, offset + 50);
-    const url = `${SUPABASE_URL}/rest/v1/${requestHistoryTableName}?select=*&unique_id=in.(${encodeURIComponent(buildInFilter(batchIds))})&order=updated_at.desc`;
+  const requestHistoryTableNames = getRequestEmailTableCandidates_('v2_request_history', 'PH');
+  for (let tableIndex = 0; tableIndex < requestHistoryTableNames.length; tableIndex++) {
+    const requestHistoryTableName = requestHistoryTableNames[tableIndex];
+    const url = `${SUPABASE_URL}/rest/v1/${requestHistoryTableName}?select=*&request_folder=eq.${encodeURIComponent(safeFolderId)}&order=updated_at.desc`;
     const response = UrlFetchApp.fetch(url, {
       method: 'get',
       muteHttpExceptions: true,
@@ -4959,8 +4948,9 @@ function fetchRequestHistoryRowsForEmailRequestIds_(requestIds) {
     const status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
     const bodyText = response && response.getContentText ? response.getContentText() : '';
     if (status < 200 || status >= 300) {
-      console.error('[REQUEST EMAIL] Could not load request history rows by IDs', {
-        requestIds: batchIds,
+      console.error('[REQUEST EMAIL] Could not load request history rows for gallery', {
+        folderId: safeFolderId,
+        tableName: requestHistoryTableName,
         status: status,
         body: bodyText
       });
@@ -4968,9 +4958,67 @@ function fetchRequestHistoryRowsForEmailRequestIds_(requestIds) {
     }
     try {
       const parsed = JSON.parse(bodyText || '[]');
-      if (Array.isArray(parsed)) rows = rows.concat(parsed);
+      const rows = Array.isArray(parsed) ? parsed : [];
+      if (rows.length || tableIndex === requestHistoryTableNames.length - 1) return rows;
     } catch (error) {
-      console.error('[REQUEST EMAIL] Could not parse request history rows by IDs', { requestIds: batchIds, error: error && error.message ? error.message : error });
+      console.error('[REQUEST EMAIL] Could not parse request history rows for gallery', {
+        folderId: safeFolderId,
+        tableName: requestHistoryTableName,
+        error: error && error.message ? error.message : error
+      });
+    }
+  }
+  return [];
+}
+
+function fetchRequestHistoryRowsForEmailRequestIds_(requestIds) {
+  const safeIds = normalizeRequestGalleryIdList_(requestIds);
+  if (!safeIds.length) return [];
+  const requestHistoryTableNames = getRequestEmailTableCandidates_('v2_request_history', 'PH');
+  const buildInFilter = function(ids) {
+    return ids.map(function(id) {
+      return '"' + String(id || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+    }).join(',');
+  };
+  let rows = [];
+  for (let offset = 0; offset < safeIds.length; offset += 50) {
+    const batchIds = safeIds.slice(offset, offset + 50);
+    for (let tableIndex = 0; tableIndex < requestHistoryTableNames.length; tableIndex++) {
+      const requestHistoryTableName = requestHistoryTableNames[tableIndex];
+      const url = `${SUPABASE_URL}/rest/v1/${requestHistoryTableName}?select=*&unique_id=in.(${encodeURIComponent(buildInFilter(batchIds))})&order=updated_at.desc`;
+      const response = UrlFetchApp.fetch(url, {
+        method: 'get',
+        muteHttpExceptions: true,
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY
+        }
+      });
+      const status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
+      const bodyText = response && response.getContentText ? response.getContentText() : '';
+      if (status < 200 || status >= 300) {
+        console.error('[REQUEST EMAIL] Could not load request history rows by IDs', {
+          requestIds: batchIds,
+          tableName: requestHistoryTableName,
+          status: status,
+          body: bodyText
+        });
+        continue;
+      }
+      try {
+        const parsed = JSON.parse(bodyText || '[]');
+        const batchRows = Array.isArray(parsed) ? parsed : [];
+        if (batchRows.length || tableIndex === requestHistoryTableNames.length - 1) {
+          rows = rows.concat(batchRows);
+          break;
+        }
+      } catch (error) {
+        console.error('[REQUEST EMAIL] Could not parse request history rows by IDs', {
+          requestIds: batchIds,
+          tableName: requestHistoryTableName,
+          error: error && error.message ? error.message : error
+        });
+      }
     }
   }
   return rows;
@@ -5067,10 +5115,11 @@ function hydrateRequestCompletePayload_(payload) {
   const folderId = String(firstNonEmptyRequestValue_(safePayload.requestFolder, safePayload.folderId, '')).trim();
   const requestIds = normalizeRequestIdList_(safePayload.requestIds);
   const existingItems = getRequestEmailPayloadItems_(safePayload);
-  let rows = mergeRequestEmailRows_(
+  const folderRows = mergeRequestEmailRows_(
     fetchRequestRowsForEmailFolder_(folderId),
     fetchRequestHistoryRowsForEmailFolder_(folderId)
-  ).filter(function(row) {
+  );
+  let rows = folderRows.filter(function(row) {
     const rowId = String(firstNonEmptyRequestValue_(row && row.unique_id, row && row.UNIQUE_ID, '')).trim();
     if (!rowId) return false;
     return !requestIds.length || requestIds.indexOf(rowId) !== -1;
@@ -5080,6 +5129,7 @@ function hydrateRequestCompletePayload_(payload) {
       fetchRequestRowsForEmailRequestIds_(requestIds),
       fetchRequestHistoryRowsForEmailRequestIds_(requestIds)
     );
+    if (!rows.length && folderRows.length) rows = folderRows;
   }
   if (requestIds.length) {
     const orderMap = new Map(requestIds.map(function(id, index) { return [id, index]; }));
@@ -5427,14 +5477,15 @@ function renderRequestGalleryWebApp_(params) {
   }
 
   const requestIds = normalizeRequestGalleryIdList_(params && (params.ids || params.requestIds || params.request_ids || ''));
-  let rows = mergeRequestEmailRows_(
+  const folderRows = mergeRequestEmailRows_(
     fetchRequestRowsForEmailFolder_(folderId),
     fetchRequestHistoryRowsForEmailFolder_(folderId)
   );
+  let rows = folderRows;
   if (requestIds.length) {
     const idSet = {};
     requestIds.forEach(function(id) { idSet[id] = true; });
-    rows = rows.filter(function(row) {
+    rows = folderRows.filter(function(row) {
       const rowId = firstNonEmptyRequestValue_(row && row.unique_id, row && row.UNIQUE_ID, '');
       return !!rowId && !!idSet[rowId];
     });
@@ -5443,10 +5494,16 @@ function renderRequestGalleryWebApp_(params) {
         fetchRequestRowsForEmailRequestIds_(requestIds),
         fetchRequestHistoryRowsForEmailRequestIds_(requestIds)
       );
+      if (!rows.length && folderRows.length) rows = folderRows;
     }
   }
-  const items = buildRequestEmailItemsFromRows_(rows, { folderId: folderId });
-  const slides = buildRequestGallerySlidesFromItems_(items);
+  let items = buildRequestEmailItemsFromRows_(rows, { folderId: folderId });
+  let slides = buildRequestGallerySlidesFromItems_(items);
+  if (requestIds.length && !slides.length && rows !== folderRows && folderRows.length) {
+    rows = folderRows;
+    items = buildRequestEmailItemsFromRows_(rows, { folderId: folderId });
+    slides = buildRequestGallerySlidesFromItems_(items);
+  }
   const firstItem = items.length ? items[0] || {} : {};
   const customerLabel = firstNonEmptyRequestValue_(firstItem.customer, folderId, 'Request Folder');
   const rowsHtml = buildRequestGalleryRowsHtml_(items);
