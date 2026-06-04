@@ -4261,14 +4261,42 @@ function buildPhoneSizedEmailHtml_(contentHtml) {
 
 function extractRequestPhotoUrls_(value) {
   const seen = {};
-  return String(value || '')
-    .split(',')
-    .map(function(entry) { return String(entry || '').trim(); })
-    .filter(function(entry) {
-      if (!/^https?:\/\//i.test(entry) || seen[entry]) return false;
-      seen[entry] = true;
-      return true;
-    });
+  const urls = [];
+  const addUrl = function(entry) {
+    const url = String(entry || '').trim().replace(/[)\].,;]+$/g, '');
+    if (!/^https?:\/\//i.test(url) || seen[url]) return;
+    seen[url] = true;
+    urls.push(url);
+  };
+  const walk = function(input) {
+    if (input == null) return;
+    if (Array.isArray(input)) {
+      input.forEach(walk);
+      return;
+    }
+    if (typeof input === 'object') {
+      Object.keys(input).forEach(function(key) {
+        if (/photo|image|url|link/i.test(key)) walk(input[key]);
+      });
+      return;
+    }
+    const text = String(input || '').trim();
+    if (!text) return;
+    if ((text.charAt(0) === '[' && text.charAt(text.length - 1) === ']') || (text.charAt(0) === '{' && text.charAt(text.length - 1) === '}')) {
+      try {
+        walk(JSON.parse(text));
+        return;
+      } catch (error) {}
+    }
+    const matches = text.match(/https?:\/\/[^\s"',<>\]]+/gi);
+    if (matches && matches.length) {
+      matches.forEach(addUrl);
+      return;
+    }
+    text.split(/[,\n\r\t|]+/).forEach(addUrl);
+  };
+  walk(value);
+  return urls;
 }
 
 function buildRequestItemFieldRowsText_(item) {
@@ -5095,7 +5123,22 @@ function buildRequestEmailItemsFromRows_(rows, payload) {
       completed_by_username: firstNonEmptyRequestValue_(item && item.completed_by_username, item && item.COMPLETED_BY_USERNAME, item && item.created_by_username, item && item.CREATED_BY_USERNAME, ''),
       completed_by_display: firstNonEmptyRequestValue_(item && item.completed_by_display, item && item.COMPLETED_BY_DISPLAY, item && item.completed_by, item && item.COMPLETED_BY, item && item.created_by_display, item && item.CREATED_BY_DISPLAY, ''),
       completed_by_email: firstNonEmptyRequestValue_(item && item.completed_by_email, item && item.COMPLETED_BY_EMAIL, ''),
-      photo: firstNonEmptyRequestValue_(item && item.req_photo_link, item && item.REQ_PHOTO_LINK, item && item.photo_link, item && item.PHOTO_LINK, snapshot.REQ_PHOTO_LINK, snapshot.req_photo_link, snapshot.PHOTO_LINK, snapshot.photo_link, '')
+      photo: extractRequestPhotoUrls_([
+        item && item.req_photo_link,
+        item && item.REQ_PHOTO_LINK,
+        item && item.photo_link,
+        item && item.PHOTO_LINK,
+        item && item.photo,
+        item && item.photo_urls,
+        item && item.photos,
+        snapshot.REQ_PHOTO_LINK,
+        snapshot.req_photo_link,
+        snapshot.PHOTO_LINK,
+        snapshot.photo_link,
+        snapshot.photo,
+        snapshot.photo_urls,
+        snapshot.photos
+      ]).join(',')
     };
   }).filter(function(item) {
     return item.unique_id || item.commonname || item.itemcode;
@@ -5179,7 +5222,7 @@ function buildRequestItemsHtml_(payload) {
     const commonName = escapeEmailHtml_(item && item.commonname ? item.commonname : 'Unknown Item');
     const contSize = escapeEmailHtml_(item && item.contsize ? item.contsize : '-');
     const detailRowsHtml = buildRequestItemFieldRowsHtml_(item);
-    const photoUrls = extractRequestPhotoUrls_(item && (item.photo || item.photo_link || item.photo_urls || ''));
+    const photoUrls = getRequestItemPhotoUrls_(item);
     const photoHtml = photoUrls.map(function(url, index) {
       const safeUrl = escapeEmailAttribute_(url);
       const linkLabel = photoUrls.length > 1 ? 'Photo ' + (index + 1) : 'Photo';
@@ -5203,14 +5246,15 @@ function buildRequestItemsHtml_(payload) {
 }
 
 function getRequestItemPhotoUrls_(item) {
-  return extractRequestPhotoUrls_(firstNonEmptyRequestValue_(
+  return extractRequestPhotoUrls_([
     item && item.photo,
     item && item.photo_link,
     item && item.photo_urls,
+    item && item.photos,
     item && item.req_photo_link,
     item && item.REQ_PHOTO_LINK,
-    ''
-  ));
+    item && item.PHOTO_LINK
+  ]);
 }
 
 function getRequestGallerySecret_() {
@@ -5244,12 +5288,12 @@ function verifyRequestGalleryToken_(folderId, token) {
 
 function getRequestGalleryBaseUrl_() {
   try {
-    const configured = String(PropertiesService.getScriptProperties().getProperty(REQUEST_GALLERY_BASE_URL_PROPERTY) || '').trim();
-    if (configured) return configured;
-  } catch (error) {}
-  try {
     const serviceUrl = String(ScriptApp.getService().getUrl() || '').trim();
     if (serviceUrl) return serviceUrl;
+  } catch (error) {}
+  try {
+    const configured = String(PropertiesService.getScriptProperties().getProperty(REQUEST_GALLERY_BASE_URL_PROPERTY) || '').trim();
+    if (configured) return configured;
   } catch (error) {}
   return '';
 }
@@ -5258,12 +5302,10 @@ function buildRequestGalleryUrl_(folderId, requestIds) {
   const safeFolderId = String(folderId || '').trim();
   const baseUrl = getRequestGalleryBaseUrl_();
   if (!safeFolderId || !baseUrl) return '';
-  const safeRequestIds = normalizeRequestGalleryIdList_(requestIds);
   const separator = baseUrl.indexOf('?') === -1 ? '?' : '&';
   return baseUrl + separator +
     'gallery=request&folder=' + encodeURIComponent(safeFolderId) +
-    '&token=' + encodeURIComponent(buildRequestGalleryToken_(safeFolderId)) +
-    (safeRequestIds.length ? '&ids=' + encodeURIComponent(safeRequestIds.join(',')) : '');
+    '&token=' + encodeURIComponent(buildRequestGalleryToken_(safeFolderId));
 }
 
 function resolveRequestGalleryFolderId_(payload, items) {
@@ -5614,7 +5656,7 @@ function buildRequestItemsText_(payload) {
   if (!items.length) return '';
 
   return items.map(function(item) {
-    const photoUrls = extractRequestPhotoUrls_(item && (item.photo || item.photo_link || item.photo_urls || ''));
+    const photoUrls = getRequestItemPhotoUrls_(item);
     const detailText = buildRequestItemFieldRowsText_(item);
     const photoText = photoUrls.map(function(url, index) {
       return (photoUrls.length > 1 ? 'Photo ' + (index + 1) : 'Photo') + ': ' + url;
