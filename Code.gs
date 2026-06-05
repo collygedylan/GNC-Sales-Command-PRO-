@@ -4047,6 +4047,137 @@ function resolveJdApprovalEmailTypeLabel_(payload) {
   return 'New Crop Release';
 }
 
+function getApprovalRequesterEntryFromItem_(item) {
+  if (!item || typeof item !== 'object') return null;
+  return normalizeRequestCompletionUserEntry_({
+    username: firstNonEmptyRequestValue_(
+      item.NCR_REQUESTED_BY_USERNAME,
+      item.ncr_requested_by_username,
+      item.ncrRequestedByUsername,
+      item.REQUESTED_BY_USERNAME,
+      item.requested_by_username,
+      item.requestedByUsername,
+      ''
+    ),
+    display: firstNonEmptyRequestValue_(
+      item.NCR_REQUESTED_BY_DISPLAY,
+      item.ncr_requested_by_display,
+      item.ncrRequestedByDisplay,
+      item.NCR_REQUESTED_BY,
+      item.REQUESTED_BY_DISPLAY,
+      item.requested_by_display,
+      item.requestedByDisplay,
+      item.requestedBy,
+      ''
+    ),
+    email: firstNonEmptyRequestValue_(
+      item.NCR_REQUESTED_BY_EMAIL,
+      item.ncr_requested_by_email,
+      item.ncrRequestedByEmail,
+      item.REQUESTED_BY_EMAIL,
+      item.requested_by_email,
+      item.requestedByEmail,
+      ''
+    )
+  });
+}
+
+function getApprovalRequesterEntryFromPayload_(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  return normalizeRequestCompletionUserEntry_({
+    username: firstNonEmptyRequestValue_(
+      payload.requestedByUsername,
+      payload.requested_by_username,
+      payload.NCR_REQUESTED_BY_USERNAME,
+      payload.ncr_requested_by_username,
+      payload.requestedBy,
+      payload.requested_by,
+      ''
+    ),
+    display: firstNonEmptyRequestValue_(
+      payload.requestedByDisplay,
+      payload.requested_by_display,
+      payload.NCR_REQUESTED_BY_DISPLAY,
+      payload.ncr_requested_by_display,
+      payload.requestedBy,
+      payload.requested_by,
+      ''
+    ),
+    email: firstNonEmptyRequestValue_(
+      payload.requestedByEmail,
+      payload.requested_by_email,
+      payload.NCR_REQUESTED_BY_EMAIL,
+      payload.ncr_requested_by_email,
+      ''
+    )
+  });
+}
+
+function formatApprovalRequesterEntryLabel_(entry) {
+  const normalized = normalizeRequestCompletionUserEntry_(entry);
+  if (!normalized) return '';
+  if (normalized.display && normalized.username && normalizeRequestCompletionUsername_(normalized.display) !== normalized.username) {
+    return normalized.display + ' (' + normalized.username + ')';
+  }
+  return normalized.display || normalized.username || normalized.email || '';
+}
+
+function formatApprovalRequesterLabel_(item) {
+  return formatApprovalRequesterEntryLabel_(getApprovalRequesterEntryFromItem_(item));
+}
+
+function applyApprovalRequesterFieldsToItem_(item, payload) {
+  if (!item || typeof item !== 'object') return null;
+  const entry = getApprovalRequesterEntryFromItem_(item) || getApprovalRequesterEntryFromPayload_(payload);
+  if (!entry) return null;
+  item.NCR_REQUESTED_BY_USERNAME = entry.username || '';
+  item.ncr_requested_by_username = entry.username || '';
+  item.REQUESTED_BY_USERNAME = entry.username || '';
+  item.requestedByUsername = entry.username || '';
+  item.requested_by_username = entry.username || '';
+  item.NCR_REQUESTED_BY_DISPLAY = entry.display || entry.username || '';
+  item.ncr_requested_by_display = entry.display || entry.username || '';
+  item.NCR_REQUESTED_BY = entry.display || entry.username || '';
+  item.REQUESTED_BY_DISPLAY = entry.display || entry.username || '';
+  item.requestedByDisplay = entry.display || entry.username || '';
+  item.requested_by_display = entry.display || entry.username || '';
+  item.NCR_REQUESTED_BY_EMAIL = entry.email || '';
+  item.ncr_requested_by_email = entry.email || '';
+  item.REQUESTED_BY_EMAIL = entry.email || '';
+  item.requestedByEmail = entry.email || '';
+  item.requested_by_email = entry.email || '';
+  return entry;
+}
+
+function collectApprovalRequesterEntriesFromJobs_(jobs, items) {
+  const seen = {};
+  const entries = [];
+  const addEntry = function(entry) {
+    const normalized = normalizeRequestCompletionUserEntry_(entry);
+    if (!normalized) return;
+    const key = normalized.email || normalized.username || normalizeRequestCompletionUsername_(normalized.display);
+    if (!key || seen[key]) return;
+    seen[key] = true;
+    entries.push(normalized);
+  };
+  (Array.isArray(jobs) ? jobs : []).forEach(function(job) {
+    const payload = job && job.payload ? job.payload : {};
+    addEntry(getApprovalRequesterEntryFromPayload_(payload));
+    dedupeEmailAddresses_([
+      payload && payload.requestedByEmails,
+      payload && payload.requested_by_emails,
+      payload && payload.submittedByEmails,
+      payload && payload.submitted_by_emails
+    ]).forEach(function(email) {
+      addEntry({ email: email });
+    });
+  });
+  (Array.isArray(items) ? items : []).forEach(function(item) {
+    addEntry(getApprovalRequesterEntryFromItem_(item));
+  });
+  return entries;
+}
+
 function collectJdApprovalBatchItems_(jobs) {
   const items = [];
   (Array.isArray(jobs) ? jobs : []).forEach(function(job) {
@@ -4054,11 +4185,14 @@ function collectJdApprovalBatchItems_(jobs) {
     const approvalLabel = resolveJdApprovalEmailTypeLabel_(payload);
     const payloadItems = getRequestEmailPayloadItems_(payload);
     if (!payloadItems.length) {
-      items.push({
+      const fallbackItem = {
         commonname: approvalLabel,
         approval_label: approvalLabel,
+        completed_by_display: firstNonEmptyRequestValue_(payload && payload.completedByDisplay, payload && payload.completedBy, ''),
         comments: firstNonEmptyRequestValue_(payload && payload.appInstruction, payload && payload.message, '')
-      });
+      };
+      applyApprovalRequesterFieldsToItem_(fallbackItem, payload);
+      items.push(fallbackItem);
       return;
     }
     payloadItems.forEach(function(item) {
@@ -4071,6 +4205,7 @@ function collectJdApprovalBatchItems_(jobs) {
         payload && payload.completedBy,
         ''
       );
+      applyApprovalRequesterFieldsToItem_(cloned, payload);
       items.push(cloned);
     });
   });
@@ -4089,6 +4224,14 @@ function buildGroupedJdApprovalEmailPayload_(jobs) {
   const itemCount = items.length || safeJobs.length;
   const typeSummary = typeLabels.length ? typeLabels.join(', ') : 'Manager Approvals';
   const plural = itemCount === 1 ? 'row' : 'rows';
+  const requesterEntries = collectApprovalRequesterEntriesFromJobs_(safeJobs, items);
+  const requesterEmails = requesterEntries.map(function(entry) { return entry && entry.email; }).filter(Boolean);
+  const requesterSummary = requesterEntries.map(formatApprovalRequesterEntryLabel_).filter(Boolean).join(', ');
+  const batchRecipients = dedupeEmailAddresses_([
+    'jd_jones@greenleafnursery.com',
+    'dylan_collyge@greenleafnursery.com',
+    requesterEmails
+  ]);
   const batchId = 'jd-approval-batch-' + Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'America/Chicago', 'yyyyMMdd-HHmmss');
   return {
     type: 'email',
@@ -4104,11 +4247,21 @@ function buildGroupedJdApprovalEmailPayload_(jobs) {
     fromName: 'GNC PH Manager Approvals',
     repName: 'JD Jones',
     salesRepName: 'JD Jones',
-    requestedBy: 'dylan_collyge',
+    completedBy: 'dylan_collyge',
+    completed_by: 'dylan_collyge',
+    completedByDisplay: 'dylan_collyge',
+    requestedBy: requesterSummary || 'dylan_collyge',
+    requestedByDisplay: requesterSummary,
+    requestedByEmail: requesterEmails[0] || '',
+    requestedByEmails: requesterEmails,
+    submittedBySummary: requesterSummary,
+    submitted_by_summary: requesterSummary,
+    submittedByEmails: requesterEmails,
+    submitted_by_emails: requesterEmails,
     itemsCount: itemCount,
     requestItems: items,
-    internalRecipients: ['jd_jones@greenleafnursery.com', 'dylan_collyge@greenleafnursery.com'],
-    recipientEmails: ['jd_jones@greenleafnursery.com', 'dylan_collyge@greenleafnursery.com'],
+    internalRecipients: batchRecipients,
+    recipientEmails: batchRecipients,
     appInstruction: 'JD: open the app and check Managers. Review the approval tabs for these Dylan-approved rows. Approval types included: ' + typeSummary + '.',
     message: 'Dylan approved ' + itemCount + ' manager approval ' + plural + '. They are grouped in this one email instead of separate row emails.'
   };
@@ -4317,6 +4470,7 @@ function buildRequestItemFieldRowsText_(item) {
     ['PTR Available', firstNonEmptyRequestValue_(item && item.ptravailable, item && item.PTRAVAILABLE, '')],
     ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
     ['Completed By', formatRequestCompletionUserLabel_(item)],
+    ['Submitted By', formatApprovalRequesterLabel_(item)],
     ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, '')],
     ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
     ['LOC MATCH %', formatRequestPercentForEmail_(firstNonEmptyRequestValue_(item && item.match, item && item.req_match, item && item.MATCH, item && item.REQ_MATCH, ''))],
@@ -4350,6 +4504,7 @@ function buildRequestItemFieldRowsHtml_(item) {
     ['PTR Available', firstNonEmptyRequestValue_(item && item.ptravailable, item && item.PTRAVAILABLE, '')],
     ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
     ['Completed By', formatRequestCompletionUserLabel_(item)],
+    ['Submitted By', formatApprovalRequesterLabel_(item)],
     ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, '')],
     ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
     ['LOC MATCH %', formatRequestPercentForEmail_(firstNonEmptyRequestValue_(item && item.match, item && item.req_match, item && item.MATCH, item && item.REQ_MATCH, ''))],
@@ -5264,6 +5419,20 @@ function buildRequestItemsHtml_(payload) {
   }).join('');
 
   return '<ul style="list-style:none; padding:0; margin:0;">' + rowsHtml + '</ul>';
+}
+
+function buildApprovalRequestItemsHtml_(payload) {
+  const safePayload = payload && typeof payload === 'object' ? Object.assign({}, payload) : {};
+  delete safePayload.formattedItemsHtml;
+  delete safePayload.formattedItemsText;
+  return buildRequestItemsHtml_(safePayload);
+}
+
+function buildApprovalRequestItemsText_(payload) {
+  const safePayload = payload && typeof payload === 'object' ? Object.assign({}, payload) : {};
+  delete safePayload.formattedItemsHtml;
+  delete safePayload.formattedItemsText;
+  return buildRequestItemsText_(safePayload);
 }
 
 function getRequestItemPhotoUrls_(item) {
@@ -6186,12 +6355,15 @@ function buildRequestSelectionSummaryText_(payload) {
 
 function buildRequestEmailMessage_(payload) {
   const emailType = String(payload.emailType || '').trim().toLowerCase();
+  const isApprovalEmail = emailType === 'ncr_approval' || emailType === 'hold_release_request';
   const repName = escapeEmailHtml_(payload.repName || payload.salesRepName || '');
   const customer = escapeEmailHtml_(payload.customer || 'N/A');
   const folderId = escapeEmailHtml_(payload.folderId || payload.requestFolder || '');
   const itemsCount = escapeEmailHtml_(payload.itemsCount || 0);
-  const itemsHtml = emailType === 'request_complete' ? buildCompactRequestItemsHtml_(payload) : buildRequestItemsHtml_(payload);
-  const itemsText = buildRequestItemsText_(payload);
+  const itemsHtml = emailType === 'request_complete'
+    ? buildCompactRequestItemsHtml_(payload)
+    : (isApprovalEmail ? buildApprovalRequestItemsHtml_(payload) : buildRequestItemsHtml_(payload));
+  const itemsText = isApprovalEmail ? buildApprovalRequestItemsText_(payload) : buildRequestItemsText_(payload);
   const selectionSummaryHtml = buildRequestSelectionSummaryHtml_(payload);
   const selectionSummaryText = buildRequestSelectionSummaryText_(payload);
   const subject = buildRequestEmailSubject_(payload);
@@ -6390,7 +6562,28 @@ function buildRequestEmailMessage_(payload) {
     const approvalTitleText = String(payload.approvalLabel || payload.approval_label || payload.customer || (emailType === 'hold_release_request' ? 'Take Off Hold' : 'Approval')).trim();
     const approvalTitle = escapeEmailHtml_(approvalTitleText);
     const approvalStage = escapeEmailHtml_(payload.approvalStageLabel || payload.approvalStage || 'Approval needed');
-    const completedBy = escapeEmailHtml_(payload.completedBy || payload.completed_by || 'Unknown');
+    const sentByText = firstNonEmptyRequestValue_(
+      payload.completedBy,
+      payload.completed_by,
+      payload.completedByDisplay,
+      payload.completed_by_display,
+      payload.sentBy,
+      payload.sent_by,
+      'Unknown'
+    );
+    const completedBy = escapeEmailHtml_(sentByText);
+    const submittedBySummary = firstNonEmptyRequestValue_(
+      payload.submittedBySummary,
+      payload.submitted_by_summary,
+      payload.requestedByDisplay,
+      payload.requested_by_display,
+      payload.requestedBy,
+      payload.requested_by,
+      payload.requestedByUsername,
+      payload.requested_by_username,
+      ''
+    );
+    const submittedByHtml = submittedBySummary ? '<p><strong>Submitted By:</strong> ' + escapeEmailHtml_(submittedBySummary) + '</p>' : '';
     const approvalTypeText = String(payload.approvalType || payload.approval_type || payload.approvalLabel || payload.approval_label || payload.customer || '').trim().toLowerCase().replace(/_/g, '-');
     const isHoldReleaseApproval = approvalTypeText.indexOf('hold-release') !== -1 || approvalTypeText.indexOf('hold') !== -1 || approvalTypeText.indexOf('take off hold') !== -1;
     let appInstructionText = String(payload.appInstruction || payload.app_instruction || '').trim();
@@ -6417,7 +6610,8 @@ function buildRequestEmailMessage_(payload) {
         approvalTitleText + ' Approval',
         'Stage: ' + String(payload.approvalStageLabel || payload.approvalStage || 'Approval needed'),
         appInstructionText ? 'Next step: ' + appInstructionText : '',
-        'Sent By: ' + String(payload.completedBy || payload.completed_by || 'Unknown'),
+        'Sent By: ' + sentByText,
+        submittedBySummary ? 'Submitted By: ' + submittedBySummary : '',
         'Source Row: ' + String(payload.folderId || payload.requestFolder || ''),
         itemsText
       ].filter(Boolean).join('\n\n'),
@@ -6427,6 +6621,7 @@ function buildRequestEmailMessage_(payload) {
         '<p><strong>Stage:</strong> ' + approvalStage + '</p>',
         appInstructionHtml,
         '<p><strong>Sent By:</strong> ' + completedBy + '</p>',
+        submittedByHtml,
         '<p><strong>Source Row:</strong> ' + folderId + '</p>',
         detailSection,
         '</div>'
