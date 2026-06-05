@@ -4898,6 +4898,18 @@ function normalizeRequestGalleryIdList_(value) {
   return ids;
 }
 
+function filterRequestGalleryItemsByIds_(items, requestIds) {
+  const safeItems = Array.isArray(items) ? items.filter(Boolean) : [];
+  const safeIds = normalizeRequestGalleryIdList_(requestIds);
+  if (!safeIds.length) return safeItems;
+  const idSet = {};
+  safeIds.forEach(function(id) { idSet[id] = true; });
+  return safeItems.filter(function(item) {
+    const itemId = String(firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, item && item.id, item && item.ID, '')).trim();
+    return !!itemId && !!idSet[itemId];
+  });
+}
+
 function fetchRequestRowsForEmailRequestIds_(requestIds) {
   const safeIds = normalizeRequestGalleryIdList_(requestIds);
   if (!safeIds.length) return [];
@@ -5311,10 +5323,13 @@ function buildRequestGalleryUrl_(folderId, requestIds) {
   const safeFolderId = String(folderId || '').trim();
   const baseUrl = getRequestGalleryBaseUrl_();
   if (!safeFolderId || !baseUrl) return '';
+  const safeIds = normalizeRequestGalleryIdList_(requestIds || []);
   const separator = baseUrl.indexOf('?') === -1 ? '?' : '&';
-  return baseUrl + separator +
+  let url = baseUrl + separator +
     'gallery=request&folder=' + encodeURIComponent(safeFolderId) +
     '&token=' + encodeURIComponent(buildRequestGalleryToken_(safeFolderId));
+  if (safeIds.length) url += '&ids=' + encodeURIComponent(safeIds.join(','));
+  return url;
 }
 
 function buildRequestRowCopyUrl_(folderId, item, rowIndex) {
@@ -5343,6 +5358,41 @@ function buildRequestRowCopyButtonHtml_(folderId, item, rowIndex) {
   return [
     '<div style="margin-top:12px;">',
     '<a href="' + escapeEmailAttribute_(copyUrl) + '" style="display:inline-block;padding:9px 13px;border-radius:999px;background:#007a4d;color:#ffffff;font-weight:700;text-decoration:none;">Copy Row</a>',
+    '</div>'
+  ].join('');
+}
+
+function buildRequestRowGalleryUrl_(folderId, item) {
+  const safeFolderId = String(firstNonEmptyRequestValue_(
+    folderId,
+    item && item.folder,
+    item && item.request_folder,
+    item && item.REQUEST_FOLDER,
+    ''
+  )).trim();
+  if (!safeFolderId) return '';
+  const rowId = String(firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, item && item.id, item && item.ID, '')).trim();
+  return buildRequestGalleryUrl_(safeFolderId, rowId ? [rowId] : []);
+}
+
+function buildRequestRowPhotoPreviewHtml_(folderId, item) {
+  const photoUrls = getRequestItemPhotoUrls_(item);
+  if (!photoUrls.length) {
+    return '<p style="margin:10px 0 0 0;color:#64748b;font-size:12px;font-weight:700;">No photos were captured for this row.</p>';
+  }
+  const firstUrl = photoUrls[0];
+  const galleryUrl = buildRequestRowGalleryUrl_(folderId, item);
+  const targetUrl = galleryUrl || firstUrl;
+  const photoCountText = photoUrls.length === 1 ? '1 photo' : photoUrls.length + ' photos';
+  return [
+    '<div style="margin:12px 0;padding:10px;border:1px solid #b7f2d1;border-radius:12px;background:#f0fdf4;">',
+    '<a href="' + escapeEmailAttribute_(targetUrl) + '" style="display:block;text-decoration:none;">',
+    '<img src="' + escapeEmailAttribute_(firstUrl) + '" alt="Request row photo preview" width="320" style="display:block;width:100%;max-width:320px;height:auto;max-height:380px;object-fit:contain;border-radius:10px;border:1px solid #d7ded8;margin:0 auto;">',
+    '</a>',
+    '<p style="margin:10px 0 12px 0;color:#065f46;font-size:13px;line-height:1.45;font-weight:700;">First photo shown for this row. Open the row gallery to view all ' + escapeEmailHtml_(photoCountText) + ' for this row.</p>',
+    '<div style="text-align:center;">',
+    '<a href="' + escapeEmailAttribute_(targetUrl) + '" style="display:inline-block;padding:10px 14px;border-radius:999px;background:#007a4d;color:#ffffff;font-weight:700;text-decoration:none;">View Row Photo Gallery</a>',
+    '</div>',
     '</div>'
   ].join('');
 }
@@ -5573,11 +5623,13 @@ function buildCompactRequestItemsHtml_(payload) {
   const items = getRequestEmailPayloadItems_(payload);
   if (!items.length) return String(payload.formattedItemsHtml || '').trim();
   const galleryFolderId = resolveRequestGalleryFolderId_(payload, items);
+  cacheRequestGalleryPayload_(galleryFolderId, items);
   const rowsHtml = items.map(function(item, index) {
     const commonName = escapeEmailHtml_(firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Unknown Item'));
     const contSize = escapeEmailHtml_(firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, '-'));
     const photoCount = getRequestItemPhotoUrls_(item).length;
     const copyButtonHtml = buildRequestRowCopyButtonHtml_(galleryFolderId, item, index);
+    const photoPreviewHtml = buildRequestRowPhotoPreviewHtml_(galleryFolderId, item);
     const fields = [
       ['Item', firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, '')],
       ['Loc', firstNonEmptyRequestValue_(item && item.loc, item && item.locationcode, item && item.LOCATIONCODE, '')],
@@ -5598,6 +5650,7 @@ function buildCompactRequestItemsHtml_(payload) {
     return [
       '<li style="margin-bottom:10px; background:#f9f9f9; padding:10px; border-left:4px solid #007a4d;">',
       '<strong>' + (index + 1) + '. ' + commonName + ' (' + contSize + ')</strong>',
+      photoPreviewHtml,
       fieldsHtml,
       copyButtonHtml,
       '</li>'
@@ -5876,18 +5929,12 @@ function renderRequestGalleryWebApp_(params) {
         fetchRequestRowsForEmailRequestIds_(requestIds),
         fetchRequestHistoryRowsForEmailRequestIds_(requestIds)
       );
-      if (!rows.length && folderRows.length) rows = folderRows;
     }
   }
   let items = buildRequestEmailItemsFromRows_(rows, { folderId: folderId });
   let slides = buildRequestGallerySlidesFromItems_(items);
-  if (requestIds.length && !slides.length && rows !== folderRows && folderRows.length) {
-    rows = folderRows;
-    items = buildRequestEmailItemsFromRows_(rows, { folderId: folderId });
-    slides = buildRequestGallerySlidesFromItems_(items);
-  }
   if (!items.length || !slides.length) {
-    const cachedItems = readRequestGalleryCachedItems_(folderId);
+    const cachedItems = filterRequestGalleryItemsByIds_(readRequestGalleryCachedItems_(folderId), requestIds);
     const cachedSlides = buildRequestGallerySlidesFromItems_(cachedItems);
     if (cachedItems.length && cachedSlides.length) {
       rows = [];
@@ -6181,14 +6228,11 @@ function buildRequestEmailMessage_(payload) {
     const folderNoteHtml = folderNote ? '<p><strong>Folder Note:</strong> ' + escapeEmailHtml_(folderNote) + '</p>' : '';
     const completedBySummary = buildRequestCompletedBySummary_(payload);
     const completedBySummaryHtml = completedBySummary ? '<p><strong>Completed By:</strong> ' + escapeEmailHtml_(completedBySummary) + '</p>' : '';
-    const galleryUrl = buildRequestGalleryUrlForPayload_(payload);
-    const galleryPreviewHtml = buildRequestGalleryPreviewHtml_(payload);
     const detailSection = itemsHtml
       ? [
           '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
           folderNoteHtml,
           completedBySummaryHtml,
-          galleryPreviewHtml,
           '<p style="font-weight:700; margin-bottom:12px;">Completed Items</p>',
           itemsHtml
         ].join('')
@@ -6210,7 +6254,6 @@ function buildRequestEmailMessage_(payload) {
         'Total Items Fulfilled: ' + String(payload.itemsCount || 0),
         folderNote ? 'Folder Note: ' + folderNote : '',
         completedBySummary ? 'Completed By: ' + completedBySummary : '',
-        galleryUrl ? 'Photo Gallery: ' + galleryUrl : '',
         itemsText
       ].filter(Boolean).join('\n\n'),
       htmlBody: buildPhoneSizedEmailHtml_([
