@@ -4364,6 +4364,93 @@ function formatRequestPercentForEmail_(value) {
   return /%$/.test(text) ? text : text + '%';
 }
 
+function parseRequestEmailNumber_(value) {
+  const text = firstNonEmptyRequestValue_(value)
+    .replace(/,/g, '')
+    .replace(/%/g, '')
+    .trim();
+  if (!text || /^n\/?a$/i.test(text) || /^-+$/.test(text)) return null;
+  const numberMatch = text.match(/-?\d+(?:\.\d+)?/);
+  if (!numberMatch) return null;
+  const numberValue = Number(numberMatch[0]);
+  return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+function normalizeRequestCountText_(value) {
+  const text = firstNonEmptyRequestValue_(value);
+  if (!text || /^n\/?a$/i.test(text) || /^-+$/.test(text)) return '';
+  const labeledMatch = text.match(/(?:loc(?:ation)?\s*)?photo\s*match\s*:?\s*([0-9][0-9,]*(?:\.\d+)?)/i);
+  if (labeledMatch) return labeledMatch[1].replace(/,/g, '');
+  return text;
+}
+
+function deriveRequestLocPhotoMatchValue_(item, snapshot) {
+  const row = item || {};
+  const snap = snapshot || {};
+  const matchValue = parseRequestEmailNumber_(firstNonEmptyRequestValue_(
+    row.req_match, row.REQ_MATCH,
+    row.match, row.MATCH, row.MATCHPCT, row.matchpct,
+    row.flyer_match, row.FLYER_MATCH, row.FLYER_MATCHPCT,
+    snap.REQ_MATCH, snap.req_match,
+    snap.MATCH, snap.match, snap.MATCHPCT, snap.matchpct,
+    snap.FLYER_MATCH, snap.flyer_match, snap.FLYER_MATCHPCT,
+    ''
+  ));
+  if (matchValue == null) return null;
+
+  const currentPtrValue = parseRequestEmailNumber_(firstNonEmptyRequestValue_(
+    row.ptravailable, row.PTRAVAILABLE,
+    row.loc_avail, row.LOC_AVAIL,
+    row.locavailable, row.LOCAVAILABLE,
+    snap.PTRAVAILABLE, snap.ptravailable,
+    snap.LOC_AVAIL, snap.loc_avail,
+    snap.LOCAVAILABLE, snap.locavailable,
+    ''
+  ));
+  const currentPtr = Math.max(0, currentPtrValue == null ? 0 : currentPtrValue);
+  const baselinePtrValue = parseRequestEmailNumber_(firstNonEmptyRequestValue_(
+    row.initial_ptr, row.INITIAL_PTR,
+    row.flyer_initial_ptr, row.FLYER_INITIAL_PTR,
+    snap.INITIAL_PTR, snap.initial_ptr,
+    snap.FLYER_INITIAL_PTR, snap.flyer_initial_ptr,
+    ''
+  ));
+
+  if (baselinePtrValue == null) return Math.max(0, Math.round(currentPtr * (matchValue / 100)));
+
+  const baselinePtr = Math.max(0, baselinePtrValue);
+  const originalMatchQty = Math.max(0, Math.round(baselinePtr * (matchValue / 100)));
+  const ptrDrop = Math.max(0, baselinePtr - currentPtr);
+  return Math.min(originalMatchQty, Math.max(0, originalMatchQty - ptrDrop));
+}
+
+function getRequestLocPhotoMatchValue_(item) {
+  const row = item || {};
+  const snapshot = parseRequestRowSnapshot_(row);
+  const directValue = normalizeRequestCountText_(firstNonEmptyRequestValue_(
+    row.loc_match_qty, row.LOC_MATCH_QTY,
+    row.locPhotoMatch, row.locPhotoMatchQty,
+    row.loc_photo_match, row.LOC_PHOTO_MATCH,
+    row.loc_photo_match_qty, row.LOC_PHOTO_MATCH_QTY,
+    row.req_loc_match_qty, row.REQ_LOC_MATCH_QTY,
+    row.flyer_loc_match_qty, row.FLYER_LOC_MATCH_QTY,
+    snapshot.LOC_MATCH_QTY, snapshot.loc_match_qty,
+    snapshot.locPhotoMatch, snapshot.locPhotoMatchQty,
+    snapshot.LOC_PHOTO_MATCH, snapshot.loc_photo_match,
+    snapshot.LOC_PHOTO_MATCH_QTY, snapshot.loc_photo_match_qty,
+    snapshot.REQ_LOC_MATCH_QTY, snapshot.req_loc_match_qty,
+    snapshot.FLYER_LOC_MATCH_QTY, snapshot.flyer_loc_match_qty,
+    ''
+  ));
+  if (directValue) return directValue;
+  const derivedValue = deriveRequestLocPhotoMatchValue_(row, snapshot);
+  return derivedValue == null ? '' : String(derivedValue);
+}
+
+function getRequestLocPhotoMatchEmailValue_(item) {
+  return getRequestLocPhotoMatchValue_(item) || '0';
+}
+
 const CALIPER_MEASUREMENT_NOTE_ = '** Caliper is measured 12 inches above soil level.';
 
 function isCaliperEmailField_(label) {
@@ -4474,7 +4561,7 @@ function buildRequestItemFieldRowsText_(item) {
     ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, '')],
     ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
     ['LOC MATCH %', formatRequestPercentForEmail_(firstNonEmptyRequestValue_(item && item.match, item && item.req_match, item && item.MATCH, item && item.REQ_MATCH, ''))],
-    ['LOC PHOTO MATCH', firstNonEmptyRequestValue_(item && item.loc_match_qty, item && item.LOC_MATCH_QTY, item && item.locPhotoMatch, '')],
+    ['LOC PHOTO MATCH', getRequestLocPhotoMatchEmailValue_(item)],
     ['AV Note', firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, '')],
     ['Reserve', firstNonEmptyRequestValue_(item && item.reserve, item && item.req_reserve, item && item.REQ_RESERVE, '')],
     ['Pick Note', firstNonEmptyRequestValue_(item && item.pick_note, item && item.pick, item && item.REQ_PICK, item && item.PICK, '')],
@@ -4508,7 +4595,7 @@ function buildRequestItemFieldRowsHtml_(item) {
     ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, '')],
     ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
     ['LOC MATCH %', formatRequestPercentForEmail_(firstNonEmptyRequestValue_(item && item.match, item && item.req_match, item && item.MATCH, item && item.REQ_MATCH, ''))],
-    ['LOC PHOTO MATCH', firstNonEmptyRequestValue_(item && item.loc_match_qty, item && item.LOC_MATCH_QTY, item && item.locPhotoMatch, '')],
+    ['LOC PHOTO MATCH', getRequestLocPhotoMatchEmailValue_(item)],
     ['AV Note', firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, '')],
     ['Reserve', firstNonEmptyRequestValue_(item && item.reserve, item && item.req_reserve, item && item.REQ_RESERVE, '')],
     ['Pick Note', firstNonEmptyRequestValue_(item && item.pick_note, item && item.pick, item && item.REQ_PICK, item && item.PICK, '')],
@@ -5289,7 +5376,7 @@ function buildRequestEmailItemsFromRows_(rows, payload) {
       spec: firstNonEmptyRequestValue_(item && item.req_spec, item && item.REQ_SPEC, item && item.spec, item && item.SPEC, ''),
       caliper: firstNonEmptyRequestValue_(item && item.req_caliper, item && item.REQ_CALIPER, item && item.caliper, item && item.CALIPER, ''),
       match: firstNonEmptyRequestValue_(item && item.req_match, item && item.REQ_MATCH, item && item.match, item && item.MATCH, ''),
-      loc_match_qty: firstNonEmptyRequestValue_(item && item.loc_match_qty, item && item.LOC_MATCH_QTY, snapshot.LOC_MATCH_QTY, snapshot.loc_match_qty, ''),
+      loc_match_qty: getRequestLocPhotoMatchValue_(item),
       reserve: firstNonEmptyRequestValue_(item && item.req_reserve, item && item.REQ_RESERVE, snapshot.REQ_RESERVE, snapshot.req_reserve, ''),
       pick_note: firstNonEmptyRequestValue_(item && item.req_pic_note, item && item.REQ_PIC_NOTE, item && item.req_pick, item && item.REQ_PICK, snapshot.REQ_PICK, snapshot.req_pick, ''),
       comments: firstNonEmptyRequestValue_(item && item.req_comments, item && item.REQ_COMMENTS, snapshot.REQ_COMMENTS, snapshot.req_comments, ''),
@@ -5592,7 +5679,7 @@ function compactRequestGalleryItem_(item) {
     spec: firstNonEmptyRequestValue_(item && item.spec, item && item.req_spec, item && item.REQ_SPEC, ''),
     caliper: firstNonEmptyRequestValue_(item && item.caliper, item && item.req_caliper, item && item.REQ_CALIPER, ''),
     match: firstNonEmptyRequestValue_(item && item.match, item && item.req_match, item && item.REQ_MATCH, ''),
-    loc_match_qty: firstNonEmptyRequestValue_(item && item.loc_match_qty, item && item.LOC_MATCH_QTY, ''),
+    loc_match_qty: getRequestLocPhotoMatchValue_(item),
     reserve: firstNonEmptyRequestValue_(item && item.reserve, item && item.req_reserve, item && item.REQ_RESERVE, ''),
     pick_note: firstNonEmptyRequestValue_(item && item.pick_note, item && item.req_pic_note, item && item.REQ_PIC_NOTE, ''),
     comments: firstNonEmptyRequestValue_(item && item.comments, item && item.req_comments, item && item.REQ_COMMENTS, ''),
@@ -5722,7 +5809,7 @@ function buildRequestGallerySlidesFromItems_(items) {
     const qty = firstNonEmptyRequestValue_(item.qty, item.requested_qty, item.REQ_QTY, '');
     const spec = firstNonEmptyRequestValue_(item.spec, item.REQ_SPEC, item.SPEC, '');
     const caliper = firstNonEmptyRequestValue_(item.caliper, item.REQ_CALIPER, item.CALIPER, '');
-    const locMatchQty = firstNonEmptyRequestValue_(item.loc_match_qty, item.LOC_MATCH_QTY, item.locPhotoMatch, '');
+    const locMatchQty = getRequestLocPhotoMatchEmailValue_(item);
     const avNote = firstNonEmptyRequestValue_(item.av_note, item.AV_NOTE, '');
     getRequestItemPhotoUrls_(item).forEach(function(url, photoIndex) {
       slides.push({
@@ -5806,7 +5893,7 @@ function buildCompactRequestItemsHtml_(payload) {
       ['Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
       ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, '')],
       ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
-      ['LOC PHOTO MATCH', firstNonEmptyRequestValue_(item && item.loc_match_qty, item && item.LOC_MATCH_QTY, item && item.locPhotoMatch, '')],
+      ['LOC PHOTO MATCH', getRequestLocPhotoMatchEmailValue_(item)],
       ['AV Note', firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, '')],
       ['Photos', photoCount ? String(photoCount) : '0']
     ].filter(function(field) {
@@ -5849,7 +5936,7 @@ function buildRequestGalleryRowsHtml_(items) {
       ['Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
       ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, '')],
       ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
-      ['LOC PHOTO MATCH', firstNonEmptyRequestValue_(item && item.loc_match_qty, item && item.LOC_MATCH_QTY, item && item.locPhotoMatch, '')],
+      ['LOC PHOTO MATCH', getRequestLocPhotoMatchEmailValue_(item)],
       ['AV Note', firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, '')],
       ['Photos', photoCount ? String(photoCount) : '0']
     ].filter(function(field) {
@@ -5946,7 +6033,7 @@ function buildRequestRowCopyFields_(item) {
     ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
     ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, '')],
     ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
-    ['LOC Photo Match', firstNonEmptyRequestValue_(item && item.loc_match_qty, item && item.LOC_MATCH_QTY, item && item.locPhotoMatch, '')],
+    ['LOC Photo Match', getRequestLocPhotoMatchEmailValue_(item)],
     ['AV Note', firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, '')],
     ['Reserve', firstNonEmptyRequestValue_(item && item.reserve, item && item.req_reserve, item && item.REQ_RESERVE, '')],
     ['Pick Note', firstNonEmptyRequestValue_(item && item.pick_note, item && item.pick, item && item.REQ_PICK, item && item.PICK, '')],
