@@ -294,6 +294,9 @@ const JD_APPROVAL_EMAIL_DELAY_MS = 3 * 60 * 1000;
 const JD_APPROVAL_EMAIL_MIN_DELAY_MS = 30000;
 const REQUEST_GALLERY_BASE_URL_PROPERTY = 'REQUEST_GALLERY_BASE_URL';
 const REQUEST_GALLERY_SECRET_PROPERTY = 'REQUEST_GALLERY_SECRET';
+const REQUEST_GALLERY_CACHE_META_PREFIX = 'REQUEST_GALLERY_CACHE_META_';
+const REQUEST_GALLERY_CACHE_CHUNK_PREFIX = 'REQUEST_GALLERY_CACHE_CHUNK_';
+const REQUEST_GALLERY_CACHE_CHUNK_SIZE = 7000;
 
 const MASTER_IMPORT_BASE_COMPARE_COLUMNS = Object.freeze([
   'unique_id',
@@ -5308,6 +5311,119 @@ function buildRequestGalleryUrl_(folderId, requestIds) {
     '&token=' + encodeURIComponent(buildRequestGalleryToken_(safeFolderId));
 }
 
+function getRequestGalleryCacheKey_(folderId) {
+  const safeFolderId = String(folderId || '').trim();
+  if (!safeFolderId) return '';
+  return String(buildRequestGalleryToken_(safeFolderId) || '').slice(0, 40);
+}
+
+function compactRequestGalleryItem_(item) {
+  const photoUrls = getRequestItemPhotoUrls_(item);
+  return {
+    unique_id: firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, ''),
+    folder: firstNonEmptyRequestValue_(item && item.folder, item && item.request_folder, item && item.REQUEST_FOLDER, ''),
+    customer: firstNonEmptyRequestValue_(item && item.customer, item && item.req_customer, item && item.REQ_CUSTOMER, ''),
+    commonname: firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, ''),
+    contsize: firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, ''),
+    itemcode: firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, ''),
+    lotcode: firstNonEmptyRequestValue_(item && item.lotcode, item && item.LOTCODE, ''),
+    season: firstNonEmptyRequestValue_(item && item.season, item && item.SEASON, ''),
+    priority: firstNonEmptyRequestValue_(item && item.priority, item && item.PRIORITY, ''),
+    ptravailable: firstNonEmptyRequestValue_(item && item.ptravailable, item && item.PTRAVAILABLE, ''),
+    s_lts: firstNonEmptyRequestValue_(item && item.s_lts, item && item.S_LTS, ''),
+    qty: firstNonEmptyRequestValue_(item && item.qty, item && item.req_qty, item && item.REQ_QTY, ''),
+    loc: firstNonEmptyRequestValue_(item && item.loc, item && item.locationcode, item && item.LOCATIONCODE, ''),
+    av_note: firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, ''),
+    spec: firstNonEmptyRequestValue_(item && item.spec, item && item.req_spec, item && item.REQ_SPEC, ''),
+    caliper: firstNonEmptyRequestValue_(item && item.caliper, item && item.req_caliper, item && item.REQ_CALIPER, ''),
+    match: firstNonEmptyRequestValue_(item && item.match, item && item.req_match, item && item.REQ_MATCH, ''),
+    loc_match_qty: firstNonEmptyRequestValue_(item && item.loc_match_qty, item && item.LOC_MATCH_QTY, ''),
+    reserve: firstNonEmptyRequestValue_(item && item.reserve, item && item.req_reserve, item && item.REQ_RESERVE, ''),
+    pick_note: firstNonEmptyRequestValue_(item && item.pick_note, item && item.req_pic_note, item && item.REQ_PIC_NOTE, ''),
+    comments: firstNonEmptyRequestValue_(item && item.comments, item && item.req_comments, item && item.REQ_COMMENTS, ''),
+    completed_by_username: firstNonEmptyRequestValue_(item && item.completed_by_username, item && item.COMPLETED_BY_USERNAME, ''),
+    completed_by_display: firstNonEmptyRequestValue_(item && item.completed_by_display, item && item.COMPLETED_BY_DISPLAY, ''),
+    completed_by_email: firstNonEmptyRequestValue_(item && item.completed_by_email, item && item.COMPLETED_BY_EMAIL, ''),
+    photo: photoUrls
+  };
+}
+
+function deleteRequestGalleryCache_(cacheKey) {
+  const key = String(cacheKey || '').trim();
+  if (!key) return;
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const metaKey = REQUEST_GALLERY_CACHE_META_PREFIX + key;
+    let chunkCount = 0;
+    try {
+      const meta = JSON.parse(String(props.getProperty(metaKey) || '{}'));
+      chunkCount = Math.max(0, Number(meta && meta.chunkCount) || 0);
+    } catch (error) {}
+    for (let index = 0; index < chunkCount; index++) {
+      props.deleteProperty(REQUEST_GALLERY_CACHE_CHUNK_PREFIX + key + '_' + index);
+    }
+    props.deleteProperty(metaKey);
+  } catch (error) {}
+}
+
+function cacheRequestGalleryPayload_(folderId, items) {
+  const safeFolderId = String(folderId || '').trim();
+  const safeItems = (Array.isArray(items) ? items : []).filter(Boolean).map(compactRequestGalleryItem_);
+  if (!safeFolderId || !safeItems.length || !buildRequestGallerySlidesFromItems_(safeItems).length) return;
+  const cacheKey = getRequestGalleryCacheKey_(safeFolderId);
+  if (!cacheKey) return;
+  try {
+    const payload = JSON.stringify({
+      folderId: safeFolderId,
+      cachedAt: new Date().toISOString(),
+      items: safeItems
+    });
+    const props = PropertiesService.getScriptProperties();
+    deleteRequestGalleryCache_(cacheKey);
+    const chunks = [];
+    for (let index = 0; index < payload.length; index += REQUEST_GALLERY_CACHE_CHUNK_SIZE) {
+      chunks.push(payload.slice(index, index + REQUEST_GALLERY_CACHE_CHUNK_SIZE));
+    }
+    chunks.forEach(function(chunk, index) {
+      props.setProperty(REQUEST_GALLERY_CACHE_CHUNK_PREFIX + cacheKey + '_' + index, chunk);
+    });
+    props.setProperty(REQUEST_GALLERY_CACHE_META_PREFIX + cacheKey, JSON.stringify({
+      folderId: safeFolderId,
+      chunkCount: chunks.length,
+      cachedAt: new Date().toISOString()
+    }));
+  } catch (error) {
+    console.error('[REQUEST GALLERY] Could not cache gallery payload', {
+      folderId: safeFolderId,
+      message: error && error.message ? error.message : String(error)
+    });
+  }
+}
+
+function readRequestGalleryCachedItems_(folderId) {
+  const safeFolderId = String(folderId || '').trim();
+  const cacheKey = getRequestGalleryCacheKey_(safeFolderId);
+  if (!safeFolderId || !cacheKey) return [];
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const meta = JSON.parse(String(props.getProperty(REQUEST_GALLERY_CACHE_META_PREFIX + cacheKey) || '{}'));
+    const chunkCount = Math.max(0, Number(meta && meta.chunkCount) || 0);
+    if (!chunkCount || String(meta && meta.folderId || '') !== safeFolderId) return [];
+    let raw = '';
+    for (let index = 0; index < chunkCount; index++) {
+      raw += String(props.getProperty(REQUEST_GALLERY_CACHE_CHUNK_PREFIX + cacheKey + '_' + index) || '');
+    }
+    const parsed = JSON.parse(raw || '{}');
+    return Array.isArray(parsed && parsed.items) ? parsed.items.filter(Boolean) : [];
+  } catch (error) {
+    console.error('[REQUEST GALLERY] Could not read cached gallery payload', {
+      folderId: safeFolderId,
+      message: error && error.message ? error.message : String(error)
+    });
+  }
+  return [];
+}
+
 function resolveRequestGalleryFolderId_(payload, items) {
   const firstItem = Array.isArray(items) && items.length ? items[0] || {} : {};
   return firstNonEmptyRequestValue_(
@@ -5390,7 +5506,9 @@ function buildRequestGalleryPreviewHtml_(payload) {
   const items = getRequestEmailPayloadItems_(payload);
   const slides = buildRequestGallerySlidesFromItems_(items);
   if (!slides.length) return '';
-  const galleryUrl = buildRequestGalleryUrl_(resolveRequestGalleryFolderId_(payload, items), resolveRequestGalleryRequestIds_(payload, items));
+  const galleryFolderId = resolveRequestGalleryFolderId_(payload, items);
+  cacheRequestGalleryPayload_(galleryFolderId, items);
+  const galleryUrl = buildRequestGalleryUrl_(galleryFolderId, resolveRequestGalleryRequestIds_(payload, items));
   const firstSlide = slides[0] || {};
   const targetUrl = galleryUrl || firstSlide.url || '';
   if (!targetUrl) return '';
@@ -5545,6 +5663,15 @@ function renderRequestGalleryWebApp_(params) {
     rows = folderRows;
     items = buildRequestEmailItemsFromRows_(rows, { folderId: folderId });
     slides = buildRequestGallerySlidesFromItems_(items);
+  }
+  if (!items.length || !slides.length) {
+    const cachedItems = readRequestGalleryCachedItems_(folderId);
+    const cachedSlides = buildRequestGallerySlidesFromItems_(cachedItems);
+    if (cachedItems.length && cachedSlides.length) {
+      rows = [];
+      items = cachedItems;
+      slides = cachedSlides;
+    }
   }
   const firstItem = items.length ? items[0] || {} : {};
   const customerLabel = firstNonEmptyRequestValue_(firstItem.customer, folderId, 'Request Folder');
