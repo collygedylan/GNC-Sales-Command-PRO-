@@ -3789,6 +3789,9 @@ function doGet(e) {
   if (view === 'request') {
     return renderRequestGalleryWebApp_(params);
   }
+  if (view === 'request-row') {
+    return renderRequestRowCopyWebApp_(params);
+  }
   return HtmlService
     .createHtmlOutput('<!doctype html><html><body style="font-family:Arial,sans-serif;"><h2>GNC Park Hill</h2><p>App script is running.</p></body></html>')
     .setTitle('GNC Park Hill');
@@ -5221,11 +5224,13 @@ function buildRequestItemsHtml_(payload) {
       : (Array.isArray(payload.sourceRows) ? payload.sourceRows : []));
   if (!items.length) return '';
 
-  const rowsHtml = items.map(function(item) {
+  const galleryFolderId = resolveRequestGalleryFolderId_(payload, items);
+  const rowsHtml = items.map(function(item, index) {
     const commonName = escapeEmailHtml_(item && item.commonname ? item.commonname : 'Unknown Item');
     const contSize = escapeEmailHtml_(item && item.contsize ? item.contsize : '-');
     const detailRowsHtml = buildRequestItemFieldRowsHtml_(item);
     const photoUrls = getRequestItemPhotoUrls_(item);
+    const copyButtonHtml = buildRequestRowCopyButtonHtml_(galleryFolderId, item, index);
     const photoHtml = photoUrls.map(function(url, index) {
       const safeUrl = escapeEmailAttribute_(url);
       const linkLabel = photoUrls.length > 1 ? 'Photo ' + (index + 1) : 'Photo';
@@ -5241,6 +5246,7 @@ function buildRequestItemsHtml_(payload) {
       '<strong>' + commonName + ' (' + contSize + ')</strong><br>',
       detailRowsHtml,
       photoHtml,
+      copyButtonHtml,
       '</li>'
     ].join('');
   }).join('');
@@ -5309,6 +5315,36 @@ function buildRequestGalleryUrl_(folderId, requestIds) {
   return baseUrl + separator +
     'gallery=request&folder=' + encodeURIComponent(safeFolderId) +
     '&token=' + encodeURIComponent(buildRequestGalleryToken_(safeFolderId));
+}
+
+function buildRequestRowCopyUrl_(folderId, item, rowIndex) {
+  const safeFolderId = String(firstNonEmptyRequestValue_(
+    folderId,
+    item && item.folder,
+    item && item.request_folder,
+    item && item.REQUEST_FOLDER,
+    ''
+  )).trim();
+  const baseUrl = getRequestGalleryBaseUrl_();
+  if (!safeFolderId || !baseUrl) return '';
+  const rowId = String(firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, item && item.id, item && item.ID, '')).trim();
+  const separator = baseUrl.indexOf('?') === -1 ? '?' : '&';
+  let url = baseUrl + separator +
+    'gallery=request-row&folder=' + encodeURIComponent(safeFolderId) +
+    '&token=' + encodeURIComponent(buildRequestGalleryToken_(safeFolderId));
+  if (rowId) url += '&row=' + encodeURIComponent(rowId);
+  if (rowIndex != null && rowIndex !== '') url += '&index=' + encodeURIComponent(String(rowIndex));
+  return url;
+}
+
+function buildRequestRowCopyButtonHtml_(folderId, item, rowIndex) {
+  const copyUrl = buildRequestRowCopyUrl_(folderId, item, rowIndex);
+  if (!copyUrl) return '';
+  return [
+    '<div style="margin-top:12px;">',
+    '<a href="' + escapeEmailAttribute_(copyUrl) + '" style="display:inline-block;padding:9px 13px;border-radius:999px;background:#007a4d;color:#ffffff;font-weight:700;text-decoration:none;">Copy Row</a>',
+    '</div>'
+  ].join('');
 }
 
 function getRequestGalleryCacheKey_(folderId) {
@@ -5536,10 +5572,12 @@ function buildRequestGalleryPreviewHtml_(payload) {
 function buildCompactRequestItemsHtml_(payload) {
   const items = getRequestEmailPayloadItems_(payload);
   if (!items.length) return String(payload.formattedItemsHtml || '').trim();
+  const galleryFolderId = resolveRequestGalleryFolderId_(payload, items);
   const rowsHtml = items.map(function(item, index) {
     const commonName = escapeEmailHtml_(firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Unknown Item'));
     const contSize = escapeEmailHtml_(firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, '-'));
     const photoCount = getRequestItemPhotoUrls_(item).length;
+    const copyButtonHtml = buildRequestRowCopyButtonHtml_(galleryFolderId, item, index);
     const fields = [
       ['Item', firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, '')],
       ['Loc', firstNonEmptyRequestValue_(item && item.loc, item && item.locationcode, item && item.LOCATIONCODE, '')],
@@ -5561,6 +5599,7 @@ function buildCompactRequestItemsHtml_(payload) {
       '<li style="margin-bottom:10px; background:#f9f9f9; padding:10px; border-left:4px solid #007a4d;">',
       '<strong>' + (index + 1) + '. ' + commonName + ' (' + contSize + ')</strong>',
       fieldsHtml,
+      copyButtonHtml,
       '</li>'
     ].join('');
   }).join('');
@@ -5624,6 +5663,189 @@ function buildRequestGalleryErrorPage_(title, message) {
     .setTitle(title || 'Request Gallery');
 }
 
+function loadRequestGalleryItemsForFolder_(folderId, requestIds) {
+  const safeFolderId = String(folderId || '').trim();
+  const safeIds = normalizeRequestGalleryIdList_(requestIds || []);
+  const folderRows = mergeRequestEmailRows_(
+    fetchRequestRowsForEmailFolder_(safeFolderId),
+    fetchRequestHistoryRowsForEmailFolder_(safeFolderId)
+  );
+  let rows = folderRows;
+  if (safeIds.length) {
+    const idSet = {};
+    safeIds.forEach(function(id) { idSet[id] = true; });
+    rows = folderRows.filter(function(row) {
+      const rowId = firstNonEmptyRequestValue_(row && row.unique_id, row && row.UNIQUE_ID, '');
+      return !!rowId && !!idSet[rowId];
+    });
+    if (!rows.length) {
+      rows = mergeRequestEmailRows_(
+        fetchRequestRowsForEmailRequestIds_(safeIds),
+        fetchRequestHistoryRowsForEmailRequestIds_(safeIds)
+      );
+      if (!rows.length && folderRows.length) rows = folderRows;
+    }
+  }
+  let items = buildRequestEmailItemsFromRows_(rows, { folderId: safeFolderId });
+  if (!items.length || !buildRequestGallerySlidesFromItems_(items).length) {
+    const cachedItems = readRequestGalleryCachedItems_(safeFolderId);
+    if (cachedItems.length) items = cachedItems;
+  }
+  return items;
+}
+
+function findRequestGalleryItem_(items, rowId, rowIndex) {
+  const safeItems = Array.isArray(items) ? items.filter(Boolean) : [];
+  const safeRowId = String(rowId || '').trim();
+  if (safeRowId) {
+    for (let index = 0; index < safeItems.length; index++) {
+      const item = safeItems[index] || {};
+      const itemId = String(firstNonEmptyRequestValue_(item.unique_id, item.UNIQUE_ID, item.id, item.ID, '')).trim();
+      if (itemId && itemId === safeRowId) return item;
+    }
+  }
+  const numericIndex = Number(rowIndex);
+  if (Number.isFinite(numericIndex) && numericIndex >= 0 && numericIndex < safeItems.length) return safeItems[numericIndex];
+  return safeItems.length === 1 ? safeItems[0] : null;
+}
+
+function buildRequestRowCopyFields_(item) {
+  const photoUrls = getRequestItemPhotoUrls_(item);
+  const fields = [
+    ['Common Name', firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, '')],
+    ['Container Size', firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, '')],
+    ['Item Code', firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, '')],
+    ['Location', firstNonEmptyRequestValue_(item && item.loc, item && item.locationcode, item && item.LOCATIONCODE, '')],
+    ['Lot', firstNonEmptyRequestValue_(item && item.lotcode, item && item.LOTCODE, '')],
+    ['Season', firstNonEmptyRequestValue_(item && item.season, item && item.SEASON, '')],
+    ['Priority', firstNonEmptyRequestValue_(item && item.priority, item && item.PRIORITY, '')],
+    ['PTR Available', firstNonEmptyRequestValue_(item && item.ptravailable, item && item.PTRAVAILABLE, '')],
+    ['S_LTS', firstNonEmptyRequestValue_(item && item.s_lts, item && item.S_LTS, '')],
+    ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
+    ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, '')],
+    ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
+    ['LOC Photo Match', firstNonEmptyRequestValue_(item && item.loc_match_qty, item && item.LOC_MATCH_QTY, item && item.locPhotoMatch, '')],
+    ['AV Note', firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, '')],
+    ['Reserve', firstNonEmptyRequestValue_(item && item.reserve, item && item.req_reserve, item && item.REQ_RESERVE, '')],
+    ['Pick Note', firstNonEmptyRequestValue_(item && item.pick_note, item && item.pick, item && item.REQ_PICK, item && item.PICK, '')],
+    ['Comments', firstNonEmptyRequestValue_(item && item.comments, item && item.REQ_COMMENTS, item && item.COMMENTS, '')],
+    ['Completed By', formatRequestCompletionUserLabel_(item)]
+  ].filter(function(field) {
+    return String(field[1] || '').trim() !== '';
+  });
+  return {
+    fields: fields,
+    photoUrls: photoUrls
+  };
+}
+
+function buildRequestRowCopyText_(item) {
+  const copyData = buildRequestRowCopyFields_(item);
+  const title = firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Request Row');
+  const lines = [String(title || 'Request Row')];
+  copyData.fields.forEach(function(field) {
+    lines.push(field[0] + ': ' + field[1]);
+  });
+  if (copyData.photoUrls.length) {
+    lines.push('');
+    lines.push('Photos:');
+    copyData.photoUrls.forEach(function(url, index) {
+      lines.push('Photo ' + (index + 1) + ': ' + url);
+    });
+  }
+  return lines.join('\n');
+}
+
+function buildRequestRowCopyHtml_(item) {
+  const copyData = buildRequestRowCopyFields_(item);
+  const title = firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Request Row');
+  const contsize = firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, '');
+  const rowsHtml = copyData.fields.map(function(field) {
+    return '<tr><th style="text-align:left;padding:6px 8px;border:1px solid #d9eadf;background:#f0fdf4;color:#007a4d;">' + escapeEmailHtml_(field[0]) + '</th><td style="padding:6px 8px;border:1px solid #d9eadf;">' + escapeEmailHtml_(field[1]) + '</td></tr>';
+  }).join('');
+  const photosHtml = copyData.photoUrls.map(function(url, index) {
+    const safeUrl = escapeEmailAttribute_(url);
+    return '<p><strong>Photo ' + (index + 1) + ':</strong> <a href="' + safeUrl + '">' + escapeEmailHtml_(url) + '</a></p><p><img src="' + safeUrl + '" alt="Photo ' + (index + 1) + '" style="max-width:520px;width:100%;height:auto;border-radius:8px;border:1px solid #ddd;"></p>';
+  }).join('');
+  return [
+    '<div style="font-family:Arial,sans-serif;color:#0f172a;">',
+    '<h2 style="color:#007a4d;margin:0 0 6px;">' + escapeEmailHtml_(title) + (contsize ? ' ' + escapeEmailHtml_(contsize) : '') + '</h2>',
+    '<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin:10px 0;">',
+    rowsHtml,
+    '</table>',
+    photosHtml,
+    '</div>'
+  ].join('');
+}
+
+function renderRequestRowCopyWebApp_(params) {
+  const folderId = String(firstNonEmptyRequestValue_(
+    params && params.folder,
+    params && params.folderId,
+    params && params.requestFolder,
+    ''
+  )).trim();
+  const token = String(params && params.token || '').trim();
+  if (!folderId || !verifyRequestGalleryToken_(folderId, token)) {
+    return buildRequestGalleryErrorPage_('Copy Row', 'This row copy link is missing or no longer valid.');
+  }
+  const rowId = String(firstNonEmptyRequestValue_(params && params.row, params && params.id, params && params.requestId, '')).trim();
+  const rowIndex = params && params.index;
+  const items = loadRequestGalleryItemsForFolder_(folderId, rowId ? [rowId] : []);
+  const item = findRequestGalleryItem_(items, rowId, rowIndex);
+  if (!item) {
+    return buildRequestGalleryErrorPage_('Copy Row', 'This request row could not be found.');
+  }
+  const copyText = buildRequestRowCopyText_(item);
+  const copyHtml = buildRequestRowCopyHtml_(item);
+  const title = firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Request Row');
+  const photoUrls = getRequestItemPhotoUrls_(item);
+  const photoPreviewHtml = photoUrls.map(function(url, index) {
+    const safeUrl = escapeEmailAttribute_(url);
+    return '<a href="' + safeUrl + '" target="_blank" rel="noopener"><img src="' + safeUrl + '" alt="Photo ' + (index + 1) + '"></a>';
+  }).join('');
+  const html = [
+    '<!doctype html><html><head>',
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">',
+    '<title>Copy Request Row</title>',
+    '<style>',
+    ':root{--green:#007a4d;--mint:#e9fff4;--border:#b7f2d1;--ink:#0f172a;--muted:#64748b;}',
+    '*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f6faf8;color:var(--ink);}.wrap{max-width:880px;margin:0 auto;padding:18px 14px 32px}.hero{background:var(--green);color:#fff;padding:18px 16px;border-radius:0 0 18px 18px}.hero h1{font-size:24px;line-height:1.1;margin:0 0 6px;font-weight:900}.hero p{margin:0;color:#d9fbe8;font-weight:800}.card{margin-top:16px;background:#fff;border:1px solid var(--border);border-radius:16px;padding:14px;box-shadow:0 12px 40px rgba(15,23,42,.08)}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}button,a.button{border:0;border-radius:999px;background:var(--green);color:#fff;padding:12px 14px;font-weight:900;text-align:center;text-decoration:none;cursor:pointer}.status{min-height:22px;color:var(--green);font-weight:800;margin:6px 0 0}textarea{width:100%;min-height:260px;border:1px solid #cbd5e1;border-radius:12px;padding:12px;font:14px/1.4 Consolas,monospace;color:var(--ink)}.photos{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:12px}.photos img{display:block;width:100%;height:auto;border-radius:10px;border:1px solid #d7ded8}@media(max-width:560px){.wrap{padding:0 10px 28px}.hero{border-radius:0}.hero h1{font-size:21px}.actions{grid-template-columns:1fr}}',
+    '</style>',
+    '</head><body>',
+    '<div class="hero"><div class="wrap" style="padding-top:0;padding-bottom:0;">',
+    '<h1>' + escapeEmailHtml_(title) + '</h1>',
+    '<p>' + escapeEmailHtml_(photoUrls.length + ' photos | ' + folderId) + '</p>',
+    '</div></div>',
+    '<main class="wrap">',
+    '<section class="card">',
+    '<div class="actions">',
+    '<button type="button" id="copyBtn">Copy Row</button>',
+    '<a class="button" href="' + escapeEmailAttribute_(buildRequestGalleryUrl_(folderId, rowId ? [rowId] : [])) + '">View Photos</a>',
+    '</div>',
+    '<p class="status" id="status"></p>',
+    '<textarea id="copyText" readonly>' + escapeEmailHtml_(copyText) + '</textarea>',
+    photoPreviewHtml ? '<div class="photos">' + photoPreviewHtml + '</div>' : '',
+    '</section>',
+    '</main>',
+    '<script>',
+    '(function(){',
+    'var copyText=' + escapeRequestGalleryJson_(copyText) + ';',
+    'var copyHtml=' + escapeRequestGalleryJson_(copyHtml) + ';',
+    'var status=document.getElementById("status");',
+    'var textArea=document.getElementById("copyText");',
+    'var button=document.getElementById("copyBtn");',
+    'function mark(message){status.textContent=message;button.textContent=message==="Copied"?"Copied":"Copy Row";}',
+    'function fallback(){textArea.focus();textArea.select();try{document.execCommand("copy");mark("Copied");}catch(e){mark("Select the text and copy");}}',
+    'button.addEventListener("click",function(){if(navigator.clipboard&&window.ClipboardItem){var item=new ClipboardItem({"text/html":new Blob([copyHtml],{type:"text/html"}),"text/plain":new Blob([copyText],{type:"text/plain"})});navigator.clipboard.write([item]).then(function(){mark("Copied");},function(){fallback();});}else if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(copyText).then(function(){mark("Copied");},function(){fallback();});}else{fallback();}});',
+    '})();',
+    '</script>',
+    '</body></html>'
+  ].join('');
+  return HtmlService.createHtmlOutput(html).setTitle('Copy Request Row');
+}
+
 function renderRequestGalleryWebApp_(params) {
   const folderId = String(firstNonEmptyRequestValue_(
     params && params.folder,
@@ -5680,6 +5902,21 @@ function renderRequestGalleryWebApp_(params) {
   const safeCustomer = escapeEmailHtml_(customerLabel);
   const photoCountLabel = slides.length === 1 ? '1 photo' : slides.length + ' photos';
   const rowCountLabel = items.length === 1 ? '1 row' : items.length + ' rows';
+  const mobileSlidesHtml = slides.map(function(slide, index) {
+    const title = firstNonEmptyRequestValue_(slide && slide.title, 'Request photo');
+    const subtitle = firstNonEmptyRequestValue_(slide && slide.subtitle, '');
+    const url = firstNonEmptyRequestValue_(slide && slide.url, '');
+    return [
+      '<section class="mobile-slide">',
+      '<div class="mobile-count">' + escapeEmailHtml_(String(index + 1) + ' / ' + String(slides.length)) + '</div>',
+      '<img src="' + escapeEmailAttribute_(url) + '" alt="' + escapeEmailAttribute_(title) + '">',
+      '<div class="mobile-caption">',
+      '<h2>' + escapeEmailHtml_(title) + '</h2>',
+      subtitle ? '<p>' + escapeEmailHtml_(subtitle) + '</p>' : '',
+      '</div>',
+      '</section>'
+    ].join('');
+  }).join('');
   const html = [
     '<!doctype html>',
     '<html>',
@@ -5692,6 +5929,7 @@ function renderRequestGalleryWebApp_(params) {
     '*{box-sizing:border-box}',
     'html,body{height:100%;overflow:hidden;}',
     'body{margin:0;font-family:Arial,sans-serif;background:#020403;color:var(--ink);}',
+    '.mobile-scroll{display:none;}',
     '.viewer{position:fixed;inset:0;background:rgba(0,0,0,.94);display:flex;align-items:center;justify-content:center;padding:72px 72px 74px;}',
     '.topbar{position:fixed;left:0;right:0;top:0;z-index:5;display:flex;justify-content:space-between;gap:16px;padding:16px 18px 10px;background:linear-gradient(180deg,rgba(0,0,0,.86),rgba(0,0,0,0));}',
     '.heading{min-width:0;}',
@@ -5708,12 +5946,12 @@ function renderRequestGalleryWebApp_(params) {
     'button.control{border:0;border-radius:999px;background:#007a4d;color:#fff;padding:13px 12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;box-shadow:0 8px 30px rgba(0,0,0,.35);}',
     'button.control.secondary{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);}',
     '.empty-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#f6faf8;color:#64748b;font-weight:800;text-align:center;}',
-    '@media (max-width:720px){.viewer{padding:68px 0 104px}.topbar{padding:12px 12px 8px}.heading h1{font-size:17px;max-width:calc(100vw - 88px)}.heading p{font-size:14px}.close{width:54px;height:54px;min-width:54px;font-size:40px}.side-nav{width:54px;height:54px;font-size:38px;background:rgba(0,0,0,.32)}.side-nav.prev{left:4px}.side-nav.next{right:4px}.image-shell img{width:100%;max-height:100%;box-shadow:none}.bottom{padding:8px 10px calc(10px + env(safe-area-inset-bottom));}.controls{grid-template-columns:1fr 1fr;gap:8px}button.control{padding:12px 9px;font-size:12px}}',
+    '@media (max-width:720px){html,body{height:auto;min-height:100%;overflow:auto;scroll-behavior:smooth;}.desktop-viewer{display:none;}.mobile-scroll{display:block;min-height:100vh;background:#020403;color:#fff;scroll-snap-type:y proximity;padding-bottom:env(safe-area-inset-bottom);}.mobile-sticky{position:sticky;top:0;z-index:6;padding:12px 14px 10px;background:linear-gradient(180deg,rgba(0,0,0,.96),rgba(0,0,0,.72));}.mobile-sticky h1{margin:0;font-size:16px;line-height:1.2;font-weight:900;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}.mobile-sticky p{margin:5px 0 0;color:#d9fbe8;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;}.mobile-slide{min-height:calc(100vh - 62px);scroll-snap-align:start;display:flex;flex-direction:column;justify-content:center;gap:9px;padding:10px 10px 18px;}.mobile-slide img{display:block;width:100%;height:auto;max-height:calc(100vh - 156px);object-fit:contain;border-radius:8px;background:#0f172a;}.mobile-count{align-self:flex-start;border-radius:999px;background:rgba(0,122,77,.82);padding:6px 10px;font-size:12px;font-weight:900;letter-spacing:.08em;}.mobile-caption{border:1px solid rgba(183,242,209,.35);border-radius:10px;background:rgba(0,122,77,.22);padding:9px 10px;}.mobile-caption h2{margin:0;color:#fff;font-size:15px;line-height:1.2;font-weight:900;}.mobile-caption p{margin:4px 0 0;color:#d5fde6;font-size:12px;line-height:1.35;font-weight:800;}}',
     '</style>',
     '</head>',
     '<body>',
     slides.length ? [
-      '<main class="viewer" id="gallery">',
+      '<main class="viewer desktop-viewer" id="gallery">',
       '<header class="topbar">',
       '<div class="heading"><h1 id="topTitle">' + safeCustomer + '</h1><p id="topCounter">' + escapeEmailHtml_(photoCountLabel + ' | ' + rowCountLabel) + '</p></div>',
       '<button type="button" class="close" id="closeBtn" aria-label="Close">&times;</button>',
@@ -5732,6 +5970,13 @@ function renderRequestGalleryWebApp_(params) {
       '<button type="button" class="control" id="bottomNextBtn">Next</button>',
       '</div>',
       '</footer>',
+      '</main>',
+      '<main class="mobile-scroll">',
+      '<header class="mobile-sticky">',
+      '<h1>' + safeCustomer + '</h1>',
+      '<p>' + escapeEmailHtml_(photoCountLabel + ' | ' + rowCountLabel) + '</p>',
+      '</header>',
+      mobileSlidesHtml,
       '</main>'
     ].join('') : '<main class="empty-page"><p>No photos were found for this request folder.<br>' + escapeEmailHtml_(photoCountLabel + ' | ' + rowCountLabel + ' | ' + folderId) + '</p></main>',
     '<script>',
