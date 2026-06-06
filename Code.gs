@@ -4545,6 +4545,38 @@ function extractRequestPhotoUrls_(value) {
   return urls;
 }
 
+function getRequestNcrCurrentSeasonSltsEmailField_(item) {
+  const approvalType = String(firstNonEmptyRequestValue_(
+    item && item.ncr_approval_type,
+    item && item.NCR_APPROVAL_TYPE,
+    item && item.approval_type,
+    item && item.APPROVAL_TYPE,
+    item && item.approval_label,
+    item && item.approvalLabel,
+    ''
+  ) || '').trim().toLowerCase().replace(/_/g, '-');
+  const isNewCropRelease = approvalType === 'new-crop' ||
+    approvalType.indexOf('new crop') !== -1 ||
+    approvalType.indexOf('new-crop') !== -1;
+  if (!isNewCropRelease) return null;
+  const value = firstNonEmptyRequestValue_(
+    item && item.ncr_current_season_slts,
+    item && item.NCR_CURRENT_SEASON_SLTS,
+    item && item.current_season_slts,
+    item && item.CURRENT_SEASON_SLTS,
+    ''
+  );
+  if (String(value || '').trim() === '') return null;
+  const label = firstNonEmptyRequestValue_(
+    item && item.ncr_current_season_slts_label,
+    item && item.NCR_CURRENT_SEASON_SLTS_LABEL,
+    item && item.current_season_slts_label,
+    item && item.CURRENT_SEASON_SLTS_LABEL,
+    'Current Season S_LTS'
+  );
+  return [label, value];
+}
+
 function buildRequestItemFieldRowsText_(item) {
   const fields = [
     ['Approval Type', firstNonEmptyRequestValue_(item && item.approval_label, item && item.approvalLabel, item && item.approval_type, item && item.APPROVAL_TYPE, '')],
@@ -4567,6 +4599,8 @@ function buildRequestItemFieldRowsText_(item) {
     ['Pick Note', firstNonEmptyRequestValue_(item && item.pick_note, item && item.pick, item && item.REQ_PICK, item && item.PICK, '')],
     ['Comments', firstNonEmptyRequestValue_(item && item.comments, item && item.REQ_COMMENTS, item && item.COMMENTS, item && item.SALES_NOTE, item && item.SALESNOTE, '')]
   ];
+  const ncrCurrentSeasonSltsField = getRequestNcrCurrentSeasonSltsEmailField_(item);
+  if (ncrCurrentSeasonSltsField) fields.splice(7, 0, ncrCurrentSeasonSltsField);
 
   return fields
     .filter(function(field) { return !!String(field[1] || '').trim(); })
@@ -4601,6 +4635,8 @@ function buildRequestItemFieldRowsHtml_(item) {
     ['Pick Note', firstNonEmptyRequestValue_(item && item.pick_note, item && item.pick, item && item.REQ_PICK, item && item.PICK, '')],
     ['Comments', firstNonEmptyRequestValue_(item && item.comments, item && item.REQ_COMMENTS, item && item.COMMENTS, item && item.SALES_NOTE, item && item.SALESNOTE, '')]
   ];
+  const ncrCurrentSeasonSltsField = getRequestNcrCurrentSeasonSltsEmailField_(item);
+  if (ncrCurrentSeasonSltsField) fields.splice(7, 0, ncrCurrentSeasonSltsField);
 
   return fields
     .filter(function(field) { return !!String(field[1] || '').trim(); })
