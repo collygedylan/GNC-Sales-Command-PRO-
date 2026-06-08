@@ -4590,6 +4590,11 @@ function buildRequestItemFieldRowsText_(item) {
     ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
     ['Completed By', formatRequestCompletionUserLabel_(item)],
     ['Submitted By', formatApprovalRequesterLabel_(item)],
+    ['EVAL Task', getEvalTaskEmailTypeLabel_(firstNonEmptyRequestValue_(item && item.eval_task_type, item && item.EVAL_TASK_TYPE, ''))],
+    ['EVAL Requested By', getEvalTaskRequestedByFromItem_(item)],
+    ['EVAL Reviewer', firstNonEmptyRequestValue_(item && item.assignedto, item && item.ASSIGNEDTO, '')],
+    ['EVAL Instructions', firstNonEmptyRequestValue_(item && item.eval_task_instructions, item && item.EVAL_TASK_INSTRUCTIONS, '')],
+    ['EVAL Result Note', firstNonEmptyRequestValue_(item && item.eval_task_result_note, item && item.EVAL_TASK_RESULT_NOTE, '')],
     ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, '')],
     ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
     ['LOC MATCH %', formatRequestPercentForEmail_(firstNonEmptyRequestValue_(item && item.match, item && item.req_match, item && item.MATCH, item && item.REQ_MATCH, ''))],
@@ -4626,6 +4631,11 @@ function buildRequestItemFieldRowsHtml_(item) {
     ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
     ['Completed By', formatRequestCompletionUserLabel_(item)],
     ['Submitted By', formatApprovalRequesterLabel_(item)],
+    ['EVAL Task', getEvalTaskEmailTypeLabel_(firstNonEmptyRequestValue_(item && item.eval_task_type, item && item.EVAL_TASK_TYPE, ''))],
+    ['EVAL Requested By', getEvalTaskRequestedByFromItem_(item)],
+    ['EVAL Reviewer', firstNonEmptyRequestValue_(item && item.assignedto, item && item.ASSIGNEDTO, '')],
+    ['EVAL Instructions', firstNonEmptyRequestValue_(item && item.eval_task_instructions, item && item.EVAL_TASK_INSTRUCTIONS, '')],
+    ['EVAL Result Note', firstNonEmptyRequestValue_(item && item.eval_task_result_note, item && item.EVAL_TASK_RESULT_NOTE, '')],
     ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, '')],
     ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
     ['LOC MATCH %', formatRequestPercentForEmail_(firstNonEmptyRequestValue_(item && item.match, item && item.req_match, item && item.MATCH, item && item.REQ_MATCH, ''))],
@@ -4850,6 +4860,123 @@ function buildRequestCompletedBySummary_(payload) {
     if (user.display && user.username && normalizeRequestCompletionUsername_(user.display) !== user.username) return user.display + ' (' + user.username + ')';
     return user.display || user.username || user.email || '';
   }).filter(Boolean).join(', ');
+}
+
+function getRequestPayloadItems_(payload) {
+  return Array.isArray(payload && payload.requestItems) ? payload.requestItems
+    : (Array.isArray(payload && payload.items) ? payload.items
+      : (Array.isArray(payload && payload.sourceRows) ? payload.sourceRows : []));
+}
+
+function normalizeEvalTaskEmailType_(value) {
+  const lower = String(value || '').trim().toLowerCase();
+  if (lower.indexOf('ncr') !== -1 || lower.indexOf('new crop') !== -1) return 'new-crop';
+  if (lower.indexOf('move up') !== -1 || lower.indexOf('move-up') !== -1 || lower.indexOf('moveup') !== -1) return 'move-up';
+  if (lower.indexOf('hold') !== -1 || lower.indexOf('off hold') !== -1) return 'check-hold';
+  if (lower.indexOf('evaluate') !== -1 || lower.indexOf('evaluation') !== -1) return 'evaluate';
+  if (lower.indexOf('recount') !== -1) return 'recount';
+  const normalized = lower.replace(/_/g, '-').replace(/\s+/g, '-');
+  if (normalized === 'ncr' || normalized === 'newcrop' || normalized === 'new-crop' || normalized === 'new-crop-release') return 'new-crop';
+  if (normalized === 'move' || normalized === 'moveup' || normalized === 'move-up') return 'move-up';
+  if (normalized === 'hold' || normalized === 'checkhold' || normalized === 'check-hold' || normalized === 'take-off-hold' || normalized === 'off-hold') return 'check-hold';
+  if (normalized === 'eval' || normalized === 'evaluate' || normalized === 'evaluation') return 'evaluate';
+  if (normalized === 'recount') return 'recount';
+  return normalized;
+}
+
+function getEvalTaskEmailTypeLabel_(value) {
+  if (!firstNonEmptyRequestValue_(value)) return '';
+  const normalized = normalizeEvalTaskEmailType_(value);
+  if (normalized === 'new-crop') return 'NCR';
+  if (normalized === 'move-up') return 'Move Up';
+  if (normalized === 'check-hold') return 'Hold Review';
+  if (normalized === 'evaluate') return 'Evaluate';
+  if (normalized === 'recount') return 'Recount';
+  return firstNonEmptyRequestValue_(value);
+}
+
+function parseEvalTaskRequestedByFromNote_(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  const match = text.match(/requested\s+by\s*:?\s*([^\n\r|;]+)/i);
+  return match ? String(match[1] || '').trim() : '';
+}
+
+function getEvalTaskRequestedByFromItem_(item) {
+  return firstNonEmptyRequestValue_(
+    item && item.eval_task_assigned_by,
+    item && item.EVAL_TASK_ASSIGNED_BY,
+    parseEvalTaskRequestedByFromNote_(firstNonEmptyRequestValue_(item && item.request_note, item && item.REQUEST_NOTE, item && item.req_note, item && item.REQ_NOTE, '')),
+    parseEvalTaskRequestedByFromNote_(firstNonEmptyRequestValue_(item && item.comments, item && item.REQ_COMMENTS, item && item.req_comments, '')),
+    ''
+  );
+}
+
+function isEvalTaskCompletionEmail_(payload) {
+  if (String(payload && payload.emailType || '').trim().toLowerCase() !== 'request_complete') return false;
+  const items = getRequestPayloadItems_(payload);
+  const metaText = [
+    payload && payload.folderId,
+    payload && payload.requestFolder,
+    payload && payload.customer,
+    payload && payload.requestCustomer,
+    payload && payload.emailSubType,
+    payload && payload.evalTaskType
+  ].concat(items.map(function(item) {
+    return [
+      item && item.folder,
+      item && item.request_folder,
+      item && item.REQUEST_FOLDER,
+      item && item.customer,
+      item && item.req_customer,
+      item && item.REQ_CUSTOMER,
+      item && item.eval_task_type,
+      item && item.EVAL_TASK_TYPE,
+      item && item.eval_task_assigned_by,
+      item && item.EVAL_TASK_ASSIGNED_BY,
+      item && item.request_note,
+      item && item.REQUEST_NOTE
+    ].join(' ');
+  })).join(' ').toLowerCase();
+  return metaText.indexOf('eval task') !== -1 || metaText.indexOf('eval-task') !== -1 || metaText.indexOf('eval_task') !== -1;
+}
+
+function getEvalTaskCompletionSummary_(payload) {
+  const items = getRequestPayloadItems_(payload);
+  const firstItem = items.length ? items[0] || {} : {};
+  const requester = firstNonEmptyRequestValue_(
+    payload && payload.evalTaskRequestedBy,
+    payload && payload.eval_task_requested_by,
+    payload && payload.assignedBy,
+    payload && payload.assigned_by,
+    getEvalTaskRequestedByFromItem_(firstItem),
+    ''
+  );
+  const reviewer = firstNonEmptyRequestValue_(
+    payload && payload.evalTaskAssignee,
+    payload && payload.eval_task_assignee,
+    firstItem && firstItem.assignedto,
+    firstItem && firstItem.ASSIGNEDTO,
+    payload && payload.repName,
+    payload && payload.salesRepName,
+    payload && payload.requestedBy,
+    ''
+  );
+  const completedBy = buildRequestCompletedBySummary_(payload);
+  const taskType = getEvalTaskEmailTypeLabel_(firstNonEmptyRequestValue_(
+    payload && payload.evalTaskType,
+    payload && payload.eval_task_type,
+    firstItem && firstItem.eval_task_type,
+    firstItem && firstItem.EVAL_TASK_TYPE,
+    payload && payload.customer,
+    ''
+  ));
+  return {
+    requester: requester,
+    reviewer: reviewer,
+    completedBy: completedBy,
+    taskType: taskType
+  };
 }
 
 function collectRequestRecipients_(payload) {
@@ -5408,6 +5535,15 @@ function buildRequestEmailItemsFromRows_(rows, payload) {
       s_lts: firstNonEmptyRequestValue_(item && item.s_lts, item && item.S_LTS, snapshot.S_LTS, snapshot.s_lts, ''),
       qty: firstNonEmptyRequestValue_(item && item.req_qty, item && item.REQ_QTY, ''),
       loc: firstNonEmptyRequestValue_(item && item.locationcode, item && item.LOCATIONCODE, ''),
+      assignedto: firstNonEmptyRequestValue_(item && item.assignedto, item && item.ASSIGNEDTO, snapshot.ASSIGNEDTO, snapshot.assignedto, ''),
+      request_note: firstNonEmptyRequestValue_(item && item.request_note, item && item.REQUEST_NOTE, item && item.req_note, item && item.REQ_NOTE, snapshot.REQUEST_NOTE, snapshot.request_note, snapshot.REQ_NOTE, snapshot.req_note, ''),
+      eval_task_type: firstNonEmptyRequestValue_(item && item.eval_task_type, item && item.EVAL_TASK_TYPE, snapshot.EVAL_TASK_TYPE, snapshot.eval_task_type, ''),
+      eval_task_instructions: firstNonEmptyRequestValue_(item && item.eval_task_instructions, item && item.EVAL_TASK_INSTRUCTIONS, snapshot.EVAL_TASK_INSTRUCTIONS, snapshot.eval_task_instructions, ''),
+      eval_task_assigned_by: firstNonEmptyRequestValue_(item && item.eval_task_assigned_by, item && item.EVAL_TASK_ASSIGNED_BY, snapshot.EVAL_TASK_ASSIGNED_BY, snapshot.eval_task_assigned_by, ''),
+      eval_task_assigned_at: firstNonEmptyRequestValue_(item && item.eval_task_assigned_at, item && item.EVAL_TASK_ASSIGNED_AT, snapshot.EVAL_TASK_ASSIGNED_AT, snapshot.eval_task_assigned_at, ''),
+      eval_task_completed_by: firstNonEmptyRequestValue_(item && item.eval_task_completed_by, item && item.EVAL_TASK_COMPLETED_BY, snapshot.EVAL_TASK_COMPLETED_BY, snapshot.eval_task_completed_by, ''),
+      eval_task_completed_at: firstNonEmptyRequestValue_(item && item.eval_task_completed_at, item && item.EVAL_TASK_COMPLETED_AT, snapshot.EVAL_TASK_COMPLETED_AT, snapshot.eval_task_completed_at, ''),
+      eval_task_result_note: firstNonEmptyRequestValue_(item && item.eval_task_result_note, item && item.EVAL_TASK_RESULT_NOTE, snapshot.EVAL_TASK_RESULT_NOTE, snapshot.eval_task_result_note, ''),
       av_note: firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, ''),
       spec: firstNonEmptyRequestValue_(item && item.req_spec, item && item.REQ_SPEC, item && item.spec, item && item.SPEC, ''),
       caliper: firstNonEmptyRequestValue_(item && item.req_caliper, item && item.REQ_CALIPER, item && item.caliper, item && item.CALIPER, ''),
@@ -5720,6 +5856,15 @@ function compactRequestGalleryItem_(item) {
     s_lts: firstNonEmptyRequestValue_(item && item.s_lts, item && item.S_LTS, ''),
     qty: firstNonEmptyRequestValue_(item && item.qty, item && item.req_qty, item && item.REQ_QTY, ''),
     loc: firstNonEmptyRequestValue_(item && item.loc, item && item.locationcode, item && item.LOCATIONCODE, ''),
+    assignedto: firstNonEmptyRequestValue_(item && item.assignedto, item && item.ASSIGNEDTO, ''),
+    request_note: firstNonEmptyRequestValue_(item && item.request_note, item && item.REQUEST_NOTE, item && item.req_note, item && item.REQ_NOTE, ''),
+    eval_task_type: firstNonEmptyRequestValue_(item && item.eval_task_type, item && item.EVAL_TASK_TYPE, ''),
+    eval_task_instructions: firstNonEmptyRequestValue_(item && item.eval_task_instructions, item && item.EVAL_TASK_INSTRUCTIONS, ''),
+    eval_task_assigned_by: firstNonEmptyRequestValue_(item && item.eval_task_assigned_by, item && item.EVAL_TASK_ASSIGNED_BY, ''),
+    eval_task_assigned_at: firstNonEmptyRequestValue_(item && item.eval_task_assigned_at, item && item.EVAL_TASK_ASSIGNED_AT, ''),
+    eval_task_completed_by: firstNonEmptyRequestValue_(item && item.eval_task_completed_by, item && item.EVAL_TASK_COMPLETED_BY, ''),
+    eval_task_completed_at: firstNonEmptyRequestValue_(item && item.eval_task_completed_at, item && item.EVAL_TASK_COMPLETED_AT, ''),
+    eval_task_result_note: firstNonEmptyRequestValue_(item && item.eval_task_result_note, item && item.EVAL_TASK_RESULT_NOTE, ''),
     av_note: firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, ''),
     spec: firstNonEmptyRequestValue_(item && item.spec, item && item.req_spec, item && item.REQ_SPEC, ''),
     caliper: firstNonEmptyRequestValue_(item && item.caliper, item && item.req_caliper, item && item.REQ_CALIPER, ''),
@@ -6528,6 +6673,54 @@ function buildRequestEmailMessage_(payload) {
     const folderNoteHtml = folderNote ? '<p><strong>Folder Note:</strong> ' + escapeEmailHtml_(folderNote) + '</p>' : '';
     const completedBySummary = buildRequestCompletedBySummary_(payload);
     const completedBySummaryHtml = completedBySummary ? '<p><strong>Completed By:</strong> ' + escapeEmailHtml_(completedBySummary) + '</p>' : '';
+    if (isEvalTaskCompletionEmail_(payload)) {
+      const evalSummary = getEvalTaskCompletionSummary_(payload);
+      const evalRequesterHtml = evalSummary.requester ? '<p><strong>Requested By:</strong> ' + escapeEmailHtml_(evalSummary.requester) + '</p>' : '';
+      const evalReviewerHtml = evalSummary.reviewer ? '<p><strong>Assigned Reviewer:</strong> ' + escapeEmailHtml_(evalSummary.reviewer) + '</p>' : '';
+      const evalCompletedByHtml = evalSummary.completedBy ? '<p><strong>Completed By:</strong> ' + escapeEmailHtml_(evalSummary.completedBy) + '</p>' : '';
+      const evalDetailSection = itemsHtml
+        ? [
+            '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
+            folderNoteHtml,
+            '<p style="font-weight:700; margin-bottom:12px;">Reviewed Crop Rows</p>',
+            itemsHtml
+          ].join('')
+        : [
+            '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
+            folderNoteHtml,
+            '<p style="font-size: 12px; color: #777;">No reviewed crop row details were provided.</p>'
+          ].join('');
+
+      return {
+        subject: subject,
+        textBody: [
+          'EVAL Crop Review Completed',
+          'This crop review has been completed and is ready for the requesting team to review.',
+          'Review Type: ' + String(evalSummary.taskType || 'Crop Review'),
+          evalSummary.requester ? 'Requested By: ' + evalSummary.requester : '',
+          evalSummary.reviewer ? 'Assigned Reviewer: ' + evalSummary.reviewer : '',
+          evalSummary.completedBy ? 'Completed By: ' + evalSummary.completedBy : '',
+          'Folder ID: ' + String(payload.folderId || payload.requestFolder || ''),
+          'Total Items Reviewed: ' + String(payload.itemsCount || 0),
+          folderNote ? 'Folder Note: ' + folderNote : '',
+          itemsText
+        ].filter(Boolean).join('\n\n'),
+        htmlBody: buildPhoneSizedEmailHtml_([
+          '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
+          '<h2 style="color: #007a4d;">EVAL Crop Review Completed</h2>',
+          '<p>This crop review has been completed and is ready for the requesting team to review.</p>',
+          '<p><strong>Review Type:</strong> ' + escapeEmailHtml_(evalSummary.taskType || 'Crop Review') + '</p>',
+          evalRequesterHtml,
+          evalReviewerHtml,
+          evalCompletedByHtml,
+          '<p><strong>Folder ID:</strong> ' + folderId + '</p>',
+          '<p><strong>Total Items Reviewed:</strong> ' + itemsCount + '</p>',
+          '<p style="padding:12px 14px; border-radius:10px; background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46;">Requested crop update for NCR, Move Up, or Hold action as listed on the row.</p>',
+          evalDetailSection,
+          '</div>'
+        ].join(''))
+      };
+    }
     const detailSection = itemsHtml
       ? [
           '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
