@@ -5506,42 +5506,13 @@ function hydrateQueuedRequestCompletePayload_(payload) {
 }
 
 function buildRequestItemsHtml_(payload) {
-  const formatted = String(payload.formattedItemsHtml || '').trim();
-  if (formatted) return formatted;
-
   const items = Array.isArray(payload.requestItems) ? payload.requestItems
     : (Array.isArray(payload.items) ? payload.items
       : (Array.isArray(payload.sourceRows) ? payload.sourceRows : []));
+  if (items.length) return buildCompactRequestItemsHtml_(payload);
+  const formatted = String(payload.formattedItemsHtml || '').trim();
+  if (formatted) return formatted;
   if (!items.length) return '';
-
-  const galleryFolderId = resolveRequestGalleryFolderId_(payload, items);
-  const rowsHtml = items.map(function(item, index) {
-    const commonName = escapeEmailHtml_(item && item.commonname ? item.commonname : 'Unknown Item');
-    const contSize = escapeEmailHtml_(item && item.contsize ? item.contsize : '-');
-    const detailRowsHtml = buildRequestItemFieldRowsHtml_(item);
-    const photoUrls = getRequestItemPhotoUrls_(item);
-    const copyButtonHtml = buildRequestRowCopyButtonHtml_(galleryFolderId, item, index);
-    const photoHtml = photoUrls.map(function(url, index) {
-      const safeUrl = escapeEmailAttribute_(url);
-      const linkLabel = photoUrls.length > 1 ? 'Photo ' + (index + 1) : 'Photo';
-      return [
-        '<div style="margin-top:10px;">',
-        '<div><strong>' + linkLabel + ':</strong> <a href="' + safeUrl + '">' + escapeEmailHtml_(url) + '</a></div>',
-        '<div style="margin-top:6px;"><img src="' + safeUrl + '" alt="' + linkLabel + '" width="320" style="display:block;width:100%;max-width:320px;height:auto;max-height:380px;object-fit:contain;border-radius:8px;border:1px solid #ddd;"></div>',
-        '</div>'
-      ].join('');
-    }).join('');
-    return [
-      '<li style="margin-bottom:12px; background:#f9f9f9; padding:10px; border-left:4px solid #007a4d;">',
-      '<strong>' + commonName + ' (' + contSize + ')</strong><br>',
-      detailRowsHtml,
-      photoHtml,
-      copyButtonHtml,
-      '</li>'
-    ].join('');
-  }).join('');
-
-  return '<ul style="list-style:none; padding:0; margin:0;">' + rowsHtml + '</ul>';
 }
 
 function buildApprovalRequestItemsHtml_(payload) {
@@ -5592,6 +5563,44 @@ function buildRequestGalleryToken_(folderId) {
     Utilities.Charset.UTF_8
   );
   return base64EncodeWebSafeNoPadding_(signature);
+}
+
+function buildRequestGalleryFallbackFolderId_(payload, items) {
+  const safePayload = payload && typeof payload === 'object' ? payload : {};
+  const safeItems = Array.isArray(items) ? items.filter(Boolean) : [];
+  const photoUrls = [];
+  const rowKeys = [];
+  safeItems.forEach(function(item) {
+    const rowKey = firstNonEmptyRequestValue_(
+      item && item.unique_id,
+      item && item.UNIQUE_ID,
+      item && item.id,
+      item && item.ID,
+      item && item.itemcode,
+      item && item.ITEMCODE,
+      item && item.commonname,
+      item && item.COMMONNAME,
+      ''
+    );
+    if (rowKey) rowKeys.push(String(rowKey));
+    getRequestItemPhotoUrls_(item).forEach(function(url) {
+      if (photoUrls.indexOf(url) === -1) photoUrls.push(url);
+    });
+  });
+  if (!safeItems.length && !photoUrls.length) return '';
+  const digestInput = JSON.stringify({
+    emailType: firstNonEmptyRequestValue_(safePayload.emailType, safePayload.type, ''),
+    subject: firstNonEmptyRequestValue_(safePayload.subject, ''),
+    customer: firstNonEmptyRequestValue_(safePayload.customer, safePayload.audienceLabel, ''),
+    rows: rowKeys.slice(0, 80),
+    photos: photoUrls.slice(0, 120)
+  });
+  try {
+    const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, digestInput, Utilities.Charset.UTF_8);
+    return 'email-gallery-' + base64EncodeWebSafeNoPadding_(digest).slice(0, 36);
+  } catch (error) {
+    return 'email-gallery-' + base64EncodeWebSafeNoPadding_(Utilities.newBlob(digestInput).getBytes()).slice(0, 36);
+  }
 }
 
 function verifyRequestGalleryToken_(folderId, token) {
@@ -5804,7 +5813,7 @@ function readRequestGalleryCachedItems_(folderId) {
 
 function resolveRequestGalleryFolderId_(payload, items) {
   const firstItem = Array.isArray(items) && items.length ? items[0] || {} : {};
-  return firstNonEmptyRequestValue_(
+  const explicitFolderId = firstNonEmptyRequestValue_(
     payload && payload.folderId,
     payload && payload.requestFolder,
     payload && payload.request_folder,
@@ -5813,6 +5822,8 @@ function resolveRequestGalleryFolderId_(payload, items) {
     firstItem.REQUEST_FOLDER,
     ''
   );
+  if (String(explicitFolderId || '').trim()) return explicitFolderId;
+  return buildRequestGalleryFallbackFolderId_(payload, items);
 }
 
 function resolveRequestGalleryRequestIds_(payload, items) {
@@ -5922,23 +5933,10 @@ function buildCompactRequestItemsHtml_(payload) {
     const photoCount = getRequestItemPhotoUrls_(item).length;
     const copyButtonHtml = buildRequestRowCopyButtonHtml_(galleryFolderId, item, index);
     const photoPreviewHtml = buildRequestRowPhotoPreviewHtml_(galleryFolderId, item);
-    const fields = [
-      ['Item', firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, '')],
-      ['Loc', firstNonEmptyRequestValue_(item && item.loc, item && item.locationcode, item && item.LOCATIONCODE, '')],
-      ['Lot', firstNonEmptyRequestValue_(item && item.lotcode, item && item.LOTCODE, '')],
-      ['Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
-      ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, '')],
-      ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
-      ['LOC PHOTO MATCH', getRequestLocPhotoMatchEmailValue_(item)],
-      ['AV Note', firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, '')],
-      ['Photos', photoCount ? String(photoCount) : '0']
-    ].filter(function(field) {
-      return String(field[1] || '').trim() !== '';
-    });
-    const fieldsHtml = fields.map(function(field) {
-      const rowHtml = '<div style="margin-top:3px;"><strong>' + escapeEmailHtml_(field[0]) + ':</strong> ' + escapeEmailHtml_(field[1]) + '</div>';
-      return rowHtml + (isCaliperEmailField_(field[0]) ? buildCaliperMeasurementNoteHtml_(field[1]) : '');
-    }).join('');
+    const fieldsHtml = [
+      buildRequestItemFieldRowsHtml_(item),
+      '<div style="margin-top:3px;"><strong>Photos:</strong> ' + escapeEmailHtml_(photoCount ? String(photoCount) : '0') + '</div>'
+    ].filter(Boolean).join('');
     return [
       '<li style="margin-bottom:10px; background:#f9f9f9; padding:10px; border-left:4px solid #007a4d;">',
       '<strong>' + (index + 1) + '. ' + commonName + ' (' + contSize + ')</strong>',
@@ -6336,20 +6334,27 @@ function renderRequestGalleryWebApp_(params) {
 }
 
 function buildRequestItemsText_(payload) {
-  const formatted = String(payload.formattedItemsText || '').trim();
-  if (formatted) return formatted;
-
   const items = Array.isArray(payload.requestItems) ? payload.requestItems
     : (Array.isArray(payload.items) ? payload.items
       : (Array.isArray(payload.sourceRows) ? payload.sourceRows : []));
+  if (!items.length) {
+    const formatted = String(payload.formattedItemsText || '').trim();
+    if (formatted) return formatted;
+  }
   if (!items.length) return '';
 
+  const galleryFolderId = resolveRequestGalleryFolderId_(payload, items);
   return items.map(function(item) {
     const photoUrls = getRequestItemPhotoUrls_(item);
     const detailText = buildRequestItemFieldRowsText_(item);
-    const photoText = photoUrls.map(function(url, index) {
-      return (photoUrls.length > 1 ? 'Photo ' + (index + 1) : 'Photo') + ': ' + url;
-    }).join('\n');
+    const galleryUrl = buildRequestRowGalleryUrl_(galleryFolderId, item);
+    const photoText = photoUrls.length
+      ? [
+          'Photos: ' + (photoUrls.length === 1 ? '1 photo' : photoUrls.length + ' photos'),
+          'Preview Photo: ' + photoUrls[0],
+          galleryUrl ? 'Photo Gallery: ' + galleryUrl : ''
+        ].filter(Boolean).join('\n')
+      : '';
     return [
       String(item && item.commonname ? item.commonname : 'Unknown Item') + ' (' + String(item && item.contsize ? item.contsize : '-') + ')',
       detailText,
