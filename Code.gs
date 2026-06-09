@@ -4990,11 +4990,11 @@ function collectRequestRecipients_(payload) {
   const approvalFallbackRecipients = [];
   if (emailType === 'ncr_approval' || emailType === 'hold_release_request') {
     if (approvalStage === 'jd') {
-      approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com');
+      approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com', 'megan_kelly@greenleafnursery.com', 'jd_jones@greenleafnursery.com');
     } else if (approvalStage === 'inventory') {
-      approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com');
+      approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com', 'megan_kelly@greenleafnursery.com', 'jd_jones@greenleafnursery.com');
     } else {
-      approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com');
+      approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com', 'megan_kelly@greenleafnursery.com');
     }
   }
   const recipients = dedupeEmailAddresses_([
