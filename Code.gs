@@ -4442,8 +4442,14 @@ function getRequestLocPhotoMatchValue_(item) {
     snapshot.FLYER_LOC_MATCH_QTY, snapshot.flyer_loc_match_qty,
     ''
   ));
-  if (directValue) return directValue;
   const derivedValue = deriveRequestLocPhotoMatchValue_(row, snapshot);
+  if (directValue) {
+    const directNumber = parseRequestEmailNumber_(directValue);
+    if (directNumber === 0 && derivedValue != null && Number(derivedValue) > 0) {
+      return String(derivedValue);
+    }
+    return directValue;
+  }
   return derivedValue == null ? '' : String(derivedValue);
 }
 
@@ -4582,7 +4588,7 @@ function buildRequestItemFieldRowsText_(item) {
     ['Approval Type', firstNonEmptyRequestValue_(item && item.approval_label, item && item.approvalLabel, item && item.approval_type, item && item.APPROVAL_TYPE, '')],
     ['Item Code', firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, '-')],
     ['Location', firstNonEmptyRequestValue_(item && item.loc, item && item.locationcode, item && item.LOCATIONCODE, '-')],
-    ['Lot', firstNonEmptyRequestValue_(item && item.lotcode, item && item.LOTCODE, '')],
+    ['Lot Code', firstNonEmptyRequestValue_(item && item.lotcode, item && item.LOTCODE, '')],
     ['Season', firstNonEmptyRequestValue_(item && item.season, item && item.SEASON, '')],
     ['Priority', firstNonEmptyRequestValue_(item && item.priority, item && item.PRIORITY, '')],
     ['S_LTS', firstNonEmptyRequestValue_(item && item.s_lts, item && item.S_LTS, '')],
@@ -4623,7 +4629,7 @@ function buildRequestItemFieldRowsHtml_(item) {
     ['Approval Type', firstNonEmptyRequestValue_(item && item.approval_label, item && item.approvalLabel, item && item.approval_type, item && item.APPROVAL_TYPE, '')],
     ['Item Code', firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, '-')],
     ['Location', firstNonEmptyRequestValue_(item && item.loc, item && item.locationcode, item && item.LOCATIONCODE, '-')],
-    ['Lot', firstNonEmptyRequestValue_(item && item.lotcode, item && item.LOTCODE, '')],
+    ['Lot Code', firstNonEmptyRequestValue_(item && item.lotcode, item && item.LOTCODE, '')],
     ['Season', firstNonEmptyRequestValue_(item && item.season, item && item.SEASON, '')],
     ['Priority', firstNonEmptyRequestValue_(item && item.priority, item && item.PRIORITY, '')],
     ['S_LTS', firstNonEmptyRequestValue_(item && item.s_lts, item && item.S_LTS, '')],
