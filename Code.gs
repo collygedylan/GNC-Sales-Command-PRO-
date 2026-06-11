@@ -6844,6 +6844,7 @@ function buildRequestEmailMessage_(payload) {
     const detailSection = cropItemsHtml
       ? [
           '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
+          '<p style="font-weight:700; margin-bottom:12px;">Crop Update Rows</p>',
           cropItemsHtml
         ].join('')
       : '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 12px; color: #777;">No row details were provided.</p>';
