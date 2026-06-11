@@ -2,14 +2,11 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.06.11.03';
+const APP_SHELL_BUILD = 'V2026.06.11.04';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const CACHE_NAME = 'greenleaf-v4.2-rebuild-' + APP_SHELL_BUILD;
 const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
-  APP_SHELL_URL,
   './manifest.json',
   './Greenleaf Logo.png',
   'https://cdn.tailwindcss.com',
@@ -112,7 +109,15 @@ self.addEventListener('fetch', (event) => {
         const primaryShellUrl = requestedShellUrl;
         const cache = await caches.open(CACHE_NAME).catch(() => null);
         try {
-          const networkResponse = await fetch(primaryShellUrl, { cache: 'reload' });
+          const networkResponse = await fetch(event.request, { cache: 'no-store', credentials: 'same-origin' });
+          if (networkResponse && networkResponse.status === 200) {
+            await cacheShellResponse(cache, requestedShellUrl, networkResponse);
+          }
+          return networkResponse;
+        } catch (error) {
+        }
+        try {
+          const networkResponse = await fetch(primaryShellUrl, { cache: 'no-store', credentials: 'same-origin' });
           if (networkResponse && networkResponse.status === 200) {
             await cacheShellResponse(cache, requestedShellUrl, networkResponse);
           }
