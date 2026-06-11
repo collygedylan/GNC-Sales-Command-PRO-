@@ -5074,33 +5074,22 @@ function collectFlyerCreatedRecipients_(payload) {
 function buildFlyerCreatedItemsHtml_(items) {
   const safeItems = Array.isArray(items) ? items : [];
   if (!safeItems.length) return '<p style="font-size: 12px; color: #777;">No row details were provided.</p>';
-  return '<ul style="list-style:none; margin:0; padding:0;">' + safeItems.map(function(item) {
-    const commonname = escapeEmailHtml_(item && (item.commonname || item.COMMONNAME || 'Unknown Item'));
-    const contsize = escapeEmailHtml_(item && (item.contsize || item.CONTSIZE || '-'));
-    const locationcode = escapeEmailHtml_(item && (item.locationcode || item.LOCATIONCODE || ''));
-    const itemcode = escapeEmailHtml_(item && (item.itemcode || item.ITEMCODE || ''));
-    const meta = [
-      itemcode ? 'Item Code: ' + itemcode : '',
-      locationcode ? 'Loc: ' + locationcode : ''
-    ].filter(Boolean).join(' | ');
-    return [
-      '<li style="margin-bottom:12px; background:#f9fafb; padding:12px; border-left:4px solid #007a4d; border-radius:8px;">',
-      '<strong>' + commonname + ' (' + contsize + ')</strong>',
-      meta ? '<br><span style="font-size:12px; color:#475569;">' + meta + '</span>' : '',
-      '</li>'
-    ].join('');
-  }).join('') + '</ul>';
+  return buildCompactRequestItemsHtml_({
+    emailType: 'flyer_created',
+    requestItems: safeItems,
+    itemsCount: safeItems.length,
+    subject: 'GNC PH Flyer Created'
+  });
 }
 
 function buildFlyerCreatedItemsText_(items) {
   const safeItems = Array.isArray(items) ? items : [];
-  return safeItems.map(function(item) {
-    return [
-      String(item && (item.commonname || item.COMMONNAME || 'Unknown Item')) + ' (' + String(item && (item.contsize || item.CONTSIZE || '-')) + ')',
-      String(item && (item.itemcode || item.ITEMCODE || '') ? 'Item Code: ' + (item.itemcode || item.ITEMCODE) : ''),
-      String(item && (item.locationcode || item.LOCATIONCODE || '') ? 'Loc: ' + (item.locationcode || item.LOCATIONCODE) : '')
-    ].filter(Boolean).join('\n');
-  }).join('\n\n');
+  return buildRequestItemsText_({
+    emailType: 'flyer_created',
+    requestItems: safeItems,
+    itemsCount: safeItems.length,
+    subject: 'GNC PH Flyer Created'
+  });
 }
 
 function sendFlyerCreatedEmail_(payload) {
@@ -5130,7 +5119,7 @@ function sendFlyerCreatedEmail_(payload) {
     String(safePayload.instructions || ''),
     itemsText
   ].filter(Boolean).join('\n\n');
-  const htmlBody = [
+  const htmlBody = buildPhoneSizedEmailHtml_([
     '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
     '<h2 style="color: #007a4d;">Flyer Folder Created</h2>',
     '<p><strong>Folder:</strong> ' + escapeEmailHtml_(folderName) + '</p>',
@@ -5141,7 +5130,7 @@ function sendFlyerCreatedEmail_(payload) {
     '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
     itemsHtml,
     '</div>'
-  ].join('');
+  ].join(''));
   GmailApp.sendEmail(recipients.toList, subject, textBody, {
     htmlBody: htmlBody,
     name: 'GNC PH Flyer'
@@ -6643,6 +6632,114 @@ function buildRequestSelectionSummaryText_(payload) {
   ].join('\n\n');
 }
 
+function getCustomerConsigneeSummaryRows_(payload) {
+  const rows = Array.isArray(payload && payload.customerConsigneeRows) ? payload.customerConsigneeRows
+    : (Array.isArray(payload && payload.customers) ? payload.customers : []);
+  return rows.filter(function(row) {
+    return row && typeof row === 'object';
+  });
+}
+
+function getCustomerConsigneeSummaryLabel_(row) {
+  return firstNonEmptyRequestValue_(
+    row && row.label,
+    [row && row.customername, row && row.consigneename].map(function(value) {
+      return String(value || '').trim();
+    }).filter(Boolean).join(' / '),
+    row && row.customer,
+    row && row.customerName,
+    row && row.consignee,
+    row && row.consigneeName,
+    ''
+  );
+}
+
+function getCustomerConsigneeSummaryQtyLabel_(row) {
+  const qtyLabel = firstNonEmptyRequestValue_(row && row.qty_label, row && row.qtyLabel, '');
+  if (qtyLabel) return qtyLabel;
+  const qty = firstNonEmptyRequestValue_(row && row.qty, row && row.quantity, '');
+  if (qty) return 'Qty ' + qty;
+  const rows = firstNonEmptyRequestValue_(row && row.rows, row && row.rowCount, row && row.count, '');
+  if (rows) return rows + ' row' + (String(rows) === '1' ? '' : 's');
+  return '';
+}
+
+function buildCustomerConsigneeSummaryHtml_(payload) {
+  const rows = getCustomerConsigneeSummaryRows_(payload);
+  if (!rows.length) return '';
+  const htmlRows = rows.map(function(row) {
+    const label = getCustomerConsigneeSummaryLabel_(row);
+    const qtyLabel = getCustomerConsigneeSummaryQtyLabel_(row);
+    const matchLabel = firstNonEmptyRequestValue_(row && row.item_lot_season, row && row.matchLabel, row && row.match_label, '');
+    return '<li><strong>Customer / Consignee:</strong> ' +
+      escapeEmailHtml_(label || 'Unknown') +
+      (qtyLabel ? ' <span style="color:#047857;font-weight:700;">' + escapeEmailHtml_(qtyLabel) + '</span>' : '') +
+      (matchLabel ? ' <span style="color:#64748b;">- ' + escapeEmailHtml_(matchLabel) + '</span>' : '') +
+      '</li>';
+  }).join('');
+  return [
+    '<div style="margin:0 0 16px 0;">',
+    '<div style="font-weight:700;margin:0 0 6px 0;">Customer / Consignee</div>',
+    '<ul style="margin:0 0 0 18px;padding:0;">',
+    htmlRows,
+    '</ul>',
+    '</div>'
+  ].join('');
+}
+
+function buildCustomerConsigneeSummaryText_(payload) {
+  const rows = getCustomerConsigneeSummaryRows_(payload);
+  if (!rows.length) return '';
+  return [
+    'Customer / Consignee',
+    rows.map(function(row) {
+      const label = getCustomerConsigneeSummaryLabel_(row) || 'Unknown';
+      const qtyLabel = getCustomerConsigneeSummaryQtyLabel_(row);
+      const matchLabel = firstNonEmptyRequestValue_(row && row.item_lot_season, row && row.matchLabel, row && row.match_label, '');
+      return '- ' + [label, qtyLabel, matchLabel].filter(Boolean).join(' - ');
+    }).join('\n')
+  ].join('\n');
+}
+
+function buildAdvertisementEmailHeroHtml_(payload) {
+  const subType = String(payload && (payload.emailSubType || payload.email_sub_type) || '').trim().toLowerCase();
+  const imageUrl = firstNonEmptyRequestValue_(
+    payload && payload.advertisementImageUrl,
+    payload && payload.marketingMaterialUrl,
+    payload && payload.advertisement_image_url,
+    payload && payload.marketing_material_url,
+    ''
+  );
+  if (subType !== 'advertisement' && !imageUrl) return '';
+  const title = firstNonEmptyRequestValue_(payload && payload.advertisementTitle, payload && payload.advertisement_title, payload && payload.subject, 'Advertisement');
+  const folderName = firstNonEmptyRequestValue_(payload && payload.flyerFolderName, payload && payload.flyer_folder_name, '');
+  const safeUrl = escapeEmailAttribute_(imageUrl);
+  return [
+    '<div style="margin:0 0 18px 0;">',
+    '<div style="font-size:18px;font-weight:800;margin:0 0 12px 0;">' + escapeEmailHtml_(title) + '</div>',
+    imageUrl ? '<a href="' + safeUrl + '" style="display:block;text-decoration:none;"><img src="' + safeUrl + '" alt="' + escapeEmailAttribute_(title) + '" width="320" style="display:block;width:100%;max-width:320px;height:auto;max-height:380px;object-fit:contain;border-radius:10px;border:1px solid #d7ded8;margin:0 auto;"></a>' : '',
+    folderName ? '<div style="font-weight:700;color:#047857;margin:12px 0 0 0;">Flyer Folder: ' + escapeEmailHtml_(folderName) + '</div>' : '',
+    '</div>'
+  ].join('');
+}
+
+function buildAdvertisementEmailHeroText_(payload) {
+  const subType = String(payload && (payload.emailSubType || payload.email_sub_type) || '').trim().toLowerCase();
+  const imageUrl = firstNonEmptyRequestValue_(
+    payload && payload.advertisementImageUrl,
+    payload && payload.marketingMaterialUrl,
+    payload && payload.advertisement_image_url,
+    payload && payload.marketing_material_url,
+    ''
+  );
+  if (subType !== 'advertisement' && !imageUrl) return '';
+  return [
+    firstNonEmptyRequestValue_(payload && payload.advertisementTitle, payload && payload.advertisement_title, payload && payload.subject, 'Advertisement'),
+    imageUrl ? 'Advertisement Image: ' + imageUrl : '',
+    firstNonEmptyRequestValue_(payload && payload.flyerFolderName, payload && payload.flyer_folder_name, '') ? 'Flyer Folder: ' + firstNonEmptyRequestValue_(payload && payload.flyerFolderName, payload && payload.flyer_folder_name, '') : ''
+  ].filter(Boolean).join('\n');
+}
+
 function buildRequestEmailMessage_(payload) {
   const emailType = String(payload.emailType || '').trim().toLowerCase();
   const isApprovalEmail = emailType === 'ncr_approval' || emailType === 'hold_release_request';
@@ -6657,8 +6754,19 @@ function buildRequestEmailMessage_(payload) {
   const selectionSummaryHtml = buildRequestSelectionSummaryHtml_(payload);
   const selectionSummaryText = buildRequestSelectionSummaryText_(payload);
   const subject = buildRequestEmailSubject_(payload);
+  const customerConsigneeSummaryHtml = buildCustomerConsigneeSummaryHtml_(payload);
+  const customerConsigneeSummaryText = buildCustomerConsigneeSummaryText_(payload);
+  const advertisementHeroHtml = buildAdvertisementEmailHeroHtml_(payload);
+  const advertisementHeroText = buildAdvertisementEmailHeroText_(payload);
 
   if (emailType === 'new_request') {
+    const requestedItemsSection = itemsHtml
+      ? [
+          '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
+          '<p style="font-weight:700; margin-bottom:12px;">Requested Items</p>',
+          itemsHtml
+        ].join('')
+      : '';
     return {
       subject: subject,
       textBody: [
@@ -6668,6 +6776,7 @@ function buildRequestEmailMessage_(payload) {
         'Folder ID: ' + String(payload.folderId || payload.requestFolder || ''),
         'Items Requested: ' + String(payload.itemsCount || 0),
         selectionSummaryText,
+        itemsText,
         'Please check the app under Requests > Pending to fulfill this request.'
       ].filter(Boolean).join('\n\n'),
       htmlBody: buildPhoneSizedEmailHtml_([
@@ -6678,6 +6787,7 @@ function buildRequestEmailMessage_(payload) {
         '<p><strong>Folder ID:</strong> ' + folderId + '</p>',
         '<p><strong>Items Requested:</strong> ' + itemsCount + '</p>',
         selectionSummaryHtml,
+        requestedItemsSection,
         '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
         '<p style="font-size: 12px; color: #777;">Please check the app under <strong>Requests &gt; Pending</strong> to fulfill this request.</p>',
         '</div>'
@@ -6798,6 +6908,8 @@ function buildRequestEmailMessage_(payload) {
     const detailSection = itemsHtml
       ? [
           '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
+          customerConsigneeSummaryHtml,
+          '<p style="font-weight:700; margin-bottom:12px;">Photo / Spec Rows</p>',
           itemsHtml
         ].join('')
       : '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 12px; color: #777;">No selected customer/source row details were provided.</p>';
@@ -6808,6 +6920,7 @@ function buildRequestEmailMessage_(payload) {
         brandLabelPlain,
         plainAudienceLabel ? 'Hello ' + plainAudienceLabel + ',' : '',
         hideItemHeader ? '' : 'Item: ' + plainItem,
+        customerConsigneeSummaryText,
         itemsText
       ].filter(Boolean).join('\n\n'),
       htmlBody: buildPhoneSizedEmailHtml_([
@@ -6844,6 +6957,8 @@ function buildRequestEmailMessage_(payload) {
     const detailSection = cropItemsHtml
       ? [
           '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
+          advertisementHeroHtml,
+          customerConsigneeSummaryHtml,
           '<p style="font-weight:700; margin-bottom:12px;">Crop Update Rows</p>',
           cropItemsHtml
         ].join('')
@@ -6855,6 +6970,8 @@ function buildRequestEmailMessage_(payload) {
         brandLabelPlain,
         requestedBy ? 'Sent By: ' + requestedBy : '',
         userMessage,
+        advertisementHeroText,
+        customerConsigneeSummaryText,
         cropItemsText
       ].filter(Boolean).join('\n\n'),
       htmlBody: buildPhoneSizedEmailHtml_([
@@ -7746,30 +7863,53 @@ function doPost(e) {
       if (payload.emailType === "request_rep_reviewed") {
         recipient = payload.dylanEmail;
         subject = `GNC PARK HILL: Request Fully Reviewed & Approved (${payload.folderId})`;
-        
-        let rowsHtml = payload.approvedItems.map(item => {
-            let imgHtml = item.photo ? `<br><img src="${item.photo.split(',')[0].trim()}" width="320" style="display:block;width:100%;max-width:320px;height:auto;max-height:380px;object-fit:contain;border-radius:8px;border:1px solid #d7ded8;margin-top:5px;">` : '';
-            return `<li style="margin-bottom:15px; background:#f9f9f9; padding:10px; border-left:4px solid #007a4d;">
-                      <strong>${item.commonname} (${item.contsize})</strong><br>
-                      Item Code: ${item.itemcode} | Loc: ${item.loc}<br>
-                      Qty Requested: ${item.qty}
-                      ${imgHtml}
-                    </li>`;
-        }).join('');
-        
-        if(payload.approvedItems.length === 0) { rowsHtml = "<p><em>No items were approved. All were rejected.</em></p>"; }
+        const approvedItems = Array.isArray(payload.approvedItems) ? payload.approvedItems.filter(Boolean) : [];
+        const reviewedItemsPayload = {
+          emailType: 'request_rep_reviewed',
+          subject: subject,
+          folderId: payload.folderId || '',
+          requestFolder: payload.folderId || '',
+          requestItems: approvedItems.map(function(item) {
+            return {
+              unique_id: firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, item && item.id, ''),
+              commonname: firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Unknown Item'),
+              contsize: firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, '-'),
+              itemcode: firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, ''),
+              loc: firstNonEmptyRequestValue_(item && item.loc, item && item.locationcode, item && item.LOCATIONCODE, ''),
+              locationcode: firstNonEmptyRequestValue_(item && item.locationcode, item && item.LOCATIONCODE, item && item.loc, ''),
+              qty: firstNonEmptyRequestValue_(item && item.qty, item && item.req_qty, item && item.REQ_QTY, ''),
+              photo: extractRequestPhotoUrls_([
+                item && item.photo,
+                item && item.photo_link,
+                item && item.req_photo_link,
+                item && item.REQ_PHOTO_LINK,
+                item && item.photos
+              ]).join(',')
+            };
+          }),
+          itemsCount: approvedItems.length
+        };
+        const rowsHtml = reviewedItemsPayload.requestItems.length
+          ? buildCompactRequestItemsHtml_(reviewedItemsPayload)
+          : "<p><em>No items were approved. All were rejected.</em></p>";
         
         htmlBody = buildPhoneSizedEmailHtml_(`
           <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
             <h2 style="color: #007a4d;">Request Reviewed by Sales Rep</h2>
-            <p><strong>Rep:</strong> ${payload.repName}</p>
-            <p><strong>Customer:</strong> ${payload.customer}</p>
-            <p><strong>Folder ID:</strong> ${payload.folderId}</p>
+            <p><strong>Rep:</strong> ${escapeEmailHtml_(payload.repName)}</p>
+            <p><strong>Customer:</strong> ${escapeEmailHtml_(payload.customer)}</p>
+            <p><strong>Folder ID:</strong> ${escapeEmailHtml_(payload.folderId)}</p>
             <p>The rep has finished reviewing the completed request. Here are the items they <strong>Approved</strong>:</p>
-            <ul style="list-style:none; padding:0;">${rowsHtml}</ul>
+            ${rowsHtml}
           </div>
         `);
-        textBody = subject;
+        textBody = [
+          subject,
+          payload.repName ? 'Rep: ' + payload.repName : '',
+          payload.customer ? 'Customer: ' + payload.customer : '',
+          payload.folderId ? 'Folder ID: ' + payload.folderId : '',
+          reviewedItemsPayload.requestItems.length ? buildRequestItemsText_(reviewedItemsPayload) : 'No items were approved. All were rejected.'
+        ].filter(Boolean).join('\n\n');
       }
 
       if (recipient) {
