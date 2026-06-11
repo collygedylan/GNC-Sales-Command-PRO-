@@ -5000,6 +5000,7 @@ function collectRequestRecipients_(payload) {
   const approvalType = String(payload && (payload.approvalType || payload.approval_type) || '').trim().toLowerCase().replace(/_/g, '-');
   const requestedByEmail = normalizeEmailAddress_(payload && (payload.requestedByEmail || payload.requested_by_email) || '');
   const approvalFallbackRecipients = [];
+  const bloomCropUpdateInternalRecipients = [];
   if (emailType === 'ncr_approval' || emailType === 'hold_release_request') {
     if (approvalStage === 'jd') {
       approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com', 'megan_kelly@greenleafnursery.com', 'jd_jones@greenleafnursery.com');
@@ -5009,9 +5010,20 @@ function collectRequestRecipients_(payload) {
       approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com', 'megan_kelly@greenleafnursery.com');
     }
   }
+  if (emailType === 'bloom_crop_update') {
+    bloomCropUpdateInternalRecipients.push(
+      'dylan_collyge@greenleafnursery.com',
+      'jd_jones@greenleafnursery.com',
+      'megan_kelly@greenleafnursery.com'
+    );
+  }
   const recipients = dedupeEmailAddresses_([
     payload.recipientEmails,
+    payload.emailRecipients,
     payload.internalRecipients,
+    payload.selectedRepRecipients,
+    payload.repRecipientEmails,
+    payload.salesRepEmails,
     payload.linkedRepEmails,
     payload.assistantEmails,
     payload.completedByEmails,
@@ -5022,9 +5034,11 @@ function collectRequestRecipients_(payload) {
     payload.recipients,
     payload.dylanEmail,
     payload.jdEmail,
+    payload.meganEmail,
     requestedByEmail,
     repEmail,
-    approvalFallbackRecipients
+    approvalFallbackRecipients,
+    bloomCropUpdateInternalRecipients
   ]);
 
   return {
