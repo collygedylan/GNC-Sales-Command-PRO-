@@ -4596,19 +4596,22 @@ function buildRequestItemFieldRowsText_(item) {
     ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
     ['Completed By', formatRequestCompletionUserLabel_(item)],
     ['Submitted By', formatApprovalRequesterLabel_(item)],
+    ['Request Note', firstNonEmptyRequestValue_(item && item.request_note, item && item.req_note, item && item.REQUEST_NOTE, item && item.REQ_NOTE, '')],
     ['EVAL Task', getEvalTaskEmailTypeLabel_(firstNonEmptyRequestValue_(item && item.eval_task_type, item && item.EVAL_TASK_TYPE, ''))],
     ['EVAL Requested By', getEvalTaskRequestedByFromItem_(item)],
     ['EVAL Reviewer', firstNonEmptyRequestValue_(item && item.assignedto, item && item.ASSIGNEDTO, '')],
     ['EVAL Instructions', firstNonEmptyRequestValue_(item && item.eval_task_instructions, item && item.EVAL_TASK_INSTRUCTIONS, '')],
     ['EVAL Result Note', firstNonEmptyRequestValue_(item && item.eval_task_result_note, item && item.EVAL_TASK_RESULT_NOTE, '')],
+    ['Desired Spec', firstNonEmptyRequestValue_(item && item.desired_spec, item && item.req_desired_spec, item && item.REQ_DESIRED_SPEC, item && item.DESIRED_SPEC, '')],
+    ['Desired Caliper', firstNonEmptyRequestValue_(item && item.desired_caliper, item && item.req_desired_caliper, item && item.REQ_DESIRED_CALIPER, item && item.DESIRED_CALIPER, '')],
     ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, '')],
     ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
     ['LOC MATCH %', formatRequestPercentForEmail_(firstNonEmptyRequestValue_(item && item.match, item && item.req_match, item && item.MATCH, item && item.REQ_MATCH, ''))],
     ['LOC PHOTO MATCH', getRequestLocPhotoMatchEmailValue_(item)],
     ['AV Note', firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, '')],
     ['Reserve', firstNonEmptyRequestValue_(item && item.reserve, item && item.req_reserve, item && item.REQ_RESERVE, '')],
-    ['Pick Note', firstNonEmptyRequestValue_(item && item.pick_note, item && item.pick, item && item.REQ_PICK, item && item.PICK, '')],
-    ['Comments', firstNonEmptyRequestValue_(item && item.comments, item && item.REQ_COMMENTS, item && item.COMMENTS, item && item.SALES_NOTE, item && item.SALESNOTE, '')]
+    ['Pick Note', firstNonEmptyRequestValue_(item && item.pick_note, item && item.pick, item && item.req_pick, item && item.req_pic_note, item && item.REQ_PICK, item && item.REQ_PIC_NOTE, item && item.PICK, '')],
+    ['Comments', firstNonEmptyRequestValue_(item && item.comments, item && item.req_comments, item && item.request_comments, item && item.REQ_COMMENTS, item && item.REQUEST_COMMENTS, item && item.COMMENTS, item && item.SALES_NOTE, item && item.SALESNOTE, '')]
   ];
   const ncrCurrentSeasonSltsField = getRequestNcrCurrentSeasonSltsEmailField_(item);
   if (ncrCurrentSeasonSltsField) fields.splice(7, 0, ncrCurrentSeasonSltsField);
@@ -4637,19 +4640,22 @@ function buildRequestItemFieldRowsHtml_(item) {
     ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
     ['Completed By', formatRequestCompletionUserLabel_(item)],
     ['Submitted By', formatApprovalRequesterLabel_(item)],
+    ['Request Note', firstNonEmptyRequestValue_(item && item.request_note, item && item.req_note, item && item.REQUEST_NOTE, item && item.REQ_NOTE, '')],
     ['EVAL Task', getEvalTaskEmailTypeLabel_(firstNonEmptyRequestValue_(item && item.eval_task_type, item && item.EVAL_TASK_TYPE, ''))],
     ['EVAL Requested By', getEvalTaskRequestedByFromItem_(item)],
     ['EVAL Reviewer', firstNonEmptyRequestValue_(item && item.assignedto, item && item.ASSIGNEDTO, '')],
     ['EVAL Instructions', firstNonEmptyRequestValue_(item && item.eval_task_instructions, item && item.EVAL_TASK_INSTRUCTIONS, '')],
     ['EVAL Result Note', firstNonEmptyRequestValue_(item && item.eval_task_result_note, item && item.EVAL_TASK_RESULT_NOTE, '')],
+    ['Desired Spec', firstNonEmptyRequestValue_(item && item.desired_spec, item && item.req_desired_spec, item && item.REQ_DESIRED_SPEC, item && item.DESIRED_SPEC, '')],
+    ['Desired Caliper', firstNonEmptyRequestValue_(item && item.desired_caliper, item && item.req_desired_caliper, item && item.REQ_DESIRED_CALIPER, item && item.DESIRED_CALIPER, '')],
     ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, '')],
     ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
     ['LOC MATCH %', formatRequestPercentForEmail_(firstNonEmptyRequestValue_(item && item.match, item && item.req_match, item && item.MATCH, item && item.REQ_MATCH, ''))],
     ['LOC PHOTO MATCH', getRequestLocPhotoMatchEmailValue_(item)],
     ['AV Note', firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, '')],
     ['Reserve', firstNonEmptyRequestValue_(item && item.reserve, item && item.req_reserve, item && item.REQ_RESERVE, '')],
-    ['Pick Note', firstNonEmptyRequestValue_(item && item.pick_note, item && item.pick, item && item.REQ_PICK, item && item.PICK, '')],
-    ['Comments', firstNonEmptyRequestValue_(item && item.comments, item && item.REQ_COMMENTS, item && item.COMMENTS, item && item.SALES_NOTE, item && item.SALESNOTE, '')]
+    ['Pick Note', firstNonEmptyRequestValue_(item && item.pick_note, item && item.pick, item && item.req_pick, item && item.req_pic_note, item && item.REQ_PICK, item && item.REQ_PIC_NOTE, item && item.PICK, '')],
+    ['Comments', firstNonEmptyRequestValue_(item && item.comments, item && item.req_comments, item && item.request_comments, item && item.REQ_COMMENTS, item && item.REQUEST_COMMENTS, item && item.COMMENTS, item && item.SALES_NOTE, item && item.SALESNOTE, '')]
   ];
   const ncrCurrentSeasonSltsField = getRequestNcrCurrentSeasonSltsEmailField_(item);
   if (ncrCurrentSeasonSltsField) fields.splice(7, 0, ncrCurrentSeasonSltsField);
@@ -5551,13 +5557,15 @@ function buildRequestEmailItemsFromRows_(rows, payload) {
       eval_task_completed_at: firstNonEmptyRequestValue_(item && item.eval_task_completed_at, item && item.EVAL_TASK_COMPLETED_AT, snapshot.EVAL_TASK_COMPLETED_AT, snapshot.eval_task_completed_at, ''),
       eval_task_result_note: firstNonEmptyRequestValue_(item && item.eval_task_result_note, item && item.EVAL_TASK_RESULT_NOTE, snapshot.EVAL_TASK_RESULT_NOTE, snapshot.eval_task_result_note, ''),
       av_note: firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, ''),
+      desired_spec: firstNonEmptyRequestValue_(item && item.desired_spec, item && item.req_desired_spec, item && item.REQ_DESIRED_SPEC, item && item.DESIRED_SPEC, snapshot.REQ_DESIRED_SPEC, snapshot.req_desired_spec, snapshot.DESIRED_SPEC, snapshot.desired_spec, ''),
+      desired_caliper: firstNonEmptyRequestValue_(item && item.desired_caliper, item && item.req_desired_caliper, item && item.REQ_DESIRED_CALIPER, item && item.DESIRED_CALIPER, snapshot.REQ_DESIRED_CALIPER, snapshot.req_desired_caliper, snapshot.DESIRED_CALIPER, snapshot.desired_caliper, ''),
       spec: firstNonEmptyRequestValue_(item && item.req_spec, item && item.REQ_SPEC, item && item.spec, item && item.SPEC, ''),
       caliper: firstNonEmptyRequestValue_(item && item.req_caliper, item && item.REQ_CALIPER, item && item.caliper, item && item.CALIPER, ''),
       match: firstNonEmptyRequestValue_(item && item.req_match, item && item.REQ_MATCH, item && item.match, item && item.MATCH, ''),
       loc_match_qty: getRequestLocPhotoMatchValue_(item),
       reserve: firstNonEmptyRequestValue_(item && item.req_reserve, item && item.REQ_RESERVE, snapshot.REQ_RESERVE, snapshot.req_reserve, ''),
       pick_note: firstNonEmptyRequestValue_(item && item.req_pic_note, item && item.REQ_PIC_NOTE, item && item.req_pick, item && item.REQ_PICK, snapshot.REQ_PICK, snapshot.req_pick, ''),
-      comments: firstNonEmptyRequestValue_(item && item.req_comments, item && item.REQ_COMMENTS, snapshot.REQ_COMMENTS, snapshot.req_comments, ''),
+      comments: firstNonEmptyRequestValue_(item && item.comments, item && item.req_comments, item && item.request_comments, item && item.REQ_COMMENTS, item && item.REQUEST_COMMENTS, snapshot.REQ_COMMENTS, snapshot.req_comments, snapshot.comments, snapshot.request_comments, ''),
       completed_by_username: firstNonEmptyRequestValue_(item && item.completed_by_username, item && item.COMPLETED_BY_USERNAME, item && item.created_by_username, item && item.CREATED_BY_USERNAME, ''),
       completed_by_display: firstNonEmptyRequestValue_(item && item.completed_by_display, item && item.COMPLETED_BY_DISPLAY, item && item.completed_by, item && item.COMPLETED_BY, item && item.created_by_display, item && item.CREATED_BY_DISPLAY, ''),
       completed_by_email: firstNonEmptyRequestValue_(item && item.completed_by_email, item && item.COMPLETED_BY_EMAIL, ''),
@@ -6216,13 +6224,16 @@ function buildRequestRowCopyFields_(item) {
     ['PTR Available', firstNonEmptyRequestValue_(item && item.ptravailable, item && item.PTRAVAILABLE, '')],
     ['S_LTS', firstNonEmptyRequestValue_(item && item.s_lts, item && item.S_LTS, '')],
     ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
+    ['Request Note', firstNonEmptyRequestValue_(item && item.request_note, item && item.req_note, item && item.REQUEST_NOTE, item && item.REQ_NOTE, '')],
+    ['Desired Spec', firstNonEmptyRequestValue_(item && item.desired_spec, item && item.req_desired_spec, item && item.REQ_DESIRED_SPEC, item && item.DESIRED_SPEC, '')],
+    ['Desired Caliper', firstNonEmptyRequestValue_(item && item.desired_caliper, item && item.req_desired_caliper, item && item.REQ_DESIRED_CALIPER, item && item.DESIRED_CALIPER, '')],
     ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, '')],
     ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
     ['LOC Photo Match', getRequestLocPhotoMatchEmailValue_(item)],
     ['AV Note', firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, '')],
     ['Reserve', firstNonEmptyRequestValue_(item && item.reserve, item && item.req_reserve, item && item.REQ_RESERVE, '')],
-    ['Pick Note', firstNonEmptyRequestValue_(item && item.pick_note, item && item.pick, item && item.REQ_PICK, item && item.PICK, '')],
-    ['Comments', firstNonEmptyRequestValue_(item && item.comments, item && item.REQ_COMMENTS, item && item.COMMENTS, '')],
+    ['Pick Note', firstNonEmptyRequestValue_(item && item.pick_note, item && item.pick, item && item.req_pick, item && item.req_pic_note, item && item.REQ_PICK, item && item.REQ_PIC_NOTE, item && item.PICK, '')],
+    ['Comments', firstNonEmptyRequestValue_(item && item.comments, item && item.req_comments, item && item.request_comments, item && item.REQ_COMMENTS, item && item.REQUEST_COMMENTS, item && item.COMMENTS, '')],
     ['Completed By', formatRequestCompletionUserLabel_(item)]
   ].filter(function(field) {
     return String(field[1] || '').trim() !== '';
