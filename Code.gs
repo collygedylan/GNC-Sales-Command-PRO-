@@ -4402,6 +4402,73 @@ function parseRequestEmailNumber_(value) {
   return Number.isFinite(numberValue) ? numberValue : null;
 }
 
+function normalizeRequestPickNoteToken_(value) {
+  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function formatRequestPickNoteLocationCode_(value) {
+  const raw = String(value || '').trim().toUpperCase();
+  const match = raw.match(/^([A-Z])\.(\d+)\.(\d+)$/);
+  if (!match) return raw;
+  const section = match[1];
+  const rowNumber = String(parseInt(match[2], 10));
+  const spotNumber = String(parseInt(match[3], 10));
+  if (!rowNumber || rowNumber === 'NaN') return raw;
+  if (!spotNumber || spotNumber === 'NaN' || spotNumber === '0') return rowNumber + section;
+  return rowNumber + '.' + section + '.' + spotNumber;
+}
+
+function getRequestPickNoteLocationCode_(item) {
+  return formatRequestPickNoteLocationCode_(firstNonEmptyRequestValue_(
+    item && item.loc,
+    item && item.locationcode,
+    item && item.LOCATIONCODE,
+    item && item.LOCATION,
+    item && item.location,
+    ''
+  ));
+}
+
+function getRequestOverSeasonNoReservePickNote_(item) {
+  const requestQty = parseRequestEmailNumber_(firstNonEmptyRequestValue_(
+    item && item.qty,
+    item && item.req_qty,
+    item && item.REQ_QTY,
+    item && item.requested_qty,
+    ''
+  ));
+  const seasonListQty = parseRequestEmailNumber_(firstNonEmptyRequestValue_(
+    item && item.s_lts,
+    item && item.S_LTS,
+    item && item.season_lts,
+    item && item.SEASON_LTS,
+    ''
+  ));
+  const reserveValue = String(firstNonEmptyRequestValue_(
+    item && item.reserve,
+    item && item.req_reserve,
+    item && item.REQ_RESERVE,
+    'NO'
+  ) || 'NO').trim().toUpperCase();
+  if (requestQty == null || seasonListQty == null || requestQty <= seasonListQty || reserveValue === 'YES') return '';
+  const locationCode = getRequestPickNoteLocationCode_(item);
+  return locationCode ? 'INV OK, ' + locationCode + ' PIC APPROVED' : '';
+}
+
+function getRequestPickNoteWithOverSeasonRule_(item, currentNote) {
+  const requiredPickNote = getRequestOverSeasonNoReservePickNote_(item);
+  const text = String(currentNote || '').trim().replace(/\s+/g, ' ');
+  if (!requiredPickNote) return text;
+  const textToken = normalizeRequestPickNoteToken_(text);
+  const requiredToken = normalizeRequestPickNoteToken_(requiredPickNote);
+  if (!textToken) return requiredPickNote;
+  if (textToken.indexOf(requiredToken) !== -1) return text;
+  const locationCode = getRequestPickNoteLocationCode_(item);
+  const locationOnlyToken = normalizeRequestPickNoteToken_(locationCode ? locationCode + ' PIC APPROVED' : '');
+  if (locationOnlyToken && textToken === locationOnlyToken) return requiredPickNote;
+  return text + ' / ' + requiredPickNote;
+}
+
 function normalizeRequestCountText_(value) {
   const text = firstNonEmptyRequestValue_(value);
   if (!text || /^n\/?a$/i.test(text) || /^-+$/.test(text)) return '';
@@ -4537,11 +4604,29 @@ function buildPhoneSizedEmailHtml_(contentHtml) {
   ].join('');
 }
 
+function extractGoogleDriveFileIdFromUrl_(url) {
+  const text = String(url || '').trim();
+  if (!text || text.indexOf('drive.google.com') === -1) return '';
+  let match = text.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (!match) match = text.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (!match) match = text.match(/\/thumbnail\/?\?[^#]*\bid=([a-zA-Z0-9_-]+)/);
+  if (!match) match = text.match(/\/uc\?[^#]*\bid=([a-zA-Z0-9_-]+)/);
+  return match && match[1] ? match[1] : '';
+}
+
+function normalizeRequestPhotoUrlForEmail_(url) {
+  const safeUrl = String(url || '').trim();
+  if (!safeUrl) return '';
+  const driveId = extractGoogleDriveFileIdFromUrl_(safeUrl);
+  if (driveId) return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(driveId) + '&sz=w1600';
+  return safeUrl;
+}
+
 function extractRequestPhotoUrls_(value) {
   const seen = {};
   const urls = [];
   const addUrl = function(entry) {
-    const url = String(entry || '').trim().replace(/[)\].,;]+$/g, '');
+    const url = normalizeRequestPhotoUrlForEmail_(String(entry || '').trim().replace(/[)\].,;]+$/g, ''));
     if (!/^https?:\/\//i.test(url) || seen[url]) return;
     seen[url] = true;
     urls.push(url);
@@ -5562,7 +5647,7 @@ function buildRequestEmailItemsFromRows_(rows, payload) {
   const fallbackCustomer = String(firstNonEmptyRequestValue_(payload && payload.customer, payload && payload.requestCustomer, '')).trim();
   return safeRows.map(function(item) {
     const snapshot = parseRequestRowSnapshot_(item);
-    return {
+    const emailItem = {
       unique_id: firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, ''),
       folder: firstNonEmptyRequestValue_(item && item.request_folder, item && item.REQUEST_FOLDER, fallbackFolderId),
       customer: firstNonEmptyRequestValue_(item && item.req_customer, item && item.REQ_CUSTOMER, item && item.request_customer, item && item.REQUEST_CUSTOMER, snapshot.REQ_CUSTOMER, snapshot.request_customer, fallbackCustomer),
@@ -5615,6 +5700,8 @@ function buildRequestEmailItemsFromRows_(rows, payload) {
         snapshot.photos
       ]).join(',')
     };
+    emailItem.pick_note = getRequestPickNoteWithOverSeasonRule_(emailItem, emailItem.pick_note);
+    return emailItem;
   }).filter(function(item) {
     return item.unique_id || item.commonname || item.itemcode;
   });
@@ -5885,7 +5972,7 @@ function getRequestGalleryCacheKey_(folderId) {
 
 function compactRequestGalleryItem_(item) {
   const photoUrls = getRequestItemPhotoUrls_(item);
-  return {
+  const compactItem = {
     unique_id: firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, ''),
     folder: firstNonEmptyRequestValue_(item && item.folder, item && item.request_folder, item && item.REQUEST_FOLDER, ''),
     customer: firstNonEmptyRequestValue_(item && item.customer, item && item.req_customer, item && item.REQ_CUSTOMER, ''),
@@ -5921,6 +6008,8 @@ function compactRequestGalleryItem_(item) {
     completed_by_email: firstNonEmptyRequestValue_(item && item.completed_by_email, item && item.COMPLETED_BY_EMAIL, ''),
     photo: photoUrls
   };
+  compactItem.pick_note = getRequestPickNoteWithOverSeasonRule_(compactItem, compactItem.pick_note);
+  return compactItem;
 }
 
 function deleteRequestGalleryCache_(cacheKey) {
