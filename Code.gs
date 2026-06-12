@@ -3431,6 +3431,31 @@ function buildCustomerRepMapPayload(rawData, tableName, existingRows, syncStartT
   return { upserts, seenIds, totalRows, stats };
 }
 
+function parseMasterAssignmentLocationBlock_(locationCode) {
+  const match = String(locationCode || '').trim().toUpperCase().match(/^([A-Z])\.(\d{1,2})(?:\.|$)/);
+  if (!match) return null;
+  const number = Number(match[2]);
+  if (!Number.isFinite(number)) return null;
+  return { block: match[1], number: Math.round(number) };
+}
+
+function isMasterZoeGreenHostaArea_(locationCode) {
+  const parts = parseMasterAssignmentLocationBlock_(locationCode);
+  if (!parts) return false;
+  if (parts.block === 'D') return parts.number >= 6 && parts.number <= 10;
+  if (parts.block === 'C') return parts.number === 6 || parts.number === 7;
+  return false;
+}
+
+function getMasterAssignedToOverride_(row) {
+  if (!row) return '';
+  const commonName = String(row.commonname || row.COMMONNAME || row.description || row.DESCRIPTION || '').trim().toLowerCase();
+  const genusName = String(row.genusname || row.GENUSNAME || row.genus || row.GENUS || '').trim().toLowerCase();
+  if ((commonName + ' ' + genusName).indexOf('hosta') === -1) return '';
+  const locationCode = String(row.locationcode || row.LOCATIONCODE || row.location || row.LOCATION || '').trim();
+  return isMasterZoeGreenHostaArea_(locationCode) ? 'zoe_green' : 'bobby_adair';
+}
+
 function buildMasterPayload(rawData, tableName, existingRows, syncStartTime, fileName) {
   const context = getMasterPayloadContext_(rawData, {
     siteScoped: isSiteSplitPhysicalTable_(tableName),
@@ -3473,7 +3498,8 @@ function buildMasterPayload(rawData, tableName, existingRows, syncStartTime, fil
       ? String(existingRow.assignedto).trim()
       : '';
 
-    obj.assignedto = existingAssignedTo || null;
+    const assignedToOverride = getMasterAssignedToOverride_(obj) || getMasterAssignedToOverride_(existingRow);
+    obj.assignedto = assignedToOverride || existingAssignedTo || null;
     obj.concat = buildRowSyncHash_(obj, ['assignedto']);
 
     seenIds.add(uniqueId);
