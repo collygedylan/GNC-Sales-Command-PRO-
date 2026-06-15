@@ -5686,15 +5686,17 @@ function buildRequestEmailItemsFromRows_(rows, payload) {
       photo: extractRequestPhotoUrls_([
         item && item.req_photo_link,
         item && item.REQ_PHOTO_LINK,
-        item && item.photo_link,
-        item && item.PHOTO_LINK,
+        item && item.request_photo_link,
+        item && item.REQUEST_PHOTO_LINK,
+        item && item.REQUESTPHOTO_LINK,
         item && item.photo,
         item && item.photo_urls,
         item && item.photos,
         snapshot.REQ_PHOTO_LINK,
         snapshot.req_photo_link,
-        snapshot.PHOTO_LINK,
-        snapshot.photo_link,
+        snapshot.REQUEST_PHOTO_LINK,
+        snapshot.request_photo_link,
+        snapshot.REQUESTPHOTO_LINK,
         snapshot.photo,
         snapshot.photo_urls,
         snapshot.photos
@@ -5798,12 +5800,13 @@ function buildApprovalRequestItemsText_(payload) {
 function getRequestItemPhotoUrls_(item) {
   return extractRequestPhotoUrls_([
     item && item.photo,
-    item && item.photo_link,
     item && item.photo_urls,
     item && item.photos,
     item && item.req_photo_link,
     item && item.REQ_PHOTO_LINK,
-    item && item.PHOTO_LINK
+    item && item.request_photo_link,
+    item && item.REQUEST_PHOTO_LINK,
+    item && item.REQUESTPHOTO_LINK
   ]);
 }
 
@@ -8008,10 +8011,12 @@ function doPost(e) {
               locationcode: firstNonEmptyRequestValue_(item && item.locationcode, item && item.LOCATIONCODE, item && item.loc, ''),
               qty: firstNonEmptyRequestValue_(item && item.qty, item && item.req_qty, item && item.REQ_QTY, ''),
               photo: extractRequestPhotoUrls_([
-                item && item.photo,
-                item && item.photo_link,
                 item && item.req_photo_link,
                 item && item.REQ_PHOTO_LINK,
+                item && item.request_photo_link,
+                item && item.REQUEST_PHOTO_LINK,
+                item && item.REQUESTPHOTO_LINK,
+                item && item.photo,
                 item && item.photos
               ]).join(',')
             };
