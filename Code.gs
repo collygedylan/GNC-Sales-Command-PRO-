@@ -5356,7 +5356,7 @@ function isArchivedRequestRow_(row) {
 function fetchRequestRowsForEmailFolder_(folderId) {
   const safeFolderId = String(folderId || '').trim();
   if (!safeFolderId) return [];
-  const baseFields = 'unique_id,request_folder,req_customer,commonname,contsize,itemcode,req_qty,locationcode,av_note,req_spec,req_caliper,req_match,loc_match_qty,req_photo_link,req_photo_name,req_archived';
+  const baseFields = '*';
   const fieldsWithCompleter = baseFields + ',completed_by_username,completed_by_display,completed_by_email';
   const requestTableNames = getRequestEmailTableCandidates_('v2_active_request', 'PH');
   const loadRows = function(selectFields, requestTableName) {
@@ -5444,7 +5444,7 @@ function filterRequestGalleryItemsByIds_(items, requestIds) {
 function fetchRequestRowsForEmailRequestIds_(requestIds) {
   const safeIds = normalizeRequestGalleryIdList_(requestIds);
   if (!safeIds.length) return [];
-  const baseFields = 'unique_id,request_folder,req_customer,commonname,contsize,itemcode,req_qty,locationcode,av_note,req_spec,req_caliper,req_match,loc_match_qty,req_photo_link,req_photo_name,req_archived';
+  const baseFields = '*';
   const fieldsWithCompleter = baseFields + ',completed_by_username,completed_by_display,completed_by_email';
   const requestTableNames = getRequestEmailTableCandidates_('v2_active_request', 'PH');
   const buildInFilter = function(ids) {
@@ -5806,7 +5806,13 @@ function getRequestItemPhotoUrls_(item) {
     item && item.REQ_PHOTO_LINK,
     item && item.request_photo_link,
     item && item.REQUEST_PHOTO_LINK,
-    item && item.REQUESTPHOTO_LINK
+    item && item.REQUESTPHOTO_LINK,
+    item && item.photo_link,
+    item && item.PHOTO_LINK,
+    item && item.row_photo_link,
+    item && item.ROW_PHOTO_LINK,
+    item && item.saved_photo_link,
+    item && item.SAVED_PHOTO_LINK
   ]);
 }
 
@@ -5950,19 +5956,30 @@ function buildRequestRowPhotoPreviewHtml_(folderId, item) {
   if (!photoUrls.length) {
     return '<p style="margin:10px 0 0 0;color:#64748b;font-size:12px;font-weight:700;">No photos were captured for this row.</p>';
   }
-  const firstUrl = photoUrls[0];
   const galleryUrl = buildRequestRowGalleryUrl_(folderId, item);
-  const targetUrl = galleryUrl || firstUrl;
   const photoCountText = photoUrls.length === 1 ? '1 photo' : photoUrls.length + ' photos';
+  const photoCardsHtml = photoUrls.map(function(url, index) {
+    const safeUrl = escapeEmailAttribute_(url);
+    const photoLabel = 'Photo ' + (index + 1) + ' of ' + photoUrls.length;
+    return [
+      '<div style="margin:0 0 12px 0;">',
+      '<a href="' + safeUrl + '" style="display:block;text-decoration:none;">',
+      '<img src="' + safeUrl + '" alt="' + escapeEmailAttribute_(photoLabel) + '" width="320" style="display:block;width:100%;max-width:320px;height:auto;max-height:380px;object-fit:contain;border-radius:10px;border:1px solid #d7ded8;margin:0 auto;">',
+      '</a>',
+      '<div style="margin-top:5px;text-align:center;color:#065f46;font-size:11px;font-weight:800;">' + escapeEmailHtml_(photoLabel) + '</div>',
+      '</div>'
+    ].join('');
+  }).join('');
+  const galleryButtonHtml = galleryUrl ? [
+    '<div style="text-align:center;">',
+    '<a href="' + escapeEmailAttribute_(galleryUrl) + '" style="display:inline-block;padding:10px 14px;border-radius:999px;background:#007a4d;color:#ffffff;font-weight:700;text-decoration:none;">View Row Photo Gallery</a>',
+    '</div>'
+  ].join('') : '';
   return [
     '<div style="margin:12px 0;padding:10px;border:1px solid #b7f2d1;border-radius:12px;background:#f0fdf4;">',
-    '<a href="' + escapeEmailAttribute_(targetUrl) + '" style="display:block;text-decoration:none;">',
-    '<img src="' + escapeEmailAttribute_(firstUrl) + '" alt="Request row photo preview" width="320" style="display:block;width:100%;max-width:320px;height:auto;max-height:380px;object-fit:contain;border-radius:10px;border:1px solid #d7ded8;margin:0 auto;">',
-    '</a>',
-    '<p style="margin:10px 0 12px 0;color:#065f46;font-size:13px;line-height:1.45;font-weight:700;">First photo shown for this row. Open the row gallery to view all ' + escapeEmailHtml_(photoCountText) + ' for this row.</p>',
-    '<div style="text-align:center;">',
-    '<a href="' + escapeEmailAttribute_(targetUrl) + '" style="display:inline-block;padding:10px 14px;border-radius:999px;background:#007a4d;color:#ffffff;font-weight:700;text-decoration:none;">View Row Photo Gallery</a>',
-    '</div>',
+    '<p style="margin:0 0 12px 0;color:#065f46;font-size:13px;line-height:1.45;font-weight:700;">All ' + escapeEmailHtml_(photoCountText) + ' captured for this row are shown below.</p>',
+    photoCardsHtml,
+    galleryButtonHtml,
     '</div>'
   ].join('');
 }
@@ -6632,11 +6649,12 @@ function buildRequestItemsText_(payload) {
     const detailText = buildRequestItemFieldRowsText_(item);
     const galleryUrl = buildRequestRowGalleryUrl_(galleryFolderId, item);
     const photoText = photoUrls.length
-      ? [
-          'Photos: ' + (photoUrls.length === 1 ? '1 photo' : photoUrls.length + ' photos'),
-          'Preview Photo: ' + photoUrls[0],
-          galleryUrl ? 'Photo Gallery: ' + galleryUrl : ''
-        ].filter(Boolean).join('\n')
+      ? ['Photos: ' + (photoUrls.length === 1 ? '1 photo' : photoUrls.length + ' photos')]
+          .concat(photoUrls.map(function(url, index) {
+            return 'Photo ' + (index + 1) + ': ' + url;
+          }))
+          .concat(galleryUrl ? ['Photo Gallery: ' + galleryUrl] : [])
+          .filter(Boolean).join('\n')
       : '';
     return [
       String(item && item.commonname ? item.commonname : 'Unknown Item') + ' (' + String(item && item.contsize ? item.contsize : '-') + ')',
@@ -6652,10 +6670,7 @@ function getRequestSelectionSummaryGroups_(payload) {
       : (Array.isArray(payload.sourceRows) ? payload.sourceRows : []));
   if (!items.length) return [];
 
-  const groupsByKey = {};
-  const order = [];
-
-  items.forEach(function(item) {
+  return items.map(function(item) {
     if (!item) return;
     const itemCode = String(firstNonEmptyRequestValue_(
       item.itemcode,
@@ -6685,28 +6700,24 @@ function getRequestSelectionSummaryGroups_(payload) {
       item.LOT_CODE,
       ''
     ) || '').trim();
+    const locationCode = String(firstNonEmptyRequestValue_(
+      item.locationcode,
+      item.LOCATIONCODE,
+      item.locationCode,
+      item.LOCATION_CODE,
+      item.loc,
+      item.LOC,
+      ''
+    ) || '').trim();
     if (!itemCode && !commonName && !contSize) return;
-
-    const groupKey = itemCode
-      ? ['ITEMCODE', itemCode.toUpperCase(), contSize.toUpperCase(), lotCode.toUpperCase()].join('|')
-      : ['NOITEMCODE', commonName.toUpperCase(), contSize.toUpperCase(), lotCode.toUpperCase()].join('|');
-
-    if (!groupsByKey[groupKey]) {
-      groupsByKey[groupKey] = {
-        itemcode: itemCode || 'N/A',
-        commonname: commonName || 'Unknown Item',
-        contsize: contSize || '-',
-        lotcode: lotCode || '-',
-        rowsSelected: 0
-      };
-      order.push(groupKey);
-    }
-    groupsByKey[groupKey].rowsSelected += 1;
-  });
-
-  return order.map(function(key) {
-    return groupsByKey[key];
-  });
+    return {
+      itemcode: itemCode || 'N/A',
+      commonname: commonName || 'Unknown Item',
+      contsize: contSize || '-',
+      lotcode: lotCode || '-',
+      locationcode: locationCode || '-'
+    };
+  }).filter(Boolean);
 }
 
 function buildRequestSelectionSummaryHtml_(payload) {
@@ -6720,7 +6731,7 @@ function buildRequestSelectionSummaryHtml_(payload) {
       '<td style="padding:8px; border-bottom:1px solid #eee;">' + escapeEmailHtml_(group.commonname) + '</td>',
       '<td style="padding:8px; border-bottom:1px solid #eee;">' + escapeEmailHtml_(group.contsize) + '</td>',
       '<td style="padding:8px; border-bottom:1px solid #eee;">' + escapeEmailHtml_(group.lotcode) + '</td>',
-      '<td style="padding:8px; border-bottom:1px solid #eee; text-align:center;">' + escapeEmailHtml_(group.rowsSelected) + '</td>',
+      '<td style="padding:8px; border-bottom:1px solid #eee;">' + escapeEmailHtml_(group.locationcode) + '</td>',
       '</tr>'
     ].join('');
   }).join('');
@@ -6735,7 +6746,7 @@ function buildRequestSelectionSummaryHtml_(payload) {
     '<th align="left" style="padding:8px; border-bottom:1px solid #ddd;">COMMONNAME</th>',
     '<th align="left" style="padding:8px; border-bottom:1px solid #ddd;">CONTSIZE</th>',
     '<th align="left" style="padding:8px; border-bottom:1px solid #ddd;">LOTCODE</th>',
-    '<th align="center" style="padding:8px; border-bottom:1px solid #ddd;">ROWS SELECTED</th>',
+    '<th align="left" style="padding:8px; border-bottom:1px solid #ddd;">LOCATIONCODE</th>',
     '</tr>',
     '</thead>',
     '<tbody>',
@@ -6758,7 +6769,7 @@ function buildRequestSelectionSummaryText_(payload) {
         'COMMONNAME: ' + group.commonname,
         'CONTSIZE: ' + group.contsize,
         'LOTCODE: ' + group.lotcode,
-        'Rows Selected For Itemcode: ' + group.rowsSelected
+        'LOCATIONCODE: ' + group.locationcode
       ].join('\n');
     }).join('\n\n')
   ].join('\n\n');
