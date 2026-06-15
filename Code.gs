@@ -5689,6 +5689,12 @@ function buildRequestEmailItemsFromRows_(rows, payload) {
         item && item.request_photo_link,
         item && item.REQUEST_PHOTO_LINK,
         item && item.REQUESTPHOTO_LINK,
+        item && item.row_photo_link,
+        item && item.ROW_PHOTO_LINK,
+        item && item.saved_photo_link,
+        item && item.SAVED_PHOTO_LINK,
+        item && item.photo_link,
+        item && item.PHOTO_LINK,
         item && item.photo,
         item && item.photo_urls,
         item && item.photos,
@@ -5697,6 +5703,12 @@ function buildRequestEmailItemsFromRows_(rows, payload) {
         snapshot.REQUEST_PHOTO_LINK,
         snapshot.request_photo_link,
         snapshot.REQUESTPHOTO_LINK,
+        snapshot.ROW_PHOTO_LINK,
+        snapshot.row_photo_link,
+        snapshot.SAVED_PHOTO_LINK,
+        snapshot.saved_photo_link,
+        snapshot.PHOTO_LINK,
+        snapshot.photo_link,
         snapshot.photo,
         snapshot.photo_urls,
         snapshot.photos
@@ -5798,6 +5810,7 @@ function buildApprovalRequestItemsText_(payload) {
 }
 
 function getRequestItemPhotoUrls_(item) {
+  const snapshot = parseRequestRowSnapshot_(item || {});
   return extractRequestPhotoUrls_([
     item && item.photo,
     item && item.photo_urls,
@@ -5812,7 +5825,21 @@ function getRequestItemPhotoUrls_(item) {
     item && item.row_photo_link,
     item && item.ROW_PHOTO_LINK,
     item && item.saved_photo_link,
-    item && item.SAVED_PHOTO_LINK
+    item && item.SAVED_PHOTO_LINK,
+    snapshot.REQ_PHOTO_LINK,
+    snapshot.req_photo_link,
+    snapshot.REQUEST_PHOTO_LINK,
+    snapshot.request_photo_link,
+    snapshot.REQUESTPHOTO_LINK,
+    snapshot.ROW_PHOTO_LINK,
+    snapshot.row_photo_link,
+    snapshot.SAVED_PHOTO_LINK,
+    snapshot.saved_photo_link,
+    snapshot.PHOTO_LINK,
+    snapshot.photo_link,
+    snapshot.photo,
+    snapshot.photo_urls,
+    snapshot.photos
   ]);
 }
 
@@ -5960,10 +5987,11 @@ function buildRequestRowPhotoPreviewHtml_(folderId, item) {
   const photoCountText = photoUrls.length === 1 ? '1 photo' : photoUrls.length + ' photos';
   const photoCardsHtml = photoUrls.map(function(url, index) {
     const safeUrl = escapeEmailAttribute_(url);
+    const safeTargetUrl = escapeEmailAttribute_(galleryUrl || url);
     const photoLabel = 'Photo ' + (index + 1) + ' of ' + photoUrls.length;
     return [
       '<div style="margin:0 0 12px 0;">',
-      '<a href="' + safeUrl + '" style="display:block;text-decoration:none;">',
+      '<a href="' + safeTargetUrl + '" style="display:block;text-decoration:none;">',
       '<img src="' + safeUrl + '" alt="' + escapeEmailAttribute_(photoLabel) + '" width="320" style="display:block;width:100%;max-width:320px;height:auto;max-height:380px;object-fit:contain;border-radius:10px;border:1px solid #d7ded8;margin:0 auto;">',
       '</a>',
       '<div style="margin-top:5px;text-align:center;color:#065f46;font-size:11px;font-weight:800;">' + escapeEmailHtml_(photoLabel) + '</div>',
