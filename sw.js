@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.06.16.05';
+const APP_SHELL_BUILD = 'V2026.06.16.06';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const CACHE_NAME = 'greenleaf-v4.2-rebuild-' + APP_SHELL_BUILD;
@@ -34,6 +34,23 @@ function getRequestedShellBuild(request) {
   const requestUrl = getRequestUrl(request);
   if (!requestUrl) return '';
   return normalizeShellBuild(requestUrl.searchParams.get(APP_SHELL_QUERY_PARAM) || '');
+}
+
+function isRuntimeCacheableRequest(request) {
+  const requestUrl = getRequestUrl(request);
+  if (!requestUrl || !request || request.method !== 'GET') return false;
+
+  // Only runtime-cache stable app files. Live inventory, request data, photos,
+  // gallery endpoints, and Google/Supabase responses must always stay network-led.
+  const sameOrigin = requestUrl.origin === self.location.origin;
+  if (!sameOrigin) return false;
+
+  const pathname = String(requestUrl.pathname || '').toLowerCase();
+  if (!pathname) return false;
+  if (pathname.endsWith('/index.html') || pathname.endsWith('/sw.js')) return false;
+  if (pathname.endsWith('/manifest.json') || pathname.endsWith('/greenleaf%20logo.png') || pathname.endsWith('/greenleaf logo.png')) return true;
+
+  return /\.(?:css|js|mjs|png|jpe?g|webp|gif|svg|ico|woff2?|ttf|otf)$/i.test(pathname);
 }
 
 async function cacheShellResponse(cache, requestedShellUrl, networkResponse) {
@@ -143,6 +160,10 @@ self.addEventListener('fetch', (event) => {
         return Response.error();
       })()
     );
+    return;
+  }
+  if (!isRuntimeCacheableRequest(event.request)) {
+    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
     return;
   }
   event.respondWith(
