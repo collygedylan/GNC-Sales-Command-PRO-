@@ -3451,6 +3451,9 @@ function getMasterAssignedToOverride_(row) {
   if (!row) return '';
   const commonName = String(row.commonname || row.COMMONNAME || row.description || row.DESCRIPTION || '').trim().toLowerCase();
   const genusName = String(row.genusname || row.GENUSNAME || row.genus || row.GENUS || '').trim().toLowerCase();
+  const plantGroupCode = String(row.plantgroupcode || row.PLANTGROUPCODE || row.plantgroup || row.PLANTGROUP || '').trim().toUpperCase();
+  if (genusName.indexOf('hydrangea m') !== -1) return 'megan_kelly';
+  if (plantGroupCode === '140_GRASS') return 'dylan_collyge';
   if ((commonName + ' ' + genusName).indexOf('hosta') === -1) return '';
   const locationCode = String(row.locationcode || row.LOCATIONCODE || row.location || row.LOCATION || '').trim();
   return isMasterZoeGreenHostaArea_(locationCode) ? 'zoe_green' : 'bobby_adair';
