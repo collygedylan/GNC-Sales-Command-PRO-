@@ -92,6 +92,12 @@ def json_request(url: str, method: str = "GET", payload: Any = None, headers: Di
     return json.loads(raw)
 
 
+def github_log_command(kind: str, title: str, message: str) -> None:
+    safe_message = str(message or "").replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+    safe_title = str(title or "").replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+    print(f"::{kind} title={safe_title}::{safe_message}")
+
+
 def fetch_open_meteo_hourly(latitude: float, longitude: float, timezone_name: str, past_days: int) -> Dict[str, Any]:
     forecast_days = max(1, min(16, env_int("WEATHER_FORECAST_DAYS", 16)))
     query = {
@@ -109,9 +115,9 @@ def fetch_open_meteo_hourly(latitude: float, longitude: float, timezone_name: st
     url = OPEN_METEO_FORECAST_URL + "?" + urllib.parse.urlencode(query)
     try:
         return json_request(url, timeout=90)
-    except urllib.error.HTTPError as exc:
-        if past_days > 14:
-            print(f"Open-Meteo rejected {past_days} past days; retrying with 14 days. HTTP {exc.code}", file=sys.stderr)
+    except RuntimeError as exc:
+        if past_days > 14 and "HTTP 400" in str(exc):
+            print(f"Open-Meteo rejected {past_days} past days; retrying with 14 days.", file=sys.stderr)
             return fetch_open_meteo_hourly(latitude, longitude, timezone_name, 14)
         raise
 
@@ -427,23 +433,46 @@ def run() -> int:
     print(f"Upserted {upserted} hourly weather rows.")
     print(f"Upserted {daily_upserted} daily weather rows.")
 
-    try:
-        history_refreshed = supabase.rpc(
-            "v2_refresh_hold_learning_from_drive_around_rows",
-            {"p_limit": history_refresh_limit},
-        )
-        print(f"Refreshed Drive Around hold learning from v2_drive_around_report_rows: {history_refreshed}")
-    except RuntimeError as exc:
-        message = str(exc)
-        missing_rpc = "PGRST202" in message or "Could not find the function" in message or "does not exist" in message
-        if not missing_rpc:
-            raise
-        print("Drive Around row-history hold learning RPC is not installed yet; skipping row-history refresh.")
+    optional_rpc_errors: List[str] = []
 
-    refreshed = supabase.rpc("v2_refresh_hold_learning_weather_features", {"p_limit": refresh_limit})
-    print(f"Refreshed hold weather features: {refreshed}")
-    profile_refreshed = supabase.rpc("v2_refresh_hold_learning_profiles", {})
-    print(f"Refreshed hold learning profiles: {profile_refreshed}")
+    def call_optional_rpc(function_name: str, payload: Dict[str, Any] | None, label: str) -> Any:
+        try:
+            result = supabase.rpc(function_name, payload or {})
+            print(f"{label}: {result}")
+            return result
+        except RuntimeError as exc:
+            message = str(exc)
+            optional_rpc_errors.append(f"{function_name}: {message}")
+            github_log_command(
+                "warning",
+                f"{label} skipped",
+                f"{function_name} failed after weather data synced. Run the weather hold learning repair SQL if this keeps happening. {message[:900]}",
+            )
+            print(f"{label} failed after weather data synced; continuing scheduled sync. {message}", file=sys.stderr)
+            return None
+
+    call_optional_rpc(
+        "v2_refresh_hold_learning_from_drive_around_rows",
+        {"p_limit": history_refresh_limit},
+        "Refreshed Drive Around hold learning from v2_drive_around_report_rows",
+    )
+    call_optional_rpc(
+        "v2_refresh_hold_learning_weather_features",
+        {"p_limit": refresh_limit},
+        "Refreshed hold weather features",
+    )
+    call_optional_rpc(
+        "v2_refresh_hold_learning_profiles",
+        {},
+        "Refreshed hold learning profiles",
+    )
+    if optional_rpc_errors and os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+            summary.write("\n### Weather sync completed with hold-learning warnings\n\n")
+            summary.write("Weather rows were synced, but one or more optional hold-learning refreshes failed.\n\n")
+            summary.write("Run `weather_hold_learning_repair.sql` in Supabase if the warnings repeat.\n\n")
+            for item in optional_rpc_errors:
+                summary.write(f"- `{item[:300]}`\n")
     print(f"Weather hold learning sync completed in {round(time.time() - started, 1)}s.")
     return 0
 
