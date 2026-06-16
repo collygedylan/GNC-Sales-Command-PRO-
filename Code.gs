@@ -209,6 +209,18 @@ function isScriptRuntimeFlagEnabled_(key) {
   }
 }
 
+function setScriptPropertyWithQuotaCleanup_(key, value) {
+  const props = PropertiesService.getScriptProperties();
+  try {
+    props.setProperty(key, value);
+  } catch (error) {
+    const message = String(error && error.message ? error.message : error || '');
+    if (!/property storage quota|storage quota|properties/i.test(message)) throw error;
+    cleanupRequestGalleryPropertyCache_();
+    props.setProperty(key, value);
+  }
+}
+
 function isSiteSplitTablesEnabled_() {
   return isScriptRuntimeFlagEnabled_('GNC_SITE_TABLES_ENABLED');
 }
@@ -297,6 +309,7 @@ const REQUEST_GALLERY_SECRET_PROPERTY = 'REQUEST_GALLERY_SECRET';
 const REQUEST_GALLERY_CACHE_META_PREFIX = 'REQUEST_GALLERY_CACHE_META_';
 const REQUEST_GALLERY_CACHE_CHUNK_PREFIX = 'REQUEST_GALLERY_CACHE_CHUNK_';
 const REQUEST_GALLERY_CACHE_CHUNK_SIZE = 7000;
+const REQUEST_GALLERY_PROPERTY_CACHE_ENABLED = false;
 
 const MASTER_IMPORT_BASE_COMPARE_COLUMNS = Object.freeze([
   'unique_id',
@@ -486,7 +499,7 @@ function loadManualSyncStatus_() {
 }
 
 function saveManualSyncStatus_(status) {
-  PropertiesService.getScriptProperties().setProperty(MANUAL_SYNC_STATUS_KEY, JSON.stringify(status || {}));
+  setScriptPropertyWithQuotaCleanup_(MANUAL_SYNC_STATUS_KEY, JSON.stringify(status || {}));
 }
 
 function parseManualSyncTimestampMs_(value) {
@@ -596,6 +609,7 @@ function queueManualSyncRequest_(options) {
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
+    cleanupRequestGalleryPropertyCache_();
     let existing = loadManualSyncStatus_();
     if (existing && existing.active && isManualSyncStatusStale_(existing)) {
       const staleStageLabel = String(existing.currentStageLabel || existing.currentStage || 'manual sync');
@@ -3848,7 +3862,7 @@ function saveDelayedRequestEmailQueue_(jobs) {
     PropertiesService.getScriptProperties().deleteProperty(DELAYED_REQUEST_EMAIL_QUEUE_KEY);
     return;
   }
-  PropertiesService.getScriptProperties().setProperty(DELAYED_REQUEST_EMAIL_QUEUE_KEY, JSON.stringify(safeJobs));
+  setScriptPropertyWithQuotaCleanup_(DELAYED_REQUEST_EMAIL_QUEUE_KEY, JSON.stringify(safeJobs));
 }
 
 function removeDelayedRequestEmailTriggers_() {
@@ -3979,7 +3993,7 @@ function saveJdApprovalEmailQueue_(jobs) {
     PropertiesService.getScriptProperties().deleteProperty(JD_APPROVAL_EMAIL_QUEUE_KEY);
     return;
   }
-  PropertiesService.getScriptProperties().setProperty(JD_APPROVAL_EMAIL_QUEUE_KEY, JSON.stringify(safeJobs));
+  setScriptPropertyWithQuotaCleanup_(JD_APPROVAL_EMAIL_QUEUE_KEY, JSON.stringify(safeJobs));
 }
 
 function removeJdApprovalEmailTriggers_() {
@@ -6131,7 +6145,36 @@ function deleteRequestGalleryCache_(cacheKey) {
   } catch (error) {}
 }
 
+function cleanupRequestGalleryPropertyCache_() {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const allProperties = props.getProperties() || {};
+    let removed = 0;
+    Object.keys(allProperties).forEach(function(key) {
+      if (String(key || '').indexOf(REQUEST_GALLERY_CACHE_META_PREFIX) === 0 ||
+          String(key || '').indexOf(REQUEST_GALLERY_CACHE_CHUNK_PREFIX) === 0) {
+        props.deleteProperty(key);
+        removed++;
+      }
+    });
+    if (removed) console.log('[REQUEST GALLERY] Cleared ' + removed + ' Script Property cache entries.');
+    return { ok: true, removed: removed };
+  } catch (error) {
+    console.error('[REQUEST GALLERY] Could not clear property cache', error);
+    return {
+      ok: false,
+      removed: 0,
+      message: error && error.message ? error.message : String(error)
+    };
+  }
+}
+
+function clearRequestGalleryPropertyCache() {
+  return cleanupRequestGalleryPropertyCache_();
+}
+
 function cacheRequestGalleryPayload_(folderId, items) {
+  if (!REQUEST_GALLERY_PROPERTY_CACHE_ENABLED) return;
   const safeFolderId = String(folderId || '').trim();
   const safeItems = (Array.isArray(items) ? items : []).filter(Boolean).map(compactRequestGalleryItem_);
   if (!safeFolderId || !safeItems.length || !buildRequestGallerySlidesFromItems_(safeItems).length) return;
@@ -7612,7 +7655,7 @@ function runDiseaseDriveToSupabaseSync() {
   syncDiseaseFolder_(config, root, '', state);
 
   const completedAt = new Date().toISOString();
-  PropertiesService.getScriptProperties().setProperty(DISEASE_SYNC_PROPERTY_PREFIX + 'LAST_RUN_AT', completedAt);
+  setScriptPropertyWithQuotaCleanup_(DISEASE_SYNC_PROPERTY_PREFIX + 'LAST_RUN_AT', completedAt);
   emitTableSyncLiveEvent_(DISEASE_ASSET_TABLE, {
     tableName: DISEASE_ASSET_TABLE,
     filesProcessed: state.filesProcessed,
@@ -8022,8 +8065,13 @@ function encodeStoragePath_(path) {
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
+
+    if (payload.type === 'clear_request_gallery_cache') {
+      return jsonOutput_(cleanupRequestGalleryPropertyCache_());
+    }
     
     if (payload.type === 'manual_run') {
+      cleanupRequestGalleryPropertyCache_();
       const runInline = payload.run_inline === true || payload.runInline === true || payload.fast === true;
       const result = queueManualSyncRequest_({
         job: payload.job || 'all',
@@ -8043,6 +8091,7 @@ function doPost(e) {
     }
 
     if (payload.type === 'manual_status') {
+      cleanupRequestGalleryPropertyCache_();
       const status = getManualSyncStatusForClient_();
       return jsonOutput_(status || {
         active: false,
