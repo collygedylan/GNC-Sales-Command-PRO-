@@ -4969,9 +4969,7 @@ function collectRequestCompletionUsers_(payload) {
     payload && payload.requestCompletedByEmails
   ]);
   directEmails.forEach(addUser);
-  const items = Array.isArray(payload && payload.requestItems) ? payload.requestItems
-    : (Array.isArray(payload && payload.items) ? payload.items
-      : (Array.isArray(payload && payload.sourceRows) ? payload.sourceRows : []));
+  const items = getRequestEmailPayloadItems_(payload);
   items.forEach(function(item) {
     addUser(getRequestCompletionUserEntryFromItem_(item));
   });
@@ -4986,9 +4984,7 @@ function buildRequestCompletedBySummary_(payload) {
 }
 
 function getRequestPayloadItems_(payload) {
-  return Array.isArray(payload && payload.requestItems) ? payload.requestItems
-    : (Array.isArray(payload && payload.items) ? payload.items
-      : (Array.isArray(payload && payload.sourceRows) ? payload.sourceRows : []));
+  return getRequestEmailPayloadItems_(payload);
 }
 
 function normalizeEvalTaskEmailType_(value) {
@@ -5721,11 +5717,51 @@ function buildRequestEmailItemsFromRows_(rows, payload) {
   });
 }
 
+function getRequestEmailPayloadItemKey_(item, index) {
+  if (!item || typeof item !== 'object') return 'blank:' + String(index || 0);
+  const uniqueId = String(firstNonEmptyRequestValue_(
+    item.unique_id,
+    item.UNIQUE_ID,
+    item.id,
+    item.ID,
+    ''
+  ) || '').trim();
+  if (uniqueId) return 'id:' + uniqueId;
+  const rowKey = [
+    firstNonEmptyRequestValue_(item.itemcode, item.ITEMCODE, item.itemCode, item.ITEM_CODE, ''),
+    firstNonEmptyRequestValue_(item.locationcode, item.LOCATIONCODE, item.locationCode, item.LOCATION_CODE, item.loc, item.LOC, ''),
+    firstNonEmptyRequestValue_(item.lotcode, item.LOTCODE, item.lotCode, item.LOT_CODE, ''),
+    firstNonEmptyRequestValue_(item.contsize, item.CONTSIZE, item.contSize, item.CONT_SIZE, ''),
+    firstNonEmptyRequestValue_(item.commonname, item.COMMONNAME, item.commonName, item.COMMON_NAME, '')
+  ].map(function(value) {
+    return String(value || '').trim().toUpperCase();
+  }).filter(Boolean).join('|');
+  return rowKey ? 'row:' + rowKey : 'idx:' + String(index || 0);
+}
+
 function getRequestEmailPayloadItems_(payload) {
-  if (Array.isArray(payload && payload.requestItems)) return payload.requestItems.filter(Boolean);
-  if (Array.isArray(payload && payload.items)) return payload.items.filter(Boolean);
-  if (Array.isArray(payload && payload.sourceRows)) return payload.sourceRows.filter(Boolean);
-  return [];
+  const safePayload = payload && typeof payload === 'object' ? payload : {};
+  const lists = [
+    safePayload.requestItems,
+    safePayload.items,
+    safePayload.sourceRows,
+    safePayload.requestRows,
+    safePayload.requestSummaryItems,
+    safePayload.summaryItems,
+    safePayload.allItems
+  ];
+  const seen = {};
+  const items = [];
+  lists.forEach(function(list) {
+    if (!Array.isArray(list)) return;
+    list.filter(Boolean).forEach(function(item) {
+      const key = getRequestEmailPayloadItemKey_(item, items.length);
+      if (key && seen[key]) return;
+      if (key) seen[key] = true;
+      items.push(item);
+    });
+  });
+  return items;
 }
 
 function hydrateRequestCompletePayload_(payload) {
@@ -5786,9 +5822,7 @@ function hydrateQueuedRequestCompletePayload_(payload) {
 }
 
 function buildRequestItemsHtml_(payload) {
-  const items = Array.isArray(payload.requestItems) ? payload.requestItems
-    : (Array.isArray(payload.items) ? payload.items
-      : (Array.isArray(payload.sourceRows) ? payload.sourceRows : []));
+  const items = getRequestEmailPayloadItems_(payload);
   if (items.length) return buildCompactRequestItemsHtml_(payload);
   const formatted = String(payload.formattedItemsHtml || '').trim();
   if (formatted) return formatted;
@@ -6662,9 +6696,7 @@ function renderRequestGalleryWebApp_(params) {
 }
 
 function buildRequestItemsText_(payload) {
-  const items = Array.isArray(payload.requestItems) ? payload.requestItems
-    : (Array.isArray(payload.items) ? payload.items
-      : (Array.isArray(payload.sourceRows) ? payload.sourceRows : []));
+  const items = getRequestEmailPayloadItems_(payload);
   if (!items.length) {
     const formatted = String(payload.formattedItemsText || '').trim();
     if (formatted) return formatted;
@@ -6693,9 +6725,7 @@ function buildRequestItemsText_(payload) {
 }
 
 function getRequestSelectionSummaryGroups_(payload) {
-  const items = Array.isArray(payload.requestItems) ? payload.requestItems
-    : (Array.isArray(payload.items) ? payload.items
-      : (Array.isArray(payload.sourceRows) ? payload.sourceRows : []));
+  const items = getRequestEmailPayloadItems_(payload);
   if (!items.length) return [];
 
   return items.map(function(item) {
