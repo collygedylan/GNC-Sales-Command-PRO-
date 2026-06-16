@@ -6014,24 +6014,39 @@ function buildRequestRowGalleryUrl_(folderId, item) {
 
 function buildRequestRowPhotoPreviewHtml_(folderId, item) {
   const photoUrls = getRequestItemPhotoUrls_(item);
+  const pickNote = String(getRequestPickNoteWithOverSeasonRule_(item, firstNonEmptyRequestValue_(
+    item && item.pick_note,
+    item && item.pick,
+    item && item.req_pick,
+    item && item.req_pic_note,
+    item && item.REQ_PICK,
+    item && item.REQ_PIC_NOTE,
+    item && item.PICK,
+    ''
+  )) || '').trim();
+  const pickNoteHtml = pickNote
+    ? '<div style="margin:10px 0 0 0;padding:9px 10px;border-radius:8px;background:#ecfdf5;border:1px solid #bbf7d0;color:#065f46;font-size:12px;line-height:1.35;"><strong>Pick Note:</strong> ' + escapeEmailHtml_(pickNote) + '</div>'
+    : '';
   if (!photoUrls.length) {
-    return '<p style="margin:10px 0 0 0;color:#64748b;font-size:12px;font-weight:700;">No photos were captured for this row.</p>';
+    return [
+      '<p style="margin:10px 0 0 0;color:#64748b;font-size:12px;font-weight:700;">No photos were captured for this row.</p>',
+      pickNoteHtml
+    ].join('');
   }
   const galleryUrl = buildRequestRowGalleryUrl_(folderId, item);
   const photoCountText = photoUrls.length === 1 ? '1 photo' : photoUrls.length + ' photos';
-  const photoCardsHtml = photoUrls.map(function(url, index) {
-    const safeUrl = escapeEmailAttribute_(url);
-    const safeTargetUrl = escapeEmailAttribute_(galleryUrl || url);
-    const photoLabel = 'Photo ' + (index + 1) + ' of ' + photoUrls.length;
-    return [
-      '<div style="margin:0 0 12px 0;">',
-      '<a href="' + safeTargetUrl + '" style="display:block;text-decoration:none;">',
-      '<img src="' + safeUrl + '" alt="' + escapeEmailAttribute_(photoLabel) + '" width="320" style="display:block;width:100%;max-width:320px;height:auto;max-height:380px;object-fit:contain;border-radius:10px;border:1px solid #d7ded8;margin:0 auto;">',
-      '</a>',
-      '<div style="margin-top:5px;text-align:center;color:#065f46;font-size:11px;font-weight:800;">' + escapeEmailHtml_(photoLabel) + '</div>',
-      '</div>'
-    ].join('');
-  }).join('');
+  const firstPhotoUrl = photoUrls[0];
+  const safeUrl = escapeEmailAttribute_(firstPhotoUrl);
+  const safeTargetUrl = escapeEmailAttribute_(galleryUrl || firstPhotoUrl);
+  const photoLabel = photoUrls.length === 1 ? 'Photo 1 of 1' : 'First photo of ' + photoUrls.length;
+  const photoCardHtml = [
+    '<div style="margin:0 0 12px 0;">',
+    '<a href="' + safeTargetUrl + '" style="display:block;text-decoration:none;">',
+    '<img src="' + safeUrl + '" alt="' + escapeEmailAttribute_(photoLabel) + '" width="320" style="display:block;width:100%;max-width:320px;height:auto;max-height:380px;object-fit:contain;border-radius:10px;border:1px solid #d7ded8;margin:0 auto;">',
+    '</a>',
+    '<div style="margin-top:5px;text-align:center;color:#065f46;font-size:11px;font-weight:800;">' + escapeEmailHtml_(photoLabel) + '</div>',
+    '</div>'
+  ].join('');
   const galleryButtonHtml = galleryUrl ? [
     '<div style="text-align:center;">',
     '<a href="' + escapeEmailAttribute_(galleryUrl) + '" style="display:inline-block;padding:10px 14px;border-radius:999px;background:#007a4d;color:#ffffff;font-weight:700;text-decoration:none;">View Row Photo Gallery</a>',
@@ -6039,8 +6054,9 @@ function buildRequestRowPhotoPreviewHtml_(folderId, item) {
   ].join('') : '';
   return [
     '<div style="margin:12px 0;padding:10px;border:1px solid #b7f2d1;border-radius:12px;background:#f0fdf4;">',
-    '<p style="margin:0 0 12px 0;color:#065f46;font-size:13px;line-height:1.45;font-weight:700;">All ' + escapeEmailHtml_(photoCountText) + ' captured for this row are shown below.</p>',
-    photoCardsHtml,
+    '<p style="margin:0 0 12px 0;color:#065f46;font-size:13px;line-height:1.45;font-weight:700;">First photo shown for this row. Open the gallery to view all ' + escapeEmailHtml_(photoCountText) + '.</p>',
+    photoCardHtml,
+    pickNoteHtml,
     galleryButtonHtml,
     '</div>'
   ].join('');
@@ -6710,9 +6726,7 @@ function buildRequestItemsText_(payload) {
     const galleryUrl = buildRequestRowGalleryUrl_(galleryFolderId, item);
     const photoText = photoUrls.length
       ? ['Photos: ' + (photoUrls.length === 1 ? '1 photo' : photoUrls.length + ' photos')]
-          .concat(photoUrls.map(function(url, index) {
-            return 'Photo ' + (index + 1) + ': ' + url;
-          }))
+          .concat(['First Photo: ' + photoUrls[0]])
           .concat(galleryUrl ? ['Photo Gallery: ' + galleryUrl] : [])
           .filter(Boolean).join('\n')
       : '';
