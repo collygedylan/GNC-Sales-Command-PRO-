@@ -209,13 +209,17 @@ function isScriptRuntimeFlagEnabled_(key) {
   }
 }
 
+function isScriptPropertyStorageQuotaError_(error) {
+  const message = String(error && error.message ? error.message : error || '');
+  return /property storage quota|storage quota|properties/i.test(message);
+}
+
 function setScriptPropertyWithQuotaCleanup_(key, value) {
   const props = PropertiesService.getScriptProperties();
   try {
     props.setProperty(key, value);
   } catch (error) {
-    const message = String(error && error.message ? error.message : error || '');
-    if (!/property storage quota|storage quota|properties/i.test(message)) throw error;
+    if (!isScriptPropertyStorageQuotaError_(error)) throw error;
     cleanupRequestGalleryPropertyCache_();
     props.setProperty(key, value);
   }
@@ -6571,25 +6575,36 @@ function cacheRequestGalleryPayload_(folderId, items) {
   const cacheKey = getRequestGalleryCacheKey_(safeFolderId);
   if (!cacheKey) return;
   try {
+    const cachedAt = new Date().toISOString();
     const payload = JSON.stringify({
       folderId: safeFolderId,
-      cachedAt: new Date().toISOString(),
+      cachedAt: cachedAt,
       items: safeItems
     });
     const props = PropertiesService.getScriptProperties();
-    deleteRequestGalleryCache_(cacheKey);
     const chunks = [];
     for (let index = 0; index < payload.length; index += REQUEST_GALLERY_CACHE_CHUNK_SIZE) {
       chunks.push(payload.slice(index, index + REQUEST_GALLERY_CACHE_CHUNK_SIZE));
     }
-    chunks.forEach(function(chunk, index) {
-      props.setProperty(REQUEST_GALLERY_CACHE_CHUNK_PREFIX + cacheKey + '_' + index, chunk);
-    });
-    props.setProperty(REQUEST_GALLERY_CACHE_META_PREFIX + cacheKey, JSON.stringify({
+    const meta = JSON.stringify({
       folderId: safeFolderId,
       chunkCount: chunks.length,
-      cachedAt: new Date().toISOString()
-    }));
+      cachedAt: cachedAt
+    });
+    const writeCache = function() {
+      deleteRequestGalleryCache_(cacheKey);
+      chunks.forEach(function(chunk, index) {
+        props.setProperty(REQUEST_GALLERY_CACHE_CHUNK_PREFIX + cacheKey + '_' + index, chunk);
+      });
+      props.setProperty(REQUEST_GALLERY_CACHE_META_PREFIX + cacheKey, meta);
+    };
+    try {
+      writeCache();
+    } catch (error) {
+      if (!isScriptPropertyStorageQuotaError_(error)) throw error;
+      cleanupRequestGalleryPropertyCache_();
+      writeCache();
+    }
   } catch (error) {
     console.error('[REQUEST GALLERY] Could not cache gallery payload', {
       folderId: safeFolderId,
@@ -6842,7 +6857,9 @@ function loadRequestGalleryItemsForFolder_(folderId, requestIds) {
   }
   let items = buildRequestEmailItemsFromRows_(rows, { folderId: safeFolderId });
   if (!items.length || !buildRequestGallerySlidesFromItems_(items).length) {
-    const cachedItems = readRequestGalleryCachedItems_(safeFolderId);
+    const allCachedItems = readRequestGalleryCachedItems_(safeFolderId);
+    const filteredCachedItems = filterRequestGalleryItemsByIds_(allCachedItems, safeIds);
+    const cachedItems = filteredCachedItems.length ? filteredCachedItems : allCachedItems;
     if (cachedItems.length) items = cachedItems;
   }
   return items;
@@ -7038,7 +7055,9 @@ function renderRequestGalleryWebApp_(params) {
   let items = buildRequestEmailItemsFromRows_(rows, { folderId: folderId });
   let slides = buildRequestGallerySlidesFromItems_(items);
   if (!items.length || !slides.length) {
-    const cachedItems = filterRequestGalleryItemsByIds_(readRequestGalleryCachedItems_(folderId), requestIds);
+    const allCachedItems = readRequestGalleryCachedItems_(folderId);
+    const filteredCachedItems = filterRequestGalleryItemsByIds_(allCachedItems, requestIds);
+    const cachedItems = filteredCachedItems.length ? filteredCachedItems : allCachedItems;
     const cachedSlides = buildRequestGallerySlidesFromItems_(cachedItems);
     if (cachedItems.length && cachedSlides.length) {
       rows = [];
@@ -7926,6 +7945,30 @@ function sendRequestEmailWithFallback_(payload) {
 
   const message = buildRequestEmailMessage_(payload);
   const safeType = String(payload.emailType || '').trim().toLowerCase();
+  if (safeType === 'new_request') {
+    const requestEmailName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || 'GNC PH Request').trim() || 'GNC PH Request';
+    try {
+      GmailApp.sendEmail(recipients.toList, message.subject, message.textBody || message.subject, {
+        htmlBody: message.htmlBody,
+        name: requestEmailName
+      });
+      return {
+        ok: true,
+        status: 200,
+        recipients: recipients.toArray,
+        mode: 'gmailapp_named'
+      };
+    } catch (error) {
+      console.error('New request email send failed', error);
+      return {
+        ok: false,
+        status: 500,
+        recipients: recipients.toArray,
+        mode: 'gmailapp_error',
+        message: error && error.message ? error.message : 'New request email send failed.'
+      };
+    }
+  }
   if (safeType === 'suspend_tag' || safeType === 'suspend_tag_reviewed') {
     const suspendTagName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || 'GNC PH Suspend Tag').trim() || 'GNC PH Suspend Tag';
     try {
