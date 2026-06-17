@@ -5408,6 +5408,16 @@ function buildDefaultNcrEmailSubject_(payload) {
   return parts.join(' ') || 'New Crop Release';
 }
 
+function prefixRequestEmailSubject_(subject, prefix) {
+  const baseSubject = String(subject || '').trim();
+  const safePrefix = String(prefix || '').trim();
+  if (!safePrefix) return baseSubject;
+  if (!baseSubject) return safePrefix;
+  return baseSubject.toLowerCase().indexOf(safePrefix.toLowerCase()) === 0
+    ? baseSubject
+    : safePrefix + ' - ' + baseSubject;
+}
+
 function buildRequestEmailSubject_(payload) {
   const customSubject = String(payload.subject || '').trim();
   const safeType = String(payload && payload.emailType || '').trim().toLowerCase();
@@ -5419,12 +5429,14 @@ function buildRequestEmailSubject_(payload) {
     const baseSubject = customSubject || buildDefaultRequestEmailSubject_(payload);
     return /^suspend tag reviewed/i.test(baseSubject) ? baseSubject : 'Suspend Tag Reviewed - ' + baseSubject;
   }
-  if (customSubject) return customSubject;
-  return safeType === 'ncr_complete'
+  const baseSubject = customSubject || (safeType === 'ncr_complete'
     ? buildDefaultNcrEmailSubject_(payload)
     : safeType === 'bloom_crop_update'
       ? 'GNC PH Crop Update'
-    : buildDefaultRequestEmailSubject_(payload);
+    : buildDefaultRequestEmailSubject_(payload));
+  if (safeType === 'new_request') return prefixRequestEmailSubject_(baseSubject, 'New Plant Request Submitted');
+  if (safeType === 'request_complete') return prefixRequestEmailSubject_(baseSubject, 'Plant Request Completed');
+  return baseSubject;
 }
 
 function normalizeRequestIdList_(ids) {
@@ -8007,7 +8019,130 @@ function getApprovalEmailDisplayName_(payload) {
   return 'GNC PH NCR';
 }
 
+function sendNewRequestEmailMessage_(payload, recipients, message) {
+  const requestEmailName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || 'GNC PH Request').trim() || 'GNC PH Request';
+  if (isGmailAdvancedServiceAvailable_()) {
+    try {
+      return sendGmailApiMessage_({
+        toList: recipients.toList,
+        toArray: recipients.toArray,
+        subject: message.subject,
+        textBody: message.textBody || message.subject,
+        htmlBody: message.htmlBody,
+        fromName: requestEmailName,
+        fromAddress: resolveAutomatedEmailSenderAddress_()
+      });
+    } catch (error) {
+      console.error('Gmail API new request email send failed; using GmailApp fallback', error);
+    }
+  }
+  try {
+    GmailApp.sendEmail(recipients.toList, message.subject, message.textBody || message.subject, {
+      htmlBody: message.htmlBody,
+      name: requestEmailName
+    });
+    return {
+      ok: true,
+      status: 200,
+      recipients: recipients.toArray,
+      mode: 'gmailapp_named'
+    };
+  } catch (error) {
+    console.error('New request email send failed', error);
+    return {
+      ok: false,
+      status: 500,
+      recipients: recipients.toArray,
+      mode: 'gmailapp_error',
+      message: error && error.message ? error.message : 'New request email send failed.'
+    };
+  }
+}
+
+function shouldSendInitialRequestEmailBeforeCompletion_(payload) {
+  if (String(payload && payload.emailType || '').trim().toLowerCase() !== 'request_complete') return false;
+  if (payload && (payload.forceResend === true || payload.suppressInitialRequestEmail === true || payload.initialRequestEmailSent === true || payload.initial_request_email_sent === true)) return false;
+  const threadId = String(firstNonEmptyRequestValue_(payload && payload.threadId, payload && payload.thread_id, '')).trim();
+  const messageId = String(firstNonEmptyRequestValue_(payload && payload.messageId, payload && payload.message_id, '')).trim();
+  if (threadId && messageId) return false;
+  const items = getRequestEmailPayloadItems_(payload);
+  const requestIds = []
+    .concat(normalizeRequestIdList_(payload && payload.allRequestIds))
+    .concat(normalizeRequestIdList_(payload && payload.requestIds))
+    .concat(normalizeRequestIdList_(payload && payload.autoCompletedRequestIds));
+  return !!(items.length || requestIds.length || Number(payload && payload.itemsCount) > 0);
+}
+
+function buildInitialRequestEmailPayloadFromCompletion_(payload) {
+  const initialPayload = Object.assign({}, payload || {});
+  const items = getRequestEmailPayloadItems_(payload);
+  const allRequestIds = normalizeRequestIdList_(payload && payload.allRequestIds);
+  const requestIds = allRequestIds.length ? allRequestIds : normalizeRequestIdList_(payload && payload.requestIds);
+  initialPayload.type = 'email';
+  initialPayload.emailType = 'new_request';
+  if (items.length) {
+    initialPayload.items = items;
+    initialPayload.requestItems = items;
+    initialPayload.itemsCount = Number(initialPayload.itemsCount) || items.length;
+  }
+  if (requestIds.length) initialPayload.requestIds = requestIds;
+  delete initialPayload.subject;
+  delete initialPayload.threadId;
+  delete initialPayload.thread_id;
+  delete initialPayload.messageId;
+  delete initialPayload.message_id;
+  delete initialPayload.gmailMessageId;
+  delete initialPayload.queueDelivery;
+  delete initialPayload.delayMs;
+  delete initialPayload.replyInExistingThread;
+  delete initialPayload.formattedItemsHtml;
+  delete initialPayload.formattedItemsText;
+  delete initialPayload.folderNote;
+  delete initialPayload.forceResend;
+  return initialPayload;
+}
+
+function isSuspendTagEmailPayload_(payload) {
+  const explicitKind = firstNonEmptyRequestValue_(
+    payload && payload.requestKind,
+    payload && payload.request_kind,
+    payload && payload.assignment,
+    payload && payload.app_tab_assignment,
+    payload && payload.APP_TAB_ASSIGNMENT,
+    ''
+  );
+  if (String(explicitKind || '').trim().toLowerCase().replace(/_/g, '-') === 'suspend-tag') return true;
+  return getRequestEmailPayloadItems_(payload).some(function(item) {
+    const itemKind = firstNonEmptyRequestValue_(
+      item && item.requestKind,
+      item && item.request_kind,
+      item && item.app_tab_assignment,
+      item && item.APP_TAB_ASSIGNMENT,
+      item && item.master_app_tab_assignment,
+      item && item.MASTER_APP_TAB_ASSIGNMENT,
+      item && item.source,
+      item && item.SOURCE,
+      ''
+    );
+    return String(itemKind || '').trim().toLowerCase().replace(/_/g, '-') === 'suspend-tag';
+  });
+}
+
+function normalizeRequestEmailPayloadType_(payload) {
+  const safePayload = payload || {};
+  const safeType = String(safePayload.emailType || '').trim().toLowerCase();
+  if (safeType === 'suspend_tag' && !isSuspendTagEmailPayload_(safePayload)) {
+    const normalized = Object.assign({}, safePayload);
+    normalized.emailType = 'new_request';
+    normalized.type = 'email';
+    delete normalized.subject;
+    return normalized;
+  }
+  return safePayload;
+}
+
 function sendRequestEmailWithFallback_(payload) {
+  payload = normalizeRequestEmailPayloadType_(payload);
   const initialEmailType = String(payload && payload.emailType || '').trim().toLowerCase();
   if (['request_complete', 'suspend_tag', 'suspend_tag_reviewed'].indexOf(initialEmailType) !== -1) {
     payload = hydrateRequestCompletePayload_(payload);
@@ -8024,29 +8159,16 @@ function sendRequestEmailWithFallback_(payload) {
 
   const message = buildRequestEmailMessage_(payload);
   const safeType = String(payload.emailType || '').trim().toLowerCase();
-  if (safeType === 'new_request') {
-    const requestEmailName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || 'GNC PH Request').trim() || 'GNC PH Request';
-    try {
-      GmailApp.sendEmail(recipients.toList, message.subject, message.textBody || message.subject, {
-        htmlBody: message.htmlBody,
-        name: requestEmailName
-      });
-      return {
-        ok: true,
-        status: 200,
-        recipients: recipients.toArray,
-        mode: 'gmailapp_named'
-      };
-    } catch (error) {
-      console.error('New request email send failed', error);
-      return {
-        ok: false,
-        status: 500,
-        recipients: recipients.toArray,
-        mode: 'gmailapp_error',
-        message: error && error.message ? error.message : 'New request email send failed.'
-      };
+  let initialRequestEmailResult = null;
+  if (shouldSendInitialRequestEmailBeforeCompletion_(payload)) {
+    initialRequestEmailResult = sendRequestEmailWithFallback_(buildInitialRequestEmailPayloadFromCompletion_(payload));
+    if (initialRequestEmailResult && initialRequestEmailResult.ok && initialRequestEmailResult.threadId && initialRequestEmailResult.messageId) {
+      payload.threadId = initialRequestEmailResult.threadId;
+      payload.messageId = initialRequestEmailResult.messageId;
     }
+  }
+  if (safeType === 'new_request') {
+    return sendNewRequestEmailMessage_(payload, recipients, message);
   }
   if (safeType === 'suspend_tag' || safeType === 'suspend_tag_reviewed') {
     const suspendTagName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || 'GNC PH Suspend Tag').trim() || 'GNC PH Suspend Tag';
@@ -8180,7 +8302,8 @@ function sendRequestEmailWithFallback_(payload) {
       status: 500,
       recipients: recipients.toArray,
       mode: 'gmail_api_unavailable',
-      message: 'Gmail Advanced Service is required for request emails but is not available in this Apps Script deployment.'
+      message: 'Gmail Advanced Service is required for request emails but is not available in this Apps Script deployment.',
+      initialRequestEmailResult: initialRequestEmailResult
     };
   }
 
@@ -8201,6 +8324,7 @@ function sendRequestEmailWithFallback_(payload) {
       result.mode = 'gmail_api_fresh_completion';
       result.message = 'Request completion email sent as a fresh email because the original thread metadata was unavailable.';
     }
+    if (initialRequestEmailResult) result.initialRequestEmailResult = initialRequestEmailResult;
     return result;
   } catch (error) {
     console.error('Gmail API send failed for request email', error);
@@ -8209,7 +8333,8 @@ function sendRequestEmailWithFallback_(payload) {
       status: 500,
       recipients: recipients.toArray,
       mode: 'gmail_api_error',
-      message: error && error.message ? error.message : 'Request email send failed.'
+      message: error && error.message ? error.message : 'Request email send failed.',
+      initialRequestEmailResult: initialRequestEmailResult
     };
   }
 }
