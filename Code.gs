@@ -3904,7 +3904,8 @@ function enqueueDelayedRequestEmail_(payload) {
   const safePayload = payload && typeof payload === 'object' ? JSON.parse(JSON.stringify(payload)) : {};
   const threadId = String(safePayload.threadId || '').trim();
   const messageId = String(safePayload.messageId || '').trim();
-  if (!threadId || !messageId) {
+  const sendsAsSeparateEmail = safePayload.sendAsSeparateEmail === true || safePayload.suppressThreadReply === true || safePayload.replyInExistingThread === false;
+  if ((!threadId || !messageId) && !sendsAsSeparateEmail) {
     return {
       ok: false,
       status: 400,
@@ -8290,7 +8291,8 @@ function sendRequestEmailWithFallback_(payload) {
       };
     }
   }
-  const wantsThreadReply = safeType === 'request_complete';
+  const suppressThreadReply = payload.sendAsSeparateEmail === true || payload.suppressThreadReply === true || payload.replyInExistingThread === false;
+  const wantsThreadReply = safeType === 'request_complete' && !suppressThreadReply;
   const threadId = String(payload.threadId || '').trim();
   const inReplyTo = String(payload.messageId || '').trim();
   const senderAddress = resolveAutomatedEmailSenderAddress_();
