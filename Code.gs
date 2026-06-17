@@ -313,6 +313,8 @@ const REQUEST_GALLERY_SECRET_PROPERTY = 'REQUEST_GALLERY_SECRET';
 const REQUEST_GALLERY_CACHE_META_PREFIX = 'REQUEST_GALLERY_CACHE_META_';
 const REQUEST_GALLERY_CACHE_CHUNK_PREFIX = 'REQUEST_GALLERY_CACHE_CHUNK_';
 const REQUEST_GALLERY_CACHE_CHUNK_SIZE = 7000;
+const REQUEST_GALLERY_RUNTIME_CACHE_PREFIX = 'REQUEST_GALLERY_RUNTIME_';
+const REQUEST_GALLERY_RUNTIME_CACHE_SECONDS = 21600;
 const REQUEST_GALLERY_PROPERTY_CACHE_ENABLED = false;
 
 const MASTER_IMPORT_BASE_COMPARE_COLUMNS = Object.freeze([
@@ -3916,7 +3918,7 @@ function enqueueDelayedRequestEmail_(payload) {
     : [];
   if (!requestIds.length && Array.isArray(safePayload.requestItems)) {
     safePayload.requestIds = safePayload.requestItems.map(function(item) {
-      return String(firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, '')).trim();
+      return getRequestGalleryItemId_(item);
     }).filter(Boolean);
   } else if (requestIds.length) {
     safePayload.requestIds = requestIds;
@@ -5522,6 +5524,43 @@ function normalizeRequestGalleryIdList_(value) {
   return ids;
 }
 
+function normalizeRequestGalleryKeyPart_(value) {
+  return String(value == null ? '' : value)
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function getRequestGalleryStableItemId_(item) {
+  const safeItem = item && typeof item === 'object' ? item : {};
+  const snapshot = parseRequestRowSnapshot_(safeItem);
+  const parts = [
+    firstNonEmptyRequestValue_(safeItem.itemcode, safeItem.ITEMCODE, safeItem.itemCode, snapshot.itemcode, snapshot.ITEMCODE, ''),
+    firstNonEmptyRequestValue_(safeItem.loc, safeItem.locationcode, safeItem.LOCATIONCODE, safeItem.locationCode, snapshot.loc, snapshot.locationcode, snapshot.LOCATIONCODE, ''),
+    firstNonEmptyRequestValue_(safeItem.lotcode, safeItem.LOTCODE, safeItem.lotCode, snapshot.lotcode, snapshot.LOTCODE, ''),
+    firstNonEmptyRequestValue_(safeItem.contsize, safeItem.CONTSIZE, safeItem.contSize, snapshot.contsize, snapshot.CONTSIZE, ''),
+    firstNonEmptyRequestValue_(safeItem.source, safeItem.SOURCE, snapshot.source, snapshot.SOURCE, ''),
+    firstNonEmptyRequestValue_(safeItem.priority, safeItem.PRIORITY, snapshot.priority, snapshot.PRIORITY, ''),
+    firstNonEmptyRequestValue_(safeItem.season, safeItem.SEASON, snapshot.season, snapshot.SEASON, '')
+  ].map(normalizeRequestGalleryKeyPart_).filter(Boolean);
+  return parts.length ? 'row-' + parts.join('-') : '';
+}
+
+function getRequestGalleryItemId_(item) {
+  const safeItem = item && typeof item === 'object' ? item : {};
+  return String(firstNonEmptyRequestValue_(
+    safeItem.unique_id,
+    safeItem.UNIQUE_ID,
+    safeItem.id,
+    safeItem.ID,
+    safeItem.request_id,
+    safeItem.REQUEST_ID,
+    getRequestGalleryStableItemId_(safeItem),
+    ''
+  ) || '').trim();
+}
+
 function filterRequestGalleryItemsByIds_(items, requestIds) {
   const safeItems = Array.isArray(items) ? items.filter(Boolean) : [];
   const safeIds = normalizeRequestGalleryIdList_(requestIds);
@@ -5529,7 +5568,7 @@ function filterRequestGalleryItemsByIds_(items, requestIds) {
   const idSet = {};
   safeIds.forEach(function(id) { idSet[id] = true; });
   return safeItems.filter(function(item) {
-    const itemId = String(firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, item && item.id, item && item.ID, '')).trim();
+    const itemId = getRequestGalleryItemId_(item);
     return !!itemId && !!idSet[itemId];
   });
 }
@@ -5711,7 +5750,7 @@ function mergeRequestEmailRows_(primaryRows, fallbackRows) {
   const indexById = {};
   const addOrMerge = function(row) {
     if (!row) return;
-    const id = String(firstNonEmptyRequestValue_(row.unique_id, row.UNIQUE_ID, '')).trim();
+    const id = getRequestGalleryItemId_(row);
     if (id && Object.prototype.hasOwnProperty.call(indexById, id)) {
       const existing = rows[indexById[id]];
       Object.keys(row).forEach(function(key) {
@@ -5741,7 +5780,7 @@ function buildRequestEmailItemsFromRows_(rows, payload) {
   return safeRows.map(function(item) {
     const snapshot = parseRequestRowSnapshot_(item);
     const emailItem = {
-      unique_id: firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, ''),
+      unique_id: getRequestGalleryItemId_(item),
       folder: firstNonEmptyRequestValue_(item && item.request_folder, item && item.REQUEST_FOLDER, fallbackFolderId),
       customer: firstNonEmptyRequestValue_(item && item.req_customer, item && item.REQ_CUSTOMER, item && item.request_customer, item && item.REQUEST_CUSTOMER, snapshot.REQ_CUSTOMER, snapshot.request_customer, fallbackCustomer),
       app_tab_assignment: firstNonEmptyRequestValue_(item && item.app_tab_assignment, item && item.APP_TAB_ASSIGNMENT, item && item.master_app_tab_assignment, item && item.MASTER_APP_TAB_ASSIGNMENT, snapshot.APP_TAB_ASSIGNMENT, snapshot.app_tab_assignment, snapshot.MASTER_APP_TAB_ASSIGNMENT, snapshot.master_app_tab_assignment, ''),
@@ -5823,13 +5862,7 @@ function buildRequestEmailItemsFromRows_(rows, payload) {
 
 function getRequestEmailPayloadItemKey_(item, index) {
   if (!item || typeof item !== 'object') return 'blank:' + String(index || 0);
-  const uniqueId = String(firstNonEmptyRequestValue_(
-    item.unique_id,
-    item.UNIQUE_ID,
-    item.id,
-    item.ID,
-    ''
-  ) || '').trim();
+  const uniqueId = getRequestGalleryItemId_(item);
   if (uniqueId) return 'id:' + uniqueId;
   const rowKey = [
     firstNonEmptyRequestValue_(item.itemcode, item.ITEMCODE, item.itemCode, item.ITEM_CODE, ''),
@@ -5880,7 +5913,7 @@ function hydrateRequestCompletePayload_(payload) {
     fetchRequestHistoryRowsForEmailFolder_(folderId)
   );
   let rows = folderRows.filter(function(row) {
-    const rowId = String(firstNonEmptyRequestValue_(row && row.unique_id, row && row.UNIQUE_ID, '')).trim();
+    const rowId = getRequestGalleryItemId_(row);
     if (!rowId) return false;
     return !requestIds.length || requestIds.indexOf(rowId) !== -1;
   });
@@ -5894,8 +5927,8 @@ function hydrateRequestCompletePayload_(payload) {
   if (requestIds.length) {
     const orderMap = new Map(requestIds.map(function(id, index) { return [id, index]; }));
     rows.sort(function(a, b) {
-      const aId = String(firstNonEmptyRequestValue_(a && a.unique_id, a && a.UNIQUE_ID, '')).trim();
-      const bId = String(firstNonEmptyRequestValue_(b && b.unique_id, b && b.UNIQUE_ID, '')).trim();
+      const aId = getRequestGalleryItemId_(a);
+      const bId = getRequestGalleryItemId_(b);
       return (orderMap.has(aId) ? orderMap.get(aId) : Number.MAX_SAFE_INTEGER) - (orderMap.has(bId) ? orderMap.get(bId) : Number.MAX_SAFE_INTEGER);
     });
   }
@@ -5906,7 +5939,7 @@ function hydrateRequestCompletePayload_(payload) {
     safePayload.requestItems = hydratedItems;
     safePayload.itemsCount = hydratedItems.length;
     safePayload.requestIds = hydratedItems.map(function(item) {
-      return String(firstNonEmptyRequestValue_(item && item.unique_id, '')).trim();
+      return getRequestGalleryItemId_(item);
     }).filter(Boolean);
   }
   const completedByUsers = collectRequestCompletionUsers_(Object.assign({}, safePayload, {
@@ -6012,17 +6045,7 @@ function buildRequestGalleryFallbackFolderId_(payload, items) {
   const photoUrls = [];
   const rowKeys = [];
   safeItems.forEach(function(item) {
-    const rowKey = firstNonEmptyRequestValue_(
-      item && item.unique_id,
-      item && item.UNIQUE_ID,
-      item && item.id,
-      item && item.ID,
-      item && item.itemcode,
-      item && item.ITEMCODE,
-      item && item.commonname,
-      item && item.COMMONNAME,
-      ''
-    );
+    const rowKey = getRequestGalleryItemId_(item);
     if (rowKey) rowKeys.push(String(rowKey));
     getRequestItemPhotoUrls_(item).forEach(function(url) {
       if (photoUrls.indexOf(url) === -1) photoUrls.push(url);
@@ -6084,7 +6107,7 @@ function buildRequestRowCopyUrl_(folderId, item, rowIndex) {
   )).trim();
   const baseUrl = getRequestGalleryBaseUrl_();
   if (!safeFolderId || !baseUrl) return '';
-  const rowId = String(firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, item && item.id, item && item.ID, '')).trim();
+  const rowId = getRequestGalleryItemId_(item);
   const separator = baseUrl.indexOf('?') === -1 ? '?' : '&';
   let url = baseUrl + separator +
     'gallery=request-row&folder=' + encodeURIComponent(safeFolderId) +
@@ -6113,7 +6136,7 @@ function buildRequestRowGalleryUrl_(folderId, item) {
     ''
   )).trim();
   if (!safeFolderId) return '';
-  const rowId = String(firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, item && item.id, item && item.ID, '')).trim();
+  const rowId = getRequestGalleryItemId_(item);
   return buildRequestGalleryUrl_(safeFolderId, rowId ? [rowId] : []);
 }
 
@@ -6138,6 +6161,13 @@ function buildRequestRowPhotoPreviewHtml_(folderId, item) {
       pickNoteHtml
     ].join('');
   }
+  cacheRequestGalleryPayload_(String(firstNonEmptyRequestValue_(
+    folderId,
+    item && item.folder,
+    item && item.request_folder,
+    item && item.REQUEST_FOLDER,
+    ''
+  )).trim(), [item]);
   const galleryUrl = buildRequestRowGalleryUrl_(folderId, item);
   const photoCountText = photoUrls.length === 1 ? '1 photo' : photoUrls.length + ' photos';
   const firstPhotoUrl = photoUrls[0];
@@ -6482,7 +6512,7 @@ function getRequestGalleryCacheKey_(folderId) {
 function compactRequestGalleryItem_(item) {
   const photoUrls = getRequestItemPhotoUrls_(item);
   const compactItem = {
-    unique_id: firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, ''),
+    unique_id: getRequestGalleryItemId_(item),
     folder: firstNonEmptyRequestValue_(item && item.folder, item && item.request_folder, item && item.REQUEST_FOLDER, ''),
     customer: firstNonEmptyRequestValue_(item && item.customer, item && item.req_customer, item && item.REQ_CUSTOMER, ''),
     commonname: firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, ''),
@@ -6525,6 +6555,9 @@ function deleteRequestGalleryCache_(cacheKey) {
   const key = String(cacheKey || '').trim();
   if (!key) return;
   try {
+    CacheService.getScriptCache().remove(REQUEST_GALLERY_RUNTIME_CACHE_PREFIX + key);
+  } catch (error) {}
+  try {
     const props = PropertiesService.getScriptProperties();
     const metaKey = REQUEST_GALLERY_CACHE_META_PREFIX + key;
     let chunkCount = 0;
@@ -6563,12 +6596,41 @@ function cleanupRequestGalleryPropertyCache_() {
   }
 }
 
+function writeRequestGalleryRuntimeCache_(cacheKey, payload) {
+  const key = String(cacheKey || '').trim();
+  const safePayload = String(payload || '');
+  if (!key || !safePayload) return;
+  try {
+    CacheService.getScriptCache().put(
+      REQUEST_GALLERY_RUNTIME_CACHE_PREFIX + key,
+      safePayload,
+      REQUEST_GALLERY_RUNTIME_CACHE_SECONDS
+    );
+  } catch (error) {
+    console.error('[REQUEST GALLERY] Could not write runtime gallery cache', {
+      message: error && error.message ? error.message : String(error)
+    });
+  }
+}
+
+function readRequestGalleryRuntimeCache_(cacheKey) {
+  const key = String(cacheKey || '').trim();
+  if (!key) return '';
+  try {
+    return String(CacheService.getScriptCache().get(REQUEST_GALLERY_RUNTIME_CACHE_PREFIX + key) || '');
+  } catch (error) {
+    console.error('[REQUEST GALLERY] Could not read runtime gallery cache', {
+      message: error && error.message ? error.message : String(error)
+    });
+  }
+  return '';
+}
+
 function clearRequestGalleryPropertyCache() {
   return cleanupRequestGalleryPropertyCache_();
 }
 
 function cacheRequestGalleryPayload_(folderId, items) {
-  if (!REQUEST_GALLERY_PROPERTY_CACHE_ENABLED) return;
   const safeFolderId = String(folderId || '').trim();
   const safeItems = (Array.isArray(items) ? items : []).filter(Boolean).map(compactRequestGalleryItem_);
   if (!safeFolderId || !safeItems.length || !buildRequestGallerySlidesFromItems_(safeItems).length) return;
@@ -6581,6 +6643,8 @@ function cacheRequestGalleryPayload_(folderId, items) {
       cachedAt: cachedAt,
       items: safeItems
     });
+    writeRequestGalleryRuntimeCache_(cacheKey, payload);
+    if (!REQUEST_GALLERY_PROPERTY_CACHE_ENABLED) return;
     const props = PropertiesService.getScriptProperties();
     const chunks = [];
     for (let index = 0; index < payload.length; index += REQUEST_GALLERY_CACHE_CHUNK_SIZE) {
@@ -6617,6 +6681,22 @@ function readRequestGalleryCachedItems_(folderId) {
   const safeFolderId = String(folderId || '').trim();
   const cacheKey = getRequestGalleryCacheKey_(safeFolderId);
   if (!safeFolderId || !cacheKey) return [];
+  const readPayload = function(raw) {
+    if (!String(raw || '').trim()) return [];
+    const parsed = JSON.parse(raw || '{}');
+    return String(parsed && parsed.folderId || '') === safeFolderId && Array.isArray(parsed && parsed.items)
+      ? parsed.items.filter(Boolean)
+      : [];
+  };
+  try {
+    const runtimeItems = readPayload(readRequestGalleryRuntimeCache_(cacheKey));
+    if (runtimeItems.length) return runtimeItems;
+  } catch (error) {
+    console.error('[REQUEST GALLERY] Could not parse runtime gallery cache', {
+      folderId: safeFolderId,
+      message: error && error.message ? error.message : String(error)
+    });
+  }
   try {
     const props = PropertiesService.getScriptProperties();
     const meta = JSON.parse(String(props.getProperty(REQUEST_GALLERY_CACHE_META_PREFIX + cacheKey) || '{}'));
@@ -6626,8 +6706,7 @@ function readRequestGalleryCachedItems_(folderId) {
     for (let index = 0; index < chunkCount; index++) {
       raw += String(props.getProperty(REQUEST_GALLERY_CACHE_CHUNK_PREFIX + cacheKey + '_' + index) || '');
     }
-    const parsed = JSON.parse(raw || '{}');
-    return Array.isArray(parsed && parsed.items) ? parsed.items.filter(Boolean) : [];
+    return readPayload(raw);
   } catch (error) {
     console.error('[REQUEST GALLERY] Could not read cached gallery payload', {
       folderId: safeFolderId,
@@ -6662,7 +6741,7 @@ function resolveRequestGalleryRequestIds_(payload, items) {
   const seen = {};
   ids.forEach(function(id) { seen[id] = true; });
   (Array.isArray(items) ? items : []).forEach(function(item) {
-    const id = firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, item && item.id, item && item.ID, '');
+    const id = getRequestGalleryItemId_(item);
     if (!id || seen[id]) return;
     seen[id] = true;
     ids.push(id);
@@ -6844,7 +6923,7 @@ function loadRequestGalleryItemsForFolder_(folderId, requestIds) {
     const idSet = {};
     safeIds.forEach(function(id) { idSet[id] = true; });
     rows = folderRows.filter(function(row) {
-      const rowId = firstNonEmptyRequestValue_(row && row.unique_id, row && row.UNIQUE_ID, '');
+      const rowId = getRequestGalleryItemId_(row);
       return !!rowId && !!idSet[rowId];
     });
     if (!rows.length) {
@@ -6871,7 +6950,7 @@ function findRequestGalleryItem_(items, rowId, rowIndex) {
   if (safeRowId) {
     for (let index = 0; index < safeItems.length; index++) {
       const item = safeItems[index] || {};
-      const itemId = String(firstNonEmptyRequestValue_(item.unique_id, item.UNIQUE_ID, item.id, item.ID, '')).trim();
+      const itemId = getRequestGalleryItemId_(item);
       if (itemId && itemId === safeRowId) return item;
     }
   }
@@ -7042,7 +7121,7 @@ function renderRequestGalleryWebApp_(params) {
     const idSet = {};
     requestIds.forEach(function(id) { idSet[id] = true; });
     rows = folderRows.filter(function(row) {
-      const rowId = firstNonEmptyRequestValue_(row && row.unique_id, row && row.UNIQUE_ID, '');
+      const rowId = getRequestGalleryItemId_(row);
       return !!rowId && !!idSet[rowId];
     });
     if (!rows.length) {
@@ -8638,7 +8717,7 @@ function doPost(e) {
           requestFolder: payload.folderId || '',
           requestItems: approvedItems.map(function(item) {
             return {
-              unique_id: firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, item && item.id, ''),
+              unique_id: getRequestGalleryItemId_(item),
               commonname: firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Unknown Item'),
               contsize: firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, '-'),
               itemcode: firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, ''),
