@@ -3835,6 +3835,9 @@ function doGet(e) {
   if (view === 'request-row') {
     return renderRequestRowCopyWebApp_(params);
   }
+  if (view === 'suspend-tag-action') {
+    return handleSuspendTagActionWebApp_(params);
+  }
   return HtmlService
     .createHtmlOutput('<!doctype html><html><body style="font-family:Arial,sans-serif;"><h2>GNC Park Hill</h2><p>App script is running.</p></body></html>')
     .setTitle('GNC Park Hill');
@@ -3956,7 +3959,7 @@ function processDelayedRequestEmailQueue_() {
     let jobPayload = job && job.payload ? JSON.parse(JSON.stringify(job.payload)) : {};
     delete jobPayload.delayMs;
     delete jobPayload.queueDelivery;
-    if (String(jobPayload.emailType || '').trim().toLowerCase() === 'request_complete') {
+    if (['request_complete', 'suspend_tag', 'suspend_tag_reviewed'].indexOf(String(jobPayload.emailType || '').trim().toLowerCase()) !== -1) {
       jobPayload = hydrateQueuedRequestCompletePayload_(jobPayload);
     }
     try {
@@ -5123,8 +5126,32 @@ function collectRequestRecipients_(payload) {
   const approvalStage = String(payload && (payload.approvalStage || payload.approval_stage) || '').trim().toLowerCase();
   const approvalType = String(payload && (payload.approvalType || payload.approval_type) || '').trim().toLowerCase().replace(/_/g, '-');
   const requestedByEmail = normalizeEmailAddress_(payload && (payload.requestedByEmail || payload.requested_by_email) || '');
+  const evalUserEmail = normalizeEmailAddress_(payload && (
+    payload.evalUserEmail ||
+    payload.eval_user_email ||
+    payload.createdByEmail ||
+    payload.created_by_email ||
+    payload.requestedByEmail ||
+    payload.requested_by_email
+  ) || '');
+  const evalUserName = String(firstNonEmptyRequestValue_(
+    payload && payload.evalUserName,
+    payload && payload.eval_user_name,
+    payload && payload.evalUserUsername,
+    payload && payload.eval_user_username,
+    payload && payload.createdBy,
+    payload && payload.created_by,
+    payload && payload.createdByUsername,
+    payload && payload.created_by_username,
+    payload && payload.sentByUsername,
+    payload && payload.sentBy,
+    ''
+  )).trim();
+  const evalUserResolvedEmail = normalizeEmailAddress_(resolveRequestRecipientEmail_(evalUserName, ''));
   const approvalFallbackRecipients = [];
   const bloomCropUpdateInternalRecipients = [];
+  const suspendTagInternalRecipients = [];
+  const suspendTagRowRecipients = [];
   if (emailType === 'ncr_approval' || emailType === 'hold_release_request') {
     if (approvalStage === 'jd') {
       approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com', 'megan_kelly@greenleafnursery.com', 'jd_jones@greenleafnursery.com');
@@ -5140,6 +5167,43 @@ function collectRequestRecipients_(payload) {
       'jd_jones@greenleafnursery.com',
       'megan_kelly@greenleafnursery.com'
     );
+  }
+  if (emailType === 'suspend_tag' || emailType === 'suspend_tag_reviewed') {
+    suspendTagInternalRecipients.push(
+      'dylan_collyge@greenleafnursery.com',
+      'jd_jones@greenleafnursery.com',
+      'megan_kelly@greenleafnursery.com'
+    );
+    getRequestEmailPayloadItems_(payload).forEach(function(item) {
+      [
+        item && item.assignedto,
+        item && item.ASSIGNEDTO,
+        item && item.eval_user_name,
+        item && item.evalUserName,
+        item && item.eval_task_completed_by,
+        item && item.EVAL_TASK_COMPLETED_BY,
+        item && item.completed_by_username,
+        item && item.COMPLETED_BY_USERNAME,
+        item && item.created_by_username,
+        item && item.CREATED_BY_USERNAME,
+        item && item.requested_by,
+        item && item.REQUESTED_BY
+      ].forEach(function(name) {
+        const email = normalizeEmailAddress_(resolveRequestRecipientEmail_(name, ''));
+        if (email) suspendTagRowRecipients.push(email);
+      });
+      [
+        item && item.requested_by_email,
+        item && item.REQUESTED_BY_EMAIL,
+        item && item.created_by_email,
+        item && item.CREATED_BY_EMAIL,
+        item && item.completed_by_email,
+        item && item.COMPLETED_BY_EMAIL
+      ].forEach(function(email) {
+        const normalizedEmail = normalizeEmailAddress_(email);
+        if (normalizedEmail) suspendTagRowRecipients.push(normalizedEmail);
+      });
+    });
   }
   const recipients = dedupeEmailAddresses_([
     payload.recipientEmails,
@@ -5160,9 +5224,13 @@ function collectRequestRecipients_(payload) {
     payload.jdEmail,
     payload.meganEmail,
     requestedByEmail,
+    evalUserEmail,
+    evalUserResolvedEmail,
     repEmail,
     approvalFallbackRecipients,
-    bloomCropUpdateInternalRecipients
+    bloomCropUpdateInternalRecipients,
+    suspendTagInternalRecipients,
+    suspendTagRowRecipients
   ]);
 
   return {
@@ -5336,8 +5404,16 @@ function buildDefaultNcrEmailSubject_(payload) {
 
 function buildRequestEmailSubject_(payload) {
   const customSubject = String(payload.subject || '').trim();
-  if (customSubject) return customSubject;
   const safeType = String(payload && payload.emailType || '').trim().toLowerCase();
+  if (safeType === 'suspend_tag') {
+    const baseSubject = customSubject || buildDefaultRequestEmailSubject_(payload);
+    return /^urgent:/i.test(baseSubject) ? baseSubject : 'URGENT: Suspend Tag Approval Needed - ' + baseSubject;
+  }
+  if (safeType === 'suspend_tag_reviewed') {
+    const baseSubject = customSubject || buildDefaultRequestEmailSubject_(payload);
+    return /^suspend tag reviewed/i.test(baseSubject) ? baseSubject : 'Suspend Tag Reviewed - ' + baseSubject;
+  }
+  if (customSubject) return customSubject;
   return safeType === 'ncr_complete'
     ? buildDefaultNcrEmailSubject_(payload)
     : safeType === 'bloom_crop_update'
@@ -5664,6 +5740,13 @@ function buildRequestEmailItemsFromRows_(rows, payload) {
       unique_id: firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, ''),
       folder: firstNonEmptyRequestValue_(item && item.request_folder, item && item.REQUEST_FOLDER, fallbackFolderId),
       customer: firstNonEmptyRequestValue_(item && item.req_customer, item && item.REQ_CUSTOMER, item && item.request_customer, item && item.REQUEST_CUSTOMER, snapshot.REQ_CUSTOMER, snapshot.request_customer, fallbackCustomer),
+      app_tab_assignment: firstNonEmptyRequestValue_(item && item.app_tab_assignment, item && item.APP_TAB_ASSIGNMENT, item && item.master_app_tab_assignment, item && item.MASTER_APP_TAB_ASSIGNMENT, snapshot.APP_TAB_ASSIGNMENT, snapshot.app_tab_assignment, snapshot.MASTER_APP_TAB_ASSIGNMENT, snapshot.master_app_tab_assignment, ''),
+      req_status: firstNonEmptyRequestValue_(item && item.req_status, item && item.REQ_STATUS, snapshot.REQ_STATUS, snapshot.req_status, ''),
+      req_archived: firstNonEmptyRequestValue_(item && item.req_archived, item && item.REQ_ARCHIVED, snapshot.REQ_ARCHIVED, snapshot.req_archived, ''),
+      req_rep_action: firstNonEmptyRequestValue_(item && item.req_rep_action, item && item.REQ_REP_ACTION, snapshot.REQ_REP_ACTION, snapshot.req_rep_action, ''),
+      requested_by: firstNonEmptyRequestValue_(item && item.requested_by, item && item.REQUESTED_BY, snapshot.REQUESTED_BY, snapshot.requested_by, ''),
+      requested_by_email: firstNonEmptyRequestValue_(item && item.requested_by_email, item && item.REQUESTED_BY_EMAIL, snapshot.REQUESTED_BY_EMAIL, snapshot.requested_by_email, ''),
+      created_by_email: firstNonEmptyRequestValue_(item && item.created_by_email, item && item.CREATED_BY_EMAIL, snapshot.CREATED_BY_EMAIL, snapshot.created_by_email, ''),
       commonname: firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, snapshot.COMMONNAME, snapshot.commonname, ''),
       contsize: firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, ''),
       itemcode: firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, ''),
@@ -5783,7 +5866,8 @@ function getRequestEmailPayloadItems_(payload) {
 
 function hydrateRequestCompletePayload_(payload) {
   const safePayload = payload && typeof payload === 'object' ? JSON.parse(JSON.stringify(payload)) : {};
-  if (String(safePayload.emailType || '').trim().toLowerCase() !== 'request_complete') return safePayload;
+  const hydrateEmailType = String(safePayload.emailType || '').trim().toLowerCase();
+  if (['request_complete', 'suspend_tag', 'suspend_tag_reviewed'].indexOf(hydrateEmailType) === -1) return safePayload;
   const folderId = String(firstNonEmptyRequestValue_(safePayload.requestFolder, safePayload.folderId, '')).trim();
   const requestIds = normalizeRequestIdList_(safePayload.requestIds);
   const existingItems = getRequestEmailPayloadItems_(safePayload);
@@ -6077,6 +6161,312 @@ function buildRequestRowPhotoPreviewHtml_(folderId, item) {
     galleryButtonHtml,
     '</div>'
   ].join('');
+}
+
+function normalizeSuspendTagToken_(value) {
+  return String(value || '').trim().toLowerCase().replace(/_/g, '-');
+}
+
+function isSuspendTagEmailItem_(item) {
+  return normalizeSuspendTagToken_(firstNonEmptyRequestValue_(
+    item && item.app_tab_assignment,
+    item && item.APP_TAB_ASSIGNMENT,
+    item && item.master_app_tab_assignment,
+    item && item.MASTER_APP_TAB_ASSIGNMENT,
+    item && item.source,
+    item && item.SOURCE,
+    ''
+  )) === 'suspend-tag';
+}
+
+function normalizeSuspendTagAction_(action) {
+  const text = String(action || '').trim().toLowerCase();
+  if (text === 'approve' || text === 'approved') return 'Approved';
+  if (text === 'deny' || text === 'denied' || text === 'reject' || text === 'rejected') return 'Rejected';
+  return '';
+}
+
+function getSuspendTagActionParam_(actionLabel) {
+  return String(actionLabel || '').trim() === 'Rejected' ? 'deny' : 'approve';
+}
+
+function getSuspendTagRowId_(item) {
+  return String(firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, item && item.id, item && item.ID, '')).trim();
+}
+
+function getSuspendTagRepAction_(item) {
+  return String(firstNonEmptyRequestValue_(item && item.req_rep_action, item && item.REQ_REP_ACTION, '')).trim();
+}
+
+function buildSuspendTagActionToken_(folderId, rowId, action) {
+  const actionLabel = normalizeSuspendTagAction_(action);
+  const raw = [
+    String(folderId || '').trim(),
+    String(rowId || '').trim(),
+    String(actionLabel || '').toLowerCase(),
+    buildRequestGalleryToken_(folderId)
+  ].join('|');
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, raw, Utilities.Charset.UTF_8);
+  return base64EncodeWebSafeNoPadding_(digest);
+}
+
+function verifySuspendTagActionToken_(folderId, rowId, action, token) {
+  const expected = buildSuspendTagActionToken_(folderId, rowId, action);
+  return !!expected && expected === String(token || '').trim();
+}
+
+function buildSuspendTagActionUrl_(folderId, item, action) {
+  const rowId = getSuspendTagRowId_(item);
+  const actionLabel = normalizeSuspendTagAction_(action);
+  const baseUrl = getRequestGalleryBaseUrl_();
+  if (!folderId || !rowId || !actionLabel || !baseUrl) return '';
+  const separator = baseUrl.indexOf('?') === -1 ? '?' : '&';
+  return baseUrl + separator +
+    'gallery=suspend-tag-action' +
+    '&folder=' + encodeURIComponent(folderId) +
+    '&row=' + encodeURIComponent(rowId) +
+    '&action=' + encodeURIComponent(getSuspendTagActionParam_(actionLabel)) +
+    '&token=' + encodeURIComponent(buildSuspendTagActionToken_(folderId, rowId, actionLabel));
+}
+
+function buildSuspendTagActionButtonsHtml_(folderId, item) {
+  const existingAction = getSuspendTagRepAction_(item);
+  if (existingAction) {
+    const actionTone = existingAction === 'Approved' ? '#047857' : '#b91c1c';
+    const actionText = existingAction === 'Approved' ? 'Approved Photo' : 'Denied Photo';
+    return '<div style="margin-top:12px;padding:9px 12px;border-radius:999px;background:#f8fafc;border:1px solid #dbe4ee;color:' + actionTone + ';font-weight:800;text-align:center;">' + actionText + '</div>';
+  }
+  const approveUrl = buildSuspendTagActionUrl_(folderId, item, 'Approved');
+  const denyUrl = buildSuspendTagActionUrl_(folderId, item, 'Rejected');
+  if (!approveUrl && !denyUrl) return '';
+  return [
+    '<div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">',
+    approveUrl ? '<a href="' + escapeEmailAttribute_(approveUrl) + '" style="display:inline-block;min-width:128px;text-align:center;padding:11px 14px;border-radius:999px;background:#007a4d;color:#ffffff;font-weight:800;text-decoration:none;">Approve Photo</a>' : '',
+    denyUrl ? '<a href="' + escapeEmailAttribute_(denyUrl) + '" style="display:inline-block;min-width:128px;text-align:center;padding:11px 14px;border-radius:999px;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;font-weight:800;text-decoration:none;">Deny Photo</a>' : '',
+    '</div>'
+  ].join('');
+}
+
+function buildSuspendTagItemsHtml_(payload, options) {
+  const safeOptions = options && typeof options === 'object' ? options : {};
+  const includeActions = safeOptions.includeActions !== false;
+  const folderId = String(firstNonEmptyRequestValue_(payload && payload.folderId, payload && payload.requestFolder, '')).trim();
+  const items = getRequestEmailPayloadItems_(payload);
+  if (!items.length) return '';
+  return items.map(function(item, index) {
+    const rowNumber = index + 1;
+    const title = [
+      String(firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Unknown')).trim(),
+      String(firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, '')).trim()
+    ].filter(Boolean).join(' ');
+    const summaryRows = [
+      ['Item Code', firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, '')],
+      ['Location', firstNonEmptyRequestValue_(item && item.locationcode, item && item.LOCATIONCODE, item && item.loc, '')],
+      ['Lot Code', firstNonEmptyRequestValue_(item && item.lotcode, item && item.LOTCODE, '')],
+      ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, '')],
+      ['LOC Match %', firstNonEmptyRequestValue_(item && item.match, item && item.REQ_MATCH, '')],
+      ['LOC Photo Match', firstNonEmptyRequestValue_(item && item.loc_match_qty, item && item.LOC_MATCH_QTY, '')],
+      ['AV Note', firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, '')]
+    ].filter(function(row) { return String(row[1] || '').trim(); }).map(function(row) {
+      return '<div style="margin:3px 0;"><strong>' + escapeEmailHtml_(row[0]) + ':</strong> ' + escapeEmailHtml_(row[1]) + '</div>';
+    }).join('');
+    return [
+      '<div style="margin:0 0 18px 0;padding:14px;border-left:5px solid #dc2626;background:#fff7ed;border-radius:10px;">',
+      '<div style="margin:0 0 8px 0;color:#991b1b;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.14em;">Suspend Tag</div>',
+      '<h3 style="margin:0 0 10px 0;color:#111827;font-size:17px;">' + rowNumber + '. ' + escapeEmailHtml_(title) + '</h3>',
+      buildRequestRowPhotoPreviewHtml_(folderId, item),
+      '<div style="margin-top:12px;color:#374151;font-size:13px;line-height:1.5;">' + summaryRows + '</div>',
+      includeActions ? buildSuspendTagActionButtonsHtml_(folderId, item) : '',
+      '</div>'
+    ].join('');
+  }).join('');
+}
+
+function buildSuspendTagItemsText_(payload) {
+  return buildRequestItemsText_(payload);
+}
+
+function fetchSuspendTagRequestRowById_(rowId) {
+  const safeRowId = String(rowId || '').trim();
+  if (!safeRowId) return null;
+  const requestTableNames = getRequestEmailTableCandidates_('v2_active_request', 'PH');
+  for (let i = 0; i < requestTableNames.length; i++) {
+    const tableName = requestTableNames[i];
+    const url = `${SUPABASE_URL}/rest/v1/${tableName}?select=*&unique_id=eq.${encodeURIComponent(safeRowId)}&limit=1`;
+    const result = UrlFetchApp.fetch(url, {
+      method: 'get',
+      muteHttpExceptions: true,
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      }
+    });
+    const code = result.getResponseCode();
+    if (code >= 200 && code < 300) {
+      try {
+        const rows = JSON.parse(result.getContentText() || '[]');
+        if (Array.isArray(rows) && rows.length) return rows[0];
+      } catch (error) {}
+    }
+  }
+  return null;
+}
+
+function patchSuspendTagRequestAction_(rowId, actionLabel) {
+  const safeRowId = String(rowId || '').trim();
+  const safeAction = normalizeSuspendTagAction_(actionLabel);
+  if (!safeRowId || !safeAction) return { ok: false, message: 'Missing row or action.' };
+  const payload = {
+    req_rep_action: safeAction,
+    req_archived: true,
+    req_status: 'Complete'
+  };
+  const requestTableNames = getRequestEmailTableCandidates_('v2_active_request', 'PH');
+  for (let i = 0; i < requestTableNames.length; i++) {
+    const tableName = requestTableNames[i];
+    const url = `${SUPABASE_URL}/rest/v1/${tableName}?unique_id=eq.${encodeURIComponent(safeRowId)}`;
+    const result = UrlFetchApp.fetch(url, {
+      method: 'patch',
+      contentType: 'application/json',
+      muteHttpExceptions: true,
+      payload: JSON.stringify(payload),
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Prefer': 'return=minimal'
+      }
+    });
+    const code = result.getResponseCode();
+    if (code >= 200 && code < 300) return { ok: true, table: tableName };
+  }
+  return { ok: false, message: 'Could not update Suspend Tag row.' };
+}
+
+function writeSuspendTagActionHistory_(row, actionLabel) {
+  if (!row) return;
+  const rowId = firstNonEmptyRequestValue_(row.unique_id, row.UNIQUE_ID, '');
+  const folderId = firstNonEmptyRequestValue_(row.request_folder, row.REQUEST_FOLDER, '');
+  const nowIso = new Date().toISOString();
+  const historyRow = {
+    unique_id: rowId,
+    master_id: firstNonEmptyRequestValue_(row.master_id, row.MASTER_ID, ''),
+    master_unique_id: firstNonEmptyRequestValue_(row.master_unique_id, row.MASTER_UNIQUE_ID, row.master_id, row.MASTER_ID, ''),
+    source_table: 'v2_active_request',
+    request_folder: folderId,
+    request_customer: firstNonEmptyRequestValue_(row.req_customer, row.REQ_CUSTOMER, ''),
+    requested_by: firstNonEmptyRequestValue_(row.requested_by, row.REQUESTED_BY, ''),
+    req_status: 'Complete',
+    req_archived: true,
+    req_rep_action: actionLabel,
+    req_qty: firstNonEmptyRequestValue_(row.req_qty, row.REQ_QTY, ''),
+    req_reserve: firstNonEmptyRequestValue_(row.req_reserve, row.REQ_RESERVE, ''),
+    req_match: firstNonEmptyRequestValue_(row.req_match, row.REQ_MATCH, ''),
+    req_spec: firstNonEmptyRequestValue_(row.req_spec, row.REQ_SPEC, ''),
+    req_caliper: firstNonEmptyRequestValue_(row.req_caliper, row.REQ_CALIPER, ''),
+    req_pic_note: firstNonEmptyRequestValue_(row.req_pic_note, row.REQ_PIC_NOTE, ''),
+    req_comments: firstNonEmptyRequestValue_(row.req_comments, row.REQ_COMMENTS, ''),
+    av_note: firstNonEmptyRequestValue_(row.av_note, row.AV_NOTE, ''),
+    date_completed: nowIso,
+    itemcode: firstNonEmptyRequestValue_(row.itemcode, row.ITEMCODE, ''),
+    commonname: firstNonEmptyRequestValue_(row.commonname, row.COMMONNAME, ''),
+    contsize: firstNonEmptyRequestValue_(row.contsize, row.CONTSIZE, ''),
+    locationcode: firstNonEmptyRequestValue_(row.locationcode, row.LOCATIONCODE, ''),
+    lotcode: firstNonEmptyRequestValue_(row.lotcode, row.LOTCODE, ''),
+    priority: firstNonEmptyRequestValue_(row.priority, row.PRIORITY, ''),
+    ptravailable: firstNonEmptyRequestValue_(row.ptravailable, row.PTRAVAILABLE, ''),
+    s_lts: firstNonEmptyRequestValue_(row.s_lts, row.S_LTS, ''),
+    holdstopcode: firstNonEmptyRequestValue_(row.holdstopcode, row.HOLDSTOPCODE, ''),
+    season: firstNonEmptyRequestValue_(row.season, row.SEASON, ''),
+    photo_link: firstNonEmptyRequestValue_(row.req_photo_link, row.REQ_PHOTO_LINK, row.photo_link, row.PHOTO_LINK, ''),
+    photo_name: firstNonEmptyRequestValue_(row.req_photo_name, row.REQ_PHOTO_NAME, row.photo_name, row.PHOTO_NAME, ''),
+    completed_by_username: 'email-action',
+    completed_by_display: 'Email Action',
+    snapshot: row,
+    last_event: 'suspend_tag_' + getSuspendTagActionParam_(actionLabel),
+    updated_at: nowIso
+  };
+  try {
+    pushToSupabase('v2_request_history', [historyRow]);
+  } catch (error) {
+    console.error('Could not write Suspend Tag history', error);
+  }
+}
+
+function maybeSendSuspendTagReviewedEmail_(folderId) {
+  const safeFolderId = String(folderId || '').trim();
+  if (!safeFolderId) return { sent: false, reason: 'missing_folder' };
+  const rows = mergeRequestEmailRows_(
+    fetchRequestRowsForEmailFolder_(safeFolderId),
+    fetchRequestHistoryRowsForEmailFolder_(safeFolderId)
+  );
+  const folderRows = rows.filter(function(row) {
+    return String(firstNonEmptyRequestValue_(row && row.request_folder, row && row.REQUEST_FOLDER, '')).trim() === safeFolderId;
+  });
+  const suspendRows = folderRows.some(isSuspendTagEmailItem_) ? folderRows.filter(isSuspendTagEmailItem_) : folderRows;
+  if (!suspendRows.length) return { sent: false, reason: 'no_rows' };
+  const waiting = suspendRows.filter(function(row) {
+    return !getSuspendTagRepAction_(row);
+  });
+  if (waiting.length) return { sent: false, reason: 'waiting_for_actions', remaining: waiting.length };
+  const items = buildRequestEmailItemsFromRows_(suspendRows, { folderId: safeFolderId });
+  const payload = {
+    type: 'email',
+    emailType: 'suspend_tag_reviewed',
+    folderId: safeFolderId,
+    requestFolder: safeFolderId,
+    repName: firstNonEmptyRequestValue_(suspendRows[0] && suspendRows[0].requested_by, suspendRows[0] && suspendRows[0].REQUESTED_BY, ''),
+    customer: firstNonEmptyRequestValue_(suspendRows[0] && suspendRows[0].req_customer, suspendRows[0] && suspendRows[0].REQ_CUSTOMER, ''),
+    itemsCount: items.length,
+    requestItems: items,
+    items: items,
+    requestIds: items.map(function(item) { return getSuspendTagRowId_(item); }).filter(Boolean),
+    forceResend: true
+  };
+  return sendRequestEmailWithFallback_(payload);
+}
+
+function renderSuspendTagActionResultPage_(title, message, ok) {
+  const color = ok ? '#007a4d' : '#b91c1c';
+  return HtmlService.createHtmlOutput([
+    '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>',
+    escapeEmailHtml_(title),
+    '</title></head><body style="margin:0;background:#f8fafc;font-family:Arial,sans-serif;color:#0f172a;">',
+    '<main style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;">',
+    '<section style="width:100%;max-width:520px;background:white;border:1px solid #dbe4ee;border-radius:18px;padding:26px;box-shadow:0 18px 48px rgba(15,23,42,0.12);">',
+    '<div style="font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:0.16em;color:', color, ';">GNC PH Suspend Tag</div>',
+    '<h1 style="margin:12px 0 10px 0;font-size:28px;color:', color, ';">', escapeEmailHtml_(title), '</h1>',
+    '<p style="margin:0;font-size:16px;line-height:1.55;">', escapeEmailHtml_(message), '</p>',
+    '</section></main></body></html>'
+  ].join('')).setTitle(title);
+}
+
+function handleSuspendTagActionWebApp_(params) {
+  const safeParams = params || {};
+  const folderId = String(firstNonEmptyRequestValue_(safeParams.folder, safeParams.folderId, safeParams.requestFolder, '')).trim();
+  const rowId = String(firstNonEmptyRequestValue_(safeParams.row, safeParams.rowId, safeParams.id, '')).trim();
+  const actionLabel = normalizeSuspendTagAction_(safeParams.action);
+  const token = String(safeParams.token || '').trim();
+  if (!folderId || !rowId || !actionLabel || !verifySuspendTagActionToken_(folderId, rowId, actionLabel, token)) {
+    return renderSuspendTagActionResultPage_('Action Not Accepted', 'The approval link is missing data or has expired. Please open the latest Suspend Tag email.', false);
+  }
+  const row = fetchSuspendTagRequestRowById_(rowId);
+  if (!row) {
+    return renderSuspendTagActionResultPage_('Row Not Found', 'This Suspend Tag row is no longer active in the request queue.', false);
+  }
+  const patched = patchSuspendTagRequestAction_(rowId, actionLabel);
+  if (!patched.ok) {
+    return renderSuspendTagActionResultPage_('Could Not Save', patched.message || 'The row action could not be saved. Please try again from the app.', false);
+  }
+  row.req_rep_action = actionLabel;
+  row.REQ_REP_ACTION = actionLabel;
+  row.req_archived = true;
+  row.REQ_ARCHIVED = true;
+  row.req_status = 'Complete';
+  row.REQ_STATUS = 'Complete';
+  writeSuspendTagActionHistory_(row, actionLabel);
+  maybeSendSuspendTagReviewedEmail_(folderId);
+  const actionText = actionLabel === 'Approved' ? 'approved' : 'denied';
+  return renderSuspendTagActionResultPage_('Photo ' + actionText, 'This Suspend Tag row has been marked ' + actionText + '.', true);
 }
 
 function getRequestGalleryCacheKey_(folderId) {
@@ -7004,14 +7394,19 @@ function buildAdvertisementEmailHeroText_(payload) {
 function buildRequestEmailMessage_(payload) {
   const emailType = String(payload.emailType || '').trim().toLowerCase();
   const isApprovalEmail = emailType === 'ncr_approval' || emailType === 'hold_release_request';
+  const isSuspendTagEmail = emailType === 'suspend_tag' || emailType === 'suspend_tag_reviewed';
   const repName = escapeEmailHtml_(payload.repName || payload.salesRepName || '');
   const customer = escapeEmailHtml_(payload.customer || 'N/A');
   const folderId = escapeEmailHtml_(payload.folderId || payload.requestFolder || '');
   const itemsCount = escapeEmailHtml_(payload.itemsCount || 0);
-  const itemsHtml = emailType === 'request_complete'
-    ? buildCompactRequestItemsHtml_(payload)
-    : (isApprovalEmail ? buildApprovalRequestItemsHtml_(payload) : buildRequestItemsHtml_(payload));
-  const itemsText = isApprovalEmail ? buildApprovalRequestItemsText_(payload) : buildRequestItemsText_(payload);
+  const itemsHtml = isSuspendTagEmail
+    ? buildSuspendTagItemsHtml_(payload, { includeActions: emailType === 'suspend_tag' })
+    : (emailType === 'request_complete'
+      ? buildCompactRequestItemsHtml_(payload)
+      : (isApprovalEmail ? buildApprovalRequestItemsHtml_(payload) : buildRequestItemsHtml_(payload)));
+  const itemsText = isSuspendTagEmail
+    ? buildSuspendTagItemsText_(payload)
+    : (isApprovalEmail ? buildApprovalRequestItemsText_(payload) : buildRequestItemsText_(payload));
   const selectionSummaryHtml = buildRequestSelectionSummaryHtml_(payload);
   const selectionSummaryText = buildRequestSelectionSummaryText_(payload);
   const subject = buildRequestEmailSubject_(payload);
@@ -7019,6 +7414,43 @@ function buildRequestEmailMessage_(payload) {
   const customerConsigneeSummaryText = buildCustomerConsigneeSummaryText_(payload);
   const advertisementHeroHtml = buildAdvertisementEmailHeroHtml_(payload);
   const advertisementHeroText = buildAdvertisementEmailHeroText_(payload);
+
+  if (isSuspendTagEmail) {
+    const reviewed = emailType === 'suspend_tag_reviewed';
+    const title = reviewed ? 'Suspend Tag Reviewed' : 'URGENT: Suspend Tag Approval Needed';
+    const plainIntro = reviewed
+      ? 'All Suspend Tag rows in this folder have been reviewed.'
+      : 'Approve or deny each row photo using the links in this email.';
+    const urgentBannerHtml = reviewed ? '' : [
+      '<div style="margin:0 0 18px 0;padding:12px 14px;border-radius:12px;background:#fee2e2;border:1px solid #fecaca;color:#991b1b;font-weight:900;text-transform:uppercase;letter-spacing:0.08em;">',
+      'Urgent: Suspend Tag approval needed',
+      '</div>'
+    ].join('');
+    return {
+      subject: subject,
+      textBody: [
+        title,
+        plainIntro,
+        'Rep: ' + String(payload.repName || payload.salesRepName || ''),
+        'Customer: ' + String(payload.customer || 'N/A'),
+        'Folder ID: ' + String(payload.folderId || payload.requestFolder || ''),
+        'Rows: ' + String(payload.itemsCount || 0),
+        itemsText
+      ].filter(Boolean).join('\n\n'),
+      htmlBody: buildPhoneSizedEmailHtml_([
+        '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
+        urgentBannerHtml,
+        '<h2 style="color: ' + (reviewed ? '#007a4d' : '#b91c1c') + '; margin-top:0;">' + escapeEmailHtml_(title) + '</h2>',
+        '<p style="margin:0 0 14px 0;color:#374151;">' + escapeEmailHtml_(plainIntro) + '</p>',
+        '<p><strong>Rep:</strong> ' + repName + '</p>',
+        '<p><strong>Customer:</strong> ' + customer + '</p>',
+        '<p><strong>Folder ID:</strong> ' + folderId + '</p>',
+        '<p><strong>Rows:</strong> ' + itemsCount + '</p>',
+        itemsHtml,
+        '</div>'
+      ].join(''))
+    };
+  }
 
   if (emailType === 'new_request') {
     const requestedItemsSection = itemsHtml
@@ -7478,7 +7910,8 @@ function getApprovalEmailDisplayName_(payload) {
 }
 
 function sendRequestEmailWithFallback_(payload) {
-  if (String(payload && payload.emailType || '').trim().toLowerCase() === 'request_complete') {
+  const initialEmailType = String(payload && payload.emailType || '').trim().toLowerCase();
+  if (['request_complete', 'suspend_tag', 'suspend_tag_reviewed'].indexOf(initialEmailType) !== -1) {
     payload = hydrateRequestCompletePayload_(payload);
   }
   const recipients = collectRequestRecipients_(payload);
@@ -7493,6 +7926,30 @@ function sendRequestEmailWithFallback_(payload) {
 
   const message = buildRequestEmailMessage_(payload);
   const safeType = String(payload.emailType || '').trim().toLowerCase();
+  if (safeType === 'suspend_tag' || safeType === 'suspend_tag_reviewed') {
+    const suspendTagName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || 'GNC PH Suspend Tag').trim() || 'GNC PH Suspend Tag';
+    try {
+      GmailApp.sendEmail(recipients.toList, message.subject, message.textBody || message.subject, {
+        htmlBody: message.htmlBody,
+        name: suspendTagName
+      });
+      return {
+        ok: true,
+        status: 200,
+        recipients: recipients.toArray,
+        mode: 'gmailapp_named'
+      };
+    } catch (error) {
+      console.error('Suspend Tag email send failed', error);
+      return {
+        ok: false,
+        status: 500,
+        recipients: recipients.toArray,
+        mode: 'gmailapp_error',
+        message: error && error.message ? error.message : 'Suspend Tag email send failed.'
+      };
+    }
+  }
   if (safeType === 'ncr_complete') {
     const ncrCompleteName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || 'GNC PH NCR').trim() || 'GNC PH NCR';
     try {
@@ -8110,7 +8567,7 @@ function doPost(e) {
     }
     
     if (payload.type === "email") {
-    if (payload.emailType === "new_request" || payload.emailType === "request_complete" || payload.emailType === "ncr_complete" || payload.emailType === "ncr_approval" || payload.emailType === "hold_release_request" || payload.emailType === "drive_customer_outreach" || payload.emailType === "bloom_crop_update") {
+    if (payload.emailType === "new_request" || payload.emailType === "request_complete" || payload.emailType === "suspend_tag" || payload.emailType === "suspend_tag_reviewed" || payload.emailType === "ncr_complete" || payload.emailType === "ncr_approval" || payload.emailType === "hold_release_request" || payload.emailType === "drive_customer_outreach" || payload.emailType === "bloom_crop_update") {
       const emailType = String(payload.emailType || '').trim().toLowerCase();
       const shouldQueueDelayedReply = emailType === 'request_complete' && Math.max(0, Number(payload.delayMs) || 0) > 0;
       if (shouldQueueDelayedReply) {
