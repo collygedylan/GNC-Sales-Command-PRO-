@@ -5163,15 +5163,18 @@ function getEvalTaskCompletionSummary_(payload) {
 }
 
 function collectRequestRecipients_(payload) {
-  const sendToAllSalesReps = payload && payload.sendToAllSalesReps === true;
-  const repName = String(payload.repName || payload.salesRepName || payload.requestedBy || '').trim();
-  const repEmail = sendToAllSalesReps ? '' : normalizeEmailAddress_(resolveRequestRecipientEmail_(repName, payload.repEmail || payload.salesRepEmail || ''));
   const emailType = String(payload && payload.emailType || '').trim().toLowerCase();
+  const sendToAllSalesReps = payload && (payload.sendToAllSalesReps === true || emailType === 'drive_shift_report');
+  const repName = emailType === 'drive_shift_report'
+    ? ''
+    : String(payload.repName || payload.salesRepName || payload.requestedBy || '').trim();
+  const repEmail = sendToAllSalesReps ? '' : normalizeEmailAddress_(resolveRequestRecipientEmail_(repName, payload.repEmail || payload.salesRepEmail || ''));
   const approvalStage = String(payload && (payload.approvalStage || payload.approval_stage) || '').trim().toLowerCase();
   const approvalType = String(payload && (payload.approvalType || payload.approval_type) || '').trim().toLowerCase().replace(/_/g, '-');
   const requestedByEmail = normalizeEmailAddress_(payload && (payload.requestedByEmail || payload.requested_by_email) || '');
   const approvalFallbackRecipients = [];
   const bloomCropUpdateInternalRecipients = [];
+  const driveShiftFallbackRecipients = [];
   if (emailType === 'ncr_approval' || emailType === 'hold_release_request') {
     if (approvalStage === 'jd') {
       approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com', 'megan_kelly@greenleafnursery.com', 'jd_jones@greenleafnursery.com');
@@ -5187,6 +5190,9 @@ function collectRequestRecipients_(payload) {
       'jd_jones@greenleafnursery.com',
       'megan_kelly@greenleafnursery.com'
     );
+  }
+  if (emailType === 'drive_shift_report') {
+    driveShiftFallbackRecipients.push('dylan_collyge@greenleafnursery.com');
   }
   const recipients = dedupeEmailAddresses_([
     payload.recipientEmails,
@@ -5209,7 +5215,8 @@ function collectRequestRecipients_(payload) {
     requestedByEmail,
     repEmail,
     approvalFallbackRecipients,
-    bloomCropUpdateInternalRecipients
+    bloomCropUpdateInternalRecipients,
+    driveShiftFallbackRecipients
   ]);
 
   return {
