@@ -4586,6 +4586,7 @@ function constrainEmailImagesForPhoneLayout_(html) {
   const sourceHtml = String(html || '');
   if (!sourceHtml) return '';
   return sourceHtml.replace(/<img\b([^>]*)>/gi, function(match, attrs) {
+    if (/\bdata-email-thumb\b/i.test(String(attrs || ''))) return match;
     let safeAttrs = String(attrs || '');
     const imageStyle = 'display:block;width:100%;max-width:320px;height:auto;max-height:380px;object-fit:contain;border-radius:8px;border:1px solid #d7ded8;';
     if (/style\s*=/i.test(safeAttrs)) {
@@ -4637,6 +4638,62 @@ function normalizeRequestPhotoUrlForEmail_(url) {
   const driveId = extractGoogleDriveFileIdFromUrl_(safeUrl);
   if (driveId) return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(driveId) + '&sz=w1600';
   return safeUrl;
+}
+
+function getRequestEmailThumbnailUrl_(url, width) {
+  const safeUrl = normalizeRequestPhotoUrlForEmail_(url);
+  if (!safeUrl) return '';
+  const safeWidth = Math.max(96, Math.min(1600, Number(width) || 320));
+  const driveId = extractGoogleDriveFileIdFromUrl_(safeUrl);
+  if (driveId) return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(driveId) + '&sz=w' + safeWidth;
+  return safeUrl;
+}
+
+function normalizeRequestPhotoUrlListForEmail_(photoUrls) {
+  const seen = {};
+  const urls = [];
+  (Array.isArray(photoUrls) ? photoUrls : []).forEach(function(url) {
+    const safeUrl = normalizeRequestPhotoUrlForEmail_(url);
+    if (!safeUrl || !/^https?:\/\//i.test(safeUrl) || seen[safeUrl]) return;
+    seen[safeUrl] = true;
+    urls.push(safeUrl);
+  });
+  return urls;
+}
+
+function buildRequestEmailPhotoPreviewStripHtml_(photoUrls, options) {
+  const opts = options || {};
+  const urls = normalizeRequestPhotoUrlListForEmail_(photoUrls);
+  if (!urls.length) return '';
+  const maxPhotos = Math.max(1, Number(opts.maxPhotos) || 12);
+  const shownUrls = urls.slice(0, maxPhotos);
+  const hiddenCount = Math.max(0, urls.length - shownUrls.length);
+  const tileSize = Math.max(84, Math.min(132, Number(opts.tileSize) || 116));
+  const thumbWidth = Math.max(240, Number(opts.thumbWidth) || 360);
+  const titlePrefix = String(opts.titlePrefix || 'Photo').trim() || 'Photo';
+  const tilesHtml = shownUrls.map(function(url, index) {
+    const thumbUrl = getRequestEmailThumbnailUrl_(url, thumbWidth);
+    const fullUrl = getRequestEmailThumbnailUrl_(url, 1600) || url;
+    const label = titlePrefix + ' ' + (index + 1);
+    return [
+      '<a href="' + escapeEmailAttribute_(fullUrl) + '" style="display:inline-block;vertical-align:top;width:' + tileSize + 'px;margin:0 8px 8px 0;text-decoration:none;color:#065f46;">',
+      '<img data-email-thumb="1" src="' + escapeEmailAttribute_(thumbUrl) + '" alt="' + escapeEmailAttribute_(label) + '" width="' + tileSize + '" height="' + tileSize + '" style="display:block;width:' + tileSize + 'px;height:' + tileSize + 'px;object-fit:cover;border-radius:10px;border:1px solid #d7ded8;background:#f8fafc;">',
+      '<span style="display:block;margin-top:4px;text-align:center;font-size:10px;font-weight:800;color:#065f46;line-height:1.2;">' + escapeEmailHtml_(label) + '</span>',
+      '</a>'
+    ].join('');
+  }).join('');
+  const helperText = urls.length > 1
+    ? 'Swipe or scroll the photo previews in this email. Tap a preview for the full photo.'
+    : 'Tap the preview for the full photo.';
+  return [
+    '<div style="margin:10px 0 12px 0;">',
+    '<div style="margin:0 0 7px 0;color:#065f46;font-size:12px;line-height:1.35;font-weight:800;">' + escapeEmailHtml_(helperText) + '</div>',
+    '<div style="max-width:100%;overflow-x:auto;overflow-y:hidden;white-space:nowrap;-webkit-overflow-scrolling:touch;padding:2px 0 3px 0;">',
+    tilesHtml,
+    hiddenCount ? '<span style="display:inline-block;vertical-align:top;width:' + tileSize + 'px;height:' + tileSize + 'px;border-radius:10px;border:1px solid #b7f2d1;background:#ecfdf5;color:#065f46;text-align:center;font-size:13px;font-weight:900;line-height:' + tileSize + 'px;">+' + escapeEmailHtml_(hiddenCount) + '</span>' : '',
+    '</div>',
+    '</div>'
+  ].join('');
 }
 
 function extractRequestPhotoUrls_(value) {
@@ -6089,18 +6146,12 @@ function buildRequestRowPhotoPreviewHtml_(folderId, item) {
   }
   const galleryUrl = buildRequestRowGalleryUrl_(folderId, item);
   const photoCountText = photoUrls.length === 1 ? '1 photo' : photoUrls.length + ' photos';
-  const firstPhotoUrl = photoUrls[0];
-  const safeUrl = escapeEmailAttribute_(firstPhotoUrl);
-  const safeTargetUrl = escapeEmailAttribute_(galleryUrl || firstPhotoUrl);
-  const photoLabel = photoUrls.length === 1 ? 'Photo 1 of 1' : 'First photo of ' + photoUrls.length;
-  const photoCardHtml = [
-    '<div style="margin:0 0 12px 0;">',
-    '<a href="' + safeTargetUrl + '" style="display:block;text-decoration:none;">',
-    '<img src="' + safeUrl + '" alt="' + escapeEmailAttribute_(photoLabel) + '" width="320" style="display:block;width:100%;max-width:320px;height:auto;max-height:380px;object-fit:contain;border-radius:10px;border:1px solid #d7ded8;margin:0 auto;">',
-    '</a>',
-    '<div style="margin-top:5px;text-align:center;color:#065f46;font-size:11px;font-weight:800;">' + escapeEmailHtml_(photoLabel) + '</div>',
-    '</div>'
-  ].join('');
+  const photoPreviewStripHtml = buildRequestEmailPhotoPreviewStripHtml_(photoUrls, {
+    titlePrefix: 'Photo',
+    tileSize: 116,
+    thumbWidth: 360,
+    maxPhotos: 12
+  });
   const galleryButtonHtml = galleryUrl ? [
     '<div style="text-align:center;">',
     '<a href="' + escapeEmailAttribute_(galleryUrl) + '" style="display:inline-block;padding:10px 14px;border-radius:999px;background:#007a4d;color:#ffffff;font-weight:700;text-decoration:none;">View Row Photo Gallery</a>',
@@ -6108,8 +6159,8 @@ function buildRequestRowPhotoPreviewHtml_(folderId, item) {
   ].join('') : '';
   return [
     '<div style="margin:12px 0;padding:10px;border:1px solid #b7f2d1;border-radius:12px;background:#f0fdf4;">',
-    '<p style="margin:0 0 12px 0;color:#065f46;font-size:13px;line-height:1.45;font-weight:700;">First photo shown for this row. Open the gallery to view all ' + escapeEmailHtml_(photoCountText) + '.</p>',
-    photoCardHtml,
+    '<p style="margin:0 0 10px 0;color:#065f46;font-size:13px;line-height:1.45;font-weight:700;">' + escapeEmailHtml_(photoCountText) + ' captured for this row.</p>',
+    photoPreviewStripHtml,
     pickNoteHtml,
     galleryButtonHtml,
     '</div>'
@@ -6360,19 +6411,24 @@ function buildRequestGalleryPreviewHtml_(payload) {
   const targetUrl = galleryUrl || firstSlide.url || '';
   if (!targetUrl) return '';
   const safeTargetUrl = escapeEmailAttribute_(targetUrl);
-  const safeFirstUrl = escapeEmailAttribute_(firstSlide.url || targetUrl);
   const photoCountText = slides.length === 1 ? '1 photo' : slides.length + ' photos';
   const rowCountText = items.length === 1 ? '1 row' : items.length + ' rows';
   const actionLabel = galleryUrl ? 'View Photo Gallery' : 'Open First Photo';
+  const previewStripHtml = buildRequestEmailPhotoPreviewStripHtml_(slides.map(function(slide) {
+    return slide && slide.url;
+  }), {
+    titlePrefix: 'Photo',
+    tileSize: 112,
+    thumbWidth: 360,
+    maxPhotos: 12
+  });
   const caption = galleryUrl
-    ? 'First photo shown. Open the gallery to swipe or click through all ' + photoCountText + ' from ' + rowCountText + '.'
-    : 'First photo shown. Open this photo for the full-size image.';
+    ? 'Preview photos are shown below. Open the gallery to swipe or click through all ' + photoCountText + ' from ' + rowCountText + '.'
+    : 'Preview photo shown below. Open it for the full-size image.';
   return [
     '<div style="margin:18px 0; padding:14px; border:1px solid #b7f2d1; border-radius:12px; background:#f0fdf4;">',
-    '<a href="' + safeTargetUrl + '" style="display:block; text-decoration:none;">',
-    '<img src="' + safeFirstUrl + '" alt="Request photo preview" width="320" style="display:block;width:100%;max-width:320px;height:auto;max-height:380px;object-fit:contain;border-radius:10px;border:1px solid #d7ded8;margin:0 auto;">',
-    '</a>',
     '<p style="margin:12px 0 14px 0; color:#065f46; font-size:13px; line-height:1.45;">' + escapeEmailHtml_(caption) + '</p>',
+    previewStripHtml,
     '<div style="text-align:center;">',
     '<a href="' + safeTargetUrl + '" style="display:inline-block; padding:11px 16px; border-radius:999px; background:#007a4d; color:#ffffff; font-weight:700; text-decoration:none;">' + escapeEmailHtml_(actionLabel) + '</a>',
     '</div>',
