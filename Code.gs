@@ -7021,13 +7021,6 @@ function buildRequestEmailMessage_(payload) {
   const advertisementHeroText = buildAdvertisementEmailHeroText_(payload);
 
   if (emailType === 'new_request') {
-    const requestedItemsSection = itemsHtml
-      ? [
-          '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
-          '<p style="font-weight:700; margin-bottom:12px;">Requested Items</p>',
-          itemsHtml
-        ].join('')
-      : '';
     return {
       subject: subject,
       textBody: [
@@ -7037,7 +7030,6 @@ function buildRequestEmailMessage_(payload) {
         'Folder ID: ' + String(payload.folderId || payload.requestFolder || ''),
         'Items Requested: ' + String(payload.itemsCount || 0),
         selectionSummaryText,
-        itemsText,
         'Please check the app under Requests > Pending to fulfill this request.'
       ].filter(Boolean).join('\n\n'),
       htmlBody: buildPhoneSizedEmailHtml_([
@@ -7048,7 +7040,6 @@ function buildRequestEmailMessage_(payload) {
         '<p><strong>Folder ID:</strong> ' + folderId + '</p>',
         '<p><strong>Items Requested:</strong> ' + itemsCount + '</p>',
         selectionSummaryHtml,
-        requestedItemsSection,
         '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
         '<p style="font-size: 12px; color: #777;">Please check the app under <strong>Requests &gt; Pending</strong> to fulfill this request.</p>',
         '</div>'
