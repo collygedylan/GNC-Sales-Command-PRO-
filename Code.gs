@@ -5973,7 +5973,42 @@ function getRequestGalleryBaseUrl_() {
   return '';
 }
 
-function buildRequestGalleryUrl_(folderId, requestIds) {
+function encodeRequestGalleryInlineItems_(items) {
+  const compactItems = (Array.isArray(items) ? items : []).filter(Boolean).map(compactRequestGalleryItem_);
+  if (!compactItems.length || !buildRequestGallerySlidesFromItems_(compactItems).length) return '';
+  try {
+    const raw = JSON.stringify({
+      items: compactItems,
+      encodedAt: new Date().toISOString()
+    });
+    const encoded = Utilities.base64EncodeWebSafe(Utilities.newBlob(raw).getBytes());
+    return encoded.length <= 8000 ? encoded : '';
+  } catch (error) {
+    console.error('[REQUEST GALLERY] Could not encode inline gallery payload', {
+      message: error && error.message ? error.message : String(error)
+    });
+    return '';
+  }
+}
+
+function decodeRequestGalleryInlineItems_(value) {
+  const rawValue = String(value || '').trim();
+  if (!rawValue) return [];
+  try {
+    const bytes = Utilities.base64DecodeWebSafe(rawValue);
+    const raw = Utilities.newBlob(bytes).getDataAsString();
+    const parsed = JSON.parse(raw || '{}');
+    const items = Array.isArray(parsed) ? parsed : (Array.isArray(parsed && parsed.items) ? parsed.items : []);
+    return items.filter(Boolean).map(compactRequestGalleryItem_);
+  } catch (error) {
+    console.error('[REQUEST GALLERY] Could not decode inline gallery payload', {
+      message: error && error.message ? error.message : String(error)
+    });
+  }
+  return [];
+}
+
+function buildRequestGalleryUrl_(folderId, requestIds, inlineItems) {
   const safeFolderId = String(folderId || '').trim();
   const baseUrl = getRequestGalleryBaseUrl_();
   if (!safeFolderId || !baseUrl) return '';
@@ -5983,6 +6018,8 @@ function buildRequestGalleryUrl_(folderId, requestIds) {
     'gallery=request&folder=' + encodeURIComponent(safeFolderId) +
     '&token=' + encodeURIComponent(buildRequestGalleryToken_(safeFolderId));
   if (safeIds.length) url += '&ids=' + encodeURIComponent(safeIds.join(','));
+  const inlineData = encodeRequestGalleryInlineItems_(inlineItems || []);
+  if (inlineData) url += '&data=' + encodeURIComponent(inlineData);
   return url;
 }
 
@@ -6026,7 +6063,7 @@ function buildRequestRowGalleryUrl_(folderId, item) {
   )).trim();
   if (!safeFolderId) return '';
   const rowId = String(firstNonEmptyRequestValue_(item && item.unique_id, item && item.UNIQUE_ID, item && item.id, item && item.ID, '')).trim();
-  return buildRequestGalleryUrl_(safeFolderId, rowId ? [rowId] : []);
+  return buildRequestGalleryUrl_(safeFolderId, rowId ? [rowId] : [], item ? [item] : []);
 }
 
 function buildRequestRowPhotoPreviewHtml_(folderId, item) {
@@ -6309,7 +6346,7 @@ function buildRequestGallerySlidesFromItems_(items) {
 
 function buildRequestGalleryUrlForPayload_(payload) {
   const items = getRequestEmailPayloadItems_(payload);
-  return buildRequestGalleryUrl_(resolveRequestGalleryFolderId_(payload, items), resolveRequestGalleryRequestIds_(payload, items));
+  return buildRequestGalleryUrl_(resolveRequestGalleryFolderId_(payload, items), resolveRequestGalleryRequestIds_(payload, items), items);
 }
 
 function buildRequestGalleryPreviewHtml_(payload) {
@@ -6318,7 +6355,7 @@ function buildRequestGalleryPreviewHtml_(payload) {
   if (!slides.length) return '';
   const galleryFolderId = resolveRequestGalleryFolderId_(payload, items);
   cacheRequestGalleryPayload_(galleryFolderId, items);
-  const galleryUrl = buildRequestGalleryUrl_(galleryFolderId, resolveRequestGalleryRequestIds_(payload, items));
+  const galleryUrl = buildRequestGalleryUrl_(galleryFolderId, resolveRequestGalleryRequestIds_(payload, items), items);
   const firstSlide = slides[0] || {};
   const targetUrl = galleryUrl || firstSlide.url || '';
   if (!targetUrl) return '';
@@ -6654,6 +6691,20 @@ function renderRequestGalleryWebApp_(params) {
       rows = [];
       items = cachedItems;
       slides = cachedSlides;
+    }
+  }
+  if (!items.length || !slides.length) {
+    const inlineItems = filterRequestGalleryItemsByIds_(decodeRequestGalleryInlineItems_(firstNonEmptyRequestValue_(
+      params && params.data,
+      params && params.inline,
+      params && params.itemsData,
+      ''
+    )), requestIds);
+    const inlineSlides = buildRequestGallerySlidesFromItems_(inlineItems);
+    if (inlineItems.length && inlineSlides.length) {
+      rows = [];
+      items = inlineItems;
+      slides = inlineSlides;
     }
   }
   const firstItem = items.length ? items[0] || {} : {};
