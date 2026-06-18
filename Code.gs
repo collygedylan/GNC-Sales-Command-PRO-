@@ -5389,6 +5389,8 @@ function buildRequestEmailSubject_(payload) {
     ? buildDefaultNcrEmailSubject_(payload)
     : safeType === 'bloom_crop_update'
       ? 'GNC PH Crop Update'
+    : safeType === 'drive_shift_report'
+      ? 'GNC PH Shift'
     : buildDefaultRequestEmailSubject_(payload);
 }
 
@@ -7101,14 +7103,19 @@ function buildAdvertisementEmailHeroText_(payload) {
 function buildRequestEmailMessage_(payload) {
   const emailType = String(payload.emailType || '').trim().toLowerCase();
   const isApprovalEmail = emailType === 'ncr_approval' || emailType === 'hold_release_request';
+  const isDriveShiftReportEmail = emailType === 'drive_shift_report';
   const repName = escapeEmailHtml_(payload.repName || payload.salesRepName || '');
   const customer = escapeEmailHtml_(payload.customer || 'N/A');
   const folderId = escapeEmailHtml_(payload.folderId || payload.requestFolder || '');
   const itemsCount = escapeEmailHtml_(payload.itemsCount || 0);
-  const itemsHtml = emailType === 'request_complete'
+  const itemsHtml = isDriveShiftReportEmail
+    ? String(payload.formattedItemsHtml || '').trim()
+    : emailType === 'request_complete'
     ? buildCompactRequestItemsHtml_(payload)
     : (isApprovalEmail ? buildApprovalRequestItemsHtml_(payload) : buildRequestItemsHtml_(payload));
-  const itemsText = isApprovalEmail ? buildApprovalRequestItemsText_(payload) : buildRequestItemsText_(payload);
+  const itemsText = isDriveShiftReportEmail
+    ? String(payload.formattedItemsText || '').trim()
+    : (isApprovalEmail ? buildApprovalRequestItemsText_(payload) : buildRequestItemsText_(payload));
   const selectionSummaryHtml = buildRequestSelectionSummaryHtml_(payload);
   const selectionSummaryText = buildRequestSelectionSummaryText_(payload);
   const subject = buildRequestEmailSubject_(payload);
@@ -7277,6 +7284,63 @@ function buildRequestEmailMessage_(payload) {
         '<h2 style="color: #007a4d;">' + brandLabel + '</h2>',
         audienceLabel ? '<p>Hello ' + audienceLabel + ',</p>' : '',
         hideItemHeader ? '' : '<p><strong>Item:</strong> ' + htmlItem + '</p>',
+        detailSection,
+        '</div>'
+      ].join(''))
+    };
+  }
+
+  if (emailType === 'drive_shift_report') {
+    const brandLabelPlain = String(payload.brandLabel || payload.fromName || payload.emailDisplayName || 'GNC PH Shift').trim() || 'GNC PH Shift';
+    const brandLabel = escapeEmailHtml_(brandLabelPlain);
+    const userMessage = String(payload.message || payload.userMessage || '').trim();
+    const requestedBy = String(payload.requestedByDisplay || payload.requestedBy || '').trim();
+    const requestedByHtml = requestedBy ? '<p><strong>Sent By:</strong> ' + escapeEmailHtml_(requestedBy) + '</p>' : '';
+    const reportFormat = String(payload.shiftReportFormat || '').trim().toLowerCase() === 'excel' ? 'excel' : 'report';
+    const columns = Array.isArray(payload.shiftReportColumns) ? payload.shiftReportColumns : [];
+    const columnCount = columns.length || 0;
+    const messageHtml = userMessage
+      ? [
+          '<div style="white-space:pre-wrap; margin:16px 0 20px; padding:14px 16px; background:#f0fdf4; border-left:4px solid #007a4d; border-radius:8px; font-size:14px; line-height:1.45;">',
+          escapeEmailHtml_(userMessage),
+          '</div>'
+        ].join('')
+      : '';
+    const attachmentNoteHtml = reportFormat === 'excel'
+      ? '<p style="padding:12px 14px; border-radius:10px; background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8;"><strong>Excel file:</strong> Attached as a CSV file that opens in Excel.</p>'
+      : '';
+    const attachmentNoteText = reportFormat === 'excel'
+      ? 'Excel file attached as CSV.'
+      : '';
+    const detailSection = reportFormat === 'excel'
+      ? '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 12px; color: #777;">Open the attached CSV file to view the selected Drive Mode headers.</p>'
+      : (itemsHtml
+        ? [
+            '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
+            '<p style="font-weight:700; margin-bottom:12px;">Drive Mode Rows</p>',
+            itemsHtml
+          ].join('')
+        : '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 12px; color: #777;">No Drive row details were provided.</p>');
+
+    return {
+      subject: subject,
+      textBody: [
+        brandLabelPlain,
+        requestedBy ? 'Sent By: ' + requestedBy : '',
+        'Rows: ' + String(payload.itemsCount || 0),
+        columnCount ? 'Headers Included: ' + columnCount : '',
+        attachmentNoteText,
+        userMessage,
+        reportFormat === 'excel' ? '' : itemsText
+      ].filter(Boolean).join('\n\n'),
+      htmlBody: buildPhoneSizedEmailHtml_([
+        '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
+        '<h2 style="color: #007a4d;">' + brandLabel + '</h2>',
+        requestedByHtml,
+        '<p><strong>Rows:</strong> ' + escapeEmailHtml_(payload.itemsCount || 0) + '</p>',
+        columnCount ? '<p><strong>Headers Included:</strong> ' + escapeEmailHtml_(columnCount) + '</p>' : '',
+        attachmentNoteHtml,
+        messageHtml,
         detailSection,
         '</div>'
       ].join(''))
@@ -7565,6 +7629,16 @@ function getApprovalEmailDisplayName_(payload) {
   return 'GNC PH NCR';
 }
 
+function buildDriveShiftReportAttachments_(payload) {
+  const reportFormat = String(payload && payload.shiftReportFormat || '').trim().toLowerCase();
+  const csv = String(payload && payload.shiftReportCsv || '');
+  if (reportFormat !== 'excel' || !csv) return [];
+  const rawName = String(payload && payload.shiftReportFilename || 'GNC-PH-Shift.csv').trim() || 'GNC-PH-Shift.csv';
+  const safeName = rawName.replace(/[\\/:*?"<>|]+/g, '-').replace(/^\.+/, '').trim() || 'GNC-PH-Shift.csv';
+  const filename = /\.csv$/i.test(safeName) ? safeName : safeName + '.csv';
+  return [Utilities.newBlob(csv, 'text/csv', filename)];
+}
+
 function sendRequestEmailWithFallback_(payload) {
   if (String(payload && payload.emailType || '').trim().toLowerCase() === 'request_complete') {
     payload = hydrateRequestCompletePayload_(payload);
@@ -7626,6 +7700,33 @@ function sendRequestEmailWithFallback_(payload) {
         recipients: recipients.toArray,
         mode: 'gmailapp_error',
         message: error && error.message ? error.message : 'Bloom crop update email send failed.'
+      };
+    }
+  }
+  if (safeType === 'drive_shift_report') {
+    const driveShiftName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || 'GNC PH Shift').trim() || 'GNC PH Shift';
+    const attachments = buildDriveShiftReportAttachments_(payload);
+    const options = {
+      htmlBody: message.htmlBody,
+      name: driveShiftName
+    };
+    if (attachments.length) options.attachments = attachments;
+    try {
+      GmailApp.sendEmail(recipients.toList, message.subject, message.textBody || message.subject, options);
+      return {
+        ok: true,
+        status: 200,
+        recipients: recipients.toArray,
+        mode: attachments.length ? 'gmailapp_named_attachment' : 'gmailapp_named'
+      };
+    } catch (error) {
+      console.error('Drive shift report email send failed', error);
+      return {
+        ok: false,
+        status: 500,
+        recipients: recipients.toArray,
+        mode: 'gmailapp_error',
+        message: error && error.message ? error.message : 'Drive shift report email send failed.'
       };
     }
   }
@@ -8198,7 +8299,7 @@ function doPost(e) {
     }
     
     if (payload.type === "email") {
-    if (payload.emailType === "new_request" || payload.emailType === "request_complete" || payload.emailType === "ncr_complete" || payload.emailType === "ncr_approval" || payload.emailType === "hold_release_request" || payload.emailType === "drive_customer_outreach" || payload.emailType === "bloom_crop_update") {
+    if (payload.emailType === "new_request" || payload.emailType === "request_complete" || payload.emailType === "ncr_complete" || payload.emailType === "ncr_approval" || payload.emailType === "hold_release_request" || payload.emailType === "drive_customer_outreach" || payload.emailType === "bloom_crop_update" || payload.emailType === "drive_shift_report") {
       const emailType = String(payload.emailType || '').trim().toLowerCase();
       const shouldQueueDelayedReply = emailType === 'request_complete' && Math.max(0, Number(payload.delayMs) || 0) > 0;
       if (shouldQueueDelayedReply) {
