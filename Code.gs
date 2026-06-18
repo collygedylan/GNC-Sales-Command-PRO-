@@ -4665,34 +4665,24 @@ function buildRequestEmailPhotoPreviewStripHtml_(photoUrls, options) {
   const opts = options || {};
   const urls = normalizeRequestPhotoUrlListForEmail_(photoUrls);
   if (!urls.length) return '';
-  const maxPhotos = Math.max(1, Number(opts.maxPhotos) || 12);
-  const shownUrls = urls.slice(0, maxPhotos);
-  const hiddenCount = Math.max(0, urls.length - shownUrls.length);
-  const tileSize = Math.max(84, Math.min(132, Number(opts.tileSize) || 116));
-  const thumbWidth = Math.max(240, Number(opts.thumbWidth) || 360);
-  const titlePrefix = String(opts.titlePrefix || 'Photo').trim() || 'Photo';
-  const tilesHtml = shownUrls.map(function(url, index) {
-    const thumbUrl = getRequestEmailThumbnailUrl_(url, thumbWidth);
-    const fullUrl = getRequestEmailThumbnailUrl_(url, 1600) || url;
-    const label = titlePrefix + ' ' + (index + 1);
-    return [
-      '<a href="' + escapeEmailAttribute_(fullUrl) + '" style="display:inline-block;vertical-align:top;width:' + tileSize + 'px;margin:0 8px 8px 0;text-decoration:none;color:#065f46;">',
-      '<img data-email-thumb="1" src="' + escapeEmailAttribute_(thumbUrl) + '" alt="' + escapeEmailAttribute_(label) + '" width="' + tileSize + '" height="' + tileSize + '" style="display:block;width:' + tileSize + 'px;height:' + tileSize + 'px;object-fit:cover;border-radius:10px;border:1px solid #d7ded8;background:#f8fafc;">',
-      '<span style="display:block;margin-top:4px;text-align:center;font-size:10px;font-weight:800;color:#065f46;line-height:1.2;">' + escapeEmailHtml_(label) + '</span>',
-      '</a>'
-    ].join('');
-  }).join('');
+  const firstUrl = urls[0];
+  const thumbWidth = Math.max(320, Number(opts.thumbWidth) || 640);
+  const thumbUrl = getRequestEmailThumbnailUrl_(firstUrl, thumbWidth);
+  const fullUrl = getRequestEmailThumbnailUrl_(firstUrl, 1600) || firstUrl;
+  const galleryUrl = String(opts.galleryUrl || '').trim();
+  const targetUrl = galleryUrl || fullUrl;
+  const label = String(opts.titlePrefix || 'First photo preview').trim() || 'First photo preview';
   const helperText = urls.length > 1
-    ? 'Swipe or scroll the photo previews in this email. Tap a preview for the full photo.'
-    : 'Tap the preview for the full photo.';
+    ? 'First photo shown for this row. Open the row gallery to view all ' + urls.length + ' photos.'
+    : 'First photo shown for this row.';
   return [
     '<div style="margin:10px 0 12px 0;">',
-    '<div style="margin:0 0 7px 0;color:#065f46;font-size:12px;line-height:1.35;font-weight:800;">' + escapeEmailHtml_(helperText) + '</div>',
-    '<div style="max-width:100%;overflow-x:auto;overflow-y:hidden;white-space:nowrap;-webkit-overflow-scrolling:touch;padding:2px 0 3px 0;">',
-    tilesHtml,
-    hiddenCount ? '<span style="display:inline-block;vertical-align:top;width:' + tileSize + 'px;height:' + tileSize + 'px;border-radius:10px;border:1px solid #b7f2d1;background:#ecfdf5;color:#065f46;text-align:center;font-size:13px;font-weight:900;line-height:' + tileSize + 'px;">+' + escapeEmailHtml_(hiddenCount) + '</span>' : '',
+    '<div style="margin:0 0 8px 0;color:#065f46;font-size:12px;line-height:1.35;font-weight:800;">' + escapeEmailHtml_(helperText) + '</div>',
+    '<a href="' + escapeEmailAttribute_(targetUrl) + '" style="display:block;width:100%;max-width:320px;text-decoration:none;color:#065f46;">',
+    '<img data-email-thumb="1" src="' + escapeEmailAttribute_(thumbUrl) + '" alt="' + escapeEmailAttribute_(label) + '" width="320" style="display:block;width:100%;max-width:320px;height:auto;border-radius:10px;border:1px solid #d7ded8;background:#f8fafc;">',
+    '<span style="display:block;margin-top:5px;text-align:center;font-size:11px;font-weight:800;color:#065f46;line-height:1.2;">First photo</span>',
+    '</a>',
     '</div>',
-    '</div>'
   ].join('');
 }
 
@@ -6423,7 +6413,7 @@ function buildRequestGalleryPreviewHtml_(payload) {
     maxPhotos: 12
   });
   const caption = galleryUrl
-    ? 'Preview photos are shown below. Open the gallery to swipe or click through all ' + photoCountText + ' from ' + rowCountText + '.'
+    ? 'First preview photo is shown below. Open the gallery to view all ' + photoCountText + ' from ' + rowCountText + '.'
     : 'Preview photo shown below. Open it for the full-size image.';
   return [
     '<div style="margin:18px 0; padding:14px; border:1px solid #b7f2d1; border-radius:12px; background:#f0fdf4;">',
