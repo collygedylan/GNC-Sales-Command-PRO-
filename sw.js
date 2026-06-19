@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.06.19.06';
+const APP_SHELL_BUILD = 'V2026.06.19.07';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const CACHE_NAME = 'greenleaf-v4.2-rebuild-' + APP_SHELL_BUILD;
@@ -65,6 +65,34 @@ async function broadcastShellVersion(type = 'GNC_SHELL_VERSION') {
   } catch (error) {}
 }
 
+function buildAbsoluteShellUrl(build = APP_SHELL_BUILD, reason = '') {
+  const shellUrl = new URL(buildShellUrl(build), self.registration.scope);
+  shellUrl.searchParams.set('shellts', String(Date.now()));
+  if (reason) shellUrl.searchParams.set('shellreason', String(reason || '').slice(0, 48));
+  return shellUrl.href;
+}
+
+function isStaleShellClient(client) {
+  if (!client || !client.url) return false;
+  const clientUrl = getRequestUrl(client.url);
+  if (!clientUrl) return false;
+  const scopeUrl = getRequestUrl(self.registration.scope);
+  if (scopeUrl && clientUrl.origin !== scopeUrl.origin) return false;
+  if (scopeUrl && !clientUrl.href.startsWith(scopeUrl.href)) return false;
+  const clientBuild = normalizeShellBuild(clientUrl.searchParams.get(APP_SHELL_QUERY_PARAM) || '');
+  return clientBuild !== APP_SHELL_BUILD;
+}
+
+async function navigateStaleShellClients(reason = 'activate') {
+  try {
+    const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    await Promise.all(clientList.map((client) => {
+      if (!isStaleShellClient(client) || typeof client.navigate !== 'function') return Promise.resolve(false);
+      return client.navigate(buildAbsoluteShellUrl(APP_SHELL_BUILD, reason)).catch(() => false);
+    }));
+  } catch (error) {}
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE).catch(() => {}))
@@ -77,6 +105,7 @@ self.addEventListener('activate', (event) => {
       .then((keys) => Promise.all(keys.map((key) => key !== CACHE_NAME ? caches.delete(key) : Promise.resolve())))
       .then(() => self.clients.claim())
       .then(() => broadcastShellVersion('GNC_SHELL_ACTIVATED'))
+      .then(() => navigateStaleShellClients('sw-activate'))
   );
 });
 
