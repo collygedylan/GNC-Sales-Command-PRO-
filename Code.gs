@@ -7253,6 +7253,55 @@ function buildRequestEmailMessage_(payload) {
     };
   }
 
+  if (emailType === 'bloom_purpose_report') {
+    const brandLabelPlain = String(payload.brandLabel || payload.fromName || payload.emailDisplayName || 'GNC PH Report').trim() || 'GNC PH Report';
+    const brandLabel = escapeEmailHtml_(brandLabelPlain);
+    const actionLabelPlain = String(payload.actionLabel || payload.action_label || 'Request').trim() || 'Request';
+    const actionLabel = escapeEmailHtml_(actionLabelPlain);
+    const reasonLabelPlain = String(payload.reasonLabel || payload.reason_label || 'Reason').trim() || 'Reason';
+    const reasonLabel = escapeEmailHtml_(reasonLabelPlain);
+    const reasonText = String(payload.reason || payload.message || payload.userMessage || '').trim();
+    const requestedByText = String(payload.requestedByDisplay || payload.requestedBy || payload.submittedBy || 'Unknown').trim() || 'Unknown';
+    const submittedLabel = String(payload.submittedAtLabel || payload.submittedAt || '').trim()
+      || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'M/d/yyyy, h:mm:ss a');
+    const recipients = dedupeEmailAddresses_([payload.recipientEmails, payload.emailRecipients, payload.recipients]);
+    const formattedHtml = String(payload.formattedItemsHtml || '').trim();
+    const formattedText = String(payload.formattedItemsText || '').trim();
+    const customerText = String(payload.customer || 'N/A').trim() || 'N/A';
+    const summaryHtml = [
+      '<p><strong>' + actionLabel + ' Request Submitted</strong></p>',
+      '<p><strong>Submitted By:</strong> ' + escapeEmailHtml_(requestedByText) + '</p>',
+      '<p><strong>Submitted:</strong> ' + escapeEmailHtml_(submittedLabel) + '</p>',
+      '<p><strong>Customer:</strong> ' + escapeEmailHtml_(customerText) + '</p>',
+      '<p><strong>Items Requested:</strong> ' + escapeEmailHtml_(payload.itemsCount || 0) + '</p>',
+      reasonText ? '<p><strong>' + reasonLabel + ':</strong> ' + escapeEmailHtml_(reasonText) + '</p>' : '',
+      recipients.length ? '<p><strong>Recipients:</strong> ' + escapeEmailHtml_(recipients.join(', ')) + '</p>' : ''
+    ].filter(Boolean).join('');
+    const fallbackText = [
+      brandLabelPlain,
+      actionLabelPlain + ' Request Submitted',
+      'Submitted By: ' + requestedByText,
+      'Submitted: ' + submittedLabel,
+      'Customer: ' + customerText,
+      'Items Requested: ' + String(payload.itemsCount || 0),
+      reasonText ? reasonLabelPlain + ': ' + reasonText : '',
+      recipients.length ? 'Recipients: ' + recipients.join(', ') : '',
+      itemsText
+    ].filter(Boolean).join('\n\n');
+    return {
+      subject: subject,
+      textBody: formattedText || fallbackText,
+      htmlBody: buildPhoneSizedEmailHtml_([
+        '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
+        '<h2 style="color: #007a4d;">' + brandLabel + '</h2>',
+        summaryHtml,
+        '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
+        formattedHtml || itemsHtml || '<p style="font-size: 12px; color: #777;">No selected row details were provided.</p>',
+        '</div>'
+      ].join(''))
+    };
+  }
+
   if (emailType === 'drive_customer_outreach') {
     const brandLabelPlain = String(payload.brandLabel || payload.fromName || payload.emailDisplayName || 'GNC PH Reserves').trim() || 'GNC PH Reserves';
     const brandLabel = escapeEmailHtml_(brandLabelPlain);
@@ -7707,6 +7756,30 @@ function sendRequestEmailWithFallback_(payload) {
         recipients: recipients.toArray,
         mode: 'gmailapp_error',
         message: error && error.message ? error.message : 'Bloom crop update email send failed.'
+      };
+    }
+  }
+  if (safeType === 'bloom_purpose_report') {
+    const bloomPurposeName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || 'GNC PH Report').trim() || 'GNC PH Report';
+    try {
+      GmailApp.sendEmail(recipients.toList, message.subject, message.textBody || message.subject, {
+        htmlBody: message.htmlBody,
+        name: bloomPurposeName
+      });
+      return {
+        ok: true,
+        status: 200,
+        recipients: recipients.toArray,
+        mode: 'gmailapp_named'
+      };
+    } catch (error) {
+      console.error('Bloom purpose report email send failed', error);
+      return {
+        ok: false,
+        status: 500,
+        recipients: recipients.toArray,
+        mode: 'gmailapp_error',
+        message: error && error.message ? error.message : 'Bloom purpose report email send failed.'
       };
     }
   }
@@ -8306,7 +8379,7 @@ function doPost(e) {
     }
     
     if (payload.type === "email") {
-    if (payload.emailType === "new_request" || payload.emailType === "request_complete" || payload.emailType === "ncr_complete" || payload.emailType === "ncr_approval" || payload.emailType === "hold_release_request" || payload.emailType === "drive_customer_outreach" || payload.emailType === "bloom_crop_update" || payload.emailType === "drive_shift_report") {
+    if (payload.emailType === "new_request" || payload.emailType === "request_complete" || payload.emailType === "ncr_complete" || payload.emailType === "ncr_approval" || payload.emailType === "hold_release_request" || payload.emailType === "drive_customer_outreach" || payload.emailType === "bloom_crop_update" || payload.emailType === "bloom_purpose_report" || payload.emailType === "drive_shift_report") {
       const emailType = String(payload.emailType || '').trim().toLowerCase();
       const shouldQueueDelayedReply = emailType === 'request_complete' && Math.max(0, Number(payload.delayMs) || 0) > 0;
       if (shouldQueueDelayedReply) {
