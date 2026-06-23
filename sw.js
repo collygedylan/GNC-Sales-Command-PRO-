@@ -2,15 +2,18 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.06.22.09';
+const APP_SHELL_BUILD = 'V2026.06.22.10';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
+const NAVIGATION_NETWORK_TIMEOUT_MS = 1400;
 const CACHE_NAME = 'greenleaf-v4.2-rebuild-' + APP_SHELL_BUILD;
 const ASSETS_TO_CACHE = [
+  APP_SHELL_URL,
   './manifest.json',
   './Greenleaf Logo.png',
   'https://cdn.tailwindcss.com',
-  'https://unpkg.com/@phosphor-icons/web'
+  'https://unpkg.com/@phosphor-icons/web',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
 ];
 
 function normalizeShellBuild(value = '') {
@@ -46,6 +49,23 @@ async function cacheShellResponse(cache, requestedShellUrl, networkResponse) {
     cache.put(APP_SHELL_URL, responseCloneForCurrent).catch(() => {}),
     cache.put('./index.html', responseCloneForIndex).catch(() => {})
   ]);
+}
+
+async function getCachedShellFallback(cache, requestedShellUrl, navigationRequest) {
+  const candidates = [
+    APP_SHELL_URL,
+    requestedShellUrl,
+    './index.html',
+    navigationRequest
+  ];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const cached = cache ? await cache.match(candidate) : await caches.match(candidate);
+      if (cached) return cached;
+    } catch (error) {}
+  }
+  return null;
 }
 
 async function broadcastShellVersion(type = 'GNC_SHELL_VERSION') {
@@ -95,7 +115,9 @@ async function navigateStaleShellClients(reason = 'activate') {
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE).catch(() => {}))
+    caches.open(CACHE_NAME).then((cache) => Promise.all(
+      ASSETS_TO_CACHE.map((asset) => cache.add(asset).catch(() => {}))
+    ))
   );
   self.skipWaiting();
 });
@@ -137,14 +159,29 @@ self.addEventListener('fetch', (event) => {
         const requestedShellUrl = buildShellUrl(requestedBuild || APP_SHELL_BUILD);
         const primaryShellUrl = requestedShellUrl;
         const cache = await caches.open(CACHE_NAME).catch(() => null);
-        try {
-          const networkResponse = await fetch(event.request, { cache: 'no-store', credentials: 'same-origin' });
-          if (networkResponse && networkResponse.status === 200) {
-            await cacheShellResponse(cache, requestedShellUrl, networkResponse);
+        const cachedShellFallback = await getCachedShellFallback(cache, requestedShellUrl, event.request);
+        const navigationNetwork = fetch(event.request, { cache: 'no-store', credentials: 'same-origin' })
+          .then(async (networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              await cacheShellResponse(cache, requestedShellUrl, networkResponse);
+            }
+            return networkResponse;
+          })
+          .catch(() => null);
+        if (cachedShellFallback) {
+          const fastResponse = await Promise.race([
+            navigationNetwork,
+            new Promise((resolve) => setTimeout(() => resolve(cachedShellFallback), NAVIGATION_NETWORK_TIMEOUT_MS))
+          ]);
+          if (fastResponse) {
+            if (fastResponse === cachedShellFallback) {
+              event.waitUntil(navigationNetwork.catch(() => null));
+            }
+            return fastResponse;
           }
-          return networkResponse;
-        } catch (error) {
         }
+        const networkResponse = await navigationNetwork;
+        if (networkResponse) return networkResponse;
         try {
           const networkResponse = await fetch(primaryShellUrl, { cache: 'no-store', credentials: 'same-origin' });
           if (networkResponse && networkResponse.status === 200) {
@@ -153,14 +190,9 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         } catch (error) {
         }
-        if (cache) {
-          const cachedCurrentShell = await cache.match(APP_SHELL_URL);
-          if (cachedCurrentShell) return cachedCurrentShell;
-          const cachedRequestedShell = await cache.match(requestedShellUrl);
-          if (cachedRequestedShell) return cachedRequestedShell;
-          const cachedIndex = await cache.match('./index.html');
-          if (cachedIndex) return cachedIndex;
-        }
+        if (cachedShellFallback) return cachedShellFallback;
+        const cachedFromCache = await getCachedShellFallback(cache, requestedShellUrl, event.request);
+        if (cachedFromCache) return cachedFromCache;
         const globalCurrentShell = await caches.match(APP_SHELL_URL);
         if (globalCurrentShell) return globalCurrentShell;
         const globalRequestedShell = await caches.match(requestedShellUrl);
