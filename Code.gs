@@ -7266,8 +7266,10 @@ function buildAdvertisementEmailHeroText_(payload) {
 
 function buildRequestEmailMessage_(payload) {
   const emailType = String(payload.emailType || '').trim().toLowerCase();
+  const emailSubType = String(payload.emailSubType || payload.email_sub_type || '').trim().toLowerCase();
   const isApprovalEmail = emailType === 'ncr_approval' || emailType === 'hold_release_request';
   const isDriveShiftReportEmail = emailType === 'drive_shift_report';
+  const isGroupedBloomNcrEmail = emailType === 'drive_customer_outreach' && emailSubType === 'grouped_bloom_ncr';
   const isSuspendTagCompletionEmail = isSuspendTagCompletionEmail_(payload);
   const repName = escapeEmailHtml_(payload.repName || payload.salesRepName || '');
   const customer = escapeEmailHtml_(payload.customer || 'N/A');
@@ -7505,11 +7507,11 @@ function buildRequestEmailMessage_(payload) {
     const detailSection = itemsHtml
       ? [
           '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
-          customerConsigneeSummaryHtml,
-          '<p style="font-weight:700; margin-bottom:12px;">Photo / Spec Rows</p>',
+          isGroupedBloomNcrEmail ? '' : customerConsigneeSummaryHtml,
+          '<p style="font-weight:700; margin-bottom:12px;">' + (isGroupedBloomNcrEmail ? 'NCR Rows' : 'Photo / Spec Rows') + '</p>',
           itemsHtml
         ].join('')
-      : '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 12px; color: #777;">No selected customer/source row details were provided.</p>';
+      : '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 12px; color: #777;">' + (isGroupedBloomNcrEmail ? 'No NCR row details were provided.' : 'No selected customer/source row details were provided.') + '</p>';
 
     return {
       subject: subject,
@@ -7517,7 +7519,7 @@ function buildRequestEmailMessage_(payload) {
         brandLabelPlain,
         plainAudienceLabel ? 'Hello ' + plainAudienceLabel + ',' : '',
         hideItemHeader ? '' : 'Item: ' + plainItem,
-        customerConsigneeSummaryText,
+        isGroupedBloomNcrEmail ? '' : customerConsigneeSummaryText,
         itemsText
       ].filter(Boolean).join('\n\n'),
       htmlBody: buildPhoneSizedEmailHtml_([
