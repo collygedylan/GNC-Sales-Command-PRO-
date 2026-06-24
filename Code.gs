@@ -5124,6 +5124,163 @@ function isEvalTaskCompletionEmail_(payload) {
   return metaText.indexOf('eval task') !== -1 || metaText.indexOf('eval-task') !== -1 || metaText.indexOf('eval_task') !== -1;
 }
 
+function isSuspendTagCompletionEmail_(payload) {
+  if (String(payload && payload.emailType || '').trim().toLowerCase() !== 'request_complete') return false;
+  const source = String(firstNonEmptyRequestValue_(
+    payload && payload.source,
+    payload && payload.emailSubType,
+    payload && payload.email_sub_type,
+    payload && payload.requestSource,
+    payload && payload.request_source,
+    ''
+  )).trim().toLowerCase();
+  if (source === 'dock_suspend_dc' || source === 'dock_suspend_dc_cancel' || source === 'suspend_tag') return true;
+  const folder = String(firstNonEmptyRequestValue_(payload && payload.folderId, payload && payload.requestFolder, '')).trim().toLowerCase();
+  if (folder.indexOf('suspend-tag') === 0 || folder.indexOf('suspend_tag') === 0) return true;
+  return getRequestPayloadItems_(payload).some(function(item) {
+    if (!item) return false;
+    if (item.DOCK_SUSPEND_DC_REQUEST || item.dock_suspend_dc_request) return true;
+    const itemSource = String(firstNonEmptyRequestValue_(item.REQUEST_SOURCE, item.request_source, item.SOURCE, item.source, '')).trim().toLowerCase();
+    return itemSource.indexOf('suspend') !== -1;
+  });
+}
+
+function getSuspendTagCompletionBrandLabel_(payload) {
+  return String(firstNonEmptyRequestValue_(
+    payload && payload.fromName,
+    payload && payload.brandLabel,
+    payload && payload.emailDisplayName,
+    payload && payload.sourceLabel,
+    'GNC PH Suspend Tag'
+  )).trim() || 'GNC PH Suspend Tag';
+}
+
+function splitSuspendTagCustomerLabel_(value) {
+  const text = String(value || '').trim();
+  if (!text) return ['', ''];
+  const parts = text.split(/\s*\|\s*/).map(function(part) {
+    return String(part || '').trim();
+  }).filter(Boolean);
+  return [parts[0] || text, parts[1] || ''];
+}
+
+function getSuspendTagCustomerName_(item) {
+  const explicit = String(firstNonEmptyRequestValue_(
+    item && item.customername,
+    item && item.CUSTOMERNAME,
+    item && item.customer_name,
+    item && item.CUSTOMER_NAME,
+    item && item.customer,
+    item && item.CUSTOMER,
+    ''
+  )).trim();
+  if (explicit) return explicit;
+  return splitSuspendTagCustomerLabel_(firstNonEmptyRequestValue_(item && item.req_customer, item && item.REQ_CUSTOMER, item && item.customer, item && item.CUSTOMER, ''))[0];
+}
+
+function getSuspendTagConsigneeName_(item) {
+  const explicit = String(firstNonEmptyRequestValue_(
+    item && item.consigneename,
+    item && item.CONSIGNEENAME,
+    item && item.consignee_name,
+    item && item.CONSIGNEE_NAME,
+    item && item.consignee,
+    item && item.CONSIGNEE,
+    ''
+  )).trim();
+  if (explicit) return explicit;
+  return splitSuspendTagCustomerLabel_(firstNonEmptyRequestValue_(item && item.req_customer, item && item.REQ_CUSTOMER, item && item.customer, item && item.CUSTOMER, ''))[1];
+}
+
+function getSuspendTagCompletionFieldRows_(item) {
+  const row = item || {};
+  return [
+    ['Spec', firstNonEmptyRequestValue_(row.spec, row.REQ_SPEC, row.req_spec, row.DOCK_SPEC, row.dock_spec, row.SPEC, '')],
+    ['Customer Name', getSuspendTagCustomerName_(row)],
+    ['Consignee Name', getSuspendTagConsigneeName_(row)],
+    ['Dock Number', firstNonEmptyRequestValue_(row.dock_number, row.DOCK_NUMBER, row.dock_num, row.DOCK_NUM, row.dock, row.DOCK, '')],
+    ['Drop Number', firstNonEmptyRequestValue_(row.drop_number, row.DROP_NUMBER, row.stopnumber, row.STOPNUMBER, row.stop, row.STOP, row.drop, row.DROP, '')],
+    ['Photo Match Qty', firstNonEmptyRequestValue_(
+      row.photo_match_qty,
+      row.PHOTO_MATCH_QTY,
+      row.loc_match_qty,
+      row.LOC_MATCH_QTY,
+      row.req_loc_match_qty,
+      row.REQ_LOC_MATCH_QTY,
+      getRequestLocPhotoMatchEmailValue_(row),
+      ''
+    )]
+  ].map(function(field) {
+    return [field[0], String(field[1] || '').trim() || '-'];
+  });
+}
+
+function buildSuspendTagCompletionPhotoPreviewHtml_(folderId, item) {
+  const photoUrls = getRequestItemPhotoUrls_(item);
+  if (!photoUrls.length) return '';
+  const galleryUrl = buildRequestRowGalleryUrl_(folderId, item);
+  const photoCountText = photoUrls.length === 1 ? '1 photo' : photoUrls.length + ' photos';
+  const photoPreviewStripHtml = buildRequestEmailPhotoPreviewStripHtml_(photoUrls, {
+    titlePrefix: 'Photo',
+    tileSize: 116,
+    thumbWidth: 360,
+    maxPhotos: 12
+  });
+  const galleryButtonHtml = galleryUrl ? [
+    '<div style="text-align:center;">',
+    '<a href="' + escapeEmailAttribute_(galleryUrl) + '" style="display:inline-block;padding:10px 14px;border-radius:999px;background:#007a4d;color:#ffffff;font-weight:700;text-decoration:none;">View Row Photo Gallery</a>',
+    '</div>'
+  ].join('') : '';
+  return [
+    '<div style="margin:12px 0;padding:10px;border:1px solid #b7f2d1;border-radius:12px;background:#f0fdf4;">',
+    '<p style="margin:0 0 10px 0;color:#065f46;font-size:13px;line-height:1.45;font-weight:700;">' + escapeEmailHtml_(photoCountText) + ' captured for this row.</p>',
+    photoPreviewStripHtml,
+    galleryButtonHtml,
+    '</div>'
+  ].join('');
+}
+
+function buildSuspendTagCompletionItemsHtml_(payload) {
+  const items = getRequestEmailPayloadItems_(payload);
+  if (!items.length) return String(payload.formattedItemsHtml || '').trim();
+  const galleryFolderId = resolveRequestGalleryFolderId_(payload, items);
+  cacheRequestGalleryPayload_(galleryFolderId, items);
+  const rowsHtml = items.map(function(item, index) {
+    const title = [
+      firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Suspend Tag Row'),
+      firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, '')
+    ].map(function(value) { return String(value || '').trim(); }).filter(Boolean).join(' ');
+    const fieldsHtml = getSuspendTagCompletionFieldRows_(item).map(function(field) {
+      return '<div><strong>' + escapeEmailHtml_(field[0]) + ':</strong> ' + escapeEmailHtml_(field[1]) + '</div>';
+    }).join('');
+    return [
+      '<li style="margin-bottom:10px; background:#f9f9f9; padding:10px; border-left:4px solid #007a4d;">',
+      '<strong>' + (index + 1) + '. ' + escapeEmailHtml_(title) + '</strong>',
+      buildSuspendTagCompletionPhotoPreviewHtml_(galleryFolderId, item),
+      fieldsHtml,
+      '</li>'
+    ].join('');
+  }).join('');
+  return '<ul style="list-style:none; padding:0; margin:0;">' + rowsHtml + '</ul>';
+}
+
+function buildSuspendTagCompletionItemsText_(payload) {
+  const items = getRequestEmailPayloadItems_(payload);
+  if (!items.length) return String(payload.formattedItemsText || '').trim();
+  return items.map(function(item, index) {
+    const photoCount = getRequestItemPhotoUrls_(item).length;
+    const title = [
+      firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Suspend Tag Row'),
+      firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, '')
+    ].map(function(value) { return String(value || '').trim(); }).filter(Boolean).join(' ');
+    const fieldLines = getSuspendTagCompletionFieldRows_(item).map(function(field) {
+      return field[0] + ': ' + field[1];
+    });
+    if (photoCount) fieldLines.push('Photos: ' + photoCount);
+    return [(index + 1) + '. ' + title].concat(fieldLines).join('\n');
+  }).join('\n\n');
+}
+
 function getEvalTaskCompletionSummary_(payload) {
   const items = getRequestPayloadItems_(payload);
   const firstItem = items.length ? items[0] || {} : {};
@@ -7111,6 +7268,7 @@ function buildRequestEmailMessage_(payload) {
   const emailType = String(payload.emailType || '').trim().toLowerCase();
   const isApprovalEmail = emailType === 'ncr_approval' || emailType === 'hold_release_request';
   const isDriveShiftReportEmail = emailType === 'drive_shift_report';
+  const isSuspendTagCompletionEmail = isSuspendTagCompletionEmail_(payload);
   const repName = escapeEmailHtml_(payload.repName || payload.salesRepName || '');
   const customer = escapeEmailHtml_(payload.customer || 'N/A');
   const folderId = escapeEmailHtml_(payload.folderId || payload.requestFolder || '');
@@ -7118,11 +7276,11 @@ function buildRequestEmailMessage_(payload) {
   const itemsHtml = isDriveShiftReportEmail
     ? String(payload.formattedItemsHtml || '').trim()
     : emailType === 'request_complete'
-    ? buildCompactRequestItemsHtml_(payload)
+    ? (isSuspendTagCompletionEmail ? buildSuspendTagCompletionItemsHtml_(payload) : buildCompactRequestItemsHtml_(payload))
     : (isApprovalEmail ? buildApprovalRequestItemsHtml_(payload) : buildRequestItemsHtml_(payload));
   const itemsText = isDriveShiftReportEmail
     ? String(payload.formattedItemsText || '').trim()
-    : (isApprovalEmail ? buildApprovalRequestItemsText_(payload) : buildRequestItemsText_(payload));
+    : (isSuspendTagCompletionEmail ? buildSuspendTagCompletionItemsText_(payload) : (isApprovalEmail ? buildApprovalRequestItemsText_(payload) : buildRequestItemsText_(payload)));
   const selectionSummaryHtml = buildRequestSelectionSummaryHtml_(payload);
   const selectionSummaryText = buildRequestSelectionSummaryText_(payload);
   const subject = buildRequestEmailSubject_(payload);
@@ -7163,6 +7321,33 @@ function buildRequestEmailMessage_(payload) {
     const folderNoteHtml = folderNote ? '<p><strong>Folder Note:</strong> ' + escapeEmailHtml_(folderNote) + '</p>' : '';
     const completedBySummary = buildRequestCompletedBySummary_(payload);
     const completedBySummaryHtml = completedBySummary ? '<p><strong>Completed By:</strong> ' + escapeEmailHtml_(completedBySummary) + '</p>' : '';
+    if (isSuspendTagCompletionEmail) {
+      const brandLabelPlain = getSuspendTagCompletionBrandLabel_(payload);
+      const brandLabel = escapeEmailHtml_(brandLabelPlain);
+      const detailSection = itemsHtml
+        ? [
+            '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
+            itemsHtml
+          ].join('')
+        : [
+            '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
+            '<p style="font-size: 12px; color: #777;">No Suspend Tag row details were provided.</p>'
+          ].join('');
+
+      return {
+        subject: subject,
+        textBody: [
+          brandLabelPlain,
+          itemsText
+        ].filter(Boolean).join('\n\n'),
+        htmlBody: buildPhoneSizedEmailHtml_([
+          '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
+          '<h2 style="color: #007a4d;">' + brandLabel + '</h2>',
+          detailSection,
+          '</div>'
+        ].join(''))
+      };
+    }
     if (isEvalTaskCompletionEmail_(payload)) {
       const evalSummary = getEvalTaskCompletionSummary_(payload);
       const evalRequesterHtml = evalSummary.requester ? '<p><strong>Requested By:</strong> ' + escapeEmailHtml_(evalSummary.requester) + '</p>' : '';
@@ -7685,6 +7870,20 @@ function getApprovalEmailDisplayName_(payload) {
   return 'GNC PH NCR';
 }
 
+function getRequestEmailDisplayName_(payload) {
+  const explicitName = String(
+    payload && (
+      payload.fromName ||
+      payload.brandLabel ||
+      payload.emailDisplayName ||
+      payload.sourceLabel
+    ) || ''
+  ).trim();
+  if (explicitName) return explicitName;
+  if (isSuspendTagCompletionEmail_(payload)) return 'GNC PH Suspend Tag';
+  return 'GNC PH Request';
+}
+
 function buildDriveShiftReportAttachments_(payload) {
   const reportFormat = String(payload && payload.shiftReportFormat || '').trim().toLowerCase();
   const csv = String(payload && payload.shiftReportCsv || '');
@@ -7881,7 +8080,7 @@ function sendRequestEmailWithFallback_(payload) {
       subject: message.subject,
       textBody: message.textBody,
       htmlBody: message.htmlBody,
-      fromName: 'GNC PH Request',
+      fromName: getRequestEmailDisplayName_(payload),
       fromAddress: senderAddress,
       threadId: wantsThreadReply && canReplyInThread ? threadId : '',
       inReplyTo: wantsThreadReply && canReplyInThread ? inReplyTo : '',
