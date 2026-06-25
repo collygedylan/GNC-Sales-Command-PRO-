@@ -7550,13 +7550,13 @@ function buildRequestEmailMessage_(payload) {
         ].join('')
       : '';
     const attachmentNoteHtml = reportFormat === 'excel'
-      ? '<p style="padding:12px 14px; border-radius:10px; background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8;"><strong>Excel file:</strong> Attached as a CSV file that opens in Excel.</p>'
+      ? '<p style="padding:12px 14px; border-radius:10px; background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8;"><strong>Excel file:</strong> Attached as an Excel workbook.</p>'
       : '';
     const attachmentNoteText = reportFormat === 'excel'
-      ? 'Excel file attached as CSV.'
+      ? 'Excel workbook attached.'
       : '';
     const detailSection = reportFormat === 'excel'
-      ? '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 12px; color: #777;">Open the attached CSV file to view the selected Drive Mode headers.</p>'
+      ? '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 12px; color: #777;">Open the attached Excel workbook to view the selected Drive Mode headers.</p>'
       : (itemsHtml
         ? [
             '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
@@ -7886,10 +7886,60 @@ function getRequestEmailDisplayName_(payload) {
   return 'GNC PH Request';
 }
 
+function buildRequestEmailAttachmentBlob_(attachment) {
+  if (!attachment || typeof attachment !== 'object') return null;
+  let base64 = String(
+    attachment.contentBase64 ||
+    attachment.base64 ||
+    attachment.dataBase64 ||
+    attachment.data ||
+    attachment.content ||
+    ''
+  ).trim();
+  if (!base64) return null;
+  const dataUrlMatch = base64.match(/^data:([^;,]+)?(?:;charset=[^;,]+)?;base64,(.*)$/i);
+  let mimeType = String(attachment.mimeType || attachment.contentType || '').trim();
+  if (dataUrlMatch) {
+    if (!mimeType && dataUrlMatch[1]) mimeType = dataUrlMatch[1];
+    base64 = String(dataUrlMatch[2] || '').trim();
+  }
+  if (!base64) return null;
+  const filenameRaw = String(
+    attachment.filename ||
+    attachment.fileName ||
+    attachment.name ||
+    'GNC-PH-Shift.xlsx'
+  ).trim() || 'GNC-PH-Shift.xlsx';
+  const filename = filenameRaw.replace(/[\\/:*?"<>|]+/g, '-').replace(/^\.+/, '').trim() || 'GNC-PH-Shift.xlsx';
+  const safeMimeType = mimeType || 'application/octet-stream';
+  try {
+    return Utilities.newBlob(Utilities.base64Decode(base64), safeMimeType, filename);
+  } catch (error) {
+    console.error('Email attachment decode failed', error);
+    return null;
+  }
+}
+
 function buildDriveShiftReportAttachments_(payload) {
   const reportFormat = String(payload && payload.shiftReportFormat || '').trim().toLowerCase();
+  if (reportFormat !== 'excel') return [];
+  const explicitAttachments = [];
+  const candidates = [];
+  if (payload && payload.shiftReportAttachment) candidates.push(payload.shiftReportAttachment);
+  if (payload && Array.isArray(payload.shiftReportAttachments)) {
+    payload.shiftReportAttachments.forEach(function(attachment) { candidates.push(attachment); });
+  }
+  if (payload && Array.isArray(payload.attachments)) {
+    payload.attachments.forEach(function(attachment) { candidates.push(attachment); });
+  }
+  candidates.forEach(function(attachment) {
+    const blob = buildRequestEmailAttachmentBlob_(attachment);
+    if (blob) explicitAttachments.push(blob);
+  });
+  if (explicitAttachments.length) return explicitAttachments;
+
   const csv = String(payload && payload.shiftReportCsv || '');
-  if (reportFormat !== 'excel' || !csv) return [];
+  if (!csv) return [];
   const rawName = String(payload && payload.shiftReportFilename || 'GNC-PH-Shift.csv').trim() || 'GNC-PH-Shift.csv';
   const safeName = rawName.replace(/[\\/:*?"<>|]+/g, '-').replace(/^\.+/, '').trim() || 'GNC-PH-Shift.csv';
   const filename = /\.csv$/i.test(safeName) ? safeName : safeName + '.csv';
