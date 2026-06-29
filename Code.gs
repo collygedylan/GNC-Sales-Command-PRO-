@@ -6059,18 +6059,119 @@ function buildRequestItemsHtml_(payload) {
   if (!items.length) return '';
 }
 
+function getApprovalInquiryItemValue_(item, fields, fallback) {
+  const safeFields = Array.isArray(fields) ? fields : [];
+  for (let i = 0; i < safeFields.length; i++) {
+    const value = item && item[safeFields[i]];
+    if (String(value == null ? '' : value).trim() !== '') return value;
+  }
+  return fallback == null ? '' : fallback;
+}
+
+function buildApprovalInquiryEmailChip_(label, value, tone) {
+  const raw = String(value == null ? '' : value).trim();
+  if (!raw || raw === '-') return '';
+  const safeTone = String(tone || 'slate').trim();
+  const color = safeTone === 'green' ? '#007a4d' : (safeTone === 'amber' ? '#b45309' : '#334155');
+  const bg = safeTone === 'green' ? '#ecfdf5' : (safeTone === 'amber' ? '#fffbeb' : '#f8fafc');
+  const border = safeTone === 'green' ? '#bbf7d0' : (safeTone === 'amber' ? '#fde68a' : '#dbe5df');
+  return '<span style="display:inline-block;margin:0 5px 5px 0;padding:6px 8px;border:1px solid ' + border + ';border-radius:999px;background:' + bg + ';font-size:10px;line-height:1.2;font-weight:900;letter-spacing:.05em;color:' + color + ';text-transform:uppercase;">' + escapeEmailHtml_(label) + ' <span style="color:#111827;">' + escapeEmailHtml_(raw) + '</span></span>';
+}
+
+function buildApprovalInquiryItemsHtml_(payload) {
+  const items = getRequestEmailPayloadItems_(payload);
+  if (!items.length) return String(payload && payload.formattedItemsHtml || '').trim();
+  const approvalType = String(firstNonEmptyRequestValue_(payload && payload.approvalType, payload && payload.approval_type, payload && payload.approvalLabel, payload && payload.approval_label, payload && payload.customer, '') || '').trim().toLowerCase().replace(/_/g, '-');
+  const isMoveUp = approvalType.indexOf('move-up') !== -1 || approvalType.indexOf('move up') !== -1;
+  const isHold = approvalType.indexOf('hold') !== -1;
+  const cell = function(label, value, align) {
+    const raw = String(value == null || value === '' ? '-' : value).trim() || '-';
+    return [
+      '<td style="padding:7px 5px;border-top:1px solid #dbe5df;vertical-align:top;text-align:' + (align || 'left') + ';">',
+      '<div style="font-size:8px;line-height:1.1;font-weight:900;letter-spacing:.08em;color:#94a3b8;text-transform:uppercase;">' + escapeEmailHtml_(label) + '</div>',
+      '<div style="margin-top:3px;font-size:12px;line-height:1.2;font-weight:900;color:#111827;word-break:break-word;">' + escapeEmailHtml_(raw) + '</div>',
+      '</td>'
+    ].join('');
+  };
+  const rowsHtml = items.map(function(item, index) {
+    const commonName = firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Unknown Item');
+    const contSize = firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, '-');
+    const itemCode = firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, '-');
+    const lot = getApprovalInquiryItemValue_(item, ['lotcode', 'LOTCODE'], '-');
+    const location = getApprovalInquiryItemValue_(item, ['locationcode', 'LOCATIONCODE', 'loc', 'LOC'], '-');
+    const source = getApprovalInquiryItemValue_(item, ['source', 'SOURCE', 'sourcecode', 'SOURCECODE'], '-');
+    const priority = getApprovalInquiryItemValue_(item, ['priority', 'PRIORITY'], '-');
+    const onHand = getApprovalInquiryItemValue_(item, ['ptronhand', 'PTRONHAND'], '-');
+    const review = getApprovalInquiryItemValue_(item, ['ptrreviewed', 'PTRREVIEWED'], '-');
+    const available = getApprovalInquiryItemValue_(item, ['ptravailable', 'PTRAVAILABLE'], '-');
+    const updated = [
+      isMoveUp ? buildApprovalInquiryEmailChip_('MOVE UP QTY', firstNonEmptyRequestValue_(item && item.ncr_qty, item && item.NCR_QTY, item && item.loc_match_qty, item && item.LOC_MATCH_QTY, ''), 'green') : '',
+      (!isMoveUp && !isHold) ? buildApprovalInquiryEmailChip_('RELEASE QTY', firstNonEmptyRequestValue_(item && item.ncr_qty, item && item.NCR_QTY, item && item.loc_match_qty, item && item.LOC_MATCH_QTY, ''), 'green') : '',
+      buildApprovalInquiryEmailChip_('HOLDSTOPCODE', firstNonEmptyRequestValue_(item && item.holdstopcode, item && item.HOLDSTOPCODE, ''), 'amber'),
+      buildApprovalInquiryEmailChip_('HOLDSTOPREASON', firstNonEmptyRequestValue_(item && item.holdstopreason, item && item.HOLDSTOPREASON, ''), 'amber'),
+      buildApprovalInquiryEmailChip_('SPEC', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, ''), 'slate'),
+      buildApprovalInquiryEmailChip_('CALIPER', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, ''), 'slate'),
+      buildApprovalInquiryEmailChip_('LOC PHOTO MATCH', getRequestLocPhotoMatchEmailValue_(item), 'green'),
+      buildApprovalInquiryEmailChip_('AV NOTE', firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, ''), 'slate'),
+      buildApprovalInquiryEmailChip_('PICK NOTE', firstNonEmptyRequestValue_(item && item.pick_note, item && item.req_pick, item && item.REQ_PICK, item && item.REQ_PIC_NOTE, ''), 'slate'),
+      buildApprovalInquiryEmailChip_('COMMENTS', firstNonEmptyRequestValue_(item && item.comments, item && item.req_comments, item && item.REQ_COMMENTS, ''), 'slate')
+    ].filter(Boolean).join('');
+    const details = [
+      buildApprovalInquiryEmailChip_('Date', firstNonEmptyRequestValue_(item && item.locationnotedate, item && item.LOCATIONNOTEDATE, ''), 'slate'),
+      buildApprovalInquiryEmailChip_('PTN1', firstNonEmptyRequestValue_(item && item.locationptn1, item && item.LOCATIONPTN1, ''), 'slate'),
+      buildApprovalInquiryEmailChip_('Location Note', firstNonEmptyRequestValue_(item && item.locationnote, item && item.LOCATIONNOTE, ''), 'green')
+    ].filter(Boolean).join('');
+    return [
+      '<div style="margin:0 0 14px 0;border:1px solid #b7dac7;border-radius:12px;background:#ffffff;overflow:hidden;">',
+      '<div style="padding:11px 12px 8px 12px;">',
+      '<div style="display:inline-block;margin:0 0 5px 0;padding:4px 8px;border:1px solid #bbf7d0;border-radius:999px;background:#ecfdf5;color:#007a4d;font-size:9px;line-height:1.1;font-weight:900;letter-spacing:.08em;text-transform:uppercase;">Item Inquiry</div>',
+      '<div style="font-size:18px;line-height:1.15;font-weight:900;color:#111827;word-break:break-word;">' + escapeEmailHtml_(commonName) + '</div>',
+      '<div style="margin-top:3px;font-size:12px;line-height:1.2;font-weight:900;letter-spacing:.08em;color:#64748b;text-transform:uppercase;">' + escapeEmailHtml_(itemCode) + ' | ' + escapeEmailHtml_(contSize) + '</div>',
+      '</div>',
+      '<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;table-layout:fixed;"><tr>',
+      cell('Row ' + String(index + 1), String(index + 1)),
+      cell('Lot', lot),
+      cell('Location', location),
+      cell('Src', source),
+      cell('Pri', priority),
+      cell('On Hand', onHand, 'right'),
+      cell('Review', review, 'right'),
+      cell('Available', available, 'right'),
+      '</tr></table>',
+      (updated || details) ? '<div style="padding:8px 12px 10px 12px;border-top:1px solid #dbe5df;background:#f8fafc;">' + (updated ? '<div style="margin:0 0 3px 0;">' + updated + '</div>' : '') + (details ? '<div style="margin:0;">' + details + '</div>' : '') + '</div>' : '',
+      '</div>'
+    ].join('');
+  }).join('');
+  return '<div style="font-family:Arial,sans-serif;color:#111827;max-width:760px;margin:0 auto;line-height:1.35;">' + rowsHtml + '</div>';
+}
+
+function buildApprovalInquiryItemsText_(payload) {
+  const items = getRequestEmailPayloadItems_(payload);
+  if (!items.length) return String(payload && payload.formattedItemsText || '').trim();
+  return items.map(function(item, index) {
+    const fields = [
+      'Row: ' + String(index + 1),
+      'Item Code: ' + firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, '-'),
+      'Common Name: ' + firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Unknown Item'),
+      'Cont Size: ' + firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, '-'),
+      'Lot: ' + getApprovalInquiryItemValue_(item, ['lotcode', 'LOTCODE'], '-'),
+      'Location: ' + getApprovalInquiryItemValue_(item, ['locationcode', 'LOCATIONCODE', 'loc', 'LOC'], '-'),
+      'Source: ' + getApprovalInquiryItemValue_(item, ['source', 'SOURCE', 'sourcecode', 'SOURCECODE'], '-'),
+      'Priority: ' + getApprovalInquiryItemValue_(item, ['priority', 'PRIORITY'], '-'),
+      'On Hand: ' + getApprovalInquiryItemValue_(item, ['ptronhand', 'PTRONHAND'], '-'),
+      'Review: ' + getApprovalInquiryItemValue_(item, ['ptrreviewed', 'PTRREVIEWED'], '-'),
+      'Available: ' + getApprovalInquiryItemValue_(item, ['ptravailable', 'PTRAVAILABLE'], '-')
+    ];
+    return fields.join('\n');
+  }).join('\n\n');
+}
+
 function buildApprovalRequestItemsHtml_(payload) {
-  const safePayload = payload && typeof payload === 'object' ? Object.assign({}, payload) : {};
-  delete safePayload.formattedItemsHtml;
-  delete safePayload.formattedItemsText;
-  return buildRequestItemsHtml_(safePayload);
+  return buildApprovalInquiryItemsHtml_(payload);
 }
 
 function buildApprovalRequestItemsText_(payload) {
-  const safePayload = payload && typeof payload === 'object' ? Object.assign({}, payload) : {};
-  delete safePayload.formattedItemsHtml;
-  delete safePayload.formattedItemsText;
-  return buildRequestItemsText_(safePayload);
+  return buildApprovalInquiryItemsText_(payload);
 }
 
 function getRequestItemPhotoUrls_(item) {
