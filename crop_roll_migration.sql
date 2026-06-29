@@ -24,6 +24,7 @@ create table if not exists public.v2_crop_roll_rows (
   commonname text,
   contsize text,
   genus text,
+  plantgroupcode text,
   blockalpha text,
   locationcode text,
   original_lotcode text,
@@ -54,11 +55,17 @@ create table if not exists public.v2_crop_roll_rows (
   unique (run_id, master_unique_id)
 );
 
+alter table if exists public.v2_crop_roll_rows
+  add column if not exists plantgroupcode text;
+
 create index if not exists idx_v2_crop_roll_rows_run_status
   on public.v2_crop_roll_rows (run_id, row_status);
 
 create index if not exists idx_v2_crop_roll_rows_run_assigned
   on public.v2_crop_roll_rows (run_id, assignedto);
+
+create index if not exists idx_v2_crop_roll_rows_run_plantgroup
+  on public.v2_crop_roll_rows (run_id, plantgroupcode);
 
 create index if not exists idx_v2_crop_roll_rows_run_block_loc
   on public.v2_crop_roll_rows (run_id, blockalpha, locationcode);
