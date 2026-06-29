@@ -1,12 +1,13 @@
 {
   "batch_size": 12,
-  "class_count": 104,
+  "class_count": 105,
   "class_counts": {
     "abioitic disorder": 4,
     "abiotic": 102,
     "agrobacterium tumefaciens": 6,
     "anthracnose": 32,
     "anthracnose basal rot": 4,
+    "anthracnose stem blight": 4,
     "aphanidermatum": 4,
     "biotrytis": 4,
     "bipolaris": 6,
@@ -68,7 +69,7 @@
     "phomopsis": 56,
     "phyllosticta; neopestalotiopsis": 4,
     "phytohthora": 2,
-    "phytophthora": 172,
+    "phytophthora": 168,
     "phytophthore citrophthora": 4,
     "phytotoxic reaction": 4,
     "potexvirus": 2,
@@ -107,73 +108,73 @@
     "winter kill; roots dead; tips flushed then dried": 2,
     "xanthomonas": 30
   },
-  "created_at": "2026-06-28T08:08:20.707256+00:00",
+  "created_at": "2026-06-29T08:40:51.376965+00:00",
   "device": "cpu",
   "epochs": 8,
   "history": [
     {
       "epoch": 1,
-      "seconds": 48.5,
-      "train_accuracy": 0.09691629955947137,
-      "train_loss": 4.377506674963997,
-      "validation_accuracy": 0.0,
-      "validation_loss": 4.827725728352864
+      "seconds": 46.85,
+      "train_accuracy": 0.10220264317180616,
+      "train_loss": 4.319133606881297,
+      "validation_accuracy": 0.011494252873563218,
+      "validation_loss": 4.903485594124629
     },
     {
       "epoch": 2,
-      "seconds": 48.54,
-      "train_accuracy": 0.2607929515418502,
-      "train_loss": 3.4569121558235607,
-      "validation_accuracy": 0.011494252873563218,
-      "validation_loss": 5.472151449356956
+      "seconds": 46.39,
+      "train_accuracy": 0.2775330396475771,
+      "train_loss": 3.4221574314890453,
+      "validation_accuracy": 0.007662835249042145,
+      "validation_loss": 5.021016910158354
     },
     {
       "epoch": 3,
-      "seconds": 48.69,
-      "train_accuracy": 0.38061674008810575,
-      "train_loss": 2.781239513993788,
-      "validation_accuracy": 0.01532567049808429,
-      "validation_loss": 5.350219194916473
+      "seconds": 45.81,
+      "train_accuracy": 0.40704845814977975,
+      "train_loss": 2.698022382795023,
+      "validation_accuracy": 0.011494252873563218,
+      "validation_loss": 5.303837474735304
     },
     {
       "epoch": 4,
-      "seconds": 47.53,
-      "train_accuracy": 0.5224669603524229,
-      "train_loss": 2.147859661484605,
-      "validation_accuracy": 0.01532567049808429,
-      "validation_loss": 5.495771123074937
+      "seconds": 46.64,
+      "train_accuracy": 0.5392070484581498,
+      "train_loss": 2.0550628806000764,
+      "validation_accuracy": 0.011494252873563218,
+      "validation_loss": 5.63189425413636
     },
     {
       "epoch": 5,
-      "seconds": 47.06,
-      "train_accuracy": 0.5973568281938326,
-      "train_loss": 1.7474293080720606,
+      "seconds": 46.97,
+      "train_accuracy": 0.6140969162995594,
+      "train_loss": 1.739781938040309,
       "validation_accuracy": 0.019157088122605363,
-      "validation_loss": 5.387719844949657
+      "validation_loss": 5.578238503686313
     },
     {
       "epoch": 6,
-      "seconds": 47.6,
-      "train_accuracy": 0.6387665198237885,
-      "train_loss": 1.5883279220648274,
-      "validation_accuracy": 0.022988505747126436,
-      "validation_loss": 5.637955249040976
+      "seconds": 46.09,
+      "train_accuracy": 0.6616740088105727,
+      "train_loss": 1.5078337944551712,
+      "validation_accuracy": 0.019157088122605363,
+      "validation_loss": 5.595503226093863
     },
     {
       "epoch": 7,
-      "seconds": 47.74,
-      "train_accuracy": 0.6951541850220264,
-      "train_loss": 1.350203571760707,
-      "validation_accuracy": 0.038314176245210725,
-      "validation_loss": 5.733432539578142
+      "seconds": 45.97,
+      "train_accuracy": 0.6889867841409691,
+      "train_loss": 1.312269281080641,
+      "validation_accuracy": 0.019157088122605363,
+      "validation_loss": 5.593312745806815
     },
     {
       "epoch": 8,
-      "seconds": 47.82,
-      "train_accuracy": 0.707488986784141,
-      "train_loss": 1.272157736391748,
+      "seconds": 46.75,
+      "train_accuracy": 0.7030837004405286,
+      "train_loss": 1.2544200479984284,
       "validation_accuracy": 0.019157088122605363,
-      "validation_loss": 5.835515570366519
+      "validation_loss": 5.797409813979576
     }
   ],
   "labels_path": "models/diagnostics_labels.json",

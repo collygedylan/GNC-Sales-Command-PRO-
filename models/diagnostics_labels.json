@@ -30,6 +30,12 @@
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
+    "diagnosis": "anthracnose stem blight",
+    "label": "anthracnose stem blight",
+    "sample_count": 4,
+    "treatment": "Review matching lab report and current crop condition before selecting treatment."
+  },
+  {
     "diagnosis": "aphanidermatum",
     "label": "aphanidermatum",
     "sample_count": 4,
@@ -398,7 +404,7 @@
   {
     "diagnosis": "phytophthora",
     "label": "phytophthora",
-    "sample_count": 172,
+    "sample_count": 168,
     "treatment": "Review matching lab report and current crop condition before selecting treatment."
   },
   {
