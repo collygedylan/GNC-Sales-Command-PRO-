@@ -6212,6 +6212,9 @@ function getRequestItemPhotoUrls_(item) {
     item && item.request_photo_link,
     item && item.REQUEST_PHOTO_LINK,
     item && item.REQUESTPHOTO_LINK,
+    item && item.dock_photo_link,
+    item && item.DOCK_PHOTO_LINK,
+    item && item.DOCKPHOTO_LINK,
     item && item.photo_link,
     item && item.PHOTO_LINK,
     item && item.row_photo_link,
@@ -6223,6 +6226,9 @@ function getRequestItemPhotoUrls_(item) {
     snapshot.REQUEST_PHOTO_LINK,
     snapshot.request_photo_link,
     snapshot.REQUESTPHOTO_LINK,
+    snapshot.DOCK_PHOTO_LINK,
+    snapshot.dock_photo_link,
+    snapshot.DOCKPHOTO_LINK,
     snapshot.ROW_PHOTO_LINK,
     snapshot.row_photo_link,
     snapshot.SAVED_PHOTO_LINK,
@@ -7398,17 +7404,20 @@ function buildRequestEmailMessage_(payload) {
   const isApprovalEmail = emailType === 'ncr_approval' || emailType === 'hold_release_request';
   const isDriveShiftReportEmail = emailType === 'drive_shift_report';
   const isGroupedBloomNcrEmail = emailType === 'drive_customer_outreach' && emailSubType === 'grouped_bloom_ncr';
+  const isPaperNcrItemInquiryEmail = emailType === 'drive_customer_outreach' && emailSubType === 'paper_ncr_item_inquiry';
+  const isSuspendTagPhotoSpecEmail = emailType === 'drive_customer_outreach' && emailSubType === 'suspend_tag_photo_spec';
+  const useFormattedItemsBody = isDriveShiftReportEmail || isPaperNcrItemInquiryEmail || isSuspendTagPhotoSpecEmail;
   const isSuspendTagCompletionEmail = isSuspendTagCompletionEmail_(payload);
   const repName = escapeEmailHtml_(payload.repName || payload.salesRepName || '');
   const customer = escapeEmailHtml_(payload.customer || 'N/A');
   const folderId = escapeEmailHtml_(payload.folderId || payload.requestFolder || '');
   const itemsCount = escapeEmailHtml_(payload.itemsCount || 0);
-  const itemsHtml = isDriveShiftReportEmail
+  const itemsHtml = useFormattedItemsBody
     ? String(payload.formattedItemsHtml || '').trim()
     : emailType === 'request_complete'
     ? (isSuspendTagCompletionEmail ? buildSuspendTagCompletionItemsHtml_(payload) : buildCompactRequestItemsHtml_(payload))
     : (isApprovalEmail ? buildApprovalRequestItemsHtml_(payload) : buildRequestItemsHtml_(payload));
-  const itemsText = isDriveShiftReportEmail
+  const itemsText = useFormattedItemsBody
     ? String(payload.formattedItemsText || '').trim()
     : (isSuspendTagCompletionEmail ? buildSuspendTagCompletionItemsText_(payload) : (isApprovalEmail ? buildApprovalRequestItemsText_(payload) : buildRequestItemsText_(payload)));
   const selectionSummaryHtml = buildRequestSelectionSummaryHtml_(payload);
@@ -7635,11 +7644,11 @@ function buildRequestEmailMessage_(payload) {
     const detailSection = itemsHtml
       ? [
           '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
-          isGroupedBloomNcrEmail ? '' : customerConsigneeSummaryHtml,
-          '<p style="font-weight:700; margin-bottom:12px;">' + (isGroupedBloomNcrEmail ? 'NCR Rows' : 'Photo / Spec Rows') + '</p>',
+          (isGroupedBloomNcrEmail || isPaperNcrItemInquiryEmail || isSuspendTagPhotoSpecEmail) ? '' : customerConsigneeSummaryHtml,
+          '<p style="font-weight:700; margin-bottom:12px;">' + (isPaperNcrItemInquiryEmail ? 'Item Inquiry NCR' : (isGroupedBloomNcrEmail ? 'NCR Rows' : (isSuspendTagPhotoSpecEmail ? 'Suspend Tag Photo / Spec Rows' : 'Photo / Spec Rows'))) + '</p>',
           itemsHtml
         ].join('')
-      : '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 12px; color: #777;">' + (isGroupedBloomNcrEmail ? 'No NCR row details were provided.' : 'No selected customer/source row details were provided.') + '</p>';
+      : '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 12px; color: #777;">' + ((isGroupedBloomNcrEmail || isPaperNcrItemInquiryEmail) ? 'No NCR row details were provided.' : (isSuspendTagPhotoSpecEmail ? 'No Suspend Tag photo/spec rows were provided.' : 'No selected customer/source row details were provided.')) + '</p>';
 
     return {
       subject: subject,
@@ -7647,7 +7656,7 @@ function buildRequestEmailMessage_(payload) {
         brandLabelPlain,
         plainAudienceLabel ? 'Hello ' + plainAudienceLabel + ',' : '',
         hideItemHeader ? '' : 'Item: ' + plainItem,
-        isGroupedBloomNcrEmail ? '' : customerConsigneeSummaryText,
+        (isGroupedBloomNcrEmail || isPaperNcrItemInquiryEmail || isSuspendTagPhotoSpecEmail) ? '' : customerConsigneeSummaryText,
         itemsText
       ].filter(Boolean).join('\n\n'),
       htmlBody: buildPhoneSizedEmailHtml_([
