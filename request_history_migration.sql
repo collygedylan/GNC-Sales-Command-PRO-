@@ -27,6 +27,8 @@ create table if not exists public.v2_request_history (
     locationcode text,
     lotcode text,
     priority text,
+    ptronhand text,
+    ptrreviewed text,
     ptravailable text,
     s_lts text,
     holdstopcode text,
@@ -43,6 +45,11 @@ create table if not exists public.v2_request_history (
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
+
+alter table public.v2_request_history
+    add column if not exists ptronhand text,
+    add column if not exists ptrreviewed text,
+    add column if not exists ptravailable text;
 
 create index if not exists idx_v2_request_history_folder on public.v2_request_history (request_folder);
 create index if not exists idx_v2_request_history_requested_by on public.v2_request_history (requested_by);

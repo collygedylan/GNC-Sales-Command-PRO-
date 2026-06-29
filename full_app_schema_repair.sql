@@ -347,6 +347,8 @@ create table if not exists public.v2_request_history (
     locationcode text,
     lotcode text,
     priority text,
+    ptronhand text,
+    ptrreviewed text,
     ptravailable text,
     s_lts text,
     holdstopcode text,
@@ -527,6 +529,9 @@ begin
         execute 'alter table public.v2_request_history add column if not exists completed_by_username text';
         execute 'alter table public.v2_request_history add column if not exists completed_by_display text';
         execute 'alter table public.v2_request_history add column if not exists completed_by_email text';
+        execute 'alter table public.v2_request_history add column if not exists ptronhand text';
+        execute 'alter table public.v2_request_history add column if not exists ptrreviewed text';
+        execute 'alter table public.v2_request_history add column if not exists ptravailable text';
 
         execute 'create index if not exists idx_v2_request_history_completed_by_username on public.v2_request_history (completed_by_username)';
     end if;
