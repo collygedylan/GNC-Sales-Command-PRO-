@@ -6095,10 +6095,23 @@ function buildApprovalInquiryItemsHtml_(payload) {
     const raw = String(value == null || value === '' ? '-' : value).trim() || '-';
     return '<span style="display:inline-block;margin-right:8px;white-space:nowrap;"><span style="color:#94a3b8;font-weight:900;letter-spacing:.06em;text-transform:uppercase;">' + escapeEmailHtml_(label) + '</span> <span style="color:#111827;">' + escapeEmailHtml_(raw) + '</span></span>';
   };
+  const holdEditField = function(label, value) {
+    const raw = String(value == null ? '' : value).trim();
+    if (!raw || raw === '-') return '';
+    const safeLabel = String(label || '').trim().toUpperCase();
+    const isHoldCode = safeLabel === 'HOLDSTOPCODE';
+    const isHoldReason = safeLabel === 'HOLDSTOPREASON';
+    const valueStyle = isTakeOffHold && (isHoldCode || isHoldReason) ? 'text-decoration:line-through;text-decoration-thickness:2px;' : '';
+    const valueHtml = isPlaceOnHold && isHoldCode
+      ? '<span style="display:inline-block;min-width:19px;height:19px;line-height:19px;text-align:center;border:2px solid #b45309;border-radius:999px;color:#111827;font-weight:900;' + valueStyle + '">' + escapeEmailHtml_(raw) + '</span>'
+      : '<span style="color:#111827;font-weight:900;' + valueStyle + '">' + escapeEmailHtml_(raw) + '</span>';
+    return '<div style="margin:6px 0 0 0;padding:7px 9px;border:1px solid #fde68a;border-radius:8px;background:#fffbeb;font-size:10px;line-height:1.25;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#b45309;"><span style="display:inline-block;min-width:112px;color:#b45309;">' + escapeEmailHtml_(safeLabel) + '</span> ' + valueHtml + '</div>';
+  };
   const rowsHtml = items.map(function(item, index) {
     const commonName = firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Unknown Item');
     const contSize = firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, '-');
     const itemCode = firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, '-');
+    const genus = firstNonEmptyRequestValue_(item && item.genus, item && item.GENUS, item && item.genusname, item && item.GENUSNAME, '-');
     const lot = getApprovalInquiryItemValue_(item, ['lotcode', 'LOTCODE'], '-');
     const location = getApprovalInquiryItemValue_(item, ['locationcode', 'LOCATIONCODE', 'loc', 'LOC'], '-');
     const source = getApprovalInquiryItemValue_(item, ['source', 'SOURCE', 'sourcecode', 'SOURCECODE'], '-');
@@ -6116,11 +6129,21 @@ function buildApprovalInquiryItemsHtml_(payload) {
       linePart('Review', review),
       linePart('Available', available)
     ].join('');
+    const holdstopCode = firstNonEmptyRequestValue_(item && item.holdstopcode, item && item.HOLDSTOPCODE, '');
+    const holdstopReason = firstNonEmptyRequestValue_(item && item.holdstopreason, item && item.HOLDSTOPREASON, '');
+    const holdEdits = [
+      holdEditField('HOLDSTOPCODE', holdstopCode),
+      holdEditField('HOLDSTOPREASON', holdstopReason)
+    ].filter(Boolean).join('');
+    const identityParts = [itemCode, contSize, genus].map(function(value) {
+      return String(value == null ? '' : value).trim();
+    }).filter(function(value) {
+      return value && value !== '-';
+    });
+    const identityLine = identityParts.length ? identityParts.join(' | ') : '-';
     const updated = [
       isMoveUp ? buildApprovalInquiryEmailChip_('MOVE UP QTY', firstNonEmptyRequestValue_(item && item.ncr_qty, item && item.NCR_QTY, item && item.loc_match_qty, item && item.LOC_MATCH_QTY, ''), 'green') : '',
       (!isMoveUp && !isHold) ? buildApprovalInquiryEmailChip_('RELEASE QTY', firstNonEmptyRequestValue_(item && item.ncr_qty, item && item.NCR_QTY, item && item.loc_match_qty, item && item.LOC_MATCH_QTY, ''), 'green') : '',
-      buildApprovalInquiryEmailChip_('HOLDSTOPCODE', firstNonEmptyRequestValue_(item && item.holdstopcode, item && item.HOLDSTOPCODE, ''), 'amber', { strike: isTakeOffHold, circleValue: isPlaceOnHold }),
-      buildApprovalInquiryEmailChip_('HOLDSTOPREASON', firstNonEmptyRequestValue_(item && item.holdstopreason, item && item.HOLDSTOPREASON, ''), 'amber', { strike: isTakeOffHold }),
       buildApprovalInquiryEmailChip_('SPEC', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, ''), 'slate'),
       buildApprovalInquiryEmailChip_('CALIPER', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, ''), 'slate'),
       buildApprovalInquiryEmailChip_('LOC PHOTO MATCH', getRequestLocPhotoMatchEmailValue_(item), 'green'),
@@ -6138,7 +6161,8 @@ function buildApprovalInquiryItemsHtml_(payload) {
       '<div style="padding:11px 12px 8px 12px;">',
       '<div style="display:inline-block;margin:0 0 5px 0;padding:4px 8px;border:1px solid #bbf7d0;border-radius:999px;background:#ecfdf5;color:#007a4d;font-size:9px;line-height:1.1;font-weight:900;letter-spacing:.08em;text-transform:uppercase;">Item Inquiry</div>',
       '<div style="font-size:18px;line-height:1.15;font-weight:900;color:#111827;word-break:break-word;">' + escapeEmailHtml_(commonName) + '</div>',
-      '<div style="margin-top:3px;font-size:12px;line-height:1.2;font-weight:900;letter-spacing:.08em;color:#64748b;text-transform:uppercase;">' + escapeEmailHtml_(itemCode) + ' | ' + escapeEmailHtml_(contSize) + '</div>',
+      '<div style="margin-top:3px;font-size:12px;line-height:1.2;font-weight:900;letter-spacing:.08em;color:#64748b;text-transform:uppercase;">' + escapeEmailHtml_(identityLine) + '</div>',
+      holdEdits,
       '</div>',
       '<div style="padding:7px 10px;border-top:1px solid #dbe5df;font-size:9px;line-height:1.55;font-weight:900;white-space:nowrap;color:#111827;">' + rowLine + '</div>',
       (updated || details) ? '<div style="padding:8px 12px 10px 12px;border-top:1px solid #dbe5df;background:#f8fafc;">' + (updated ? '<div style="margin:0 0 3px 0;white-space:nowrap;">' + updated + '</div>' : '') + (details ? '<div style="margin:0;white-space:nowrap;">' + details + '</div>' : '') + '</div>' : '',
