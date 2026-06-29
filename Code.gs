@@ -6068,14 +6068,19 @@ function getApprovalInquiryItemValue_(item, fields, fallback) {
   return fallback == null ? '' : fallback;
 }
 
-function buildApprovalInquiryEmailChip_(label, value, tone) {
+function buildApprovalInquiryEmailChip_(label, value, tone, options) {
   const raw = String(value == null ? '' : value).trim();
   if (!raw || raw === '-') return '';
+  const safeOptions = options || {};
   const safeTone = String(tone || 'slate').trim();
   const color = safeTone === 'green' ? '#007a4d' : (safeTone === 'amber' ? '#b45309' : '#334155');
   const bg = safeTone === 'green' ? '#ecfdf5' : (safeTone === 'amber' ? '#fffbeb' : '#f8fafc');
   const border = safeTone === 'green' ? '#bbf7d0' : (safeTone === 'amber' ? '#fde68a' : '#dbe5df');
-  return '<span style="display:inline-block;margin:0 5px 5px 0;padding:6px 8px;border:1px solid ' + border + ';border-radius:999px;background:' + bg + ';font-size:10px;line-height:1.2;font-weight:900;letter-spacing:.05em;color:' + color + ';text-transform:uppercase;">' + escapeEmailHtml_(label) + ' <span style="color:#111827;">' + escapeEmailHtml_(raw) + '</span></span>';
+  const valueStyle = safeOptions.strike ? 'text-decoration:line-through;text-decoration-thickness:2px;' : '';
+  const valueHtml = safeOptions.circleValue
+    ? '<span style="display:inline-block;min-width:18px;height:18px;line-height:18px;text-align:center;border:2px solid ' + color + ';border-radius:999px;color:#111827;font-weight:900;' + valueStyle + '">' + escapeEmailHtml_(raw) + '</span>'
+    : '<span style="color:#111827;' + valueStyle + '">' + escapeEmailHtml_(raw) + '</span>';
+  return '<span style="display:inline-block;margin:0 5px 5px 0;padding:5px 7px;border:1px solid ' + border + ';border-radius:999px;background:' + bg + ';font-size:9px;line-height:1.15;font-weight:900;letter-spacing:.04em;color:' + color + ';text-transform:uppercase;white-space:nowrap;">' + escapeEmailHtml_(label) + ' ' + valueHtml + '</span>';
 }
 
 function buildApprovalInquiryItemsHtml_(payload) {
@@ -6084,14 +6089,11 @@ function buildApprovalInquiryItemsHtml_(payload) {
   const approvalType = String(firstNonEmptyRequestValue_(payload && payload.approvalType, payload && payload.approval_type, payload && payload.approvalLabel, payload && payload.approval_label, payload && payload.customer, '') || '').trim().toLowerCase().replace(/_/g, '-');
   const isMoveUp = approvalType.indexOf('move-up') !== -1 || approvalType.indexOf('move up') !== -1;
   const isHold = approvalType.indexOf('hold') !== -1;
-  const cell = function(label, value, align) {
+  const isTakeOffHold = approvalType === 'hold' || approvalType.indexOf('hold-release') !== -1 || approvalType.indexOf('off-hold') !== -1 || approvalType.indexOf('take-off-hold') !== -1 || approvalType.indexOf('take off hold') !== -1;
+  const isPlaceOnHold = !isTakeOffHold && (approvalType.indexOf('on-hold') !== -1 || approvalType.indexOf('place-on-hold') !== -1 || approvalType.indexOf('place on hold') !== -1);
+  const linePart = function(label, value) {
     const raw = String(value == null || value === '' ? '-' : value).trim() || '-';
-    return [
-      '<td style="padding:7px 5px;border-top:1px solid #dbe5df;vertical-align:top;text-align:' + (align || 'left') + ';">',
-      '<div style="font-size:8px;line-height:1.1;font-weight:900;letter-spacing:.08em;color:#94a3b8;text-transform:uppercase;">' + escapeEmailHtml_(label) + '</div>',
-      '<div style="margin-top:3px;font-size:12px;line-height:1.2;font-weight:900;color:#111827;word-break:break-word;">' + escapeEmailHtml_(raw) + '</div>',
-      '</td>'
-    ].join('');
+    return '<span style="display:inline-block;margin-right:8px;white-space:nowrap;"><span style="color:#94a3b8;font-weight:900;letter-spacing:.06em;text-transform:uppercase;">' + escapeEmailHtml_(label) + '</span> <span style="color:#111827;">' + escapeEmailHtml_(raw) + '</span></span>';
   };
   const rowsHtml = items.map(function(item, index) {
     const commonName = firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Unknown Item');
@@ -6104,11 +6106,21 @@ function buildApprovalInquiryItemsHtml_(payload) {
     const onHand = getApprovalInquiryItemValue_(item, ['ptronhand', 'PTRONHAND'], '-');
     const review = getApprovalInquiryItemValue_(item, ['ptrreviewed', 'PTRREVIEWED'], '-');
     const available = getApprovalInquiryItemValue_(item, ['ptravailable', 'PTRAVAILABLE'], '-');
+    const rowLine = [
+      linePart('Row', String(index + 1)),
+      linePart('Lot', lot),
+      linePart('Loc', location),
+      linePart('Src', source),
+      linePart('Pri', priority),
+      linePart('On Hand', onHand),
+      linePart('Review', review),
+      linePart('Available', available)
+    ].join('');
     const updated = [
       isMoveUp ? buildApprovalInquiryEmailChip_('MOVE UP QTY', firstNonEmptyRequestValue_(item && item.ncr_qty, item && item.NCR_QTY, item && item.loc_match_qty, item && item.LOC_MATCH_QTY, ''), 'green') : '',
       (!isMoveUp && !isHold) ? buildApprovalInquiryEmailChip_('RELEASE QTY', firstNonEmptyRequestValue_(item && item.ncr_qty, item && item.NCR_QTY, item && item.loc_match_qty, item && item.LOC_MATCH_QTY, ''), 'green') : '',
-      buildApprovalInquiryEmailChip_('HOLDSTOPCODE', firstNonEmptyRequestValue_(item && item.holdstopcode, item && item.HOLDSTOPCODE, ''), 'amber'),
-      buildApprovalInquiryEmailChip_('HOLDSTOPREASON', firstNonEmptyRequestValue_(item && item.holdstopreason, item && item.HOLDSTOPREASON, ''), 'amber'),
+      buildApprovalInquiryEmailChip_('HOLDSTOPCODE', firstNonEmptyRequestValue_(item && item.holdstopcode, item && item.HOLDSTOPCODE, ''), 'amber', { strike: isTakeOffHold, circleValue: isPlaceOnHold }),
+      buildApprovalInquiryEmailChip_('HOLDSTOPREASON', firstNonEmptyRequestValue_(item && item.holdstopreason, item && item.HOLDSTOPREASON, ''), 'amber', { strike: isTakeOffHold }),
       buildApprovalInquiryEmailChip_('SPEC', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, ''), 'slate'),
       buildApprovalInquiryEmailChip_('CALIPER', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, ''), 'slate'),
       buildApprovalInquiryEmailChip_('LOC PHOTO MATCH', getRequestLocPhotoMatchEmailValue_(item), 'green'),
@@ -6128,17 +6140,8 @@ function buildApprovalInquiryItemsHtml_(payload) {
       '<div style="font-size:18px;line-height:1.15;font-weight:900;color:#111827;word-break:break-word;">' + escapeEmailHtml_(commonName) + '</div>',
       '<div style="margin-top:3px;font-size:12px;line-height:1.2;font-weight:900;letter-spacing:.08em;color:#64748b;text-transform:uppercase;">' + escapeEmailHtml_(itemCode) + ' | ' + escapeEmailHtml_(contSize) + '</div>',
       '</div>',
-      '<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;table-layout:fixed;"><tr>',
-      cell('Row ' + String(index + 1), String(index + 1)),
-      cell('Lot', lot),
-      cell('Location', location),
-      cell('Src', source),
-      cell('Pri', priority),
-      cell('On Hand', onHand, 'right'),
-      cell('Review', review, 'right'),
-      cell('Available', available, 'right'),
-      '</tr></table>',
-      (updated || details) ? '<div style="padding:8px 12px 10px 12px;border-top:1px solid #dbe5df;background:#f8fafc;">' + (updated ? '<div style="margin:0 0 3px 0;">' + updated + '</div>' : '') + (details ? '<div style="margin:0;">' + details + '</div>' : '') + '</div>' : '',
+      '<div style="padding:7px 10px;border-top:1px solid #dbe5df;font-size:9px;line-height:1.55;font-weight:900;white-space:nowrap;color:#111827;">' + rowLine + '</div>',
+      (updated || details) ? '<div style="padding:8px 12px 10px 12px;border-top:1px solid #dbe5df;background:#f8fafc;">' + (updated ? '<div style="margin:0 0 3px 0;white-space:nowrap;">' + updated + '</div>' : '') + (details ? '<div style="margin:0;white-space:nowrap;">' + details + '</div>' : '') + '</div>' : '',
       '</div>'
     ].join('');
   }).join('');
