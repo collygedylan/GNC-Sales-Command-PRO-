@@ -6111,8 +6111,8 @@ function buildApprovalInquiryItemsHtml_(payload) {
     let valueHtml = '';
     if (isTakeOffHold && (isHoldCode || isHoldReason)) {
       valueHtml = isHoldCode
-        ? '<span style="display:inline-block;white-space:nowrap;color:#111827;font-size:34px;line-height:1;font-weight:900;"><span style="display:inline-block;color:#111827;letter-spacing:-0.78em;">' + escapeEmailHtml_(raw) + '</span><span style="display:inline-block;color:#ffd400;font-size:1.22em;line-height:1;font-weight:900;vertical-align:-0.04em;">&#10005;</span></span>'
-        : '<span style="display:inline-block;color:#ffd400;font-size:32px;line-height:1.08;font-weight:900;text-decoration:line-through;text-decoration-color:#ffd400;text-decoration-thickness:8px;text-decoration-skip-ink:none;"><span style="color:#111827;">' + escapeEmailHtml_(raw) + '</span></span>';
+        ? '<span style="display:inline-block;max-width:100%;color:#111827!important;font-size:34px;line-height:1.05;font-weight:900;word-break:break-word;text-decoration:line-through;text-decoration-color:#ffd400;text-decoration-thickness:8px;text-decoration-skip-ink:none;background:linear-gradient(to bottom, transparent 43%, #ffd400 43%, #ffd400 58%, transparent 58%);">' + escapeEmailHtml_(raw) + '</span>'
+        : '<span style="display:inline-block;max-width:100%;color:#111827!important;font-size:32px;line-height:1.05;font-weight:900;word-break:break-word;text-decoration:line-through;text-decoration-color:#ffd400;text-decoration-thickness:9px;text-decoration-skip-ink:none;background:linear-gradient(to bottom, transparent 43%, #ffd400 43%, #ffd400 58%, transparent 58%);">' + escapeEmailHtml_(raw) + '</span>';
       return '<div style="margin:8px 0 0 0;padding:9px 10px;border:2px solid #facc15;border-radius:10px;background:#fffbeb;color:#b45309;font-size:11px;line-height:1.2;font-weight:900;letter-spacing:.06em;text-transform:uppercase;"><div style="margin-bottom:3px;color:#b45309;">' + escapeEmailHtml_(safeLabel) + '</div>' + valueHtml + '</div>';
     }
     const valueStyle = '';
@@ -7670,11 +7670,14 @@ function buildRequestEmailMessage_(payload) {
       String(payload.season || '')
     ].map(function(value) { return value.trim(); }).filter(Boolean).join(' ');
     const htmlItem = [commonName, itemCode, season].filter(Boolean).join(' &bull; ');
+    const itemSectionTitle = isPaperNcrItemInquiryEmail
+      ? ''
+      : '<p style="font-weight:700; margin-bottom:12px;">' + (isGroupedBloomNcrEmail ? 'NCR Rows' : (isSuspendTagPhotoSpecEmail ? 'Suspend Tag Photo / Spec Rows' : 'Photo / Spec Rows')) + '</p>';
     const detailSection = itemsHtml
       ? [
           '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
           (isGroupedBloomNcrEmail || isPaperNcrItemInquiryEmail || isSuspendTagPhotoSpecEmail) ? '' : customerConsigneeSummaryHtml,
-          '<p style="font-weight:700; margin-bottom:12px;">' + (isPaperNcrItemInquiryEmail ? 'Item Inquiry NCR' : (isGroupedBloomNcrEmail ? 'NCR Rows' : (isSuspendTagPhotoSpecEmail ? 'Suspend Tag Photo / Spec Rows' : 'Photo / Spec Rows'))) + '</p>',
+          itemSectionTitle,
           itemsHtml
         ].join('')
       : '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 12px; color: #777;">' + ((isGroupedBloomNcrEmail || isPaperNcrItemInquiryEmail) ? 'No NCR row details were provided.' : (isSuspendTagPhotoSpecEmail ? 'No Suspend Tag photo/spec rows were provided.' : 'No selected customer/source row details were provided.')) + '</p>';
