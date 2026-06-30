@@ -7682,6 +7682,36 @@ function buildRequestEmailMessage_(payload) {
         ].join('')
       : '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 12px; color: #777;">' + ((isGroupedBloomNcrEmail || isPaperNcrItemInquiryEmail) ? 'No NCR row details were provided.' : (isSuspendTagPhotoSpecEmail ? 'No Suspend Tag photo/spec rows were provided.' : 'No selected customer/source row details were provided.')) + '</p>';
 
+    if (isPaperNcrItemInquiryEmail) {
+      const paperNcrActionPlain = String(payload.customer || payload.requestCustomer || brandLabelPlain.replace(/^GNC PH\s*/i, '') || 'NCR').trim() || 'NCR';
+      const paperNcrAction = escapeEmailHtml_(paperNcrActionPlain);
+      const paperNcrSubmittedByPlain = String(payload.submittedBy || payload.requestedByDisplay || payload.requestedBy || payload.completedBy || 'Unknown').trim() || 'Unknown';
+      const paperNcrSubmittedAtPlain = String(payload.submittedAtLabel || payload.submittedAt || payload.createdAt || '').trim()
+        || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'M/d/yyyy, h:mm:ss a');
+      const paperNcrSummaryHtml = [
+        '<h2 style="color: #007a4d; margin: 0 0 4px;">GNC PH</h2>',
+        '<div style="font-size: 20px; font-weight: 800; color: #111827; margin: 0 0 14px;">' + paperNcrAction + '</div>',
+        '<p><strong>Submitted By:</strong> ' + escapeEmailHtml_(paperNcrSubmittedByPlain) + '</p>',
+        '<p><strong>Submitted:</strong> ' + escapeEmailHtml_(paperNcrSubmittedAtPlain) + '</p>'
+      ].join('');
+      return {
+        subject: subject,
+        textBody: [
+          'GNC PH',
+          paperNcrActionPlain,
+          'Submitted By: ' + paperNcrSubmittedByPlain,
+          'Submitted: ' + paperNcrSubmittedAtPlain,
+          itemsText
+        ].filter(Boolean).join('\n\n'),
+        htmlBody: buildPhoneSizedEmailHtml_([
+          '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
+          paperNcrSummaryHtml,
+          itemsHtml || '<p style="font-size: 12px; color: #777;">No selected item inquiry row was provided.</p>',
+          '</div>'
+        ].join(''))
+      };
+    }
+
     return {
       subject: subject,
       textBody: [
