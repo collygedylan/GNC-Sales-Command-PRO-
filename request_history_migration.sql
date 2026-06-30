@@ -49,7 +49,21 @@ create table if not exists public.v2_request_history (
 alter table public.v2_request_history
     add column if not exists ptronhand text,
     add column if not exists ptrreviewed text,
-    add column if not exists ptravailable text;
+    add column if not exists ptravailable text,
+    add column if not exists s_lts text,
+    add column if not exists holdstopcode text,
+    add column if not exists season text,
+    add column if not exists photo_link text,
+    add column if not exists photo_name text,
+    add column if not exists completed_by_username text,
+    add column if not exists completed_by_display text,
+    add column if not exists completed_by_email text,
+    add column if not exists snapshot jsonb not null default '{}'::jsonb,
+    add column if not exists last_event text,
+    add column if not exists created_by_username text,
+    add column if not exists created_by_display text,
+    add column if not exists created_at timestamptz not null default now(),
+    add column if not exists updated_at timestamptz not null default now();
 
 create index if not exists idx_v2_request_history_folder on public.v2_request_history (request_folder);
 create index if not exists idx_v2_request_history_requested_by on public.v2_request_history (requested_by);
