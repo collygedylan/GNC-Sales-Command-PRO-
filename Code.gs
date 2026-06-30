@@ -5329,10 +5329,17 @@ function collectRequestRecipients_(payload) {
   const approvalStage = String(payload && (payload.approvalStage || payload.approval_stage) || '').trim().toLowerCase();
   const approvalType = String(payload && (payload.approvalType || payload.approval_type) || '').trim().toLowerCase().replace(/_/g, '-');
   const requestedByEmail = normalizeEmailAddress_(payload && (payload.requestedByEmail || payload.requested_by_email) || '');
+  const explicitApprovalRecipients = dedupeEmailAddresses_([
+    payload && payload.recipientEmails,
+    payload && payload.emailRecipients,
+    payload && payload.internalRecipients,
+    payload && payload.recipients
+  ]);
+  const hasExplicitApprovalRecipients = (emailType === 'ncr_approval' || emailType === 'hold_release_request') && explicitApprovalRecipients.length > 0;
   const approvalFallbackRecipients = [];
   const bloomCropUpdateInternalRecipients = [];
   const driveShiftFallbackRecipients = [];
-  if (emailType === 'ncr_approval' || emailType === 'hold_release_request') {
+  if ((emailType === 'ncr_approval' || emailType === 'hold_release_request') && !hasExplicitApprovalRecipients) {
     if (approvalStage === 'jd') {
       approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com', 'megan_kelly@greenleafnursery.com', 'jd_jones@greenleafnursery.com');
     } else if (approvalStage === 'inventory') {
@@ -7582,6 +7589,8 @@ function buildRequestEmailMessage_(payload) {
     const brandLabel = escapeEmailHtml_(brandLabelPlain);
     const actionLabelPlain = String(payload.actionLabel || payload.action_label || 'Request').trim() || 'Request';
     const actionLabel = escapeEmailHtml_(actionLabelPlain);
+    const actionKey = String(payload.action || payload.purpose || payload.emailPurpose || payload.email_purpose || actionLabelPlain || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+    const isOffHoldReport = actionKey === 'take_off_hold' || actionKey === 'off_hold' || actionKey === 'hold_release' || actionLabelPlain.toLowerCase() === 'off hold' || brandLabelPlain.toLowerCase().indexOf('off hold') !== -1;
     const reasonLabelPlain = String(payload.reasonLabel || payload.reason_label || 'Reason').trim() || 'Reason';
     const reasonLabel = escapeEmailHtml_(reasonLabelPlain);
     const reasonText = String(payload.reason || payload.message || payload.userMessage || '').trim();
@@ -7601,6 +7610,12 @@ function buildRequestEmailMessage_(payload) {
       reasonText ? '<p><strong>' + reasonLabel + ':</strong> ' + escapeEmailHtml_(reasonText) + '</p>' : '',
       recipients.length ? '<p><strong>Recipients:</strong> ' + escapeEmailHtml_(recipients.join(', ')) + '</p>' : ''
     ].filter(Boolean).join('');
+    const offHoldSummaryHtml = [
+      '<h2 style="color: #007a4d; margin: 0 0 4px;">GNC PH</h2>',
+      '<div style="font-size: 20px; font-weight: 800; color: #111827; margin: 0 0 14px;">Off Hold</div>',
+      '<p><strong>Submitted By:</strong> ' + escapeEmailHtml_(requestedByText) + '</p>',
+      '<p><strong>Submitted:</strong> ' + escapeEmailHtml_(submittedLabel) + '</p>'
+    ].join('');
     const fallbackText = [
       brandLabelPlain,
       actionLabelPlain + ' Request Submitted',
@@ -7612,14 +7627,21 @@ function buildRequestEmailMessage_(payload) {
       recipients.length ? 'Recipients: ' + recipients.join(', ') : '',
       itemsText
     ].filter(Boolean).join('\n\n');
+    const offHoldText = [
+      'GNC PH',
+      'Off Hold',
+      'Submitted By: ' + requestedByText,
+      'Submitted: ' + submittedLabel,
+      formattedText || itemsText
+    ].filter(Boolean).join('\n\n');
     return {
       subject: subject,
-      textBody: formattedText || fallbackText,
+      textBody: isOffHoldReport ? offHoldText : (formattedText || fallbackText),
       htmlBody: buildPhoneSizedEmailHtml_([
         '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
-        '<h2 style="color: #007a4d;">' + brandLabel + '</h2>',
-        summaryHtml,
-        '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
+        isOffHoldReport ? offHoldSummaryHtml : '<h2 style="color: #007a4d;">' + brandLabel + '</h2>',
+        isOffHoldReport ? '' : summaryHtml,
+        isOffHoldReport ? '' : '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
         formattedHtml || itemsHtml || '<p style="font-size: 12px; color: #777;">No selected row details were provided.</p>',
         '</div>'
       ].join(''))
@@ -7852,6 +7874,47 @@ function buildRequestEmailMessage_(payload) {
           itemsHtml
         ].join('')
       : '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 12px; color: #777;">No approval row details were provided.</p>';
+
+    if (isHoldReleaseApproval) {
+      const holdSubmittedByText = String(submittedBySummary || sentByText || 'Unknown').trim() || 'Unknown';
+      let holdSubmittedLabel = String(payload.submittedAtLabel || payload.submitted_at_label || '').trim();
+      if (!holdSubmittedLabel) {
+        const submittedStamp = firstNonEmptyRequestValue_(
+          payload.submittedAt,
+          payload.submitted_at,
+          payload.ncr_requested_at,
+          payload.requestedAt,
+          payload.requested_at,
+          ''
+        );
+        let submittedDate = submittedStamp ? new Date(submittedStamp) : new Date();
+        if (isNaN(submittedDate.getTime())) submittedDate = new Date();
+        holdSubmittedLabel = Utilities.formatDate(submittedDate, Session.getScriptTimeZone(), 'M/d/yyyy, h:mm:ss a');
+      }
+      const holdItemsHtml = String(payload.formattedItemsHtml || '').trim()
+        || itemsHtml
+        || '<p style="font-size: 12px; color: #777;">No selected row details were provided.</p>';
+      const holdItemsText = String(payload.formattedItemsText || '').trim() || itemsText;
+      return {
+        subject: subject,
+        textBody: [
+          'GNC PH',
+          'Off Hold',
+          'Submitted By: ' + holdSubmittedByText,
+          'Submitted: ' + holdSubmittedLabel,
+          holdItemsText
+        ].filter(Boolean).join('\n\n'),
+        htmlBody: buildPhoneSizedEmailHtml_([
+          '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
+          '<h2 style="color: #007a4d; margin: 0 0 4px;">GNC PH</h2>',
+          '<div style="font-size: 20px; font-weight: 800; color: #111827; margin: 0 0 14px;">Off Hold</div>',
+          '<p><strong>Submitted By:</strong> ' + escapeEmailHtml_(holdSubmittedByText) + '</p>',
+          '<p><strong>Submitted:</strong> ' + escapeEmailHtml_(holdSubmittedLabel) + '</p>',
+          holdItemsHtml,
+          '</div>'
+        ].join(''))
+      };
+    }
 
     return {
       subject: subject,
