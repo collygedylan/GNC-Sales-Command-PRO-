@@ -6111,8 +6111,8 @@ function buildApprovalInquiryItemsHtml_(payload) {
     let valueHtml = '';
     if (isTakeOffHold && (isHoldCode || isHoldReason)) {
       valueHtml = isHoldCode
-        ? '<span style="display:inline-block;position:relative;width:1.15em;height:1.05em;vertical-align:baseline;color:#111827;font-size:30px;line-height:1.05;font-weight:900;"><span style="display:block;position:absolute;left:0;top:0;width:100%;text-align:center;color:#111827;">' + escapeEmailHtml_(raw) + '</span><span style="display:block;position:absolute;left:0;top:-0.08em;width:100%;text-align:center;color:#facc15;font-size:1.35em;line-height:1;font-weight:900;">&#10005;</span></span>'
-        : '<span style="display:inline-block;color:#111827;font-size:32px;line-height:1.08;font-weight:900;"><span style="display:block;white-space:nowrap;">' + escapeEmailHtml_(raw) + '</span><span style="display:block;height:9px;line-height:9px;background:#facc15;margin-top:-0.66em;margin-bottom:0.34em;">&nbsp;</span></span>';
+        ? '<span style="display:inline-block;white-space:nowrap;color:#111827;font-size:34px;line-height:1;font-weight:900;"><span style="display:inline-block;color:#111827;letter-spacing:-0.78em;">' + escapeEmailHtml_(raw) + '</span><span style="display:inline-block;color:#ffd400;font-size:1.22em;line-height:1;font-weight:900;vertical-align:-0.04em;">&#10005;</span></span>'
+        : '<span style="display:inline-block;color:#ffd400;font-size:32px;line-height:1.08;font-weight:900;text-decoration:line-through;text-decoration-color:#ffd400;text-decoration-thickness:8px;text-decoration-skip-ink:none;"><span style="color:#111827;">' + escapeEmailHtml_(raw) + '</span></span>';
       return '<div style="margin:8px 0 0 0;padding:9px 10px;border:2px solid #facc15;border-radius:10px;background:#fffbeb;color:#b45309;font-size:11px;line-height:1.2;font-weight:900;letter-spacing:.06em;text-transform:uppercase;"><div style="margin-bottom:3px;color:#b45309;">' + escapeEmailHtml_(safeLabel) + '</div>' + valueHtml + '</div>';
     }
     const valueStyle = '';
