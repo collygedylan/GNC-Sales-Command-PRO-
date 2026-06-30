@@ -6108,8 +6108,15 @@ function buildApprovalInquiryItemsHtml_(payload) {
     const safeLabel = String(label || '').trim().toUpperCase();
     const isHoldCode = safeLabel === 'HOLDSTOPCODE';
     const isHoldReason = safeLabel === 'HOLDSTOPREASON';
-    const valueStyle = isTakeOffHold && (isHoldCode || isHoldReason) ? 'text-decoration:line-through;text-decoration-thickness:2px;' : '';
-    const valueHtml = isPlaceOnHold && isHoldCode
+    let valueHtml = '';
+    if (isTakeOffHold && (isHoldCode || isHoldReason)) {
+      valueHtml = isHoldCode
+        ? '<span style="display:inline-block;white-space:nowrap;color:#111827;font-size:25px;line-height:1.05;font-weight:900;"><span style="display:inline-block;">' + escapeEmailHtml_(raw) + '</span><span style="display:inline-block;margin-left:-0.72em;color:#facc15;font-size:1.18em;line-height:1;font-weight:900;">&#10005;</span></span>'
+        : '<span style="display:inline-block;padding:0 4px;color:#111827;font-size:29px;line-height:1.08;font-weight:900;background:linear-gradient(transparent 39%,#facc15 39%,#facc15 72%,transparent 72%);">' + escapeEmailHtml_(raw) + '</span>';
+      return '<div style="margin:8px 0 0 0;padding:9px 10px;border:2px solid #facc15;border-radius:10px;background:#fffbeb;color:#b45309;font-size:11px;line-height:1.2;font-weight:900;letter-spacing:.06em;text-transform:uppercase;"><div style="margin-bottom:3px;color:#b45309;">' + escapeEmailHtml_(safeLabel) + '</div>' + valueHtml + '</div>';
+    }
+    const valueStyle = '';
+    valueHtml = isPlaceOnHold && isHoldCode
       ? '<span style="display:inline-block;min-width:19px;height:19px;line-height:19px;text-align:center;border:2px solid #b45309;border-radius:999px;color:#111827;font-weight:900;' + valueStyle + '">' + escapeEmailHtml_(raw) + '</span>'
       : '<span style="color:#111827;font-weight:900;' + valueStyle + '">' + escapeEmailHtml_(raw) + '</span>';
     return '<div style="margin:6px 0 0 0;padding:7px 9px;border:1px solid #fde68a;border-radius:8px;background:#fffbeb;font-size:10px;line-height:1.25;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#b45309;"><span style="display:inline-block;min-width:112px;color:#b45309;">' + escapeEmailHtml_(safeLabel) + '</span> ' + valueHtml + '</div>';
