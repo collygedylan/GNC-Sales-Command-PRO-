@@ -7421,19 +7421,24 @@ function buildRequestEmailMessage_(payload) {
   const isGroupedBloomNcrEmail = emailType === 'drive_customer_outreach' && emailSubType === 'grouped_bloom_ncr';
   const isPaperNcrItemInquiryEmail = emailType === 'drive_customer_outreach' && emailSubType === 'paper_ncr_item_inquiry';
   const isSuspendTagPhotoSpecEmail = emailType === 'drive_customer_outreach' && emailSubType === 'suspend_tag_photo_spec';
-  const useFormattedItemsBody = isDriveShiftReportEmail || isPaperNcrItemInquiryEmail || isSuspendTagPhotoSpecEmail;
+  const formattedItemsHtmlRaw = String(payload.formattedItemsHtml || '').trim();
+  const formattedItemsTextRaw = String(payload.formattedItemsText || '').trim();
+  const useFormattedApprovalLayout = isApprovalEmail
+    && formattedItemsHtmlRaw
+    && String(firstNonEmptyRequestValue_(payload.useFormattedApprovalLayout, payload.use_formatted_approval_layout, 'true')).trim().toLowerCase() !== 'false';
+  const useFormattedItemsBody = isDriveShiftReportEmail || isPaperNcrItemInquiryEmail || isSuspendTagPhotoSpecEmail || useFormattedApprovalLayout;
   const isSuspendTagCompletionEmail = isSuspendTagCompletionEmail_(payload);
   const repName = escapeEmailHtml_(payload.repName || payload.salesRepName || '');
   const customer = escapeEmailHtml_(payload.customer || 'N/A');
   const folderId = escapeEmailHtml_(payload.folderId || payload.requestFolder || '');
   const itemsCount = escapeEmailHtml_(payload.itemsCount || 0);
   const itemsHtml = useFormattedItemsBody
-    ? String(payload.formattedItemsHtml || '').trim()
+    ? formattedItemsHtmlRaw
     : emailType === 'request_complete'
     ? (isSuspendTagCompletionEmail ? buildSuspendTagCompletionItemsHtml_(payload) : buildCompactRequestItemsHtml_(payload))
     : (isApprovalEmail ? buildApprovalRequestItemsHtml_(payload) : buildRequestItemsHtml_(payload));
   const itemsText = useFormattedItemsBody
-    ? String(payload.formattedItemsText || '').trim()
+    ? formattedItemsTextRaw
     : (isSuspendTagCompletionEmail ? buildSuspendTagCompletionItemsText_(payload) : (isApprovalEmail ? buildApprovalRequestItemsText_(payload) : buildRequestItemsText_(payload)));
   const selectionSummaryHtml = buildRequestSelectionSummaryHtml_(payload);
   const selectionSummaryText = buildRequestSelectionSummaryText_(payload);
@@ -7952,6 +7957,58 @@ function buildRequestEmailMessage_(payload) {
           '<p><strong>Submitted By:</strong> ' + escapeEmailHtml_(holdSubmittedByText) + '</p>',
           '<p><strong>Submitted:</strong> ' + escapeEmailHtml_(holdSubmittedLabel) + '</p>',
           holdItemsHtml,
+          '</div>'
+        ].join(''))
+      };
+    }
+
+    if (useFormattedApprovalLayout) {
+      const approvalSubmittedByText = String(submittedBySummary || sentByText || 'Unknown').trim() || 'Unknown';
+      const approvedByText = String(firstNonEmptyRequestValue_(
+        payload.approvedBy,
+        payload.approved_by,
+        payload.completedByDisplay,
+        payload.completed_by_display,
+        payload.completedBy,
+        payload.completed_by,
+        sentByText,
+        ''
+      ) || '').trim();
+      let approvalSubmittedLabel = String(payload.submittedAtLabel || payload.submitted_at_label || '').trim();
+      if (!approvalSubmittedLabel) {
+        const submittedStamp = firstNonEmptyRequestValue_(
+          payload.submittedAt,
+          payload.submitted_at,
+          payload.ncr_requested_at,
+          payload.requestedAt,
+          payload.requested_at,
+          ''
+        );
+        let submittedDate = submittedStamp ? new Date(submittedStamp) : new Date();
+        if (isNaN(submittedDate.getTime())) submittedDate = new Date();
+        approvalSubmittedLabel = Utilities.formatDate(submittedDate, Session.getScriptTimeZone(), 'M/d/yyyy, h:mm:ss a');
+      }
+      const approvalActionLabel = approvalTitleText || 'Approval';
+      return {
+        subject: subject,
+        textBody: [
+          'GNC PH',
+          approvalActionLabel,
+          'Submitted By: ' + approvalSubmittedByText,
+          approvedByText ? 'Approved By: ' + approvedByText : '',
+          'Submitted: ' + approvalSubmittedLabel,
+          appInstructionText ? 'Next step: ' + appInstructionText : '',
+          itemsText
+        ].filter(Boolean).join('\n\n'),
+        htmlBody: buildPhoneSizedEmailHtml_([
+          '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
+          '<h2 style="color: #007a4d; margin: 0 0 4px;">GNC PH</h2>',
+          '<div style="font-size: 20px; font-weight: 800; color: #111827; margin: 0 0 14px;">' + escapeEmailHtml_(approvalActionLabel) + '</div>',
+          '<p><strong>Submitted By:</strong> ' + escapeEmailHtml_(approvalSubmittedByText) + '</p>',
+          approvedByText ? '<p><strong>Approved By:</strong> ' + escapeEmailHtml_(approvedByText) + '</p>' : '',
+          '<p><strong>Submitted:</strong> ' + escapeEmailHtml_(approvalSubmittedLabel) + '</p>',
+          appInstructionHtml,
+          itemsHtml || '<p style="font-size: 12px; color: #777;">No selected row details were provided.</p>',
           '</div>'
         ].join(''))
       };
