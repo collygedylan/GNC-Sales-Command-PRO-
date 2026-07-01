@@ -5242,27 +5242,7 @@ function buildSuspendTagCompletionPhotoPreviewHtml_(folderId, item) {
 }
 
 function buildSuspendTagCompletionItemsHtml_(payload) {
-  const items = getRequestEmailPayloadItems_(payload);
-  if (!items.length) return String(payload.formattedItemsHtml || '').trim();
-  const galleryFolderId = resolveRequestGalleryFolderId_(payload, items);
-  cacheRequestGalleryPayload_(galleryFolderId, items);
-  const rowsHtml = items.map(function(item, index) {
-    const title = [
-      firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Suspend Tag Row'),
-      firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, '')
-    ].map(function(value) { return String(value || '').trim(); }).filter(Boolean).join(' ');
-    const fieldsHtml = getSuspendTagCompletionFieldRows_(item).map(function(field) {
-      return '<div><strong>' + escapeEmailHtml_(field[0]) + ':</strong> ' + escapeEmailHtml_(field[1]) + '</div>';
-    }).join('');
-    return [
-      '<li style="margin-bottom:10px; background:#f9f9f9; padding:10px; border-left:4px solid #007a4d;">',
-      '<strong>' + (index + 1) + '. ' + escapeEmailHtml_(title) + '</strong>',
-      buildSuspendTagCompletionPhotoPreviewHtml_(galleryFolderId, item),
-      fieldsHtml,
-      '</li>'
-    ].join('');
-  }).join('');
-  return '<ul style="list-style:none; padding:0; margin:0;">' + rowsHtml + '</ul>';
+  return buildRequestEmailTableItemsHtml_(payload, { title: 'Suspend Tag Rows' });
 }
 
 function buildSuspendTagCompletionItemsText_(payload) {
@@ -5280,6 +5260,143 @@ function buildSuspendTagCompletionItemsText_(payload) {
     if (photoCount) fieldLines.push('Photos: ' + photoCount);
     return [(index + 1) + '. ' + title].concat(fieldLines).join('\n');
   }).join('\n\n');
+}
+
+function getEmailTableValue_(item, fields, fallback) {
+  const safeFields = Array.isArray(fields) ? fields : [];
+  const row = item || {};
+  for (let i = 0; i < safeFields.length; i++) {
+    const fieldName = safeFields[i];
+    const value = row[fieldName];
+    if (String(value == null ? '' : value).trim() !== '') return value;
+  }
+  return fallback == null ? '' : fallback;
+}
+
+function normalizeEmailTableDisplay_(value, fallback) {
+  const raw = String(value == null ? '' : value).trim();
+  if (!raw) return fallback == null ? '' : fallback;
+  return raw;
+}
+
+function buildEmailTableHeaderCell_(label) {
+  return '<th style="padding:8px 10px;background:#555a57;color:#f4f4f4;font-size:13px;line-height:1.15;font-weight:900;text-align:left;text-transform:uppercase;border-bottom:2px solid #b8b8b8;white-space:normal;">' + escapeEmailHtml_(label) + '</th>';
+}
+
+function buildEmailTableDataCell_(value, options) {
+  const safeOptions = options || {};
+  const raw = normalizeEmailTableDisplay_(value, '');
+  const content = safeOptions.html ? String(value || '') : (raw ? escapeEmailHtml_(raw) : '&nbsp;');
+  const weight = safeOptions.bold === false ? '600' : '800';
+  const highlight = safeOptions.highlight ? 'background:#fff176;' : '';
+  const nowrap = safeOptions.nowrap ? 'white-space:nowrap;' : '';
+  return '<td style="padding:10px;border-bottom:1px solid #b8b8b8;color:inherit;font-size:13px;line-height:1.25;font-weight:' + weight + ';vertical-align:top;word-break:break-word;' + nowrap + highlight + '">' + content + '</td>';
+}
+
+function buildEmailTable_(headers, cells) {
+  const safeHeaders = Array.isArray(headers) ? headers : [];
+  const safeCells = Array.isArray(cells) ? cells : [];
+  return [
+    '<table class="gnc-email-table" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;table-layout:auto;margin:0 0 14px 0;">',
+    safeHeaders.length ? '<thead><tr>' + safeHeaders.map(buildEmailTableHeaderCell_).join('') + '</tr></thead>' : '',
+    '<tbody><tr>' + safeCells.join('') + '</tr></tbody>',
+    '</table>'
+  ].join('');
+}
+
+function buildRequestEmailTableItemsHtml_(payload, options) {
+  const safePayload = payload || {};
+  const safeOptions = options || {};
+  const items = getRequestEmailPayloadItems_(safePayload);
+  if (!items.length) return String(safePayload.formattedItemsHtml || '').trim();
+  const galleryFolderId = resolveRequestGalleryFolderId_(safePayload, items);
+  cacheRequestGalleryPayload_(galleryFolderId, items);
+  const title = String(firstNonEmptyRequestValue_(safeOptions.title, '')).trim();
+  const includePhotos = safeOptions.includePhotos !== false;
+  const rowsHtml = items.map(function(item, index) {
+    const itemTable = buildEmailTable_(
+      ['ITEMCODE', 'COMMONNAME', 'CONTSIZE', 'GENUS', 'SALESNOTE', 'HOLDSTOPCODE', 'HOLDSTOPREASON'],
+      [
+        buildEmailTableDataCell_(getEmailTableValue_(item, ['itemcode', 'ITEMCODE', 'itemCode', 'ITEM_CODE'], ''), { bold: true, nowrap: true }),
+        buildEmailTableDataCell_(getEmailTableValue_(item, ['commonname', 'COMMONNAME', 'commonName', 'COMMON_NAME'], 'Unknown Item'), { bold: true }),
+        buildEmailTableDataCell_(getEmailTableValue_(item, ['contsize', 'CONTSIZE', 'contSize', 'CONT_SIZE'], ''), { bold: true, nowrap: true }),
+        buildEmailTableDataCell_(getEmailTableValue_(item, ['genus', 'GENUS', 'genusname', 'GENUSNAME'], ''), { bold: true }),
+        buildEmailTableDataCell_(getEmailTableValue_(item, ['salesnote', 'SALESNOTE', 'sales_note', 'SALES_NOTE'], ''), { bold: true }),
+        buildEmailTableDataCell_(getEmailTableValue_(item, ['holdstopcode', 'HOLDSTOPCODE', 'holstopcode', 'HOLSTOPCODE'], ''), { bold: true, nowrap: true }),
+        buildEmailTableDataCell_(getEmailTableValue_(item, ['holdstopreason', 'HOLDSTOPREASON', 'holstopreason', 'HOLSTOPREASON'], ''), { bold: true })
+      ]
+    );
+    const rowTable = buildEmailTable_(
+      ['ROW', 'LOTCODE', 'LOCATIONCODE', 'SOURCE', 'DESIGCUST'],
+      [
+        buildEmailTableDataCell_(getEmailTableValue_(item, ['row', 'ROW', 'row_index', 'ROW_INDEX'], String(index + 1)), { bold: true, nowrap: true }),
+        buildEmailTableDataCell_(getEmailTableValue_(item, ['lotcode', 'LOTCODE', 'lotCode', 'LOT_CODE'], ''), { bold: true, nowrap: true }),
+        buildEmailTableDataCell_(getEmailTableValue_(item, ['locationcode', 'LOCATIONCODE', 'loc', 'LOC', 'location'], ''), { bold: true, nowrap: true }),
+        buildEmailTableDataCell_(getEmailTableValue_(item, ['source', 'SOURCE', 'sourcecode', 'SOURCECODE'], ''), { bold: true, nowrap: true }),
+        buildEmailTableDataCell_(getEmailTableValue_(item, ['desigcust', 'DESIGCUST', 'desig_cust', 'DESIG_CUST'], ''), { bold: true, nowrap: true })
+      ]
+    );
+    const qtyTable = buildEmailTable_(
+      ['PRIORITY', 'PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE'],
+      [
+        buildEmailTableDataCell_(getEmailTableValue_(item, ['priority', 'PRIORITY'], ''), { bold: true, nowrap: true }),
+        buildEmailTableDataCell_(getEmailTableValue_(item, ['ptronhand', 'PTRONHAND', 'onhand', 'ONHAND'], ''), { bold: true, nowrap: true }),
+        buildEmailTableDataCell_(getEmailTableValue_(item, ['ptrreviewed', 'PTRREVIEWED', 'review', 'REVIEW'], ''), { bold: true, nowrap: true }),
+        buildEmailTableDataCell_(getEmailTableValue_(item, ['ptravailable', 'PTRAVAILABLE', 'available', 'AVAILABLE'], ''), { bold: true, nowrap: true })
+      ]
+    );
+    const noteTable = buildEmailTable_(
+      ['LOCATIONNOTEDATE', 'LOCATIONNOTE', 'LOCATIONPTN1'],
+      [
+        buildEmailTableDataCell_(getEmailTableValue_(item, ['locationnotedate', 'LOCATIONNOTEDATE', 'note_date', 'NOTE_DATE'], ''), { bold: true }),
+        buildEmailTableDataCell_(getEmailTableValue_(item, ['locationnote', 'LOCATIONNOTE', 'loc_note', 'LOC_NOTE'], ''), { bold: true }),
+        buildEmailTableDataCell_(getEmailTableValue_(item, ['locationptn1', 'LOCATIONPTN1', 'ptn1', 'PTN1'], ''), { bold: true })
+      ]
+    );
+    const requestFields = [
+      ['ACTION', getEmailTableValue_(item, ['approval_label', 'approvalLabel', 'approval_type', 'APPROVAL_TYPE', 'action', 'ACTION'], '')],
+      ['QTY', getEmailTableValue_(item, ['qty', 'REQ_QTY', 'request_qty', 'requested_qty', 'ncr_qty', 'NCR_QTY', 'loc_match_qty', 'LOC_MATCH_QTY'], '')],
+      ['MOVE DOWN SEASON', getEmailTableValue_(item, ['move_down_season', 'MOVE_DOWN_SEASON', 'moveDownSeason'], '')],
+      ['SPEC', getEmailTableValue_(item, ['spec', 'REQ_SPEC', 'SPEC'], '')],
+      ['LOC PHOTO MATCH', getRequestLocPhotoMatchEmailValue_(item)],
+      ['AV NOTE', getEmailTableValue_(item, ['av_note', 'AV_NOTE'], '')],
+      ['PICK NOTE', getEmailTableValue_(item, ['pick_note', 'pick', 'req_pick', 'req_pic_note', 'REQ_PICK', 'REQ_PIC_NOTE', 'PICK'], '')],
+      ['COMMENTS', getEmailTableValue_(item, ['comments', 'req_comments', 'request_comments', 'REQ_COMMENTS', 'REQUEST_COMMENTS', 'COMMENTS'], '')],
+      ['REQUEST NOTE', getEmailTableValue_(item, ['request_note', 'req_note', 'REQUEST_NOTE', 'REQ_NOTE'], '')]
+    ].filter(function(field) {
+      return String(field[1] == null ? '' : field[1]).trim() !== '';
+    });
+    const requestTables = [];
+    for (let start = 0; start < requestFields.length; start += 4) {
+      const chunk = requestFields.slice(start, start + 4);
+      requestTables.push(buildEmailTable_(
+        chunk.map(function(field) { return field[0]; }),
+        chunk.map(function(field) {
+          const highlight = /^(ACTION|QTY|LOC PHOTO MATCH|REQUEST NOTE)$/i.test(field[0]);
+          return buildEmailTableDataCell_(field[1], { bold: true, highlight: highlight });
+        })
+      ));
+    }
+    const requestTable = requestTables.join('');
+    const photosHtml = includePhotos ? buildRequestRowPhotoPreviewHtml_(galleryFolderId, item) : '';
+    return [
+      '<div style="margin:0 0 18px 0;line-height:1.45;">',
+      title && index === 0 ? '<div style="font-weight:700;margin:0 0 10px 0;">' + escapeEmailHtml_(title) + '</div>' : '',
+      itemTable,
+      rowTable,
+      qtyTable,
+      noteTable,
+      requestTable,
+      photosHtml,
+      '</div>'
+    ].join('');
+  }).join('');
+  return [
+    '<div style="font-family:Arial,Helvetica,sans-serif;line-height:1.45;">',
+    '<style>@media screen and (max-width: 620px) {.gnc-email-table th,.gnc-email-table td{font-size:12px!important;padding:7px 6px!important;}}</style>',
+    rowsHtml,
+    '</div>'
+  ].join('');
 }
 
 function getEvalTaskCompletionSummary_(payload) {
@@ -5888,13 +6005,26 @@ function buildRequestEmailItemsFromRows_(rows, payload) {
       commonname: firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, snapshot.COMMONNAME, snapshot.commonname, ''),
       contsize: firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, ''),
       itemcode: firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, ''),
+      genus: firstNonEmptyRequestValue_(item && item.genus, item && item.GENUS, item && item.genusname, item && item.GENUSNAME, snapshot.GENUS, snapshot.genus, snapshot.GENUSNAME, snapshot.genusname, ''),
       lotcode: firstNonEmptyRequestValue_(item && item.lotcode, item && item.LOTCODE, snapshot.LOTCODE, snapshot.lotcode, ''),
+      row: firstNonEmptyRequestValue_(item && item.row, item && item.ROW, item && item.row_index, item && item.ROW_INDEX, snapshot.ROW, snapshot.row, ''),
       season: firstNonEmptyRequestValue_(item && item.season, item && item.SEASON, snapshot.SEASON, snapshot.season, ''),
       priority: firstNonEmptyRequestValue_(item && item.priority, item && item.PRIORITY, snapshot.PRIORITY, snapshot.priority, ''),
+      ptronhand: firstNonEmptyRequestValue_(item && item.ptronhand, item && item.PTRONHAND, snapshot.PTRONHAND, snapshot.ptronhand, ''),
+      ptrreviewed: firstNonEmptyRequestValue_(item && item.ptrreviewed, item && item.PTRREVIEWED, snapshot.PTRREVIEWED, snapshot.ptrreviewed, ''),
       ptravailable: firstNonEmptyRequestValue_(item && item.ptravailable, item && item.PTRAVAILABLE, snapshot.PTRAVAILABLE, snapshot.ptravailable, ''),
+      source: firstNonEmptyRequestValue_(item && item.source, item && item.SOURCE, item && item.sourcecode, item && item.SOURCECODE, snapshot.SOURCE, snapshot.source, snapshot.SOURCECODE, snapshot.sourcecode, ''),
+      desigcust: firstNonEmptyRequestValue_(item && item.desigcust, item && item.DESIGCUST, item && item.desig_cust, item && item.DESIG_CUST, snapshot.DESIGCUST, snapshot.desigcust, snapshot.DESIG_CUST, snapshot.desig_cust, ''),
       s_lts: firstNonEmptyRequestValue_(item && item.s_lts, item && item.S_LTS, snapshot.S_LTS, snapshot.s_lts, ''),
       qty: firstNonEmptyRequestValue_(item && item.req_qty, item && item.REQ_QTY, ''),
       loc: firstNonEmptyRequestValue_(item && item.locationcode, item && item.LOCATIONCODE, ''),
+      locationcode: firstNonEmptyRequestValue_(item && item.locationcode, item && item.LOCATIONCODE, item && item.loc, item && item.LOC, snapshot.LOCATIONCODE, snapshot.locationcode, snapshot.LOC, snapshot.loc, ''),
+      locationnotedate: firstNonEmptyRequestValue_(item && item.locationnotedate, item && item.LOCATIONNOTEDATE, snapshot.LOCATIONNOTEDATE, snapshot.locationnotedate, ''),
+      locationnote: firstNonEmptyRequestValue_(item && item.locationnote, item && item.LOCATIONNOTE, snapshot.LOCATIONNOTE, snapshot.locationnote, ''),
+      locationptn1: firstNonEmptyRequestValue_(item && item.locationptn1, item && item.LOCATIONPTN1, snapshot.LOCATIONPTN1, snapshot.locationptn1, ''),
+      salesnote: firstNonEmptyRequestValue_(item && item.salesnote, item && item.SALESNOTE, item && item.sales_note, item && item.SALES_NOTE, snapshot.SALESNOTE, snapshot.salesnote, snapshot.SALES_NOTE, snapshot.sales_note, ''),
+      holdstopcode: firstNonEmptyRequestValue_(item && item.holdstopcode, item && item.HOLDSTOPCODE, item && item.holstopcode, item && item.HOLSTOPCODE, snapshot.HOLDSTOPCODE, snapshot.holdstopcode, snapshot.HOLSTOPCODE, snapshot.holstopcode, ''),
+      holdstopreason: firstNonEmptyRequestValue_(item && item.holdstopreason, item && item.HOLDSTOPREASON, item && item.holstopreason, item && item.HOLSTOPREASON, snapshot.HOLDSTOPREASON, snapshot.holdstopreason, snapshot.HOLSTOPREASON, snapshot.holstopreason, ''),
       assignedto: firstNonEmptyRequestValue_(item && item.assignedto, item && item.ASSIGNEDTO, snapshot.ASSIGNEDTO, snapshot.assignedto, ''),
       request_note: firstNonEmptyRequestValue_(item && item.request_note, item && item.REQUEST_NOTE, item && item.req_note, item && item.REQ_NOTE, snapshot.REQUEST_NOTE, snapshot.request_note, snapshot.REQ_NOTE, snapshot.req_note, ''),
       eval_task_type: firstNonEmptyRequestValue_(item && item.eval_task_type, item && item.EVAL_TASK_TYPE, snapshot.EVAL_TASK_TYPE, snapshot.eval_task_type, ''),
@@ -6092,99 +6222,7 @@ function buildApprovalInquiryEmailChip_(label, value, tone, options) {
 }
 
 function buildApprovalInquiryItemsHtml_(payload) {
-  const items = getRequestEmailPayloadItems_(payload);
-  if (!items.length) return String(payload && payload.formattedItemsHtml || '').trim();
-  const approvalType = String(firstNonEmptyRequestValue_(payload && payload.approvalType, payload && payload.approval_type, payload && payload.approvalLabel, payload && payload.approval_label, payload && payload.customer, '') || '').trim().toLowerCase().replace(/_/g, '-');
-  const isMoveUp = approvalType.indexOf('move-up') !== -1 || approvalType.indexOf('move up') !== -1;
-  const isHold = approvalType.indexOf('hold') !== -1;
-  const isTakeOffHold = approvalType === 'hold' || approvalType.indexOf('hold-release') !== -1 || approvalType.indexOf('off-hold') !== -1 || approvalType.indexOf('take-off-hold') !== -1 || approvalType.indexOf('take off hold') !== -1;
-  const isPlaceOnHold = !isTakeOffHold && (approvalType.indexOf('on-hold') !== -1 || approvalType.indexOf('place-on-hold') !== -1 || approvalType.indexOf('place on hold') !== -1);
-  const linePart = function(label, value) {
-    const raw = String(value == null || value === '' ? '-' : value).trim() || '-';
-    return '<span style="display:inline-block;margin-right:8px;white-space:nowrap;"><span style="color:#94a3b8;font-weight:900;letter-spacing:.06em;text-transform:uppercase;">' + escapeEmailHtml_(label) + '</span> <span style="color:#111827;">' + escapeEmailHtml_(raw) + '</span></span>';
-  };
-  const holdEditField = function(label, value) {
-    const raw = String(value == null ? '' : value).trim();
-    if (!raw || raw === '-') return '';
-    const safeLabel = String(label || '').trim().toUpperCase();
-    const isHoldCode = safeLabel === 'HOLDSTOPCODE';
-    const isHoldReason = safeLabel === 'HOLDSTOPREASON';
-    let valueHtml = '';
-    if (isTakeOffHold && (isHoldCode || isHoldReason)) {
-      valueHtml = isHoldCode
-        ? '<span style="display:inline-block;max-width:100%;color:#111827!important;font-size:34px;line-height:1.05;font-weight:900;word-break:break-word;text-decoration:line-through;text-decoration-color:#ffd400;text-decoration-thickness:8px;text-decoration-skip-ink:none;background:linear-gradient(to bottom, transparent 43%, #ffd400 43%, #ffd400 58%, transparent 58%);">' + escapeEmailHtml_(raw) + '</span>'
-        : '<span style="display:inline-block;max-width:100%;color:#111827!important;font-size:32px;line-height:1.05;font-weight:900;word-break:break-word;text-decoration:line-through;text-decoration-color:#ffd400;text-decoration-thickness:9px;text-decoration-skip-ink:none;background:linear-gradient(to bottom, transparent 43%, #ffd400 43%, #ffd400 58%, transparent 58%);">' + escapeEmailHtml_(raw) + '</span>';
-      return '<div style="margin:8px 0 0 0;padding:9px 10px;border:2px solid #facc15;border-radius:10px;background:#fffbeb;color:#b45309;font-size:11px;line-height:1.2;font-weight:900;letter-spacing:.06em;text-transform:uppercase;"><div style="margin-bottom:3px;color:#b45309;">' + escapeEmailHtml_(safeLabel) + '</div>' + valueHtml + '</div>';
-    }
-    const valueStyle = '';
-    valueHtml = isPlaceOnHold && isHoldCode
-      ? '<span style="display:inline-block;min-width:19px;height:19px;line-height:19px;text-align:center;border:2px solid #b45309;border-radius:999px;color:#111827;font-weight:900;' + valueStyle + '">' + escapeEmailHtml_(raw) + '</span>'
-      : '<span style="color:#111827;font-weight:900;' + valueStyle + '">' + escapeEmailHtml_(raw) + '</span>';
-    return '<div style="margin:6px 0 0 0;padding:7px 9px;border:1px solid #fde68a;border-radius:8px;background:#fffbeb;font-size:10px;line-height:1.25;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:#b45309;"><span style="display:inline-block;min-width:112px;color:#b45309;">' + escapeEmailHtml_(safeLabel) + '</span> ' + valueHtml + '</div>';
-  };
-  const rowsHtml = items.map(function(item, index) {
-    const commonName = firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Unknown Item');
-    const contSize = firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, '-');
-    const itemCode = firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, '-');
-    const genus = firstNonEmptyRequestValue_(item && item.genus, item && item.GENUS, item && item.genusname, item && item.GENUSNAME, '-');
-    const lot = getApprovalInquiryItemValue_(item, ['lotcode', 'LOTCODE'], '-');
-    const location = getApprovalInquiryItemValue_(item, ['locationcode', 'LOCATIONCODE', 'loc', 'LOC'], '-');
-    const source = getApprovalInquiryItemValue_(item, ['source', 'SOURCE', 'sourcecode', 'SOURCECODE'], '-');
-    const priority = getApprovalInquiryItemValue_(item, ['priority', 'PRIORITY'], '-');
-    const onHand = getApprovalInquiryItemValue_(item, ['ptronhand', 'PTRONHAND'], '-');
-    const review = getApprovalInquiryItemValue_(item, ['ptrreviewed', 'PTRREVIEWED'], '-');
-    const available = getApprovalInquiryItemValue_(item, ['ptravailable', 'PTRAVAILABLE'], '-');
-    const rowLine = [
-      linePart('Row', String(index + 1)),
-      linePart('Lot', lot),
-      linePart('Loc', location),
-      linePart('Src', source),
-      linePart('Pri', priority),
-      linePart('On Hand', onHand),
-      linePart('Review', review),
-      linePart('Available', available)
-    ].join('');
-    const holdstopCode = firstNonEmptyRequestValue_(item && item.holdstopcode, item && item.HOLDSTOPCODE, '');
-    const holdstopReason = firstNonEmptyRequestValue_(item && item.holdstopreason, item && item.HOLDSTOPREASON, '');
-    const holdEdits = [
-      holdEditField('HOLDSTOPCODE', holdstopCode),
-      holdEditField('HOLDSTOPREASON', holdstopReason)
-    ].filter(Boolean).join('');
-    const identityParts = [itemCode, contSize, genus].map(function(value) {
-      return String(value == null ? '' : value).trim();
-    }).filter(function(value) {
-      return value && value !== '-';
-    });
-    const identityLine = identityParts.length ? identityParts.join(' | ') : '-';
-    const updated = [
-      isMoveUp ? buildApprovalInquiryEmailChip_('MOVE UP QTY', firstNonEmptyRequestValue_(item && item.ncr_qty, item && item.NCR_QTY, item && item.loc_match_qty, item && item.LOC_MATCH_QTY, ''), 'green') : '',
-      (!isMoveUp && !isHold) ? buildApprovalInquiryEmailChip_('RELEASE QTY', firstNonEmptyRequestValue_(item && item.ncr_qty, item && item.NCR_QTY, item && item.loc_match_qty, item && item.LOC_MATCH_QTY, ''), 'green') : '',
-      buildApprovalInquiryEmailChip_('SPEC', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, ''), 'slate'),
-      buildApprovalInquiryEmailChip_('CALIPER', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, ''), 'slate'),
-      buildApprovalInquiryEmailChip_('LOC PHOTO MATCH', getRequestLocPhotoMatchEmailValue_(item), 'green'),
-      buildApprovalInquiryEmailChip_('AV NOTE', firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, ''), 'slate'),
-      buildApprovalInquiryEmailChip_('PICK NOTE', firstNonEmptyRequestValue_(item && item.pick_note, item && item.req_pick, item && item.REQ_PICK, item && item.REQ_PIC_NOTE, ''), 'slate'),
-      buildApprovalInquiryEmailChip_('COMMENTS', firstNonEmptyRequestValue_(item && item.comments, item && item.req_comments, item && item.REQ_COMMENTS, ''), 'slate')
-    ].filter(Boolean).join('');
-    const details = [
-      buildApprovalInquiryEmailChip_('Date', firstNonEmptyRequestValue_(item && item.locationnotedate, item && item.LOCATIONNOTEDATE, ''), 'slate'),
-      buildApprovalInquiryEmailChip_('PTN1', firstNonEmptyRequestValue_(item && item.locationptn1, item && item.LOCATIONPTN1, ''), 'slate'),
-      buildApprovalInquiryEmailChip_('Location Note', firstNonEmptyRequestValue_(item && item.locationnote, item && item.LOCATIONNOTE, ''), 'green')
-    ].filter(Boolean).join('');
-    return [
-      '<div style="margin:0 0 14px 0;border:1px solid #b7dac7;border-radius:12px;background:#ffffff;overflow:hidden;">',
-      '<div style="padding:11px 12px 8px 12px;">',
-      '<div style="display:inline-block;margin:0 0 5px 0;padding:4px 8px;border:1px solid #bbf7d0;border-radius:999px;background:#ecfdf5;color:#007a4d;font-size:9px;line-height:1.1;font-weight:900;letter-spacing:.08em;text-transform:uppercase;">Item Inquiry</div>',
-      '<div style="font-size:18px;line-height:1.15;font-weight:900;color:#111827;word-break:break-word;">' + escapeEmailHtml_(commonName) + '</div>',
-      '<div style="margin-top:3px;font-size:12px;line-height:1.2;font-weight:900;letter-spacing:.08em;color:#64748b;text-transform:uppercase;">' + escapeEmailHtml_(identityLine) + '</div>',
-      holdEdits,
-      '</div>',
-      '<div style="padding:7px 10px;border-top:1px solid #dbe5df;font-size:9px;line-height:1.55;font-weight:900;white-space:nowrap;color:#111827;">' + rowLine + '</div>',
-      (updated || details) ? '<div style="padding:8px 12px 10px 12px;border-top:1px solid #dbe5df;background:#f8fafc;">' + (updated ? '<div style="margin:0 0 3px 0;white-space:nowrap;">' + updated + '</div>' : '') + (details ? '<div style="margin:0;white-space:nowrap;">' + details + '</div>' : '') + '</div>' : '',
-      '</div>'
-    ].join('');
-  }).join('');
-  return '<div style="font-family:Arial,sans-serif;color:#111827;max-width:760px;margin:0 auto;line-height:1.35;">' + rowsHtml + '</div>';
+  return buildRequestEmailTableItemsHtml_(payload, { title: 'Selected Approval Rows' });
 }
 
 function buildApprovalInquiryItemsText_(payload) {
@@ -6742,30 +6780,7 @@ function buildRequestGalleryPreviewHtml_(payload) {
 }
 
 function buildCompactRequestItemsHtml_(payload) {
-  const items = getRequestEmailPayloadItems_(payload);
-  if (!items.length) return String(payload.formattedItemsHtml || '').trim();
-  const galleryFolderId = resolveRequestGalleryFolderId_(payload, items);
-  cacheRequestGalleryPayload_(galleryFolderId, items);
-  const rowsHtml = items.map(function(item, index) {
-    const commonName = escapeEmailHtml_(firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Unknown Item'));
-    const contSize = escapeEmailHtml_(firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, '-'));
-    const photoCount = getRequestItemPhotoUrls_(item).length;
-    const copyButtonHtml = buildRequestRowCopyButtonHtml_(galleryFolderId, item, index);
-    const photoPreviewHtml = buildRequestRowPhotoPreviewHtml_(galleryFolderId, item);
-    const fieldsHtml = [
-      buildRequestItemFieldRowsHtml_(item),
-      '<div style="margin-top:3px;"><strong>Photos:</strong> ' + escapeEmailHtml_(photoCount ? String(photoCount) : '0') + '</div>'
-    ].filter(Boolean).join('');
-    return [
-      '<li style="margin-bottom:10px; background:#f9f9f9; padding:10px; border-left:4px solid #007a4d;">',
-      '<strong>' + (index + 1) + '. ' + commonName + ' (' + contSize + ')</strong>',
-      photoPreviewHtml,
-      fieldsHtml,
-      copyButtonHtml,
-      '</li>'
-    ].join('');
-  }).join('');
-  return '<ul style="list-style:none; padding:0; margin:0;">' + rowsHtml + '</ul>';
+  return buildRequestEmailTableItemsHtml_(payload, { title: 'Selected Rows' });
 }
 
 function escapeRequestGalleryJson_(value) {
@@ -7426,20 +7441,20 @@ function buildRequestEmailMessage_(payload) {
   const useFormattedApprovalLayout = isApprovalEmail
     && formattedItemsHtmlRaw
     && String(firstNonEmptyRequestValue_(payload.useFormattedApprovalLayout, payload.use_formatted_approval_layout, 'true')).trim().toLowerCase() !== 'false';
-  const useFormattedItemsBody = isDriveShiftReportEmail || isPaperNcrItemInquiryEmail || isSuspendTagPhotoSpecEmail || useFormattedApprovalLayout;
+  const useFormattedItemsBody = !!formattedItemsHtmlRaw || isDriveShiftReportEmail || isPaperNcrItemInquiryEmail || isSuspendTagPhotoSpecEmail || useFormattedApprovalLayout;
   const isSuspendTagCompletionEmail = isSuspendTagCompletionEmail_(payload);
   const repName = escapeEmailHtml_(payload.repName || payload.salesRepName || '');
   const customer = escapeEmailHtml_(payload.customer || 'N/A');
   const folderId = escapeEmailHtml_(payload.folderId || payload.requestFolder || '');
   const itemsCount = escapeEmailHtml_(payload.itemsCount || 0);
-  const itemsHtml = useFormattedItemsBody
-    ? formattedItemsHtmlRaw
-    : emailType === 'request_complete'
+  const fallbackItemsHtml = emailType === 'request_complete'
     ? (isSuspendTagCompletionEmail ? buildSuspendTagCompletionItemsHtml_(payload) : buildCompactRequestItemsHtml_(payload))
     : (isApprovalEmail ? buildApprovalRequestItemsHtml_(payload) : buildRequestItemsHtml_(payload));
-  const itemsText = useFormattedItemsBody
-    ? formattedItemsTextRaw
-    : (isSuspendTagCompletionEmail ? buildSuspendTagCompletionItemsText_(payload) : (isApprovalEmail ? buildApprovalRequestItemsText_(payload) : buildRequestItemsText_(payload)));
+  const fallbackItemsText = isSuspendTagCompletionEmail
+    ? buildSuspendTagCompletionItemsText_(payload)
+    : (isApprovalEmail ? buildApprovalRequestItemsText_(payload) : buildRequestItemsText_(payload));
+  const itemsHtml = useFormattedItemsBody ? (formattedItemsHtmlRaw || fallbackItemsHtml) : fallbackItemsHtml;
+  const itemsText = useFormattedItemsBody ? (formattedItemsTextRaw || fallbackItemsText) : fallbackItemsText;
   const selectionSummaryHtml = buildRequestSelectionSummaryHtml_(payload);
   const selectionSummaryText = buildRequestSelectionSummaryText_(payload);
   const subject = buildRequestEmailSubject_(payload);
