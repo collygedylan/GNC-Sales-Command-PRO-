@@ -4086,6 +4086,7 @@ function resolveJdApprovalEmailTypeLabel_(payload) {
   const approvalType = String(payload && (payload.approvalType || payload.approval_type) || '').trim().toLowerCase().replace(/_/g, '-');
   if (approvalType === 'hold' || approvalType === 'hold-release' || approvalType === 'off-hold') return 'Off Hold Approval';
   if (approvalType === 'move-up' || approvalType === 'moveup') return 'Move Up Approval';
+  if (approvalType === 'recount' || approvalType === 're-count') return 'Re-Count Approval';
   if (approvalType === 'not-on-inventory' || approvalType === 'notoninventory') return 'Not On Inventory';
   return 'New Crop Release';
 }
@@ -8108,6 +8109,7 @@ function getApprovalEmailDisplayName_(payload) {
   if (explicitName) return explicitName;
   const approvalType = String(payload && (payload.approvalType || payload.approval_type) || '').trim().toLowerCase().replace(/_/g, '-');
   if (approvalType.indexOf('hold-release') !== -1 || approvalType.indexOf('hold') !== -1) return 'GNC PH HOLD REMOVAL';
+  if (approvalType.indexOf('recount') !== -1 || approvalType.indexOf('re-count') !== -1) return 'GNC PH RE-COUNT';
   if (approvalType.indexOf('move-up') !== -1 || approvalType.indexOf('move') !== -1) return 'GNC PH MOVE UP';
   return 'GNC PH NCR';
 }
