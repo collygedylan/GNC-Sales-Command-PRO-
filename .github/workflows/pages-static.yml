@@ -1,0 +1,55 @@
+name: Deploy static app to Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare static app
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          cp index.html _site/index.html
+          cp manifest.json _site/manifest.json
+          cp sw.js _site/sw.js
+          cp CNAME _site/CNAME
+          cp .nojekyll _site/.nojekyll
+          cp OneSignalSDKWorker.js _site/OneSignalSDKWorker.js
+          cp "Greenleaf Logo.png" _site/"Greenleaf Logo.png"
+          cp "Ag Metric App.png" _site/"Ag Metric App.png"
+          if [ -f "greenleaf-logo.png" ]; then
+            cp "greenleaf-logo.png" _site/"greenleaf-logo.png"
+          fi
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
