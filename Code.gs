@@ -5453,18 +5453,28 @@ function collectRequestRecipients_(payload) {
     payload && payload.internalRecipients,
     payload && payload.recipients
   ]);
+  const isRequestEmailFlow = emailType === 'new_request' || emailType.indexOf('request_') === 0;
+  const hasDylanRecipientOverride = payload && !isRequestEmailFlow && (
+    payload.dylanRecipientOverride === true ||
+    String(payload.recipientOverrideAppliedBy || payload.recipient_override_applied_by || '').trim().toLowerCase() === 'dylan_collyge'
+  );
+  if (hasDylanRecipientOverride) {
+    const recipients = dedupeEmailAddresses_([
+      payload.recipientEmails,
+      payload.emailRecipients,
+      payload.internalRecipients,
+      payload.recipients
+    ]);
+    return {
+      repEmail: repEmail,
+      toArray: recipients,
+      toList: recipients.join(',')
+    };
+  }
   const hasExplicitApprovalRecipients = (emailType === 'ncr_approval' || emailType === 'hold_release_request') && explicitApprovalRecipients.length > 0;
   const approvalFallbackRecipients = [];
-  const newRequestInternalRecipients = [];
   const bloomCropUpdateInternalRecipients = [];
   const driveShiftFallbackRecipients = [];
-  if (emailType === 'new_request') {
-    newRequestInternalRecipients.push(
-      'dylan_collyge@greenleafnursery.com',
-      'jd_jones@greenleafnursery.com',
-      'megan_kelly@greenleafnursery.com'
-    );
-  }
   if ((emailType === 'ncr_approval' || emailType === 'hold_release_request') && !hasExplicitApprovalRecipients) {
     if (approvalStage === 'jd') {
       approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com', 'megan_kelly@greenleafnursery.com', 'jd_jones@greenleafnursery.com');
@@ -5504,7 +5514,6 @@ function collectRequestRecipients_(payload) {
     payload.meganEmail,
     requestedByEmail,
     repEmail,
-    newRequestInternalRecipients,
     approvalFallbackRecipients,
     bloomCropUpdateInternalRecipients,
     driveShiftFallbackRecipients
@@ -8285,49 +8294,6 @@ function sendRequestEmailWithFallback_(payload) {
 
   const message = buildRequestEmailMessage_(payload);
   const safeType = String(payload.emailType || '').trim().toLowerCase();
-  if (safeType === 'new_request') {
-    const requestEmailName = getRequestEmailDisplayName_(payload);
-    const senderAddress = resolveAutomatedEmailSenderAddress_();
-    if (isGmailAdvancedServiceAvailable_()) {
-      try {
-        return sendGmailApiMessage_({
-          toList: recipients.toList,
-          toArray: recipients.toArray,
-          subject: message.subject,
-          textBody: message.textBody,
-          htmlBody: message.htmlBody,
-          fromName: requestEmailName,
-          fromAddress: senderAddress,
-          threadId: '',
-          inReplyTo: '',
-          references: ''
-        });
-      } catch (error) {
-        console.error('Gmail API send failed for new request email; falling back to GmailApp', error);
-      }
-    }
-    try {
-      GmailApp.sendEmail(recipients.toList, message.subject, message.textBody || message.subject, {
-        htmlBody: message.htmlBody,
-        name: requestEmailName
-      });
-      return {
-        ok: true,
-        status: 200,
-        recipients: recipients.toArray,
-        mode: 'gmailapp_new_request_fallback'
-      };
-    } catch (error) {
-      console.error('New request email send failed', error);
-      return {
-        ok: false,
-        status: 500,
-        recipients: recipients.toArray,
-        mode: 'gmailapp_new_request_error',
-        message: error && error.message ? error.message : 'New request email send failed.'
-      };
-    }
-  }
   if (safeType === 'ncr_complete') {
     const ncrCompleteName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || 'GNC PH NCR').trim() || 'GNC PH NCR';
     try {
