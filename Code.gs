@@ -7141,8 +7141,190 @@ function insertInventoryTransactionAudit_(record) {
   };
 }
 
+function getInventoryTransactionEmailActionLabel_(action) {
+  const safeAction = String(action || '').trim().toLowerCase();
+  if (safeAction === 'qty') return 'QTY';
+  if (safeAction === 'transfer') return 'Transfer';
+  if (safeAction === 'reclass') return 'Reclass';
+  return safeAction ? safeAction.toUpperCase() : 'Inventory Transaction';
+}
+
+function getInventoryTransactionEmailRecipients_(payload, actorEmail) {
+  const safePayload = payload && typeof payload === 'object' ? payload : {};
+  const explicit = dedupeEmailAddresses_([
+    safePayload.recipientEmails,
+    safePayload.emailRecipients,
+    safePayload.internalRecipients,
+    safePayload.recipients
+  ]);
+  if (explicit.length) return explicit;
+  return dedupeEmailAddresses_([
+    actorEmail,
+    EMAIL_APPROVAL_USER_EMAILS_.dylan_collyge || 'dylan_collyge@greenleafnursery.com'
+  ]);
+}
+
+function getInventoryTransactionEmailRowValue_(row, fields, fallback) {
+  return getInventoryTransactionRowValue_(row || {}, fields || [], fallback == null ? '' : fallback);
+}
+
+function buildInventoryTransactionDestinationSummary_(context) {
+  const safeContext = context || {};
+  const transaction = safeContext.transaction || {};
+  const destination = safeContext.destinationRow || {};
+  const source = safeContext.sourceBefore || safeContext.sourceRow || {};
+  const actionLabel = getInventoryTransactionEmailActionLabel_(safeContext.action).toUpperCase();
+  if (safeContext.action === 'qty') {
+    const beforeQty = getInventoryTransactionEmailRowValue_(source, ['ptronhand', 'PTRONHAND', 'onhand', 'ONHAND'], '');
+    return 'SET PTRONHAND / PTRREVIEWED / PTRAVAILABLE ' + beforeQty + ' -> ' + safeContext.quantity;
+  }
+  const itemCode = firstNonEmptyRequestValue_(
+    transaction.newItemCode,
+    transaction.new_itemcode,
+    getInventoryTransactionEmailRowValue_(destination, ['itemcode', 'ITEMCODE'], ''),
+    getInventoryTransactionEmailRowValue_(source, ['itemcode', 'ITEMCODE'], '')
+  );
+  const lotCode = firstNonEmptyRequestValue_(
+    transaction.newLotCode,
+    transaction.new_lotcode,
+    getInventoryTransactionEmailRowValue_(destination, ['lotcode', 'LOTCODE'], '')
+  );
+  const locationCode = firstNonEmptyRequestValue_(
+    transaction.newLocationCode,
+    transaction.new_locationcode,
+    transaction.loc,
+    getInventoryTransactionEmailRowValue_(destination, ['locationcode', 'LOCATIONCODE'], '')
+  );
+  return actionLabel + ' ' + safeContext.quantity + ' TO ITEM ' + itemCode + ' LOT ' + lotCode + ' LOC ' + locationCode;
+}
+
+function buildInventoryTransactionEmailItem_(context) {
+  const safeContext = context || {};
+  const source = safeContext.sourceBefore || safeContext.sourceRow || {};
+  const sourceAfter = safeContext.sourceRow || source;
+  const transaction = safeContext.transaction || {};
+  const actionLabel = getInventoryTransactionEmailActionLabel_(safeContext.action);
+  const rowNumber = getInventoryTransactionEmailRowValue_(source, ['row', 'ROW', 'row_index', 'ROW_INDEX'], '');
+  return {
+    unique_id: getInventoryTransactionEmailRowValue_(source, ['unique_id', 'UNIQUE_ID', 'id', 'ID'], ''),
+    itemcode: getInventoryTransactionEmailRowValue_(source, ['itemcode', 'ITEMCODE'], ''),
+    commonname: getInventoryTransactionEmailRowValue_(source, ['commonname', 'COMMONNAME', 'common_name', 'COMMON_NAME', 'description', 'DESCRIPTION'], 'Unknown Item'),
+    contsize: getInventoryTransactionEmailRowValue_(source, ['contsize', 'CONTSIZE', 'cont_size', 'CONT_SIZE', 'size', 'SIZE'], ''),
+    genus: getInventoryTransactionEmailRowValue_(source, ['genus', 'GENUS', 'genusname', 'GENUSNAME'], ''),
+    salesnote: getInventoryTransactionEmailRowValue_(source, ['salesnote', 'SALESNOTE', 'sales_note', 'SALES_NOTE'], ''),
+    holdstopcode: getInventoryTransactionEmailRowValue_(source, ['holdstopcode', 'HOLDSTOPCODE', 'holstopcode', 'HOLSTOPCODE'], ''),
+    holdstopreason: getInventoryTransactionEmailRowValue_(source, ['holdstopreason', 'HOLDSTOPREASON', 'holstopreason', 'HOLSTOPREASON'], ''),
+    row: rowNumber,
+    lotcode: getInventoryTransactionEmailRowValue_(source, ['lotcode', 'LOTCODE', 'lotCode', 'LOT_CODE'], ''),
+    locationcode: getInventoryTransactionEmailRowValue_(source, ['locationcode', 'LOCATIONCODE', 'loc', 'LOC', 'location'], ''),
+    source: getInventoryTransactionEmailRowValue_(source, ['source', 'SOURCE', 'sourcecode', 'SOURCECODE'], ''),
+    desigcust: getInventoryTransactionEmailRowValue_(source, ['desigcust', 'DESIGCUST', 'desig_cust', 'DESIG_CUST'], ''),
+    priority: getInventoryTransactionEmailRowValue_(source, ['priority', 'PRIORITY'], ''),
+    ptronhand: getInventoryTransactionEmailRowValue_(source, ['ptronhand', 'PTRONHAND', 'onhand', 'ONHAND'], ''),
+    ptrreviewed: getInventoryTransactionEmailRowValue_(source, ['ptrreviewed', 'PTRREVIEWED', 'review', 'REVIEW'], ''),
+    ptravailable: getInventoryTransactionEmailRowValue_(source, ['ptravailable', 'PTRAVAILABLE', 'available', 'AVAILABLE'], ''),
+    locationnotedate: getInventoryTransactionEmailRowValue_(source, ['locationnotedate', 'LOCATIONNOTEDATE', 'note_date', 'NOTE_DATE'], ''),
+    locationnote: getInventoryTransactionEmailRowValue_(source, ['locationnote', 'LOCATIONNOTE', 'loc_note', 'LOC_NOTE'], ''),
+    locationptn1: getInventoryTransactionEmailRowValue_(source, ['locationptn1', 'LOCATIONPTN1', 'ptn1', 'PTN1'], ''),
+    action: actionLabel,
+    qty: safeContext.quantity,
+    request_note: buildInventoryTransactionDestinationSummary_(safeContext),
+    comments: firstNonEmptyRequestValue_(transaction.reason, transaction.txType, transaction.tx_type, ''),
+    photo: extractRequestPhotoUrls_([
+      source.req_photo_link,
+      source.REQ_PHOTO_LINK,
+      source.request_photo_link,
+      source.REQUEST_PHOTO_LINK,
+      source.row_photo_link,
+      source.ROW_PHOTO_LINK,
+      source.saved_photo_link,
+      source.SAVED_PHOTO_LINK,
+      source.photo_link,
+      source.PHOTO_LINK,
+      source.photo,
+      source.photos,
+      source.photo_urls,
+      sourceAfter.photo_link,
+      sourceAfter.PHOTO_LINK,
+      sourceAfter.photo,
+      sourceAfter.photos,
+      sourceAfter.photo_urls
+    ]).join(',')
+  };
+}
+
+function buildInventoryTransactionEmailText_(item, context) {
+  const safeItem = item || {};
+  const safeContext = context || {};
+  return [
+    'GNC PH ' + getInventoryTransactionEmailActionLabel_(safeContext.action),
+    'Submitted By: ' + firstNonEmptyRequestValue_(safeContext.actorDisplay, safeContext.actorUsername, ''),
+    'Transaction ID: ' + firstNonEmptyRequestValue_(safeContext.transactionId, ''),
+    '',
+    'Item: ' + firstNonEmptyRequestValue_(safeItem.commonname, ''),
+    'Item Code: ' + firstNonEmptyRequestValue_(safeItem.itemcode, ''),
+    'Size: ' + firstNonEmptyRequestValue_(safeItem.contsize, ''),
+    'Lot: ' + firstNonEmptyRequestValue_(safeItem.lotcode, ''),
+    'Location: ' + firstNonEmptyRequestValue_(safeItem.locationcode, ''),
+    'On Hand: ' + firstNonEmptyRequestValue_(safeItem.ptronhand, ''),
+    'Reviewed: ' + firstNonEmptyRequestValue_(safeItem.ptrreviewed, ''),
+    'Available: ' + firstNonEmptyRequestValue_(safeItem.ptravailable, ''),
+    'Requested Change: ' + firstNonEmptyRequestValue_(safeItem.request_note, '')
+  ].join('\n');
+}
+
+function sendInventoryTransactionEmail_(payload, context) {
+  const safeContext = context || {};
+  const actionLabel = getInventoryTransactionEmailActionLabel_(safeContext.action);
+  const recipients = getInventoryTransactionEmailRecipients_(payload, safeContext.actorEmail);
+  if (!recipients.length) {
+    return {
+      ok: false,
+      recipients: [],
+      message: 'No inventory transaction email recipients were selected.'
+    };
+  }
+
+  const item = buildInventoryTransactionEmailItem_(safeContext);
+  const submittedAt = Utilities.formatDate(
+    new Date(firstNonEmptyRequestValue_(safeContext.nowIso, new Date().toISOString())),
+    Session.getScriptTimeZone() || 'America/Chicago',
+    'M/d/yyyy, h:mm:ss a'
+  );
+  const tableHtml = buildRequestEmailTableItemsHtml_({
+    requestItems: [item],
+    folderId: 'inventory-transaction-' + firstNonEmptyRequestValue_(safeContext.transactionId, Utilities.getUuid())
+  }, {
+    title: 'Selected ' + actionLabel + ' Rows',
+    includePhotos: true
+  });
+  const htmlBody = buildPhoneSizedEmailHtml_([
+    '<div style="font-family:Arial,Helvetica,sans-serif;padding:20px;color:#333333;">',
+    '<h2 style="color:#007a4d;margin:0 0 12px 0;">GNC PH</h2>',
+    '<h1 style="margin:0 0 18px 0;color:#111827;font-size:24px;line-height:1.2;">' + escapeEmailHtml_(actionLabel) + '</h1>',
+    '<p style="margin:0 0 10px 0;"><strong>Submitted By:</strong> ' + escapeEmailHtml_(firstNonEmptyRequestValue_(safeContext.actorDisplay, safeContext.actorUsername, '')) + '</p>',
+    '<p style="margin:0 0 14px 0;"><strong>Submitted:</strong> ' + escapeEmailHtml_(submittedAt) + '</p>',
+    '<p style="margin:0 0 18px 0;"><strong>Transaction ID:</strong> ' + escapeEmailHtml_(firstNonEmptyRequestValue_(safeContext.transactionId, '')) + '</p>',
+    tableHtml,
+    '</div>'
+  ].join(''));
+  const subjectName = String(firstNonEmptyRequestValue_(item.commonname, 'Inventory')).replace(/\s+/g, ' ').trim();
+  const subjectLocation = firstNonEmptyRequestValue_(item.locationcode, '');
+  const subject = '[External] GNC PH ' + actionLabel + ': ' + subjectName + (subjectLocation ? ' ' + subjectLocation : '');
+  GmailApp.sendEmail(recipients.join(','), subject, buildInventoryTransactionEmailText_(item, safeContext), {
+    htmlBody: htmlBody,
+    name: 'GNC PH ' + actionLabel
+  });
+  return {
+    ok: true,
+    recipients: recipients,
+    subject: subject
+  };
+}
+
 function handleInventoryTransaction_(payload) {
   const lock = LockService.getScriptLock();
+  let lockReleased = false;
   if (!lock.tryLock(15000)) {
     return {
       ok: false,
@@ -7264,6 +7446,38 @@ function handleInventoryTransaction_(payload) {
       destination_row: destinationAfter || null
     });
 
+    try {
+      lock.releaseLock();
+      lockReleased = true;
+    } catch (releaseError) {
+      console.warn('Inventory transaction lock release before email failed: ' + (releaseError && releaseError.message ? releaseError.message : releaseError));
+    }
+
+    let emailResult = null;
+    let emailWarning = null;
+    try {
+      emailResult = sendInventoryTransactionEmail_(payload, {
+        action: action,
+        transaction: transaction,
+        transactionId: transactionId,
+        nowIso: nowIso,
+        actorUsername: actorUsername,
+        actorDisplay: actorDisplay,
+        actorEmail: actorEmail,
+        sourceBefore: sourceBefore,
+        sourceRow: sourceAfter || sourceRow,
+        destinationBefore: destinationBefore,
+        destinationRow: destinationAfter || destinationRow,
+        quantity: quantity
+      });
+      if (emailResult && emailResult.ok === false) {
+        emailWarning = emailResult.message || 'Inventory transaction email was not sent.';
+      }
+    } catch (emailError) {
+      emailWarning = emailError && emailError.message ? emailError.message : String(emailError || 'Inventory transaction email failed.');
+      console.warn('Inventory transaction email warning: ' + emailWarning);
+    }
+
     return {
       ok: true,
       status: 'success',
@@ -7272,6 +7486,8 @@ function handleInventoryTransaction_(payload) {
       sourceRow: sourceAfter || null,
       destinationRow: destinationAfter || null,
       auditWarning: auditWarning,
+      emailWarning: emailWarning,
+      emailRecipients: emailResult && emailResult.recipients ? emailResult.recipients : [],
       message: action === 'qty' ? 'Quantity updated.' : (action === 'transfer' ? 'Transfer applied.' : 'Reclass applied.')
     };
   } catch (error) {
@@ -7281,7 +7497,9 @@ function handleInventoryTransaction_(payload) {
       message: error && error.message ? error.message : String(error || 'Inventory transaction failed.')
     };
   } finally {
-    try { lock.releaseLock(); } catch (error) {}
+    if (!lockReleased) {
+      try { lock.releaseLock(); } catch (error) {}
+    }
   }
 }
 
