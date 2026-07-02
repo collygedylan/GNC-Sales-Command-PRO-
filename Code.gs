@@ -7080,6 +7080,48 @@ function validateInventoryTransactionSourceIdentity_(row, source) {
   if (expectedLocation && actualLocation && expectedLocation !== actualLocation) throw new Error('This location changed. Sync and try again.');
 }
 
+function isInventoryTransactionNcrDestination_(transaction) {
+  const safeTx = transaction && typeof transaction === 'object' ? transaction : {};
+  const reason = normalizeInventoryTransactionCompareText_(firstNonEmptyRequestValue_(
+    safeTx.reason,
+    safeTx.txType,
+    safeTx.tx_type,
+    safeTx.reasonCode,
+    safeTx.reason_code,
+    safeTx.transactionReason,
+    safeTx.transaction_reason
+  ));
+  return reason === 'NCR';
+}
+
+function getInventoryTransactionDestinationDesignationSpec_(transaction) {
+  const safeTx = transaction && typeof transaction === 'object' ? transaction : {};
+  const desigItem = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(
+    safeTx.desigItem,
+    safeTx.desigitem,
+    safeTx.desig_item,
+    safeTx.newDesigItem,
+    safeTx.new_desigitem
+  ));
+  return {
+    desigItem: desigItem || (isInventoryTransactionNcrDestination_(safeTx) ? '=' : ''),
+    desigCust: normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(
+      safeTx.desigCust,
+      safeTx.desigcust,
+      safeTx.desig_cust,
+      safeTx.newDesigCust,
+      safeTx.new_desigcust
+    )),
+    desigLoc: normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(
+      safeTx.desigLoc,
+      safeTx.desigloc,
+      safeTx.desig_loc,
+      safeTx.newDesigLoc,
+      safeTx.new_desigloc
+    ))
+  };
+}
+
 function getInventoryTransactionDestinationSpec_(sourceRow, transaction, action) {
   const safeTx = transaction && typeof transaction === 'object' ? transaction : {};
   const itemCode = normalizeInventoryTransactionText_(action === 'reclass'
@@ -7088,7 +7130,11 @@ function getInventoryTransactionDestinationSpec_(sourceRow, transaction, action)
   const lotCode = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(safeTx.newLotCode, safeTx.new_lotcode, safeTx.lotcode));
   const locationCode = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(safeTx.newLocationCode, safeTx.new_locationcode, safeTx.locationcode, safeTx.loc));
   if (!itemCode || !lotCode || !locationCode) throw new Error('Destination item, lot, and location are required.');
-  return { itemCode: itemCode, lotCode: lotCode, locationCode: locationCode };
+  return Object.assign({
+    itemCode: itemCode,
+    lotCode: lotCode,
+    locationCode: locationCode
+  }, getInventoryTransactionDestinationDesignationSpec_(safeTx));
 }
 
 function getInventoryTransactionSearchTables_(sourceRow) {
@@ -7099,6 +7145,35 @@ function getInventoryTransactionSearchTables_(sourceRow) {
   if (runtimeTable && tables.indexOf(runtimeTable) === -1) tables.push(runtimeTable);
   if (tables.indexOf('v2_master_inventory') === -1) tables.push('v2_master_inventory');
   return tables;
+}
+
+function pickInventoryTransactionDestinationRow_(rows, spec) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const safeSpec = spec || {};
+  const targetDesigItem = normalizeInventoryTransactionCompareText_(safeSpec.desigItem || '');
+  const targetDesigCust = normalizeInventoryTransactionCompareText_(safeSpec.desigCust || '');
+  const targetDesigLoc = normalizeInventoryTransactionCompareText_(safeSpec.desigLoc || '');
+  let best = null;
+  safeRows.forEach(function(row) {
+    const rowDesigItem = normalizeInventoryTransactionCompareText_(getInventoryTransactionRowValue_(row, ['desigitem', 'DESIGITEM'], ''));
+    const rowDesigCust = normalizeInventoryTransactionCompareText_(getInventoryTransactionRowValue_(row, ['desigcust', 'DESIGCUST'], ''));
+    const rowDesigLoc = normalizeInventoryTransactionCompareText_(getInventoryTransactionRowValue_(row, ['desigloc', 'DESIGLOC'], ''));
+    if (targetDesigItem && rowDesigItem !== targetDesigItem) return;
+    if (targetDesigCust && rowDesigCust !== targetDesigCust) return;
+    if (targetDesigLoc && rowDesigLoc !== targetDesigLoc) return;
+
+    let score = 0;
+    if (targetDesigItem) score += 100;
+    else if (!rowDesigItem) score += 10;
+    else if (rowDesigItem === '=') score -= 10;
+    if (targetDesigCust) score += 20;
+    else if (!rowDesigCust) score += 2;
+    if (targetDesigLoc) score += 20;
+    else if (!rowDesigLoc) score += 2;
+
+    if (!best || score > best.score) best = { row: row, score: score };
+  });
+  return best && best.row ? best.row : null;
 }
 
 function fetchInventoryTransactionDestinationRowBySpec_(sourceRow, spec) {
@@ -7115,7 +7190,7 @@ function fetchInventoryTransactionDestinationRowBySpec_(sourceRow, spec) {
       'itemcode=eq.' + encodeURIComponent(itemCode),
       'lotcode=eq.' + encodeURIComponent(lotCode),
       'locationcode=eq.' + encodeURIComponent(locationCode),
-      'limit=2'
+      'limit=50'
     ].join('&');
     const url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(tableName) + '?' + query;
     const res = UrlFetchApp.fetch(url, {
@@ -7126,8 +7201,11 @@ function fetchInventoryTransactionDestinationRowBySpec_(sourceRow, spec) {
     if (res.getResponseCode() !== 200) continue;
     const rows = JSON.parse(res.getContentText() || '[]');
     if (Array.isArray(rows) && rows.length) {
-      rows[0].__approval_table_name = tableName;
-      return rows[0];
+      const picked = pickInventoryTransactionDestinationRow_(rows, safeSpec);
+      if (picked) {
+        picked.__approval_table_name = tableName;
+        return picked;
+      }
     }
   }
   return null;
@@ -7200,6 +7278,9 @@ function buildInventoryTransactionDestinationInsertPayload_(sourceRow, transacti
     transaction && transaction.newSource,
     getInventoryTransactionRowValue_(sourceRow, ['source', 'SOURCE'], '')
   ));
+  if (normalizeInventoryTransactionText_(safeSpec.desigItem)) payload.desigitem = safeSpec.desigItem;
+  if (normalizeInventoryTransactionText_(safeSpec.desigCust)) payload.desigcust = safeSpec.desigCust;
+  if (normalizeInventoryTransactionText_(safeSpec.desigLoc)) payload.desigloc = safeSpec.desigLoc;
   payload.ptronhand = 0;
   payload.ptravailable = 0;
   payload.ptrreviewed = 0;
