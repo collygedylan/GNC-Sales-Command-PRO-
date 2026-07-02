@@ -7055,7 +7055,7 @@ function getInventoryTransactionRowTable_(row) {
 function cloneInventoryTransactionRowForAudit_(row) {
   const clone = {};
   Object.keys(row || {}).forEach(function(key) {
-    if (key === '__approval_table_name') return;
+    if (String(key || '').indexOf('__') === 0) return;
     clone[key] = row[key];
   });
   return clone;
@@ -7080,7 +7080,7 @@ function validateInventoryTransactionSourceIdentity_(row, source) {
   if (expectedLocation && actualLocation && expectedLocation !== actualLocation) throw new Error('This location changed. Sync and try again.');
 }
 
-function fetchInventoryTransactionDestinationRow_(sourceRow, transaction, action) {
+function getInventoryTransactionDestinationSpec_(sourceRow, transaction, action) {
   const safeTx = transaction && typeof transaction === 'object' ? transaction : {};
   const itemCode = normalizeInventoryTransactionText_(action === 'reclass'
     ? firstNonEmptyRequestValue_(safeTx.newItemCode, safeTx.new_itemcode, safeTx.itemcode)
@@ -7088,12 +7088,26 @@ function fetchInventoryTransactionDestinationRow_(sourceRow, transaction, action
   const lotCode = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(safeTx.newLotCode, safeTx.new_lotcode, safeTx.lotcode));
   const locationCode = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(safeTx.newLocationCode, safeTx.new_locationcode, safeTx.locationcode, safeTx.loc));
   if (!itemCode || !lotCode || !locationCode) throw new Error('Destination item, lot, and location are required.');
+  return { itemCode: itemCode, lotCode: lotCode, locationCode: locationCode };
+}
+
+function getInventoryTransactionSearchTables_(sourceRow) {
   const tables = [];
   const sourceTable = getInventoryTransactionRowTable_(sourceRow);
   if (sourceTable) tables.push(sourceTable);
   const runtimeTable = getRuntimeSiteSplitTableName_('v2_master_inventory', getSiteSplitSiteFromWarehouse_(getInventoryTransactionRowValue_(sourceRow, ['warehouseid', 'WAREHOUSEID'], '10')));
   if (runtimeTable && tables.indexOf(runtimeTable) === -1) tables.push(runtimeTable);
   if (tables.indexOf('v2_master_inventory') === -1) tables.push('v2_master_inventory');
+  return tables;
+}
+
+function fetchInventoryTransactionDestinationRowBySpec_(sourceRow, spec) {
+  const safeSpec = spec || {};
+  const itemCode = normalizeInventoryTransactionText_(safeSpec.itemCode);
+  const lotCode = normalizeInventoryTransactionText_(safeSpec.lotCode);
+  const locationCode = normalizeInventoryTransactionText_(safeSpec.locationCode);
+  if (!itemCode || !lotCode || !locationCode) return null;
+  const tables = getInventoryTransactionSearchTables_(sourceRow);
   for (let i = 0; i < tables.length; i++) {
     const tableName = tables[i];
     const query = [
@@ -7116,7 +7130,145 @@ function fetchInventoryTransactionDestinationRow_(sourceRow, transaction, action
       return rows[0];
     }
   }
-  throw new Error('Destination row not found for item ' + itemCode + ', lot ' + lotCode + ', loc ' + locationCode + '. No inventory was changed.');
+  return null;
+}
+
+function fetchInventoryTransactionItemTemplateRow_(sourceRow, itemCode) {
+  const safeItemCode = normalizeInventoryTransactionText_(itemCode);
+  if (!safeItemCode) return null;
+  const tables = getInventoryTransactionSearchTables_(sourceRow);
+  for (let i = 0; i < tables.length; i++) {
+    const tableName = tables[i];
+    const query = [
+      'select=*',
+      'itemcode=eq.' + encodeURIComponent(safeItemCode),
+      'limit=1'
+    ].join('&');
+    const url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(tableName) + '?' + query;
+    const res = UrlFetchApp.fetch(url, {
+      method: 'get',
+      headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY },
+      muteHttpExceptions: true
+    });
+    if (res.getResponseCode() !== 200) continue;
+    const rows = JSON.parse(res.getContentText() || '[]');
+    if (Array.isArray(rows) && rows.length) {
+      rows[0].__approval_table_name = tableName;
+      return rows[0];
+    }
+  }
+  return null;
+}
+
+function buildInventoryTransactionCreatedRowUniqueId_(row) {
+  const itemCode = normalizeInventoryTransactionText_(getInventoryTransactionRowValue_(row, ['itemcode', 'ITEMCODE'], ''));
+  const contSize = normalizeInventoryTransactionText_(getInventoryTransactionRowValue_(row, ['contsize', 'CONTSIZE'], '-')) || '-';
+  const locationCode = normalizeInventoryTransactionText_(getInventoryTransactionRowValue_(row, ['locationcode', 'LOCATIONCODE'], ''));
+  const lotCode = normalizeInventoryTransactionText_(getInventoryTransactionRowValue_(row, ['lotcode', 'LOTCODE'], ''));
+  const source = normalizeInventoryTransactionText_(getInventoryTransactionRowValue_(row, ['source', 'SOURCE'], ''));
+  const desigItem = normalizeInventoryTransactionText_(getInventoryTransactionRowValue_(row, ['desigitem', 'DESIGITEM'], ''));
+  const desigCust = normalizeInventoryTransactionText_(getInventoryTransactionRowValue_(row, ['desigcust', 'DESIGCUST'], ''));
+  const desigLoc = normalizeInventoryTransactionText_(getInventoryTransactionRowValue_(row, ['desigloc', 'DESIGLOC'], ''));
+  const priority = normalizeInventoryTransactionText_(getInventoryTransactionRowValue_(row, ['priority', 'PRIORITY'], ''));
+  const warehouseId = normalizeInventoryTransactionText_(getInventoryTransactionRowValue_(row, ['warehouseid', 'WAREHOUSEID'], '10'));
+  const baseId = `${itemCode}-${contSize}-${locationCode}-${lotCode}-${source}-${desigItem}-${desigCust}-${desigLoc}-${priority}`
+    .replace(/[^a-zA-Z0-9-]/g, '_');
+  const rowSiteCode = warehouseId ? getSiteSplitSiteFromWarehouse_(warehouseId) : 'PH';
+  return rowSiteCode && rowSiteCode !== 'PH' ? `${rowSiteCode}-${baseId}` : baseId;
+}
+
+function buildInventoryTransactionDestinationInsertPayload_(sourceRow, transaction, action, spec) {
+  const safeSpec = spec || getInventoryTransactionDestinationSpec_(sourceRow, transaction, action);
+  const templateRow = action === 'reclass'
+    ? (fetchInventoryTransactionItemTemplateRow_(sourceRow, safeSpec.itemCode) || sourceRow)
+    : sourceRow;
+  const payload = {};
+  Object.keys(templateRow || {}).forEach(function(key) {
+    const dbKey = String(key || '').trim().toLowerCase();
+    if (!ALLOWED_DB_COLUMNS.has(dbKey)) return;
+    if (String(key || '').indexOf('__') === 0) return;
+    payload[dbKey] = templateRow[key];
+  });
+
+  const nowIso = new Date().toISOString();
+  const requestedSource = transaction && typeof transaction.source !== 'object' ? transaction.source : '';
+  payload.itemcode = safeSpec.itemCode;
+  payload.lotcode = safeSpec.lotCode;
+  payload.locationcode = safeSpec.locationCode;
+  payload.source = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(
+    requestedSource,
+    transaction && transaction.newSource,
+    getInventoryTransactionRowValue_(sourceRow, ['source', 'SOURCE'], '')
+  ));
+  payload.ptronhand = 0;
+  payload.ptravailable = 0;
+  payload.ptrreviewed = 0;
+  payload.last_updated = nowIso;
+
+  [
+    'photo_link', 'photo_name', 'dock_photo_link', 'dock_photo_name', 'flyer_photo_link', 'flyer_photo_name',
+    'locationnote', 'locationnotedate', 'locationptn1', 'locationptn2',
+    'pulltagnote1', 'pulltagnote2', 'specialpuller', 'inventorynote',
+    'loc_match_qty', 'av_note', 'pic_note'
+  ].forEach(function(key) {
+    if (Object.prototype.hasOwnProperty.call(payload, key)) payload[key] = null;
+  });
+
+  payload.unique_id = buildInventoryTransactionCreatedRowUniqueId_(payload) || ('invtx-' + Utilities.getUuid());
+  payload.concat = buildRowSyncHash_(payload, ['assignedto']);
+  return payload;
+}
+
+function insertInventoryTransactionDestinationRow_(sourceRow, transaction, action, spec) {
+  const tableName = getInventoryTransactionRowTable_(sourceRow);
+  const payload = buildInventoryTransactionDestinationInsertPayload_(sourceRow, transaction, action, spec);
+  const response = UrlFetchApp.fetch(SUPABASE_URL + '/rest/v1/' + encodeURIComponent(tableName), {
+    method: 'post',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation'
+    },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+  const code = response.getResponseCode();
+  if (code < 200 || code >= 300) {
+    throw new Error('Could not create destination row. No inventory was changed. ' + response.getContentText());
+  }
+  const rows = JSON.parse(response.getContentText() || '[]');
+  const created = Array.isArray(rows) && rows.length ? rows[0] : payload;
+  created.__approval_table_name = tableName;
+  created.__inventory_transaction_created = true;
+  return created;
+}
+
+function deleteInventoryTransactionCreatedRow_(row) {
+  const uid = getInventoryTransactionRowUid_(row);
+  const tableName = getInventoryTransactionRowTable_(row);
+  if (!uid || !tableName) return;
+  const url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(tableName)
+    + '?unique_id=eq.' + encodeURIComponent(uid);
+  const response = UrlFetchApp.fetch(url, {
+    method: 'delete',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: 'Bearer ' + SUPABASE_KEY
+    },
+    muteHttpExceptions: true
+  });
+  const code = response.getResponseCode();
+  if (code < 200 || code >= 300) {
+    throw new Error('Created destination rollback failed: ' + response.getContentText());
+  }
+}
+
+function fetchInventoryTransactionDestinationRow_(sourceRow, transaction, action) {
+  const spec = getInventoryTransactionDestinationSpec_(sourceRow, transaction, action);
+  const existing = fetchInventoryTransactionDestinationRowBySpec_(sourceRow, spec);
+  if (existing) return existing;
+  return insertInventoryTransactionDestinationRow_(sourceRow, transaction, action, spec);
 }
 
 function insertInventoryTransactionAudit_(record) {
@@ -7350,6 +7502,7 @@ function handleInventoryTransaction_(payload) {
     const nowIso = new Date().toISOString();
     const sourceBefore = cloneInventoryTransactionRowForAudit_(sourceRow);
     let destinationRow = null;
+    let destinationWasCreated = false;
     let destinationBefore = null;
     let sourceAfter = null;
     let destinationAfter = null;
@@ -7365,10 +7518,11 @@ function handleInventoryTransaction_(payload) {
     } else {
       const qty = parseInventoryTransactionNumber_(transaction.quantity, 'Quantity to move', { requirePositive: true });
       destinationRow = fetchInventoryTransactionDestinationRow_(sourceRow, transaction, action);
+      destinationWasCreated = Boolean(destinationRow && destinationRow.__inventory_transaction_created);
       const destinationUid = getInventoryTransactionRowUid_(destinationRow);
       if (!destinationUid) throw new Error('Destination row is missing a unique id.');
       if (destinationUid === sourceUid) throw new Error('Destination row must be different from the source row.');
-      destinationBefore = cloneInventoryTransactionRowForAudit_(destinationRow);
+      destinationBefore = destinationWasCreated ? null : cloneInventoryTransactionRowForAudit_(destinationRow);
       const sourceOnHand = getInventoryTransactionRowNumber_(sourceRow, ['ptronhand', 'PTRONHAND']);
       const sourceAvailable = getInventoryTransactionRowNumber_(sourceRow, ['ptravailable', 'PTRAVAILABLE']);
       const destinationOnHand = getInventoryTransactionRowNumber_(destinationRow, ['ptronhand', 'PTRONHAND']);
@@ -7393,6 +7547,13 @@ function handleInventoryTransaction_(payload) {
             }), getInventoryTransactionRowTable_(sourceRow));
           } catch (rollbackError) {
             console.warn('Inventory transaction rollback failed: ' + (rollbackError && rollbackError.message ? rollbackError.message : rollbackError));
+          }
+        }
+        if (destinationWasCreated) {
+          try {
+            deleteInventoryTransactionCreatedRow_(destinationRow);
+          } catch (createdRollbackError) {
+            console.warn('Inventory transaction created destination rollback failed: ' + (createdRollbackError && createdRollbackError.message ? createdRollbackError.message : createdRollbackError));
           }
         }
         throw updateError;
