@@ -1,0 +1,292 @@
+/* GREENLEAF PROFESSIONAL SERVICE WORKER
+   Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
+*/
+
+const APP_SHELL_BUILD = 'V2026.07.02.11';
+const APP_SHELL_QUERY_PARAM = 'shellv';
+const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
+const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
+const CACHE_NAME = 'greenleaf-v4.3-rebuild-' + APP_SHELL_BUILD;
+const ASSETS_TO_CACHE = [
+  APP_SHELL_URL,
+  './manifest.json',
+  './Greenleaf Logo.png',
+  'https://cdn.tailwindcss.com',
+  'https://unpkg.com/@phosphor-icons/web',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
+];
+
+function normalizeShellBuild(value = '') {
+  return String(value || '').trim();
+}
+
+function buildShellUrl(build = '') {
+  const safeBuild = normalizeShellBuild(build) || APP_SHELL_BUILD;
+  return './index.html?' + APP_SHELL_QUERY_PARAM + '=' + encodeURIComponent(safeBuild);
+}
+
+function getRequestUrl(requestOrUrl) {
+  try {
+    return new URL(typeof requestOrUrl === 'string' ? requestOrUrl : requestOrUrl.url, self.location.href);
+  } catch (error) {
+    return null;
+  }
+}
+
+function getRequestedShellBuild(request) {
+  const requestUrl = getRequestUrl(request);
+  if (!requestUrl) return '';
+  return normalizeShellBuild(requestUrl.searchParams.get(APP_SHELL_QUERY_PARAM) || '');
+}
+
+async function cacheShellResponse(cache, requestedShellUrl, networkResponse) {
+  if (!cache || !requestedShellUrl || !networkResponse || networkResponse.status !== 200) return;
+  const responseClone = networkResponse.clone();
+  const responseCloneForCurrent = networkResponse.clone();
+  const responseCloneForIndex = networkResponse.clone();
+  await Promise.all([
+    cache.put(requestedShellUrl, responseClone).catch(() => {}),
+    cache.put(APP_SHELL_URL, responseCloneForCurrent).catch(() => {}),
+    cache.put('./index.html', responseCloneForIndex).catch(() => {})
+  ]);
+}
+
+async function getCachedShellFallback(cache, requestedShellUrl, navigationRequest) {
+  const candidates = [
+    APP_SHELL_URL,
+    requestedShellUrl,
+    './index.html',
+    navigationRequest
+  ];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const cached = cache ? await cache.match(candidate) : await caches.match(candidate);
+      if (cached) return cached;
+    } catch (error) {}
+  }
+  return null;
+}
+
+async function cacheShellInstallAsset(cache, asset) {
+  if (!cache || !asset) return;
+  try {
+    if (String(asset).startsWith('./')) {
+      const response = await fetch(asset, { cache: 'reload', credentials: 'same-origin' });
+      if (response && response.status === 200) {
+        await cache.put(asset, response);
+      }
+      return;
+    }
+    await cache.add(asset);
+  } catch (error) {}
+}
+
+async function broadcastShellVersion(type = 'GNC_SHELL_VERSION') {
+  try {
+    const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    await Promise.all(clientList.map((client) => {
+      try {
+        client.postMessage({
+          type,
+          build: APP_SHELL_BUILD,
+          version: APP_SHELL_BUILD,
+          shellUrl: APP_SHELL_URL
+        });
+      } catch (error) {}
+      return Promise.resolve();
+    }));
+  } catch (error) {}
+}
+
+function buildAbsoluteShellUrl(build = APP_SHELL_BUILD, reason = '') {
+  const shellUrl = new URL(buildShellUrl(build), self.registration.scope);
+  shellUrl.searchParams.set('shellts', String(Date.now()));
+  if (reason) shellUrl.searchParams.set('shellreason', String(reason || '').slice(0, 48));
+  return shellUrl.href;
+}
+
+function isStaleShellClient(client) {
+  if (!client || !client.url) return false;
+  const clientUrl = getRequestUrl(client.url);
+  if (!clientUrl) return false;
+  const scopeUrl = getRequestUrl(self.registration.scope);
+  if (scopeUrl && clientUrl.origin !== scopeUrl.origin) return false;
+  if (scopeUrl && !clientUrl.href.startsWith(scopeUrl.href)) return false;
+  const clientBuild = normalizeShellBuild(clientUrl.searchParams.get(APP_SHELL_QUERY_PARAM) || '');
+  return clientBuild !== APP_SHELL_BUILD;
+}
+
+async function navigateStaleShellClients(reason = 'activate') {
+  try {
+    const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    await Promise.all(clientList.map((client) => {
+      if (!isStaleShellClient(client) || typeof client.navigate !== 'function') return Promise.resolve(false);
+      return client.navigate(buildAbsoluteShellUrl(APP_SHELL_BUILD, reason)).catch(() => false);
+    }));
+  } catch (error) {}
+}
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => Promise.all(
+      ASSETS_TO_CACHE.map((asset) => cacheShellInstallAsset(cache, asset))
+    ))
+  );
+  self.skipWaiting();
+});
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(keys.map((key) => key !== CACHE_NAME ? caches.delete(key) : Promise.resolve())))
+      .then(() => self.clients.claim())
+      .then(() => broadcastShellVersion('GNC_SHELL_ACTIVATED'))
+      .then(() => navigateStaleShellClients('sw-activate'))
+  );
+});
+
+self.addEventListener('message', (event) => {
+  const data = event && event.data ? event.data : {};
+  if (!data || typeof data !== 'object') return;
+  if (data.type === 'SKIP_WAITING') {
+    event.waitUntil(self.skipWaiting());
+  } else if (data.type === 'GNC_GET_SHELL_VERSION') {
+    try {
+      if (event.source) {
+        event.source.postMessage({
+          type: 'GNC_SHELL_VERSION',
+          build: APP_SHELL_BUILD,
+          version: APP_SHELL_BUILD,
+          shellUrl: APP_SHELL_URL
+        });
+      }
+    } catch (error) {}
+  }
+});
+
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      (async () => {
+        const requestedBuild = getRequestedShellBuild(event.request);
+        const currentShellUrl = buildShellUrl(APP_SHELL_BUILD);
+        const requestedShellUrl = buildShellUrl(requestedBuild || APP_SHELL_BUILD);
+        const primaryShellUrl = requestedBuild && requestedBuild !== APP_SHELL_BUILD
+          ? buildAbsoluteShellUrl(APP_SHELL_BUILD, 'stale-navigation')
+          : event.request;
+        const cache = await caches.open(CACHE_NAME).catch(() => null);
+        const cachedShellFallback = await getCachedShellFallback(cache, currentShellUrl, event.request);
+        const navigationNetwork = fetch(primaryShellUrl, { cache: 'no-store', credentials: 'same-origin' })
+          .then(async (networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              await cacheShellResponse(cache, currentShellUrl, networkResponse);
+            }
+            return networkResponse;
+          })
+          .catch(() => null);
+        if (cachedShellFallback) {
+          const fastResponse = await Promise.race([
+            navigationNetwork,
+            new Promise((resolve) => setTimeout(() => resolve(cachedShellFallback), NAVIGATION_NETWORK_TIMEOUT_MS))
+          ]);
+          if (fastResponse) {
+            if (fastResponse === cachedShellFallback) {
+              event.waitUntil(navigationNetwork.catch(() => null));
+            }
+            return fastResponse;
+          }
+        }
+        const networkResponse = await navigationNetwork;
+        if (networkResponse) return networkResponse;
+        try {
+          const networkResponse = await fetch(currentShellUrl, { cache: 'no-store', credentials: 'same-origin' });
+          if (networkResponse && networkResponse.status === 200) {
+            await cacheShellResponse(cache, currentShellUrl, networkResponse);
+          }
+          return networkResponse;
+        } catch (error) {
+        }
+        if (cachedShellFallback) return cachedShellFallback;
+        const cachedFromCache = await getCachedShellFallback(cache, currentShellUrl, event.request);
+        if (cachedFromCache) return cachedFromCache;
+        const globalCurrentShell = await caches.match(APP_SHELL_URL);
+        if (globalCurrentShell) return globalCurrentShell;
+        const globalRequestedShell = await caches.match(requestedShellUrl);
+        if (globalRequestedShell) return globalRequestedShell;
+        const cachedRequestedNavigation = await caches.match(event.request);
+        if (cachedRequestedNavigation) return cachedRequestedNavigation;
+        const globalIndex = await caches.match('./index.html');
+        if (globalIndex) return globalIndex;
+        return Response.error();
+      })()
+    );
+    return;
+  }
+  event.respondWith(
+    fetch(event.request).then((networkResponse) => {
+      if (networkResponse && networkResponse.status === 200) {
+        const responseClone = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone)).catch(() => {});
+      }
+      return networkResponse;
+    }).catch(() => caches.match(event.request))
+  );
+});
+
+self.addEventListener('push', (event) => {
+  let data = {};
+  if (event.data) {
+    try { data = event.data.json(); } catch (error) { data = { title: 'Greenleaf Message', body: event.data.text() }; }
+  }
+  const title = data.title || 'Greenleaf Message';
+  const iconUrl = new URL(data.icon || './Greenleaf Logo.png', self.registration.scope).href;
+  const targetUrl = new URL(data.url || APP_SHELL_URL, self.registration.scope).href;
+  const options = {
+    body: data.body || 'You have a new message.',
+    icon: iconUrl,
+    badge: iconUrl,
+    data: { url: targetUrl, viewId: data.viewId || 'request', taskView: data.taskView || '', folderName: data.folderName || '', conversationId: data.conversationId || '', messageId: data.messageId || '', channelId: data.channelId || '', callId: data.callId || '' },
+    vibrate: [200, 100, 200],
+    silent: false,
+    requireInteraction: true,
+    timestamp: Date.now(),
+    tag: data.tag || 'greenleaf-alert',
+    renotify: true
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const payload = event.notification && event.notification.data ? event.notification.data : {};
+  const targetUrl = payload.url || APP_SHELL_URL;
+  const targetView = payload.viewId || 'request';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          await client.focus();
+          try { client.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '' }); } catch (error) {}
+          return client;
+        }
+      }
+      if (clients.openWindow) {
+        const opened = await clients.openWindow(targetUrl);
+        if (opened) {
+          try { opened.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '' }); } catch (error) {}
+        }
+        return opened;
+      }
+      return null;
+    })
+  );
+});
+
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => Promise.all(clientList.map((client) => {
+      try { return client.postMessage({ type: 'GNC_RESUBSCRIBE_PUSH' }); } catch (error) { return Promise.resolve(); }
+    })))
+  );
+});
