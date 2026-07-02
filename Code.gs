@@ -71,6 +71,7 @@ function runAutoDropFolderSync_() {
 const SUPABASE_URL = 'https://kzrnyjsosryejjejliii.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0';
 const APP_LIVE_EVENTS_TABLE = 'v2_app_live_events';
+const INVENTORY_TRANSACTION_TABLE = 'v2_inventory_transactions';
 const EMIT_APP_LIVE_EVENTS = true;
 const DRIVE_AROUND_HISTORY_TABLE = 'v2_drive_around_report_files';
 const DRIVE_AROUND_HISTORY_ROW_TABLE = 'v2_drive_around_report_rows';
@@ -6990,6 +6991,300 @@ function patchEmailApprovalMasterRow_(uid, patch, tableName) {
   return row;
 }
 
+function normalizeInventoryTransactionAction_(action) {
+  const safe = String(action || '').trim().toLowerCase();
+  if (safe === 'transfer') return 'transfer';
+  if (safe === 'reclass') return 'reclass';
+  return 'qty';
+}
+
+function normalizeInventoryTransactionText_(value) {
+  return String(value == null ? '' : value).trim();
+}
+
+function normalizeInventoryTransactionCompareText_(value) {
+  return normalizeInventoryTransactionText_(value).toUpperCase();
+}
+
+function parseInventoryTransactionNumber_(value, label, options) {
+  const safeOptions = options && typeof options === 'object' ? options : {};
+  const text = String(value == null ? '' : value).replace(/,/g, '').trim();
+  if (!text) throw new Error((label || 'Quantity') + ' is required.');
+  const parsed = Number(text);
+  if (!isFinite(parsed)) throw new Error((label || 'Quantity') + ' must be a number.');
+  if (safeOptions.disallowNegative && parsed < 0) throw new Error((label || 'Quantity') + ' cannot be negative.');
+  if (safeOptions.requirePositive && parsed <= 0) throw new Error((label || 'Quantity') + ' must be greater than 0.');
+  return parsed;
+}
+
+function getInventoryTransactionRowValue_(row, fields, fallback) {
+  const safeFields = Array.isArray(fields) ? fields : [];
+  for (let i = 0; i < safeFields.length; i++) {
+    const field = safeFields[i];
+    const candidates = [
+      field,
+      String(field || '').toLowerCase(),
+      String(field || '').toUpperCase()
+    ];
+    for (let j = 0; j < candidates.length; j++) {
+      const key = candidates[j];
+      if (!row || !Object.prototype.hasOwnProperty.call(row, key)) continue;
+      const value = row[key];
+      if (String(value == null ? '' : value).trim() !== '') return value;
+    }
+  }
+  return fallback == null ? '' : fallback;
+}
+
+function getInventoryTransactionRowNumber_(row, fields) {
+  const value = getInventoryTransactionRowValue_(row, fields, 0);
+  const text = String(value == null ? '' : value).replace(/,/g, '').trim();
+  if (!text || text === '-' || /^n\/?a$/i.test(text)) return 0;
+  const parsed = Number(text);
+  return isFinite(parsed) ? parsed : 0;
+}
+
+function getInventoryTransactionRowUid_(row) {
+  return normalizeInventoryTransactionText_(getInventoryTransactionRowValue_(row, ['unique_id', 'UNIQUE_ID'], ''));
+}
+
+function getInventoryTransactionRowTable_(row) {
+  return normalizeInventoryTransactionText_(row && row.__approval_table_name || getRuntimeSiteSplitTableName_('v2_master_inventory', 'PH') || 'v2_master_inventory');
+}
+
+function cloneInventoryTransactionRowForAudit_(row) {
+  const clone = {};
+  Object.keys(row || {}).forEach(function(key) {
+    if (key === '__approval_table_name') return;
+    clone[key] = row[key];
+  });
+  return clone;
+}
+
+function buildInventoryTransactionPatch_(fields) {
+  const patch = Object.assign({}, fields || {});
+  patch.last_updated = new Date().toISOString();
+  return patch;
+}
+
+function validateInventoryTransactionSourceIdentity_(row, source) {
+  const safeSource = source && typeof source === 'object' ? source : {};
+  const expectedItem = normalizeInventoryTransactionCompareText_(safeSource.itemcode || safeSource.itemCode || '');
+  const expectedLot = normalizeInventoryTransactionCompareText_(safeSource.lotcode || safeSource.lotCode || '');
+  const expectedLocation = normalizeInventoryTransactionCompareText_(safeSource.locationcode || safeSource.locationCode || safeSource.loc || '');
+  const actualItem = normalizeInventoryTransactionCompareText_(getInventoryTransactionRowValue_(row, ['itemcode', 'ITEMCODE'], ''));
+  const actualLot = normalizeInventoryTransactionCompareText_(getInventoryTransactionRowValue_(row, ['lotcode', 'LOTCODE'], ''));
+  const actualLocation = normalizeInventoryTransactionCompareText_(getInventoryTransactionRowValue_(row, ['locationcode', 'LOCATIONCODE', 'location', 'LOCATION'], ''));
+  if (expectedItem && actualItem && expectedItem !== actualItem) throw new Error('This item row changed. Sync and try again.');
+  if (expectedLot && actualLot && expectedLot !== actualLot) throw new Error('This lot changed. Sync and try again.');
+  if (expectedLocation && actualLocation && expectedLocation !== actualLocation) throw new Error('This location changed. Sync and try again.');
+}
+
+function fetchInventoryTransactionDestinationRow_(sourceRow, transaction, action) {
+  const safeTx = transaction && typeof transaction === 'object' ? transaction : {};
+  const itemCode = normalizeInventoryTransactionText_(action === 'reclass'
+    ? firstNonEmptyRequestValue_(safeTx.newItemCode, safeTx.new_itemcode, safeTx.itemcode)
+    : getInventoryTransactionRowValue_(sourceRow, ['itemcode', 'ITEMCODE'], ''));
+  const lotCode = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(safeTx.newLotCode, safeTx.new_lotcode, safeTx.lotcode));
+  const locationCode = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(safeTx.newLocationCode, safeTx.new_locationcode, safeTx.locationcode, safeTx.loc));
+  if (!itemCode || !lotCode || !locationCode) throw new Error('Destination item, lot, and location are required.');
+  const tables = [];
+  const sourceTable = getInventoryTransactionRowTable_(sourceRow);
+  if (sourceTable) tables.push(sourceTable);
+  const runtimeTable = getRuntimeSiteSplitTableName_('v2_master_inventory', getSiteSplitSiteFromWarehouse_(getInventoryTransactionRowValue_(sourceRow, ['warehouseid', 'WAREHOUSEID'], '10')));
+  if (runtimeTable && tables.indexOf(runtimeTable) === -1) tables.push(runtimeTable);
+  if (tables.indexOf('v2_master_inventory') === -1) tables.push('v2_master_inventory');
+  for (let i = 0; i < tables.length; i++) {
+    const tableName = tables[i];
+    const query = [
+      'select=*',
+      'itemcode=eq.' + encodeURIComponent(itemCode),
+      'lotcode=eq.' + encodeURIComponent(lotCode),
+      'locationcode=eq.' + encodeURIComponent(locationCode),
+      'limit=2'
+    ].join('&');
+    const url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(tableName) + '?' + query;
+    const res = UrlFetchApp.fetch(url, {
+      method: 'get',
+      headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY },
+      muteHttpExceptions: true
+    });
+    if (res.getResponseCode() !== 200) continue;
+    const rows = JSON.parse(res.getContentText() || '[]');
+    if (Array.isArray(rows) && rows.length) {
+      rows[0].__approval_table_name = tableName;
+      return rows[0];
+    }
+  }
+  throw new Error('Destination row not found for item ' + itemCode + ', lot ' + lotCode + ', loc ' + locationCode + '. No inventory was changed.');
+}
+
+function insertInventoryTransactionAudit_(record) {
+  const payload = Object.assign({}, record || {});
+  const response = UrlFetchApp.fetch(SUPABASE_URL + '/rest/v1/' + encodeURIComponent(INVENTORY_TRANSACTION_TABLE), {
+    method: 'post',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal'
+    },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+  const code = response.getResponseCode();
+  if (code >= 200 && code < 300) return { ok: true };
+  return {
+    ok: false,
+    status: code,
+    message: response.getContentText()
+  };
+}
+
+function handleInventoryTransaction_(payload) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) {
+    return {
+      ok: false,
+      status: 'lock_timeout',
+      message: 'Inventory is busy finishing another update. Please try again in a few seconds.'
+    };
+  }
+  try {
+    const action = normalizeInventoryTransactionAction_(payload && payload.action);
+    const source = payload && typeof payload.source === 'object' ? payload.source : {};
+    const transaction = payload && typeof payload.transaction === 'object' ? payload.transaction : {};
+    const sourceUid = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(source.unique_id, source.uniqueId, payload && payload.unique_id, payload && payload.uniqueId));
+    if (!sourceUid) throw new Error('Missing source inventory row id.');
+    const sourceRow = fetchEmailApprovalMasterRow_(sourceUid);
+    if (!sourceRow) throw new Error('Source inventory row was not found. Sync and try again.');
+    validateInventoryTransactionSourceIdentity_(sourceRow, source);
+
+    const actor = payload && typeof payload.actor === 'object' ? payload.actor : {};
+    const actorUsername = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.username, actor.user, payload && payload.actorUsername, 'unknown'));
+    const actorDisplay = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.display, actor.displayName, actorUsername, 'Unknown User'));
+    const actorEmail = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.email, actor.userEmail, ''));
+    const transactionId = Utilities.getUuid();
+    const nowIso = new Date().toISOString();
+    const sourceBefore = cloneInventoryTransactionRowForAudit_(sourceRow);
+    let destinationRow = null;
+    let destinationBefore = null;
+    let sourceAfter = null;
+    let destinationAfter = null;
+    let auditWarning = null;
+
+    if (action === 'qty') {
+      const newQty = parseInventoryTransactionNumber_(firstNonEmptyRequestValue_(transaction.newQuantity, transaction.new_quantity, transaction.quantity), 'New quantity', { disallowNegative: true });
+      sourceAfter = patchEmailApprovalMasterRow_(sourceUid, buildInventoryTransactionPatch_({
+        ptronhand: newQty,
+        ptrreviewed: newQty,
+        ptravailable: newQty
+      }), getInventoryTransactionRowTable_(sourceRow));
+    } else {
+      const qty = parseInventoryTransactionNumber_(transaction.quantity, 'Quantity to move', { requirePositive: true });
+      destinationRow = fetchInventoryTransactionDestinationRow_(sourceRow, transaction, action);
+      const destinationUid = getInventoryTransactionRowUid_(destinationRow);
+      if (!destinationUid) throw new Error('Destination row is missing a unique id.');
+      if (destinationUid === sourceUid) throw new Error('Destination row must be different from the source row.');
+      destinationBefore = cloneInventoryTransactionRowForAudit_(destinationRow);
+      const sourceOnHand = getInventoryTransactionRowNumber_(sourceRow, ['ptronhand', 'PTRONHAND']);
+      const sourceAvailable = getInventoryTransactionRowNumber_(sourceRow, ['ptravailable', 'PTRAVAILABLE']);
+      const destinationOnHand = getInventoryTransactionRowNumber_(destinationRow, ['ptronhand', 'PTRONHAND']);
+      const destinationAvailable = getInventoryTransactionRowNumber_(destinationRow, ['ptravailable', 'PTRAVAILABLE']);
+      let sourcePatched = false;
+      try {
+        sourceAfter = patchEmailApprovalMasterRow_(sourceUid, buildInventoryTransactionPatch_({
+          ptronhand: sourceOnHand - qty,
+          ptravailable: sourceAvailable - qty
+        }), getInventoryTransactionRowTable_(sourceRow));
+        sourcePatched = true;
+        destinationAfter = patchEmailApprovalMasterRow_(destinationUid, buildInventoryTransactionPatch_({
+          ptronhand: destinationOnHand + qty,
+          ptravailable: destinationAvailable + qty
+        }), getInventoryTransactionRowTable_(destinationRow));
+      } catch (updateError) {
+        if (sourcePatched) {
+          try {
+            patchEmailApprovalMasterRow_(sourceUid, buildInventoryTransactionPatch_({
+              ptronhand: sourceOnHand,
+              ptravailable: sourceAvailable
+            }), getInventoryTransactionRowTable_(sourceRow));
+          } catch (rollbackError) {
+            console.warn('Inventory transaction rollback failed: ' + (rollbackError && rollbackError.message ? rollbackError.message : rollbackError));
+          }
+        }
+        throw updateError;
+      }
+    }
+
+    const sourceAfterAudit = cloneInventoryTransactionRowForAudit_(sourceAfter || sourceRow);
+    const destinationAfterAudit = destinationAfter ? cloneInventoryTransactionRowForAudit_(destinationAfter) : null;
+    const quantity = action === 'qty'
+      ? parseInventoryTransactionNumber_(firstNonEmptyRequestValue_(transaction.newQuantity, transaction.new_quantity, transaction.quantity), 'New quantity', { disallowNegative: true })
+      : parseInventoryTransactionNumber_(transaction.quantity, 'Quantity to move', { requirePositive: true });
+    const auditResult = insertInventoryTransactionAudit_({
+      unique_id: transactionId,
+      created_at: nowIso,
+      action: action,
+      actor_username: actorUsername,
+      actor_display: actorDisplay,
+      actor_email: actorEmail,
+      source_table: getInventoryTransactionRowTable_(sourceRow),
+      source_unique_id: sourceUid,
+      destination_table: destinationRow ? getInventoryTransactionRowTable_(destinationRow) : '',
+      destination_unique_id: destinationRow ? getInventoryTransactionRowUid_(destinationRow) : '',
+      source_itemcode: getInventoryTransactionRowValue_(sourceRow, ['itemcode', 'ITEMCODE'], ''),
+      source_lotcode: getInventoryTransactionRowValue_(sourceRow, ['lotcode', 'LOTCODE'], ''),
+      source_locationcode: getInventoryTransactionRowValue_(sourceRow, ['locationcode', 'LOCATIONCODE'], ''),
+      destination_itemcode: destinationRow ? getInventoryTransactionRowValue_(destinationRow, ['itemcode', 'ITEMCODE'], '') : '',
+      destination_lotcode: destinationRow ? getInventoryTransactionRowValue_(destinationRow, ['lotcode', 'LOTCODE'], '') : '',
+      destination_locationcode: destinationRow ? getInventoryTransactionRowValue_(destinationRow, ['locationcode', 'LOCATIONCODE'], '') : '',
+      quantity: quantity,
+      source_before: sourceBefore,
+      source_after: sourceAfterAudit,
+      destination_before: destinationBefore,
+      destination_after: destinationAfterAudit,
+      raw_payload: payload || {},
+      status: 'applied'
+    });
+    if (!auditResult.ok) {
+      auditWarning = auditResult.message || ('Audit insert failed (' + auditResult.status + ')');
+      console.warn('Inventory transaction audit warning: ' + auditWarning);
+    }
+
+    const rowIds = [sourceUid];
+    if (destinationAfter) rowIds.push(getInventoryTransactionRowUid_(destinationAfter));
+    emitAppLiveEvent_('inventory', 'inventory_transaction_' + action, getInventoryTransactionRowTable_(sourceRow), rowIds, {
+      transaction_id: transactionId,
+      action: action,
+      quantity: quantity,
+      source_unique_id: sourceUid,
+      destination_unique_id: destinationAfter ? getInventoryTransactionRowUid_(destinationAfter) : '',
+      source_row: sourceAfter || null,
+      destination_row: destinationAfter || null
+    });
+
+    return {
+      ok: true,
+      status: 'success',
+      action: action,
+      transactionId: transactionId,
+      sourceRow: sourceAfter || null,
+      destinationRow: destinationAfter || null,
+      auditWarning: auditWarning,
+      message: action === 'qty' ? 'Quantity updated.' : (action === 'transfer' ? 'Transfer applied.' : 'Reclass applied.')
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 'error',
+      message: error && error.message ? error.message : String(error || 'Inventory transaction failed.')
+    };
+  } finally {
+    try { lock.releaseLock(); } catch (error) {}
+  }
+}
+
 function getEmailApprovalRowValue_(row, fields, fallback) {
   const safeFields = Array.isArray(fields) ? fields : [];
   for (let i = 0; i < safeFields.length; i++) {
@@ -9645,6 +9940,10 @@ function doPost(e) {
         updatedAt: '',
         finishedAt: ''
       });
+    }
+
+    if (payload.type === 'inventory_transaction') {
+      return jsonOutput_(handleInventoryTransaction_(payload));
     }
     
     if (payload.type === "email") {
