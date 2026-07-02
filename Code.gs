@@ -310,6 +310,29 @@ const REQUEST_GALLERY_CACHE_META_PREFIX = 'REQUEST_GALLERY_CACHE_META_';
 const REQUEST_GALLERY_CACHE_CHUNK_PREFIX = 'REQUEST_GALLERY_CACHE_CHUNK_';
 const REQUEST_GALLERY_CACHE_CHUNK_SIZE = 7000;
 const REQUEST_GALLERY_PROPERTY_CACHE_ENABLED = false;
+const EMAIL_APPROVAL_TOKEN_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+const EMAIL_APPROVAL_USER_EMAILS_ = Object.freeze({
+  dylan_collyge: 'dylan_collyge@greenleafnursery.com',
+  jd_jones: 'jd_jones@greenleafnursery.com',
+  megan_kelly: 'megan_kelly@greenleafnursery.com'
+});
+const EMAIL_APPROVAL_ASSIGNMENTS_ = Object.freeze({
+  'new-crop:dylan': 'ncr_approval_new_crop_dylan',
+  'new-crop:jd': 'ncr_approval_new_crop_jd',
+  'new-crop:inventory': 'ncr_inventory_new_crop',
+  'move-up:dylan': 'ncr_approval_move_up_dylan',
+  'move-up:jd': 'ncr_approval_move_up_jd',
+  'move-up:inventory': 'ncr_inventory_move_up',
+  'move-down:dylan': 'ncr_approval_move_down_dylan',
+  'move-down:jd': 'ncr_approval_move_down_jd',
+  'move-down:inventory': 'ncr_inventory_move_down',
+  'hold-release:dylan': 'ncr_approval_hold_release_dylan',
+  'hold-release:jd': 'ncr_approval_hold_release_jd',
+  'hold-release:inventory': 'ncr_inventory_hold_release',
+  'recount:dylan': 'ncr_approval_recount_dylan',
+  'recount:jd': 'ncr_approval_recount_jd',
+  'recount:inventory': 'ncr_inventory_recount'
+});
 
 const MASTER_IMPORT_BASE_COMPARE_COLUMNS = Object.freeze([
   'unique_id',
@@ -3835,6 +3858,9 @@ function doGet(e) {
   if (view === 'request-row') {
     return renderRequestRowCopyWebApp_(params);
   }
+  if (view === 'approval') {
+    return renderApprovalConfirmWebApp_(params);
+  }
   return HtmlService
     .createHtmlOutput('<!doctype html><html><body style="font-family:Arial,sans-serif;"><h2>GNC Park Hill</h2><p>App script is running.</p></body></html>')
     .setTitle('GNC Park Hill');
@@ -6714,6 +6740,615 @@ function resolveRequestGalleryRequestIds_(payload, items) {
   return ids;
 }
 
+function normalizeEmailApprovalType_(value) {
+  const normalized = String(value || '').trim().toLowerCase().replace(/_/g, '-');
+  if (normalized === 'move' || normalized === 'moveup' || normalized === 'move-up') return 'move-up';
+  if (normalized === 'movedown' || normalized === 'move-down') return 'move-down';
+  if (normalized === 'hold' || normalized === 'holdrelease' || normalized === 'hold-release' || normalized === 'take-off-hold' || normalized === 'takeoffhold' || normalized === 'off-hold') return 'hold-release';
+  if (normalized === 'recount' || normalized === 're-count') return 'recount';
+  return 'new-crop';
+}
+
+function getEmailApprovalTypeLabel_(type) {
+  const normalized = normalizeEmailApprovalType_(type);
+  if (normalized === 'move-up') return 'Move Up';
+  if (normalized === 'move-down') return 'Move Down';
+  if (normalized === 'hold-release') return 'Take Off Hold';
+  if (normalized === 'recount') return 'Re-Count';
+  return 'NCR';
+}
+
+function getEmailApprovalBrandLabel_(type) {
+  const normalized = normalizeEmailApprovalType_(type);
+  if (normalized === 'move-up') return 'GNC PH MOVE UP';
+  if (normalized === 'move-down') return 'GNC PH MOVE DOWN';
+  if (normalized === 'hold-release') return 'GNC PH HOLD REMOVAL';
+  if (normalized === 'recount') return 'GNC PH RE-COUNT';
+  return 'GNC PH NCR';
+}
+
+function normalizeEmailApprovalStage_(value) {
+  const normalized = String(value || '').trim().toLowerCase().replace(/_/g, '-');
+  if (normalized === 'jd' || normalized === 'j-d') return 'jd';
+  if (normalized === 'dylan' || normalized === 'first' || normalized === 'manager') return 'dylan';
+  if (normalized === 'inventory' || normalized === 'inventory-office') return 'inventory';
+  return '';
+}
+
+function getEmailApprovalAssignment_(type, stage) {
+  const key = normalizeEmailApprovalType_(type) + ':' + normalizeEmailApprovalStage_(stage);
+  return EMAIL_APPROVAL_ASSIGNMENTS_[key] || '';
+}
+
+function getEmailApprovalStageFromAssignment_(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!normalized) return '';
+  if (normalized.indexOf('_denied') !== -1 || normalized.indexOf('-denied') !== -1) return 'denied';
+  if (normalized.indexOf('_complete') !== -1) return 'complete';
+  if (normalized.indexOf('inventory') !== -1 || normalized.indexOf('outbox') !== -1) return 'inventory';
+  if (normalized.indexOf('_jd') !== -1 || normalized.indexOf('-jd') !== -1) return 'jd';
+  if (normalized.indexOf('_dylan') !== -1 || normalized.indexOf('-dylan') !== -1) return 'dylan';
+  return '';
+}
+
+function getEmailApprovalTypeFromAssignment_(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized.indexOf('hold_release') !== -1 || normalized.indexOf('hold-release') !== -1) return 'hold-release';
+  if (normalized.indexOf('move_down') !== -1 || normalized.indexOf('move-down') !== -1) return 'move-down';
+  if (normalized.indexOf('move_up') !== -1 || normalized.indexOf('move-up') !== -1) return 'move-up';
+  if (normalized.indexOf('recount') !== -1 || normalized.indexOf('re-count') !== -1) return 'recount';
+  if (normalized.indexOf('new_crop') !== -1 || normalized.indexOf('new-crop') !== -1 || normalized.indexOf('ncr_') !== -1) return 'new-crop';
+  return '';
+}
+
+function getEmailApprovalUniqueIdFromPayload_(payload) {
+  const safePayload = payload && typeof payload === 'object' ? payload : {};
+  const items = getRequestEmailPayloadItems_(safePayload);
+  const firstItem = items.length ? items[0] || {} : {};
+  const explicit = firstNonEmptyRequestValue_(
+    safePayload.approvalUniqueId,
+    safePayload.approval_unique_id,
+    safePayload.sourceUniqueId,
+    safePayload.source_unique_id,
+    safePayload.masterUniqueId,
+    safePayload.master_unique_id,
+    firstItem.unique_id,
+    firstItem.UNIQUE_ID,
+    firstItem.source_unique_id,
+    firstItem.SOURCE_UNIQUE_ID,
+    ''
+  );
+  const explicitText = String(explicit || '').trim();
+  if (explicitText) return explicitText;
+  const folderId = String(firstNonEmptyRequestValue_(safePayload.folderId, safePayload.requestFolder, '') || '').trim();
+  const match = folderId.match(/^ncr-approval-(.+)$/i);
+  return match ? String(match[1] || '').trim() : '';
+}
+
+function buildEmailApprovalSignature_(uid, type, stage, expiresAt) {
+  const raw = [String(uid || '').trim(), normalizeEmailApprovalType_(type), normalizeEmailApprovalStage_(stage), String(expiresAt || '').trim()].join('|');
+  const signature = Utilities.computeHmacSha256Signature(
+    raw,
+    getRequestGallerySecret_() + ':email-approval',
+    Utilities.Charset.UTF_8
+  );
+  return base64EncodeWebSafeNoPadding_(signature);
+}
+
+function buildEmailApprovalUrl_(payload) {
+  const safePayload = payload && typeof payload === 'object' ? payload : {};
+  const uid = getEmailApprovalUniqueIdFromPayload_(safePayload);
+  const type = normalizeEmailApprovalType_(firstNonEmptyRequestValue_(
+    safePayload.approvalType,
+    safePayload.approval_type,
+    safePayload.customer,
+    ''
+  ));
+  const stage = normalizeEmailApprovalStage_(firstNonEmptyRequestValue_(
+    safePayload.approvalStage,
+    safePayload.approval_stage,
+    ''
+  ));
+  const baseUrl = getRequestGalleryBaseUrl_();
+  if (!uid || !baseUrl || (stage !== 'dylan' && stage !== 'jd')) return '';
+  const expiresAt = Date.now() + EMAIL_APPROVAL_TOKEN_TTL_MS;
+  const separator = baseUrl.indexOf('?') === -1 ? '?' : '&';
+  return baseUrl + separator +
+    'view=approval' +
+    '&uid=' + encodeURIComponent(uid) +
+    '&type=' + encodeURIComponent(type) +
+    '&stage=' + encodeURIComponent(stage) +
+    '&exp=' + encodeURIComponent(String(expiresAt)) +
+    '&sig=' + encodeURIComponent(buildEmailApprovalSignature_(uid, type, stage, expiresAt));
+}
+
+function validateEmailApprovalParams_(params) {
+  const safeParams = params || {};
+  const uid = String(safeParams.uid || safeParams.row || safeParams.id || '').trim();
+  const type = normalizeEmailApprovalType_(safeParams.type || safeParams.approvalType || '');
+  const stage = normalizeEmailApprovalStage_(safeParams.stage || safeParams.approvalStage || '');
+  const expiresAt = Number(safeParams.exp || 0);
+  const sig = String(safeParams.sig || '').trim();
+  if (!uid || !type || (stage !== 'dylan' && stage !== 'jd') || !expiresAt || !sig) {
+    return { ok: false, message: 'This approval link is missing required information.' };
+  }
+  if (Date.now() > expiresAt) {
+    return { ok: false, message: 'This approval link has expired. Open the app to review the row.' };
+  }
+  const expected = buildEmailApprovalSignature_(uid, type, stage, expiresAt);
+  if (expected !== sig) {
+    return { ok: false, message: 'This approval link is not valid.' };
+  }
+  return { ok: true, uid: uid, type: type, stage: stage, expiresAt: expiresAt, sig: sig };
+}
+
+function buildApprovalEmailButtonBlock_(payload) {
+  const url = buildEmailApprovalUrl_(payload);
+  if (!url) return '';
+  const stage = normalizeEmailApprovalStage_(payload && (payload.approvalStage || payload.approval_stage));
+  const typeLabel = getEmailApprovalTypeLabel_(payload && (payload.approvalType || payload.approval_type || payload.customer));
+  const label = stage === 'jd' ? 'Open JD Approval' : 'Approve and Send to JD';
+  return [
+    '<div style="margin:16px 0;padding:14px;border-radius:12px;background:#ecfdf5;border:1px solid #a7f3d0;">',
+    '<p style="margin:0 0 10px 0;color:#065f46;font-size:13px;line-height:1.4;font-weight:700;">This opens a confirmation page for the ' + escapeEmailHtml_(typeLabel) + ' row. Nothing changes until the confirmation button is clicked.</p>',
+    '<a href="' + escapeEmailAttribute_(url) + '" style="display:inline-block;padding:12px 18px;border-radius:999px;background:#007a4d;color:#ffffff;font-size:14px;line-height:1.2;font-weight:900;text-decoration:none;text-transform:uppercase;letter-spacing:.06em;">' + escapeEmailHtml_(label) + '</a>',
+    '</div>'
+  ].join('');
+}
+
+function buildApprovalEmailButtonText_(payload) {
+  const url = buildEmailApprovalUrl_(payload);
+  if (!url) return '';
+  const stage = normalizeEmailApprovalStage_(payload && (payload.approvalStage || payload.approval_stage));
+  return (stage === 'jd' ? 'JD Approval Link: ' : 'Dylan Approval Link: ') + url;
+}
+
+function buildApprovalEmailPhotoSectionHtml_(payload) {
+  const safePayload = payload && typeof payload === 'object' ? payload : {};
+  const stage = normalizeEmailApprovalStage_(safePayload.approvalStage || safePayload.approval_stage);
+  if (stage !== 'dylan' && stage !== 'jd') return '';
+  const items = getRequestEmailPayloadItems_(safePayload);
+  if (!items.length) return '';
+  const itemsWithPhotoData = items.filter(function(item) {
+    return getRequestItemPhotoUrls_(item).length > 0;
+  });
+  if (!itemsWithPhotoData.length) return '';
+  const folderId = resolveRequestGalleryFolderId_(safePayload, items);
+  cacheRequestGalleryPayload_(folderId, items);
+  const rows = itemsWithPhotoData.map(function(item) {
+    return buildRequestRowPhotoPreviewHtml_(folderId, item);
+  }).filter(Boolean);
+  if (!rows.length) return '';
+  return [
+    '<div style="margin:16px 0 0 0;">',
+    '<p style="margin:0 0 8px 0;color:#065f46;font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;">Photos</p>',
+    rows.join(''),
+    '</div>'
+  ].join('');
+}
+
+function buildApprovalEmailPhotoSectionText_(payload) {
+  const items = getRequestEmailPayloadItems_(payload);
+  const lines = [];
+  items.forEach(function(item, index) {
+    const urls = getRequestItemPhotoUrls_(item);
+    if (!urls.length) return;
+    lines.push('Row ' + String(index + 1) + ' photos:');
+    urls.forEach(function(url) { lines.push(url); });
+  });
+  return lines.join('\n');
+}
+
+function fetchEmailApprovalMasterRow_(uid) {
+  const safeUid = String(uid || '').trim();
+  if (!safeUid) return null;
+  const tables = [];
+  const runtimeTable = getRuntimeSiteSplitTableName_('v2_master_inventory', 'PH');
+  if (runtimeTable) tables.push(runtimeTable);
+  if (tables.indexOf('v2_master_inventory') === -1) tables.push('v2_master_inventory');
+  for (let i = 0; i < tables.length; i++) {
+    const tableName = tables[i];
+    const url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(tableName) + '?select=*&unique_id=eq.' + encodeURIComponent(safeUid) + '&limit=1';
+    const res = UrlFetchApp.fetch(url, {
+      method: 'get',
+      headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY },
+      muteHttpExceptions: true
+    });
+    if (res.getResponseCode() !== 200) continue;
+    const rows = JSON.parse(res.getContentText() || '[]');
+    if (Array.isArray(rows) && rows.length) {
+      rows[0].__approval_table_name = tableName;
+      return rows[0];
+    }
+  }
+  return null;
+}
+
+function patchEmailApprovalMasterRow_(uid, patch, tableName) {
+  const safeUid = String(uid || '').trim();
+  const safeTable = String(tableName || getRuntimeSiteSplitTableName_('v2_master_inventory', 'PH') || 'v2_master_inventory').trim();
+  if (!safeUid || !safeTable) throw new Error('Missing row id for approval update.');
+  const url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(safeTable) + '?unique_id=eq.' + encodeURIComponent(safeUid);
+  const res = UrlFetchApp.fetch(url, {
+    method: 'patch',
+    contentType: 'application/json',
+    payload: JSON.stringify(patch || {}),
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: 'Bearer ' + SUPABASE_KEY,
+      Prefer: 'return=representation'
+    },
+    muteHttpExceptions: true
+  });
+  const code = res.getResponseCode();
+  if (code < 200 || code >= 300) {
+    throw new Error('Approval update failed (' + code + '): ' + res.getContentText());
+  }
+  const rows = JSON.parse(res.getContentText() || '[]');
+  const row = Array.isArray(rows) && rows.length ? rows[0] : Object.assign({}, patch, { unique_id: safeUid });
+  row.__approval_table_name = safeTable;
+  return row;
+}
+
+function getEmailApprovalRowValue_(row, fields, fallback) {
+  const safeFields = Array.isArray(fields) ? fields : [];
+  for (let i = 0; i < safeFields.length; i++) {
+    const value = row && row[safeFields[i]];
+    if (String(value == null ? '' : value).trim() !== '') return value;
+  }
+  return fallback == null ? '' : fallback;
+}
+
+function getEmailApprovalRequesterEmail_(row) {
+  const directEmail = normalizeEmailAddress_(getEmailApprovalRowValue_(row, [
+    'ncr_requested_by_email',
+    'NCR_REQUESTED_BY_EMAIL',
+    'requested_by_email',
+    'REQUESTED_BY_EMAIL',
+    'completed_by_email',
+    'COMPLETED_BY_EMAIL'
+  ], ''));
+  if (directEmail) return directEmail;
+  const username = String(getEmailApprovalRowValue_(row, [
+    'ncr_requested_by_username',
+    'NCR_REQUESTED_BY_USERNAME',
+    'requested_by_username',
+    'REQUESTED_BY_USERNAME',
+    'completed_by_username',
+    'COMPLETED_BY_USERNAME'
+  ], '') || '').trim().toLowerCase();
+  return normalizeEmailAddress_(EMAIL_APPROVAL_USER_EMAILS_[username] || '');
+}
+
+function getEmailApprovalRequesterDisplay_(row) {
+  return String(getEmailApprovalRowValue_(row, [
+    'ncr_requested_by_display',
+    'NCR_REQUESTED_BY_DISPLAY',
+    'requested_by_display',
+    'REQUESTED_BY_DISPLAY',
+    'completed_by_display',
+    'COMPLETED_BY_DISPLAY',
+    'ncr_requested_by_username',
+    'NCR_REQUESTED_BY_USERNAME'
+  ], 'Unknown') || 'Unknown').trim();
+}
+
+function getEmailApprovalQtyFromRow_(row, type, overrideQty) {
+  const direct = String(overrideQty == null ? '' : overrideQty).trim();
+  if (direct) return direct;
+  const normalized = normalizeEmailApprovalType_(type);
+  if (normalized === 'move-up') {
+    return String(getEmailApprovalRowValue_(row, ['move_up_qty', 'MOVE_UP_QTY', 'loc_match_qty', 'LOC_MATCH_QTY'], '') || '').trim();
+  }
+  if (normalized === 'move-down') {
+    return String(getEmailApprovalRowValue_(row, ['move_down_qty', 'MOVE_DOWN_QTY', 'loc_match_qty', 'LOC_MATCH_QTY'], '') || '').trim();
+  }
+  if (normalized === 'recount') {
+    return String(getEmailApprovalRowValue_(row, ['recount_qty', 'RECOUNT_QTY', 'loc_match_qty', 'LOC_MATCH_QTY'], '') || '').trim();
+  }
+  return String(getEmailApprovalRowValue_(row, ['ncr_qty', 'NCR_QTY', 'loc_match_qty', 'LOC_MATCH_QTY'], '') || '').trim();
+}
+
+function buildEmailApprovalPayloadItemFromRow_(row, type, approvedQty) {
+  const normalizedType = normalizeEmailApprovalType_(type);
+  const qty = getEmailApprovalQtyFromRow_(row, normalizedType, approvedQty);
+  const actionLabel = getEmailApprovalTypeLabel_(normalizedType);
+  const uid = String(getEmailApprovalRowValue_(row, ['unique_id', 'UNIQUE_ID'], '') || '').trim();
+  const photoCsv = String(getEmailApprovalRowValue_(row, [
+    'photo_link',
+    'PHOTO_LINK',
+    'dock_photo_link',
+    'DOCK_PHOTO_LINK',
+    'row_photo_link',
+    'ROW_PHOTO_LINK',
+    'saved_photo_link',
+    'SAVED_PHOTO_LINK'
+  ], '') || '').trim();
+  const item = {
+    unique_id: uid,
+    UNIQUE_ID: uid,
+    SOURCE_UNIQUE_ID: uid,
+    source_unique_id: uid,
+    commonname: getEmailApprovalRowValue_(row, ['commonname', 'COMMONNAME'], 'Unknown Item'),
+    COMMONNAME: getEmailApprovalRowValue_(row, ['commonname', 'COMMONNAME'], 'Unknown Item'),
+    contsize: getEmailApprovalRowValue_(row, ['contsize', 'CONTSIZE'], ''),
+    CONTSIZE: getEmailApprovalRowValue_(row, ['contsize', 'CONTSIZE'], ''),
+    itemcode: getEmailApprovalRowValue_(row, ['itemcode', 'ITEMCODE'], ''),
+    ITEMCODE: getEmailApprovalRowValue_(row, ['itemcode', 'ITEMCODE'], ''),
+    genus: getEmailApprovalRowValue_(row, ['genusname', 'GENUSNAME', 'genus', 'GENUS'], ''),
+    GENUS: getEmailApprovalRowValue_(row, ['genusname', 'GENUSNAME', 'genus', 'GENUS'], ''),
+    salesnote: getEmailApprovalRowValue_(row, ['salesnote', 'SALESNOTE', 'sales_note', 'SALES_NOTE'], ''),
+    SALESNOTE: getEmailApprovalRowValue_(row, ['salesnote', 'SALESNOTE', 'sales_note', 'SALES_NOTE'], ''),
+    holdstopcode: getEmailApprovalRowValue_(row, ['holdstopcode', 'HOLDSTOPCODE', 'holstopcode', 'HOLSTOPCODE'], ''),
+    HOLDSTOPCODE: getEmailApprovalRowValue_(row, ['holdstopcode', 'HOLDSTOPCODE', 'holstopcode', 'HOLSTOPCODE'], ''),
+    holdstopreason: getEmailApprovalRowValue_(row, ['holdstopreason', 'HOLDSTOPREASON'], ''),
+    HOLDSTOPREASON: getEmailApprovalRowValue_(row, ['holdstopreason', 'HOLDSTOPREASON'], ''),
+    ROW: getEmailApprovalRowValue_(row, ['row', 'ROW', 'row_index', 'ROW_INDEX'], ''),
+    lotcode: getEmailApprovalRowValue_(row, ['lotcode', 'LOTCODE'], ''),
+    LOTCODE: getEmailApprovalRowValue_(row, ['lotcode', 'LOTCODE'], ''),
+    locationcode: getEmailApprovalRowValue_(row, ['locationcode', 'LOCATIONCODE'], ''),
+    LOCATIONCODE: getEmailApprovalRowValue_(row, ['locationcode', 'LOCATIONCODE'], ''),
+    source: getEmailApprovalRowValue_(row, ['source', 'SOURCE', 'sourcecode', 'SOURCECODE'], ''),
+    SOURCE: getEmailApprovalRowValue_(row, ['source', 'SOURCE', 'sourcecode', 'SOURCECODE'], ''),
+    desigcust: getEmailApprovalRowValue_(row, ['desigcust', 'DESIGCUST'], ''),
+    DESIGCUST: getEmailApprovalRowValue_(row, ['desigcust', 'DESIGCUST'], ''),
+    priority: getEmailApprovalRowValue_(row, ['priority', 'PRIORITY'], ''),
+    PRIORITY: getEmailApprovalRowValue_(row, ['priority', 'PRIORITY'], ''),
+    ptronhand: getEmailApprovalRowValue_(row, ['ptronhand', 'PTRONHAND'], ''),
+    PTRONHAND: getEmailApprovalRowValue_(row, ['ptronhand', 'PTRONHAND'], ''),
+    ptrreviewed: getEmailApprovalRowValue_(row, ['ptrreviewed', 'PTRREVIEWED'], ''),
+    PTRREVIEWED: getEmailApprovalRowValue_(row, ['ptrreviewed', 'PTRREVIEWED'], ''),
+    ptravailable: getEmailApprovalRowValue_(row, ['ptravailable', 'PTRAVAILABLE'], ''),
+    PTRAVAILABLE: getEmailApprovalRowValue_(row, ['ptravailable', 'PTRAVAILABLE'], ''),
+    locationnotedate: getEmailApprovalRowValue_(row, ['locationnotedate', 'LOCATIONNOTEDATE'], ''),
+    LOCATIONNOTEDATE: getEmailApprovalRowValue_(row, ['locationnotedate', 'LOCATIONNOTEDATE'], ''),
+    locationnote: getEmailApprovalRowValue_(row, ['locationnote', 'LOCATIONNOTE'], ''),
+    LOCATIONNOTE: getEmailApprovalRowValue_(row, ['locationnote', 'LOCATIONNOTE'], ''),
+    locationptn1: getEmailApprovalRowValue_(row, ['locationptn1', 'LOCATIONPTN1'], ''),
+    LOCATIONPTN1: getEmailApprovalRowValue_(row, ['locationptn1', 'LOCATIONPTN1'], ''),
+    ACTION: actionLabel,
+    action: actionLabel,
+    APPROVAL_TYPE: normalizedType,
+    approval_type: normalizedType,
+    QTY: qty,
+    qty: qty,
+    NCR_QTY: normalizedType === 'new-crop' ? qty : '',
+    ncr_qty: normalizedType === 'new-crop' ? qty : '',
+    MOVE_UP_QTY: normalizedType === 'move-up' ? qty : '',
+    move_up_qty: normalizedType === 'move-up' ? qty : '',
+    MOVE_DOWN_QTY: normalizedType === 'move-down' ? qty : '',
+    move_down_qty: normalizedType === 'move-down' ? qty : '',
+    MOVE_DOWN_SEASON: getEmailApprovalRowValue_(row, ['move_down_season', 'MOVE_DOWN_SEASON'], ''),
+    move_down_season: getEmailApprovalRowValue_(row, ['move_down_season', 'MOVE_DOWN_SEASON'], ''),
+    LOC_MATCH_QTY: qty,
+    loc_match_qty: qty,
+    REQ_PHOTO_LINK: photoCsv,
+    REQUEST_PHOTO_LINK: photoCsv,
+    photo: photoCsv,
+    photo_link: photoCsv,
+    photo_urls: photoCsv,
+    REQUESTED_BY_DISPLAY: getEmailApprovalRequesterDisplay_(row),
+    requestedByDisplay: getEmailApprovalRequesterDisplay_(row),
+    REQUESTED_BY_EMAIL: getEmailApprovalRequesterEmail_(row),
+    requestedByEmail: getEmailApprovalRequesterEmail_(row)
+  };
+  return item;
+}
+
+function buildEmailApprovalPayload_(row, type, stage, options) {
+  const safeOptions = options || {};
+  const normalizedType = normalizeEmailApprovalType_(type);
+  const normalizedStage = normalizeEmailApprovalStage_(stage);
+  const typeLabel = getEmailApprovalTypeLabel_(normalizedType);
+  const item = buildEmailApprovalPayloadItemFromRow_(row, normalizedType, safeOptions.approvedQty);
+  const submittedBy = getEmailApprovalRequesterDisplay_(row);
+  const requesterEmail = getEmailApprovalRequesterEmail_(row);
+  const baseRecipients = normalizedStage === 'jd'
+    ? [EMAIL_APPROVAL_USER_EMAILS_.jd_jones, EMAIL_APPROVAL_USER_EMAILS_.dylan_collyge, requesterEmail]
+    : [EMAIL_APPROVAL_USER_EMAILS_.jd_jones, EMAIL_APPROVAL_USER_EMAILS_.dylan_collyge, requesterEmail].concat(safeOptions.extraRecipients || []);
+  const recipientEmails = dedupeEmailAddresses_(baseRecipients);
+  const rowLabel = [item.COMMONNAME, item.CONTSIZE, item.LOCATIONCODE].map(function(value) {
+    return String(value || '').trim();
+  }).filter(Boolean).join(' ');
+  const taskLabel = normalizedType === 'hold-release' ? 'Off Hold Approval' : (normalizedType === 'move-up' ? 'Move Up Approvals' : (normalizedType === 'move-down' ? 'Move Down Approvals' : (normalizedType === 'recount' ? 'Re-Count Approval' : 'NCR Approvals')));
+  const appInstruction = normalizedStage === 'jd'
+    ? 'JD: open the confirmation link or the app Managers > ' + taskLabel + '. Review the photos/data, edit the quantity if needed, then approve.'
+    : 'Final approved row is ready for keying.';
+  const includeTablePhotos = normalizedStage === 'inventory';
+  const payload = {
+    type: 'email',
+    emailType: 'ncr_approval',
+    subject: (normalizedStage === 'jd' ? typeLabel + ' Approval' : typeLabel + ' Approved') + (rowLabel ? ': ' + rowLabel : ''),
+    fromName: getEmailApprovalBrandLabel_(normalizedType),
+    brandLabel: getEmailApprovalBrandLabel_(normalizedType),
+    emailDisplayName: getEmailApprovalBrandLabel_(normalizedType),
+    sourceLabel: getEmailApprovalBrandLabel_(normalizedType),
+    folderId: 'ncr-approval-' + String(item.unique_id || ''),
+    requestFolder: 'ncr-approval-' + String(item.unique_id || ''),
+    customer: typeLabel,
+    approvalType: normalizedType,
+    approval_type: normalizedType,
+    approvalLabel: typeLabel,
+    approvalStage: normalizedStage,
+    approvalStageLabel: normalizedStage === 'jd' ? 'JD approval needed' : 'Inventory Office handoff',
+    completedBy: safeOptions.completedBy || (normalizedStage === 'jd' ? 'dylan_collyge' : 'jd_jones'),
+    approvedBy: safeOptions.approvedBy || '',
+    submittedBySummary: submittedBy,
+    requestedByDisplay: submittedBy,
+    requestedByEmail: requesterEmail,
+    submittedAt: getEmailApprovalRowValue_(row, ['ncr_requested_at', 'NCR_REQUESTED_AT', 'created_at', 'updated_at'], ''),
+    appInstruction: appInstruction,
+    itemsCount: 1,
+    internalRecipients: recipientEmails,
+    recipientEmails: recipientEmails,
+    emailRecipients: recipientEmails,
+    recipients: recipientEmails.map(function(email) { return { email: email, role: 'internal' }; }),
+    requestItems: [item],
+    items: [item],
+    sourceRows: [item],
+    formattedItemsHtml: buildRequestEmailTableItemsHtml_({ requestItems: [item], folderId: 'ncr-approval-' + String(item.unique_id || '') }, { title: 'Selected ' + typeLabel + ' Rows', includePhotos: includeTablePhotos }),
+    formattedItemsText: buildApprovalInquiryItemsText_({ requestItems: [item] }),
+    useFormattedApprovalLayout: true,
+    use_formatted_approval_layout: true,
+    forceImmediate: true,
+    queueJdApprovalEmail: false
+  };
+  return payload;
+}
+
+function parseEmailApprovalExtraRecipients_(value) {
+  return dedupeEmailAddresses_(String(value || '')
+    .split(/[\s,;]+/)
+    .map(function(email) { return email.trim(); })
+    .filter(Boolean));
+}
+
+function renderApprovalPageHtml_(title, bodyHtml) {
+  return '<!doctype html><html><head><base target="_top"><meta name="viewport" content="width=device-width, initial-scale=1"><style>' +
+    'body{margin:0;background:#f7fbf9;color:#111827;font-family:Arial,Helvetica,sans-serif;}' +
+    '.wrap{max-width:760px;margin:0 auto;padding:22px;}' +
+    '.card{background:#fff;border:1px solid #b7f2d1;border-radius:18px;padding:20px;box-shadow:0 12px 30px rgba(15,23,42,.08);}' +
+    'h1{margin:0 0 8px;color:#007a4d;font-size:28px;line-height:1.1;} h2{margin:0 0 16px;font-size:18px;}' +
+    'p{font-size:15px;line-height:1.45;} .meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0;}' +
+    '.cell{border:1px solid #dbe5df;border-radius:12px;padding:10px;background:#f8fafc;}.label{display:block;color:#64748b;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.value{display:block;font-size:18px;font-weight:900;margin-top:4px;word-break:break-word}' +
+    'input,textarea{box-sizing:border-box;width:100%;border:1px solid #cbd5e1;border-radius:12px;padding:11px 12px;font-size:16px;font-weight:700;}' +
+    'label{display:block;margin:12px 0 6px;color:#334155;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;}' +
+    '.btn{display:block;width:100%;box-sizing:border-box;margin-top:16px;border:0;border-radius:999px;background:#007a4d;color:#fff;padding:14px 18px;font-size:16px;font-weight:900;text-align:center;text-decoration:none;text-transform:uppercase;letter-spacing:.08em;}' +
+    '.safe{margin-top:14px;color:#64748b;font-size:13px;}.bad{border-color:#fecaca;background:#fff1f2;color:#991b1b}.ok{border-color:#bbf7d0;background:#ecfdf5;color:#065f46}' +
+    '@media(max-width:620px){.wrap{padding:14px}.card{padding:16px}.meta{grid-template-columns:1fr}h1{font-size:24px}}' +
+    '</style><title>' + escapeEmailHtml_(title) + '</title></head><body><div class="wrap"><div class="card">' + bodyHtml + '</div></div></body></html>';
+}
+
+function renderApprovalStatusPage_(title, message, tone) {
+  const className = tone === 'bad' ? 'cell bad' : 'cell ok';
+  return HtmlService.createHtmlOutput(renderApprovalPageHtml_(title, [
+    '<h1>GNC PH</h1>',
+    '<h2>' + escapeEmailHtml_(title) + '</h2>',
+    '<div class="' + className + '"><span class="value">' + escapeEmailHtml_(message) + '</span></div>',
+    '<p class="safe">You can close this page and return to the app.</p>'
+  ].join(''))).setTitle(title);
+}
+
+function renderApprovalConfirmWebApp_(params) {
+  const valid = validateEmailApprovalParams_(params);
+  if (!valid.ok) return renderApprovalStatusPage_('Approval Link', valid.message, 'bad');
+  const row = fetchEmailApprovalMasterRow_(valid.uid);
+  if (!row) return renderApprovalStatusPage_('Approval Link', 'This row could not be found. Open the app to review it.', 'bad');
+  const assignment = String(getEmailApprovalRowValue_(row, ['app_tab_assignment', 'APP_TAB_ASSIGNMENT'], '') || '').trim();
+  const currentStage = getEmailApprovalStageFromAssignment_(assignment);
+  const currentType = getEmailApprovalTypeFromAssignment_(assignment) || valid.type;
+  if (currentStage && currentStage !== valid.stage) {
+    return renderApprovalStatusPage_('Already Processed', 'This row is already in the ' + currentStage + ' stage. No changes were made.', 'bad');
+  }
+  if (currentType && normalizeEmailApprovalType_(currentType) !== valid.type) {
+    return renderApprovalStatusPage_('Approval Link', 'This approval link does not match the current row type. No changes were made.', 'bad');
+  }
+  const confirmed = String(params && params.confirm || '').trim() === '1';
+  if (confirmed) {
+    return handleEmailApprovalConfirm_(valid, row, params);
+  }
+  const item = buildEmailApprovalPayloadItemFromRow_(row, valid.type, '');
+  const typeLabel = getEmailApprovalTypeLabel_(valid.type);
+  const needsQty = valid.stage === 'jd' && valid.type !== 'hold-release';
+  const defaultQty = getEmailApprovalQtyFromRow_(row, valid.type, '');
+  const hidden = [
+    ['view', 'approval'],
+    ['uid', valid.uid],
+    ['type', valid.type],
+    ['stage', valid.stage],
+    ['exp', valid.expiresAt],
+    ['sig', valid.sig],
+    ['confirm', '1']
+  ].map(function(pair) {
+    return '<input type="hidden" name="' + escapeEmailAttribute_(pair[0]) + '" value="' + escapeEmailAttribute_(pair[1]) + '">';
+  }).join('');
+  const qtyHtml = needsQty
+    ? '<label for="approvedQty">Approved Qty</label><input id="approvedQty" name="approvedQty" inputmode="numeric" value="' + escapeEmailAttribute_(defaultQty) + '">'
+    : '';
+  const extraHtml = valid.stage === 'jd'
+    ? '<label for="extraRecipients">Extra Recipients</label><textarea id="extraRecipients" name="extraRecipients" rows="3" placeholder="email@greenleafnursery.com, another@greenleafnursery.com"></textarea>'
+    : '';
+  const buttonText = valid.stage === 'dylan' ? 'Confirm and Send to JD' : 'Confirm and Send Final Email';
+  const body = [
+    '<h1>GNC PH</h1>',
+    '<h2>' + escapeEmailHtml_(typeLabel) + ' Approval</h2>',
+    '<p>Review the row below. No data changes until you press the confirm button on this page.</p>',
+    '<div class="meta">',
+    '<div class="cell"><span class="label">Common Name</span><span class="value">' + escapeEmailHtml_(item.COMMONNAME) + '</span></div>',
+    '<div class="cell"><span class="label">Item Code</span><span class="value">' + escapeEmailHtml_(item.ITEMCODE) + '</span></div>',
+    '<div class="cell"><span class="label">Location</span><span class="value">' + escapeEmailHtml_(item.LOCATIONCODE) + '</span></div>',
+    '<div class="cell"><span class="label">Lot</span><span class="value">' + escapeEmailHtml_(item.LOTCODE) + '</span></div>',
+    '<div class="cell"><span class="label">On Hand</span><span class="value">' + escapeEmailHtml_(item.PTRONHAND) + '</span></div>',
+    '<div class="cell"><span class="label">Requested Qty</span><span class="value">' + escapeEmailHtml_(defaultQty || '-') + '</span></div>',
+    '</div>',
+    '<form method="get">',
+    hidden,
+    qtyHtml,
+    extraHtml,
+    '<button class="btn" type="submit">' + escapeEmailHtml_(buttonText) + '</button>',
+    '</form>',
+    '<p class="safe">If this row has already been approved, denied, or moved to another stage, this page will not process it again.</p>'
+  ].join('');
+  return HtmlService.createHtmlOutput(renderApprovalPageHtml_(typeLabel + ' Approval', body)).setTitle(typeLabel + ' Approval');
+}
+
+function handleEmailApprovalConfirm_(valid, row, params) {
+  const nowIso = new Date().toISOString();
+  const tableName = row.__approval_table_name || getRuntimeSiteSplitTableName_('v2_master_inventory', 'PH');
+  if (valid.stage === 'dylan') {
+    const patch = {
+      app_tab_assignment: getEmailApprovalAssignment_(valid.type, 'jd'),
+      assignedto: 'jd_jones',
+      date_completed: null,
+      updated_at: nowIso
+    };
+    const updated = patchEmailApprovalMasterRow_(valid.uid, patch, tableName);
+    const emailRow = Object.assign({}, row, updated, patch);
+    const payload = buildEmailApprovalPayload_(emailRow, valid.type, 'jd', {
+      completedBy: 'dylan_collyge',
+      approvedBy: 'dylan_collyge'
+    });
+    sendRequestEmailWithFallback_(payload);
+    return renderApprovalStatusPage_('Sent to JD', 'The row was moved to JD approval and JD was sent the approval email with photos.', 'ok');
+  }
+  if (valid.stage === 'jd') {
+    const approvedQty = String(params && params.approvedQty || '').trim();
+    if (valid.type !== 'hold-release' && !approvedQty) {
+      return renderApprovalStatusPage_('Approval Needs Qty', 'Enter an approved quantity before final approval.', 'bad');
+    }
+    const initialPtr = Number(getEmailApprovalRowValue_(row, ['ptravailable', 'PTRAVAILABLE', 'ptronhand', 'PTRONHAND'], ''));
+    const patch = {
+      app_tab_assignment: getEmailApprovalAssignment_(valid.type, 'inventory'),
+      assignedto: '',
+      date_completed: null,
+      initial_ptr: isNaN(initialPtr) ? null : initialPtr,
+      updated_at: nowIso
+    };
+    if (valid.type === 'hold-release') {
+      patch.holdstopcode = null;
+      patch.holdstopreason = null;
+      patch.hold_release_approved_at = nowIso;
+      patch.hold_release_approved_by = 'jd_jones';
+      patch.hold_release_approved_by_display = 'JD Jones';
+      patch.hold_release_approved_holdstopbegindate = getEmailApprovalRowValue_(row, ['holdstopbegindate', 'HOLDSTOPBEGINDATE'], '') || null;
+    } else {
+      patch.loc_match_qty = approvedQty;
+    }
+    const updated = patchEmailApprovalMasterRow_(valid.uid, patch, tableName);
+    const emailRow = Object.assign({}, row, updated, patch);
+    const extraRecipients = parseEmailApprovalExtraRecipients_(params && params.extraRecipients);
+    const payload = buildEmailApprovalPayload_(emailRow, valid.type, 'inventory', {
+      approvedQty: approvedQty,
+      completedBy: 'jd_jones',
+      approvedBy: 'jd_jones',
+      extraRecipients: extraRecipients
+    });
+    sendRequestEmailWithFallback_(payload);
+    return renderApprovalStatusPage_('Final Email Sent', 'The row was approved and the final table-style email was sent.', 'ok');
+  }
+  return renderApprovalStatusPage_('Approval Link', 'This approval stage is not supported.', 'bad');
+}
+
 function buildRequestGallerySlidesFromItems_(items) {
   const safeItems = Array.isArray(items) ? items.filter(Boolean) : [];
   const slides = [];
@@ -7953,6 +8588,10 @@ function buildRequestEmailMessage_(payload) {
           itemsHtml
         ].join('')
       : '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 12px; color: #777;">No approval row details were provided.</p>';
+    const approvalButtonHtml = buildApprovalEmailButtonBlock_(payload);
+    const approvalButtonText = buildApprovalEmailButtonText_(payload);
+    const approvalPhotoHtml = buildApprovalEmailPhotoSectionHtml_(payload);
+    const approvalPhotoText = buildApprovalEmailPhotoSectionText_(payload);
 
     if (isHoldReleaseApproval) {
       const holdSubmittedByText = String(submittedBySummary || sentByText || 'Unknown').trim() || 'Unknown';
@@ -7981,6 +8620,8 @@ function buildRequestEmailMessage_(payload) {
           'Off Hold',
           'Submitted By: ' + holdSubmittedByText,
           'Submitted: ' + holdSubmittedLabel,
+          approvalButtonText,
+          approvalPhotoText,
           holdItemsText
         ].filter(Boolean).join('\n\n'),
         htmlBody: buildPhoneSizedEmailHtml_([
@@ -7989,7 +8630,9 @@ function buildRequestEmailMessage_(payload) {
           '<div style="font-size: 20px; font-weight: 800; color: #111827; margin: 0 0 14px;">Off Hold</div>',
           '<p><strong>Submitted By:</strong> ' + escapeEmailHtml_(holdSubmittedByText) + '</p>',
           '<p><strong>Submitted:</strong> ' + escapeEmailHtml_(holdSubmittedLabel) + '</p>',
+          approvalButtonHtml,
           holdItemsHtml,
+          approvalPhotoHtml,
           '</div>'
         ].join(''))
       };
@@ -8031,6 +8674,8 @@ function buildRequestEmailMessage_(payload) {
           approvedByText ? 'Approved By: ' + approvedByText : '',
           'Submitted: ' + approvalSubmittedLabel,
           appInstructionText ? 'Next step: ' + appInstructionText : '',
+          approvalButtonText,
+          approvalPhotoText,
           itemsText
         ].filter(Boolean).join('\n\n'),
         htmlBody: buildPhoneSizedEmailHtml_([
@@ -8041,7 +8686,9 @@ function buildRequestEmailMessage_(payload) {
           approvedByText ? '<p><strong>Approved By:</strong> ' + escapeEmailHtml_(approvedByText) + '</p>' : '',
           '<p><strong>Submitted:</strong> ' + escapeEmailHtml_(approvalSubmittedLabel) + '</p>',
           appInstructionHtml,
+          approvalButtonHtml,
           itemsHtml || '<p style="font-size: 12px; color: #777;">No selected row details were provided.</p>',
+          approvalPhotoHtml,
           '</div>'
         ].join(''))
       };
@@ -8053,6 +8700,8 @@ function buildRequestEmailMessage_(payload) {
         approvalTitleText + ' Approval',
         'Stage: ' + String(payload.approvalStageLabel || payload.approvalStage || 'Approval needed'),
         appInstructionText ? 'Next step: ' + appInstructionText : '',
+        approvalButtonText,
+        approvalPhotoText,
         'Sent By: ' + sentByText,
         submittedBySummary ? 'Submitted By: ' + submittedBySummary : '',
         'Source Row: ' + String(payload.folderId || payload.requestFolder || ''),
@@ -8063,10 +8712,12 @@ function buildRequestEmailMessage_(payload) {
         '<h2 style="color: #007a4d;">' + approvalTitle + ' Approval</h2>',
         '<p><strong>Stage:</strong> ' + approvalStage + '</p>',
         appInstructionHtml,
+        approvalButtonHtml,
         '<p><strong>Sent By:</strong> ' + completedBy + '</p>',
         submittedByHtml,
         '<p><strong>Source Row:</strong> ' + folderId + '</p>',
         detailSection,
+        approvalPhotoHtml,
         '</div>'
       ].join(''))
     };
@@ -8200,6 +8851,7 @@ function getApprovalEmailDisplayName_(payload) {
   const approvalType = String(payload && (payload.approvalType || payload.approval_type) || '').trim().toLowerCase().replace(/_/g, '-');
   if (approvalType.indexOf('hold-release') !== -1 || approvalType.indexOf('hold') !== -1) return 'GNC PH HOLD REMOVAL';
   if (approvalType.indexOf('recount') !== -1 || approvalType.indexOf('re-count') !== -1) return 'GNC PH RE-COUNT';
+  if (approvalType.indexOf('move-down') !== -1 || approvalType.indexOf('movedown') !== -1) return 'GNC PH MOVE DOWN';
   if (approvalType.indexOf('move-up') !== -1 || approvalType.indexOf('move') !== -1) return 'GNC PH MOVE UP';
   return 'GNC PH NCR';
 }
