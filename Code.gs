@@ -7432,6 +7432,33 @@ function buildRequestGalleryPreviewHtml_(payload) {
   ].join('');
 }
 
+function buildCompletedRequestItemsHtml_(payload) {
+  const items = getRequestEmailPayloadItems_(payload);
+  if (!items.length) return String(payload.formattedItemsHtml || '').trim();
+  const galleryFolderId = resolveRequestGalleryFolderId_(payload, items);
+  cacheRequestGalleryPayload_(galleryFolderId, items);
+  const rowsHtml = items.map(function(item, index) {
+    const commonName = escapeEmailHtml_(firstNonEmptyRequestValue_(item && item.commonname, item && item.COMMONNAME, 'Unknown Item'));
+    const contSize = escapeEmailHtml_(firstNonEmptyRequestValue_(item && item.contsize, item && item.CONTSIZE, '-'));
+    const photoCount = getRequestItemPhotoUrls_(item).length;
+    const photoPreviewHtml = buildRequestRowPhotoPreviewHtml_(galleryFolderId, item);
+    const fieldsHtml = [
+      buildRequestItemFieldRowsHtml_(item),
+      '<div style="margin-top:3px;"><strong>Photos:</strong> ' + escapeEmailHtml_(photoCount ? String(photoCount) : '0') + '</div>'
+    ].filter(Boolean).join('');
+    return [
+      '<li style="margin:0 0 12px 0;background:#f9f9f9;padding:10px;border-left:4px solid #007a4d;list-style:none;">',
+      '<strong>' + escapeEmailHtml_(index + 1) + '. ' + commonName + ' (' + contSize + ')</strong>',
+      photoPreviewHtml,
+      '<div style="margin-top:12px;">',
+      fieldsHtml,
+      '</div>',
+      '</li>'
+    ].join('');
+  }).join('');
+  return '<ul style="list-style:none;padding:0;margin:0;">' + rowsHtml + '</ul>';
+}
+
 function buildCompactRequestItemsHtml_(payload) {
   return buildRequestEmailTableItemsHtml_(payload, { title: 'Selected Rows' });
 }
@@ -8091,17 +8118,24 @@ function buildRequestEmailMessage_(payload) {
   const isSuspendTagPhotoSpecEmail = emailType === 'drive_customer_outreach' && emailSubType === 'suspend_tag_photo_spec';
   const formattedItemsHtmlRaw = String(payload.formattedItemsHtml || '').trim();
   const formattedItemsTextRaw = String(payload.formattedItemsText || '').trim();
+  const isSuspendTagCompletionEmail = isSuspendTagCompletionEmail_(payload);
+  const isEvalTaskCompletion = isEvalTaskCompletionEmail_(payload);
   const useFormattedApprovalLayout = isApprovalEmail
     && formattedItemsHtmlRaw
     && String(firstNonEmptyRequestValue_(payload.useFormattedApprovalLayout, payload.use_formatted_approval_layout, 'true')).trim().toLowerCase() !== 'false';
-  const useFormattedItemsBody = !!formattedItemsHtmlRaw || isDriveShiftReportEmail || isPaperNcrItemInquiryEmail || isSuspendTagPhotoSpecEmail || useFormattedApprovalLayout;
-  const isSuspendTagCompletionEmail = isSuspendTagCompletionEmail_(payload);
+  const useFormattedItemsBody = (
+    !!formattedItemsHtmlRaw
+    || isDriveShiftReportEmail
+    || isPaperNcrItemInquiryEmail
+    || isSuspendTagPhotoSpecEmail
+    || useFormattedApprovalLayout
+  ) && !(emailType === 'request_complete' && !isSuspendTagCompletionEmail && !isEvalTaskCompletion);
   const repName = escapeEmailHtml_(payload.repName || payload.salesRepName || '');
   const customer = escapeEmailHtml_(payload.customer || 'N/A');
   const folderId = escapeEmailHtml_(payload.folderId || payload.requestFolder || '');
   const itemsCount = escapeEmailHtml_(payload.itemsCount || 0);
   const fallbackItemsHtml = emailType === 'request_complete'
-    ? (isSuspendTagCompletionEmail ? buildSuspendTagCompletionItemsHtml_(payload) : buildCompactRequestItemsHtml_(payload))
+    ? (isSuspendTagCompletionEmail ? buildSuspendTagCompletionItemsHtml_(payload) : (isEvalTaskCompletion ? buildCompactRequestItemsHtml_(payload) : buildCompletedRequestItemsHtml_(payload)))
     : (isApprovalEmail ? buildApprovalRequestItemsHtml_(payload) : buildRequestItemsHtml_(payload));
   const fallbackItemsText = isSuspendTagCompletionEmail
     ? buildSuspendTagCompletionItemsText_(payload)
@@ -8175,7 +8209,7 @@ function buildRequestEmailMessage_(payload) {
         ].join(''))
       };
     }
-    if (isEvalTaskCompletionEmail_(payload)) {
+    if (isEvalTaskCompletion) {
       const evalSummary = getEvalTaskCompletionSummary_(payload);
       const evalRequesterHtml = evalSummary.requester ? '<p><strong>Requested By:</strong> ' + escapeEmailHtml_(evalSummary.requester) + '</p>' : '';
       const evalReviewerHtml = evalSummary.reviewer ? '<p><strong>Assigned Reviewer:</strong> ' + escapeEmailHtml_(evalSummary.reviewer) + '</p>' : '';
