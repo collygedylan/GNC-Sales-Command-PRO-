@@ -7538,6 +7538,136 @@ function insertInventoryTransactionAudit_(record) {
   };
 }
 
+function normalizeInventoryTransactionHistoryToken_(value) {
+  return String(value == null ? '' : value)
+    .trim()
+    .toLowerCase()
+    .replace(/@greenleafnursery\.com$/i, '')
+    .replace(/[\s.]+/g, '_');
+}
+
+function canReadInventoryTransactionHistory_(payload) {
+  const actor = payload && typeof payload.actor === 'object' ? payload.actor : {};
+  const roleText = String(firstNonEmptyRequestValue_(
+    payload && payload.role,
+    actor.role,
+    actor.userRole,
+    ''
+  ) || '').trim().toLowerCase();
+  if (roleText === 'admin' || roleText === 'manager') return true;
+  const allowed = {
+    dylan_collyge: true,
+    dylan: true,
+    jd_jones: true,
+    jdjones: true,
+    jd: true,
+    megan_kelly: true,
+    megankelly: true,
+    megan: true
+  };
+  const candidates = [
+    payload && payload.actorUsername,
+    payload && payload.username,
+    payload && payload.user,
+    payload && payload.requestedBy,
+    actor.username,
+    actor.user,
+    actor.display,
+    actor.displayName,
+    actor.email
+  ].map(normalizeInventoryTransactionHistoryToken_).filter(Boolean);
+  return candidates.some((token) => allowed[token]);
+}
+
+function normalizeInventoryTransactionHistoryDateStart_(value) {
+  const text = String(value == null ? '' : value).trim();
+  if (!text) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text + 'T00:00:00.000Z';
+  return text;
+}
+
+function normalizeInventoryTransactionHistoryDateEnd_(value) {
+  const text = String(value == null ? '' : value).trim();
+  if (!text) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text + 'T23:59:59.999Z';
+  return text;
+}
+
+function inventoryTransactionHistoryRowMatchesSearch_(row, searchText) {
+  const tokens = String(searchText == null ? '' : searchText).trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!tokens.length) return true;
+  const haystack = JSON.stringify(row || {}).toLowerCase();
+  return tokens.every(function(token) {
+    return haystack.indexOf(token) !== -1;
+  });
+}
+
+function fetchInventoryTransactionHistory_(payload) {
+  if (!canReadInventoryTransactionHistory_(payload || {})) {
+    return {
+      ok: false,
+      status: 'forbidden',
+      message: 'Inventory transaction history is manager-only.'
+    };
+  }
+  const safePayload = payload && typeof payload === 'object' ? payload : {};
+  const action = String(safePayload.action || 'all').trim().toLowerCase();
+  const limit = Math.max(1, Math.min(1000, Number(safePayload.limit) || 300));
+  const params = ['select=*'];
+  if (['qty', 'transfer', 'reclass'].indexOf(action) !== -1) {
+    params.push('action=eq.' + encodeURIComponent(action));
+  }
+  const dateStart = normalizeInventoryTransactionHistoryDateStart_(safePayload.dateStart || safePayload.startDate || safePayload.from);
+  const dateEnd = normalizeInventoryTransactionHistoryDateEnd_(safePayload.dateEnd || safePayload.endDate || safePayload.to);
+  if (dateStart) params.push('created_at=gte.' + encodeURIComponent(dateStart));
+  if (dateEnd) params.push('created_at=lte.' + encodeURIComponent(dateEnd));
+  params.push('order=created_at.desc');
+  params.push('limit=' + encodeURIComponent(String(limit)));
+  const url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(INVENTORY_TRANSACTION_TABLE) + '?' + params.join('&');
+  const response = UrlFetchApp.fetch(url, {
+    method: 'get',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: 'Bearer ' + SUPABASE_KEY,
+      Accept: 'application/json'
+    },
+    muteHttpExceptions: true
+  });
+  const code = response.getResponseCode();
+  const text = response.getContentText() || '';
+  if (code < 200 || code >= 300) {
+    return {
+      ok: false,
+      status: code,
+      message: text || 'Unable to load inventory transaction history.'
+    };
+  }
+  let rows = [];
+  try {
+    rows = text ? JSON.parse(text) : [];
+  } catch (error) {
+    return {
+      ok: false,
+      status: 'parse_error',
+      message: 'Inventory transaction history returned unreadable JSON.'
+    };
+  }
+  if (!Array.isArray(rows)) rows = [];
+  const searchText = String(safePayload.search || safePayload.query || '').trim();
+  if (searchText) {
+    rows = rows.filter(function(row) {
+      return inventoryTransactionHistoryRowMatchesSearch_(row, searchText);
+    });
+  }
+  return {
+    ok: true,
+    table: INVENTORY_TRANSACTION_TABLE,
+    rows: rows,
+    count: rows.length,
+    searchedAt: new Date().toISOString()
+  };
+}
+
 function getInventoryTransactionEmailActionLabel_(action) {
   const safeAction = String(action || '').trim().toLowerCase();
   if (safeAction === 'qty') return 'QTY';
@@ -10627,6 +10757,10 @@ function doPost(e) {
         updatedAt: '',
         finishedAt: ''
       });
+    }
+
+    if (payload.type === 'inventory_transaction_history') {
+      return jsonOutput_(fetchInventoryTransactionHistory_(payload));
     }
 
     if (payload.type === 'inventory_transaction') {
