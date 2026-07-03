@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.07.03.04';
+const APP_SHELL_BUILD = 'V2026.07.03.05';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
@@ -172,7 +172,8 @@ self.addEventListener('fetch', (event) => {
         const requestedBuild = getRequestedShellBuild(event.request);
         const currentShellUrl = buildShellUrl(APP_SHELL_BUILD);
         const requestedShellUrl = buildShellUrl(requestedBuild || APP_SHELL_BUILD);
-        const primaryShellUrl = requestedBuild && requestedBuild !== APP_SHELL_BUILD
+        const isStaleShellNavigation = requestedBuild && requestedBuild !== APP_SHELL_BUILD;
+        const primaryShellUrl = isStaleShellNavigation
           ? buildAbsoluteShellUrl(APP_SHELL_BUILD, 'stale-navigation')
           : event.request;
         const cache = await caches.open(CACHE_NAME).catch(() => null);
@@ -185,6 +186,10 @@ self.addEventListener('fetch', (event) => {
             return networkResponse;
           })
           .catch(() => null);
+        if (isStaleShellNavigation) {
+          const currentNetworkShell = await navigationNetwork;
+          if (currentNetworkShell) return currentNetworkShell;
+        }
         if (cachedShellFallback) {
           const fastResponse = await Promise.race([
             navigationNetwork,
