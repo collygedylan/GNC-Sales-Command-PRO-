@@ -7067,6 +7067,170 @@ function buildInventoryTransactionPatch_(fields) {
   return patch;
 }
 
+function normalizeInventoryTransactionHoldAction_(transaction) {
+  const safeTx = transaction && typeof transaction === 'object' ? transaction : {};
+  const raw = normalizeInventoryTransactionCompareText_(firstNonEmptyRequestValue_(
+    safeTx.holdAction,
+    safeTx.hold_action,
+    safeTx.holdstopAction,
+    safeTx.holdstop_action,
+    safeTx.holdStopAction,
+    safeTx.hold_stop_action
+  ));
+  if (raw === 'HOLD' || raw === 'PLACE_H' || raw === 'PLACE HOLD' || raw === 'H') return 'hold';
+  if (raw === 'RELEASE' || raw === 'REMOVE_H' || raw === 'REMOVE HOLD' || raw === 'REMOVE' || raw === 'BLANK' || raw === 'CLEAR') return 'release';
+  return 'none';
+}
+
+function parseInventoryTransactionLotParts_(lotCode) {
+  const match = normalizeInventoryTransactionCompareText_(lotCode).match(/^(\d{2})\.([A-Z0-9]+)$/);
+  if (!match) return { salesYear: '', season: '', lotCode: '' };
+  return {
+    salesYear: match[1],
+    season: match[2],
+    lotCode: match[1] + '.' + match[2]
+  };
+}
+
+function getInventoryTransactionHoldScope_(sourceRow, transaction) {
+  const safeTx = transaction && typeof transaction === 'object' ? transaction : {};
+  const itemCode = normalizeInventoryTransactionText_(getInventoryTransactionRowValue_(sourceRow, ['itemcode', 'ITEMCODE'], ''));
+  const lotCode = normalizeInventoryTransactionText_(getInventoryTransactionRowValue_(sourceRow, ['lotcode', 'LOTCODE'], ''));
+  const lotParts = parseInventoryTransactionLotParts_(lotCode);
+  const season = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(
+    safeTx.sourceSeason,
+    safeTx.source_season,
+    safeTx.season,
+    getInventoryTransactionRowValue_(sourceRow, ['season', 'SEASON'], ''),
+    lotParts.season
+  )).toUpperCase();
+  let salesYear = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(
+    safeTx.sourceSalesYear,
+    safeTx.source_salesyear,
+    safeTx.salesYear,
+    safeTx.salesyear,
+    getInventoryTransactionRowValue_(sourceRow, ['saleyear', 'SALEYEAR', 'salesyear', 'SALESYEAR', 'sales_year', 'SALES_YEAR'], ''),
+    lotParts.salesYear
+  )).toUpperCase();
+  const salesYearFourDigitMatch = salesYear.match(/^20(\d{2})$/);
+  if (salesYearFourDigitMatch) salesYear = salesYearFourDigitMatch[1];
+  return {
+    itemCode: itemCode,
+    season: season,
+    salesYear: salesYear,
+    lotCode: lotParts.lotCode || lotCode
+  };
+}
+
+function buildInventoryTransactionHoldScopeQuery_(scope, useLotFallback) {
+  const safeScope = scope || {};
+  const parts = [
+    'select=*',
+    'itemcode=eq.' + encodeURIComponent(safeScope.itemCode)
+  ];
+  if (useLotFallback) {
+    parts.push('lotcode=eq.' + encodeURIComponent(safeScope.lotCode));
+  } else {
+    parts.push('season=eq.' + encodeURIComponent(safeScope.season));
+    parts.push('saleyear=eq.' + encodeURIComponent(safeScope.salesYear));
+  }
+  return parts.join('&');
+}
+
+function patchInventoryTransactionHoldScopeRows_(tableName, scope, patch, useLotFallback) {
+  const query = buildInventoryTransactionHoldScopeQuery_(scope, useLotFallback);
+  const response = UrlFetchApp.fetch(SUPABASE_URL + '/rest/v1/' + encodeURIComponent(tableName) + '?' + query, {
+    method: 'patch',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation'
+    },
+    payload: JSON.stringify(patch),
+    muteHttpExceptions: true
+  });
+  const code = response.getResponseCode();
+  if (code < 200 || code >= 300) {
+    throw new Error('Hold/stop scope update failed (' + code + '): ' + response.getContentText());
+  }
+  const rows = JSON.parse(response.getContentText() || '[]');
+  return (Array.isArray(rows) ? rows : []).map(function(row) {
+    row.__approval_table_name = tableName;
+    return row;
+  });
+}
+
+function patchInventoryTransactionHoldScope_(sourceRow, transaction) {
+  const action = normalizeInventoryTransactionHoldAction_(transaction);
+  if (action === 'none') {
+    return { action: 'none', count: 0, rows: [], itemCode: '', season: '', salesYear: '', reason: '' };
+  }
+  const scope = getInventoryTransactionHoldScope_(sourceRow, transaction);
+  if (!scope.itemCode) throw new Error('Hold/stop update needs an item code.');
+  if ((!scope.season || !scope.salesYear) && !scope.lotCode) {
+    throw new Error('Hold/stop update needs the current season and sales year.');
+  }
+  const reason = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(
+    transaction && transaction.holdStopReason,
+    transaction && transaction.holdstopReason,
+    transaction && transaction.holdstopreason,
+    transaction && transaction.hold_reason,
+    transaction && transaction.holdReason
+  ));
+  const patch = action === 'hold'
+    ? buildInventoryTransactionPatch_({ holdstopcode: 'H', holdstopreason: reason })
+    : buildInventoryTransactionPatch_({ holdstopcode: null, holdstopreason: null });
+  if (action === 'hold' && !reason) throw new Error('Enter the hold/stop reason.');
+
+  const tableName = getInventoryTransactionRowTable_(sourceRow);
+  let rows = [];
+  if (scope.season && scope.salesYear) {
+    rows = patchInventoryTransactionHoldScopeRows_(tableName, scope, patch, false);
+  }
+  if (!rows.length && scope.lotCode) {
+    rows = patchInventoryTransactionHoldScopeRows_(tableName, scope, patch, true);
+  }
+  if (!rows.length) {
+    throw new Error('No current season/current sales year rows matched this item for the hold update.');
+  }
+  return Object.assign({}, scope, {
+    action: action,
+    count: rows.length,
+    rows: rows,
+    reason: action === 'hold' ? reason : ''
+  });
+}
+
+function getInventoryTransactionReturnedRowByUid_(rows, uid) {
+  const safeUid = normalizeInventoryTransactionText_(uid);
+  if (!safeUid || !Array.isArray(rows)) return null;
+  for (let i = 0; i < rows.length; i++) {
+    if (getInventoryTransactionRowUid_(rows[i]) === safeUid) return rows[i];
+  }
+  return null;
+}
+
+function validateInventoryTransactionHoldScopeRequest_(sourceRow, transaction) {
+  const action = normalizeInventoryTransactionHoldAction_(transaction);
+  if (action === 'none') return;
+  const scope = getInventoryTransactionHoldScope_(sourceRow, transaction);
+  if (!scope.itemCode) throw new Error('Hold/stop update needs an item code.');
+  if ((!scope.season || !scope.salesYear) && !scope.lotCode) {
+    throw new Error('Hold/stop update needs the current season and sales year.');
+  }
+  if (action === 'hold') {
+    const reason = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(
+      transaction && transaction.holdStopReason,
+      transaction && transaction.holdstopReason,
+      transaction && transaction.holdstopreason,
+      transaction && transaction.hold_reason,
+      transaction && transaction.holdReason
+    ));
+    if (!reason) throw new Error('Enter the hold/stop reason.');
+  }
+}
+
 function validateInventoryTransactionSourceIdentity_(row, source) {
   const safeSource = source && typeof source === 'object' ? source : {};
   const expectedItem = normalizeInventoryTransactionCompareText_(safeSource.itemcode || safeSource.itemCode || '');
@@ -7435,18 +7599,20 @@ function buildInventoryTransactionEmailItem_(context) {
   const safeContext = context || {};
   const source = safeContext.sourceBefore || safeContext.sourceRow || {};
   const sourceAfter = safeContext.sourceRow || source;
+  const holdScope = safeContext.holdScope || {};
+  const itemInfoRow = holdScope && holdScope.action && holdScope.action !== 'none' ? sourceAfter : source;
   const transaction = safeContext.transaction || {};
   const actionLabel = getInventoryTransactionEmailActionLabel_(safeContext.action);
   const rowNumber = getInventoryTransactionEmailRowValue_(source, ['row', 'ROW', 'row_index', 'ROW_INDEX'], '');
   return {
     unique_id: getInventoryTransactionEmailRowValue_(source, ['unique_id', 'UNIQUE_ID', 'id', 'ID'], ''),
-    itemcode: getInventoryTransactionEmailRowValue_(source, ['itemcode', 'ITEMCODE'], ''),
-    commonname: getInventoryTransactionEmailRowValue_(source, ['commonname', 'COMMONNAME', 'common_name', 'COMMON_NAME', 'description', 'DESCRIPTION'], 'Unknown Item'),
-    contsize: getInventoryTransactionEmailRowValue_(source, ['contsize', 'CONTSIZE', 'cont_size', 'CONT_SIZE', 'size', 'SIZE'], ''),
-    genus: getInventoryTransactionEmailRowValue_(source, ['genus', 'GENUS', 'genusname', 'GENUSNAME'], ''),
-    salesnote: getInventoryTransactionEmailRowValue_(source, ['salesnote', 'SALESNOTE', 'sales_note', 'SALES_NOTE'], ''),
-    holdstopcode: getInventoryTransactionEmailRowValue_(source, ['holdstopcode', 'HOLDSTOPCODE', 'holstopcode', 'HOLSTOPCODE'], ''),
-    holdstopreason: getInventoryTransactionEmailRowValue_(source, ['holdstopreason', 'HOLDSTOPREASON', 'holstopreason', 'HOLSTOPREASON'], ''),
+    itemcode: getInventoryTransactionEmailRowValue_(itemInfoRow, ['itemcode', 'ITEMCODE'], ''),
+    commonname: getInventoryTransactionEmailRowValue_(itemInfoRow, ['commonname', 'COMMONNAME', 'common_name', 'COMMON_NAME', 'description', 'DESCRIPTION'], 'Unknown Item'),
+    contsize: getInventoryTransactionEmailRowValue_(itemInfoRow, ['contsize', 'CONTSIZE', 'cont_size', 'CONT_SIZE', 'size', 'SIZE'], ''),
+    genus: getInventoryTransactionEmailRowValue_(itemInfoRow, ['genus', 'GENUS', 'genusname', 'GENUSNAME'], ''),
+    salesnote: getInventoryTransactionEmailRowValue_(itemInfoRow, ['salesnote', 'SALESNOTE', 'sales_note', 'SALES_NOTE'], ''),
+    holdstopcode: getInventoryTransactionEmailRowValue_(itemInfoRow, ['holdstopcode', 'HOLDSTOPCODE', 'holstopcode', 'HOLSTOPCODE'], ''),
+    holdstopreason: getInventoryTransactionEmailRowValue_(itemInfoRow, ['holdstopreason', 'HOLDSTOPREASON', 'holstopreason', 'HOLSTOPREASON'], ''),
     row: rowNumber,
     lotcode: getInventoryTransactionEmailRowValue_(source, ['lotcode', 'LOTCODE', 'lotCode', 'LOT_CODE'], ''),
     locationcode: getInventoryTransactionEmailRowValue_(source, ['locationcode', 'LOCATIONCODE', 'loc', 'LOC', 'location'], ''),
@@ -7574,6 +7740,7 @@ function handleInventoryTransaction_(payload) {
     const sourceRow = fetchEmailApprovalMasterRow_(sourceUid);
     if (!sourceRow) throw new Error('Source inventory row was not found. Sync and try again.');
     validateInventoryTransactionSourceIdentity_(sourceRow, source);
+    validateInventoryTransactionHoldScopeRequest_(sourceRow, transaction);
 
     const actor = payload && typeof payload.actor === 'object' ? payload.actor : {};
     const actorUsername = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.username, actor.user, payload && payload.actorUsername, 'unknown'));
@@ -7587,6 +7754,7 @@ function handleInventoryTransaction_(payload) {
     let destinationBefore = null;
     let sourceAfter = null;
     let destinationAfter = null;
+    let holdScopeResult = { action: 'none', count: 0, rows: [] };
     let auditWarning = null;
 
     if (action === 'qty') {
@@ -7641,6 +7809,44 @@ function handleInventoryTransaction_(payload) {
       }
     }
 
+    try {
+      holdScopeResult = patchInventoryTransactionHoldScope_(sourceRow, transaction);
+    } catch (holdUpdateError) {
+      try {
+        if (action === 'qty') {
+          patchEmailApprovalMasterRow_(sourceUid, buildInventoryTransactionPatch_({
+            ptronhand: getInventoryTransactionRowNumber_(sourceBefore, ['ptronhand', 'PTRONHAND']),
+            ptrreviewed: getInventoryTransactionRowNumber_(sourceBefore, ['ptrreviewed', 'PTRREVIEWED']),
+            ptravailable: getInventoryTransactionRowNumber_(sourceBefore, ['ptravailable', 'PTRAVAILABLE'])
+          }), getInventoryTransactionRowTable_(sourceRow));
+        } else {
+          patchEmailApprovalMasterRow_(sourceUid, buildInventoryTransactionPatch_({
+            ptronhand: getInventoryTransactionRowNumber_(sourceBefore, ['ptronhand', 'PTRONHAND']),
+            ptravailable: getInventoryTransactionRowNumber_(sourceBefore, ['ptravailable', 'PTRAVAILABLE'])
+          }), getInventoryTransactionRowTable_(sourceRow));
+          if (destinationWasCreated && destinationRow) {
+            deleteInventoryTransactionCreatedRow_(destinationRow);
+          } else if (destinationRow && destinationBefore) {
+            patchEmailApprovalMasterRow_(getInventoryTransactionRowUid_(destinationRow), buildInventoryTransactionPatch_({
+              ptronhand: getInventoryTransactionRowNumber_(destinationBefore, ['ptronhand', 'PTRONHAND']),
+              ptravailable: getInventoryTransactionRowNumber_(destinationBefore, ['ptravailable', 'PTRAVAILABLE'])
+            }), getInventoryTransactionRowTable_(destinationRow));
+          }
+        }
+      } catch (holdRollbackError) {
+        console.warn('Inventory transaction hold rollback failed: ' + (holdRollbackError && holdRollbackError.message ? holdRollbackError.message : holdRollbackError));
+      }
+      throw holdUpdateError;
+    }
+    if (holdScopeResult && Array.isArray(holdScopeResult.rows) && holdScopeResult.rows.length) {
+      const updatedSource = getInventoryTransactionReturnedRowByUid_(holdScopeResult.rows, sourceUid);
+      if (updatedSource) sourceAfter = updatedSource;
+      if (destinationAfter) {
+        const updatedDestination = getInventoryTransactionReturnedRowByUid_(holdScopeResult.rows, getInventoryTransactionRowUid_(destinationAfter));
+        if (updatedDestination) destinationAfter = updatedDestination;
+      }
+    }
+
     const sourceAfterAudit = cloneInventoryTransactionRowForAudit_(sourceAfter || sourceRow);
     const destinationAfterAudit = destinationAfter ? cloneInventoryTransactionRowForAudit_(destinationAfter) : null;
     const quantity = action === 'qty'
@@ -7678,6 +7884,10 @@ function handleInventoryTransaction_(payload) {
 
     const rowIds = [sourceUid];
     if (destinationAfter) rowIds.push(getInventoryTransactionRowUid_(destinationAfter));
+    (holdScopeResult && Array.isArray(holdScopeResult.rows) ? holdScopeResult.rows : []).forEach(function(row) {
+      const uid = getInventoryTransactionRowUid_(row);
+      if (uid && rowIds.indexOf(uid) === -1) rowIds.push(uid);
+    });
     emitAppLiveEvent_('inventory', 'inventory_transaction_' + action, getInventoryTransactionRowTable_(sourceRow), rowIds, {
       transaction_id: transactionId,
       action: action,
@@ -7685,7 +7895,15 @@ function handleInventoryTransaction_(payload) {
       source_unique_id: sourceUid,
       destination_unique_id: destinationAfter ? getInventoryTransactionRowUid_(destinationAfter) : '',
       source_row: sourceAfter || null,
-      destination_row: destinationAfter || null
+      destination_row: destinationAfter || null,
+      hold_scope: holdScopeResult && holdScopeResult.action !== 'none' ? {
+        action: holdScopeResult.action,
+        count: holdScopeResult.count,
+        itemcode: holdScopeResult.itemCode,
+        season: holdScopeResult.season,
+        saleyear: holdScopeResult.salesYear
+      } : null,
+      hold_rows: holdScopeResult && Array.isArray(holdScopeResult.rows) ? holdScopeResult.rows : []
     });
 
     try {
@@ -7710,6 +7928,7 @@ function handleInventoryTransaction_(payload) {
         sourceRow: sourceAfter || sourceRow,
         destinationBefore: destinationBefore,
         destinationRow: destinationAfter || destinationRow,
+        holdScope: holdScopeResult,
         quantity: quantity
       });
       if (emailResult && emailResult.ok === false) {
@@ -7727,6 +7946,14 @@ function handleInventoryTransaction_(payload) {
       transactionId: transactionId,
       sourceRow: sourceAfter || null,
       destinationRow: destinationAfter || null,
+      holdRows: holdScopeResult && Array.isArray(holdScopeResult.rows) ? holdScopeResult.rows : [],
+      holdScope: holdScopeResult && holdScopeResult.action !== 'none' ? {
+        action: holdScopeResult.action,
+        count: holdScopeResult.count,
+        itemCode: holdScopeResult.itemCode,
+        season: holdScopeResult.season,
+        salesYear: holdScopeResult.salesYear
+      } : { action: 'none', count: 0 },
       auditWarning: auditWarning,
       emailWarning: emailWarning,
       emailRecipients: emailResult && emailResult.recipients ? emailResult.recipients : [],
