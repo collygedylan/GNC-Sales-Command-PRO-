@@ -32,3 +32,6 @@ create index if not exists v2_inventory_transactions_source_uid_idx
 
 create index if not exists v2_inventory_transactions_destination_uid_idx
   on public.v2_inventory_transactions (destination_unique_id);
+
+create index if not exists v2_inventory_transactions_status_created_at_idx
+  on public.v2_inventory_transactions (status, created_at desc);

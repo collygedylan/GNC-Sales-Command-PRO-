@@ -72,6 +72,12 @@ const SUPABASE_URL = 'https://kzrnyjsosryejjejliii.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0';
 const APP_LIVE_EVENTS_TABLE = 'v2_app_live_events';
 const INVENTORY_TRANSACTION_TABLE = 'v2_inventory_transactions';
+const INVENTORY_TRANSACTION_STATUS_PENDING_DYLAN = 'pending_dylan';
+const INVENTORY_TRANSACTION_STATUS_APPLYING = 'applying';
+const INVENTORY_TRANSACTION_STATUS_APPLIED = 'applied';
+const INVENTORY_TRANSACTION_STATUS_DENIED = 'denied';
+const INVENTORY_TRANSACTION_APPROVER_USER = 'dylan_collyge';
+const INVENTORY_TRANSACTION_APPROVER_EMAIL = 'dylan_collyge@greenleafnursery.com';
 const EMIT_APP_LIVE_EVENTS = true;
 const DRIVE_AROUND_HISTORY_TABLE = 'v2_drive_around_report_files';
 const DRIVE_AROUND_HISTORY_ROW_TABLE = 'v2_drive_around_report_rows';
@@ -7538,6 +7544,244 @@ function insertInventoryTransactionAudit_(record) {
   };
 }
 
+function fetchInventoryTransactionAuditRow_(transactionId) {
+  const safeId = normalizeInventoryTransactionText_(transactionId);
+  if (!safeId) return null;
+  const url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(INVENTORY_TRANSACTION_TABLE) +
+    '?select=*&unique_id=eq.' + encodeURIComponent(safeId) + '&limit=1';
+  const response = UrlFetchApp.fetch(url, {
+    method: 'get',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: 'Bearer ' + SUPABASE_KEY,
+      Accept: 'application/json'
+    },
+    muteHttpExceptions: true
+  });
+  if (response.getResponseCode() !== 200) return null;
+  const rows = JSON.parse(response.getContentText() || '[]');
+  return Array.isArray(rows) && rows.length ? rows[0] : null;
+}
+
+function patchInventoryTransactionAudit_(transactionId, patch) {
+  const safeId = normalizeInventoryTransactionText_(transactionId);
+  if (!safeId) throw new Error('Missing inventory transaction id.');
+  const response = UrlFetchApp.fetch(SUPABASE_URL + '/rest/v1/' + encodeURIComponent(INVENTORY_TRANSACTION_TABLE) +
+    '?unique_id=eq.' + encodeURIComponent(safeId), {
+    method: 'patch',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation'
+    },
+    payload: JSON.stringify(patch || {}),
+    muteHttpExceptions: true
+  });
+  const code = response.getResponseCode();
+  if (code < 200 || code >= 300) {
+    throw new Error('Inventory transaction audit update failed (' + code + '): ' + response.getContentText());
+  }
+  const rows = JSON.parse(response.getContentText() || '[]');
+  return Array.isArray(rows) && rows.length ? rows[0] : Object.assign({ unique_id: safeId }, patch || {});
+}
+
+function parseInventoryTransactionAuditJson_(value, fallback) {
+  if (value && typeof value === 'object') return value;
+  if (!String(value == null ? '' : value).trim()) return fallback;
+  try {
+    const parsed = JSON.parse(String(value || ''));
+    return parsed && typeof parsed === 'object' ? parsed : fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function normalizeInventoryTransactionActorToken_(value) {
+  return String(value == null ? '' : value)
+    .trim()
+    .toLowerCase()
+    .replace(/@greenleafnursery\.com$/i, '')
+    .replace(/[\s.]+/g, '_');
+}
+
+function getInventoryTransactionActorContext_(payload) {
+  const actor = payload && typeof payload.actor === 'object' ? payload.actor : {};
+  const username = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.username, actor.user, payload && payload.actorUsername, payload && payload.username, 'unknown'));
+  const display = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.display, actor.displayName, payload && payload.actorDisplay, username, 'Unknown User'));
+  const email = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.email, actor.userEmail, payload && payload.actorEmail, ''));
+  return {
+    username: username,
+    display: display,
+    email: email
+  };
+}
+
+function isInventoryTransactionDylanActor_(payload) {
+  const actor = getInventoryTransactionActorContext_(payload || {});
+  const candidates = [
+    actor.username,
+    actor.display,
+    actor.email,
+    payload && payload.requestedBy,
+    payload && payload.user,
+    payload && payload.username
+  ].map(normalizeInventoryTransactionActorToken_).filter(Boolean);
+  return candidates.indexOf(INVENTORY_TRANSACTION_APPROVER_USER) !== -1;
+}
+
+function getInventoryTransactionQuantity_(action, transaction) {
+  return action === 'qty'
+    ? parseInventoryTransactionNumber_(firstNonEmptyRequestValue_(transaction && transaction.newQuantity, transaction && transaction.new_quantity, transaction && transaction.quantity), 'New quantity', { disallowNegative: true })
+    : parseInventoryTransactionNumber_(transaction && transaction.quantity, 'Quantity to move', { requirePositive: true });
+}
+
+function buildPendingInventoryTransactionAuditRecord_(payload, sourceRow, transactionId, nowIso) {
+  const action = normalizeInventoryTransactionAction_(payload && payload.action);
+  const source = payload && typeof payload.source === 'object' ? payload.source : {};
+  const transaction = payload && typeof payload.transaction === 'object' ? payload.transaction : {};
+  const actor = getInventoryTransactionActorContext_(payload || {});
+  const sourceUid = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(source.unique_id, source.uniqueId, payload && payload.unique_id, payload && payload.uniqueId));
+  const sourceBefore = cloneInventoryTransactionRowForAudit_(sourceRow);
+  const quantity = getInventoryTransactionQuantity_(action, transaction);
+  const destinationSpec = action === 'qty' ? null : getInventoryTransactionDestinationSpec_(sourceRow, transaction, action);
+  const pendingPayload = Object.assign({}, payload || {}, {
+    approval_required: true,
+    approval_status: INVENTORY_TRANSACTION_STATUS_PENDING_DYLAN,
+    approval_requested_at: nowIso,
+    required_approver: INVENTORY_TRANSACTION_APPROVER_USER
+  });
+  return {
+    unique_id: transactionId,
+    created_at: nowIso,
+    action: action,
+    actor_username: actor.username,
+    actor_display: actor.display,
+    actor_email: actor.email,
+    source_table: getInventoryTransactionRowTable_(sourceRow),
+    source_unique_id: sourceUid,
+    destination_table: destinationSpec ? getInventoryTransactionRowTable_(sourceRow) : '',
+    destination_unique_id: '',
+    source_itemcode: getInventoryTransactionRowValue_(sourceRow, ['itemcode', 'ITEMCODE'], ''),
+    source_lotcode: getInventoryTransactionRowValue_(sourceRow, ['lotcode', 'LOTCODE'], ''),
+    source_locationcode: getInventoryTransactionRowValue_(sourceRow, ['locationcode', 'LOCATIONCODE'], ''),
+    destination_itemcode: destinationSpec ? destinationSpec.itemCode : '',
+    destination_lotcode: destinationSpec ? destinationSpec.lotCode : '',
+    destination_locationcode: destinationSpec ? destinationSpec.locationCode : '',
+    quantity: quantity,
+    source_before: sourceBefore,
+    source_after: null,
+    destination_before: null,
+    destination_after: null,
+    raw_payload: pendingPayload,
+    status: INVENTORY_TRANSACTION_STATUS_PENDING_DYLAN
+  };
+}
+
+function sendInventoryTransactionApprovalRequestEmail_(payload, context) {
+  const safeContext = context || {};
+  const actorEmail = normalizeEmailAddress_(safeContext.actorEmail || '');
+  const recipients = dedupeEmailAddresses_([INVENTORY_TRANSACTION_APPROVER_EMAIL]);
+  if (!recipients.length) return { ok: false, message: 'No approver email configured.' };
+  const actionLabel = getInventoryTransactionEmailActionLabel_(safeContext.action);
+  const item = buildInventoryTransactionEmailItem_(safeContext);
+  const submittedAt = Utilities.formatDate(
+    new Date(firstNonEmptyRequestValue_(safeContext.nowIso, new Date().toISOString())),
+    Session.getScriptTimeZone() || 'America/Chicago',
+    'M/d/yyyy, h:mm:ss a'
+  );
+  const tableHtml = buildRequestEmailTableItemsHtml_({
+    requestItems: [item],
+    folderId: 'inventory-transaction-approval-' + firstNonEmptyRequestValue_(safeContext.transactionId, Utilities.getUuid())
+  }, {
+    title: 'Pending ' + actionLabel + ' Approval',
+    includePhotos: true
+  });
+  const htmlBody = buildPhoneSizedEmailHtml_([
+    '<div style="font-family:Arial,Helvetica,sans-serif;padding:20px;color:#333333;">',
+    '<h2 style="color:#007a4d;margin:0 0 12px 0;">GNC PH</h2>',
+    '<h1 style="margin:0 0 18px 0;color:#111827;font-size:24px;line-height:1.2;">' + escapeEmailHtml_(actionLabel) + ' Needs Dylan Approval</h1>',
+    '<p style="margin:0 0 10px 0;"><strong>Submitted By:</strong> ' + escapeEmailHtml_(firstNonEmptyRequestValue_(safeContext.actorDisplay, safeContext.actorUsername, '')) + '</p>',
+    '<p style="margin:0 0 10px 0;"><strong>Submitted:</strong> ' + escapeEmailHtml_(submittedAt) + '</p>',
+    '<p style="margin:0 0 18px 0;"><strong>Transaction ID:</strong> ' + escapeEmailHtml_(firstNonEmptyRequestValue_(safeContext.transactionId, '')) + '</p>',
+    '<p style="margin:0 0 18px 0;">Open Managers &gt; Transaction History, review the pending row, then approve it to make the inventory change live.</p>',
+    tableHtml,
+    '</div>'
+  ].join(''));
+  const subjectName = String(firstNonEmptyRequestValue_(item.commonname, 'Inventory')).replace(/\s+/g, ' ').trim();
+  const subject = '[External] Approval Needed: GNC PH ' + actionLabel + ' - ' + subjectName;
+  const emailOptions = {
+    htmlBody: htmlBody,
+    name: 'GNC PH Inventory Approval'
+  };
+  if (actorEmail && actorEmail !== INVENTORY_TRANSACTION_APPROVER_EMAIL) emailOptions.cc = actorEmail;
+  GmailApp.sendEmail(recipients.join(','), subject, buildInventoryTransactionEmailText_(item, safeContext), emailOptions);
+  return {
+    ok: true,
+    recipients: recipients,
+    subject: subject
+  };
+}
+
+function createPendingInventoryTransactionApproval_(payload) {
+  try {
+    const action = normalizeInventoryTransactionAction_(payload && payload.action);
+    const source = payload && typeof payload.source === 'object' ? payload.source : {};
+    const transaction = payload && typeof payload.transaction === 'object' ? payload.transaction : {};
+    const sourceUid = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(source.unique_id, source.uniqueId, payload && payload.unique_id, payload && payload.uniqueId));
+    if (!sourceUid) throw new Error('Missing source inventory row id.');
+    const sourceRow = fetchEmailApprovalMasterRow_(sourceUid);
+    if (!sourceRow) throw new Error('Source inventory row was not found. Sync and try again.');
+    validateInventoryTransactionSourceIdentity_(sourceRow, source);
+    validateInventoryTransactionHoldScopeRequest_(sourceRow, transaction);
+    const transactionId = Utilities.getUuid();
+    const nowIso = new Date().toISOString();
+    const auditRecord = buildPendingInventoryTransactionAuditRecord_(payload, sourceRow, transactionId, nowIso);
+    const auditResult = insertInventoryTransactionAudit_(auditRecord);
+    if (!auditResult.ok) {
+      throw new Error(auditResult.message || ('Approval queue insert failed (' + auditResult.status + ')'));
+    }
+    const actor = getInventoryTransactionActorContext_(payload || {});
+    let emailWarning = null;
+    try {
+      const emailResult = sendInventoryTransactionApprovalRequestEmail_(payload, {
+        action: action,
+        transaction: transaction,
+        transactionId: transactionId,
+        nowIso: nowIso,
+        actorUsername: actor.username,
+        actorDisplay: actor.display,
+        actorEmail: actor.email,
+        sourceBefore: auditRecord.source_before,
+        sourceRow: auditRecord.source_before,
+        destinationBefore: null,
+        destinationRow: null,
+        holdScope: { action: 'none', count: 0, rows: [] },
+        quantity: auditRecord.quantity
+      });
+      if (emailResult && emailResult.ok === false) emailWarning = emailResult.message || 'Approval email was not sent.';
+    } catch (emailError) {
+      emailWarning = emailError && emailError.message ? emailError.message : String(emailError || 'Approval email failed.');
+      console.warn('Inventory transaction approval email warning: ' + emailWarning);
+    }
+    return {
+      ok: true,
+      status: INVENTORY_TRANSACTION_STATUS_PENDING_DYLAN,
+      pendingApproval: true,
+      action: action,
+      transactionId: transactionId,
+      emailWarning: emailWarning,
+      message: getInventoryTransactionEmailActionLabel_(action) + ' sent to Dylan for approval. Inventory was not changed yet.'
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 'error',
+      message: error && error.message ? error.message : String(error || 'Inventory transaction approval request failed.')
+    };
+  }
+}
+
 function normalizeInventoryTransactionHistoryToken_(value) {
   return String(value == null ? '' : value)
     .trim()
@@ -7851,9 +8095,12 @@ function sendInventoryTransactionEmail_(payload, context) {
   };
 }
 
-function handleInventoryTransaction_(payload) {
+function applyInventoryTransactionNow_(payload, options) {
+  const applyOptions = options && typeof options === 'object' ? options : {};
+  const existingTransactionId = normalizeInventoryTransactionText_(applyOptions.transactionId);
   const lock = LockService.getScriptLock();
   let lockReleased = false;
+  let shouldResetApprovalStatus = false;
   if (!lock.tryLock(15000)) {
     return {
       ok: false,
@@ -7876,8 +8123,34 @@ function handleInventoryTransaction_(payload) {
     const actorUsername = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.username, actor.user, payload && payload.actorUsername, 'unknown'));
     const actorDisplay = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.display, actor.displayName, actorUsername, 'Unknown User'));
     const actorEmail = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.email, actor.userEmail, ''));
-    const transactionId = Utilities.getUuid();
-    const nowIso = new Date().toISOString();
+    const transactionId = existingTransactionId || Utilities.getUuid();
+    const nowIso = normalizeInventoryTransactionText_(applyOptions.approvedAt) || new Date().toISOString();
+    const approvalMeta = applyOptions.approval && typeof applyOptions.approval === 'object'
+      ? applyOptions.approval
+      : (existingTransactionId ? {
+        approved_by_username: INVENTORY_TRANSACTION_APPROVER_USER,
+        approved_by_display: INVENTORY_TRANSACTION_APPROVER_USER,
+        approved_by_email: INVENTORY_TRANSACTION_APPROVER_EMAIL,
+        approved_at: nowIso
+      } : null);
+    if (existingTransactionId) {
+      const approvalRow = fetchInventoryTransactionAuditRow_(existingTransactionId);
+      const approvalStatus = normalizeInventoryTransactionText_(approvalRow && approvalRow.status).toLowerCase();
+      if (!approvalRow) throw new Error('Pending inventory transaction was not found.');
+      if (approvalStatus !== INVENTORY_TRANSACTION_STATUS_PENDING_DYLAN) {
+        throw new Error('This inventory transaction is already ' + (approvalStatus || 'handled') + '.');
+      }
+      const approvalPayload = Object.assign({}, payload || {}, {
+        approval_required: true,
+        approval_status: INVENTORY_TRANSACTION_STATUS_APPLYING,
+        approval: approvalMeta
+      });
+      patchInventoryTransactionAudit_(existingTransactionId, {
+        status: INVENTORY_TRANSACTION_STATUS_APPLYING,
+        raw_payload: approvalPayload
+      });
+      shouldResetApprovalStatus = true;
+    }
     const sourceBefore = cloneInventoryTransactionRowForAudit_(sourceRow);
     let destinationRow = null;
     let destinationWasCreated = false;
@@ -7982,7 +8255,14 @@ function handleInventoryTransaction_(payload) {
     const quantity = action === 'qty'
       ? parseInventoryTransactionNumber_(firstNonEmptyRequestValue_(transaction.newQuantity, transaction.new_quantity, transaction.quantity), 'New quantity', { disallowNegative: true })
       : parseInventoryTransactionNumber_(transaction.quantity, 'Quantity to move', { requirePositive: true });
-    const auditResult = insertInventoryTransactionAudit_({
+    const auditPayload = approvalMeta
+      ? Object.assign({}, payload || {}, {
+        approval_required: true,
+        approval_status: INVENTORY_TRANSACTION_STATUS_APPLIED,
+        approval: approvalMeta
+      })
+      : (payload || {});
+    const auditRecord = {
       unique_id: transactionId,
       created_at: nowIso,
       action: action,
@@ -8004,9 +8284,27 @@ function handleInventoryTransaction_(payload) {
       source_after: sourceAfterAudit,
       destination_before: destinationBefore,
       destination_after: destinationAfterAudit,
-      raw_payload: payload || {},
-      status: 'applied'
-    });
+      raw_payload: auditPayload,
+      status: INVENTORY_TRANSACTION_STATUS_APPLIED
+    };
+    let auditResult = null;
+    if (existingTransactionId) {
+      const auditPatch = Object.assign({}, auditRecord);
+      delete auditPatch.unique_id;
+      delete auditPatch.created_at;
+      try {
+        patchInventoryTransactionAudit_(existingTransactionId, auditPatch);
+        auditResult = { ok: true };
+      } catch (auditPatchError) {
+        auditResult = {
+          ok: false,
+          status: 'patch_error',
+          message: auditPatchError && auditPatchError.message ? auditPatchError.message : String(auditPatchError || 'Audit update failed.')
+        };
+      }
+    } else {
+      auditResult = insertInventoryTransactionAudit_(auditRecord);
+    }
     if (!auditResult.ok) {
       auditWarning = auditResult.message || ('Audit insert failed (' + auditResult.status + ')');
       console.warn('Inventory transaction audit warning: ' + auditWarning);
@@ -8090,6 +8388,15 @@ function handleInventoryTransaction_(payload) {
       message: action === 'qty' ? 'Quantity updated.' : (action === 'transfer' ? 'Transfer applied.' : 'Reclass applied.')
     };
   } catch (error) {
+    if (existingTransactionId && shouldResetApprovalStatus) {
+      try {
+        patchInventoryTransactionAudit_(existingTransactionId, {
+          status: INVENTORY_TRANSACTION_STATUS_PENDING_DYLAN
+        });
+      } catch (statusError) {
+        console.warn('Inventory transaction approval status reset failed: ' + (statusError && statusError.message ? statusError.message : statusError));
+      }
+    }
     return {
       ok: false,
       status: 'error',
@@ -8099,6 +8406,79 @@ function handleInventoryTransaction_(payload) {
     if (!lockReleased) {
       try { lock.releaseLock(); } catch (error) {}
     }
+  }
+}
+
+function handleInventoryTransaction_(payload) {
+  return createPendingInventoryTransactionApproval_(payload);
+}
+
+function handleInventoryTransactionApproval_(payload) {
+  try {
+    if (!isInventoryTransactionDylanActor_(payload || {})) {
+      return {
+        ok: false,
+        status: 'forbidden',
+        message: 'Only dylan_collyge can approve inventory transactions.'
+      };
+    }
+    const transactionId = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(
+      payload && payload.transactionId,
+      payload && payload.transaction_id,
+      payload && payload.unique_id,
+      payload && payload.id
+    ));
+    if (!transactionId) throw new Error('Missing inventory transaction id.');
+    const decision = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(payload && payload.decision, payload && payload.action, 'approve')).toLowerCase();
+    const row = fetchInventoryTransactionAuditRow_(transactionId);
+    if (!row) throw new Error('Pending inventory transaction was not found.');
+    const status = normalizeInventoryTransactionText_(row.status).toLowerCase();
+    if (status !== INVENTORY_TRANSACTION_STATUS_PENDING_DYLAN) {
+      return {
+        ok: false,
+        status: status || 'handled',
+        message: 'This inventory transaction is already ' + (status || 'handled') + '.'
+      };
+    }
+    const actor = getInventoryTransactionActorContext_(payload || {});
+    const nowIso = new Date().toISOString();
+    const rawPayload = parseInventoryTransactionAuditJson_(row.raw_payload, null);
+    if (!rawPayload) throw new Error('Pending inventory transaction payload is missing.');
+    const approvalMeta = {
+      decision: decision === 'deny' || decision === 'denied' ? INVENTORY_TRANSACTION_STATUS_DENIED : INVENTORY_TRANSACTION_STATUS_APPLIED,
+      approved_by_username: INVENTORY_TRANSACTION_APPROVER_USER,
+      approved_by_display: normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.display, actor.username, INVENTORY_TRANSACTION_APPROVER_USER)),
+      approved_by_email: normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.email, INVENTORY_TRANSACTION_APPROVER_EMAIL)),
+      approved_at: nowIso,
+      note: normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(payload && payload.note, payload && payload.reason, ''))
+    };
+    if (decision === 'deny' || decision === 'denied') {
+      patchInventoryTransactionAudit_(transactionId, {
+        status: INVENTORY_TRANSACTION_STATUS_DENIED,
+        raw_payload: Object.assign({}, rawPayload, {
+          approval_required: true,
+          approval_status: INVENTORY_TRANSACTION_STATUS_DENIED,
+          approval: approvalMeta
+        })
+      });
+      return {
+        ok: true,
+        status: INVENTORY_TRANSACTION_STATUS_DENIED,
+        transactionId: transactionId,
+        message: 'Inventory transaction denied. Inventory was not changed.'
+      };
+    }
+    return applyInventoryTransactionNow_(rawPayload, {
+      transactionId: transactionId,
+      approvedAt: nowIso,
+      approval: approvalMeta
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      status: 'error',
+      message: error && error.message ? error.message : String(error || 'Inventory transaction approval failed.')
+    };
   }
 }
 
@@ -10761,6 +11141,10 @@ function doPost(e) {
 
     if (payload.type === 'inventory_transaction_history') {
       return jsonOutput_(fetchInventoryTransactionHistory_(payload));
+    }
+
+    if (payload.type === 'inventory_transaction_approval') {
+      return jsonOutput_(handleInventoryTransactionApproval_(payload));
     }
 
     if (payload.type === 'inventory_transaction') {
