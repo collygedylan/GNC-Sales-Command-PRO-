@@ -2,22 +2,22 @@
   "name": "Ag Data Solutions",
   "short_name": "Ag Data",
   "description": "Ag Data Solutions field operations app.",
-  "version": "V2026.07.08.22",
+  "version": "V2026.07.08.23",
   "id": "./index.html",
-  "start_url": "./index.html?shellv=V2026.07.08.22",
+  "start_url": "./index.html?shellv=V2026.07.08.23",
   "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#007a4d",
   "icons": [
     {
-      "src": "./ag-data-solutions-icon-v20260708022-192.png",
+      "src": "./ag-data-solutions-icon-v20260708023-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "./ag-data-solutions-icon-v20260708022-512.png",
+      "src": "./ag-data-solutions-icon-v20260708023-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
