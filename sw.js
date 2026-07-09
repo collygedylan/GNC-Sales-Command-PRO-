@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.07.08.19';
+const APP_SHELL_BUILD = 'V2026.07.08.20';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
@@ -10,7 +10,6 @@ const CACHE_NAME = 'greenleaf-v4.3-rebuild-' + APP_SHELL_BUILD;
 const ASSETS_TO_CACHE = [
   APP_SHELL_URL,
   './manifest.json',
-  './ag-data-solutions-logo.png',
   './Greenleaf Logo.png',
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/@phosphor-icons/web',
