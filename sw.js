@@ -2,14 +2,16 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.07.09.09';
+const APP_SHELL_BUILD = 'V2026.07.09.10';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
+const EVAL_ITEMCODE_ASSIGNMENTS_URL = './eval-itemcode-assignments.csv?assignv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const CACHE_NAME = 'greenleaf-v4.3-rebuild-' + APP_SHELL_BUILD;
 const ASSETS_TO_CACHE = [
   APP_SHELL_URL,
   './manifest.json',
+  EVAL_ITEMCODE_ASSIGNMENTS_URL,
   './ag-data-solutions-logo.png',
   './ag-data-solutions-icon-v20260708023-32.png',
   './ag-data-solutions-icon-v20260708023-180.png',
