@@ -33,6 +33,7 @@ jobs:
           cp index.html _site/index.html
           cp manifest.json _site/manifest.json
           cp sw.js _site/sw.js
+          cp eval-itemcode-assignments.csv _site/eval-itemcode-assignments.csv
           cp CNAME _site/CNAME
           cp .nojekyll _site/.nojekyll
           cp OneSignalSDKWorker.js _site/OneSignalSDKWorker.js
