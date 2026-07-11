@@ -37,6 +37,11 @@ jobs:
           cp .nojekyll _site/.nojekyll
           cp OneSignalSDKWorker.js _site/OneSignalSDKWorker.js
           cp "Greenleaf Logo.png" _site/"Greenleaf Logo.png"
+          cp ag-data-solutions-logo.png _site/ag-data-solutions-logo.png
+          cp ag-data-solutions-icon-v20260708023-32.png _site/ag-data-solutions-icon-v20260708023-32.png
+          cp ag-data-solutions-icon-v20260708023-180.png _site/ag-data-solutions-icon-v20260708023-180.png
+          cp ag-data-solutions-icon-v20260708023-192.png _site/ag-data-solutions-icon-v20260708023-192.png
+          cp ag-data-solutions-icon-v20260708023-512.png _site/ag-data-solutions-icon-v20260708023-512.png
           cp "Ag Metric App.png" _site/"Ag Metric App.png"
           if [ -f "greenleaf-logo.png" ]; then
             cp "greenleaf-logo.png" _site/"greenleaf-logo.png"
