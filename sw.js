@@ -2,21 +2,15 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.07.10.35';
+const APP_SHELL_BUILD = 'V2026.07.10.36';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
-const EVAL_ITEMCODE_ASSIGNMENTS_URL = './eval-itemcode-assignments.csv?assignv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const CACHE_NAME = 'greenleaf-v4.3-rebuild-' + APP_SHELL_BUILD;
 const ASSETS_TO_CACHE = [
   APP_SHELL_URL,
   './manifest.json',
-  EVAL_ITEMCODE_ASSIGNMENTS_URL,
-  './ag-data-solutions-logo.png',
-  './ag-data-solutions-icon-v20260708023-32.png',
-  './ag-data-solutions-icon-v20260708023-180.png',
-  './ag-data-solutions-icon-v20260708023-192.png',
-  './ag-data-solutions-icon-v20260708023-512.png',
+  './Greenleaf Logo.png',
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/@phosphor-icons/web',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
@@ -251,7 +245,7 @@ self.addEventListener('push', (event) => {
     try { data = event.data.json(); } catch (error) { data = { title: 'Greenleaf Message', body: event.data.text() }; }
   }
   const title = data.title || 'Greenleaf Message';
-  const iconUrl = new URL(data.icon || './ag-data-solutions-icon-v20260708023-192.png', self.registration.scope).href;
+  const iconUrl = new URL(data.icon || './Greenleaf Logo.png', self.registration.scope).href;
   const targetUrl = new URL(data.url || APP_SHELL_URL, self.registration.scope).href;
   const options = {
     body: data.body || 'You have a new message.',
