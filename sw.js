@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.07.10.42';
+const APP_SHELL_BUILD = 'V2026.07.10.43';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
