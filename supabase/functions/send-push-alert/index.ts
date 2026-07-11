@@ -78,6 +78,9 @@ function buildTargetUsers(eventType: string, payload: Record<string, unknown>) {
   if (eventType === "walkie_alert") {
     return normalizePayloadUserList(payload.recipients || payload.targetUsers || payload.to);
   }
+  if (eventType === "department_calendar_event") {
+    return normalizePayloadUserList(payload.recipients || payload.targetUsers || payload.to);
+  }
   if (eventType === "request_complete") {
     const direct = normalizeUsername(String(payload.requestedByUsername || payload.requestedBy || payload.repName || ""));
     return [...new Set([direct, ...REQUEST_ALERT_USERNAMES].filter(Boolean))];
@@ -125,6 +128,19 @@ function buildNotification(eventType: string, payload: Record<string, unknown>) 
       viewId: "walkie",
       channelId,
       callId,
+      url: "./"
+    };
+  }
+  if (eventType === "department_calendar_event") {
+    const eventTitle = String(payload.title || payload.customer || "Calendar Event").trim();
+    const bodyPreview = String(payload.bodyPreview || `${createdBy} added ${eventTitle}.`).trim();
+    const calendarEventId = String(payload.calendarEventId || payload.folderId || "").trim();
+    return {
+      title: "Calendar",
+      body: bodyPreview,
+      tag: `calendar-${calendarEventId || Date.now()}`,
+      viewId: "department-calendar",
+      calendarEventId,
       url: "./"
     };
   }
@@ -225,7 +241,7 @@ serve(async (req) => {
 
   const payload = await req.json().catch(() => ({})) as Record<string, unknown>;
   const eventType = String(payload.eventType || payload.type || "").trim().toLowerCase();
-  if (eventType !== "new_request" && eventType !== "request_complete" && eventType !== "flyer_created" && eventType !== "flyer_complete" && eventType !== "chat_message" && eventType !== "walkie_alert") {
+  if (eventType !== "new_request" && eventType !== "request_complete" && eventType !== "flyer_created" && eventType !== "flyer_complete" && eventType !== "chat_message" && eventType !== "walkie_alert" && eventType !== "department_calendar_event") {
     return jsonResponse({ error: "Unsupported event type." }, 400);
   }
 
