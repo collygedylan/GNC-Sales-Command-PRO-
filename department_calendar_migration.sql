@@ -19,6 +19,11 @@ alter table public.v2_department_calendar_events add column if not exists reques
 alter table public.v2_department_calendar_events add column if not exists requested_by_display text;
 alter table public.v2_department_calendar_events add column if not exists assigned_to_username text;
 alter table public.v2_department_calendar_events add column if not exists assigned_to_display text;
+alter table public.v2_department_calendar_events add column if not exists assigned_usernames jsonb;
+alter table public.v2_department_calendar_events add column if not exists assigned_displays jsonb;
+alter table public.v2_department_calendar_events add column if not exists recurrence_type text;
+alter table public.v2_department_calendar_events add column if not exists recurrence_interval integer;
+alter table public.v2_department_calendar_events add column if not exists recurrence_until timestamptz;
 alter table public.v2_department_calendar_events add column if not exists status text;
 alter table public.v2_department_calendar_events add column if not exists approved_by_username text;
 alter table public.v2_department_calendar_events add column if not exists approved_by_display text;
@@ -39,6 +44,20 @@ set
     start_at = coalesce(start_at, now()),
     end_at = coalesce(end_at, start_at, now()),
     all_day = coalesce(all_day, false),
+    assigned_usernames = coalesce(
+        assigned_usernames,
+        to_jsonb(array_remove(array[nullif(assigned_to_username, '')], null))
+    ),
+    assigned_displays = coalesce(
+        assigned_displays,
+        to_jsonb(array_remove(array[nullif(assigned_to_display, '')], null))
+    ),
+    recurrence_type = case
+        when coalesce(nullif(recurrence_type, ''), 'none') in ('none', 'weekly', 'biweekly', 'monthly')
+            then coalesce(nullif(recurrence_type, ''), 'none')
+        else 'none'
+    end,
+    recurrence_interval = greatest(1, coalesce(recurrence_interval, 1)),
     status = case
         when coalesce(nullif(status, ''), 'approved') in ('requested', 'approved', 'denied', 'cancelled')
             then coalesce(nullif(status, ''), 'approved')
@@ -60,6 +79,14 @@ alter table public.v2_department_calendar_events alter column end_at set default
 alter table public.v2_department_calendar_events alter column end_at set not null;
 alter table public.v2_department_calendar_events alter column all_day set default false;
 alter table public.v2_department_calendar_events alter column all_day set not null;
+alter table public.v2_department_calendar_events alter column assigned_usernames set default '[]'::jsonb;
+alter table public.v2_department_calendar_events alter column assigned_usernames set not null;
+alter table public.v2_department_calendar_events alter column assigned_displays set default '[]'::jsonb;
+alter table public.v2_department_calendar_events alter column assigned_displays set not null;
+alter table public.v2_department_calendar_events alter column recurrence_type set default 'none';
+alter table public.v2_department_calendar_events alter column recurrence_type set not null;
+alter table public.v2_department_calendar_events alter column recurrence_interval set default 1;
+alter table public.v2_department_calendar_events alter column recurrence_interval set not null;
 alter table public.v2_department_calendar_events alter column status set default 'approved';
 alter table public.v2_department_calendar_events alter column status set not null;
 alter table public.v2_department_calendar_events alter column created_at set default now();
@@ -78,6 +105,17 @@ begin
         alter table public.v2_department_calendar_events
             add constraint v2_department_calendar_events_event_type_check
             check (event_type in ('time_off', 'project', 'meeting'));
+    end if;
+
+    if not exists (
+        select 1
+        from pg_constraint
+        where conname = 'v2_department_calendar_events_recurrence_type_check'
+          and conrelid = 'public.v2_department_calendar_events'::regclass
+    ) then
+        alter table public.v2_department_calendar_events
+            add constraint v2_department_calendar_events_recurrence_type_check
+            check (recurrence_type in ('none', 'weekly', 'biweekly', 'monthly'));
     end if;
 
     if not exists (
@@ -103,6 +141,9 @@ create index if not exists idx_v2_department_calendar_events_status
 
 create index if not exists idx_v2_department_calendar_events_assigned
     on public.v2_department_calendar_events (assigned_to_username);
+
+create index if not exists idx_v2_department_calendar_events_assigned_usernames
+    on public.v2_department_calendar_events using gin (assigned_usernames);
 
 alter table public.v2_department_calendar_events enable row level security;
 
