@@ -2,19 +2,22 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.07.13.49';
+const APP_SHELL_BUILD = 'V2026.07.13.50';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
-const CACHE_NAME = 'greenleaf-v4.3-rebuild-' + APP_SHELL_BUILD;
+const CACHE_NAME = 'ag-data-v4.3-rebuild-' + APP_SHELL_BUILD;
 const ASSETS_TO_CACHE = [
   APP_SHELL_URL,
   './manifest.json',
   './ag-data-solutions-logo.png',
+  './ag-data-solutions-splash-v202607141237.png',
   './ag-data-solutions-icon-v20260708023-32.png',
   './ag-data-solutions-icon-v20260708023-180.png',
   './ag-data-solutions-icon-v20260708023-192.png',
   './ag-data-solutions-icon-v20260708023-512.png',
+  './Greenleaf Logo.png',
+  './assets/greenleaf-logo.png',
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/@phosphor-icons/web',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
@@ -260,7 +263,7 @@ self.addEventListener('push', (event) => {
     silent: false,
     requireInteraction: true,
     timestamp: Date.now(),
-    tag: data.tag || 'greenleaf-alert',
+    tag: data.tag || 'ag-data-alert',
     renotify: true
   };
   event.waitUntil(self.registration.showNotification(title, options));
