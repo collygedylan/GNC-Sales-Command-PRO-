@@ -168,7 +168,12 @@ def is_actionable_diagnostic_text(value: Any) -> bool:
     return not any(phrase in text for phrase in non_actionable_phrases)
 
 
-def parse_label_entry(label: Any) -> Dict[str, str]:
+def is_truthy_label_value(value: Any) -> bool:
+    text = normalize_key(value)
+    return text in {"1", "true", "yes", "y", "manual_review", "manual review", "fallback"}
+
+
+def parse_label_entry(label: Any) -> Dict[str, Any]:
     if isinstance(label, dict):
         return {
             "label": str(label.get("label") or label.get("name") or "").strip(),
@@ -177,6 +182,8 @@ def parse_label_entry(label: Any) -> Dict[str, str]:
             "grade": normalize_grade(label.get("grade") or label.get("class_grade") or ""),
             "diagnosis": str(label.get("diagnosis") or "").strip(),
             "treatment": str(label.get("treatment") or label.get("recommended_treatment") or "").strip(),
+            "manual_review": is_truthy_label_value(label.get("manual_review") or label.get("fallback")),
+            "reason": str(label.get("reason") or label.get("manual_review_reason") or "").strip(),
         }
 
     text = str(label or "").strip()
@@ -191,10 +198,12 @@ def parse_label_entry(label: Any) -> Dict[str, str]:
         "grade": grade,
         "diagnosis": text,
         "treatment": "",
+        "manual_review": False,
+        "reason": "",
     }
 
 
-def load_labels(path: pathlib.Path) -> List[Dict[str, str]]:
+def load_labels(path: pathlib.Path) -> List[Dict[str, Any]]:
     if not path.exists():
         return []
     if path.suffix.lower() == ".json":
@@ -217,7 +226,7 @@ def choose_first_existing(paths: Iterable[pathlib.Path]) -> Optional[pathlib.Pat
 
 
 def find_latest_model(models_dir: pathlib.Path, names: Iterable[str] = ()) -> Optional[pathlib.Path]:
-    candidates: List[pathlib.Path] = []
+    explicit_candidates: List[pathlib.Path] = []
     for name in names:
         if not name:
             continue
@@ -225,7 +234,12 @@ def find_latest_model(models_dir: pathlib.Path, names: Iterable[str] = ()) -> Op
         if not path.is_absolute():
             path = models_dir / path
         if path.exists():
-            candidates.append(path)
+            explicit_candidates.append(path)
+    explicit_candidates = [path for path in explicit_candidates if path.is_file()]
+    if explicit_candidates:
+        return explicit_candidates[0]
+
+    candidates: List[pathlib.Path] = []
     for suffix in (".pt", ".pth"):
         candidates.extend(models_dir.glob(f"*{suffix}"))
     candidates = [path for path in candidates if path.is_file()]
@@ -244,6 +258,28 @@ def find_latest_labels(models_dir: pathlib.Path, explicit_path: str = "") -> Opt
     candidates.extend(models_dir.glob("*labels*.json"))
     candidates.extend(models_dir.glob("*labels*.txt"))
     return choose_first_existing(candidates)
+
+
+def read_manual_review_model_marker(path: pathlib.Path) -> str:
+    try:
+        marker_text = path.read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeDecodeError):
+        return ""
+    if not marker_text.startswith("{"):
+        return ""
+    try:
+        marker = json.loads(marker_text)
+    except json.JSONDecodeError:
+        return ""
+    if not isinstance(marker, dict):
+        return ""
+    is_fallback = is_truthy_label_value(marker.get("manual_review_fallback")) or normalize_key(marker.get("fallback_type")) == "manual_review"
+    if not is_fallback:
+        return ""
+    return str(
+        marker.get("reason")
+        or "Plant classifier fallback is active. A trained plant_classifier.pt checkpoint has not been synced yet."
+    ).strip()
 
 
 @dataclasses.dataclass
@@ -806,6 +842,10 @@ class TorchModelAdapter:
         if not self.labels:
             self.reason = "No label metadata found."
             return
+        fallback_reason = read_manual_review_model_marker(self.model_path)
+        if fallback_reason:
+            self.reason = fallback_reason
+            return
 
         try:
             import torch
@@ -852,6 +892,17 @@ class TorchModelAdapter:
             label_index = int(index.item())
             label = self.labels[label_index] if label_index < len(self.labels) else {}
             confidence_value = float(confidence.item())
+            if is_truthy_label_value(label.get("manual_review")):
+                return Prediction(
+                    genus=str(label.get("genus") or "").strip(),
+                    common_name=str(label.get("common_name") or label.get("label") or "").strip(),
+                    grade=normalize_grade(label.get("grade") or ""),
+                    confidence=confidence_value,
+                    diagnosis=str(label.get("diagnosis") or "").strip(),
+                    treatment=str(label.get("treatment") or "").strip(),
+                    manual_review=True,
+                    reason=str(label.get("reason") or "Plant classifier label requires manual review.").strip(),
+                )
             return Prediction(
                 genus=str(label.get("genus") or "").strip(),
                 common_name=str(label.get("common_name") or label.get("label") or "").strip(),
