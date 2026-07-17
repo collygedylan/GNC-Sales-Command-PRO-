@@ -20,6 +20,10 @@ const PHOTO_BUCKETS: Record<string, string> = {
 };
 const READABLE_TABLES = new Set([
   "v2_master_inventory",
+  "v2_crop_roll_drive_rows",
+  "v2_crop_roll_open_rows",
+  "v2_crop_roll_runs",
+  "v2_crop_roll_rows",
   "v2_active_request",
   "v2_reserves",
   "v2_soc_master",
@@ -33,6 +37,7 @@ const READABLE_TABLES = new Set([
 ]);
 const WRITABLE_TABLES = new Set([
   "v2_master_inventory",
+  "v2_crop_roll_rows",
   "v2_active_request",
   "v2_sales_office",
   "v2_dock_team_status",
