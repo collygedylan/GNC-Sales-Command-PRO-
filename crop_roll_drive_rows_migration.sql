@@ -443,19 +443,19 @@ create index if not exists idx_v2_crop_roll_drive_rows_updated
 create index if not exists idx_v2_crop_roll_rows_live_completion_master
   on public.v2_crop_roll_rows (run_id, row_status, master_unique_id);
 
-create index if not exists idx_v2_crop_roll_rows_live_completion_row_id
-  on public.v2_crop_roll_rows (run_id, row_status, row_id);
-
 create or replace view public.v2_crop_roll_open_rows as
+with completed_ids as (
+  select distinct completed_id as master_unique_id
+  from public.v2_crop_roll_rows c
+  cross join lateral unnest(public.get_v2_crop_roll_completion_master_ids(to_jsonb(c))) as completed_id
+  where c.run_id = 'CR-LIVE-COMPLETIONS'
+    and c.row_status = 'complete'
+    and nullif(btrim(completed_id), '') is not null
+)
 select d.*
 from public.v2_crop_roll_drive_rows d
-where not exists (
-  select 1
-  from public.v2_crop_roll_rows c
-  where c.run_id = 'CR-LIVE-COMPLETIONS'
-    and lower(coalesce(c.row_status, '')) = 'complete'
-    and d.master_unique_id = any(public.get_v2_crop_roll_completion_master_ids(to_jsonb(c)))
-);
+left join completed_ids c on c.master_unique_id = d.master_unique_id
+where c.master_unique_id is null;
 
 alter table public.v2_crop_roll_drive_rows enable row level security;
 
