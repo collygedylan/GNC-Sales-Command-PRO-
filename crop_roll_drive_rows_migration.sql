@@ -474,8 +474,7 @@ select d.*
 from public.v2_crop_roll_drive_rows d
 left join completed_ids ci on ci.master_unique_id = d.master_unique_id
 left join completed_cards cc
-  on cc.crop_roll_view = d.crop_roll_view
-  and cc.itemcode = upper(btrim(coalesce(d.itemcode, '')))
+  on cc.itemcode = upper(btrim(coalesce(d.itemcode, '')))
   and cc.locationcode = upper(btrim(coalesce(d.locationcode, '')))
   and (cc.lotcode is null or cc.lotcode = upper(btrim(coalesce(d.lotcode, ''))))
   and (cc.contsize is null or cc.contsize = upper(btrim(coalesce(d.contsize, ''))))
