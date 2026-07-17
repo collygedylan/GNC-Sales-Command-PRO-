@@ -138,10 +138,11 @@ as $$
       (row_data #>> '{snapshot,MASTER_UNIQUE_ID}'),
       (row_data #>> '{snapshot,unique_id}'),
       (row_data #>> '{snapshot,UNIQUE_ID}'),
+      (row_data->>'row_id'),
       (case
         when btrim(coalesce(row_data->>'row_id', '')) like '%:%'
-          then regexp_replace(btrim(row_data->>'row_id'), '^[^:]+:', '')
-        else row_data->>'row_id'
+          then regexp_replace(btrim(row_data->>'row_id'), '^.*:', '')
+        else null
       end)
   )
   select coalesce(array_agg(distinct cleaned), array[]::text[])
@@ -444,18 +445,42 @@ create index if not exists idx_v2_crop_roll_rows_live_completion_master
   on public.v2_crop_roll_rows (run_id, row_status, master_unique_id);
 
 create or replace view public.v2_crop_roll_open_rows as
-with completed_ids as (
-  select distinct completed_id as master_unique_id
+with completed as (
+  select
+    public.get_v2_crop_roll_completion_master_ids(to_jsonb(c)) as master_ids,
+    public.get_v2_crop_roll_completion_view(to_jsonb(c)) as crop_roll_view,
+    nullif(upper(btrim(coalesce(c.itemcode, ''))), '') as itemcode,
+    nullif(upper(btrim(coalesce(c.locationcode, ''))), '') as locationcode,
+    nullif(upper(btrim(coalesce(c.original_lotcode, c.target_lotcode, c.metadata #>> '{original_values,lotcode}', ''))), '') as lotcode,
+    nullif(upper(btrim(coalesce(c.contsize, ''))), '') as contsize
   from public.v2_crop_roll_rows c
-  cross join lateral unnest(public.get_v2_crop_roll_completion_master_ids(to_jsonb(c))) as completed_id
   where c.run_id = 'CR-LIVE-COMPLETIONS'
-    and c.row_status = 'complete'
-    and nullif(btrim(completed_id), '') is not null
+    and lower(coalesce(c.row_status, '')) = 'complete'
+),
+completed_ids as (
+  select distinct completed_id as master_unique_id
+  from completed c
+  cross join lateral unnest(c.master_ids) as completed_id
+  where nullif(btrim(completed_id), '') is not null
+),
+completed_cards as (
+  select distinct crop_roll_view, itemcode, locationcode, lotcode, contsize
+  from completed
+  where itemcode is not null
+    and locationcode is not null
+    and (lotcode is not null or contsize is not null)
 )
 select d.*
 from public.v2_crop_roll_drive_rows d
-left join completed_ids c on c.master_unique_id = d.master_unique_id
-where c.master_unique_id is null;
+left join completed_ids ci on ci.master_unique_id = d.master_unique_id
+left join completed_cards cc
+  on cc.crop_roll_view = d.crop_roll_view
+  and cc.itemcode = upper(btrim(coalesce(d.itemcode, '')))
+  and cc.locationcode = upper(btrim(coalesce(d.locationcode, '')))
+  and (cc.lotcode is null or cc.lotcode = upper(btrim(coalesce(d.lotcode, ''))))
+  and (cc.contsize is null or cc.contsize = upper(btrim(coalesce(d.contsize, ''))))
+where ci.master_unique_id is null
+  and cc.itemcode is null;
 
 alter table public.v2_crop_roll_drive_rows enable row level security;
 
