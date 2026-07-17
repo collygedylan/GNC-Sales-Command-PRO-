@@ -70,30 +70,6 @@ create table if not exists public.v2_crop_roll_drive_rows (
   updated_at timestamptz not null default now()
 );
 
-create index if not exists idx_v2_crop_roll_drive_rows_view_block_loc
-  on public.v2_crop_roll_drive_rows (crop_roll_view, blockalpha, locationcode);
-
-create index if not exists idx_v2_crop_roll_drive_rows_view_item_loc
-  on public.v2_crop_roll_drive_rows (crop_roll_view, itemcode, locationcode);
-
-create index if not exists idx_v2_crop_roll_drive_rows_view_size
-  on public.v2_crop_roll_drive_rows (crop_roll_view, contsize);
-
-create index if not exists idx_v2_crop_roll_drive_rows_eval_user
-  on public.v2_crop_roll_drive_rows (assignedto);
-
-create index if not exists idx_v2_crop_roll_drive_rows_plant_group
-  on public.v2_crop_roll_drive_rows (plantgroupcode);
-
-create index if not exists idx_v2_crop_roll_drive_rows_genus
-  on public.v2_crop_roll_drive_rows (genusname);
-
-create index if not exists idx_v2_crop_roll_drive_rows_updated
-  on public.v2_crop_roll_drive_rows (updated_at desc);
-
-create index if not exists idx_v2_crop_roll_rows_live_completion_master
-  on public.v2_crop_roll_rows (run_id, row_status, master_unique_id);
-
 create or replace function public.get_v2_crop_roll_drive_view(row_data jsonb)
 returns text
 language sql
@@ -332,9 +308,10 @@ for each row
 execute function public.upsert_v2_crop_roll_drive_row_from_master();
 
 insert into public.v2_crop_roll_drive_rows
-select (public.v2_crop_roll_drive_row_from_json(to_jsonb(m))).*
+select mapped.*
 from public.v2_master_inventory m
-where (public.v2_crop_roll_drive_row_from_json(to_jsonb(m))).unique_id is not null
+cross join lateral public.v2_crop_roll_drive_row_from_json(to_jsonb(m)) mapped
+where mapped.unique_id is not null
 on conflict (unique_id) do update set
   master_unique_id = excluded.master_unique_id,
   source_table = excluded.source_table,
@@ -400,6 +377,30 @@ on conflict (unique_id) do update set
   search_text = excluded.search_text,
   master_updated_at = excluded.master_updated_at,
   updated_at = now();
+
+create index if not exists idx_v2_crop_roll_drive_rows_view_block_loc
+  on public.v2_crop_roll_drive_rows (crop_roll_view, blockalpha, locationcode);
+
+create index if not exists idx_v2_crop_roll_drive_rows_view_item_loc
+  on public.v2_crop_roll_drive_rows (crop_roll_view, itemcode, locationcode);
+
+create index if not exists idx_v2_crop_roll_drive_rows_view_size
+  on public.v2_crop_roll_drive_rows (crop_roll_view, contsize);
+
+create index if not exists idx_v2_crop_roll_drive_rows_eval_user
+  on public.v2_crop_roll_drive_rows (assignedto);
+
+create index if not exists idx_v2_crop_roll_drive_rows_plant_group
+  on public.v2_crop_roll_drive_rows (plantgroupcode);
+
+create index if not exists idx_v2_crop_roll_drive_rows_genus
+  on public.v2_crop_roll_drive_rows (genusname);
+
+create index if not exists idx_v2_crop_roll_drive_rows_updated
+  on public.v2_crop_roll_drive_rows (updated_at desc);
+
+create index if not exists idx_v2_crop_roll_rows_live_completion_master
+  on public.v2_crop_roll_rows (run_id, row_status, master_unique_id);
 
 create or replace view public.v2_crop_roll_open_rows as
 select d.*
