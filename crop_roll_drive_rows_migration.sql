@@ -111,6 +111,47 @@ as $$
   end
 $$;
 
+create or replace function public.get_v2_crop_roll_completion_master_ids(row_data jsonb)
+returns text[]
+language sql
+immutable
+as $$
+  with candidates(raw_id) as (
+    values
+      (row_data->>'master_unique_id'),
+      (row_data->>'MASTER_UNIQUE_ID'),
+      (row_data->>'unique_id'),
+      (row_data->>'UNIQUE_ID'),
+      (row_data->>'source_unique_id'),
+      (row_data->>'SOURCE_UNIQUE_ID'),
+      (row_data #>> '{metadata,master_unique_id}'),
+      (row_data #>> '{metadata,MASTER_UNIQUE_ID}'),
+      (row_data #>> '{metadata,unique_id}'),
+      (row_data #>> '{metadata,UNIQUE_ID}'),
+      (row_data #>> '{metadata,source_unique_id}'),
+      (row_data #>> '{metadata,SOURCE_UNIQUE_ID}'),
+      (row_data #>> '{metadata,crop_roll_form_values,master_unique_id}'),
+      (row_data #>> '{metadata,crop_roll_form_values,MASTER_UNIQUE_ID}'),
+      (row_data #>> '{metadata,crop_roll_form_values,unique_id}'),
+      (row_data #>> '{metadata,crop_roll_form_values,UNIQUE_ID}'),
+      (row_data #>> '{snapshot,master_unique_id}'),
+      (row_data #>> '{snapshot,MASTER_UNIQUE_ID}'),
+      (row_data #>> '{snapshot,unique_id}'),
+      (row_data #>> '{snapshot,UNIQUE_ID}'),
+      (case
+        when btrim(coalesce(row_data->>'row_id', '')) like '%:%'
+          then regexp_replace(btrim(row_data->>'row_id'), '^[^:]+:', '')
+        else row_data->>'row_id'
+      end)
+  )
+  select coalesce(array_agg(distinct cleaned), array[]::text[])
+  from (
+    select nullif(btrim(coalesce(raw_id, '')), '') as cleaned
+    from candidates
+  ) normalized
+  where cleaned is not null
+$$;
+
 create or replace function public.v2_crop_roll_drive_row_from_json(row_data jsonb)
 returns public.v2_crop_roll_drive_rows
 language plpgsql
@@ -402,6 +443,9 @@ create index if not exists idx_v2_crop_roll_drive_rows_updated
 create index if not exists idx_v2_crop_roll_rows_live_completion_master
   on public.v2_crop_roll_rows (run_id, row_status, master_unique_id);
 
+create index if not exists idx_v2_crop_roll_rows_live_completion_row_id
+  on public.v2_crop_roll_rows (run_id, row_status, row_id);
+
 create or replace view public.v2_crop_roll_open_rows as
 select d.*
 from public.v2_crop_roll_drive_rows d
@@ -410,8 +454,7 @@ where not exists (
   from public.v2_crop_roll_rows c
   where c.run_id = 'CR-LIVE-COMPLETIONS'
     and lower(coalesce(c.row_status, '')) = 'complete'
-    and c.master_unique_id = d.master_unique_id
-    and public.get_v2_crop_roll_completion_view(to_jsonb(c)) = d.crop_roll_view
+    and d.master_unique_id = any(public.get_v2_crop_roll_completion_master_ids(to_jsonb(c)))
 );
 
 alter table public.v2_crop_roll_drive_rows enable row level security;
