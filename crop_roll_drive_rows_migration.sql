@@ -444,63 +444,156 @@ create index if not exists idx_v2_crop_roll_drive_rows_updated
 create index if not exists idx_v2_crop_roll_rows_live_completion_master
   on public.v2_crop_roll_rows (run_id, row_status, master_unique_id);
 
-create or replace view public.v2_crop_roll_open_rows as
-with completed as (
+create table if not exists public.v2_crop_roll_completed_drive_keys (
+  completion_row_id text not null,
+  match_key text not null,
+  key_type text not null,
+  master_unique_id text,
+  itemcode text,
+  locationcode text,
+  lotcode text,
+  contsize text,
+  updated_at timestamptz not null default now(),
+  primary key (completion_row_id, match_key)
+);
+
+create index if not exists idx_v2_crop_roll_completed_drive_keys_master
+  on public.v2_crop_roll_completed_drive_keys (key_type, master_unique_id);
+
+create index if not exists idx_v2_crop_roll_completed_drive_keys_card
+  on public.v2_crop_roll_completed_drive_keys (key_type, itemcode, locationcode, lotcode, contsize);
+
+create or replace function public.v2_crop_roll_completion_key_rows(row_data jsonb)
+returns table (
+  match_key text,
+  key_type text,
+  master_unique_id text,
+  itemcode text,
+  locationcode text,
+  lotcode text,
+  contsize text
+)
+language sql
+immutable
+as $$
+  with base as (
+    select
+      nullif(upper(btrim(coalesce(row_data->>'itemcode', row_data #>> '{metadata,crop_roll_form_values,itemcode}', row_data #>> '{metadata,original_values,itemcode}', ''))), '') as itemcode,
+      nullif(upper(btrim(coalesce(row_data->>'locationcode', row_data #>> '{metadata,crop_roll_form_values,locationcode}', row_data #>> '{metadata,original_values,locationcode}', ''))), '') as locationcode,
+      nullif(upper(btrim(coalesce(row_data->>'original_lotcode', row_data->>'target_lotcode', row_data #>> '{metadata,crop_roll_form_values,lotcode}', row_data #>> '{metadata,original_values,lotcode}', ''))), '') as lotcode,
+      nullif(upper(btrim(coalesce(row_data->>'contsize', row_data #>> '{metadata,crop_roll_form_values,contsize}', row_data #>> '{metadata,original_values,contsize}', ''))), '') as contsize
+  ),
+  ids as (
+    select distinct nullif(btrim(raw_id), '') as master_unique_id
+    from unnest(public.get_v2_crop_roll_completion_master_ids(row_data)) as ids_raw(raw_id)
+    where nullif(btrim(raw_id), '') is not null
+  ),
+  cards as (
+    select itemcode, locationcode, lotcode, contsize
+    from base
+    where itemcode is not null
+      and locationcode is not null
+      and (lotcode is not null or contsize is not null)
+  )
+  select 'id:' || ids.master_unique_id, 'id', ids.master_unique_id, null::text, null::text, null::text, null::text
+  from ids
+  union
+  select 'card:' || md5(concat_ws('|', cards.itemcode, cards.locationcode, coalesce(cards.lotcode, ''), coalesce(cards.contsize, ''))),
+    'card', null::text, cards.itemcode, cards.locationcode, cards.lotcode, cards.contsize
+  from cards
+$$;
+
+create or replace function public.refresh_v2_crop_roll_completed_drive_keys()
+returns void
+language plpgsql
+as $$
+begin
+  truncate table public.v2_crop_roll_completed_drive_keys;
+
+  insert into public.v2_crop_roll_completed_drive_keys (
+    completion_row_id, match_key, key_type, master_unique_id, itemcode, locationcode, lotcode, contsize, updated_at
+  )
   select
-    public.get_v2_crop_roll_completion_master_ids(to_jsonb(c)) as master_ids,
-    public.get_v2_crop_roll_completion_view(to_jsonb(c)) as crop_roll_view,
-    nullif(upper(btrim(coalesce(
-      c.itemcode,
-      c.metadata #>> '{crop_roll_form_values,itemcode}',
-      c.metadata #>> '{original_values,itemcode}',
-      ''
-    ))), '') as itemcode,
-    nullif(upper(btrim(coalesce(
-      c.locationcode,
-      c.metadata #>> '{crop_roll_form_values,locationcode}',
-      c.metadata #>> '{original_values,locationcode}',
-      ''
-    ))), '') as locationcode,
-    nullif(upper(btrim(coalesce(
-      c.original_lotcode,
-      c.target_lotcode,
-      c.metadata #>> '{crop_roll_form_values,lotcode}',
-      c.metadata #>> '{original_values,lotcode}',
-      ''
-    ))), '') as lotcode,
-    nullif(upper(btrim(coalesce(
-      c.contsize,
-      c.metadata #>> '{crop_roll_form_values,contsize}',
-      c.metadata #>> '{original_values,contsize}',
-      ''
-    ))), '') as contsize
+    coalesce(nullif(btrim(c.row_id), ''), 'no-row:' || md5(to_jsonb(c)::text)),
+    k.match_key, k.key_type, k.master_unique_id, k.itemcode, k.locationcode, k.lotcode, k.contsize, now()
   from public.v2_crop_roll_rows c
+  cross join lateral public.v2_crop_roll_completion_key_rows(to_jsonb(c)) k
   where c.run_id = 'CR-LIVE-COMPLETIONS'
     and lower(coalesce(c.row_status, '')) = 'complete'
-),
-completed_ids as (
-  select distinct completed_id as master_unique_id
-  from completed c
-  cross join lateral unnest(c.master_ids) as completed_id
-  where nullif(btrim(completed_id), '') is not null
-),
-completed_cards as (
-  select distinct crop_roll_view, itemcode, locationcode, lotcode, contsize
-  from completed
-  where itemcode is not null
-    and locationcode is not null
-    and (lotcode is not null or contsize is not null)
-)
+  on conflict (completion_row_id, match_key) do update set
+    key_type = excluded.key_type,
+    master_unique_id = excluded.master_unique_id,
+    itemcode = excluded.itemcode,
+    locationcode = excluded.locationcode,
+    lotcode = excluded.lotcode,
+    contsize = excluded.contsize,
+    updated_at = now();
+end;
+$$;
+
+select public.refresh_v2_crop_roll_completed_drive_keys();
+
+create or replace function public.sync_v2_crop_roll_completed_drive_keys()
+returns trigger
+language plpgsql
+as $$
+declare
+  old_completion_row_id text;
+  new_completion_row_id text;
+begin
+  if tg_op in ('UPDATE', 'DELETE') then
+    old_completion_row_id := coalesce(nullif(btrim(old.row_id), ''), 'no-row:' || md5(to_jsonb(old)::text));
+    delete from public.v2_crop_roll_completed_drive_keys
+    where completion_row_id = old_completion_row_id;
+  end if;
+
+  if tg_op in ('INSERT', 'UPDATE')
+    and new.run_id = 'CR-LIVE-COMPLETIONS'
+    and lower(coalesce(new.row_status, '')) = 'complete'
+  then
+    new_completion_row_id := coalesce(nullif(btrim(new.row_id), ''), 'no-row:' || md5(to_jsonb(new)::text));
+    insert into public.v2_crop_roll_completed_drive_keys (
+      completion_row_id, match_key, key_type, master_unique_id, itemcode, locationcode, lotcode, contsize, updated_at
+    )
+    select
+      new_completion_row_id, k.match_key, k.key_type, k.master_unique_id, k.itemcode, k.locationcode, k.lotcode, k.contsize, now()
+    from public.v2_crop_roll_completion_key_rows(to_jsonb(new)) k
+    on conflict (completion_row_id, match_key) do update set
+      key_type = excluded.key_type,
+      master_unique_id = excluded.master_unique_id,
+      itemcode = excluded.itemcode,
+      locationcode = excluded.locationcode,
+      lotcode = excluded.lotcode,
+      contsize = excluded.contsize,
+      updated_at = now();
+  end if;
+
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_sync_v2_crop_roll_completed_drive_keys on public.v2_crop_roll_rows;
+create trigger trg_sync_v2_crop_roll_completed_drive_keys
+after insert or update or delete on public.v2_crop_roll_rows
+for each row execute function public.sync_v2_crop_roll_completed_drive_keys();
+
+create or replace view public.v2_crop_roll_open_rows as
 select d.*
 from public.v2_crop_roll_drive_rows d
-left join completed_ids ci on ci.master_unique_id = d.master_unique_id
-left join completed_cards cc
-  on cc.itemcode = upper(btrim(coalesce(d.itemcode, '')))
+left join public.v2_crop_roll_completed_drive_keys ci
+  on ci.key_type = 'id'
+  and ci.master_unique_id = d.master_unique_id
+left join public.v2_crop_roll_completed_drive_keys cc
+  on cc.key_type = 'card'
+  and cc.itemcode = upper(btrim(coalesce(d.itemcode, '')))
   and cc.locationcode = upper(btrim(coalesce(d.locationcode, '')))
   and (cc.lotcode is null or cc.lotcode = upper(btrim(coalesce(d.lotcode, ''))))
   and (cc.contsize is null or cc.contsize = upper(btrim(coalesce(d.contsize, ''))))
-where ci.master_unique_id is null
-  and cc.itemcode is null;
+where ci.completion_row_id is null
+  and cc.completion_row_id is null;
 
 alter table public.v2_crop_roll_drive_rows enable row level security;
 
