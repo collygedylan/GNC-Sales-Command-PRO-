@@ -20,30 +20,138 @@ const PHOTO_BUCKETS: Record<string, string> = {
 };
 const READABLE_TABLES = new Set([
   "v2_master_inventory",
+  "v2_active_request_live_rows",
   "v2_crop_roll_drive_rows",
   "v2_crop_roll_open_rows",
   "v2_crop_roll_runs",
   "v2_crop_roll_rows",
   "v2_active_request",
+  "v2_request_history",
+  "v2_request_email_threads",
   "v2_reserves",
   "v2_soc_master",
   "v2_sales_office",
+  "v2_shear_list",
+  "v2_take_back_queue",
   "v2_cav",
   "v2_av_notes",
   "v2_dock_team_status",
   "v2_dock_item_status",
+  "v2_dock_issue_status",
+  "v2_dock_issue_allocations",
   "v2_app_users",
+  "v2_app_settings",
+  "v2_app_live_events",
   "v2_push_subscriptions",
+  "v2_inventory_edit_requests",
+  "v2_inventory_edit_request_events",
+  "v2_flyer_folder_rows",
+  "v2_flyer_folder_history",
+  "v2_productivity_history",
+  "v2_ncr_completions",
+  "v2_production_workflow_rows",
+  "v2_spread_counts",
+  "v2_bunch_counts",
+  "v2_ml_image_jobs",
+  "v2_disease_training_assets",
+  "v2_diagnostic_lab_cases",
+  "v2_grower_scout_reports",
+  "v2_grower_scout_assets",
+  "marketing_materials",
+  "v2_department_calendar_events",
+  "v2_chat_conversations",
+  "v2_chat_participants",
+  "v2_chat_messages",
+  "v2_walkie_channels",
+  "v2_walkie_channel_members",
+  "v2_walkie_calls",
+  "v2_walkie_call_members",
+  "v2_walkie_signal_events",
+  "v2_weather_hourly",
+  "v2_weather_daily",
+  "v2_hold_learning_events",
+  "v2_hold_learning_profiles",
+  "v2_hold_release_cycles",
 ]);
 const WRITABLE_TABLES = new Set([
   "v2_master_inventory",
+  "v2_soc_master",
+  "v2_av_notes",
+  "v2_reserves",
+  "v2_active_request_live_rows",
+  "v2_crop_roll_drive_rows",
+  "v2_crop_roll_runs",
   "v2_crop_roll_rows",
   "v2_active_request",
+  "v2_request_history",
+  "v2_request_email_threads",
   "v2_sales_office",
+  "v2_shear_list",
+  "v2_take_back_queue",
   "v2_dock_team_status",
   "v2_dock_item_status",
+  "v2_dock_issue_status",
+  "v2_dock_issue_allocations",
   "v2_labor_hours",
+  "v2_app_users",
+  "v2_app_settings",
+  "v2_app_live_events",
   "v2_push_subscriptions",
+  "v2_inventory_edit_requests",
+  "v2_inventory_edit_request_events",
+  "v2_flyer_folder_rows",
+  "v2_flyer_folder_history",
+  "v2_productivity_history",
+  "v2_ncr_completions",
+  "v2_production_workflow_rows",
+  "v2_spread_counts",
+  "v2_bunch_counts",
+  "v2_ml_image_jobs",
+  "v2_disease_training_assets",
+  "v2_diagnostic_lab_cases",
+  "v2_grower_scout_reports",
+  "v2_grower_scout_assets",
+  "marketing_materials",
+  "v2_department_calendar_events",
+  "v2_chat_conversations",
+  "v2_chat_participants",
+  "v2_chat_messages",
+  "v2_walkie_channels",
+  "v2_walkie_channel_members",
+  "v2_walkie_calls",
+  "v2_walkie_call_members",
+  "v2_walkie_signal_events",
+]);
+const COMMON_AUTH_WRITE_TABLES = new Set([
+  "v2_push_subscriptions",
+  "v2_app_live_events",
+  "v2_labor_hours",
+  "v2_department_calendar_events",
+  "v2_chat_conversations",
+  "v2_chat_participants",
+  "v2_chat_messages",
+  "v2_walkie_channels",
+  "v2_walkie_channel_members",
+  "v2_walkie_calls",
+  "v2_walkie_call_members",
+  "v2_walkie_signal_events",
+]);
+const REP_WRITE_TABLES = new Set([
+  ...COMMON_AUTH_WRITE_TABLES,
+  "v2_active_request",
+  "v2_request_history",
+  "v2_request_email_threads",
+  "v2_sales_office",
+  "v2_shear_list",
+  "v2_inventory_edit_requests",
+  "v2_inventory_edit_request_events",
+]);
+const QC_WRITE_TABLES = new Set([
+  ...COMMON_AUTH_WRITE_TABLES,
+  "v2_dock_team_status",
+  "v2_dock_item_status",
+  "v2_dock_issue_status",
+  "v2_dock_issue_allocations",
 ]);
 const MASTER_QC_WRITABLE_FIELDS = new Set(["dock_note"]);
 
@@ -68,16 +176,16 @@ function ensureServerConfig() {
   }
 }
 
-function buildRestHeaders(method = "GET") {
+function buildRestHeaders(method = "GET", table = "") {
   const headers: Record<string, string> = {
     apikey: SUPABASE_SERVICE_ROLE_KEY,
     Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
     "Content-Type": "application/json",
   };
   if (method === "POST") {
-    headers.Prefer = "return=representation,resolution=merge-duplicates";
+    headers.Prefer = table === "v2_active_request" ? "return=minimal" : "return=minimal,resolution=merge-duplicates";
   } else if (method === "PATCH" || method === "DELETE") {
-    headers.Prefer = "return=representation";
+    headers.Prefer = "return=minimal";
   }
   return headers;
 }
@@ -93,7 +201,7 @@ async function restRequest(table: string, method = "GET", query = "", body: unkn
   const url = `${SUPABASE_URL}/rest/v1/${table}${querySuffix ? `?${querySuffix}` : ""}`;
   const options: RequestInit = {
     method,
-    headers: buildRestHeaders(method),
+    headers: buildRestHeaders(method, table),
   };
   if (body !== null && body !== undefined && method !== "GET") {
     options.body = JSON.stringify(body);
@@ -117,6 +225,13 @@ function sanitizeFileName(value = "") {
   return withoutExt.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80) || "photo";
 }
 
+function sanitizeStorageFileName(value = "") {
+  const raw = String(value || "").trim().split(/[\\/]/).pop() || "";
+  const cleaned = raw.replace(/[^a-zA-Z0-9._-]/g, "").replace(/\.{2,}/g, ".").slice(0, 140);
+  if (cleaned && /\.[a-z0-9]{2,8}$/i.test(cleaned)) return cleaned;
+  return "";
+}
+
 function hasTableReadAccess(role = "", table = "") {
   if (!READABLE_TABLES.has(table)) return false;
   const access = getRoleAccessState(role);
@@ -138,15 +253,14 @@ function hasTableWriteAccess(role = "", table = "", method = "POST", body: unkno
   if (!WRITABLE_TABLES.has(table)) return false;
   const access = getRoleAccessState(role);
   if (access.isAdmin) return true;
+  if (COMMON_AUTH_WRITE_TABLES.has(table)) return ["POST", "PATCH", "DELETE"].includes(method);
   if (table === "v2_push_subscriptions") return method === "POST";
   if (table === "v2_labor_hours") return method === "POST";
   if (access.isRep) {
-    return (
-      (table === "v2_active_request" && ["POST", "PATCH", "DELETE"].includes(method)) ||
-      (table === "v2_sales_office" && ["POST", "DELETE"].includes(method))
-    );
+    return REP_WRITE_TABLES.has(table) && ["POST", "PATCH", "DELETE"].includes(method);
   }
   if (access.isQcSupervisor) {
+    if (QC_WRITE_TABLES.has(table) && ["POST", "PATCH", "DELETE"].includes(method)) return true;
     if (table === "v2_dock_team_status" && method === "POST") return true;
     if (table === "v2_dock_item_status" && method === "POST") return true;
     if (table === "v2_master_inventory" && method === "PATCH") {
@@ -155,7 +269,7 @@ function hasTableWriteAccess(role = "", table = "", method = "POST", body: unkno
     }
   }
   if (access.isQc) {
-    return table === "v2_dock_item_status" && method === "POST";
+    return QC_WRITE_TABLES.has(table) && ["POST", "PATCH", "DELETE"].includes(method);
   }
   return false;
 }
@@ -294,13 +408,15 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readAppSessi
   if (!(file instanceof File)) return errorResponse("No photo file was provided.", 400);
 
   const bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
+  const requestedFileName = sanitizeStorageFileName(String(form.get("fileName") || file.name || ""));
   const originalName = sanitizeFileName(String(form.get("fileName") || file.name || "photo"));
-  const fileName = `${originalName}-${Date.now()}.jpg`;
+  const fileName = requestedFileName || `${originalName}-${Date.now()}.jpg`;
   const filePath = `${new Date().toISOString().split("T")[0]}/${fileName}`;
   const bytes = new Uint8Array(await file.arrayBuffer());
 
   const uploadResult = await supabase.storage.from(bucketName).upload(filePath, bytes, {
     contentType: String(file.type || "image/jpeg").trim() || "image/jpeg",
+    cacheControl: "31536000",
     upsert: true,
   });
   if (uploadResult.error) return errorResponse(uploadResult.error.message || "Photo upload failed.", 500);
