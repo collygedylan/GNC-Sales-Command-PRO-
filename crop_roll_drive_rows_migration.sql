@@ -449,10 +449,31 @@ with completed as (
   select
     public.get_v2_crop_roll_completion_master_ids(to_jsonb(c)) as master_ids,
     public.get_v2_crop_roll_completion_view(to_jsonb(c)) as crop_roll_view,
-    nullif(upper(btrim(coalesce(c.itemcode, ''))), '') as itemcode,
-    nullif(upper(btrim(coalesce(c.locationcode, ''))), '') as locationcode,
-    nullif(upper(btrim(coalesce(c.original_lotcode, c.target_lotcode, c.metadata #>> '{original_values,lotcode}', ''))), '') as lotcode,
-    nullif(upper(btrim(coalesce(c.contsize, ''))), '') as contsize
+    nullif(upper(btrim(coalesce(
+      c.itemcode,
+      c.metadata #>> '{crop_roll_form_values,itemcode}',
+      c.metadata #>> '{original_values,itemcode}',
+      ''
+    ))), '') as itemcode,
+    nullif(upper(btrim(coalesce(
+      c.locationcode,
+      c.metadata #>> '{crop_roll_form_values,locationcode}',
+      c.metadata #>> '{original_values,locationcode}',
+      ''
+    ))), '') as locationcode,
+    nullif(upper(btrim(coalesce(
+      c.original_lotcode,
+      c.target_lotcode,
+      c.metadata #>> '{crop_roll_form_values,lotcode}',
+      c.metadata #>> '{original_values,lotcode}',
+      ''
+    ))), '') as lotcode,
+    nullif(upper(btrim(coalesce(
+      c.contsize,
+      c.metadata #>> '{crop_roll_form_values,contsize}',
+      c.metadata #>> '{original_values,contsize}',
+      ''
+    ))), '') as contsize
   from public.v2_crop_roll_rows c
   where c.run_id = 'CR-LIVE-COMPLETIONS'
     and lower(coalesce(c.row_status, '')) = 'complete'
