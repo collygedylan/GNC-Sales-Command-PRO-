@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.07.21.20';
+const APP_SHELL_BUILD = 'V2026.07.21.21';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
@@ -150,7 +150,6 @@ self.addEventListener('activate', (event) => {
       .then(() => broadcastShellVersion('GNC_SHELL_ACTIVATED'))
   );
 });
-
 self.addEventListener('message', (event) => {
   const data = event && event.data ? event.data : {};
   if (!data || typeof data !== 'object') return;
