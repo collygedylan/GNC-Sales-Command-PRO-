@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.24.05';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.24.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4823,7 +4823,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.24.05').trim() || 'V2026.07.24.05';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.24.06').trim() || 'V2026.07.24.06';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6276,7 +6276,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.24.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.24.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -23339,7 +23339,7 @@ let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprova
             }, delayMs);
         }
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
-        let activeDriveMode='ok'; let activeDriveTab='name'; let activeDriveHoldStopReport='hold'; let driveOpenStockReportSeason='S1'; let driveOpenStockReportSalesYear='26'; let driveOpenStockReportMaxSLts='0'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
+        let activeDriveMode='ok'; let activeDriveTab='name'; let activeDriveHoldStopReport='hold-stop'; let driveReportEvalUserFilter='all'; let driveOpenStockReportSeason='S1'; let driveOpenStockReportSalesYear='26'; let driveOpenStockReportMaxSLts='0'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
         let activeMovesTab='main'; let activeInventoryOfficeApprovalType='move-up'; let activeInventoryOfficeCropRollView='sy-27'; let movesRecordsCacheKey=''; let movesRecordsCache=[]; let movesViewLevel=0; let selectedMovesBlock=null; let selectedMovesLocation=null;
         let managerMovePlannerLevel=0; let managerMoveSelectedBlock=null; let managerMoveSelectedLocation=null; let managerMoveDestinationStage='select'; let managerMoveSelectedSourceIds=new Set(); let managerMoveDestinationBySourceId=new Map(); let managerMoveItemDestinationByItemKey=new Map(); let managerMoveReviewerUsers=new Set(); let managerMoveReviewerSearchTerm=''; let managerMoveManualLocationBySourceId=new Map(); let managerMoveSubmitting=false; let managerMovePlannerCacheKey=''; let managerMovePlannerCache=null; let managerMoveCardSearchTerm=''; let managerMoveCardSelectedCommonName=''; let managerMoveCardSelectedContSize='';
         let selectedLocationMoveItems=[]; let selectedLocationMoveDestinationBySourceId=new Map();
@@ -23827,7 +23827,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.24.05').trim() || 'V2026.07.24.05';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.24.06').trim() || 'V2026.07.24.06';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -25835,6 +25835,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     activeDriveMode,
                     activeDriveTab,
                     activeDriveHoldStopReport,
+                    driveReportEvalUserFilter,
                     driveOpenStockReportSeason,
                     driveOpenStockReportSalesYear,
                     driveOpenStockReportMaxSLts,
@@ -26071,7 +26072,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (drive) {
                 activeDriveMode = appFilterText(drive.activeDriveMode, activeDriveMode || 'ok') || 'ok';
                 activeDriveTab = appFilterMode(drive.activeDriveTab, ['name', 'loc', 'card', 'hold'], activeDriveTab || 'name');
-                activeDriveHoldStopReport = appFilterMode(drive.activeDriveHoldStopReport, ['hold', 'stop', 'negative-slts', 'open-stock'], activeDriveHoldStopReport || 'hold');
+                activeDriveHoldStopReport = normalizeDriveHoldStopReportMode(appFilterText(drive.activeDriveHoldStopReport, activeDriveHoldStopReport || 'hold-stop'));
+                driveReportEvalUserFilter = normalizeDriveReportEvalUserFilter(appFilterText(drive.driveReportEvalUserFilter, driveReportEvalUserFilter || 'all'));
                 driveOpenStockReportSeason = appFilterText(drive.driveOpenStockReportSeason, driveOpenStockReportSeason || 'S1') || 'S1';
                 driveOpenStockReportSalesYear = appFilterText(drive.driveOpenStockReportSalesYear, driveOpenStockReportSalesYear || '26') || '26';
                 driveOpenStockReportMaxSLts = appFilterText(drive.driveOpenStockReportMaxSLts, driveOpenStockReportMaxSLts || '0') || '0';
@@ -62434,7 +62436,8 @@ function toggleDriveQuickRequestItem(domId) {
             resetDriveQuickCardViewState();
             syncDriveModeTabs();
             activeDriveTab = 'name';
-            activeDriveHoldStopReport = 'hold';
+            activeDriveHoldStopReport = 'hold-stop';
+            driveReportEvalUserFilter = 'all';
             resetDriveDrillSelectionState();
             selectedDriveCommonNames = new Set();
             driveCommonNameSearchTerm = '';
@@ -62489,7 +62492,7 @@ function toggleDriveQuickRequestItem(domId) {
             return runDirectTrackedNavigation('drive', `drive-tab:${nextTab}`, () => {
                 const previousTab = activeDriveTab;
                 activeDriveTab = nextTab;
-                if (nextTab === 'hold' && previousTab !== 'hold') activeDriveHoldStopReport = 'hold';
+                if (nextTab === 'hold' && previousTab !== 'hold') activeDriveHoldStopReport = 'hold-stop';
                 driveQuickRequestCardMode = nextTab === 'card';
                 driveViewDropdownOpen = false;
                 driveSeasonDropdownOpen = false;
@@ -62557,7 +62560,8 @@ function toggleDriveQuickRequestItem(domId) {
             resetDriveQuickCardViewState();
             syncDriveModeTabs();
             activeDriveTab = 'name';
-            activeDriveHoldStopReport = 'hold';
+            activeDriveHoldStopReport = 'hold-stop';
+            driveReportEvalUserFilter = 'all';
             resetDriveDrillSelectionState();
             selectedDriveCommonNames = new Set(); driveCommonNameSearchTerm = ''; driveCommonNameFilterOpen = false; selectedDriveGenusNames = new Set(); driveGenusSelectionMode = 'all'; driveGenusSearchTerm = ''; driveGenusFilterOpen = false; selectedDriveContSizes = new Set(); driveContSizeSelectionMode = 'all'; driveContSizeSearchTerm = ''; driveContSizeFilterOpen = false; selectedDriveLocationCodes = new Set(); driveLocationSelectionMode = 'all'; driveLocationSearchTerm = ''; driveLocationFilterOpen = false; selectedDriveLotCodes = new Set(); driveLotSelectionMode = 'all'; driveLotSearchTerm = ''; driveLotFilterOpen = false; driveColumnFilters = {}; driveColumnFilterDrafts = {}; driveColumnFilterSelectedHeaders = new Set(); driveColumnFilterDropdownOpen = false; driveColumnFilterStep = 'select'; driveColumnFilterFieldKey = ''; driveColumnFilterMode = 'values'; driveColumnFilterValueSearchTerm = ''; driveColumnFilterFieldSearchTerm = ''; driveColumnFilterHeaderFieldsCache = []; drivePlantFilterItemsCache = []; drivePlantFilterGenusOptions = []; drivePlantFilterContSizeOptions = []; drivePlantFilterLocationOptions = []; drivePlantFilterLotOptions = [];
             driveViewDropdownOpen = false; driveSeasonDropdownOpen = false; driveSeasonSearchTerm = '';
@@ -115495,16 +115499,120 @@ ${folderNote ? `Folder Note: ${folderNote}
             return holdCode.includes('H') || holdCode.includes('S');
         }
 
+        const DRIVE_REPORT_ALL_EVAL_USERS = 'all';
+        const DRIVE_REPORT_UNASSIGNED_EVAL_USER = '__unassigned__';
+
+        function normalizeDriveReportEvalUserFilter(value = '') {
+            const raw = String(value == null ? '' : value).trim();
+            if (!raw) return DRIVE_REPORT_ALL_EVAL_USERS;
+            const lowered = raw.toLowerCase().replace(/[\s-]+/g, '_');
+            if (lowered === 'all' || lowered === 'all_eval_users' || lowered === 'all_users') return DRIVE_REPORT_ALL_EVAL_USERS;
+            if (lowered === DRIVE_REPORT_UNASSIGNED_EVAL_USER || lowered === 'unassigned' || lowered === 'none' || lowered === 'no_eval') return DRIVE_REPORT_UNASSIGNED_EVAL_USER;
+            if (typeof normalizeEvalAssignableUser === 'function') {
+                const normalized = normalizeEvalAssignableUser(raw);
+                if (normalized) return normalized;
+            }
+            return lowered.replace(/@.+$/g, '').replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '') || DRIVE_REPORT_ALL_EVAL_USERS;
+        }
+
+        function getDriveReportEvalUserFilterLabel(value = driveReportEvalUserFilter) {
+            const normalized = normalizeDriveReportEvalUserFilter(value);
+            if (normalized === DRIVE_REPORT_ALL_EVAL_USERS) return 'All Eval Users';
+            if (normalized === DRIVE_REPORT_UNASSIGNED_EVAL_USER) return 'Unassigned';
+            return normalized;
+        }
+
+        function getDriveReportEvalUsersForItem(item = null) {
+            const users = new Set();
+            const addUser = (value = '') => {
+                if (Array.isArray(value)) {
+                    value.forEach(addUser);
+                    return;
+                }
+                const raw = String(value == null ? '' : value).trim();
+                if (!raw) return;
+                if (typeof getEvalTaskAssignedUsersFromValue === 'function') {
+                    getEvalTaskAssignedUsersFromValue(raw).forEach((candidate) => {
+                        const normalized = normalizeDriveReportEvalUserFilter(candidate);
+                        if (normalized && normalized !== DRIVE_REPORT_ALL_EVAL_USERS && normalized !== DRIVE_REPORT_UNASSIGNED_EVAL_USER) users.add(normalized);
+                    });
+                    return;
+                }
+                const normalized = normalizeDriveReportEvalUserFilter(raw);
+                if (normalized && normalized !== DRIVE_REPORT_ALL_EVAL_USERS && normalized !== DRIVE_REPORT_UNASSIGNED_EVAL_USER) users.add(normalized);
+            };
+            if (!item) return [];
+            if (typeof getEvalTaskAssignedUsersFromItem === 'function') addUser(getEvalTaskAssignedUsersFromItem(item));
+            if (typeof getMasterAssignedToValue === 'function') addUser(getMasterAssignedToValue(item));
+            addUser(firstNonEmptyValue(
+                item && item.EVALUSER,
+                item && item.evaluser,
+                item && item.EVAL_USER,
+                item && item.eval_user,
+                item && item.ASSIGNEDTO,
+                item && item.assignedto,
+                item && item.assigned_to,
+                item && item.REVIEWUSER,
+                item && item.reviewuser,
+                ''
+            ));
+            return [...users];
+        }
+
+        function doesDriveReportRowMatchEvalUser(item = null, evalUserFilter = driveReportEvalUserFilter) {
+            const normalized = normalizeDriveReportEvalUserFilter(evalUserFilter);
+            if (normalized === DRIVE_REPORT_ALL_EVAL_USERS) return true;
+            const users = getDriveReportEvalUsersForItem(item);
+            if (normalized === DRIVE_REPORT_UNASSIGNED_EVAL_USER) return users.length === 0;
+            return users.includes(normalized);
+        }
+
+        function filterDriveReportRowsByEvalUser(items = [], evalUserFilter = driveReportEvalUserFilter) {
+            const rows = Array.isArray(items) ? items : [];
+            const normalized = normalizeDriveReportEvalUserFilter(evalUserFilter);
+            if (normalized === DRIVE_REPORT_ALL_EVAL_USERS) return rows;
+            return rows.filter((item) => doesDriveReportRowMatchEvalUser(item, normalized));
+        }
+
+        function getDriveReportEvalUserOptions(items = []) {
+            const rows = Array.isArray(items) ? items : [];
+            const counts = new Map();
+            let unassignedCount = 0;
+            rows.forEach((item) => {
+                const users = getDriveReportEvalUsersForItem(item);
+                if (!users.length) {
+                    unassignedCount += 1;
+                    return;
+                }
+                users.forEach((user) => counts.set(user, (counts.get(user) || 0) + 1));
+            });
+            const selected = normalizeDriveReportEvalUserFilter(driveReportEvalUserFilter);
+            if (selected !== DRIVE_REPORT_ALL_EVAL_USERS && selected !== DRIVE_REPORT_UNASSIGNED_EVAL_USER && !counts.has(selected)) counts.set(selected, 0);
+            const options = [{
+                value: DRIVE_REPORT_ALL_EVAL_USERS,
+                label: `All Eval Users (${rows.length})`
+            }];
+            [...counts.entries()]
+                .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: 'base' }))
+                .forEach(([user, count]) => options.push({ value: user, label: `${getDriveReportEvalUserFilterLabel(user)} (${count})` }));
+            if (unassignedCount || selected === DRIVE_REPORT_UNASSIGNED_EVAL_USER) {
+                options.push({ value: DRIVE_REPORT_UNASSIGNED_EVAL_USER, label: `Unassigned (${unassignedCount})` });
+            }
+            return options;
+        }
+
         function normalizeDriveHoldStopReportMode(value = '') {
             const raw = String(value || '').trim().toLowerCase().replace(/[\s_]+/g, '-');
-            if (raw === 'stop') return 'stop';
             if (raw === 'negative' || raw === 'negative-slts' || raw === 'negitive-slts') return 'negative-slts';
             if (raw === 'open' || raw === 'open-stock' || raw === 'openstock') return 'open-stock';
-            return 'hold';
+            if (raw === 'hold-only') return 'hold';
+            if (raw === 'stop-only') return 'stop';
+            return 'hold-stop';
         }
 
         function getDriveHoldStopReportLabel(value = activeDriveHoldStopReport) {
             const mode = normalizeDriveHoldStopReportMode(value);
+            if (mode === 'hold-stop') return 'Hold / Stop Report';
             if (mode === 'stop') return 'Stop Report';
             if (mode === 'negative-slts') return 'Negative SLTS Report';
             if (mode === 'open-stock') return 'Open Stock Report';
@@ -115565,6 +115673,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         function isDriveHoldStopReportRow(item = null, reportMode = activeDriveHoldStopReport) {
             const holdCode = getDriveHoldStopCode(item);
             const mode = normalizeDriveHoldStopReportMode(reportMode);
+            if (mode === 'hold-stop') return holdCode.includes('H') || holdCode.includes('S');
             if (mode === 'stop') return holdCode.includes('S');
             if (mode === 'negative-slts') return isDriveNegativeSLTSReportRow(item);
             if (mode === 'open-stock') return isDriveOpenStockReportRow(item);
@@ -115578,11 +115687,17 @@ ${folderNote ? `Folder Note: ${folderNote}
             const reportMode = normalizeDriveHoldStopReportMode(activeDriveHoldStopReport);
             const reportLabel = getDriveHoldStopReportLabel(reportMode);
             const sourceRows = Array.isArray(driveViewState.visibleItems) ? driveViewState.visibleItems : [];
-            const rows = sortDriveHoldStopCodeItems(sourceRows.filter((item) => isDriveHoldStopReportRow(item, reportMode)));
-            return { driveViewState, reportMode, reportLabel, rows };
+            const reportRows = sortDriveHoldStopCodeItems(sourceRows.filter((item) => isDriveHoldStopReportRow(item, reportMode)));
+            const evalFilter = normalizeDriveReportEvalUserFilter(driveReportEvalUserFilter);
+            const evalOptions = getDriveReportEvalUserOptions(reportRows);
+            const hasSelectedEvalOption = evalOptions.some((option) => option.value === evalFilter);
+            if (!hasSelectedEvalOption) driveReportEvalUserFilter = DRIVE_REPORT_ALL_EVAL_USERS;
+            const normalizedEvalFilter = normalizeDriveReportEvalUserFilter(driveReportEvalUserFilter);
+            const rows = filterDriveReportRowsByEvalUser(reportRows, normalizedEvalFilter);
+            return { driveViewState, reportMode, reportLabel, reportRows, evalFilter: normalizedEvalFilter, evalOptions, rows };
         }
 
-        function setDriveHoldStopReport(reportMode = 'hold') {
+        function setDriveHoldStopReport(reportMode = 'hold-stop') {
             const nextReport = normalizeDriveHoldStopReportMode(reportMode);
             return runDirectTrackedNavigation('drive', `drive-holdstop-report:${nextReport}`, () => {
                 activeDriveTab = 'hold';
@@ -115614,6 +115729,15 @@ ${folderNote ? `Folder Note: ${folderNote}
                 interactionDelayMs: 8,
                 scrollDelayMs: 40
             });
+        }
+
+        function setDriveReportEvalUserFilter(value = DRIVE_REPORT_ALL_EVAL_USERS) {
+            const nextFilter = normalizeDriveReportEvalUserFilter(value);
+            if (driveReportEvalUserFilter === nextFilter) return false;
+            driveReportEvalUserFilter = nextFilter;
+            invalidateDriveResolvedCardState();
+            scheduleDriveFilterRender(0, 32, true);
+            return false;
         }
 
         function applyDriveOpenStockReportInputs() {
@@ -115655,7 +115779,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             </div>`;
         }
 
-        function buildDriveHoldStopReportTabsHtml() {
+        function buildDriveHoldStopReportTabsHtml(reportRows = []) {
             const currentReport = normalizeDriveHoldStopReportMode(activeDriveHoldStopReport);
             const buttonHtml = (report, label, icon) => {
                 const isActive = currentReport === report;
@@ -115665,8 +115789,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return `<button type="button" class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full border px-4 text-[11px] font-black uppercase tracking-[0.13em] active:scale-[0.98] ${classes}" ${buildFastInvokeAttrs('setDriveHoldStopReport', [report], label)}><i class="ph-bold ${icon} text-sm"></i><span>${escapeHtml(label)}</span></button>`;
             };
             const exportButtonHtml = `<button type="button" class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 text-[11px] font-black uppercase tracking-[0.13em] text-blue-700 shadow-sm active:scale-[0.98]" ${buildFastInvokeAttrs('exportCurrentDriveReportToExcel', [], 'Export Drive Report Excel')}><i class="ph-bold ph-download-simple text-sm"></i><span>Export Excel</span></button>`;
+            const evalOptions = getDriveReportEvalUserOptions(Array.isArray(reportRows) ? reportRows : []);
+            const selectedEvalUser = normalizeDriveReportEvalUserFilter(driveReportEvalUserFilter);
+            const evalOptionsHtml = evalOptions.map((option) => `<option value="${escapeHtml(option.value)}" ${option.value === selectedEvalUser ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('');
+            const evalFilterHtml = `<label class="flex min-w-[220px] flex-1 flex-col gap-1 sm:max-w-[320px]"><span class="pl-2 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">Eval User</span><select data-fast-press-ignore class="min-h-[44px] w-full rounded-full border border-emerald-200 bg-white px-4 text-[11px] font-black uppercase tracking-[0.12em] text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" onchange="return setDriveReportEvalUserFilter(this.value)">${evalOptionsHtml}</select></label>`;
             const openStockControlsHtml = currentReport === 'open-stock' ? buildDriveOpenStockReportControlsHtml() : '';
-            return `<div class="mb-3 flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-100 bg-white/90 p-2 shadow-sm">${buttonHtml('hold', 'Hold Report', 'ph-lock-key')}${buttonHtml('stop', 'Stop Report', 'ph-octagon')}${buttonHtml('negative-slts', 'Negative SLTS', 'ph-trend-down')}${buttonHtml('open-stock', 'Open Stock', 'ph-chart-line-down')}<span class="hidden flex-1 sm:block"></span>${exportButtonHtml}</div>${openStockControlsHtml}`;
+            return `<div class="mb-3 flex flex-wrap items-end gap-2 rounded-2xl border border-emerald-100 bg-white/90 p-2 shadow-sm">${buttonHtml('hold-stop', 'Hold / Stop Report', 'ph-lock-key')}${buttonHtml('negative-slts', 'Negative SLTS', 'ph-trend-down')}${buttonHtml('open-stock', 'Open Stock', 'ph-chart-line-down')}<span class="hidden flex-1 lg:block"></span>${evalFilterHtml}${exportButtonHtml}</div>${openStockControlsHtml}`;
         }
 
         function sortDriveHoldStopCodeItems(items = []) {
@@ -116163,6 +116291,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 ['Report', safeContext.reportLabel || getDriveHoldStopReportLabel(reportMode)],
                 ['Drive Mode', DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode'],
                 ['Report Rows', String((safeContext.rows || []).length)],
+                ['Eval User', getDriveReportEvalUserFilterLabel(safeContext.evalFilter || driveReportEvalUserFilter)],
                 ['Genus Filter', formatDriveReportExportSelection(driveGenusSelectionMode, selectedDriveGenusNames, 'All Genus')],
                 ['Contsize Filter', formatDriveReportExportSelection(driveContSizeSelectionMode, selectedDriveContSizes, 'All Cont Sizes')],
                 ['Location Filter', formatDriveReportExportSelection(driveLocationSelectionMode, selectedDriveLocationCodes, 'All Locations')],
@@ -116207,6 +116336,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             if (tab === 'hold') {
                 const reportContext = buildDriveReportExportContext(driveViewState);
+                const evalLabel = getDriveReportEvalUserFilterLabel(reportContext.evalFilter || driveReportEvalUserFilter);
+                const evalScope = normalizeDriveReportEvalUserFilter(reportContext.evalFilter || driveReportEvalUserFilter) === DRIVE_REPORT_ALL_EVAL_USERS ? '' : ` > ${evalLabel}`;
                 return {
                     driveViewState,
                     driveModeLabel,
@@ -116214,7 +116345,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                     tabLabel,
                     reportMode: reportContext.reportMode,
                     reportLabel: reportContext.reportLabel,
-                    scopeLabel: `${driveModeLabel} > ${reportContext.reportLabel}`,
+                    evalFilter: reportContext.evalFilter,
+                    scopeLabel: `${driveModeLabel} > ${reportContext.reportLabel}${evalScope}`,
                     rows: reportContext.rows || []
                 };
             }
@@ -117341,6 +117473,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             [
                 activeDriveTab,
                 activeDriveHoldStopReport,
+                normalizeDriveReportEvalUserFilter(driveReportEvalUserFilter),
                 normalizeDriveOpenStockReportSeasonInput(driveOpenStockReportSeason),
                 normalizeDriveOpenStockReportSalesYearInput(driveOpenStockReportSalesYear),
                 normalizeDriveOpenStockReportMaxSLtsInput(driveOpenStockReportMaxSLts),
@@ -119057,6 +119190,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const resolvedStateKey = [
                 activeDriveTab,
                 activeDriveHoldStopReport,
+                normalizeDriveReportEvalUserFilter(driveReportEvalUserFilter),
                 normalizeDriveOpenStockReportSeasonInput(driveOpenStockReportSeason),
                 normalizeDriveOpenStockReportSalesYearInput(driveOpenStockReportSalesYear),
                 normalizeDriveOpenStockReportMaxSLtsInput(driveOpenStockReportMaxSLts),
@@ -119522,15 +119656,22 @@ ${folderNote ? `Folder Note: ${folderNote}
             const { visibleItems, resolvedStateKey } = driveViewState;
             const reportMode = normalizeDriveHoldStopReportMode(activeDriveHoldStopReport);
             const reportLabel = getDriveHoldStopReportLabel(reportMode);
-            const reportTabsHtml = buildDriveHoldStopReportTabsHtml();
-            const finalItems = sortDriveHoldStopCodeItems((Array.isArray(visibleItems) ? visibleItems : []).filter((item) => isDriveHoldStopReportRow(item, reportMode)));
-            const crumbText = `${resolvedDriveModeLabel} > ${reportLabel} (${finalItems.length} items)`;
-            const renderKey = buildDriveRenderKey(`drive:holdstopcode:${reportMode}`, crumbText, finalItems);
+            const reportRows = sortDriveHoldStopCodeItems((Array.isArray(visibleItems) ? visibleItems : []).filter((item) => isDriveHoldStopReportRow(item, reportMode)));
+            const evalFilter = normalizeDriveReportEvalUserFilter(driveReportEvalUserFilter);
+            const reportTabsHtml = buildDriveHoldStopReportTabsHtml(reportRows);
+            const finalItems = filterDriveReportRowsByEvalUser(reportRows, evalFilter);
+            const evalLabel = getDriveReportEvalUserFilterLabel(evalFilter);
+            const evalCrumb = evalFilter === DRIVE_REPORT_ALL_EVAL_USERS ? '' : ` > ${evalLabel}`;
+            const crumbText = `${resolvedDriveModeLabel} > ${reportLabel}${evalCrumb} (${finalItems.length} items)`;
+            const renderKey = buildDriveRenderKey(`drive:holdstopcode:${reportMode}:${evalFilter}`, crumbText, finalItems);
             if (!finalItems.length) {
-                const emptyLabel = reportMode === 'stop'
+                const emptyLabel = reportMode === 'hold-stop'
+                    ? 'H hold or S stop'
+                    : (reportMode === 'stop'
                     ? 'S stop'
-                    : (reportMode === 'negative-slts' ? 'negative S_LTS' : (reportMode === 'open-stock' ? 'open stock' : 'H hold'));
-                applyDriveRenderMarkup(container, crumb, crumbText, `${reportTabsHtml}<div class="p-8 text-center text-gray-400">No ${emptyLabel} rows match the current Drive filters.</div>`, `drive:holdstopcode:${reportMode}:empty:${resolvedStateKey || ''}`);
+                    : (reportMode === 'negative-slts' ? 'negative S_LTS' : (reportMode === 'open-stock' ? 'open stock' : 'H hold')));
+                const evalEmptyText = evalFilter === DRIVE_REPORT_ALL_EVAL_USERS ? '' : ` for ${escapeHtml(evalLabel)}`;
+                applyDriveRenderMarkup(container, crumb, crumbText, `${reportTabsHtml}<div class="p-8 text-center text-gray-400">No ${emptyLabel} rows${evalEmptyText} match the current Drive filters.</div>`, `drive:holdstopcode:${reportMode}:${evalFilter}:empty:${resolvedStateKey || ''}`);
                 return;
             }
             if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
