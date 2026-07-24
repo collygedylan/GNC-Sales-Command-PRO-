@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.24.04';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.24.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -120,6 +120,10 @@ body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-h
 body.performance-scroll-active .app-smart-card,body.performance-scroll-active .request-swipe-surface,body.performance-scroll-active .crop-roll-priority-review-row,body.performance-scroll-active .crop-roll-review-card,body.performance-scroll-active .manager-module-card{transition:none !important;box-shadow:none !important;filter:none !important}
 body.performance-scroll-active .task-top-control-shell,body.performance-scroll-active .drive-filter-shell,body.performance-scroll-active .av-filter-shell,body.performance-scroll-active .crop-roll-filter-shell,body.performance-scroll-active .manager-crop-roll-review-filter-shell,body.performance-scroll-active .sticky-search,body.performance-scroll-active .freeze-panel,body.performance-scroll-active .manager-module-freeze,body.performance-scroll-active #bottom-nav{transition:none !important}
 body.performance-scroll-active .task-top-control-shell,body.performance-scroll-active .drive-filter-shell,body.performance-scroll-active .av-filter-shell,body.performance-scroll-active .crop-roll-filter-shell,body.performance-scroll-active .manager-crop-roll-review-filter-shell{box-shadow:none !important;filter:none !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
+body.gnc-perf-adaptive .app-smart-card,body.gnc-perf-adaptive .app-card-shell,body.gnc-perf-adaptive .inv-card,body.gnc-perf-adaptive .request-swipe-surface,body.gnc-perf-adaptive .request-swipe-row>div:first-child,body.gnc-perf-adaptive .crop-roll-priority-review-row,body.gnc-perf-adaptive .crop-roll-review-card,body.gnc-perf-adaptive .manager-module-card{transition:none !important;animation:none !important;box-shadow:0 2px 8px rgba(15,23,42,.055) !important;filter:none !important}
+body.gnc-perf-adaptive .task-top-control-shell,body.gnc-perf-adaptive .drive-filter-shell,body.gnc-perf-adaptive .av-filter-shell,body.gnc-perf-adaptive .crop-roll-filter-shell,body.gnc-perf-adaptive .manager-crop-roll-review-filter-shell,body.gnc-perf-adaptive .sticky-search,body.gnc-perf-adaptive .freeze-panel,body.gnc-perf-adaptive .manager-module-freeze,body.gnc-perf-adaptive #bottom-nav{transition:none !important;animation:none !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;box-shadow:0 2px 8px rgba(15,23,42,.045) !important}
+body.gnc-perf-adaptive-hard .app-smart-card,body.gnc-perf-adaptive-hard .app-card-shell,body.gnc-perf-adaptive-hard .inv-card,body.gnc-perf-adaptive-hard .request-swipe-surface,body.gnc-perf-adaptive-hard .request-swipe-row>div:first-child,body.gnc-perf-adaptive-hard .manager-module-card{box-shadow:none !important}
+body.gnc-perf-adaptive-hard .app-smart-card:active,body.gnc-perf-adaptive-hard .inv-card:active,body.gnc-perf-adaptive-hard .footer-nav-btn:active,body.gnc-perf-adaptive-hard .app-card-bottom-btn:active{transform:none !important;-webkit-transform:none !important}
 @supports (content-visibility:auto){.performance-windowed-list>.app-smart-card,.performance-windowed-list>.item-row,.performance-windowed-list>.request-swipe-row{content-visibility:auto;contain-intrinsic-size:1px 280px}.performance-windowed-list>.drill-item{content-visibility:auto;contain-intrinsic-size:1px 92px}body.ios-device .performance-windowed-list>.app-smart-card,body.ios-device .performance-windowed-list>.item-row,body.ios-device .performance-windowed-list>.request-swipe-row{content-visibility:visible!important;contain-intrinsic-size:auto!important}}
 .performance-windowed-list{touch-action:pan-y;overscroll-behavior-y:auto}
 .performance-windowed-list>.app-smart-card,.performance-windowed-list>.item-row,.performance-windowed-list>.request-swipe-row,.performance-windowed-list>.drill-item{touch-action:pan-y}
@@ -4819,7 +4823,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.24.04').trim() || 'V2026.07.24.04';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.24.05').trim() || 'V2026.07.24.05';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6272,7 +6276,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.24.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.24.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6754,6 +6758,123 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return internalPerfStats[safeCounterName];
         }
 
+        const ADAPTIVE_PERF_WINDOW_MS = 30000;
+        const ADAPTIVE_PERF_LONG_TASK_MS = 80;
+        const ADAPTIVE_PERF_SEVERE_LONG_TASK_MS = 160;
+        const ADAPTIVE_PERF_RENDER_MS = 140;
+        const ADAPTIVE_PERF_SEVERE_RENDER_MS = 260;
+        const ADAPTIVE_PERF_DOM_WARN = 4500;
+        const ADAPTIVE_PERF_DOM_SEVERE = 7000;
+        const adaptivePerformanceState = {
+            level: 0,
+            reason: '',
+            longTasks: [],
+            renders: [],
+            inputs: [],
+            lastPromotionAt: 0,
+            lastDomSizeCheckAt: 0,
+            lastDomNodeCount: 0
+        };
+
+        function getAdaptivePerfElapsedMs(startedAt = 0) {
+            const started = Number(startedAt) || 0;
+            if (!started) return 0;
+            return Math.max(0, beginInternalPerfMeasure() - started);
+        }
+
+        function pruneAdaptivePerfSamples(samples = [], now = Date.now(), windowMs = ADAPTIVE_PERF_WINDOW_MS) {
+            if (!Array.isArray(samples)) return [];
+            const cutoff = now - Math.max(1000, Number(windowMs) || ADAPTIVE_PERF_WINDOW_MS);
+            while (samples.length && Number(samples[0] && samples[0].at) < cutoff) samples.shift();
+            return samples;
+        }
+
+        function setAdaptivePerformanceLevel(level = 0, reason = '') {
+            const safeLevel = Math.max(0, Math.min(2, Math.floor(Number(level) || 0)));
+            const safeReason = String(reason || '').trim();
+            if (safeLevel <= adaptivePerformanceState.level) {
+                if (safeReason) adaptivePerformanceState.reason = safeReason;
+                return adaptivePerformanceState.level;
+            }
+            adaptivePerformanceState.level = safeLevel;
+            adaptivePerformanceState.reason = safeReason;
+            adaptivePerformanceState.lastPromotionAt = Date.now();
+            incrementInternalPerfCounter(`adaptivePerformanceLevel${safeLevel}`);
+            try {
+                const root = document && document.documentElement;
+                const body = document && document.body;
+                if (root) {
+                    root.classList.toggle('gnc-perf-adaptive', safeLevel > 0);
+                    root.classList.toggle('gnc-perf-adaptive-hard', safeLevel > 1);
+                }
+                if (body) {
+                    body.classList.toggle('gnc-perf-adaptive', safeLevel > 0);
+                    body.classList.toggle('gnc-perf-adaptive-hard', safeLevel > 1);
+                    if (safeLevel > 0) body.classList.add('performance-lean-shell');
+                }
+            } catch (error) {}
+            return adaptivePerformanceState.level;
+        }
+
+        function isAdaptivePerformanceMode() {
+            return adaptivePerformanceState.level > 0;
+        }
+
+        function getAdaptivePerformanceLevel() {
+            return Number(adaptivePerformanceState.level) || 0;
+        }
+
+        function recordAdaptiveLongTask(duration = 0, source = 'longtask') {
+            const safeDuration = Number(duration) || 0;
+            if (safeDuration <= 0) return;
+            const now = Date.now();
+            adaptivePerformanceState.longTasks.push({ at: now, duration: safeDuration, source: String(source || '') });
+            pruneAdaptivePerfSamples(adaptivePerformanceState.longTasks, now);
+            const recentLongTasks = adaptivePerformanceState.longTasks.filter((sample) => Number(sample.duration) >= ADAPTIVE_PERF_LONG_TASK_MS).length;
+            if (safeDuration >= ADAPTIVE_PERF_SEVERE_LONG_TASK_MS || recentLongTasks >= 5) {
+                setAdaptivePerformanceLevel(2, `${source}:${Math.round(safeDuration)}ms`);
+            } else if (safeDuration >= ADAPTIVE_PERF_LONG_TASK_MS || recentLongTasks >= 2) {
+                setAdaptivePerformanceLevel(1, `${source}:${Math.round(safeDuration)}ms`);
+            }
+        }
+
+        function recordAdaptiveRenderDuration(source = '', duration = 0) {
+            const safeDuration = Number(duration) || 0;
+            if (safeDuration <= 0) return;
+            const now = Date.now();
+            adaptivePerformanceState.renders.push({ at: now, duration: safeDuration, source: String(source || '') });
+            pruneAdaptivePerfSamples(adaptivePerformanceState.renders, now);
+            if (safeDuration >= ADAPTIVE_PERF_SEVERE_RENDER_MS) {
+                setAdaptivePerformanceLevel(2, `render:${source}:${Math.round(safeDuration)}ms`);
+            } else if (safeDuration >= ADAPTIVE_PERF_RENDER_MS) {
+                setAdaptivePerformanceLevel(1, `render:${source}:${Math.round(safeDuration)}ms`);
+            }
+        }
+
+        function sampleAdaptiveDomPressure(reason = '') {
+            const now = Date.now();
+            if ((now - Number(adaptivePerformanceState.lastDomSizeCheckAt || 0)) < 4000) return adaptivePerformanceState.lastDomNodeCount || 0;
+            adaptivePerformanceState.lastDomSizeCheckAt = now;
+            let count = 0;
+            try {
+                count = document && document.getElementsByTagName ? document.getElementsByTagName('*').length : 0;
+            } catch (error) {
+                count = 0;
+            }
+            adaptivePerformanceState.lastDomNodeCount = count;
+            pushInternalPerfSample('domNodeCount', count, getCurrentVisibleViewId ? getCurrentVisibleViewId() : 'unknown');
+            if (count >= ADAPTIVE_PERF_DOM_SEVERE) setAdaptivePerformanceLevel(2, `dom:${reason}:${count}`);
+            else if (count >= ADAPTIVE_PERF_DOM_WARN) setAdaptivePerformanceLevel(1, `dom:${reason}:${count}`);
+            return count;
+        }
+
+        function getAdaptiveImageHydrationScanLimit() {
+            const level = getAdaptivePerformanceLevel();
+            if (level >= 2) return 16;
+            if (level === 1) return 24;
+            return isTouchConstrainedDevice() ? 36 : 96;
+        }
+
         function installInternalLongTaskObserver() {
             if (window.__gncLongTaskObserverInstalled) return;
             window.__gncLongTaskObserverInstalled = true;
@@ -6762,7 +6883,11 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 const observer = new PerformanceObserver((list) => {
                     (list.getEntries() || []).forEach((entry) => {
                         const duration = Number(entry && entry.duration) || 0;
-                        if (duration >= 50) pushInternalPerfSample('longTaskDurations', duration, getCurrentVisibleViewId ? getCurrentVisibleViewId() : 'unknown');
+                        if (duration >= 50) {
+                            const sourceView = getCurrentVisibleViewId ? getCurrentVisibleViewId() : 'unknown';
+                            pushInternalPerfSample('longTaskDurations', duration, sourceView);
+                            recordAdaptiveLongTask(duration, sourceView);
+                        }
                     });
                 });
                 observer.observe({ type: 'longtask', buffered: true });
@@ -16390,9 +16515,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 uiRenderFrames[safeKey] = requestAnimationFrame(() => {
                     delete uiRenderFrames[safeKey];
                     if (Number(uiRenderTokens[safeKey] || 0) !== renderToken) return;
+                    const renderStartedAt = beginInternalPerfMeasure();
                     try {
                         renderFn();
                     } finally {
+                        recordAdaptiveRenderDuration(`ui:${safeKey}`, getAdaptivePerfElapsedMs(renderStartedAt));
                         if (Number(uiRenderTokens[safeKey] || 0) === renderToken) delete uiRenderTokens[safeKey];
                         if (getInternalPlainObjectSize(uiRenderTokens) > LONG_SESSION_CACHE_LIMIT) {
                             scheduleAppSessionHousekeeping('ui-render-pressure', 900, true);
@@ -16762,7 +16889,13 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 }
                 const targetView = document.getElementById('view-' + safeViewId);
                 if (!targetView || targetView.classList.contains('hidden')) return;
-                renderViewContent(safeViewId, forceReset, forceRender);
+                const viewRenderStartedAt = beginInternalPerfMeasure();
+                try {
+                    renderViewContent(safeViewId, forceReset, forceRender);
+                } finally {
+                    recordAdaptiveRenderDuration(`queued-view:${safeViewId}`, getAdaptivePerfElapsedMs(viewRenderStartedAt));
+                    sampleAdaptiveDomPressure(`queued-view:${safeViewId}`);
+                }
             });
         }
 
@@ -16784,7 +16917,13 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (!targetView || targetView.classList.contains('hidden')) return;
                 const shouldRestoreScroll = !forceReset && getCurrentVisibleViewId() === safeViewId;
                 const restoreScrollTop = shouldRestoreScroll ? getMainAreaScrollTop() : 0;
-                renderViewContent(safeViewId, forceReset, forceRender);
+                const viewRenderStartedAt = beginInternalPerfMeasure();
+                try {
+                    renderViewContent(safeViewId, forceReset, forceRender);
+                } finally {
+                    recordAdaptiveRenderDuration(`interactive-view:${safeViewId}`, getAdaptivePerfElapsedMs(viewRenderStartedAt));
+                    sampleAdaptiveDomPressure(`interactive-view:${safeViewId}`);
+                }
                 if (shouldRestoreScroll && restoreScrollTop > 2) {
                     schedulePostRenderMainAreaScrollRestore(safeViewId, `interactive:${safeViewId}`, restoreScrollTop);
                 }
@@ -17015,7 +17154,13 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 }
                 const targetView = document.getElementById('view-' + safeViewId);
                 if (!targetView || targetView.classList.contains('hidden')) return;
-                renderViewContent(safeViewId, !!nextOptions.forceReset, !!nextOptions.forceRender);
+                const viewRenderStartedAt = beginInternalPerfMeasure();
+                try {
+                    renderViewContent(safeViewId, !!nextOptions.forceReset, !!nextOptions.forceRender);
+                } finally {
+                    recordAdaptiveRenderDuration(`view:${safeViewId}`, getAdaptivePerfElapsedMs(viewRenderStartedAt));
+                    sampleAdaptiveDomPressure(`view:${safeViewId}`);
+                }
                 if (touchRenderStartedAt) recordInternalPerfDuration('touchToRenderDurations', touchRenderStartedAt, safeViewId);
                 if (typeof nextOptions.afterRender === 'function') nextOptions.afterRender();
             }, renderDelay, typingDelay, {
@@ -17048,7 +17193,13 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 }
                 const targetView = document.getElementById('view-' + safeViewId);
                 if (!targetView || targetView.classList.contains('hidden')) return;
-                renderViewContent(safeViewId, false, false);
+                const searchViewRenderStartedAt = beginInternalPerfMeasure();
+                try {
+                    renderViewContent(safeViewId, false, false);
+                } finally {
+                    recordAdaptiveRenderDuration(`search-view:${safeViewId}`, getAdaptivePerfElapsedMs(searchViewRenderStartedAt));
+                    sampleAdaptiveDomPressure(`search-view:${safeViewId}`);
+                }
             }, term, options);
             return false;
         }
@@ -23676,7 +23827,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.24.04').trim() || 'V2026.07.24.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.24.05').trim() || 'V2026.07.24.05';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -30415,7 +30566,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 deferredCardPhotoHydrationRoots.clear();
                 const imgs = [];
                 const seen = new Set();
-                const maxHydrationScan = isTouchConstrainedDevice() ? 36 : 96;
+                const maxHydrationScan = getAdaptiveImageHydrationScanLimit();
                 roots.forEach((candidateRoot) => {
                     if (imgs.length >= maxHydrationScan) return;
                     let scope = candidateRoot && candidateRoot.querySelectorAll ? candidateRoot : document;
@@ -30439,10 +30590,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     return;
                 }
                 let index = 0;
+                const adaptiveLevel = getAdaptivePerformanceLevel();
+                const batchSize = adaptiveLevel >= 2 ? 3 : (adaptiveLevel === 1 || isTouchConstrainedDevice() ? 4 : 8);
+                const batchDelay = adaptiveLevel >= 2 ? 160 : (adaptiveLevel === 1 ? 120 : 80);
                 const hydrateBatch = () => {
-                    imgs.slice(index, index + 8).forEach(hydrateDeferredCardPhoto);
-                    index += 8;
-                    if (index < imgs.length) window.setTimeout(hydrateBatch, 80);
+                    imgs.slice(index, index + batchSize).forEach(hydrateDeferredCardPhoto);
+                    index += batchSize;
+                    if (index < imgs.length) window.setTimeout(hydrateBatch, batchDelay);
                 };
                 hydrateBatch();
             });
@@ -39859,13 +40013,27 @@ function toggleDriveQuickRequestItem(domId) {
             item._searchProfileWordStarts[profileName] = wordStarts;
             return wordStarts;
         }
-        function matchesItemSearch(item, rawTerm, profileName = '') {
+
+        function doesSearchProfilePrefixMatch(searchValues = [], terms = []) {
+            const safeValues = Array.isArray(searchValues) ? searchValues : [];
+            const safeTerms = Array.isArray(terms) ? terms.filter(Boolean) : [];
+            if (!safeTerms.length) return true;
+            if (!safeValues.length) return false;
+            const joined = safeTerms.join(' ');
+            if (joined && safeValues.some((value) => String(value || '').startsWith(joined))) return true;
+            return safeTerms.every((term) => safeValues.some((value) => {
+                const normalizedValue = String(value || '');
+                return normalizedValue.startsWith(term) || normalizedSearchTextHasWordStart(normalizedValue, term);
+            }));
+        }
+
+        function matchesItemSearch(item, rawTerm, profileName = '', options = {}) {
             const terms = tokenizeSearchValue(rawTerm);
             if (!terms.length) return true;
             const searchValues = getSearchValuesForProfile(item, profileName);
             if (!searchValues.length) return false;
-            const joined = terms.join(' ');
-            if (searchValues.some((value) => value.startsWith(joined))) return true;
+            const prefixMatched = doesSearchProfilePrefixMatch(searchValues, terms);
+            if (prefixMatched || (options && options.prefixOnly === true)) return prefixMatched;
             return terms.every((term) => searchValues.some((value) => normalizedSearchTextHasWordStart(value, term)));
         }
 
@@ -39886,7 +40054,10 @@ function toggleDriveQuickRequestItem(domId) {
                 return cacheBucket.get(cacheKey);
             }
             const searchStartedAt = beginInternalPerfMeasure();
-            const filteredItems = scopedItems.filter(item => matchesItemSearch(item, normalizedTerm, profileName));
+            const prefixItems = scopedItems.filter(item => matchesItemSearch(item, normalizedTerm, profileName, { prefixOnly: true }));
+            const filteredItems = prefixItems.length
+                ? prefixItems
+                : scopedItems.filter(item => matchesItemSearch(item, normalizedTerm, profileName));
             recordInternalPerfDuration('searchRenderDurations', searchStartedAt, String(profileName || 'default').trim() || 'default');
             cacheBucket.set(cacheKey, filteredItems);
             trimInternalCacheMap(cacheBucket);
@@ -39909,7 +40080,7 @@ function toggleDriveQuickRequestItem(domId) {
             cancelScheduledUiRenderByPrefix(`search:${safeKey}`);
             const renderToken = (Number(searchRenderToken[safeKey] || 0) + 1);
             searchRenderToken[safeKey] = renderToken;
-            const touchOptimized = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            const touchOptimized = isTouchConstrainedDevice();
             const baseDelay = safeKey === 'drive-search'
                 ? (touchOptimized ? 18 : 1)
                 : (touchOptimized ? 14 : 1);
@@ -40740,7 +40911,7 @@ function toggleDriveQuickRequestItem(domId) {
 
 
         function isTouchConstrainedDevice() {
-            return !!(isIOSDevice() || isStandaloneApp() || /Android/i.test(navigator.userAgent) || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches));
+            return !!(isAdaptivePerformanceMode() || isIOSDevice() || isStandaloneApp() || /Android/i.test(navigator.userAgent) || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches));
         }
 
         function runAfterShellInteractive(task, delayMs = 0) {
@@ -68690,7 +68861,9 @@ function toggleDriveQuickRequestItem(domId) {
             const token = bumpChunkRenderTokenByKey(key);
             const total = Array.isArray(rows) ? rows.length : 0;
             const coarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-            const touchOptimized = isIOSDevice() || isStandaloneApp() || coarsePointer;
+            const adaptiveConstrained = isAdaptivePerformanceMode();
+            const adaptiveLevel = getAdaptivePerformanceLevel();
+            const touchOptimized = adaptiveConstrained || isIOSDevice() || isStandaloneApp() || coarsePointer;
             const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
             const approxCardHeight = Math.max(120, Number(options.approxCardHeight) || 220);
             const emptyHtml = options.emptyHtml || `<div class="p-8 text-center text-gray-400">No rows found.</div>`;
@@ -68705,23 +68878,25 @@ function toggleDriveQuickRequestItem(domId) {
             const configuredChunkSize = Number(options.chunkSize);
             const chunkSize = Number.isFinite(configuredChunkSize) && configuredChunkSize > 0
                 ? Math.max(1, Math.floor(configuredChunkSize))
+                : (adaptiveConstrained
+                ? (total > 1800 ? 10 : (total > 900 ? 14 : 20))
                 : (iosConstrained
                 ? (total > 1800 ? 12 : (total > 900 ? 14 : 16))
                 : (touchOptimized
                 ? (total > 1800 ? 22 : (total > 900 ? 28 : 36))
-                : (total > 1400 ? 36 : (total > 700 ? 48 : 64))));
+                : (total > 1400 ? 36 : (total > 700 ? 48 : 64)))));
             const configuredInitialScreens = Number(options.initialScreens);
             const initialScreens = Number.isFinite(configuredInitialScreens) && configuredInitialScreens > 0
                 ? configuredInitialScreens
-                : (iosConstrained ? 1.25 : (touchOptimized ? 2.0 : 2.5));
+                : (adaptiveConstrained ? 1.35 : (iosConstrained ? 1.25 : (touchOptimized ? 2.0 : 2.5)));
             const configuredInitialRows = Number(options.initialRows);
             const computedInitialTarget = Math.max(touchOptimized ? Math.max(iosConstrained ? 12 : 18, chunkSize) : Math.max(28, chunkSize), Math.ceil((viewportHeight * initialScreens) / approxCardHeight));
             const initialTarget = Math.min(total, Math.max(1, Number.isFinite(configuredInitialRows) && configuredInitialRows > 0 ? Math.floor(configuredInitialRows) : computedInitialTarget));
             const configuredPerFrameRows = Number(options.perFrameRows);
             const perFrameLimit = Number.isFinite(configuredPerFrameRows) && configuredPerFrameRows > 0
                 ? Math.max(1, Math.floor(configuredPerFrameRows))
-                : (iosConstrained ? Math.max(chunkSize, 10) : (touchOptimized ? Math.max(chunkSize, 32) : Math.max(chunkSize, 64)));
-            const frameBudgetMs = iosConstrained ? Math.min(IOS_CHUNK_FRAME_BUDGET_MS, 3.5) : (touchOptimized ? 4.0 : 4.8);
+                : (adaptiveConstrained ? Math.max(chunkSize, adaptiveLevel >= 2 ? 12 : 18) : (iosConstrained ? Math.max(chunkSize, 10) : (touchOptimized ? Math.max(chunkSize, 32) : Math.max(chunkSize, 64))));
+            const frameBudgetMs = adaptiveConstrained ? (adaptiveLevel >= 2 ? 1.8 : 2.6) : (iosConstrained ? Math.min(IOS_CHUNK_FRAME_BUDGET_MS, 3.5) : (touchOptimized ? 4.0 : 4.8));
             const hasFollowupChunks = total > initialTarget;
             const reserveHeightCap = touchOptimized
                 ? Math.max(viewportHeight * 3.2, approxCardHeight * Math.max(12, initialTarget + (chunkSize * 3)))
@@ -68784,7 +68959,7 @@ function toggleDriveQuickRequestItem(domId) {
             const renderBatch = (targetCount, useBudget) => {
                 let html = '';
                 let rendered = 0;
-                const pacing = getChunkRenderPacing(targetCount, frameBudgetMs, { minBatch: iosConstrained ? 4 : 8 });
+                const pacing = getChunkRenderPacing(targetCount, frameBudgetMs, { minBatch: (iosConstrained || adaptiveConstrained) ? 4 : 8 });
                 const batchTarget = pacing.batchTarget;
                 const timeBudget = pacing.timeBudget;
                 const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
@@ -68827,7 +69002,7 @@ function toggleDriveQuickRequestItem(domId) {
                     finishChunkRender();
                     return;
                 }
-                const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: iosConstrained ? 4 : 8 });
+                const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: (iosConstrained || adaptiveConstrained) ? 4 : 8 });
                 const scheduleFrame = () => {
                     if (!isChunkRenderCurrentForContainer(container, key, token)) {
                         finishChunkRender();
@@ -68893,19 +69068,23 @@ function toggleDriveQuickRequestItem(domId) {
             const token = avRenderChunkToken;
             const total = Array.isArray(rows) ? rows.length : 0;
             const renderSignature = buildRowsRenderSignature(`av-open|${sourceView}|${String(crumbText || '')}`, rows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY']);
-            const touchOptimized = isIOSDevice() || isStandaloneApp() || !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            const adaptiveConstrained = isAdaptivePerformanceMode();
+            const adaptiveLevel = getAdaptivePerformanceLevel();
+            const touchOptimized = adaptiveConstrained || isIOSDevice() || isStandaloneApp() || !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
             const iosConstrained = isIOSDevice();
             const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
             const approxCardHeight = sourceView === 'reserves_drill' ? 255 : (getIsAvPhotoSubview() ? 230 : 245);
-            const chunkSize = iosConstrained
+            const chunkSize = adaptiveConstrained
+                ? (total > 1600 ? 10 : (total > 800 ? 14 : 20))
+                : (iosConstrained
                 ? (total > 1600 ? 16 : (total > 800 ? 20 : 24))
                 : (touchOptimized
                 ? (total > 1600 ? 32 : (total > 800 ? 42 : 54))
-                : (total > 1200 ? 52 : (total > 600 ? 68 : 88)));
-            const initialScreens = iosConstrained ? 2.2 : (touchOptimized ? 4.0 : 3.2);
+                : (total > 1200 ? 52 : (total > 600 ? 68 : 88))));
+            const initialScreens = adaptiveConstrained ? 1.6 : (iosConstrained ? 2.2 : (touchOptimized ? 4.0 : 3.2));
             const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(iosConstrained ? 18 : 22, chunkSize * (iosConstrained ? 1 : 2)) : Math.max(32, chunkSize), Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = iosConstrained ? Math.max(chunkSize, 12) : (touchOptimized ? Math.max(chunkSize, 52) : Math.max(chunkSize, 96));
-            const frameBudgetMs = iosConstrained ? IOS_CHUNK_FRAME_BUDGET_MS : (touchOptimized ? 5.0 : 5.5);
+            const perFrameLimit = adaptiveConstrained ? Math.max(chunkSize, adaptiveLevel >= 2 ? 12 : 18) : (iosConstrained ? Math.max(chunkSize, 12) : (touchOptimized ? Math.max(chunkSize, 52) : Math.max(chunkSize, 96)));
+            const frameBudgetMs = adaptiveConstrained ? (adaptiveLevel >= 2 ? 1.8 : 2.6) : (iosConstrained ? IOS_CHUNK_FRAME_BUDGET_MS : (touchOptimized ? 5.0 : 5.5));
             const interactionHoldDeadline = Date.now() + CHUNK_RENDER_INTERACTION_HOLD_MAX_MS;
             let index = 0;
             container.classList.add('performance-windowed-list');
@@ -68936,7 +69115,7 @@ function toggleDriveQuickRequestItem(domId) {
             const renderBatch = (targetCount, useBudget) => {
                 let html = '';
                 let rendered = 0;
-                const pacing = getChunkRenderPacing(targetCount, frameBudgetMs, { minBatch: iosConstrained ? 4 : 10 });
+                const pacing = getChunkRenderPacing(targetCount, frameBudgetMs, { minBatch: (iosConstrained || adaptiveConstrained) ? 4 : 10 });
                 const batchTarget = pacing.batchTarget;
                 const timeBudget = pacing.timeBudget;
                 const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
@@ -68952,7 +69131,7 @@ function toggleDriveQuickRequestItem(domId) {
             setContainerHtml(container, renderBatch(initialTarget, false));
             const queueNextChunkFrame = () => {
                 if (token !== avRenderChunkToken) return;
-                const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: iosConstrained ? 4 : 10 });
+                const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: (iosConstrained || adaptiveConstrained) ? 4 : 10 });
                 const scheduleFrame = () => {
                     if (token !== avRenderChunkToken) return;
                     requestAnimationFrame(renderNextChunk);
@@ -69010,20 +69189,28 @@ function toggleDriveQuickRequestItem(domId) {
             const token = avRenderChunkToken;
             const total = Array.isArray(rows) ? rows.length : 0;
             const renderSignature = normalizeRenderSignature(options.renderSignature || buildRowsRenderSignature(`av-generic|${String(crumbText || '')}`, rows));
-            const touchOptimized = isIOSDevice() || isStandaloneApp() || !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+            const adaptiveConstrained = isAdaptivePerformanceMode();
+            const adaptiveLevel = getAdaptivePerformanceLevel();
+            const touchOptimized = adaptiveConstrained || isIOSDevice() || isStandaloneApp() || !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
             const iosConstrained = isIOSDevice();
             const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
             const approxCardHeight = Math.max(120, Number(options.approxCardHeight) || 185);
             const emptyHtml = options.emptyHtml || `<div class="p-6 text-center text-gray-400">No rows found.</div>`;
-            const chunkSize = iosConstrained
-                ? (total > 1600 ? 16 : (total > 800 ? 20 : 24))
-                : (touchOptimized
-                ? (total > 1600 ? 32 : (total > 800 ? 42 : 54))
-                : (total > 1200 ? 52 : (total > 600 ? 68 : 88)));
-            const initialScreens = iosConstrained ? 2.2 : (touchOptimized ? 4.0 : 3.2);
-            const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(iosConstrained ? 18 : 22, chunkSize * (iosConstrained ? 1 : 2)) : Math.max(32, chunkSize), Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = iosConstrained ? Math.max(chunkSize, 12) : (touchOptimized ? Math.max(chunkSize, 52) : Math.max(chunkSize, 96));
-            const frameBudgetMs = iosConstrained ? IOS_CHUNK_FRAME_BUDGET_MS : (touchOptimized ? 5.0 : 5.5);
+            const chunkSize = adaptiveLevel >= 2
+                ? (total > 800 ? 8 : 12)
+                : (adaptiveConstrained
+                    ? (total > 1200 ? 12 : (total > 600 ? 16 : 20))
+                    : (iosConstrained
+                        ? (total > 1600 ? 16 : (total > 800 ? 20 : 24))
+                        : (touchOptimized
+                            ? (total > 1600 ? 32 : (total > 800 ? 42 : 54))
+                            : (total > 1200 ? 52 : (total > 600 ? 68 : 88)))));
+            const initialScreens = adaptiveLevel >= 2 ? 1.25 : (adaptiveConstrained ? 1.6 : (iosConstrained ? 2.2 : (touchOptimized ? 4.0 : 3.2)));
+            const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(iosConstrained || adaptiveConstrained ? 12 : 22, chunkSize * (iosConstrained || adaptiveConstrained ? 1 : 2)) : Math.max(32, chunkSize), Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
+            const perFrameLimit = adaptiveLevel >= 2
+                ? Math.max(chunkSize, 8)
+                : (adaptiveConstrained ? Math.max(chunkSize, 14) : (iosConstrained ? Math.max(chunkSize, 12) : (touchOptimized ? Math.max(chunkSize, 52) : Math.max(chunkSize, 96))));
+            const frameBudgetMs = adaptiveLevel >= 2 ? 2.4 : (adaptiveConstrained ? 3.0 : (iosConstrained ? IOS_CHUNK_FRAME_BUDGET_MS : (touchOptimized ? 5.0 : 5.5)));
             const interactionHoldDeadline = Date.now() + CHUNK_RENDER_INTERACTION_HOLD_MAX_MS;
             let index = 0;
             container.classList.add('performance-windowed-list');
@@ -69054,7 +69241,7 @@ function toggleDriveQuickRequestItem(domId) {
             const renderBatch = (targetCount, useBudget) => {
                 let html = '';
                 let rendered = 0;
-                const pacing = getChunkRenderPacing(targetCount, frameBudgetMs, { minBatch: iosConstrained ? 4 : 10 });
+                const pacing = getChunkRenderPacing(targetCount, frameBudgetMs, { minBatch: (iosConstrained || adaptiveConstrained) ? 4 : 10 });
                 const batchTarget = pacing.batchTarget;
                 const timeBudget = pacing.timeBudget;
                 const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
@@ -69062,7 +69249,7 @@ function toggleDriveQuickRequestItem(domId) {
                     html += renderRow(rows[index], index);
                     index += 1;
                     rendered += 1;
-                    const minMeasuredRows = iosConstrained ? Math.max(3, Math.ceil(chunkSize / 3)) : Math.max(6, Math.ceil(chunkSize / 3));
+                    const minMeasuredRows = (iosConstrained || adaptiveConstrained) ? Math.max(3, Math.ceil(chunkSize / 3)) : Math.max(6, Math.ceil(chunkSize / 3));
                     if (useBudget && rendered >= minMeasuredRows && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= timeBudget) break;
                 }
                 return html;
@@ -69070,7 +69257,7 @@ function toggleDriveQuickRequestItem(domId) {
             setContainerHtml(container, renderBatch(initialTarget, false));
             const queueNextChunkFrame = () => {
                 if (token !== avRenderChunkToken) return;
-                const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: iosConstrained ? 4 : 10 });
+                const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: (iosConstrained || adaptiveConstrained) ? 4 : 10 });
                 const scheduleFrame = () => {
                     if (token !== avRenderChunkToken) return;
                     requestAnimationFrame(renderNextChunk);
@@ -69080,11 +69267,11 @@ function toggleDriveQuickRequestItem(domId) {
                     scheduleChunkRenderTimeout('av', queueNextChunkFrame, getFollowupChunkInteractionDelayMs());
                     return;
                 }
-                if (iosConstrained) {
+                if (iosConstrained || adaptiveLevel >= 2) {
                     const iosFrameDelay = getIosChunkFrameDelay(pacing);
                     if (iosFrameDelay > 0) {
                         if (pacing.liveGestureActive) incrementInternalPerfCounter('scrollBlockedChunkFrames');
-                        scheduleChunkRenderTimeout('av', scheduleFrame, iosFrameDelay);
+                        scheduleChunkRenderTimeout('av', scheduleFrame, adaptiveLevel >= 2 ? Math.max(iosFrameDelay, 96) : iosFrameDelay);
                     } else {
                         scheduleFrame();
                     }
@@ -69096,7 +69283,7 @@ function toggleDriveQuickRequestItem(domId) {
                     return;
                 }
                 if (index > initialTarget && !isUserInLiveTouchScrollGesture()) {
-                    scheduleChunkRenderTimeout('av', scheduleFrame, iosConstrained ? 72 : (touchOptimized ? 40 : 18));
+                    scheduleChunkRenderTimeout('av', scheduleFrame, adaptiveLevel >= 2 ? 110 : (iosConstrained ? 72 : (touchOptimized ? 40 : 18)));
                     return;
                 }
                 scheduleFrame();
@@ -100480,16 +100667,24 @@ C.14.043 C.15.000
             const searchedLocationRows = term
                 ? getCropRollDrillViewCacheValue(`${drillCacheBaseKey}:location-search:${selectedBlock}:${selectedLocation}`, () => selectedBlockSearchRows.filter((item) => getTaskLocationBucket(item) === selectedLocation))
                 : selectedLocationRows;
-            if (getCropRollActiveSelectedContSizeSet().size || getCropRollActiveSelectedSeasonSet().size) {
-                setCropRollActiveSelectedContSizeSet(new Set());
-                setCropRollActiveSelectedSeasonSet(new Set());
+            const locationContSizeOptions = getCropRollDrillViewCacheValue(`${drillCacheBaseKey}:location-contsize-options:${selectedBlock}:${selectedLocation}`, () => getCropRollLocationContSizeOptions(searchedLocationRows));
+            const locationSeasonOptions = getCropRollDrillViewCacheValue(`${drillCacheBaseKey}:location-season-options:${selectedBlock}:${selectedLocation}`, () => getCropRollLocationSeasonOptions(searchedLocationRows));
+            const activeLocationContSizeSet = pruneCropRollLocationSelectionSet(getCropRollActiveSelectedContSizeSet(), locationContSizeOptions);
+            const activeLocationSeasonSet = pruneCropRollLocationSelectionSet(getCropRollActiveSelectedSeasonSet(), locationSeasonOptions);
+            if (getCropRollFilterSetSignature(activeLocationContSizeSet) !== getCropRollFilterSetSignature(getCropRollActiveSelectedContSizeSet())) {
+                setCropRollActiveSelectedContSizeSet(activeLocationContSizeSet);
             }
-            const finalItems = getCropRollDrillViewCacheValue(`${drillCacheBaseKey}:final-items:${selectedBlock}:${selectedLocation}`, () => sortCropRollLocationCardItems(searchedLocationRows));
+            if (getCropRollFilterSetSignature(activeLocationSeasonSet) !== getCropRollFilterSetSignature(getCropRollActiveSelectedSeasonSet())) {
+                setCropRollActiveSelectedSeasonSet(activeLocationSeasonSet);
+            }
+            const locationFilterKey = `${getCropRollFilterSetSignature(activeLocationContSizeSet)}:${getCropRollFilterSetSignature(activeLocationSeasonSet)}`;
+            const locationFilteredRows = getCropRollDrillViewCacheValue(`${drillCacheBaseKey}:location-filtered:${selectedBlock}:${selectedLocation}:${locationFilterKey}`, () => filterCropRollRowsByLocationSelections(searchedLocationRows, activeLocationContSizeSet, activeLocationSeasonSet));
+            const finalItems = getCropRollDrillViewCacheValue(`${drillCacheBaseKey}:final-items:${selectedBlock}:${selectedLocation}:${locationFilterKey}`, () => sortCropRollLocationCardItems(locationFilteredRows));
             const crumbText = `${activeLabel} > ${selectedBlock} > ${selectedLocation} (${finalItems.length}/${searchedLocationRows.length} items)`;
             const prefixHtml = backControlsHtml;
             const renderKey = buildDriveRenderKey(`crop-roll-${activeView}:${filterKey}:cards`, crumbText, finalItems);
             if (!finalItems.length) {
-                applyDriveRenderMarkup(container, crumb, crumbText, `${prefixHtml}<div class="p-8 text-center text-gray-400">No ${escapeHtml(activeLabel)} rows in this location match the current search.</div>`, `crop-roll-${activeView}:${filterKey}:cards-empty:${term ? 'search' : 'all'}`);
+                applyDriveRenderMarkup(container, crumb, crumbText, `${prefixHtml}<div class="p-8 text-center text-gray-400">No ${escapeHtml(activeLabel)} rows in this location match the current search.</div>`, `crop-roll-${activeView}:${filterKey}:cards-empty:${term ? 'search' : 'all'}:${locationFilterKey}`);
                 return;
             }
             const touchCropRollCardList = isTouchConstrainedDevice();
