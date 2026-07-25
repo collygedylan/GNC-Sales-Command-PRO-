@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.24.11';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.24.12';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4890,7 +4890,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.24.11').trim() || 'V2026.07.24.11';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.24.12').trim() || 'V2026.07.24.12';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6343,7 +6343,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.24.11';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.24.12';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -23583,6 +23583,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const NCR_APPROVAL_HOLD_RELEASE_VIEW = 'hold-release-approvals';
         const NCR_APPROVAL_RECOUNT_VIEW = 'recount-approvals';
         const INVENTORY_CHECKS_APPROVAL_VIEW = 'inventory-checks-approvals';
+        const MANAGER_APPROVAL_HOME_VIEW = 'approval';
         const SHEAR_APPROVAL_VIEW = 'shear-approvals';
         const NOT_ON_INVENTORY_APPROVAL_VIEW = 'not-on-inventory-approvals';
         const MANAGER_APPROVAL_TAB_VALUES = Object.freeze([SHEAR_APPROVAL_VIEW, NCR_APPROVAL_NEW_CROP_VIEW, NOT_ON_INVENTORY_APPROVAL_VIEW]);
@@ -23897,7 +23898,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.24.11').trim() || 'V2026.07.24.11';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.24.12').trim() || 'V2026.07.24.12';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -103471,7 +103472,7 @@ C.14.043 C.15.000
             let nextTab = 'dashboard';
             if (requestedTab === 'productivity' && canViewProductivityHome()) nextTab = 'productivity';
             else if (requestedTab === CROP_ROLL_HOME_TAB && canViewCropRollHome()) nextTab = CROP_ROLL_HOME_TAB;
-            else if (requestedTab === 'ai-capture' && currentUser) nextTab = 'ai-capture';
+            else if (requestedTab === MANAGER_APPROVAL_HOME_VIEW && getManagersToolAccess().canViewApproval) nextTab = MANAGER_APPROVAL_HOME_VIEW;
             else if (requestedTab === 'moves' && canAccessView('moves')) nextTab = 'moves';
             else if (requestedTab === APP_SEASON_SETTINGS_VIEW && canManageCurrentSeasonSettings()) nextTab = APP_SEASON_SETTINGS_VIEW;
             else if (isManagerApprovalTab(requestedTab) && canUseManagerApprovalTab(requestedTab)) nextTab = requestedTab;
@@ -103503,7 +103504,6 @@ C.14.043 C.15.000
                 triggerCropRollOfficeCompletionLoad(false);
                 ensureDatasetLoaded('master', 'full').then(() => scheduleHomeOrManagersRender(true)).catch(() => {});
             }
-            if (nextTab === 'ai-capture') ensureDatasetLoaded('master', 'initial').then(() => scheduleHomeOrManagersRender(true)).catch(() => {});
             if (isManagerApprovalTab(nextTab)) {
                 ensureDatasetLoaded('master', 'full').then(() => scheduleManagersRender(true)).catch(() => {});
                 if (isNcrApprovalTaskView(nextTab)) scheduleNcrApprovalTaskRowsRefresh(nextTab, { force: true });
@@ -106178,7 +106178,7 @@ C.14.043 C.15.000
 
         function getManagerApprovalTabLabel(tab = activeHomeTab) {
             const safeTab = String(tab || '').trim().toLowerCase();
-            if (safeTab === SHEAR_APPROVAL_VIEW) return 'Shear Approval';
+            if (safeTab === SHEAR_APPROVAL_VIEW) return 'Shear Approvals';
             if (safeTab === NCR_APPROVAL_NEW_CROP_VIEW) return 'NCR Approvals';
             if (safeTab === NOT_ON_INVENTORY_APPROVAL_VIEW) return 'Not On Inventory';
             return 'Approvals';
@@ -106190,7 +106190,7 @@ C.14.043 C.15.000
             const canViewNcrApprovals = safeAccess.canViewNcrApprovals !== undefined ? !!safeAccess.canViewNcrApprovals : canUseNcrApprovalTaskView();
             const canViewNotOnInventoryApprovals = safeAccess.canViewNotOnInventoryApprovals !== undefined ? !!safeAccess.canViewNotOnInventoryApprovals : canUseNotOnInventoryApprovalTaskView();
             const tabs = [];
-            if (canViewShearApprovals) tabs.push({ id: SHEAR_APPROVAL_VIEW, label: 'Shear Approval' });
+            if (canViewShearApprovals) tabs.push({ id: SHEAR_APPROVAL_VIEW, label: 'Shear Approvals' });
             if (canViewNcrApprovals) {
                 tabs.push({ id: NCR_APPROVAL_NEW_CROP_VIEW, label: 'NCR Approvals' });
             }
@@ -106621,6 +106621,33 @@ C.14.043 C.15.000
             </div>`;
         }
 
+        function renderManagerApprovalHomePanel(approvalTabs = null) {
+            const tabs = (Array.isArray(approvalTabs) ? approvalTabs : getManagerApprovalTabs(getManagersToolAccess()))
+                .filter((tab) => [SHEAR_APPROVAL_VIEW, NCR_APPROVAL_NEW_CROP_VIEW].includes(String(tab && tab.id || '').trim().toLowerCase()));
+            const cardsHtml = tabs.map((tab) => {
+                const meta = getManagerModuleMeta(tab.id);
+                return `<button type="button" class="manager-module-card" ${buildFastInvokeAttrs('setHomeTab', [tab.id], tab.label || meta.label)}>
+                    <span class="manager-module-icon"><i class="ph-bold ${esc(meta.icon || 'ph-seal-check')}"></i></span>
+                    <span class="min-w-0">
+                        <span class="block text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Approval Queue</span>
+                        <span class="mt-1 block text-lg font-black leading-tight text-slate-900">${esc(tab.label || meta.label)}</span>
+                        <span class="mt-1 block text-[12px] font-semibold leading-snug text-slate-500">${esc(meta.description || 'Open approval work.')}</span>
+                    </span>
+                </button>`;
+            }).join('');
+            if (!cardsHtml) {
+                return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No approval queues are available for this login.</div>';
+            }
+            return `<div class="space-y-4">
+                <div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                    <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Manager Approval</div>
+                    <div class="mt-1 text-xl font-black text-slate-900">Approval</div>
+                    <div class="mt-1 text-[12px] font-semibold text-slate-500">Choose the approval queue to work. Shear and NCR approvals stay grouped here.</div>
+                </div>
+                <div class="manager-module-grid">${cardsHtml}</div>
+            </div>`;
+        }
+
         function renderManagerApprovalPanel(tab = activeHomeTab) {
             const safeTab = String(tab || '').trim().toLowerCase();
             if (!canUseManagerApprovalTab(safeTab)) {
@@ -106930,12 +106957,14 @@ C.14.043 C.15.000
         }
 
         function getManagersToolAccess() {
+            const canViewShearApprovals = canUseInventoryChecksApprovalView();
+            const canViewNcrApprovals = canUseNcrApprovalTaskView();
             return {
-                canViewCapture: !!currentUser,
                 canViewMoves: canAccessView('moves'),
                 canViewProductivity: canViewProductivityHome(),
-                canViewShearApprovals: canUseInventoryChecksApprovalView(),
-                canViewNcrApprovals: canUseNcrApprovalTaskView(),
+                canViewApproval: canViewShearApprovals || canViewNcrApprovals,
+                canViewShearApprovals,
+                canViewNcrApprovals,
                 canViewNotOnInventoryApprovals: canUseNotOnInventoryApprovalTaskView(),
                 canViewCropRoll: canViewCropRollHome(),
                 canManageSeasonSettings: canManageCurrentSeasonSettings(),
@@ -106944,19 +106973,19 @@ C.14.043 C.15.000
         }
 
         function getDefaultManagersTab(access = getManagersToolAccess()) {
-            if (access.canViewNcrApprovals) return NCR_APPROVAL_NEW_CROP_VIEW;
+            if (access.canViewApproval) return MANAGER_APPROVAL_HOME_VIEW;
             if (access.canViewNotOnInventoryApprovals) return NOT_ON_INVENTORY_APPROVAL_VIEW;
             if (access.canViewCropRoll) return CROP_ROLL_HOME_TAB;
             if (access.canViewMoves) return 'moves';
             if (access.canManageSeasonSettings) return APP_SEASON_SETTINGS_VIEW;
             if (access.canViewInventoryTransactions) return INVENTORY_TRANSACTION_HISTORY_VIEW;
-            if (access.canViewCapture) return 'ai-capture';
             if (access.canViewProductivity) return 'productivity';
             return '';
         }
 
         function getManagerToolTabs(access = getManagersToolAccess()) {
             const tabs = [];
+            if (access.canViewApproval) tabs.push({ id: MANAGER_APPROVAL_HOME_VIEW, label: 'Approval' });
             if (access.canViewCropRoll) tabs.push({ id: CROP_ROLL_HOME_TAB, label: 'Crop Roll' });
             if (access.canViewMoves) tabs.push({ id: 'moves', label: 'Move' });
             if (access.canManageSeasonSettings) tabs.push({ id: APP_SEASON_SETTINGS_VIEW, label: 'Season' });
@@ -106969,9 +106998,10 @@ C.14.043 C.15.000
             const safeToolTabs = Array.isArray(toolTabs) ? toolTabs : getManagerToolTabs(access);
             const options = [];
             safeToolTabs.forEach((tab) => options.push(Object.assign({}, tab)));
-            safeApprovalTabs.forEach((tab) => options.push(Object.assign({}, tab)));
+            safeApprovalTabs
+                .filter((tab) => ![SHEAR_APPROVAL_VIEW, NCR_APPROVAL_NEW_CROP_VIEW].includes(String(tab && tab.id || '').trim().toLowerCase()))
+                .forEach((tab) => options.push(Object.assign({}, tab)));
             if (access.canViewProductivity) options.push({ id: 'productivity', label: 'Productivity' });
-            if (access.canViewCapture) options.push({ id: 'ai-capture', label: 'AI Capture' });
             const seen = new Set();
             return options.filter((option) => {
                 const id = String(option && option.id || '').trim().toLowerCase();
@@ -106983,13 +107013,13 @@ C.14.043 C.15.000
 
         function getManagerModuleMeta(tab = activeHomeTab) {
             const safeTab = String(tab || '').trim().toLowerCase();
+            if (safeTab === MANAGER_APPROVAL_HOME_VIEW) return { label: 'Approval', description: 'Open Shear and NCR approval work.', icon: 'ph-seal-check' };
             if (safeTab === CROP_ROLL_HOME_TAB) return { label: 'Crop Roll', description: 'Review completed crop-roll itemcodes before Inventory Office.', icon: 'ph-plant' };
             if (safeTab === 'moves') return { label: 'Move', description: 'Build location-code move sessions from Drive Mode rows.', icon: 'ph-map-pin-line' };
             if (safeTab === APP_SEASON_SETTINGS_VIEW) return { label: 'Season', description: 'Set the current and next sales season logic.', icon: 'ph-calendar-check' };
             if (safeTab === INVENTORY_TRANSACTION_HISTORY_VIEW) return { label: 'Transaction History', description: 'Look up who made QTY, Transfer, and Reclass changes.', icon: 'ph-clock-counter-clockwise' };
             if (safeTab === 'productivity') return { label: 'Productivity', description: 'Review completed work by user and date.', icon: 'ph-chart-line-up' };
-            if (safeTab === 'ai-capture') return { label: 'AI Capture', description: 'Review image capture and processing tools.', icon: 'ph-camera' };
-            if (safeTab === SHEAR_APPROVAL_VIEW) return { label: 'Shear Approval', description: 'Approve explicit Add To Shear List requests before they enter Que.', icon: 'ph-scissors' };
+            if (safeTab === SHEAR_APPROVAL_VIEW) return { label: 'Shear Approvals', description: 'Approve explicit Add To Shear List requests before they enter Que.', icon: 'ph-scissors' };
             if (safeTab === NCR_APPROVAL_NEW_CROP_VIEW) return { label: 'NCR Approvals', description: 'Approve future season new crop release rows.', icon: 'ph-seal-check' };
             if (safeTab === NOT_ON_INVENTORY_APPROVAL_VIEW) return { label: 'Not On Inventory', description: 'Review rows flagged outside inventory.', icon: 'ph-clipboard-text' };
             return { label: getManagerApprovalTabLabel(safeTab) || 'Manager Module', description: 'Open a manager workflow.', icon: 'ph-squares-four' };
@@ -109114,7 +109144,6 @@ C.14.043 C.15.000
             const managerToolTabs = getManagerToolTabs(access);
             const allowedTabs = new Set();
             allowedTabs.add('dashboard');
-            if (access.canViewCapture) allowedTabs.add('ai-capture');
             if (access.canViewProductivity) allowedTabs.add('productivity');
             managerToolTabs.forEach((tab) => allowedTabs.add(tab.id));
             managerApprovalTabs.forEach((tab) => allowedTabs.add(tab.id));
@@ -109127,7 +109156,7 @@ C.14.043 C.15.000
             if (activeHomeTab !== 'productivity') selectedProductivityUser = '';
             let html = '';
             if (activeHomeTab === 'dashboard') html = renderManagerModulePicker(access, managerApprovalTabs, managerToolTabs);
-            else if (activeHomeTab === 'ai-capture') html = renderMlCaptureHomePanel();
+            else if (activeHomeTab === MANAGER_APPROVAL_HOME_VIEW) html = renderManagerApprovalHomePanel(managerApprovalTabs);
             else if (activeHomeTab === 'productivity') html += renderProductivityHomePanel();
             else if (activeHomeTab === CROP_ROLL_HOME_TAB) html += renderCropRollHomePanel();
             else if (activeHomeTab === 'moves') html += renderManagerMovesPanel();
