@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.24.10';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.24.11';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4890,7 +4890,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.24.10').trim() || 'V2026.07.24.10';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.24.11').trim() || 'V2026.07.24.11';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6343,7 +6343,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.24.10';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.24.11';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -15908,7 +15908,6 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 markViewDirty('managers');
                 markViewDirty('diagnostics');
                 markViewDirty('tasks');
-                if (getCurrentVisibleViewId() === 'managers' && activeHomeTab === 'grading') scheduleManagersRender(true);
                 if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 160);
                 if (isViewVisible('tasks') && isTaskDiagnosticsView(activeTaskTab)) scheduleTasksRender(0, 0, true);
             } else if (tableName === GROWER_SCOUT_REPORTS_TABLE || tableName === GROWER_SCOUT_ASSETS_TABLE) {
@@ -23586,7 +23585,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const INVENTORY_CHECKS_APPROVAL_VIEW = 'inventory-checks-approvals';
         const SHEAR_APPROVAL_VIEW = 'shear-approvals';
         const NOT_ON_INVENTORY_APPROVAL_VIEW = 'not-on-inventory-approvals';
-        const MANAGER_APPROVAL_TAB_VALUES = Object.freeze([INVENTORY_CHECKS_APPROVAL_VIEW, SHEAR_APPROVAL_VIEW, NCR_APPROVAL_NEW_CROP_VIEW, NCR_APPROVAL_MOVE_UP_VIEW, NCR_APPROVAL_MOVE_DOWN_VIEW, NCR_APPROVAL_HOLD_RELEASE_VIEW, NCR_APPROVAL_RECOUNT_VIEW, NOT_ON_INVENTORY_APPROVAL_VIEW]);
+        const MANAGER_APPROVAL_TAB_VALUES = Object.freeze([SHEAR_APPROVAL_VIEW, NCR_APPROVAL_NEW_CROP_VIEW, NOT_ON_INVENTORY_APPROVAL_VIEW]);
         const TASK_DIAGNOSTICS_VIEW = 'diagnostics-review';
         const INVENTORY_TRANSACTION_HISTORY_VIEW = 'inventory-transaction-history';
         const NCR_APPROVAL_ASSIGNMENTS = Object.freeze({
@@ -23898,7 +23897,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.24.10').trim() || 'V2026.07.24.10';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.24.11').trim() || 'V2026.07.24.11';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -103473,10 +103472,8 @@ C.14.043 C.15.000
             if (requestedTab === 'productivity' && canViewProductivityHome()) nextTab = 'productivity';
             else if (requestedTab === CROP_ROLL_HOME_TAB && canViewCropRollHome()) nextTab = CROP_ROLL_HOME_TAB;
             else if (requestedTab === 'ai-capture' && currentUser) nextTab = 'ai-capture';
-            else if (requestedTab === 'grading' && canUseMlAdminViews()) nextTab = 'grading';
             else if (requestedTab === 'moves' && canAccessView('moves')) nextTab = 'moves';
             else if (requestedTab === APP_SEASON_SETTINGS_VIEW && canManageCurrentSeasonSettings()) nextTab = APP_SEASON_SETTINGS_VIEW;
-            else if (isTaskDiagnosticsView(requestedTab) && canUseMlAdminViews()) nextTab = TASK_DIAGNOSTICS_VIEW;
             else if (isManagerApprovalTab(requestedTab) && canUseManagerApprovalTab(requestedTab)) nextTab = requestedTab;
             activeHomeTab = nextTab;
             if (nextTab !== SHEAR_APPROVAL_VIEW) activeShearApprovalDetailId = '';
@@ -103507,8 +103504,6 @@ C.14.043 C.15.000
                 ensureDatasetLoaded('master', 'full').then(() => scheduleHomeOrManagersRender(true)).catch(() => {});
             }
             if (nextTab === 'ai-capture') ensureDatasetLoaded('master', 'initial').then(() => scheduleHomeOrManagersRender(true)).catch(() => {});
-            if (nextTab === 'grading') ensureDatasetLoaded('mlJobs', 'initial').then(() => scheduleHomeOrManagersRender(true)).catch(() => {});
-            if (isTaskDiagnosticsView(nextTab)) ensureDatasetLoaded('mlJobs', 'initial').then(() => scheduleManagersRender(true)).catch(() => {});
             if (isManagerApprovalTab(nextTab)) {
                 ensureDatasetLoaded('master', 'full').then(() => scheduleManagersRender(true)).catch(() => {});
                 if (isNcrApprovalTaskView(nextTab)) scheduleNcrApprovalTaskRowsRefresh(nextTab, { force: true });
@@ -105032,26 +105027,6 @@ C.14.043 C.15.000
             </div>`;
         }
 
-        function renderMlGradingHomePanel() {
-            if (!canUseMlAdminViews()) return '';
-            if (!isDatasetLoaded('mlJobs', 'initial')) {
-                queueDatasetLoad('mlJobs', 'initial', 0);
-                return '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-[12px] font-semibold text-slate-400">Loading grading jobs...</div>';
-            }
-            const pendingRows = getMlJobsByStatus(['pending_approval']);
-            const completedRows = getMlJobsByStatus(['approved']).slice(0, 25);
-            const pendingHtml = pendingRows.length ? pendingRows.map((row) => renderMlApprovalCard(row, 'pending')).join('') : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-[12px] font-semibold text-slate-400">No pending ML approvals.</div>';
-            const completedHtml = completedRows.length ? completedRows.map((row) => renderMlApprovalCard(row, 'approved')).join('') : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-[12px] font-semibold text-slate-400">No completed approvals yet.</div>';
-            return `<div class="space-y-5">
-                <div class="flex items-center justify-between gap-3">
-                    <div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Grading</div><div class="text-xl font-black text-slate-900">Pending Approvals</div></div>
-                    <button type="button" class="rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return refreshMlJobsNow()"><i class="ph-bold ph-arrows-clockwise align-middle"></i><span class="align-middle ml-1">Refresh</span></button>
-                </div>
-                <div class="space-y-3">${pendingHtml}</div>
-                <div class="pt-2"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 mb-3">Complete Approvals</div><div class="space-y-3">${completedHtml}</div></div>
-            </div>`;
-        }
-
         async function prepareMlCaptureBlob(file) {
             if (!file || !String(file.type || '').startsWith('image/')) throw new Error('Please choose an image file.');
             const previewUrl = URL.createObjectURL(file);
@@ -106203,33 +106178,21 @@ C.14.043 C.15.000
 
         function getManagerApprovalTabLabel(tab = activeHomeTab) {
             const safeTab = String(tab || '').trim().toLowerCase();
-            if (safeTab === INVENTORY_CHECKS_APPROVAL_VIEW) return 'Inventory Checks';
             if (safeTab === SHEAR_APPROVAL_VIEW) return 'Shear Approval';
             if (safeTab === NCR_APPROVAL_NEW_CROP_VIEW) return 'NCR Approvals';
-            if (safeTab === NCR_APPROVAL_MOVE_UP_VIEW) return 'Move Up Approvals';
-            if (safeTab === NCR_APPROVAL_MOVE_DOWN_VIEW) return 'Move Down Approvals';
-            if (safeTab === NCR_APPROVAL_HOLD_RELEASE_VIEW) return 'Off Hold Approval';
-            if (safeTab === NCR_APPROVAL_RECOUNT_VIEW) return 'Re-Count Approval';
             if (safeTab === NOT_ON_INVENTORY_APPROVAL_VIEW) return 'Not On Inventory';
             return 'Approvals';
         }
 
         function getManagerApprovalTabs(access = null) {
             const safeAccess = access && typeof access === 'object' ? access : {};
-            const canViewInventoryChecks = safeAccess.canViewInventoryChecks !== undefined ? !!safeAccess.canViewInventoryChecks : canUseInventoryChecksApprovalView();
+            const canViewShearApprovals = safeAccess.canViewShearApprovals !== undefined ? !!safeAccess.canViewShearApprovals : canUseInventoryChecksApprovalView();
             const canViewNcrApprovals = safeAccess.canViewNcrApprovals !== undefined ? !!safeAccess.canViewNcrApprovals : canUseNcrApprovalTaskView();
             const canViewNotOnInventoryApprovals = safeAccess.canViewNotOnInventoryApprovals !== undefined ? !!safeAccess.canViewNotOnInventoryApprovals : canUseNotOnInventoryApprovalTaskView();
             const tabs = [];
-            if (canViewInventoryChecks) tabs.push({ id: INVENTORY_CHECKS_APPROVAL_VIEW, label: 'Inventory Checks' });
-            if (canViewInventoryChecks) tabs.push({ id: SHEAR_APPROVAL_VIEW, label: 'Shear Approval' });
+            if (canViewShearApprovals) tabs.push({ id: SHEAR_APPROVAL_VIEW, label: 'Shear Approval' });
             if (canViewNcrApprovals) {
-                tabs.push(
-                    { id: NCR_APPROVAL_NEW_CROP_VIEW, label: 'NCR Approvals' },
-                    { id: NCR_APPROVAL_MOVE_UP_VIEW, label: 'Move Up Approvals' },
-                    { id: NCR_APPROVAL_MOVE_DOWN_VIEW, label: 'Move Down Approvals' },
-                    { id: NCR_APPROVAL_HOLD_RELEASE_VIEW, label: 'Off Hold Approval' },
-                    { id: NCR_APPROVAL_RECOUNT_VIEW, label: 'Re-Count Approval' }
-                );
+                tabs.push({ id: NCR_APPROVAL_NEW_CROP_VIEW, label: 'NCR Approvals' });
             }
             if (canViewNotOnInventoryApprovals) tabs.push({ id: NOT_ON_INVENTORY_APPROVAL_VIEW, label: 'Not On Inventory' });
             return tabs;
@@ -106254,13 +106217,6 @@ C.14.043 C.15.000
             }
             if (isNcrApprovalTaskView(safeTab)) scheduleNcrApprovalTaskRowsRefresh(safeTab, { force: true });
             if (isNotOnInventoryApprovalTaskView(safeTab)) scheduleNotOnInventoryApprovalTaskRowsRefresh(safeTab, { force: true });
-            markViewDirty('managers');
-            if (isViewVisible('managers')) scheduleManagersRender(true);
-            return false;
-        }
-
-        function refreshManagerDiagnosticsRows() {
-            refreshMlJobsNow();
             markViewDirty('managers');
             if (isViewVisible('managers')) scheduleManagersRender(true);
             return false;
@@ -106299,36 +106255,6 @@ C.14.043 C.15.000
             if (!isManagerApprovalLiveContextActive(activeHomeTab)) return false;
             managerApprovalLiveRefreshTimer = setTimeout(() => runManagerApprovalLiveRefresh(activeHomeTab), Math.max(250, Number(delay) || MANAGER_APPROVAL_LIVE_REFRESH_MS));
             return false;
-        }
-
-        function renderManagerDiagnosticsPanel() {
-            if (!canUseMlAdminViews()) {
-                return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">Diagnostics are restricted to Dylan.</div>';
-            }
-            if (!isDatasetLoaded('mlJobs', 'initial')) {
-                queueDatasetLoad('mlJobs', 'initial', 0);
-                return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center text-[12px] font-semibold text-slate-400">Loading diagnostic issue rows...</div>';
-            }
-            const rows = getTaskDiagnosticIssueRows();
-            const cardsHtml = rows.length
-                ? rows.map((row) => renderTaskDiagnosticIssueCard(row)).join('')
-                : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center text-[12px] font-semibold text-slate-400">No diagnostic issue rows need review.</div>';
-            return `<div class="space-y-4">
-                <div class="rounded-2xl border border-red-100 bg-red-50/70 p-4 shadow-sm">
-                    <div class="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                            <div class="text-[10px] font-black uppercase tracking-[0.16em] text-red-700">Diagnostics</div>
-                            <div class="mt-1 text-xl font-black text-red-950">${rows.length} Issue${rows.length === 1 ? '' : 's'}</div>
-                            <div class="mt-1 text-[11px] font-semibold text-red-900">Photos with a returned issue or manual-review flag appear here for Dylan.</div>
-                        </div>
-                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            <button type="button" class="min-h-[42px] rounded-xl border border-red-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-red-700 shadow-sm active:scale-95 disabled:opacity-60" onclick="return refreshManagerDiagnosticsRows()"><i class="ph-bold ph-arrows-clockwise align-middle"></i><span class="align-middle ml-1">Refresh</span></button>
-                            <button type="button" class="min-h-[42px] rounded-xl bg-[#007a4d] px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95 disabled:opacity-60" onclick="return runDiagnosticsMlWorkerNow(this)"><i class="ph-bold ph-play-circle align-middle"></i><span class="align-middle ml-1">Run ML Worker</span></button>
-                        </div>
-                    </div>
-                </div>
-                <div id="manager-diagnostics-list" class="space-y-3">${cardsHtml}</div>
-            </div>`;
         }
 
         function getInventoryEditManagerApprovalRecords(options = {}) {
@@ -107006,11 +106932,9 @@ C.14.043 C.15.000
         function getManagersToolAccess() {
             return {
                 canViewCapture: !!currentUser,
-                canViewGrading: canUseMlAdminViews(),
-                canViewDiagnostics: canUseMlAdminViews(),
                 canViewMoves: canAccessView('moves'),
                 canViewProductivity: canViewProductivityHome(),
-                canViewInventoryChecks: canUseInventoryChecksApprovalView(),
+                canViewShearApprovals: canUseInventoryChecksApprovalView(),
                 canViewNcrApprovals: canUseNcrApprovalTaskView(),
                 canViewNotOnInventoryApprovals: canUseNotOnInventoryApprovalTaskView(),
                 canViewCropRoll: canViewCropRollHome(),
@@ -107020,16 +106944,13 @@ C.14.043 C.15.000
         }
 
         function getDefaultManagersTab(access = getManagersToolAccess()) {
-            if (access.canViewInventoryChecks) return INVENTORY_CHECKS_APPROVAL_VIEW;
             if (access.canViewNcrApprovals) return NCR_APPROVAL_NEW_CROP_VIEW;
             if (access.canViewNotOnInventoryApprovals) return NOT_ON_INVENTORY_APPROVAL_VIEW;
-            if (access.canViewDiagnostics) return TASK_DIAGNOSTICS_VIEW;
             if (access.canViewCropRoll) return CROP_ROLL_HOME_TAB;
             if (access.canViewMoves) return 'moves';
             if (access.canManageSeasonSettings) return APP_SEASON_SETTINGS_VIEW;
             if (access.canViewInventoryTransactions) return INVENTORY_TRANSACTION_HISTORY_VIEW;
             if (access.canViewCapture) return 'ai-capture';
-            if (access.canViewGrading) return 'grading';
             if (access.canViewProductivity) return 'productivity';
             return '';
         }
@@ -107040,7 +106961,6 @@ C.14.043 C.15.000
             if (access.canViewMoves) tabs.push({ id: 'moves', label: 'Move' });
             if (access.canManageSeasonSettings) tabs.push({ id: APP_SEASON_SETTINGS_VIEW, label: 'Season' });
             if (access.canViewInventoryTransactions) tabs.push({ id: INVENTORY_TRANSACTION_HISTORY_VIEW, label: 'Transaction History' });
-            if (access.canViewDiagnostics) tabs.push({ id: TASK_DIAGNOSTICS_VIEW, label: 'Diagnostics' });
             return tabs;
         }
 
@@ -107052,7 +106972,6 @@ C.14.043 C.15.000
             safeApprovalTabs.forEach((tab) => options.push(Object.assign({}, tab)));
             if (access.canViewProductivity) options.push({ id: 'productivity', label: 'Productivity' });
             if (access.canViewCapture) options.push({ id: 'ai-capture', label: 'AI Capture' });
-            if (access.canViewGrading) options.push({ id: 'grading', label: 'Grading' });
             const seen = new Set();
             return options.filter((option) => {
                 const id = String(option && option.id || '').trim().toLowerCase();
@@ -107068,17 +106987,10 @@ C.14.043 C.15.000
             if (safeTab === 'moves') return { label: 'Move', description: 'Build location-code move sessions from Drive Mode rows.', icon: 'ph-map-pin-line' };
             if (safeTab === APP_SEASON_SETTINGS_VIEW) return { label: 'Season', description: 'Set the current and next sales season logic.', icon: 'ph-calendar-check' };
             if (safeTab === INVENTORY_TRANSACTION_HISTORY_VIEW) return { label: 'Transaction History', description: 'Look up who made QTY, Transfer, and Reclass changes.', icon: 'ph-clock-counter-clockwise' };
-            if (isTaskDiagnosticsView(safeTab)) return { label: 'Diagnostics', description: 'Inspect task and photo sync health.', icon: 'ph-activity' };
             if (safeTab === 'productivity') return { label: 'Productivity', description: 'Review completed work by user and date.', icon: 'ph-chart-line-up' };
             if (safeTab === 'ai-capture') return { label: 'AI Capture', description: 'Review image capture and processing tools.', icon: 'ph-camera' };
-            if (safeTab === 'grading') return { label: 'Grading', description: 'Review ML grading output.', icon: 'ph-sparkle' };
-            if (safeTab === INVENTORY_CHECKS_APPROVAL_VIEW) return { label: 'Inventory Checks', description: 'Approve eval/admin inventory-check changes to Office or Production.', icon: 'ph-clipboard-text' };
             if (safeTab === SHEAR_APPROVAL_VIEW) return { label: 'Shear Approval', description: 'Approve explicit Add To Shear List requests before they enter Que.', icon: 'ph-scissors' };
             if (safeTab === NCR_APPROVAL_NEW_CROP_VIEW) return { label: 'NCR Approvals', description: 'Approve future season new crop release rows.', icon: 'ph-seal-check' };
-            if (safeTab === NCR_APPROVAL_MOVE_UP_VIEW) return { label: 'Move Up Approvals', description: 'Approve rows moving into the current sales season.', icon: 'ph-arrow-fat-lines-up' };
-            if (safeTab === NCR_APPROVAL_MOVE_DOWN_VIEW) return { label: 'Move Down Approvals', description: 'Approve rows moving out of the current sales season.', icon: 'ph-arrow-fat-lines-down' };
-            if (safeTab === NCR_APPROVAL_HOLD_RELEASE_VIEW) return { label: 'Off Hold Approval', description: 'Review take-off-hold requests.', icon: 'ph-lock-open' };
-            if (safeTab === NCR_APPROVAL_RECOUNT_VIEW) return { label: 'Re-Count Approval', description: 'Approve rows that need the recount team to verify on-hand inventory.', icon: 'ph-calculator' };
             if (safeTab === NOT_ON_INVENTORY_APPROVAL_VIEW) return { label: 'Not On Inventory', description: 'Review rows flagged outside inventory.', icon: 'ph-clipboard-text' };
             return { label: getManagerApprovalTabLabel(safeTab) || 'Manager Module', description: 'Open a manager workflow.', icon: 'ph-squares-four' };
         }
@@ -109203,7 +109115,6 @@ C.14.043 C.15.000
             const allowedTabs = new Set();
             allowedTabs.add('dashboard');
             if (access.canViewCapture) allowedTabs.add('ai-capture');
-            if (access.canViewGrading) allowedTabs.add('grading');
             if (access.canViewProductivity) allowedTabs.add('productivity');
             managerToolTabs.forEach((tab) => allowedTabs.add(tab.id));
             managerApprovalTabs.forEach((tab) => allowedTabs.add(tab.id));
@@ -109217,13 +109128,11 @@ C.14.043 C.15.000
             let html = '';
             if (activeHomeTab === 'dashboard') html = renderManagerModulePicker(access, managerApprovalTabs, managerToolTabs);
             else if (activeHomeTab === 'ai-capture') html = renderMlCaptureHomePanel();
-            else if (activeHomeTab === 'grading') html += renderMlGradingHomePanel();
             else if (activeHomeTab === 'productivity') html += renderProductivityHomePanel();
             else if (activeHomeTab === CROP_ROLL_HOME_TAB) html += renderCropRollHomePanel();
             else if (activeHomeTab === 'moves') html += renderManagerMovesPanel();
             else if (activeHomeTab === APP_SEASON_SETTINGS_VIEW) html += renderCurrentSeasonSettingsPanel();
             else if (activeHomeTab === INVENTORY_TRANSACTION_HISTORY_VIEW) html += renderInventoryTransactionHistoryPanel();
-            else if (isTaskDiagnosticsView(activeHomeTab)) html += renderManagerDiagnosticsPanel();
             else if (isManagerApprovalTab(activeHomeTab)) html += renderManagerApprovalPanel(activeHomeTab);
             else html = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No manager tools are available for this login.</div>';
             container.innerHTML = html;
