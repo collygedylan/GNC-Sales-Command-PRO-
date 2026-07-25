@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.24.09';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.24.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4890,7 +4890,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.24.09').trim() || 'V2026.07.24.09';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.24.10').trim() || 'V2026.07.24.10';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6343,7 +6343,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.24.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.24.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -23412,7 +23412,7 @@ let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprova
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
         let activeDriveMode='ok'; let activeDriveTab='name'; let activeDriveHoldStopReport='hold-stop'; let driveReportEvalUserFilter='all'; let driveOpenStockReportSeason='S1'; let driveOpenStockReportSalesYear='26'; let driveOpenStockReportMaxSLts='0'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
         let activeMovesTab='main'; let activeInventoryOfficeApprovalType='move-up'; let activeInventoryOfficeCropRollView='sy-27'; let movesRecordsCacheKey=''; let movesRecordsCache=[]; let movesViewLevel=0; let selectedMovesBlock=null; let selectedMovesLocation=null;
-        let managerMovePlannerLevel=0; let managerMoveSelectedBlock=null; let managerMoveSelectedLocation=null; let managerMoveDestinationStage='select'; let managerMoveSelectedSourceIds=new Set(); let managerMoveDestinationBySourceId=new Map(); let managerMoveItemDestinationByItemKey=new Map(); let managerMoveReviewerUsers=new Set(); let managerMoveReviewerSearchTerm=''; let managerMoveManualLocationBySourceId=new Map(); let managerMoveSubmitting=false; let managerMovePlannerCacheKey=''; let managerMovePlannerCache=null; let managerMoveCardSearchTerm=''; let managerMoveCardSelectedCommonName=''; let managerMoveCardSelectedContSize=''; let managerMoveCardSelectedSalesYear='';
+        let managerMovePlannerLevel=0; let managerMoveSelectedBlock=null; let managerMoveSelectedLocation=null; let managerMoveDestinationStage='select'; let managerMoveSelectedSourceIds=new Set(); let managerMoveDestinationBySourceId=new Map(); let managerMoveItemDestinationByItemKey=new Map(); let managerMoveReviewerUsers=new Set(); let managerMoveReviewerSearchTerm=''; let managerMoveManualLocationBySourceId=new Map(); let managerMoveDestinationExpandedBySourceId=new Set(); let managerMoveInstructionText=''; let managerMoveSubmitting=false; let managerMovePlannerCacheKey=''; let managerMovePlannerCache=null; let managerMoveCardSearchTerm=''; let managerMoveCardSelectedCommonName=''; let managerMoveCardSelectedContSize=''; let managerMoveCardSelectedSalesYear='';
         let selectedLocationMoveItems=[]; let selectedLocationMoveDestinationBySourceId=new Map();
         const MOVES_COMPLETED_STORAGE_PREFIX = 'gnc_moves_completed_v1';
         const MOVES_ACTUAL_MOVED_STORAGE_PREFIX = 'gnc_moves_actual_moved_v1';
@@ -23898,7 +23898,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.24.09').trim() || 'V2026.07.24.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.24.10').trim() || 'V2026.07.24.10';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -26082,7 +26082,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     managerMoveCardSearchTerm,
                     managerMoveCardSelectedCommonName,
                     managerMoveCardSelectedContSize,
-                    managerMoveCardSelectedSalesYear
+                    managerMoveCardSelectedSalesYear,
+                    managerMoveInstructionText
                 },
                 salesInventory: {
                     notOnInventoryPanelOpen,
@@ -26375,6 +26376,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 managerMoveCardSelectedCommonName = appFilterText(moves.managerMoveCardSelectedCommonName, managerMoveCardSelectedCommonName || '');
                 managerMoveCardSelectedContSize = appFilterText(moves.managerMoveCardSelectedContSize, managerMoveCardSelectedContSize || '');
                 managerMoveCardSelectedSalesYear = appFilterText(moves.managerMoveCardSelectedSalesYear, managerMoveCardSelectedSalesYear || '');
+                managerMoveInstructionText = appFilterText(moves.managerMoveInstructionText, managerMoveInstructionText || '');
             }
             const salesInventory = snapshot.salesInventory && typeof snapshot.salesInventory === 'object' ? snapshot.salesInventory : null;
             if (salesInventory) {
@@ -107546,6 +107548,8 @@ C.14.043 C.15.000
             managerMoveDestinationBySourceId = new Map();
             managerMoveItemDestinationByItemKey = new Map();
             managerMoveManualLocationBySourceId = new Map();
+            managerMoveDestinationExpandedBySourceId = new Set();
+            managerMoveInstructionText = '';
             managerMoveDestinationStage = 'select';
         }
 
@@ -107678,6 +107682,37 @@ C.14.043 C.15.000
             return Array.from(managerMoveSelectedSourceIds || []).map((id) => byId.get(id)).filter(Boolean);
         }
 
+        function getManagerMoveSelectedRowsForActiveContext() {
+            const contextIds = new Set(getManagerMoveRowsForCurrentSelectionContext().map(getManagerMoveRowId).filter(Boolean));
+            return getManagerMoveSelectedRows().filter((row) => contextIds.has(getManagerMoveRowId(row)));
+        }
+
+        function isManagerMoveCardDoneReady() {
+            const selectedRows = getManagerMoveSelectedRowsForActiveContext();
+            if (!selectedRows.length || managerMoveSubmitting) return false;
+            if (!String(managerMoveInstructionText || '').trim()) return false;
+            return selectedRows.every((row) => !!getManagerMoveDestinationInfo(row));
+        }
+
+        function updateManagerMoveCardDoneButtonState() {
+            const button = document.getElementById('manager-move-card-done-btn');
+            if (!button) return;
+            const ready = isManagerMoveCardDoneReady();
+            button.disabled = !ready;
+            button.classList.toggle('pointer-events-none', !ready);
+            button.classList.toggle('bg-[#007a4d]', ready);
+            button.classList.toggle('text-white', ready);
+            button.classList.toggle('active:scale-[0.99]', ready);
+            button.classList.toggle('bg-slate-200', !ready);
+            button.classList.toggle('text-slate-400', !ready);
+        }
+
+        function setManagerMoveInstructionText(value = '') {
+            managerMoveInstructionText = String(value || '');
+            updateManagerMoveCardDoneButtonState();
+            return true;
+        }
+
         function toggleManagerMoveSource(uniqueId = '', checked = false) {
             const uid = String(uniqueId || '').trim();
             if (!uid) return false;
@@ -107687,7 +107722,9 @@ C.14.043 C.15.000
                 managerMoveSelectedSourceIds.delete(uid);
                 managerMoveDestinationBySourceId.delete(uid);
                 managerMoveManualLocationBySourceId.delete(uid);
+                if (managerMoveDestinationExpandedBySourceId instanceof Set) managerMoveDestinationExpandedBySourceId.delete(uid);
                 if (managerMoveDestinationStage === 'destinations' && managerMoveSelectedSourceIds.size === 0) managerMoveDestinationStage = 'select';
+                if (!managerMoveSelectedSourceIds.size) managerMoveInstructionText = '';
             }
             if (!renderManagerMovePlannerNow(false)) scheduleManagersRender(true);
             return false;
@@ -107700,6 +107737,8 @@ C.14.043 C.15.000
                 managerMoveDestinationBySourceId = new Map();
                 managerMoveItemDestinationByItemKey = new Map();
                 managerMoveManualLocationBySourceId = new Map();
+                managerMoveDestinationExpandedBySourceId = new Set();
+                managerMoveInstructionText = '';
                 managerMoveDestinationStage = 'select';
             }
             if (!renderManagerMovePlannerNow(false)) scheduleManagersRender(true);
@@ -107822,12 +107861,16 @@ C.14.043 C.15.000
             const sourceId = getManagerMoveRowId(sourceRow);
             const itemcode = getManagerMoveItemCode(sourceRow);
             const sourceLoc = getManagerMoveLocation(sourceRow).toUpperCase();
+            const sourceSalesYear = normalizeManagerMoveCardLookupKey(getManagerMoveCardSalesYear(sourceRow));
             if (!itemcode) return [];
             return (getManagerMovePlannerCache().byItem.get(itemcode) || [])
                 .filter((row) => {
                     if (getManagerMoveRowId(row) === sourceId) return false;
-                    return getManagerMoveLocation(row).toUpperCase() !== sourceLoc;
-                });
+                    if (getManagerMoveLocation(row).toUpperCase() === sourceLoc) return false;
+                    return !sourceSalesYear || normalizeManagerMoveCardLookupKey(getManagerMoveCardSalesYear(row)) === sourceSalesYear;
+                })
+                .sort((a, b) => getManagerMoveLocation(a).localeCompare(getManagerMoveLocation(b), undefined, { numeric: true, sensitivity: 'base' })
+                    || String(firstNonEmptyValue(a && a.LOTCODE, a && a.lotcode, '') || '').localeCompare(String(firstNonEmptyValue(b && b.LOTCODE, b && b.lotcode, '') || ''), undefined, { numeric: true, sensitivity: 'base' }));
         }
 
         function setManagerMoveDestination(sourceUid = '', destinationValue = '') {
@@ -107853,6 +107896,7 @@ C.14.043 C.15.000
                 if (current.startsWith('manual:')) managerMoveDestinationBySourceId.delete(uid);
             }
             if (shouldRender && !renderManagerMovePlannerNow(false)) scheduleManagersRender(true);
+            if (!shouldRender) updateManagerMoveCardDoneButtonState();
             return false;
         }
 
@@ -107872,6 +107916,16 @@ C.14.043 C.15.000
                 needsRow: false,
                 value: raw
             };
+        }
+
+        function toggleManagerMoveDestinationExpanded(sourceUid = '') {
+            const uid = String(sourceUid || '').trim();
+            if (!uid) return false;
+            if (!(managerMoveDestinationExpandedBySourceId instanceof Set)) managerMoveDestinationExpandedBySourceId = new Set();
+            if (managerMoveDestinationExpandedBySourceId.has(uid)) managerMoveDestinationExpandedBySourceId.delete(uid);
+            else managerMoveDestinationExpandedBySourceId.add(uid);
+            if (!renderManagerMovePlannerNow(false)) scheduleManagersRender(true);
+            return false;
         }
 
         function toggleManagerMoveReviewer(username = '', checked = false) {
@@ -108036,7 +108090,10 @@ C.14.043 C.15.000
             const destinations = getManagerMoveDestinationRows(sourceRow);
             const selected = String(managerMoveDestinationBySourceId.get(uid) || '');
             const manualValue = String(managerMoveManualLocationBySourceId.get(uid) || '').trim();
-            const destinationCards = destinations.length ? destinations.slice(0, 12).map((row) => {
+            const expanded = managerMoveDestinationExpandedBySourceId instanceof Set && managerMoveDestinationExpandedBySourceId.has(uid);
+            const visibleLimit = 4;
+            const visibleDestinations = expanded ? destinations : destinations.slice(0, visibleLimit);
+            const destinationCards = visibleDestinations.length ? visibleDestinations.map((row) => {
                 const destUid = getManagerMoveRowId(row);
                 const active = selected === destUid;
                 return `<button type="button" class="rounded-xl border ${active ? 'border-[#007a4d] bg-emerald-100 text-[#007a4d]' : 'border-slate-200 bg-white text-slate-700'} px-3 py-2 text-left shadow-sm active:scale-[0.99]" onclick="return setManagerMoveDestination('${escJsAttrValue(uid)}', '${escJsAttrValue(destUid)}')">
@@ -108044,18 +108101,27 @@ C.14.043 C.15.000
                     <div class="mt-1 text-[12px] font-bold">${esc(firstNonEmptyValue(row.COMMONNAME, row.commonname, 'Same Item'))}</div>
                     <div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Available ${esc(normalizeCardQuantityValue(firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, '0')))} | Lot ${esc(firstNonEmptyValue(row.LOTCODE, row.lotcode, '-'))}</div>
                 </button>`;
-            }).join('') : '<div class="rounded-xl border border-dashed border-amber-200 bg-amber-50 px-3 py-4 text-center text-[11px] font-bold text-amber-700">No other locations currently have this itemcode.</div>';
+            }).join('') : '<div class="rounded-xl border border-dashed border-amber-200 bg-amber-50 px-3 py-4 text-center text-[11px] font-bold text-amber-700">No other same-salesyear locations currently have this itemcode. Type a destination locationcode below if needed.</div>';
+            const toggleHtml = destinations.length > visibleLimit
+                ? `<button type="button" class="mt-2 w-full rounded-xl border border-blue-200 bg-blue-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-blue-700 active:scale-[0.99]" onclick="return toggleManagerMoveDestinationExpanded('${escJsAttrValue(uid)}')">${expanded ? 'Show Fewer Rows' : `View More Rows (${destinations.length - visibleLimit})`}</button>`
+                : '';
             const sourceLabel = `${firstNonEmptyValue(sourceRow && sourceRow.COMMONNAME, sourceRow && sourceRow.commonname, 'Move Row')} | ${firstNonEmptyValue(sourceRow && sourceRow.CONTSIZE, sourceRow && sourceRow.contsize, '-')}`;
+            const salesYear = getManagerMoveCardSalesYear(sourceRow);
             return `<div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
                         <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Destination For</div>
                         <div class="mt-1 text-base font-black text-slate-900">${esc(sourceLabel)}</div>
-                        <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">${esc(firstNonEmptyValue(sourceRow && sourceRow.ITEMCODE, sourceRow && sourceRow.itemcode, '-'))} from ${esc(getManagerMoveLocation(sourceRow))}</div>
+                        <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">${esc(firstNonEmptyValue(sourceRow && sourceRow.ITEMCODE, sourceRow && sourceRow.itemcode, '-'))} from ${esc(getManagerMoveLocation(sourceRow))} | SY ${esc(salesYear || '-')}</div>
                     </div>
                     <button type="button" class="rounded-full border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" onclick="return toggleManagerMoveSource('${escJsAttrValue(uid)}', false)">Remove</button>
                 </div>
-                <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">${destinationCards}</div>
+                <div class="mt-3 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+                    <span>Same Salesyear Rows</span>
+                    <span>${destinations.length} row${destinations.length === 1 ? '' : 's'}</span>
+                </div>
+                <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">${destinationCards}</div>
+                ${toggleHtml}
                 <label class="mt-3 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Or Type Destination Locationcode
                     <input type="text" value="${esc(manualValue)}" class="mt-1 w-full rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-black uppercase text-slate-800 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100" placeholder="Example: H.09.000" oninput="return setManagerMoveManualDestination('${escJsAttrValue(uid)}', this.value, false)" onchange="return setManagerMoveManualDestination('${escJsAttrValue(uid)}', this.value, true)">
                 </label>
@@ -108236,6 +108302,159 @@ C.14.043 C.15.000
             return false;
         }
 
+        function renderManagerMoveInstructionPanel() {
+            const selectedRows = getManagerMoveSelectedRowsForActiveContext();
+            if (!selectedRows.length) return '';
+            const readyCount = selectedRows.filter((row) => getManagerMoveDestinationInfo(row)).length;
+            const instructions = String(managerMoveInstructionText || '');
+            const canSubmit = isManagerMoveCardDoneReady();
+            return `<div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0">
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Move Instructions</div>
+                        <div class="mt-1 text-xl font-black text-slate-900">${selectedRows.length} selected | ${readyCount} destinations set</div>
+                        <div class="mt-1 text-[11px] font-semibold text-slate-600">Write what the mover should physically do. This goes straight to Que &gt; Moves.</div>
+                    </div>
+                    <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600 shadow-sm active:scale-95" onclick="return setManagerMoveLocationSelection(false)">Clear</button>
+                </div>
+                <label class="mt-3 block text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">Instructions
+                    <textarea id="manager-move-instructions" rows="3" class="mt-1 w-full resize-y rounded-xl border border-emerald-100 bg-white px-3 py-3 text-sm font-bold text-slate-800 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" placeholder="Example: Move selected D.17.000 row to D.28.000 with the others." oninput="return setManagerMoveInstructionText(this.value)">${esc(instructions)}</textarea>
+                </label>
+                <button id="manager-move-card-done-btn" type="button" ${canSubmit ? '' : 'disabled'} class="mt-4 w-full rounded-2xl px-4 py-4 text-[12px] font-black uppercase tracking-[0.14em] shadow-sm ${canSubmit ? 'bg-[#007a4d] text-white active:scale-[0.99]' : 'pointer-events-none bg-slate-200 text-slate-400'}" onclick="return submitManagerMoveCardToQue(this)">${managerMoveSubmitting ? 'Sending...' : 'Done'}</button>
+            </div>`;
+        }
+
+        async function submitManagerMoveCardToQue(button = null) {
+            const selectedRows = getManagerMoveSelectedRowsForActiveContext();
+            if (!selectedRows.length) {
+                showToast('No Rows', 'Select at least one row to move.', true);
+                return false;
+            }
+            const instructions = String(managerMoveInstructionText || '').trim();
+            if (!instructions) {
+                showToast('Instructions Needed', 'Write the move instructions before sending this to Que > Moves.', true);
+                return false;
+            }
+            const missingDestination = selectedRows.find((row) => !getManagerMoveDestinationInfo(row));
+            if (missingDestination) {
+                showToast('Destination Needed', 'Choose a destination for every selected row.', true);
+                return false;
+            }
+            if (selectedRows.some((row) => {
+                const destination = getManagerMoveDestinationInfo(row);
+                return destination && getManagerMoveLocation(row).toUpperCase() === String(destination.location || '').toUpperCase();
+            })) {
+                showToast('Same Location', 'Move To cannot match a selected source location.', true);
+                return false;
+            }
+            if (managerMoveSubmitting) return false;
+            const destinations = selectedRows.map((row) => getManagerMoveDestinationInfo(row)).filter(Boolean);
+            const destinationLabels = Array.from(new Set(destinations.map((destination) => String(destination.location || '').trim()).filter(Boolean)));
+            const batchDestination = destinationLabels.length === 1 ? destinationLabels[0] : `${destinationLabels.length}_destinations`;
+            const batchId = buildMovesBatchId(`manager_card_move_${Date.now()}_${managerMoveCardSelectedSalesYear || 'sy'}`, batchDestination);
+            const records = selectedRows.map((row) => {
+                const destination = getManagerMoveDestinationInfo(row);
+                const record = destination ? buildDirectMoveRecordFromSelectedItem(row, destination.location, batchId, destination.destinationRow) : null;
+                if (record) {
+                    record.move_destination_needs_row = !!(destination && destination.needsRow);
+                    record.move_instructions = instructions;
+                    record.id = buildMoveRecordId(record);
+                }
+                return record;
+            }).filter(Boolean);
+            if (!records.length) {
+                showToast('Could Not Create', 'No valid move rows could be built.', true);
+                return false;
+            }
+            const duplicateCount = records.filter(hasActiveMoveRequestForMove).length;
+            const createdAt = new Date().toISOString();
+            const submittedBy = String(firstNonEmptyValue(currentUserDisplay, currentUser, 'Manager') || 'Manager').trim();
+            const entries = records.filter((record) => !hasActiveMoveRequestForMove(record)).map((record) => {
+                const payload = buildMoveApprovalRequestPayload(record);
+                if (!payload) return null;
+                const folderMoveLabel = records.length === 1
+                    ? `${record.from_locationcode || 'Source'} to ${record.to_locationcode || 'Destination'}`
+                    : `${records.length} Rows`;
+                payload.request_folder = `Location Move ${folderMoveLabel} ${new Date().toLocaleDateString()}`;
+                payload.req_customer = 'Location Move';
+                payload.req_comments = [
+                    'Move Instructions:',
+                    instructions,
+                    '',
+                    `Manager Move submitted by ${submittedBy}.`,
+                    `Move From: ${record.from_locationcode}`,
+                    `Move To: ${record.to_locationcode}`,
+                    record.to_source_unique_id ? `Destination Row: ${record.to_source_unique_id}` : '',
+                    record.move_destination_needs_row ? 'Destination location does not currently have this itemcode.' : ''
+                ].filter((line) => line !== null && line !== undefined).join('\n');
+                payload.assignedto = MOVE_REQUEST_COMPLETER_USER;
+                payload.move_approval_stage = MOVE_APPROVAL_STAGE_APPROVED;
+                payload.move_status = MOVE_STATUS_APPROVED;
+                payload.move_dylan_approved_at = createdAt;
+                payload.move_jd_approved_at = createdAt;
+                payload.updated_at = createdAt;
+                const clone = buildMoveApprovalRequestClone(record, payload);
+                return payload && clone ? { payload, clone, record } : null;
+            }).filter(Boolean);
+            if (!entries.length) {
+                showToast('Already Queued', duplicateCount ? 'Every selected row is already waiting in Que > Moves for that destination.' : 'No move rows were created.', true);
+                return false;
+            }
+            const requestIds = entries.map((entry) => entry.payload.unique_id).filter(Boolean);
+            if (button) {
+                button.disabled = true;
+                button.classList.add('opacity-70', 'pointer-events-none');
+            }
+            managerMoveSubmitting = true;
+            try {
+                entries.forEach((entry) => requestsInventory.push(entry.clone));
+                rebuildRequestInventoryIndexes();
+                syncRealtimeRequestRows();
+                trackOptimisticRequestIds(requestIds);
+                refreshLocalRequestViewState('manager-card-move-queued', { renderHiddenRequest: true, renderVisible: true, forceRender: true });
+                await runLimitedConcurrent(entries, async (entry) => {
+                    await supabaseFetch('v2_active_request', 'POST', sanitizeMoveRequestWritePayload(entry.payload));
+                }, 4);
+                if (requestIds.length) {
+                    queueAppLiveEventForWrite('v2_active_request', 'POST', requestIds.map((id) => ({ unique_id: id })), '');
+                    flushQueuedAppLiveEvents().catch(() => {});
+                }
+                entries.forEach((entry) => {
+                    const sourceId = String(firstNonEmptyValue(entry && entry.record && entry.record.source_unique_id, '') || '').trim();
+                    if (sourceId) {
+                        managerMoveSelectedSourceIds.delete(sourceId);
+                        managerMoveDestinationBySourceId.delete(sourceId);
+                        managerMoveManualLocationBySourceId.delete(sourceId);
+                        if (managerMoveDestinationExpandedBySourceId instanceof Set) managerMoveDestinationExpandedBySourceId.delete(sourceId);
+                    }
+                });
+                managerMoveInstructionText = '';
+                movesRecordsCacheKey = '';
+                managerMovePlannerCacheKey = '';
+                markViewDirty('request');
+                markViewDirty('moves');
+                markViewDirty('managers');
+                activeReqTab = 'moves';
+                if (isViewVisible('request')) scheduleRequestRender(0, 44, true);
+                if (isViewVisible('moves')) scheduleMovesRender(true);
+                if (isViewVisible('managers')) scheduleManagersRender(true);
+                const duplicateNote = duplicateCount ? ` ${duplicateCount} duplicate row${duplicateCount === 1 ? '' : 's'} skipped.` : '';
+                showToast('Sent To Que Moves', `${entries.length} row${entries.length === 1 ? '' : 's'} sent to Que > Moves.${duplicateNote}`);
+            } catch (error) {
+                console.error('Manager card move queue failed', error);
+                rollbackOptimisticRequestIds(requestIds);
+                showToast('Could Not Submit', 'The move rows were not saved to Que > Moves.', true);
+            } finally {
+                managerMoveSubmitting = false;
+                if (button) {
+                    button.disabled = false;
+                    button.classList.remove('opacity-70', 'pointer-events-none');
+                }
+                updateManagerMoveCardDoneButtonState();
+            }
+            return false;
+        }
+
         function renderManagerMoveCardView(options = {}) {
             const rows = getManagerMoveInventoryRows();
             const approvalHtml = '';
@@ -108264,18 +108483,17 @@ C.14.043 C.15.000
                 return `<div class="space-y-4">${approvalHtml}<div class="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Selected Commonname / Contsize</div><div class="mt-1 text-xl font-black text-slate-900">${esc(managerMoveCardSelectedCommonName)} | ${esc(managerMoveCardSelectedContSize)}</div></div><div class="space-y-3">${salesYearCards || '<div class="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm font-bold text-slate-400">No salesyears match this selection.</div>'}</div></div>`;
             }
             const cardRows = getManagerMoveCardRowsForSelectedCardContext();
-            const visibleRowIds = new Set(cardRows.map(getManagerMoveRowId).filter(Boolean));
-            const selectedRows = getManagerMoveSelectedRows().filter((row) => visibleRowIds.has(getManagerMoveRowId(row)));
+            const selectedRows = getManagerMoveSelectedRowsForActiveContext();
             const selectedCount = selectedRows.length;
             const cardsHtml = cardRows.length
                 ? cardRows.map(renderManagerMoveSourceCard).join('')
                 : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm font-bold text-slate-400">No rows match this commonname, contsize, and salesyear.</div>';
             const totalAvailable = cardRows.reduce((total, row) => total + getManagerMoveAvailableNumber(row), 0);
             const summaryHtml = selectedCount
-                ? `<div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[12px] font-bold text-emerald-800">${selectedCount} row${selectedCount === 1 ? '' : 's'} selected. Pick a destination locationcode, then create the move session.</div>`
+                ? `<div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[12px] font-bold text-emerald-800">${selectedCount} row${selectedCount === 1 ? '' : 's'} selected. Pick a destination locationcode, write the move instructions, then tap Done.</div>`
                 : '<div class="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-[12px] font-bold text-blue-800">Select the source row or rows for this salesyear.</div>';
             const destinationHtml = selectedRows.length
-                ? `<div class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Move Selected Rows To Locationcode</div>${selectedRows.map(renderManagerMoveDestinationPicker).join('')}</div>${renderManagerMoveReviewerPanel()}`
+                ? `<div class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Move Selected Rows To Locationcode</div>${selectedRows.map(renderManagerMoveDestinationPicker).join('')}</div>${renderManagerMoveInstructionPanel()}`
                 : '';
             return `<div class="space-y-4">${approvalHtml}<div class="manager-move-selection-rail space-y-4"><div class="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Card View Selection</div><div class="mt-1 text-xl font-black text-slate-900">${esc(managerMoveCardSelectedCommonName)} | ${esc(managerMoveCardSelectedContSize)} | SY ${esc(managerMoveCardSelectedSalesYear)}</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-700">${cardRows.length} row${cardRows.length === 1 ? '' : 's'} | Available ${esc(normalizeCardQuantityValue(totalAvailable))} | ${selectedCount} selected</div></div>${summaryHtml}<div class="manager-move-selection-actions"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return setManagerMoveLocationSelection(true)">Select All</button><button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-95" onclick="return setManagerMoveLocationSelection(false)">Clear</button></div>${destinationHtml}</div><div class="space-y-3">${cardsHtml}</div></div>`;
         }
