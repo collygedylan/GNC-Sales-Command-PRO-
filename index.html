@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.24.12';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.24.13';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4890,7 +4890,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.24.12').trim() || 'V2026.07.24.12';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.24.13').trim() || 'V2026.07.24.13';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6343,7 +6343,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.24.12';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.24.13';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -23898,7 +23898,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.24.12').trim() || 'V2026.07.24.12';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.24.13').trim() || 'V2026.07.24.13';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -92335,6 +92335,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         let cropRollCarryoverRowsCache = null;
         let cropRollDrillViewCache = new Map();
         let cropRollFilterOptionsCache = new Map();
+        let cropRollMissingRowsRescuePromise = null;
+        let cropRollMissingRowsRescueKey = '';
+        let cropRollMissingRowsRescueAt = 0;
         let cropRollOptimisticCompletedDraftKeys = new Set();
         let cropRollDetailFormDoneArmTimer = null;
         let cropRollDetailFormDoneArmedAt = 0;
@@ -95786,6 +95789,160 @@ C.14.043 C.15.000
 
         function getCropRollRowsForActiveFilters(rows = []) {
             return (Array.isArray(rows) ? rows : []).filter((item) => doesCropRollRowMatchActiveFilterState(item, cropRollActiveView));
+        }
+
+        function getCropRollSingleSelectedRescueFilterValue(selectedSet = new Set()) {
+            if (!(selectedSet instanceof Set) || !selectedSet.size || isCropRollFilterNoneSelected(selectedSet)) return '';
+            const values = Array.from(selectedSet)
+                .map((value) => String(value || '').trim())
+                .filter((value) => value && value !== CROP_ROLL_TEXT_FILTER_ALL_VALUE && value !== CROP_ROLL_TEXT_FILTER_BLANK_VALUE && value !== CROP_ROLL_TEXT_FILTER_NONE_VALUE);
+            return values.length === 1 ? values[0] : '';
+        }
+
+        function appendCropRollRescueEqFilter(parts = [], column = '', value = '') {
+            const safeColumn = String(column || '').trim();
+            const safeValue = String(value || '').trim();
+            if (!safeColumn || !safeValue) return;
+            parts.push(`${safeColumn}=eq.${encodeURIComponent(safeValue)}`);
+        }
+
+        function appendCropRollRescueIlikeFilter(parts = [], column = '', value = '') {
+            const safeColumn = String(column || '').trim();
+            const safeValue = String(value || '').trim();
+            if (!safeColumn || !safeValue) return;
+            parts.push(`${safeColumn}=ilike.*${encodeURIComponent(safeValue)}*`);
+        }
+
+        function hasActiveCropRollSpecificFilter() {
+            const hasSet = (set) => set instanceof Set && set.size > 0 && !isCropRollFilterNoneSelected(set);
+            return !!(
+                String(cropRollSy27SearchTerm || '').trim()
+                || hasSet(getCropRollEvalUserFilterSet())
+                || hasSet(getCropRollPlantGroupFilterSet())
+                || hasSet(getCropRollContSizeFilterSet())
+                || hasSet(getCropRollSeasonFilterSet())
+                || hasSet(getCropRollGenusNameFilterSet())
+                || getCropRollActiveViewLevel() > 0
+            );
+        }
+
+        function getCropRollDriveMergeKey(row = null) {
+            if (!row || typeof row !== 'object') return '';
+            const directId = String(firstNonEmptyValue(
+                row.MASTER_UNIQUE_ID,
+                row.master_unique_id,
+                row.UNIQUE_ID,
+                row.unique_id,
+                row.ROW_ID,
+                row.row_id,
+                ''
+            ) || '').trim();
+            if (directId) return directId;
+            return [
+                normalizeCropRollView(firstNonEmptyValue(row.CROP_ROLL_VIEW, row.crop_roll_view, cropRollActiveView)),
+                getCropRollItemCode(row),
+                getCropRollLocationCode(row),
+                getCropRollLotCode(row),
+                getCropRollContSize(row),
+                String(firstNonEmptyValue(row.SOURCE, row.source, '') || '').trim()
+            ].join('|');
+        }
+
+        function mergeCropRollDriveRescueRows(rows = []) {
+            const formattedRows = formatFetchedRows(Array.isArray(rows) ? rows : [], CROP_ROLL_DRIVE_SOURCE_TABLE);
+            if (!formattedRows.length) return false;
+            const existingRows = Array.isArray(cropRollDriveInventory) ? cropRollDriveInventory : [];
+            const merged = existingRows.slice();
+            const indexByKey = new Map();
+            merged.forEach((row, index) => {
+                const key = getCropRollDriveMergeKey(row);
+                if (key && !indexByKey.has(key)) indexByKey.set(key, index);
+            });
+            let changed = false;
+            formattedRows.forEach((row) => {
+                const key = getCropRollDriveMergeKey(row);
+                if (!key) return;
+                if (indexByKey.has(key)) {
+                    const index = indexByKey.get(key);
+                    merged[index] = Object.assign({}, merged[index] || {}, row || {});
+                    changed = true;
+                } else {
+                    indexByKey.set(key, merged.length);
+                    merged.push(row);
+                    changed = true;
+                }
+            });
+            if (!changed) return false;
+            cropRollDriveInventory = merged;
+            cropRollDriveSchemaReady = true;
+            if (typeof rebuildDetailLookupIndexes === 'function') rebuildDetailLookupIndexes();
+            clearCropRollDriveViewCaches();
+            return true;
+        }
+
+        function buildCropRollMissingRowsRescueQuery() {
+            const parts = [`select=${CROP_ROLL_DRIVE_ROW_SELECT_FIELDS}`];
+            const activeView = normalizeCropRollView(cropRollActiveView);
+            appendCropRollRescueEqFilter(parts, 'crop_roll_view', activeView);
+            const selectedBlock = String(getCropRollActiveSelectedBlock() || '').trim();
+            const selectedLocation = String(getCropRollActiveSelectedLocation() || '').trim();
+            if (getCropRollActiveViewLevel() >= 1 && selectedBlock) appendCropRollRescueEqFilter(parts, 'blockalpha', selectedBlock);
+            if (getCropRollActiveViewLevel() >= 2 && selectedLocation) appendCropRollRescueEqFilter(parts, 'locationcode', selectedLocation);
+            const evalValue = getCropRollSingleSelectedRescueFilterValue(getCropRollEffectiveEvalUserFilters());
+            if (evalValue && evalValue !== 'unassigned') appendCropRollRescueEqFilter(parts, 'assignedto', evalValue);
+            appendCropRollRescueEqFilter(parts, 'plantgroupcode', getCropRollSingleSelectedRescueFilterValue(getCropRollPlantGroupFilterSet()));
+            appendCropRollRescueEqFilter(parts, 'contsize', getCropRollSingleSelectedRescueFilterValue(getCropRollContSizeFilterSet()));
+            appendCropRollRescueEqFilter(parts, 'season', getCropRollSingleSelectedRescueFilterValue(getCropRollSeasonFilterSet()));
+            appendCropRollRescueIlikeFilter(parts, 'genusname', getCropRollSingleSelectedRescueFilterValue(getCropRollGenusNameFilterSet()));
+            parts.push('order=blockalpha.asc,locationcode.asc,itemcode.asc,lotcode.asc');
+            return parts.join('&');
+        }
+
+        function shouldRequestCropRollMissingRowsRescue(visibleRows = []) {
+            if (Array.isArray(visibleRows) && visibleRows.length) return false;
+            if (!hasActiveCropRollSpecificFilter()) return false;
+            if (cropRollMissingRowsRescuePromise) return false;
+            const key = [
+                normalizeCropRollView(cropRollActiveView),
+                getCropRollActiveViewLevel(),
+                getCropRollActiveSelectedBlock(),
+                getCropRollActiveSelectedLocation(),
+                String(cropRollSy27SearchTerm || '').trim(),
+                getCropRollFilterSetKey(getCropRollEvalUserFilterSet()),
+                getCropRollFilterSetKey(getCropRollPlantGroupFilterSet()),
+                getCropRollFilterSetKey(getCropRollContSizeFilterSet()),
+                getCropRollFilterSetKey(getCropRollSeasonFilterSet()),
+                getCropRollFilterSetKey(getCropRollGenusNameFilterSet())
+            ].join('|');
+            const now = Date.now();
+            if (cropRollMissingRowsRescueKey === key && now - cropRollMissingRowsRescueAt < 3500) return false;
+            cropRollMissingRowsRescueKey = key;
+            cropRollMissingRowsRescueAt = now;
+            return true;
+        }
+
+        function requestCropRollMissingRowsRescue(visibleRows = []) {
+            if (!shouldRequestCropRollMissingRowsRescue(visibleRows)) return false;
+            const query = buildCropRollMissingRowsRescueQuery();
+            cropRollMissingRowsRescuePromise = (async () => {
+                try {
+                    const page = await fetchSupabaseRowsPage(CROP_ROLL_DRIVE_OPEN_ROWS_TABLE, query, 500, 0);
+                    if (mergeCropRollDriveRescueRows(page && page.rows)) {
+                        const activeView = normalizeCropRollView(cropRollActiveView);
+                        const sourceRows = activeView === CROP_ROLL_VIEW_CARRYOVER
+                            ? getCropRollOpenDriveRowsForView(getCropRollCarryoverRows(), CROP_ROLL_VIEW_CARRYOVER)
+                            : getCropRollOpenDriveRowsForView(getCropRollSy27Rows(), CROP_ROLL_VIEW_SY27);
+                        if (getCropRollRowsForActiveFilters(sourceRows).length && getCurrentVisibleViewId() === 'crop-roll') {
+                            renderCropRollSy27SearchNow(null);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Crop Roll filtered rows rescue failed', error);
+                } finally {
+                    cropRollMissingRowsRescuePromise = null;
+                }
+            })();
+            return true;
         }
 
         function getCropRollRowsForFilterOptions(rows = [], excludeKind = '') {
@@ -101517,6 +101674,9 @@ C.14.043 C.15.000
                 alreadyFiltered: true,
                 searchRows: getCropRollSy27SearchRows(allRows)
             });
+            if (!allRows.length && hasActiveCropRollSpecificFilter()) {
+                requestAnimationFrame(() => requestCropRollMissingRowsRescue(allRows));
+            }
         }
 
         function setCropRollSy27Search(value = '') {
@@ -101720,7 +101880,7 @@ C.14.043 C.15.000
                 getCropRollFilterSetKey(getCropRollGenusNameFilterSet()),
                 safeKind
             ].join(':');
-            scheduleSearchRender('crop-roll-filter-apply', () => renderCropRollFilterApplyNow(safeKind), signature, {
+            scheduleSearchRender('crop-roll-filter-apply', () => renderCropRollFilterApplyNow(safeKind, { forceImmediate: forceNow }), signature, {
                 debounceDelay: forceNow ? 0 : (isTouchConstrainedDevice() ? 24 : 12),
                 typingDelay: forceNow ? 28 : (isTouchConstrainedDevice() ? 45 : 18),
                 allowWhileTyping: true,
@@ -101922,6 +102082,7 @@ C.14.043 C.15.000
             cropRollFilterApplyPending = true;
             syncCropRollFilterTriggerSummariesDom();
             renderCropRollFilterSearchOptionsNow(getCropRollFilterSearchInputIdForKind(safeKind));
+            scheduleCropRollFilterApplyRender(safeKind, { forceNow: true });
             return false;
         }
 
@@ -101936,6 +102097,7 @@ C.14.043 C.15.000
             cropRollFilterApplyPending = true;
             syncCropRollFilterTriggerSummariesDom();
             renderCropRollFilterSearchOptionsNow(getCropRollFilterSearchInputIdForKind(safeKind));
+            scheduleCropRollFilterApplyRender(safeKind, { forceNow: true });
             return false;
         }
 
