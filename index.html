@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.27.03';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.27.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4890,7 +4890,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.27.03').trim() || 'V2026.07.27.03';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.27.01').trim() || 'V2026.07.27.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6343,7 +6343,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.27.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.27.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -20393,15 +20393,9 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             hold: 'Hold',
             'stop-ship': 'Stop Ship'
         });
-        const EVAL_TASK_FALLBACK_USERS = Object.freeze(['dylan_collyge', 'josh_vann', 'kayla_knepp', 'abbey_sartain', 'abigail_vazquez', 'ellen_ward', 'bobby_adair', 'jorge_colunga', 'charley_robertson', 'megan_kelly', 'zoe_green', 'mitch_kaiser']);
+        const EVAL_TASK_FALLBACK_USERS = Object.freeze(['dylan_collyge', 'josh_vann', 'abbey_sartain', 'abigail_vazquez', 'ellen_ward', 'bobby_adair', 'jorge_colunga', 'charley_robertson', 'zoe_green', 'mitch_kaiser']);
         const EVAL_TASK_INACTIVE_USERS = Object.freeze(new Set(['murphy_stanley']));
         const EVAL_TASK_USER_ALIASES = Object.freeze({
-            dylan: 'dylan_collyge',
-            dylan_collyge: 'dylan_collyge',
-            josh: 'josh_vann',
-            josh_vann: 'josh_vann',
-            kayla: 'kayla_knepp',
-            kayla_knepp: 'kayla_knepp',
             abigal_sartain: 'abbey_sartain',
             abigal_vazquez: 'abigail_vazquez',
             abigal_vazques: 'abigail_vazquez',
@@ -20413,10 +20407,6 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             D: Object.freeze(new Set([6, 7, 8, 9, 10]))
         });
         const EVAL_TASK_SELECT_FIELDS = 'eval_task_type,eval_task_status,eval_task_instructions,eval_task_assigned_by,eval_task_assigned_at,eval_task_completed_by,eval_task_completed_at,eval_task_recount_qty,eval_task_moved_up_qty,eval_task_hold_action,eval_task_hold_code,eval_task_hold_reason,eval_task_result_note';
-        const EVAL_ASSIGNMENT_RULES_TABLE = 'v2_eval_assignment_rules';
-        const EVAL_ASSIGNMENT_RULE_SOURCE_LABEL = 'ALL IN ONE';
-        const EVAL_ASSIGNMENT_RULE_FIELDS = Object.freeze(['ITEMCODE', 'CONTSIZE', 'COMMONNAME', 'LOCATIONCODE', 'SOURCE', 'GENUSNAME', 'WAREHOUSEI']);
-        const EVAL_ASSIGNMENT_RULE_SELECT = 'id,sheet_id,sheet_name,sheet_row_number,assigned_to_raw,assignedto,warehousei,itemcode,contsize,commonname,locationcode,source,genusname,active,imported_at,updated_at';
 
         function maybeWarnEvalTaskSchemaMissing(error = null) {
             evalTaskColumnsReady = false;
@@ -20710,8 +20700,6 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
         }
 
         function getEvalTaskAssignmentOverrideForItem(item = null) {
-            const sheetAssignee = getEvalAssignmentRuleAssignedToForItem(item);
-            if (sheetAssignee) return sheetAssignee;
             const candidates = getEvalTaskRuleCandidateItems(item);
             let directAssignee = '';
             let hasHosta = false;
@@ -20736,10 +20724,6 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             const overrideAssignee = normalizeEvalAssignableUser(getEvalTaskAssignmentOverrideForItem(item));
             if (overrideAssignee) return [overrideAssignee];
             const explicitAssignees = getEvalTaskAssignedUsersFromValue(firstNonEmptyValue(
-                item && item.EVAL_ASSIGNMENT_ASSIGNEDTO,
-                item && item.eval_assignment_assignedto,
-                item && item.EVAL_RULE_ASSIGNEDTO,
-                item && item.eval_rule_assignedto,
                 item && item.ASSIGNEDTO,
                 item && item.assignedto,
                 item && item.ASSIGNED_TO,
@@ -20834,301 +20818,7 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             return candidates;
         }
 
-        function normalizeEvalAssignmentRuleText(value = '') {
-            return String(value == null ? '' : value).trim().replace(/\s+/g, ' ').toUpperCase();
-        }
-
-        function getEvalAssignmentCandidateItems(item = null) {
-            const candidates = [];
-            const seenObjects = new Set();
-            const addCandidate = (candidate = null) => {
-                if (!candidate || typeof candidate !== 'object' || seenObjects.has(candidate)) return;
-                seenObjects.add(candidate);
-                candidates.push(candidate);
-            };
-            addCandidate(item);
-            addCandidate(item && item.snapshot);
-            addCandidate(item && item.requested);
-            addCandidate(item && item.master);
-            addCandidate(item && item.item);
-            return candidates;
-        }
-
-        function getEvalAssignmentFieldValueFromCandidate(candidate = null, field = '') {
-            if (!candidate || typeof candidate !== 'object') return '';
-            const key = String(field || '').trim().toUpperCase();
-            if (key === 'ITEMCODE') return firstNonEmptyValue(candidate.ITEMCODE, candidate.itemcode, candidate.ITEM_CODE, candidate.item_code, candidate.ITEM, candidate.item, '');
-            if (key === 'CONTSIZE') return firstNonEmptyValue(candidate.CONTSIZE, candidate.contsize, candidate.CONT_SIZE, candidate.cont_size, candidate.SIZE, candidate.size, candidate.ITEMSPEC, candidate.itemspec, '');
-            if (key === 'COMMONNAME') return firstNonEmptyValue(candidate.COMMONNAME, candidate.commonname, candidate.COMMON_NAME, candidate.common_name, candidate.DESCRIPTION, candidate.description, candidate.SHORT_NAME, candidate.short_name, '');
-            if (key === 'LOCATIONCODE') return firstNonEmptyValue(candidate.LOCATIONCODE, candidate.locationcode, candidate.LOCATION_CODE, candidate.location_code, candidate.LOCATION, candidate.location, candidate.loc, '');
-            if (key === 'SOURCE') return firstNonEmptyValue(candidate.SOURCE, candidate.source, candidate.SOURCECODE, candidate.sourcecode, '');
-            if (key === 'GENUSNAME') return firstNonEmptyValue(candidate.GENUSNAME, candidate.genusname, candidate.GENUS_NAME, candidate.genus_name, candidate.GENUS, candidate.genus, '');
-            if (key === 'WAREHOUSEI') return firstNonEmptyValue(candidate.WAREHOUSEI, candidate.warehousei, candidate.WAREHOUSE, candidate.warehouse, candidate.WAREHOUSE_ID, candidate.warehouse_id, candidate.WAREHOUSECODE, candidate.warehousecode, '');
-            return '';
-        }
-
-        function getEvalAssignmentRowFieldValues(item = null) {
-            const values = {};
-            EVAL_ASSIGNMENT_RULE_FIELDS.forEach((field) => { values[field] = new Set(); });
-            getEvalAssignmentCandidateItems(item).forEach((candidate) => {
-                EVAL_ASSIGNMENT_RULE_FIELDS.forEach((field) => {
-                    const normalized = normalizeEvalAssignmentRuleText(getEvalAssignmentFieldValueFromCandidate(candidate, field));
-                    if (normalized) values[field].add(normalized);
-                });
-            });
-            return values;
-        }
-
-        function getRawEvalAssignmentRuleField(rule = null, field = '') {
-            if (!rule || typeof rule !== 'object') return '';
-            const key = String(field || '').trim().toLowerCase();
-            if (key === 'warehousei') return firstNonEmptyValue(rule.warehousei, rule.WAREHOUSEI, rule.WAREHOUSE, '');
-            if (key === 'itemcode') return firstNonEmptyValue(rule.itemcode, rule.ITEMCODE, rule.ITEM_CODE, '');
-            if (key === 'contsize') return firstNonEmptyValue(rule.contsize, rule.CONTSIZE, rule.CONT_SIZE, rule.SIZE, '');
-            if (key === 'commonname') return firstNonEmptyValue(rule.commonname, rule.COMMONNAME, rule.COMMON_NAME, rule.DESCRIPTION, '');
-            if (key === 'locationcode') return firstNonEmptyValue(rule.locationcode, rule.LOCATIONCODE, rule.LOCATION_CODE, rule.LOCATION, '');
-            if (key === 'source') return firstNonEmptyValue(rule.source, rule.SOURCE, rule.SOURCECODE, '');
-            if (key === 'genusname') return firstNonEmptyValue(rule.genusname, rule.GENUSNAME, rule.GENUS_NAME, rule.GENUS, '');
-            return '';
-        }
-
-        function normalizeEvalAssignmentRule(rule = {}, index = 0) {
-            const assignedToRaw = String(firstNonEmptyValue(rule.assigned_to_raw, rule.ASSIGNED_TO_RAW, rule.AssignedTo, rule.assignedto, rule.ASSIGNEDTO, '') || '').trim();
-            const assignedto = normalizeEvalAssignableUser(firstNonEmptyValue(rule.assignedto, rule.ASSIGNEDTO, assignedToRaw, ''));
-            const rowNumber = Number(firstNonEmptyValue(rule.sheet_row_number, rule.SHEET_ROW_NUMBER, rule.row_number, rule.ROW_NUMBER, index + 2)) || (index + 2);
-            const normalizedFields = {};
-            let filledCount = 0;
-            EVAL_ASSIGNMENT_RULE_FIELDS.forEach((field) => {
-                const normalized = normalizeEvalAssignmentRuleText(getRawEvalAssignmentRuleField(rule, field.toLowerCase()));
-                normalizedFields[field] = normalized;
-                if (normalized) filledCount += 1;
-            });
-            return { ...rule, assigned_to_raw: assignedToRaw, assignedto, sheet_row_number: rowNumber, _filledCount: filledCount, _normalizedFields: normalizedFields, _isValid: !!(assignedto && filledCount) };
-        }
-
-        function buildEvalAssignmentRuleIndexes(rules = []) {
-            const indexes = {};
-            EVAL_ASSIGNMENT_RULE_FIELDS.forEach((field) => { indexes[field] = new Map(); });
-            (Array.isArray(rules) ? rules : []).forEach((rule) => {
-                if (!rule || !rule._isValid) return;
-                EVAL_ASSIGNMENT_RULE_FIELDS.forEach((field) => {
-                    const value = rule._normalizedFields && rule._normalizedFields[field];
-                    if (!value) return;
-                    if (!indexes[field].has(value)) indexes[field].set(value, []);
-                    indexes[field].get(value).push(rule);
-                });
-            });
-            EVAL_ASSIGNMENT_RULE_FIELDS.forEach((field) => {
-                indexes[field].forEach((list) => list.sort((a, b) => (Number(a.sheet_row_number) || 0) - (Number(b.sheet_row_number) || 0)));
-            });
-            return indexes;
-        }
-
-        function getEvalAssignmentRuleConflicts(rules = []) {
-            const seen = new Map();
-            const conflicts = [];
-            (Array.isArray(rules) ? rules : []).forEach((rule) => {
-                if (!rule || !rule._isValid) return;
-                EVAL_ASSIGNMENT_RULE_FIELDS.forEach((field) => {
-                    const value = rule._normalizedFields && rule._normalizedFields[field];
-                    if (!value) return;
-                    const key = `${field}:${value}`;
-                    if (!seen.has(key)) {
-                        seen.set(key, { field, value, assignedto: rule.assignedto, row: rule.sheet_row_number });
-                        return;
-                    }
-                    const prior = seen.get(key);
-                    if (prior && prior.assignedto && rule.assignedto && prior.assignedto !== rule.assignedto && conflicts.length < 25) {
-                        conflicts.push({ field, value, first: prior.assignedto, firstRow: prior.row, second: rule.assignedto, secondRow: rule.sheet_row_number });
-                    }
-                });
-            });
-            return conflicts;
-        }
-
-        function publishEvalAssignmentRuleState(nextState = {}) {
-            evalAssignmentRuleState = { ...evalAssignmentRuleState, ...nextState, version: (Number(evalAssignmentRuleState && evalAssignmentRuleState.version) || 0) + 1 };
-            evalAssignmentRuleRowCache = new WeakMap();
-        }
-
-        function getEvalAssignmentRuleMatchRank(rule = null, rowValues = null) {
-            if (!rule || !rule._isValid || !rowValues) return 999;
-            const hasMatch = (field) => {
-                const value = rule._normalizedFields && rule._normalizedFields[field];
-                return !!(value && rowValues[field] && rowValues[field].has(value));
-            };
-            if (hasMatch('ITEMCODE') && hasMatch('CONTSIZE')) return 0;
-            if (hasMatch('ITEMCODE')) return 1;
-            if (hasMatch('COMMONNAME')) return 2;
-            if (hasMatch('LOCATIONCODE')) return 3;
-            if (hasMatch('GENUSNAME')) return 4;
-            if (hasMatch('SOURCE')) return 5;
-            if (hasMatch('WAREHOUSEI')) return 6;
-            if (hasMatch('CONTSIZE')) return 7;
-            return 999;
-        }
-
-        function getEvalAssignmentRuleAssignedToForItem(item = null) {
-            if (!item || typeof item !== 'object') return '';
-            const state = evalAssignmentRuleState || {};
-            if (!state.loaded || !state.indexes) return '';
-            const cached = evalAssignmentRuleRowCache.get(item);
-            if (cached && cached.version === state.version) return cached.assignedto || '';
-            const rowValues = getEvalAssignmentRowFieldValues(item);
-            const candidateSet = new Set();
-            EVAL_ASSIGNMENT_RULE_FIELDS.forEach((field) => {
-                const values = rowValues[field];
-                if (!values || !values.size) return;
-                values.forEach((value) => {
-                    const list = state.indexes[field] && state.indexes[field].get(value);
-                    if (Array.isArray(list)) list.forEach((rule) => candidateSet.add(rule));
-                });
-            });
-            let best = null;
-            candidateSet.forEach((rule) => {
-                const rank = getEvalAssignmentRuleMatchRank(rule, rowValues);
-                if (rank >= 999) return;
-                const rowNumber = Number(rule.sheet_row_number) || 999999;
-                if (!best || rank < best.rank || (rank === best.rank && rowNumber < best.rowNumber)) best = { rule, rank, rowNumber };
-            });
-            const assignedto = best && best.rule && isEvalAssignableUserName(best.rule.assignedto) ? best.rule.assignedto : '';
-            evalAssignmentRuleRowCache.set(item, { version: state.version, assignedto });
-            return assignedto;
-        }
-
-        function applyEvalAssignmentRulesToRow(row = null) {
-            if (!row || typeof row !== 'object') return row;
-            const assignedto = getEvalAssignmentRuleAssignedToForItem(row);
-            if (assignedto) {
-                row.EVAL_ASSIGNMENT_ASSIGNEDTO = assignedto;
-                row.EVAL_RULE_ASSIGNEDTO = assignedto;
-                row.ASSIGNEDTO = assignedto;
-                row.assignedto = assignedto;
-            }
-            return row;
-        }
-
-        function collectEvalAssignmentRuleLoadedRows() {
-            const rows = [];
-            const seen = typeof WeakSet === 'function' ? new WeakSet() : null;
-            const addList = (list) => {
-                if (!Array.isArray(list)) return;
-                list.forEach((row) => {
-                    if (!row || typeof row !== 'object') return;
-                    if (seen) {
-                        if (seen.has(row)) return;
-                        seen.add(row);
-                    }
-                    rows.push(row);
-                });
-            };
-            try { if (typeof masterInventory !== 'undefined') addList(masterInventory); } catch (_) {}
-            try { if (typeof activeRequestRows !== 'undefined') addList(activeRequestRows); } catch (_) {}
-            try { if (typeof queuedRequestRows !== 'undefined') addList(queuedRequestRows); } catch (_) {}
-            try { if (typeof evalTaskRows !== 'undefined') addList(evalTaskRows); } catch (_) {}
-            try { if (typeof cropRollRows !== 'undefined') addList(cropRollRows); } catch (_) {}
-            return rows;
-        }
-
-        function applyEvalAssignmentRulesToLoadedRows() {
-            const rows = collectEvalAssignmentRuleLoadedRows();
-            if (evalAssignmentRuleApplyJob && typeof evalAssignmentRuleApplyJob.cancel === 'function') {
-                evalAssignmentRuleApplyJob.cancel();
-            }
-            if (!rows.length) return;
-            const targetVersion = evalAssignmentRuleState.version;
-            let index = 0;
-            let canceled = false;
-            const getNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now());
-            const runBatch = (deadline = null) => {
-                if (canceled || targetVersion !== evalAssignmentRuleState.version) return;
-                const startedAt = getNow();
-                let processed = 0;
-                while (index < rows.length && processed < 160) {
-                    applyEvalAssignmentRulesToRow(rows[index]);
-                    index += 1;
-                    processed += 1;
-                    if (deadline && typeof deadline.timeRemaining === 'function' && deadline.timeRemaining() < 2) break;
-                    if (getNow() - startedAt > 8) break;
-                }
-                if (index < rows.length) {
-                    scheduleBatch();
-                    return;
-                }
-                evalAssignmentRuleApplyJob = null;
-                queueEvalAssignmentRuleViewRefresh();
-            };
-            const scheduleBatch = () => {
-                if (typeof requestIdleCallback === 'function') {
-                    requestIdleCallback(runBatch, { timeout: 500 });
-                } else {
-                    setTimeout(() => runBatch(null), 16);
-                }
-            };
-            evalAssignmentRuleApplyJob = { cancel: () => { canceled = true; } };
-            scheduleBatch();
-        }
-
-        function queueEvalAssignmentRuleViewRefresh() {
-            if (typeof notifyDataChange === 'function') notifyDataChange('eval-assignment-rules');
-            if (typeof queueInteractiveViewRender === 'function') {
-                ['drive', 'crop-roll', 'managers', 'tasks', 'queue', 'reports'].forEach((viewId) => queueInteractiveViewRender(viewId, false, false, 0, 200));
-            }
-        }
-
-        async function loadEvalAssignmentRules(force = false) {
-            if (evalAssignmentRuleState.loaded && !force) return evalAssignmentRuleState.rules;
-            if (evalAssignmentRuleState.loading && evalAssignmentRuleState.loadPromise && !force) return evalAssignmentRuleState.loadPromise;
-            const loadPromise = (async () => {
-                publishEvalAssignmentRuleState({ loading: true, error: '' });
-                try {
-                    const rows = await supabaseFetch(EVAL_ASSIGNMENT_RULES_TABLE, 'GET', null, `select=${EVAL_ASSIGNMENT_RULE_SELECT}&active=eq.true&order=sheet_row_number.asc`);
-                    const normalizedRules = (Array.isArray(rows) ? rows : []).map((rule, index) => normalizeEvalAssignmentRule(rule, index));
-                    const validRules = normalizedRules.filter((rule) => rule._isValid && isEvalAssignableUserName(rule.assignedto));
-                    const unknownNames = normalizedRules
-                        .filter((rule) => rule.assigned_to_raw && (!rule.assignedto || !isEvalAssignableUserName(rule.assignedto)))
-                        .map((rule) => `${rule.assigned_to_raw} (row ${rule.sheet_row_number})`)
-                        .filter((value, index, list) => list.indexOf(value) === index)
-                        .slice(0, 40);
-                    const indexes = buildEvalAssignmentRuleIndexes(validRules);
-                    publishEvalAssignmentRuleState({
-                        loaded: true,
-                        loading: false,
-                        error: '',
-                        rules: validRules,
-                        indexes,
-                        lastSyncAt: new Date().toISOString(),
-                        importedAt: validRules.reduce((latest, rule) => String(firstNonEmptyValue(rule.imported_at, rule.updated_at, latest, '') || latest), ''),
-                        unknownNames,
-                        conflictingRules: getEvalAssignmentRuleConflicts(validRules),
-                        loadPromise: null
-                    });
-                    applyEvalAssignmentRulesToLoadedRows();
-                    queueEvalAssignmentRuleViewRefresh();
-                    return validRules;
-                } catch (error) {
-                    publishEvalAssignmentRuleState({ loaded: false, loading: false, error: String(error && error.message ? error.message : error || 'Unable to load Eval assignment rules.'), loadPromise: null });
-                    return [];
-                }
-            })();
-            evalAssignmentRuleState.loadPromise = loadPromise;
-            return loadPromise;
-        }
-
-        function scheduleEvalAssignmentRulesRefresh(delayMs = 1200) {
-            const runner = () => loadEvalAssignmentRules(false).catch(() => {});
-            if (typeof requestIdleCallback === 'function') {
-                requestIdleCallback(runner, { timeout: Math.max(1000, Number(delayMs) || 1200) });
-                return;
-            }
-            setTimeout(runner, Math.max(0, Number(delayMs) || 0));
-        }
-
-        window.refreshEvalAssignmentRules = () => loadEvalAssignmentRules(true);
-
         function getEvalTaskRuleAssigneeForItem(item = null) {
-            const sheetAssignee = getEvalAssignmentRuleAssignedToForItem(item);
-            if (sheetAssignee) return sheetAssignee;
             const cacheKey = [
                 resolvedViewStateEpoch,
                 typeof getDatasetLoadSignature === 'function' ? getDatasetLoadSignature('master') : '',
@@ -23752,10 +23442,6 @@ let activeTaskView=DEFAULT_TASK_VIEW; let activeTaskFilter=DEFAULT_TASK_FILTER; 
 let iosTaskFilterSheetState={ open:false, kind:'', search:'' }; let iosTaskFilterSheetTriggersInitialized=false; let iosTaskFilterLastTriggerKey=''; let iosTaskFilterLastTriggerAt=0; let iosTaskFilterBodyOverflow=''; let iosTaskFilterSheetSearchTimer=null;
 let dockMobileFilterSheetState={ open:false, kind:'', search:'' }; let dockMobileFilterBodyOverflow='';
 let evalAssignableUsers=[]; let evalAssignableUsersPromise=null; let evalTaskModalSeeded=false; let evalTaskRuleAssigneeCacheKey=''; let evalTaskRuleAssigneeCache=new WeakMap();
-let evalAssignmentRuleState={ loaded:false, loading:false, error:'', rules:[], indexes:{}, version:0, lastSyncAt:'', importedAt:'', unknownNames:[], conflictingRules:[], loadPromise:null };
-let evalAssignmentRuleRowCache=new WeakMap();
-let evalAssignmentRuleApplyJob=null;
-scheduleEvalAssignmentRulesRefresh(1400);
 let lastNonApprovalTaskView=DEFAULT_TASK_VIEW;
 let detailReturnState = { viewId: '', scrollTop: 0 };
 let viewHistoryStack = [];
@@ -24213,7 +23899,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.27.03').trim() || 'V2026.07.27.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.27.01').trim() || 'V2026.07.27.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -26902,7 +26588,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 }
                 repairDisplayFieldsOnRow(obj);
                 normalizeRowPhotoFields(obj);
-                applyEvalAssignmentRulesToRow(obj);
                 return obj;
             });
         }
@@ -46092,13 +45777,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getMasterAssignedToValue(item = null) {
-            const computedEvalAssignee = typeof getEvalAssignmentRuleAssignedToForItem === 'function' ? getEvalAssignmentRuleAssignedToForItem(item) : '';
-            if (computedEvalAssignee) return computedEvalAssignee;
             return String(firstNonEmptyValue(
-                item && item.EVAL_ASSIGNMENT_ASSIGNEDTO,
-                item && item.eval_assignment_assignedto,
-                item && item.EVAL_RULE_ASSIGNEDTO,
-                item && item.eval_rule_assignedto,
                 item && item.ASSIGNEDTO,
                 item && item.assignedto,
                 item && item.ASSIGNED_TO,
@@ -106590,43 +106269,6 @@ C.14.043 C.15.000
             </div>`;
         }
 
-        function renderEvalAssignmentRuleDiagnosticsCard() {
-            const state = typeof evalAssignmentRuleState !== 'undefined' && evalAssignmentRuleState ? evalAssignmentRuleState : {};
-            const rules = Array.isArray(state.rules) ? state.rules : [];
-            const unknownNames = Array.isArray(state.unknownNames) ? state.unknownNames : [];
-            const conflicts = Array.isArray(state.conflictingRules) ? state.conflictingRules : [];
-            const statusLabel = state.loading ? 'Loading' : (state.error ? 'Error' : (state.loaded ? 'Ready' : 'Not Loaded'));
-            const statusClass = state.error
-                ? 'border-red-200 bg-red-50 text-red-700'
-                : state.loading
-                    ? 'border-amber-200 bg-amber-50 text-amber-700'
-                    : 'border-emerald-200 bg-emerald-50 text-emerald-700';
-            const lastSyncText = state.lastSyncAt ? formatMlTimestamp(state.lastSyncAt) : 'Not synced this session';
-            const importedText = state.importedAt ? formatMlTimestamp(state.importedAt) : 'No import timestamp';
-            const issueHtml = [
-                unknownNames.length ? `<div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-900"><div class="mb-1 text-[9px] font-black uppercase tracking-[0.12em]">Unknown Names</div>${unknownNames.map((name) => `<div>${esc(name)}</div>`).join('')}</div>` : '',
-                conflicts.length ? `<div class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] font-bold text-blue-900"><div class="mb-1 text-[9px] font-black uppercase tracking-[0.12em]">Rule Conflicts</div>${conflicts.map((conflict) => `<div>${esc(conflict.field)} ${esc(conflict.value)}: ${esc(conflict.first)} row ${esc(String(conflict.firstRow))} / ${esc(conflict.second)} row ${esc(String(conflict.secondRow))}</div>`).join('')}</div>` : ''
-            ].filter(Boolean).join('');
-            return `<section class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
-                <div class="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Eval Assignment Rules</div>
-                        <div class="mt-1 text-sm font-semibold text-slate-500">Rules loaded from ${esc(EVAL_ASSIGNMENT_RULE_SOURCE_LABEL)} and applied from the Supabase cache.</div>
-                    </div>
-                    <button type="button" class="rounded-full border border-emerald-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm active:scale-95" ${buildFastInvokeAttrs('refreshEvalAssignmentRules', [], 'Refresh Eval Assignment Rules')}>Refresh Rules</button>
-                </div>
-                <div class="mt-3 grid grid-cols-2 gap-2 md:grid-cols-5">
-                    <div class="rounded-xl border ${statusClass} px-3 py-3"><div class="text-[9px] font-black uppercase tracking-[0.12em] opacity-70">Status</div><div class="mt-1 text-base font-black">${esc(statusLabel)}</div></div>
-                    <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Rules</div><div class="mt-1 text-base font-black text-slate-900">${esc(String(rules.length))}</div></div>
-                    <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Last Sync</div><div class="mt-1 text-[11px] font-black text-slate-700">${esc(lastSyncText)}</div></div>
-                    <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Imported</div><div class="mt-1 text-[11px] font-black text-slate-700">${esc(importedText)}</div></div>
-                    <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Issues</div><div class="mt-1 text-base font-black text-slate-900">${esc(String(unknownNames.length + conflicts.length))}</div></div>
-                </div>
-                ${state.error ? `<div class="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-bold text-red-800">${esc(state.error)}</div>` : ''}
-                ${issueHtml ? `<div class="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">${issueHtml}</div>` : ''}
-            </section>`;
-        }
-
         function renderDiagnostics() {
             if (!canUseMlAdminViews()) {
                 switchView('home');
@@ -106650,11 +106292,9 @@ C.14.043 C.15.000
             const pendingHtml = pendingRows.length ? pendingRows.map(renderDiagnosticCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-[12px] font-semibold text-slate-400">No pending diagnostic jobs.</div>';
             const finishedHtml = finishedRows.length ? finishedRows.map(renderDiagnosticCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-[12px] font-semibold text-slate-400">No diagnostic issues awaiting review.</div>';
             const statusSummaryHtml = ['pending_ml', 'processing', 'pending_approval', 'approved', 'ml_failed'].map((status) => `<div class="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">${esc(status.replace(/_/g, ' '))}</div><div class="mt-1 text-xl font-black text-slate-900">${esc(String(statusCounts[status] || 0))}</div></div>`).join('');
-            const evalRuleSignature = typeof evalAssignmentRuleState !== 'undefined' && evalAssignmentRuleState ? `${evalAssignmentRuleState.version}:${evalAssignmentRuleState.loaded}:${evalAssignmentRuleState.loading}:${evalAssignmentRuleState.error}:${(evalAssignmentRuleState.rules || []).length}` : 'none';
-            const signature = `diagnostics:${getDatasetLoadSignature('mlJobs')}:evalRules:${evalRuleSignature}:${pendingRows.length}:${finishedRows.length}:${JSON.stringify(statusCounts)}:${finishedRows.map((row) => `${row.UNIQUE_ID}:${row.STATUS}:${row.UPDATED_AT}:${row.LAST_ERROR}`).join('|')}`;
+            const signature = `diagnostics:${getDatasetLoadSignature('mlJobs')}:${pendingRows.length}:${finishedRows.length}:${JSON.stringify(statusCounts)}:${finishedRows.map((row) => `${row.UNIQUE_ID}:${row.STATUS}:${row.UPDATED_AT}:${row.LAST_ERROR}`).join('|')}`;
             const html = `<div class="space-y-5">
                 <section class="grid grid-cols-2 gap-2 sm:grid-cols-5">${statusSummaryHtml}</section>
-                ${renderEvalAssignmentRuleDiagnosticsCard()}
                 <section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Pending Diagnostics</div>${pendingHtml}</section>
                 <section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Diagnostic Issues</div>${finishedHtml}</section>
             </div>`;
