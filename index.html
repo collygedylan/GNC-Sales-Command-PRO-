@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.24.13';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.27.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4890,7 +4890,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.24.13').trim() || 'V2026.07.24.13';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.27.01').trim() || 'V2026.07.27.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6343,7 +6343,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.24.13';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.27.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -23895,10 +23895,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const APP_SEASON_SETTINGS_KEY = 'current_season_salesyear';
         const APP_SEASON_SETTINGS_STORAGE_KEY = 'gnc_current_season_settings_v1';
         const APP_CURRENT_SEASON_OPTIONS = Object.freeze(['S1', 'F1']);
+        const APP_SEASON_DISPLAY_ORDER = Object.freeze(['S1', 'F1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.24.13').trim() || 'V2026.07.24.13';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.27.01').trim() || 'V2026.07.27.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -24023,6 +24024,38 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function getConfiguredCurrentSalesYearCode() {
             return getCurrentAppSeasonSettings().salesYear;
+        }
+
+        function normalizeSeasonSortValue(value = '') {
+            return String(value || '').trim().toUpperCase().replace(/\s+/g, ' ');
+        }
+
+        function getCurrentSeasonFirstOrder(baseOrder = APP_SEASON_DISPLAY_ORDER, options = {}) {
+            const safeBaseOrder = Array.isArray(baseOrder) && baseOrder.length ? baseOrder : APP_SEASON_DISPLAY_ORDER;
+            const currentSeason = normalizeAppCurrentSeasonCode(typeof getConfiguredCurrentSeasonCode === 'function'
+                ? getConfiguredCurrentSeasonCode()
+                : PICK_NOTE_CURRENT_SEASON_CODE);
+            const ordered = [currentSeason]
+                .concat(safeBaseOrder)
+                .concat(options && options.includeNoSeason ? ['NO SEASON'] : [])
+                .map(normalizeSeasonSortValue)
+                .filter(Boolean);
+            return Array.from(new Set(ordered));
+        }
+
+        function getCurrentSeasonSortRank(value = '', baseOrder = APP_SEASON_DISPLAY_ORDER, options = {}) {
+            const normalized = normalizeSeasonSortValue(value);
+            const order = getCurrentSeasonFirstOrder(baseOrder, options);
+            const index = order.indexOf(normalized);
+            return index === -1 ? order.length : index;
+        }
+
+        function compareSeasonCodesCurrentFirst(left = '', right = '', baseOrder = APP_SEASON_DISPLAY_ORDER, options = {}) {
+            const leftKey = normalizeSeasonSortValue(left);
+            const rightKey = normalizeSeasonSortValue(right);
+            const rankCompare = getCurrentSeasonSortRank(leftKey, baseOrder, options) - getCurrentSeasonSortRank(rightKey, baseOrder, options);
+            if (rankCompare) return rankCompare;
+            return leftKey.localeCompare(rightKey, undefined, { numeric: true, sensitivity: 'base' });
         }
 
         function getConfiguredNextSalesYearCode() {
@@ -84719,8 +84752,7 @@ function toggleDriveQuickRequestItem(domId) {
             const match = text.match(/(\d+)\s*[\.\-_/ ]?\s*([A-Z]\d?|[A-Z])?/);
             const salesYear = match && match[1] ? Number(match[1]) : Number.POSITIVE_INFINITY;
             const season = match && match[2] ? match[2].toUpperCase() : '';
-            const seasonOrder = ['S1', 'F1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z'];
-            const seasonRank = seasonOrder.includes(season) ? seasonOrder.indexOf(season) : seasonOrder.length;
+            const seasonRank = getCurrentSeasonSortRank(season);
             return {
                 raw: text,
                 salesYear: Number.isFinite(salesYear) ? salesYear : Number.POSITIVE_INFINITY,
@@ -100713,16 +100745,10 @@ C.14.043 C.15.000
         }
 
         function compareCropRollSeasonFilterOptions(left = null, right = null) {
-            const seasonOrder = ['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z', 'NO SEASON'];
             const leftKey = String(left && left.key || '').trim().toUpperCase();
             const rightKey = String(right && right.key || '').trim().toUpperCase();
-            const leftIndex = seasonOrder.indexOf(leftKey);
-            const rightIndex = seasonOrder.indexOf(rightKey);
-            if (leftIndex !== -1 || rightIndex !== -1) {
-                if (leftIndex === -1) return 1;
-                if (rightIndex === -1) return -1;
-                return leftIndex - rightIndex;
-            }
+            const keyCompare = compareSeasonCodesCurrentFirst(leftKey, rightKey, CROP_ROLL_SEASON_ORDER, { includeNoSeason: true });
+            if (keyCompare) return keyCompare;
             return String(left && left.label || leftKey).localeCompare(String(right && right.label || rightKey), undefined, { numeric: true, sensitivity: 'base' });
         }
 
@@ -119883,8 +119909,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function getDriveSeasonOptionRank(value = '') {
             const normalized = String(value || '').trim().toUpperCase();
-            const index = DRIVE_SEASON_OPTIONS.indexOf(normalized);
-            return index === -1 ? DRIVE_SEASON_OPTIONS.length + 1 : index;
+            return getCurrentSeasonSortRank(normalized, DRIVE_SEASON_OPTIONS);
         }
 
         function renderDriveDrillEntries(container, crumb, crumbText, entries, modeKey, renderEntry, options = {}) {
