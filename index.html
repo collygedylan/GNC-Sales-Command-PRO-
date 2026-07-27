@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.27.01';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.27.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4890,7 +4890,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.27.01').trim() || 'V2026.07.27.01';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.27.02').trim() || 'V2026.07.27.02';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6343,7 +6343,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.27.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.27.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -23899,7 +23899,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.27.01').trim() || 'V2026.07.27.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.27.02').trim() || 'V2026.07.27.02';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -45792,22 +45792,83 @@ function toggleDriveQuickRequestItem(domId) {
             ) || '').trim();
         }
 
+        function getFastEvalRuleAssigneesForItem(item = null) {
+            if (!item) return [];
+            const users = new Set();
+            const addUser = (value = '') => getEvalTaskAssignedUsersFromValue(value).forEach((user) => users.add(user));
+            const commonName = String(firstNonEmptyValue(item.COMMONNAME, item.commonname, item.DESCRIPTION, item.description, '') || '').trim().toLowerCase();
+            const genusName = String(firstNonEmptyValue(item.GENUS, item.genus, item.GENUSNAME, item.genusname, '') || '').trim().toLowerCase();
+            const plantGroup = String(firstNonEmptyValue(item.PLANTGROUPCODE, item.plantgroupcode, item.PLANTGROUP, item.plantgroup, '') || '').trim().toUpperCase();
+            const locationCode = String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, item.LOCATION, item.loc, '') || '').trim();
+            const nameText = `${commonName} ${genusName}`;
+            if (genusName.includes('hydrangea m')) addUser('megan_kelly');
+            if (plantGroup === '140_GRASS') addUser('dylan_collyge');
+            if (plantGroup.includes('330_TREES') && nameText.includes('magnolia')) addUser('ellen_ward');
+            if (nameText.includes('boxwood') || genusName.includes('buxus')) addUser('josh_vann');
+            if (plantGroup.includes('330_TREES')) addUser('abbey_sartain');
+            if (nameText.includes('hosta')) addUser(isEvalTaskZoeHostaLocation(locationCode) ? 'zoe_green' : 'bobby_adair');
+            return Array.from(users);
+        }
+
+        function getFastEvalAssignedUsersForItem(item = null) {
+            const users = new Set();
+            const addValue = (value = '') => getEvalTaskAssignedUsersFromValue(value).forEach((user) => users.add(user));
+            addValue(firstNonEmptyValue(
+                item && item.ASSIGNEDTO,
+                item && item.assignedto,
+                item && item.ASSIGNED_TO,
+                item && item.assigned_to,
+                item && item.EVAL_TASK_ASSIGNED_TO,
+                item && item.eval_task_assigned_to,
+                item && item.EVAL_TASK_ASSIGNEES,
+                item && item.eval_task_assignees,
+                item && item.ASSIGNED_USERS,
+                item && item.assigned_users,
+                item && item.REQUESTED_BY,
+                item && item.requested_by,
+                ''
+            ));
+            getFastEvalRuleAssigneesForItem(item).forEach((user) => users.add(user));
+            return Array.from(users);
+        }
+
+        function getEvalScopedCurrentUserKey(userOverride = '') {
+            return normalizeEvalAssignableUser(firstNonEmptyValue(userOverride, currentUser, currentUserDisplay, '') || '');
+        }
+
+        function isEvalScopedDylanBypassUser(userOverride = '') {
+            const actor = getEvalScopedCurrentUserKey(userOverride);
+            return actor === 'dylan_collyge' || isExactDylanCollygeUser(userOverride);
+        }
+
+        function doesEvalScopedRowMatchCurrentUser(item = null, userOverride = '') {
+            const actor = getEvalScopedCurrentUserKey(userOverride);
+            if (!actor) return false;
+            return getFastEvalAssignedUsersForItem(item).some((user) => normalizeEvalAssignableUser(user) === actor);
+        }
+
         function isMasterInventoryRowVisibleToCurrentUser(item = null, roleOverride = '', userOverride = '') {
-            return true;
+            if (!shouldScopeMasterInventoryToCurrentEval(roleOverride, userOverride)) return true;
+            if (isEvalScopedDylanBypassUser(userOverride)) return true;
+            return doesEvalScopedRowMatchCurrentUser(item, userOverride);
         }
 
         function isEvalScopedDataRowVisibleToCurrentUser(item = null, roleOverride = '', userOverride = '') {
-            return true;
+            if (!shouldScopeMasterInventoryToCurrentEval(roleOverride, userOverride)) return true;
+            if (isEvalScopedDylanBypassUser(userOverride)) return true;
+            return doesEvalScopedRowMatchCurrentUser(item, userOverride);
         }
 
         function scopeMasterInventoryRowsForCurrentUser(rows = [], roleOverride = '', userOverride = '') {
             const source = Array.isArray(rows) ? rows : [];
-            return source;
+            if (!shouldScopeMasterInventoryToCurrentEval(roleOverride, userOverride) || isEvalScopedDylanBypassUser(userOverride)) return source;
+            return source.filter((item) => doesEvalScopedRowMatchCurrentUser(item, userOverride));
         }
 
         function scopeEvalVisibleRowsForCurrentUser(rows = [], roleOverride = '', userOverride = '') {
             const source = Array.isArray(rows) ? rows : [];
-            return source;
+            if (!shouldScopeMasterInventoryToCurrentEval(roleOverride, userOverride) || isEvalScopedDylanBypassUser(userOverride)) return source;
+            return source.filter((item) => doesEvalScopedRowMatchCurrentUser(item, userOverride));
         }
 
         function applyCurrentUserMasterInventoryScope() {
@@ -93026,14 +93087,14 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (!row) return false;
             if (canManageCropRoll()) return true;
             const actor = getCropRollActorKey();
-            return !!actor && normalizeEvalAssignableUser(row.assignedto || '') === actor;
+            return !!actor && doesCropRollEvalUserMatch(row, new Set([actor]));
         }
 
         function getCropRollVisibleRows() {
             const actor = getCropRollActorKey();
             let rows = getCropRollActiveRunRows().slice();
-            if (!canManageCropRoll()) rows = rows.filter((row) => normalizeEvalAssignableUser(row.assignedto || '') === actor);
-            if (cropRollSelectedUser && canManageCropRoll()) rows = rows.filter((row) => normalizeEvalAssignableUser(row.assignedto || '') === cropRollSelectedUser);
+            if (!canManageCropRoll()) rows = rows.filter((row) => doesCropRollEvalUserMatch(row, new Set([actor])));
+            if (cropRollSelectedUser && canManageCropRoll()) rows = rows.filter((row) => doesCropRollEvalUserMatch(row, new Set([cropRollSelectedUser])));
             if (cropRollSelectedPlantGroup) rows = rows.filter((row) => cropRollSelectedPlantGroup === '__no_plant_group__' ? !getCropRollPlantGroup(row) : getCropRollUpper(getCropRollPlantGroup(row)) === getCropRollUpper(cropRollSelectedPlantGroup));
             if (cropRollSelectedBlock) rows = rows.filter((row) => cropRollSelectedBlock === '__no_block__' ? !getCropRollBlock(row) : getCropRollUpper(row.blockalpha) === getCropRollUpper(cropRollSelectedBlock));
             if (cropRollSelectedLocation) rows = rows.filter((row) => cropRollSelectedLocation === '__no_location__' ? !getCropRollLocationCode(row) : getCropRollUpper(row.locationcode) === getCropRollUpper(cropRollSelectedLocation));
@@ -93055,7 +93116,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         plantgroupcode: getCropRollPlantGroup(row),
                         locationcode: getCropRollLocationCode(row),
                         blockalpha: getCropRollBlock(row),
-                        assignedto: normalizeEvalAssignableUser(row.assignedto || ''),
+                        assignedto: getCropRollEvalUsersForItem(row).join(', ') || 'unassigned',
                         rows: []
                     });
                 }
@@ -93101,8 +93162,18 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 let key = '';
                 let label = '';
                 if (kind === 'user') {
-                    key = normalizeEvalAssignableUser(row.assignedto || '') || 'unassigned';
-                    label = key === 'unassigned' ? 'Unassigned' : key;
+                    const users = getCropRollEvalUsersForItem(row);
+                    if (users.length) {
+                        users.forEach((user) => {
+                            const userKey = normalizeEvalAssignableUser(user) || 'unassigned';
+                            const userLabel = userKey === 'unassigned' ? 'Unassigned' : userKey;
+                            if (!map.has(userKey)) map.set(userKey, { key: userKey, label: userLabel, rows: [] });
+                            map.get(userKey).rows.push(row);
+                        });
+                        return;
+                    }
+                    key = 'unassigned';
+                    label = 'Unassigned';
                 } else if (kind === 'plantgroup') {
                     key = getCropRollUpper(getCropRollPlantGroup(row)) || '__no_plant_group__';
                     label = key === '__no_plant_group__' ? 'No Plant Group' : key;
@@ -93203,8 +93274,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 ? `<select class="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase text-slate-700" onchange="return setCropRollFilter('user', this.value)"><option value="">All Users</option>${userBreakdown.map((entry) => `<option value="${escJsAttrValue(entry.key)}" ${cropRollSelectedUser === entry.key ? 'selected' : ''}>${escapeHtml(entry.label)} (${entry.stats.groupComplete}/${entry.stats.groupTotal})</option>`).join('')}</select>`
                 : '';
             let scopedRowsForOptions = allRows.slice();
-            if (!canManageCropRoll()) scopedRowsForOptions = scopedRowsForOptions.filter((row) => normalizeEvalAssignableUser(row.assignedto || '') === getCropRollActorKey());
-            if (cropRollSelectedUser && canManageCropRoll()) scopedRowsForOptions = scopedRowsForOptions.filter((row) => normalizeEvalAssignableUser(row.assignedto || '') === cropRollSelectedUser);
+            if (!canManageCropRoll()) scopedRowsForOptions = scopedRowsForOptions.filter((row) => doesCropRollEvalUserMatch(row, new Set([getCropRollActorKey()])));
+            if (cropRollSelectedUser && canManageCropRoll()) scopedRowsForOptions = scopedRowsForOptions.filter((row) => doesCropRollEvalUserMatch(row, new Set([cropRollSelectedUser])));
             const plantGroupOptions = getCropRollBreakdown(scopedRowsForOptions, 'plantgroup');
             const blockOptions = getCropRollBreakdown(allVisibleRows.length ? allVisibleRows : scopedRowsForOptions, 'block');
             const locOptions = getCropRollBreakdown(allVisibleRows.length ? allVisibleRows : scopedRowsForOptions, 'location');
@@ -95570,8 +95641,8 @@ C.14.043 C.15.000
 
         function getCropRollEvalUsersForItem(item = null) {
             const overrideUsers = getCropRollItemCodeOverrideUsers(item);
-            const users = typeof getEvalTaskAssignedUsersFromItem === 'function'
-                ? getEvalTaskAssignedUsersFromItem(item)
+            const users = typeof getFastEvalAssignedUsersForItem === 'function'
+                ? getFastEvalAssignedUsersForItem(item)
                 : getEvalTaskAssignedUsersFromValue(typeof getMasterAssignedToValue === 'function' ? getMasterAssignedToValue(item) : firstNonEmptyValue(item && item.ASSIGNEDTO, item && item.assignedto, ''));
             const normalizedUsers = new Set((Array.isArray(users) ? users : [])
                 .map(normalizeEvalAssignableUser)
@@ -102263,7 +102334,7 @@ C.14.043 C.15.000
                     if (!cropRollRows.length) await loadCropRollData(false);
                     if (typeof ensureDatasetLoaded === 'function') await ensureDatasetLoaded('master', 'full');
                     const rows = getCropRollRowsForGroup(key);
-                    const visibleRows = rows.filter((row) => canManageCropRoll() || normalizeEvalAssignableUser(row.assignedto || '') === getCropRollActorKey());
+                    const visibleRows = rows.filter((row) => canManageCropRoll() || doesCropRollEvalUserMatch(row, new Set([getCropRollActorKey()])));
                     if (!visibleRows.length) {
                         showToast('No Crop Roll Rows', 'No assigned Crop Roll rows were found for that item/location.', true);
                         return;
