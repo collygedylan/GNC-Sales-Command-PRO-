@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.27.03';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.27.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4890,7 +4890,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.27.03').trim() || 'V2026.07.27.03';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.27.04').trim() || 'V2026.07.27.04';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -5163,48 +5163,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <button type="button" class="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm active:scale-95" onclick="return switchView('home')"><i class="ph-bold ph-house text-sm"></i><span>Home</span></button>
                         </div>
                     </div>
-                    <div id="sales-hub-grid" class="grid gap-3 md:grid-cols-2">
-                        <button type="button" id="sales-open-drive" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('drive')">
-                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-car text-2xl"></i></div>
-                            <div class="text-lg font-black text-slate-900">Drive Mode</div>
-                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Inventory rows</div>
-                        </button>
-                        <button type="button" id="sales-open-av" class="rounded-2xl border border-teal-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openSalesAvModule()">
-                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-teal-700"><i class="ph-bold ph-notebook text-2xl"></i></div>
-                            <div class="text-lg font-black text-slate-900">AV</div>
-                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Available stock</div>
-                        </button>
-                        <button type="button" id="sales-open-docks" class="rounded-2xl border border-orange-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('docks')">
-                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-700"><i class="ph-bold ph-truck text-2xl"></i></div>
-                            <div class="text-lg font-black text-slate-900">Docks</div>
-                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Orders and dock rows</div>
-                        </button>
-                        <button type="button" id="sales-open-communication" class="rounded-2xl border border-sky-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('communication')">
-                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-700"><i class="ph-bold ph-chat-circle-dots text-2xl"></i></div>
-                            <div class="text-lg font-black text-slate-900">Communication</div>
-                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Chat, phone, email</div>
-                        </button>
-                        <button type="button" id="sales-open-request" class="rounded-2xl border border-blue-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('request')">
-                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700"><i class="ph-bold ph-chat-circle-text text-2xl"></i></div>
-                            <div class="text-lg font-black text-slate-900">Request</div>
-                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Pending requests</div>
-                        </button>
-                        <button type="button" id="sales-open-bloom-orders" class="rounded-2xl border border-purple-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openSalesOfficeView()">
-                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-purple-700"><i class="ph-bold ph-handbag text-2xl"></i></div>
-                            <div class="text-lg font-black text-slate-900">Bloom Picker Orders</div>
-                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Order review</div>
-                        </button>
-                        <button type="button" id="sales-open-tasks" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('tasks')">
-                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-clipboard-text text-2xl"></i></div>
-                            <div class="text-lg font-black text-slate-900">Task</div>
-                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Assigned work</div>
-                        </button>
-                        <button type="button" id="sales-open-weather-hold" class="rounded-2xl border border-sky-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('weather-hold')">
-                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-700"><i class="ph-bold ph-cloud-sun text-2xl"></i></div>
-                            <div class="text-lg font-black text-slate-900">Weather &amp; Hold Risk</div>
-                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">10-year hourly history</div>
-                        </button>
-                    </div>
+                    <div id="sales-hub-grid" class="manager-module-grid"></div>
                     <div id="sales-empty-state" class="hidden rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No sales modules are available for this login.</div>
                 </div>
 
@@ -6343,7 +6302,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.27.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.27.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24132,7 +24091,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.27.03').trim() || 'V2026.07.27.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.27.04').trim() || 'V2026.07.27.04';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -56245,42 +56204,45 @@ function toggleDriveQuickRequestItem(domId) {
             return !!(access && access.isRep && !access.isAdmin);
         }
 
+        function getSalesHomeModuleCards(access = getRoleAccessState()) {
+            const cards = [
+                { id: 'home-sales-open-drive', view: 'drive', icon: 'ph-car', title: 'Drive Mode', subtitle: 'Inventory rows' },
+                { id: 'home-sales-open-av', view: 'av', action: 'return openSalesAvModule()', icon: 'ph-notebook', title: 'AV', subtitle: 'Available stock' },
+                { id: 'home-sales-open-docks', view: 'docks', icon: 'ph-truck', title: 'Docks', subtitle: 'Orders and dock rows' },
+                { id: 'home-sales-open-communication', view: 'communication', icon: 'ph-chat-circle-dots', title: 'Communication', subtitle: 'Chat, phone, email' },
+                { id: 'home-sales-open-request', view: 'request', icon: 'ph-chat-circle-text', title: 'Request', subtitle: 'Pending requests' },
+                { id: 'home-sales-open-bloom-orders', view: 'sales-office', action: 'return openSalesOfficeView()', icon: 'ph-handbag', title: 'Bloom Picker Orders', subtitle: 'Order review' },
+                { id: 'home-sales-open-tasks', view: 'tasks', icon: 'ph-clipboard-text', title: 'Task', subtitle: 'Assigned work' },
+                { id: 'home-sales-open-weather-hold', view: 'weather-hold', icon: 'ph-cloud-sun', title: 'Weather & Hold Risk', subtitle: '10-year hourly history' }
+            ];
+            return cards.filter((card) => card && card.view && canAccessView(card.view));
+        }
+
         function renderSalesHubCardMarkup(card = {}) {
             if (!card || !canAccessView(card.view)) return '';
             const id = card.id ? ` id="${escapeHtml(card.id)}"` : '';
             const action = card.action || `return switchView('${escapeHtml(card.view)}')`;
-            return `<button type="button"${id} class="rounded-2xl border border-[#007a4d] bg-white p-4 text-left shadow-sm active:scale-[0.99] transition-transform" onclick="${action}">
-                <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl ${escapeHtml(card.iconBg || 'bg-emerald-50')} ${escapeHtml(card.iconColor || 'text-[#007a4d]')}"><i class="ph-bold ${escapeHtml(card.icon || 'ph-square')} text-2xl"></i></div>
-                <div class="text-lg font-black text-slate-900">${escapeHtml(card.title || '')}</div>
-                <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">${escapeHtml(card.subtitle || '')}</div>
+            return `<button type="button"${id} class="manager-module-card" onclick="${action}">
+                <span class="manager-module-icon"><i class="ph-bold ${escapeHtml(card.icon || 'ph-square')}"></i></span>
+                <span class="min-w-0">
+                    <span class="block text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Open Module</span>
+                    <span class="mt-1 block text-lg font-black leading-tight text-slate-900">${escapeHtml(card.title || '')}</span>
+                    <span class="mt-1 block text-[12px] font-semibold leading-snug text-slate-500">${escapeHtml(card.subtitle || 'Open workflow')}</span>
+                </span>
             </button>`;
         }
 
         function renderRepHomeDashboardTileMarkup(card = {}) {
-            if (!card || !canAccessView(card.view)) return '';
-            const id = card.id ? ` id="${escapeHtml(card.id)}"` : '';
-            const action = card.action || `return switchView('${escapeHtml(card.view)}')`;
-            return `<button type="button"${id} class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer min-h-[96px]" onclick="${action}">
-                <i class="ph-bold ${escapeHtml(card.icon || 'ph-square')} text-3xl text-[#007a4d]"></i>
-                <span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide text-center">${escapeHtml(card.title || '')}</span>
-            </button>`;
+            return renderSalesHubCardMarkup(card);
         }
 
         function getRepHomeDashboardHtml() {
-            const cards = [
-                { id: 'home-sales-open-drive', view: 'drive', icon: 'ph-car', title: 'Drive Mode' },
-                { id: 'home-sales-open-av', view: 'av', action: 'return openSalesAvModule()', icon: 'ph-notebook', title: 'AV' },
-                { id: 'home-sales-open-docks', view: 'docks', icon: 'ph-truck', title: 'Docks' },
-                { id: 'home-sales-open-communication', view: 'communication', icon: 'ph-chat-circle-dots', title: 'Communication' },
-                { id: 'home-sales-open-request', view: 'request', icon: 'ph-chat-circle-text', title: 'Request' },
-                { id: 'home-sales-open-weather-hold', view: 'weather-hold', icon: 'ph-cloud-sun', title: 'Weather & Hold Risk' },
-                { id: 'home-sales-open-bloom-orders', view: 'sales-office', action: 'return openSalesOfficeView()', icon: 'ph-handbag', title: 'Bloom Picker Orders' }
-            ];
+            const cards = getSalesHomeModuleCards();
             const cardsHtml = cards.map(renderRepHomeDashboardTileMarkup).filter(Boolean).join('');
             return cardsHtml
                 ? `<div id="home-rep-dashboard-modules">
                     <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
-                    <div id="home-rep-dashboard-grid" class="grid grid-cols-2 gap-3 mb-8">${cardsHtml}</div>
+                    <div id="home-rep-dashboard-grid" class="manager-module-grid mb-8">${cardsHtml}</div>
                 </div>`
                 : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No home modules are available for this login.</div>';
         }
@@ -56297,19 +56259,11 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function renderSalesHub() {
-            const access = getRoleAccessState();
-            const visibleCount = [
-                setHubButtonVisibility('sales-open-drive', canAccessView('drive')),
-                setHubButtonVisibility('sales-open-av', canAccessView('av')),
-                setHubButtonVisibility('sales-open-docks', canAccessView('docks')),
-                setHubButtonVisibility('sales-open-communication', canAccessView('communication')),
-                setHubButtonVisibility('sales-open-request', canAccessView('request')),
-                setHubButtonVisibility('sales-open-bloom-orders', canAccessView('sales-office')),
-                setHubButtonVisibility('sales-open-tasks', canAccessView('tasks') && !isSalesShellAccess(access)),
-                setHubButtonVisibility('sales-open-weather-hold', canAccessView('weather-hold'))
-            ].filter(Boolean).length;
+            const grid = document.getElementById('sales-hub-grid');
+            const cards = getSalesHomeModuleCards();
+            if (grid) grid.innerHTML = cards.map(renderSalesHubCardMarkup).filter(Boolean).join('');
             const emptyState = document.getElementById('sales-empty-state');
-            if (emptyState) emptyState.classList.toggle('hidden', visibleCount > 0);
+            if (emptyState) emptyState.classList.toggle('hidden', cards.length > 0);
         }
 
         function renderQcHub() {
