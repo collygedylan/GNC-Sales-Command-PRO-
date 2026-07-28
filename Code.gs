@@ -4475,43 +4475,12 @@ function getRequestPickNoteLocationCode_(item) {
 }
 
 function getRequestOverSeasonNoReservePickNote_(item) {
-  const requestQty = parseRequestEmailNumber_(firstNonEmptyRequestValue_(
-    item && item.qty,
-    item && item.req_qty,
-    item && item.REQ_QTY,
-    item && item.requested_qty,
-    ''
-  ));
-  const seasonListQty = parseRequestEmailNumber_(firstNonEmptyRequestValue_(
-    item && item.s_lts,
-    item && item.S_LTS,
-    item && item.season_lts,
-    item && item.SEASON_LTS,
-    ''
-  ));
-  const reserveValue = String(firstNonEmptyRequestValue_(
-    item && item.reserve,
-    item && item.req_reserve,
-    item && item.REQ_RESERVE,
-    'NO'
-  ) || 'NO').trim().toUpperCase();
-  if (requestQty == null || seasonListQty == null || requestQty <= seasonListQty || reserveValue === 'YES') return '';
-  const locationCode = getRequestPickNoteLocationCode_(item);
-  return locationCode ? 'INV OK, ' + locationCode + ' PIC APPROVED' : '';
+  return '';
 }
 
 function getRequestPickNoteWithOverSeasonRule_(item, currentNote) {
-  const requiredPickNote = getRequestOverSeasonNoReservePickNote_(item);
   const text = String(currentNote || '').trim().replace(/\s+/g, ' ');
-  if (!requiredPickNote) return text;
-  const textToken = normalizeRequestPickNoteToken_(text);
-  const requiredToken = normalizeRequestPickNoteToken_(requiredPickNote);
-  if (!textToken) return requiredPickNote;
-  if (textToken.indexOf(requiredToken) !== -1) return text;
-  const locationCode = getRequestPickNoteLocationCode_(item);
-  const locationOnlyToken = normalizeRequestPickNoteToken_(locationCode ? locationCode + ' PIC APPROVED' : '');
-  if (locationOnlyToken && textToken === locationOnlyToken) return requiredPickNote;
-  return text + ' / ' + requiredPickNote;
+  return text;
 }
 
 function normalizeRequestCountText_(value) {

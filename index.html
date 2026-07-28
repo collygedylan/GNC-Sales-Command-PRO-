@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.27.02';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.27.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4890,7 +4890,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.27.02').trim() || 'V2026.07.27.02';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.27.03').trim() || 'V2026.07.27.03';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6061,7 +6061,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="text" inputmode="decimal" pattern="[0-9.]*" id="ssn-match" class="input-field !mb-0 pr-20" placeholder="e.g. 40" oninput="calculateMatchQty('ssn-')" onchange="saveData(false, 'ssn-', true)"><div id="ssn-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">LOC PHOTO MATCH: <span id="ssn-match-qty-val">0</span></div></div>
                         </div>
                         <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="ssn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('ssn-')" onfocus="filterAvNotes('ssn-')" onblur="setTimeout(()=>{if(document.getElementById('ssn-av-dropdown-list'))document.getElementById('ssn-av-dropdown-list').classList.add('hidden'); saveData(false, 'ssn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('ssn-')">+</button></div><div id="ssn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
-                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="ssn-pick" class="input-field" placeholder="e.g. 7E PIC APPROVED" onchange="saveData(false, 'ssn-', true)"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="ssn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'ssn-', true)"></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="ssn-comments" class="input-field resize-y" placeholder="Any additional comments..." onblur="saveData(false, 'ssn-', true)"></textarea></div>
                         <div class="flex gap-2 mt-4"><button id="ssn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'ssn-')">MARK DONE</button></div>
                         <button type="button" class="mt-3 w-full rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-lime-800 shadow-sm active:scale-95" onclick="return submitShearApprovalRequestForActiveDetail('ssn-')"><i class="ph-bold ph-scissors mr-1 text-base align-middle"></i>Add To Shear List</button>
@@ -6082,7 +6082,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="text" inputmode="decimal" pattern="[0-9.]*" id="lsn-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('lsn-')" onchange="saveData(false, 'lsn-', true)"><div id="lsn-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">LOC PHOTO MATCH: <span id="lsn-match-qty-val">0</span></div></div>
                         </div>
                         <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="lsn-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('lsn-')" onfocus="filterAvNotes('lsn-')" onblur="setTimeout(()=>{if(document.getElementById('lsn-av-dropdown-list'))document.getElementById('lsn-av-dropdown-list').classList.add('hidden'); saveData(false, 'lsn-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('lsn-')">+</button></div><div id="lsn-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
-                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="lsn-pick" class="input-field" placeholder="e.g. 7E PIC APPROVED" onchange="saveData(false, 'lsn-', true)"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="lsn-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'lsn-', true)"></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="lsn-comments" class="input-field resize-y" placeholder="Any additional comments..." onblur="saveData(false, 'lsn-', true)"></textarea></div>
                         <div class="flex gap-2 mt-4"><button id="lsn-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'lsn-')">MARK DONE</button></div>
                         <button type="button" class="mt-3 w-full rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-lime-800 shadow-sm active:scale-95" onclick="return submitShearApprovalRequestForActiveDetail('lsn-')"><i class="ph-bold ph-scissors mr-1 text-base align-middle"></i>Add To Shear List</button>
@@ -6097,7 +6097,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div class="mb-3"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="text" inputmode="decimal" pattern="[0-9.]*" id="na-match" class="input-field !mb-1" placeholder="e.g. 95" oninput="calculateMatchQty('na-')"><div id="na-match-display" class="text-[10px] font-bold text-[#007a4d] text-right mb-2 hidden">LOC PHOTO MATCH: <span id="na-match-qty-val">0</span></div></div>
                         </div>
                         <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="na-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('na-')" onfocus="filterAvNotes('na-')" onblur="setTimeout(()=>{if(document.getElementById('na-av-dropdown-list'))document.getElementById('na-av-dropdown-list').classList.add('hidden'); saveData(false, 'na-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('na-')">+</button></div><div id="na-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
-                        <div class="mb-2"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="na-pick" class="input-field" placeholder="e.g. 7E PIC APPROVED" onchange="saveData(false, 'na-', true)"></div>
+                        <div class="mb-2"><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="na-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'na-', true)"></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="na-comments" class="input-field resize-y" placeholder="Any additional comments..." onblur="saveData(false, 'na-', true)"></textarea></div>
                         <div class="mt-4">
                             <button id="na-btn-save-complete" class="w-full bg-[#007a4d] text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform" onclick="saveData(true, 'na-')">MARK DONE</button>
@@ -6172,7 +6172,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="text" inputmode="decimal" pattern="[0-9.]*" id="flyer-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('flyer-')" onchange="saveData(false, 'flyer-', true)"><div id="flyer-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">LOC PHOTO MATCH: <span id="flyer-match-qty-val">0</span></div></div>
                         </div>
                         <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="flyer-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('flyer-')" onfocus="filterAvNotes('flyer-')" onblur="setTimeout(()=>{if(document.getElementById('flyer-av-dropdown-list'))document.getElementById('flyer-av-dropdown-list').classList.add('hidden'); saveData(false, 'flyer-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('flyer-')">+</button></div><div id="flyer-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
-                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="flyer-pick" class="input-field" placeholder="e.g. 7E PIC APPROVED" onchange="saveData(false, 'flyer-', true)"></div>
+                        <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="flyer-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'flyer-', true)"></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="flyer-notes" class="input-field resize-y" placeholder="Any additional comments..." onblur="saveData(false, 'flyer-', true)"></textarea></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Flyer Category</label><input type="text" id="flyer-cat" class="input-field" placeholder="e.g. Spring Sale" onchange="saveData(false, 'flyer-', true)"></div>
                         <div><label class="text-[10px] font-bold text-gray-500 uppercase">Flyer Folder</label><input type="text" id="flyer-title" class="input-field" placeholder="e.g. Spring Promo Folder" onchange="saveData(false, 'flyer-', true)"></div>
@@ -6343,7 +6343,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.27.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.27.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -23899,7 +23899,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.27.02').trim() || 'V2026.07.27.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.27.03').trim() || 'V2026.07.27.03';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -115088,13 +115088,6 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function buildStandardPickNoteForLocation(item, locationCode = '') {
-            if (!locationCode) return '';
-            if (isPickNoteHoldRow(item)) return `H/O ${locationCode} PIC APPROVED`;
-            const seasonCode = getPickNoteSeasonCode(item);
-            if (isPickNoteUniversalSeason(seasonCode) || !isPickNoteCurrentSeasonSalesYear(item)) {
-                return `INV OK, ${locationCode} PIC APPROVED`;
-            }
-            if (!isPickNotePriorityOne(item)) return `${locationCode} PIC APPROVED`;
             return '';
         }
 
@@ -115110,15 +115103,11 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function getGeneratedInvOkPickNote(item = null) {
-            const locationCode = getPickNoteLocationCode(item);
-            return locationCode ? `INV OK, ${locationCode} PIC APPROVED` : '';
+            return '';
         }
 
         function getLegacyRawLocationInvOkPickNote(item = null) {
-            const rawLocation = getRawPickNoteLocationCode(item);
-            const formattedLocation = getPickNoteLocationCode(item);
-            if (!rawLocation || normalizeRepMatchToken(rawLocation) === normalizeRepMatchToken(formattedLocation)) return '';
-            return `INV OK, ${rawLocation} PIC APPROVED`;
+            return '';
         }
 
         function collapseDuplicatedPickNoteLocationText(value = '') {
@@ -115229,8 +115218,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function getRequestUniversalPickNote(item = null, linkedItem = null) {
-            const locationCode = getPickNoteLocationCode(item, linkedItem);
-            return locationCode ? `INV OK, ${locationCode} PIC APPROVED` : '';
+            return '';
         }
 
         function getRequestQtyForPickNote(item = null) {
@@ -115271,28 +115259,12 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function getRequestOverSeasonNoReservePickNote(item = null, linkedItem = null) {
-            const requestQty = getRequestQtyForPickNote(item);
-            const seasonListQty = getRequestSeasonListQtyForPickNote(item, linkedItem);
-            if (requestQty == null || seasonListQty == null || requestQty <= seasonListQty || !isRequestReserveNoForPickNote(item)) return '';
-            const locationCode = getPickNoteLocationCode(item, linkedItem);
-            return locationCode ? `INV OK, ${locationCode} PIC APPROVED` : '';
+            return '';
         }
 
         function getRequestPickNoteWithOverSeasonRule(item = null, linkedItem = null, currentNote = '') {
-            const requiredPickNote = getRequestOverSeasonNoReservePickNote(item, linkedItem);
             const text = collapseDuplicatedPickNoteLocationText(currentNote);
-            if (!requiredPickNote) return text;
-            const textToken = normalizeRepMatchToken(text);
-            const requiredToken = normalizeRepMatchToken(requiredPickNote);
-            if (!textToken) return requiredPickNote;
-            if (textToken.includes(requiredToken)) return text;
-            const locationCode = getPickNoteLocationCode(item, linkedItem);
-            const locationOnlyToken = normalizeRepMatchToken(locationCode ? `${locationCode} PIC APPROVED` : '');
-            const standardToken = normalizeRepMatchToken(getStandardPickNoteForItem(item));
-            if ((locationOnlyToken && textToken === locationOnlyToken) || (standardToken && textToken === standardToken)) {
-                return requiredPickNote;
-            }
-            return appendPickNoteText(text, requiredPickNote);
+            return text;
         }
 
         function applyRequestOverSeasonNoReservePickNote(item = null, linkedItem = null) {
