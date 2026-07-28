@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.28.03';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.28.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -989,9 +989,9 @@ body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .
         #av-top-filters.av-top-inline [data-av-filter-shell="contsize"] .task-top-control-panel{width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #av-top-filters.av-top-inline [data-av-filter-shell="customer"] .task-top-control-panel{width:min(20rem,calc(100vw - (var(--shell-gutter) * 2)))}
         #av-top-filters.av-top-inline .av-filter-shell--toggle .task-top-control-button{justify-content:flex-start}
-        #av-top-filters.av-top-inline [data-av-filter-shell="genus"],
-        #av-top-filters.av-top-inline [data-av-filter-shell="contsize"],
-        #av-top-filters.av-top-inline [data-av-filter-shell="hold"]{display:none !important}
+        body.viewport-compact #av-top-filters.av-top-inline [data-av-filter-shell="genus"],
+        body.viewport-compact #av-top-filters.av-top-inline [data-av-filter-shell="contsize"],
+        body.viewport-compact #av-top-filters.av-top-inline [data-av-filter-shell="hold"]{display:none !important}
         body.viewport-compact #av-top-filters.av-top-inline .av-top-controls-row{grid-template-columns:repeat(3,minmax(0,1fr)) !important;gap:.32rem !important}
         body.viewport-compact #av-top-filters.av-top-inline.av-top-has-salesrep .av-top-controls-row{grid-template-columns:repeat(4,minmax(0,1fr)) !important;gap:.28rem !important}
         body.viewport-compact #av-top-filters.av-top-inline .task-top-control-shell{padding:.24rem !important;border-radius:.9rem !important}
@@ -1007,6 +1007,14 @@ body.viewport-compact #task-tabs-container.task-top-inline #task-genus-filters .
         body.viewport-compact #av-top-filters.av-top-inline [data-av-filter-shell="hold"] .task-top-control-summary{font-size:.58rem !important}
         body.viewport-compact #av-top-filters.av-top-inline .task-top-control-panel{top:calc(100% + .24rem);width:min(15rem,calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2))}
         body.viewport-compact #av-top-filters.av-top-inline [data-av-filter-shell="genus"] .task-top-control-panel{width:min(16rem,calc(100vw - (var(--shell-gutter) * 2)))}
+        @media (min-width:721px){
+            #view-av #av-top-filters.av-top-inline{display:block !important;visibility:visible !important;opacity:1 !important;height:auto !important;max-height:none !important;overflow:visible !important;transform:none !important;margin:.55rem auto .9rem !important;padding:0 !important;position:relative !important;z-index:70 !important;width:min(100%,var(--content-max-width,92rem))}
+            #view-av #av-top-filters.av-top-inline .av-top-controls-row{display:grid !important;grid-template-columns:repeat(auto-fit,minmax(10.5rem,1fr)) !important;gap:.5rem !important;align-items:stretch !important}
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="genus"],
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="contsize"],
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="hold"]{display:block !important;min-width:0 !important}
+            #view-av #av-top-filters.av-top-inline .task-top-control-panel{z-index:250 !important}
+        }
         @media (max-width:380px){
             body.viewport-compact #av-top-filters.av-top-inline .av-top-controls-row{gap:.28rem !important}
             body.viewport-compact #av-top-filters.av-top-inline .task-top-control-shell{padding:.28rem .26rem !important}
@@ -4890,7 +4898,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.28.03').trim() || 'V2026.07.28.03';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.28.04').trim() || 'V2026.07.28.04';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6343,7 +6351,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.28.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.28.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -23915,7 +23923,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.28.03').trim() || 'V2026.07.28.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.28.04').trim() || 'V2026.07.28.04';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
