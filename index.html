@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.27.04';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.27.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4890,7 +4890,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.27.04').trim() || 'V2026.07.27.04';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.27.01').trim() || 'V2026.07.27.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -5163,7 +5163,48 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <button type="button" class="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm active:scale-95" onclick="return switchView('home')"><i class="ph-bold ph-house text-sm"></i><span>Home</span></button>
                         </div>
                     </div>
-                    <div id="sales-hub-grid" class="manager-module-grid"></div>
+                    <div id="sales-hub-grid" class="grid gap-3 md:grid-cols-2">
+                        <button type="button" id="sales-open-drive" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('drive')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-car text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Drive Mode</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Inventory rows</div>
+                        </button>
+                        <button type="button" id="sales-open-av" class="rounded-2xl border border-teal-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openSalesAvModule()">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-teal-700"><i class="ph-bold ph-notebook text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">AV</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Available stock</div>
+                        </button>
+                        <button type="button" id="sales-open-docks" class="rounded-2xl border border-orange-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('docks')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-700"><i class="ph-bold ph-truck text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Docks</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Orders and dock rows</div>
+                        </button>
+                        <button type="button" id="sales-open-communication" class="rounded-2xl border border-sky-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('communication')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-700"><i class="ph-bold ph-chat-circle-dots text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Communication</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Chat, phone, email</div>
+                        </button>
+                        <button type="button" id="sales-open-request" class="rounded-2xl border border-blue-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('request')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700"><i class="ph-bold ph-chat-circle-text text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Request</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Pending requests</div>
+                        </button>
+                        <button type="button" id="sales-open-bloom-orders" class="rounded-2xl border border-purple-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openSalesOfficeView()">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-purple-700"><i class="ph-bold ph-handbag text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Bloom Picker Orders</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Order review</div>
+                        </button>
+                        <button type="button" id="sales-open-tasks" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('tasks')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-clipboard-text text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Task</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Assigned work</div>
+                        </button>
+                        <button type="button" id="sales-open-weather-hold" class="rounded-2xl border border-sky-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('weather-hold')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-700"><i class="ph-bold ph-cloud-sun text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Weather &amp; Hold Risk</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">10-year hourly history</div>
+                        </button>
+                    </div>
                     <div id="sales-empty-state" class="hidden rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No sales modules are available for this login.</div>
                 </div>
 
@@ -6302,7 +6343,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.27.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.27.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -20366,25 +20407,6 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             D: Object.freeze(new Set([6, 7, 8, 9, 10]))
         });
         const EVAL_TASK_SELECT_FIELDS = 'eval_task_type,eval_task_status,eval_task_instructions,eval_task_assigned_by,eval_task_assigned_at,eval_task_completed_by,eval_task_completed_at,eval_task_recount_qty,eval_task_moved_up_qty,eval_task_hold_action,eval_task_hold_code,eval_task_hold_reason,eval_task_result_note';
-        const EVAL_ASSIGNMENT_RULES_TABLE = 'v2_eval_assignment_rules';
-        const EVAL_ASSIGNMENT_RULE_SELECT_FIELDS = 'id,sheet_row_number,assignedto_raw,assignedto,warehousei,itemcode,contsize,commonname,locationcode,source,genusname,active,updated_at';
-        const EVAL_ASSIGNMENT_RULE_LOAD_TTL_MS = 10 * 60 * 1000;
-        const EVAL_ASSIGNMENT_RULE_MATCH_ORDER = Object.freeze(['itemcode_contsize', 'itemcode', 'commonname', 'locationcode', 'genusname', 'source', 'warehousei']);
-        const EVAL_ASSIGNMENT_RULE_FIELD_ALIASES = Object.freeze({
-            warehousei: Object.freeze(['WAREHOUSEI', 'warehousei', 'WAREHOUSE', 'warehouse']),
-            itemcode: Object.freeze(['ITEMCODE', 'itemcode', 'ITEM', 'item', 'itemCode']),
-            contsize: Object.freeze(['CONTSIZE', 'contsize', 'SIZE', 'size', 'container_size']),
-            commonname: Object.freeze(['COMMONNAME', 'commonname', 'SHORTNAME', 'shortname', 'SHORT_NAME', 'short_name', 'DESCRIPTION', 'description']),
-            locationcode: Object.freeze(['LOCATIONCODE', 'locationcode', 'LOCATION', 'location', 'LOC', 'loc']),
-            source: Object.freeze(['SOURCE', 'source']),
-            genusname: Object.freeze(['GENUSNAME', 'genusname', 'GENUS', 'genus'])
-        });
-        let evalAssignmentRules = [];
-        let evalAssignmentRuleIndexes = null;
-        let evalAssignmentRulesPromise = null;
-        let evalAssignmentRulesLoadedAt = 0;
-        let evalAssignmentRulesLoadError = '';
-        let evalAssignmentRuleMatchingDepth = 0;
 
         function maybeWarnEvalTaskSchemaMissing(error = null) {
             evalTaskColumnsReady = false;
@@ -20641,213 +20663,10 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
         }
 
         function getEvalAssignableUserList() {
-            const configuredUsers = evalAssignableUsers.length ? evalAssignableUsers : EVAL_TASK_FALLBACK_USERS;
-            const ruleUsers = (Array.isArray(evalAssignmentRules) ? evalAssignmentRules : [])
-                .map((rule) => rule && rule.assignedto)
-                .filter(Boolean);
-            return Array.from(new Set(configuredUsers.concat(ruleUsers)
+            return Array.from(new Set((evalAssignableUsers.length ? evalAssignableUsers : EVAL_TASK_FALLBACK_USERS)
                 .map(normalizeEvalAssignableUser)
                 .filter((user) => user && !EVAL_TASK_INACTIVE_USERS.has(user))))
                 .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-        }
-
-        function normalizeEvalAssignmentRuleValue(value = '') {
-            const normalized = String(value == null ? '' : value).trim().replace(/\s+/g, ' ').toUpperCase();
-            return normalized && normalized !== '-' ? normalized : '';
-        }
-
-        function getEvalAssignmentRuleFieldValue(item = null, field = '') {
-            if (!item || typeof item !== 'object') return '';
-            const aliases = EVAL_ASSIGNMENT_RULE_FIELD_ALIASES[field] || [];
-            const metadata = item.metadata && typeof item.metadata === 'object' ? item.metadata : null;
-            const pools = [
-                item,
-                item.original_values,
-                item.originalValues,
-                item.crop_roll_form_values,
-                item.cropRollFormValues,
-                metadata,
-                metadata && metadata.original_values,
-                metadata && metadata.crop_roll_form_values,
-                item.snapshot,
-                item.requested,
-                item.master
-            ].filter((pool) => pool && typeof pool === 'object');
-            for (const pool of pools) {
-                for (const alias of aliases) {
-                    if (!Object.prototype.hasOwnProperty.call(pool, alias)) continue;
-                    const normalized = normalizeEvalAssignmentRuleValue(pool[alias]);
-                    if (normalized) return normalized;
-                }
-            }
-            return '';
-        }
-
-        function normalizeEvalAssignmentRuleRow(row = null) {
-            if (!row || typeof row !== 'object') return null;
-            const assignedto = normalizeEvalAssignableUser(firstNonEmptyValue(row.assignedto, row.assignedto_raw, ''));
-            if (!assignedto || EVAL_TASK_INACTIVE_USERS.has(assignedto)) return null;
-            const sheetRowNumber = Math.max(0, parseInt(firstNonEmptyValue(row.sheet_row_number, row.SHEET_ROW_NUMBER, row.id, 0), 10) || 0);
-            return {
-                id: row.id || '',
-                sheet_row_number: sheetRowNumber,
-                assignedto_raw: String(firstNonEmptyValue(row.assignedto_raw, row.assignedto, '') || '').trim(),
-                assignedto,
-                warehousei: normalizeEvalAssignmentRuleValue(row.warehousei),
-                itemcode: normalizeEvalAssignmentRuleValue(row.itemcode),
-                contsize: normalizeEvalAssignmentRuleValue(row.contsize),
-                commonname: normalizeEvalAssignmentRuleValue(row.commonname),
-                locationcode: normalizeEvalAssignmentRuleValue(row.locationcode),
-                source: normalizeEvalAssignmentRuleValue(row.source),
-                genusname: normalizeEvalAssignmentRuleValue(row.genusname)
-            };
-        }
-
-        function addEvalAssignmentRuleIndex(indexes, field = '', key = '', rule = null) {
-            if (!indexes || !field || !key || !rule) return;
-            if (!indexes[field]) indexes[field] = new Map();
-            if (!indexes[field].has(key)) indexes[field].set(key, []);
-            indexes[field].get(key).push(rule);
-        }
-
-        function buildEvalAssignmentRuleIndexes(rules = []) {
-            const indexes = {};
-            (Array.isArray(rules) ? rules : []).forEach((rule) => {
-                if (!rule || !rule.assignedto) return;
-                if (rule.itemcode && rule.contsize) addEvalAssignmentRuleIndex(indexes, 'itemcode_contsize', `${rule.itemcode}|${rule.contsize}`, rule);
-                ['itemcode', 'commonname', 'locationcode', 'genusname', 'source', 'warehousei'].forEach((field) => {
-                    if (rule[field]) addEvalAssignmentRuleIndex(indexes, field, rule[field], rule);
-                });
-            });
-            Object.values(indexes).forEach((index) => {
-                index.forEach((entries) => entries.sort((a, b) => (a.sheet_row_number || 0) - (b.sheet_row_number || 0)));
-            });
-            return indexes;
-        }
-
-        function resetEvalAssignmentRuleCaches() {
-            evalAssignmentRuleIndexes = null;
-            evalTaskRuleAssigneeCacheKey = '';
-            evalTaskRuleAssigneeCache = new WeakMap();
-        }
-
-        async function loadEvalAssignmentRules(force = false) {
-            const now = Date.now();
-            if (!force && evalAssignmentRulesLoadedAt && now - evalAssignmentRulesLoadedAt < EVAL_ASSIGNMENT_RULE_LOAD_TTL_MS) {
-                return evalAssignmentRules;
-            }
-            if (evalAssignmentRulesPromise && !force) return evalAssignmentRulesPromise;
-            evalAssignmentRulesPromise = (async () => {
-                try {
-                    const query = `select=${EVAL_ASSIGNMENT_RULE_SELECT_FIELDS}&active=eq.true&order=sheet_row_number.asc`;
-                    const rows = await supabaseFetch(EVAL_ASSIGNMENT_RULES_TABLE, 'GET', null, query, { timeoutMs: 6000 });
-                    evalAssignmentRules = (Array.isArray(rows) ? rows : [])
-                        .map(normalizeEvalAssignmentRuleRow)
-                        .filter(Boolean);
-                    evalAssignmentRulesLoadedAt = Date.now();
-                    evalAssignmentRulesLoadError = '';
-                    resetEvalAssignmentRuleCaches();
-                    if (typeof updateDockAssignableTeamOptions === 'function') updateDockAssignableTeamOptions();
-                    return evalAssignmentRules;
-                } catch (error) {
-                    evalAssignmentRulesLoadError = String(error && error.message ? error.message : error || 'Unknown eval assignment rule load error');
-                    return evalAssignmentRules;
-                } finally {
-                    evalAssignmentRulesPromise = null;
-                }
-            })();
-            return evalAssignmentRulesPromise;
-        }
-
-        function scheduleEvalAssignmentRulesLoad(force = false) {
-            if (evalAssignmentRulesPromise) return evalAssignmentRulesPromise;
-            const starter = () => loadEvalAssignmentRules(force).catch(() => evalAssignmentRules);
-            if (typeof requestIdleCallback === 'function') {
-                requestIdleCallback(starter, { timeout: 1500 });
-            } else {
-                setTimeout(starter, 0);
-            }
-            return null;
-        }
-
-        function getEvalAssignmentRuleIndexes() {
-            if (!evalAssignmentRuleIndexes) evalAssignmentRuleIndexes = buildEvalAssignmentRuleIndexes(evalAssignmentRules);
-            return evalAssignmentRuleIndexes;
-        }
-
-        function getEvalAssignmentRuleDiagnostics() {
-            const rules = Array.isArray(evalAssignmentRules) ? evalAssignmentRules : [];
-            const knownUsers = new Set((evalAssignableUsers.length ? evalAssignableUsers : EVAL_TASK_FALLBACK_USERS)
-                .map(normalizeEvalAssignableUser)
-                .filter((user) => user && !EVAL_TASK_INACTIVE_USERS.has(user)));
-            const unknownNames = Array.from(new Set(rules
-                .map((rule) => rule && rule.assignedto)
-                .filter((user) => user && !knownUsers.has(normalizeEvalAssignableUser(user)))))
-                .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-            const conflictMap = new Map();
-            rules.forEach((rule) => {
-                if (!rule || !rule.assignedto) return;
-                EVAL_ASSIGNMENT_RULE_MATCH_ORDER.forEach((field) => {
-                    const key = field === 'itemcode_contsize'
-                        ? (rule.itemcode && rule.contsize ? `${rule.itemcode}|${rule.contsize}` : '')
-                        : rule[field];
-                    if (!key) return;
-                    const mapKey = `${field}:${key}`;
-                    if (!conflictMap.has(mapKey)) conflictMap.set(mapKey, new Set());
-                    conflictMap.get(mapKey).add(rule.assignedto);
-                });
-            });
-            const conflictingRules = Array.from(conflictMap.entries())
-                .filter(([, users]) => users.size > 1)
-                .map(([key, users]) => ({ key, assignedto: Array.from(users).sort() }));
-            return {
-                table: EVAL_ASSIGNMENT_RULES_TABLE,
-                count: rules.length,
-                lastLoadedAt: evalAssignmentRulesLoadedAt ? new Date(evalAssignmentRulesLoadedAt).toISOString() : '',
-                loadError: evalAssignmentRulesLoadError || '',
-                unknownNames,
-                conflictingRules
-            };
-        }
-
-        if (typeof window !== 'undefined') {
-            window.getEvalAssignmentRuleDiagnostics = getEvalAssignmentRuleDiagnostics;
-        }
-
-        function getEvalAssignmentRuleAssigneeForItem(item = null) {
-            if (!item) return '';
-            if (evalAssignmentRuleMatchingDepth > 0) return '';
-            evalAssignmentRuleMatchingDepth += 1;
-            try {
-                if (!evalAssignmentRulesLoadedAt && !evalAssignmentRulesPromise) scheduleEvalAssignmentRulesLoad(false);
-                if (!Array.isArray(evalAssignmentRules) || !evalAssignmentRules.length) return '';
-                const indexes = getEvalAssignmentRuleIndexes();
-                const candidates = getEvalTaskRuleCandidateItems(item);
-                for (const candidate of candidates) {
-                    const itemcode = getEvalAssignmentRuleFieldValue(candidate, 'itemcode');
-                    const contsize = getEvalAssignmentRuleFieldValue(candidate, 'contsize');
-                    const valuesByField = {
-                        itemcode_contsize: itemcode && contsize ? `${itemcode}|${contsize}` : '',
-                        itemcode,
-                        commonname: getEvalAssignmentRuleFieldValue(candidate, 'commonname'),
-                        locationcode: getEvalAssignmentRuleFieldValue(candidate, 'locationcode'),
-                        genusname: getEvalAssignmentRuleFieldValue(candidate, 'genusname'),
-                        source: getEvalAssignmentRuleFieldValue(candidate, 'source'),
-                        warehousei: getEvalAssignmentRuleFieldValue(candidate, 'warehousei')
-                    };
-                    for (const field of EVAL_ASSIGNMENT_RULE_MATCH_ORDER) {
-                        const key = valuesByField[field];
-                        if (!key || !indexes[field]) continue;
-                        const matches = indexes[field].get(key);
-                        if (!matches || !matches.length) continue;
-                        const match = matches.find((rule) => rule && rule.assignedto && !EVAL_TASK_INACTIVE_USERS.has(rule.assignedto));
-                        if (match) return match.assignedto;
-                    }
-                }
-                return '';
-            } finally {
-                evalAssignmentRuleMatchingDepth = Math.max(0, evalAssignmentRuleMatchingDepth - 1);
-            }
         }
 
         function shouldShowEvalTaskUserSelector(tab = activeTaskView) {
@@ -20902,8 +20721,6 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
         }
 
         function getEvalTaskAssignedUsersFromItem(item = null) {
-            const mappedAssignee = normalizeEvalAssignableUser(getEvalAssignmentRuleAssigneeForItem(item));
-            if (mappedAssignee) return [mappedAssignee];
             const overrideAssignee = normalizeEvalAssignableUser(getEvalTaskAssignmentOverrideForItem(item));
             if (overrideAssignee) return [overrideAssignee];
             const explicitAssignees = getEvalTaskAssignedUsersFromValue(firstNonEmptyValue(
@@ -21004,8 +20821,6 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
         function getEvalTaskRuleAssigneeForItem(item = null) {
             const cacheKey = [
                 resolvedViewStateEpoch,
-                evalAssignmentRulesLoadedAt || 0,
-                Array.isArray(evalAssignmentRules) ? evalAssignmentRules.length : 0,
                 typeof getDatasetLoadSignature === 'function' ? getDatasetLoadSignature('master') : '',
                 typeof getDatasetLoadSignature === 'function' ? getDatasetLoadSignature('requests') : ''
             ].join('|');
@@ -21015,11 +20830,6 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             }
             if (item && typeof item === 'object' && evalTaskRuleAssigneeCache.has(item)) {
                 return evalTaskRuleAssigneeCache.get(item) || '';
-            }
-            const mappedAssignee = getEvalAssignmentRuleAssigneeForItem(item);
-            if (mappedAssignee) {
-                if (item && typeof item === 'object') evalTaskRuleAssigneeCache.set(item, mappedAssignee);
-                return mappedAssignee;
             }
             const candidates = getEvalTaskRuleCandidateItems(item);
             let assignee = '';
@@ -21055,8 +20865,6 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
 
         function getEvalTaskAutoAssigneeForItem(item = null) {
             if (!item) return '';
-            const mappedAssignee = pickPreferredEvalAssignableUser(getEvalTaskAssignedUsersFromValue(getEvalAssignmentRuleAssigneeForItem(item)));
-            if (mappedAssignee) return mappedAssignee;
             const assignedTo = pickPreferredEvalAssignableUser(getEvalTaskAssignedUsersFromValue(getMasterAssignedToValue(item)));
             if (assignedTo) return assignedTo;
             const linkedMaster = findLinkedMasterRow(item);
@@ -24091,7 +23899,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.27.04').trim() || 'V2026.07.27.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.27.01').trim() || 'V2026.07.27.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -25014,7 +24822,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             ensureLoginInteractionHealth({ forceReset: true });
             clearBiometricLoginState();
             updateDockAssignableTeamOptions();
-            scheduleEvalAssignmentRulesLoad(false);
             initializeViewportHeightSync();
             initializeViewportModeSync();
             initializeMobileExcelFilterViewportSafety();
@@ -56204,45 +56011,42 @@ function toggleDriveQuickRequestItem(domId) {
             return !!(access && access.isRep && !access.isAdmin);
         }
 
-        function getSalesHomeModuleCards(access = getRoleAccessState()) {
-            const cards = [
-                { id: 'home-sales-open-drive', view: 'drive', icon: 'ph-car', title: 'Drive Mode', subtitle: 'Inventory rows' },
-                { id: 'home-sales-open-av', view: 'av', action: 'return openSalesAvModule()', icon: 'ph-notebook', title: 'AV', subtitle: 'Available stock' },
-                { id: 'home-sales-open-docks', view: 'docks', icon: 'ph-truck', title: 'Docks', subtitle: 'Orders and dock rows' },
-                { id: 'home-sales-open-communication', view: 'communication', icon: 'ph-chat-circle-dots', title: 'Communication', subtitle: 'Chat, phone, email' },
-                { id: 'home-sales-open-request', view: 'request', icon: 'ph-chat-circle-text', title: 'Request', subtitle: 'Pending requests' },
-                { id: 'home-sales-open-bloom-orders', view: 'sales-office', action: 'return openSalesOfficeView()', icon: 'ph-handbag', title: 'Bloom Picker Orders', subtitle: 'Order review' },
-                { id: 'home-sales-open-tasks', view: 'tasks', icon: 'ph-clipboard-text', title: 'Task', subtitle: 'Assigned work' },
-                { id: 'home-sales-open-weather-hold', view: 'weather-hold', icon: 'ph-cloud-sun', title: 'Weather & Hold Risk', subtitle: '10-year hourly history' }
-            ];
-            return cards.filter((card) => card && card.view && canAccessView(card.view));
-        }
-
         function renderSalesHubCardMarkup(card = {}) {
             if (!card || !canAccessView(card.view)) return '';
             const id = card.id ? ` id="${escapeHtml(card.id)}"` : '';
             const action = card.action || `return switchView('${escapeHtml(card.view)}')`;
-            return `<button type="button"${id} class="manager-module-card" onclick="${action}">
-                <span class="manager-module-icon"><i class="ph-bold ${escapeHtml(card.icon || 'ph-square')}"></i></span>
-                <span class="min-w-0">
-                    <span class="block text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Open Module</span>
-                    <span class="mt-1 block text-lg font-black leading-tight text-slate-900">${escapeHtml(card.title || '')}</span>
-                    <span class="mt-1 block text-[12px] font-semibold leading-snug text-slate-500">${escapeHtml(card.subtitle || 'Open workflow')}</span>
-                </span>
+            return `<button type="button"${id} class="rounded-2xl border border-[#007a4d] bg-white p-4 text-left shadow-sm active:scale-[0.99] transition-transform" onclick="${action}">
+                <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl ${escapeHtml(card.iconBg || 'bg-emerald-50')} ${escapeHtml(card.iconColor || 'text-[#007a4d]')}"><i class="ph-bold ${escapeHtml(card.icon || 'ph-square')} text-2xl"></i></div>
+                <div class="text-lg font-black text-slate-900">${escapeHtml(card.title || '')}</div>
+                <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">${escapeHtml(card.subtitle || '')}</div>
             </button>`;
         }
 
         function renderRepHomeDashboardTileMarkup(card = {}) {
-            return renderSalesHubCardMarkup(card);
+            if (!card || !canAccessView(card.view)) return '';
+            const id = card.id ? ` id="${escapeHtml(card.id)}"` : '';
+            const action = card.action || `return switchView('${escapeHtml(card.view)}')`;
+            return `<button type="button"${id} class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer min-h-[96px]" onclick="${action}">
+                <i class="ph-bold ${escapeHtml(card.icon || 'ph-square')} text-3xl text-[#007a4d]"></i>
+                <span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide text-center">${escapeHtml(card.title || '')}</span>
+            </button>`;
         }
 
         function getRepHomeDashboardHtml() {
-            const cards = getSalesHomeModuleCards();
+            const cards = [
+                { id: 'home-sales-open-drive', view: 'drive', icon: 'ph-car', title: 'Drive Mode' },
+                { id: 'home-sales-open-av', view: 'av', action: 'return openSalesAvModule()', icon: 'ph-notebook', title: 'AV' },
+                { id: 'home-sales-open-docks', view: 'docks', icon: 'ph-truck', title: 'Docks' },
+                { id: 'home-sales-open-communication', view: 'communication', icon: 'ph-chat-circle-dots', title: 'Communication' },
+                { id: 'home-sales-open-request', view: 'request', icon: 'ph-chat-circle-text', title: 'Request' },
+                { id: 'home-sales-open-weather-hold', view: 'weather-hold', icon: 'ph-cloud-sun', title: 'Weather & Hold Risk' },
+                { id: 'home-sales-open-bloom-orders', view: 'sales-office', action: 'return openSalesOfficeView()', icon: 'ph-handbag', title: 'Bloom Picker Orders' }
+            ];
             const cardsHtml = cards.map(renderRepHomeDashboardTileMarkup).filter(Boolean).join('');
             return cardsHtml
                 ? `<div id="home-rep-dashboard-modules">
                     <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
-                    <div id="home-rep-dashboard-grid" class="manager-module-grid mb-8">${cardsHtml}</div>
+                    <div id="home-rep-dashboard-grid" class="grid grid-cols-2 gap-3 mb-8">${cardsHtml}</div>
                 </div>`
                 : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No home modules are available for this login.</div>';
         }
@@ -56259,11 +56063,19 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function renderSalesHub() {
-            const grid = document.getElementById('sales-hub-grid');
-            const cards = getSalesHomeModuleCards();
-            if (grid) grid.innerHTML = cards.map(renderSalesHubCardMarkup).filter(Boolean).join('');
+            const access = getRoleAccessState();
+            const visibleCount = [
+                setHubButtonVisibility('sales-open-drive', canAccessView('drive')),
+                setHubButtonVisibility('sales-open-av', canAccessView('av')),
+                setHubButtonVisibility('sales-open-docks', canAccessView('docks')),
+                setHubButtonVisibility('sales-open-communication', canAccessView('communication')),
+                setHubButtonVisibility('sales-open-request', canAccessView('request')),
+                setHubButtonVisibility('sales-open-bloom-orders', canAccessView('sales-office')),
+                setHubButtonVisibility('sales-open-tasks', canAccessView('tasks') && !isSalesShellAccess(access)),
+                setHubButtonVisibility('sales-open-weather-hold', canAccessView('weather-hold'))
+            ].filter(Boolean).length;
             const emptyState = document.getElementById('sales-empty-state');
-            if (emptyState) emptyState.classList.toggle('hidden', cards.length > 0);
+            if (emptyState) emptyState.classList.toggle('hidden', visibleCount > 0);
         }
 
         function renderQcHub() {
@@ -93135,7 +92947,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 await loadCropRollData(true);
                 if (cropRollActiveRun) throw new Error('Archive the active Crop Roll run before starting another one.');
                 if (typeof ensureDatasetLoaded === 'function') await ensureDatasetLoaded('master', 'full');
-                if (typeof loadEvalAssignmentRules === 'function') await loadEvalAssignmentRules(true).catch(() => []);
                 const snapshotRows = getCropRollMasterRowsForSnapshot();
                 if (!snapshotRows.length) throw new Error('No master inventory rows with itemcode and locationcode were available for the snapshot.');
                 const runId = buildCropRollRunId();
