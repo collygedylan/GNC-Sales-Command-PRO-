@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.27.01';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.27.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4890,7 +4890,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.27.01').trim() || 'V2026.07.27.01';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.27.02').trim() || 'V2026.07.27.02';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6343,7 +6343,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.27.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.27.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -23899,7 +23899,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.27.01').trim() || 'V2026.07.27.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.27.02').trim() || 'V2026.07.27.02';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -90840,7 +90840,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 }
             }
         }
-        let requestSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
+        let requestSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false, pointerId: null };
         let requestSwipeMoveBound = false;
         let flyerSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
         let flyerSwipeMoveBound = false;
@@ -109695,7 +109695,7 @@ C.14.043 C.15.000
             const surface = row.querySelector('.request-swipe-surface');
             if (surface) surface.style.transform = '';
             if (requestSwipeState.row === row) {
-                requestSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
+                requestSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false, pointerId: null };
                 releaseRequestSwipeMoveListener();
             }
         }
@@ -109708,30 +109708,52 @@ C.14.043 C.15.000
             });
         }
 
+        function getRequestSwipePoint(event = null) {
+            if (!event) return null;
+            if (event.touches && event.touches.length === 1) return event.touches[0];
+            if (typeof event.clientX === 'number' && typeof event.clientY === 'number') return event;
+            return null;
+        }
+
+        function isRequestSwipePointerActive() {
+            return requestSwipeState && requestSwipeState.pointerId !== null && requestSwipeState.pointerId !== undefined;
+        }
+
+        function findRequestInventoryRowByUniqueId(uid = '') {
+            const requestUid = String(uid || '').trim();
+            if (!requestUid || !Array.isArray(requestsInventory)) return null;
+            return requestsInventory.find((entry) => getItemUniqueId(entry) === requestUid) || null;
+        }
+
         function handleRequestSwipeStart(event, rowOverride) {
             if (isMultiSelectMode) return;
             const row = rowOverride || event.currentTarget;
             const surface = row.querySelector('.request-swipe-surface');
-            if (!surface || !event.touches || event.touches.length !== 1) return;
+            const point = getRequestSwipePoint(event);
+            if (!surface || !point) return;
             closeAllRequestSwipes(row);
-            const touch = event.touches[0];
             requestSwipeState = {
                 row,
                 surface,
-                startX: touch.clientX,
-                startY: touch.clientY,
+                startX: point.clientX,
+                startY: point.clientY,
                 deltaX: row.classList.contains('swipe-open') ? -96 : 0,
                 startOffset: row.classList.contains('swipe-open') ? -96 : 0,
-                dragging: true
+                dragging: true,
+                pointerId: event && event.pointerId !== undefined ? event.pointerId : null
             };
             ensureRequestSwipeMoveListener();
         }
 
         function handleRequestSwipeMove(event) {
-            if (!requestSwipeState.dragging || !event.touches || event.touches.length !== 1) return;
-            const touch = event.touches[0];
-            const dx = touch.clientX - requestSwipeState.startX;
-            const dy = touch.clientY - requestSwipeState.startY;
+            if (!requestSwipeState.dragging) return;
+            if (isRequestSwipePointerActive()) {
+                if (!event || event.pointerId === undefined || event.pointerId !== requestSwipeState.pointerId) return;
+            }
+            const point = getRequestSwipePoint(event);
+            if (!point) return;
+            const dx = point.clientX - requestSwipeState.startX;
+            const dy = point.clientY - requestSwipeState.startY;
             if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) {
                 requestSwipeState.dragging = false;
                 closeRequestSwipe(requestSwipeState.row);
@@ -109746,6 +109768,7 @@ C.14.043 C.15.000
         }
 
         function handleRequestSwipeEnd(event) {
+            if (isRequestSwipePointerActive() && event && event.pointerId !== undefined && event.pointerId !== requestSwipeState.pointerId) return;
             if (!requestSwipeState.row) {
                 releaseRequestSwipeMoveListener();
                 return;
@@ -109770,9 +109793,11 @@ C.14.043 C.15.000
             const domId = String(row.dataset && row.dataset.domId || '').trim();
             if (domId) {
                 const requestRowByDomId = requestsInventory.find((entry) => String(entry && entry.DOM_ID || '').trim() === domId);
-                if (requestRowByDomId && requestRowByDomId.UNIQUE_ID) return String(requestRowByDomId.UNIQUE_ID || '').trim();
+                const requestRowUid = getItemUniqueId(requestRowByDomId);
+                if (requestRowUid) return requestRowUid;
                 const linkedRow = findItemByDomId(domId);
-                if (linkedRow && linkedRow.UNIQUE_ID) return String(linkedRow.UNIQUE_ID || '').trim();
+                const linkedRowUid = getItemUniqueId(linkedRow);
+                if (linkedRowUid) return linkedRowUid;
             }
 
             const onclickAttr = row.getAttribute('onclick') || '';
@@ -109825,6 +109850,18 @@ C.14.043 C.15.000
                 }, { passive: true });
                 container.addEventListener('touchend', handleRequestSwipeEnd, { passive: true });
                 container.addEventListener('touchcancel', handleRequestSwipeEnd, { passive: true });
+                container.addEventListener('pointerdown', (event) => {
+                    if (!event || (event.pointerType !== 'mouse' && event.pointerType !== 'pen')) return;
+                    if (event.button !== 0) return;
+                    const row = event.target.closest('.request-swipe-row');
+                    if (row) handleRequestSwipeStart(event, row);
+                }, { passive: true });
+                container.addEventListener('pointermove', (event) => {
+                    if (!isRequestSwipePointerActive()) return;
+                    handleRequestSwipeMove(event);
+                }, { passive: false });
+                container.addEventListener('pointerup', handleRequestSwipeEnd, { passive: true });
+                container.addEventListener('pointercancel', handleRequestSwipeEnd, { passive: true });
                 container.addEventListener('click', (event) => {
                     const row = event.target.closest('.request-swipe-row');
                     if (!row || event.target.closest('.request-swipe-action')) return;
@@ -109839,7 +109876,7 @@ C.14.043 C.15.000
                 if (row.dataset.requestHistory === 'true') return;
                 const requestUid = resolveRequestSwipeUidFromRow(row);
                 if (!requestUid) return;
-                const requestItem = requestsInventory.find((entry) => String(entry && entry.UNIQUE_ID || '').trim() === requestUid);
+                const requestItem = findRequestInventoryRowByUniqueId(requestUid);
                 if (!canCurrentUserArchiveRequestRow(requestItem)) return;
                 row.dataset.swipeEnhanced = 'true';
                 row.dataset.requestUid = requestUid;
@@ -109930,8 +109967,15 @@ C.14.043 C.15.000
         }
 
         async function archiveRequestRow(uid) {
-            const item = requestsInventory.find((entry) => entry.UNIQUE_ID === uid);
-            if (!item) return;
+            const archiveUid = String(uid || '').trim();
+            const item = findRequestInventoryRowByUniqueId(archiveUid);
+            if (!item) {
+                closeAllRequestSwipes();
+                showToast('Not Found', 'That request row could not be found. Refreshing Que now.', true);
+                triggerRequestRealtimeUiRefresh(0);
+                return;
+            }
+            const requestUid = getItemUniqueId(item) || archiveUid;
             if (!canCurrentUserArchiveRequestRow(item)) {
                 closeAllRequestSwipes();
                 showToast('Not Allowed', 'This login cannot remove request rows.', true);
@@ -109950,9 +109994,9 @@ C.14.043 C.15.000
             refreshRequestViewAfterArchive();
             persistCurrentCache();
             showToast('Removing', 'Updating request...', false);
-            const archived = await syncRequestArchive(uid, 3);
+            const archived = await syncRequestArchive(requestUid, 3);
             if (archived) {
-                clearPendingRequestArchive(uid);
+                clearPendingRequestArchive(requestUid);
                 showToast('Removed', 'Request removed from Request tab.');
                 maybeSendRequestCompletionEmailForFolder(getRequestFolderName(item), item, { suppressFailureToast: true }).catch((error) => {
                     console.warn('Request completion email check after row removal failed', error);
@@ -109960,7 +110004,7 @@ C.14.043 C.15.000
                 return;
             }
             const retryDelay = computePendingRequestArchiveRetryDelay(1);
-            updatePendingRequestArchiveRetry(uid, 1, retryDelay);
+            updatePendingRequestArchiveRetry(requestUid, 1, retryDelay);
             schedulePendingRequestArchiveFlush(retryDelay);
             showToast('Retrying', 'Request removal will keep retrying automatically.', false);
         }
@@ -113865,7 +113909,7 @@ C.14.043 C.15.000
         }
 
         function queuePendingRequestArchive(itemOrId) {
-            const uid = typeof itemOrId === 'string' ? String(itemOrId || '').trim() : String(itemOrId && itemOrId.UNIQUE_ID || '').trim();
+            const uid = getItemUniqueId(itemOrId);
             if (!uid) return;
             const map = getPendingRequestArchiveMap();
             const existing = normalizePendingRequestArchiveEntry(map[uid]);
@@ -113877,7 +113921,7 @@ C.14.043 C.15.000
             };
             setPendingRequestArchiveMap(map);
             schedulePendingRequestArchiveFlush(1200);
-            const item = typeof itemOrId === 'string' ? findItemByUniqueId(uid) : itemOrId;
+            const item = typeof itemOrId === 'string' ? findRequestInventoryRowByUniqueId(uid) : itemOrId;
             if (item) backupLocalItem(item);
         }
 
@@ -113896,7 +113940,7 @@ C.14.043 C.15.000
             const ids = Object.keys(map);
             if (!ids.length) return;
             requestsInventory.forEach((item) => {
-                const uid = String(item.UNIQUE_ID || '').trim();
+                const uid = getItemUniqueId(item);
                 if (!uid || !map[uid]) return;
                 item.REQ_ARCHIVED = true;
                 buildSearchIndex(item);
