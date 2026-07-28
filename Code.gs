@@ -102,6 +102,12 @@ const FOLDERS = {
 const DISEASE_ASSET_BUCKET = 'disease_training_assets';
 const DISEASE_ASSET_TABLE = 'v2_disease_training_assets';
 const CUSTOMER_REP_MAP_TABLE = 'v2_customer_consignee_sales_reps';
+const EVAL_ASSIGNMENT_RULES_TABLE = 'v2_eval_assignment_rules';
+const EVAL_ASSIGNMENT_RULES_SOURCE_FILE = 'ALL IN ONE';
+const EVAL_ASSIGNMENT_RULES_SOURCE_SHEET = 'ALL IN ONE';
+const EVAL_ASSIGNMENT_RULES_SPREADSHEET_NAME = 'ALL IN ONE';
+const EVAL_ASSIGNMENT_RULES_PARENT_NAME_HINTS = Object.freeze(['Genus Name Assignments', 'ALLIN ONE']);
+const EVAL_ASSIGNMENT_RULES_UPSERT_CHUNK_SIZE = 500;
 const DISEASE_PROCESSED_FOLDER_NAME = 'Processed';
 const DISEASE_SYNC_MAX_FILES_PER_RUN = 25;
 const DISEASE_SYNC_PROPERTY_PREFIX = 'DISEASE_SYNC_';
@@ -147,6 +153,7 @@ function runDriveAroundOnly() {
 function runDriveAroundHistoryOnly() { return syncDriveAroundHistoricalFileIndex_({ parseRows: true }); }
 function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, getRuntimeSiteSplitTableName_('v2_reserves', 'PH'), buildStandardPayload, { deltaMode: true }); }
 function runCustomerRepMapOnly() { return processLatestFileOnlyFolder(FOLDERS.CUSTOMER_REP_DROP, FOLDERS.CUSTOMER_REP_PROCESSED, CUSTOMER_REP_MAP_TABLE, buildCustomerRepMapPayload, { deltaMode: true, selectColumnsBuilder: getCustomerRepMapSelectColumns_, headerMatcher: isCustomerRepMapHeaderRow_ }); }
+function runEvalAssignmentRulesOnly() { return syncEvalAssignmentRulesFromSheet_(); }
 function runCavOnly() { return processLatestFileOnlyFolder(FOLDERS.CAV_DROP, FOLDERS.CAV_PROCESSED, getRuntimeSiteSplitTableName_('v2_cav_import', 'PH'), buildCavPayload, { deltaMode: true }); }
 function runDiseaseDriveToSupabaseSyncOnly() { return runDiseaseDriveToSupabaseSync(); }
 
@@ -275,7 +282,7 @@ function isSiteSplitPhysicalTable_(tableName) {
 
 const MANUAL_SYNC_STATUS_KEY = 'MANUAL_SYNC_STATUS';
 const MANUAL_SYNC_TRIGGER_HANDLER = 'runQueuedManualSyncStage_';
-const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'customer_rep_map', 'cav', 'disease']);
+const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'customer_rep_map', 'eval_assignment_rules', 'cav', 'disease']);
 const MANUAL_SYNC_EXECUTION_BUDGET_MS = 285000;
 const MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS = 120000;
 const MANUAL_SYNC_QUEUED_STALE_MS = 5 * 60 * 1000;
@@ -470,6 +477,7 @@ const MANUAL_SYNC_STAGE_DEFINITIONS = Object.freeze({
   soc: { label: 'SOC', run: runSOCOnly },
   reserves: { label: 'Reserves', run: runReservesOnly },
   customer_rep_map: { label: 'Customer Rep Map', run: runCustomerRepMapOnly },
+  eval_assignment_rules: { label: 'Eval Assignment Rules', run: runEvalAssignmentRulesOnly },
   cav: { label: 'CAV', run: runCavOnly },
   disease: { label: 'Disease Lab Assets', run: runDiseaseDriveToSupabaseSyncOnly }
 });
@@ -590,6 +598,7 @@ function getManualSyncStageOrder_(jobName) {
   if (normalized === 'drive_history' || normalized === 'drivearound_history' || normalized === 'drive_around_history') return ['drive_history'];
   if (normalized === 'soc') return ['soc'];
   if (normalized === 'reserves') return ['reserves'];
+  if (normalized === 'eval_assignment_rules' || normalized === 'eval_assignments' || normalized === 'eval_rules' || normalized === 'assignments') return ['eval_assignment_rules'];
   if (normalized === 'cav') return ['cav'];
   if (normalized === 'disease' || normalized === 'lab' || normalized === 'lab_reports') return ['disease'];
   return MANUAL_SYNC_STAGE_ORDER_DEFAULT.slice();
@@ -3467,6 +3476,255 @@ function buildCustomerRepMapPayload(rawData, tableName, existingRows, syncStartT
   });
 
   return { upserts, seenIds, totalRows, stats };
+}
+
+function normalizeEvalAssignmentHeaderKey_(value) {
+  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function normalizeEvalAssignmentCriteria_(value) {
+  const safe = String(value || '').trim();
+  if (!safe || safe.toUpperCase() === 'NULL') return null;
+  return safe.toUpperCase();
+}
+
+function normalizeEvalAssignmentUser_(value) {
+  const raw = String(value || '').trim();
+  const safe = raw.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  const aliases = {
+    dylan: 'dylan_collyge',
+    dylan_collyge: 'dylan_collyge',
+    dylan_collyge_ag_data_solutions: 'dylan_collyge',
+    josh: 'josh_vann',
+    josh_vann: 'josh_vann'
+  };
+  return aliases[safe] || safe;
+}
+
+function getEvalAssignmentColumnIndexes_(headers) {
+  const normalizedHeaders = (headers || []).map(normalizeEvalAssignmentHeaderKey_);
+  const aliases = {
+    assignedto: ['assignedto', 'assigneduser', 'evaluser', 'evalassignedto'],
+    warehousei: ['warehousei', 'warehouseid', 'warehouse'],
+    itemcode: ['itemcode', 'item'],
+    contsize: ['contsize', 'containersize', 'size'],
+    commonname: ['commonname', 'shortname'],
+    locationcode: ['locationcode', 'location'],
+    source: ['source'],
+    genusname: ['genusname', 'genus']
+  };
+  const indexes = {};
+  Object.keys(aliases).forEach(function(key) {
+    indexes[key] = -1;
+    for (let i = 0; i < aliases[key].length; i++) {
+      const idx = normalizedHeaders.indexOf(aliases[key][i]);
+      if (idx > -1) {
+        indexes[key] = idx;
+        break;
+      }
+    }
+  });
+  if (indexes.assignedto < 0) {
+    throw new Error('Eval assignment sheet must include an AssignedTo column.');
+  }
+  return indexes;
+}
+
+function buildEvalAssignmentRulesPayload_(rawData, importedAt) {
+  const values = Array.isArray(rawData) ? rawData : [];
+  const headers = values.length && Array.isArray(values[0]) ? values[0] : [];
+  const indexes = getEvalAssignmentColumnIndexes_(headers);
+  const rows = [];
+  const criteriaKeys = ['warehousei', 'itemcode', 'contsize', 'commonname', 'locationcode', 'source', 'genusname'];
+  let skippedNoAssignee = 0;
+  let skippedNoCriteria = 0;
+
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i] || [];
+    const assignedToRaw = String(row[indexes.assignedto] || '').trim();
+    if (!assignedToRaw) {
+      skippedNoAssignee++;
+      continue;
+    }
+
+    const record = {
+      source_file: EVAL_ASSIGNMENT_RULES_SOURCE_FILE,
+      source_sheet: EVAL_ASSIGNMENT_RULES_SOURCE_SHEET,
+      sheet_row_number: i + 1,
+      assignedto_raw: assignedToRaw,
+      assignedto: normalizeEvalAssignmentUser_(assignedToRaw),
+      active: true,
+      imported_at: importedAt,
+      updated_at: importedAt
+    };
+
+    let filledCriteria = 0;
+    criteriaKeys.forEach(function(key) {
+      const idx = indexes[key];
+      const normalized = idx > -1 ? normalizeEvalAssignmentCriteria_(row[idx]) : null;
+      record[key] = normalized;
+      if (normalized) filledCriteria++;
+    });
+
+    if (!record.assignedto || !filledCriteria) {
+      skippedNoCriteria++;
+      continue;
+    }
+
+    rows.push(record);
+  }
+
+  return {
+    rows: rows,
+    totalRows: Math.max(0, values.length - 1),
+    skippedRows: skippedNoAssignee + skippedNoCriteria,
+    skippedNoAssignee: skippedNoAssignee,
+    skippedNoCriteria: skippedNoCriteria
+  };
+}
+
+function getDriveFileParentNames_(file) {
+  const names = [];
+  try {
+    const parents = file.getParents();
+    while (parents.hasNext()) {
+      const parent = parents.next();
+      names.push(String(parent && parent.getName ? parent.getName() : '').trim());
+    }
+  } catch (err) {
+    console.warn(`[WARN] Could not inspect parent folders for ${file && file.getName ? file.getName() : 'eval assignment sheet'}: ${err && err.message ? err.message : err}`);
+  }
+  return names.filter(Boolean);
+}
+
+function scoreEvalAssignmentSpreadsheetFile_(file) {
+  const parentNames = getDriveFileParentNames_(file);
+  const parentLookup = {};
+  parentNames.forEach(function(name) {
+    parentLookup[String(name || '').trim().toUpperCase()] = true;
+  });
+  let score = 0;
+  if (String(file.getName() || '').trim().toUpperCase() === EVAL_ASSIGNMENT_RULES_SPREADSHEET_NAME.toUpperCase()) score += 100;
+  EVAL_ASSIGNMENT_RULES_PARENT_NAME_HINTS.forEach(function(name) {
+    if (parentLookup[String(name || '').trim().toUpperCase()]) score += 10;
+  });
+  return { file: file, score: score, parentNames: parentNames };
+}
+
+function findEvalAssignmentRulesSpreadsheetFile_() {
+  const files = DriveApp.getFilesByName(EVAL_ASSIGNMENT_RULES_SPREADSHEET_NAME);
+  const candidates = [];
+  while (files.hasNext()) {
+    const file = files.next();
+    if (file.getMimeType && file.getMimeType() !== GOOGLE_SHEETS_MIME_TYPE) continue;
+    candidates.push(scoreEvalAssignmentSpreadsheetFile_(file));
+  }
+  if (!candidates.length) {
+    throw new Error(`Could not find Google Sheet named ${EVAL_ASSIGNMENT_RULES_SPREADSHEET_NAME} for eval assignment rules.`);
+  }
+  candidates.sort(function(a, b) {
+    if (b.score !== a.score) return b.score - a.score;
+    return String(b.file.getLastUpdated()).localeCompare(String(a.file.getLastUpdated()));
+  });
+  if (candidates.length > 1) {
+    console.warn(`[EVAL RULES] Found ${candidates.length} sheets named ${EVAL_ASSIGNMENT_RULES_SPREADSHEET_NAME}; using best match with parents: ${candidates[0].parentNames.join(' > ') || 'unknown'}`);
+  }
+  return candidates[0].file;
+}
+
+function buildEvalAssignmentRulesUpsertRequests_(rows) {
+  const requests = [];
+  const conflictColumns = 'source_file,source_sheet,sheet_row_number';
+  for (let i = 0; i < rows.length; i += EVAL_ASSIGNMENT_RULES_UPSERT_CHUNK_SIZE) {
+    const chunk = normalizeSupabaseUpsertChunk(rows.slice(i, i + EVAL_ASSIGNMENT_RULES_UPSERT_CHUNK_SIZE));
+    requests.push({
+      url: `${SUPABASE_URL}/rest/v1/${EVAL_ASSIGNMENT_RULES_TABLE}?on_conflict=${conflictColumns}`,
+      method: 'post',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      payload: JSON.stringify(chunk),
+      muteHttpExceptions: true
+    });
+  }
+  return requests;
+}
+
+function upsertEvalAssignmentRules_(rows) {
+  const requests = buildEvalAssignmentRulesUpsertRequests_(rows);
+  if (!requests.length) return;
+  const responses = executeFetchAllBatches(requests, SUPABASE_UPSERT_FETCH_BATCH_SIZE);
+  const failures = [];
+  responses.forEach(function(res) {
+    const code = res.getResponseCode();
+    if (code !== 200 && code !== 201 && code !== 204) {
+      failures.push({ code: code, body: res.getContentText() });
+    }
+  });
+  throwSupabaseUpsertFailures_(EVAL_ASSIGNMENT_RULES_TABLE, failures);
+}
+
+function deactivateStaleEvalAssignmentRules_(importedAt) {
+  const filters = [
+    'source_file=eq.' + encodeURIComponent(EVAL_ASSIGNMENT_RULES_SOURCE_FILE),
+    'source_sheet=eq.' + encodeURIComponent(EVAL_ASSIGNMENT_RULES_SOURCE_SHEET),
+    'imported_at=lt.' + encodeURIComponent(importedAt),
+    'active=eq.true'
+  ].join('&');
+  const response = UrlFetchApp.fetch(`${SUPABASE_URL}/rest/v1/${EVAL_ASSIGNMENT_RULES_TABLE}?${filters}`, {
+    method: 'patch',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal'
+    },
+    payload: JSON.stringify({ active: false, updated_at: importedAt }),
+    muteHttpExceptions: true
+  });
+  const code = response.getResponseCode();
+  if (code !== 200 && code !== 204) {
+    throw new Error(`Supabase stale eval assignment cleanup failed (${code}): ${response.getContentText()}`);
+  }
+}
+
+function syncEvalAssignmentRulesFromSheet_() {
+  const startedMs = Date.now();
+  const importedAt = new Date().toISOString();
+  const file = findEvalAssignmentRulesSpreadsheetFile_();
+  const spreadsheet = openSpreadsheetWithRetry_(file.getId(), file.getName());
+  const sheet = spreadsheet.getSheetByName(EVAL_ASSIGNMENT_RULES_SOURCE_SHEET) || spreadsheet.getSheets()[0];
+  if (!sheet) {
+    throw new Error(`Google Sheet ${file.getName()} has no tabs to import for eval assignment rules.`);
+  }
+
+  const rawData = sheet.getDataRange().getValues();
+  const built = buildEvalAssignmentRulesPayload_(rawData, importedAt);
+  if (!built.rows.length) {
+    throw new Error(`No active eval assignment rules were built from ${file.getName()}. Existing rules were left unchanged.`);
+  }
+
+  console.log(`[EVAL RULES] Importing ${built.rows.length} active rules from ${file.getName()} / ${sheet.getName()}.`);
+  upsertEvalAssignmentRules_(built.rows);
+  deactivateStaleEvalAssignmentRules_(importedAt);
+  console.log(`[EVAL RULES] Imported ${built.rows.length} rules. Skipped ${built.skippedRows} rows.`);
+
+  return {
+    filesProcessed: 1,
+    failedFiles: 0,
+    tempFilesRemoved: 0,
+    sourceFile: file.getName(),
+    sourceSheet: sheet.getName(),
+    upsertedRows: built.rows.length,
+    totalRows: built.totalRows,
+    skippedRows: built.skippedRows,
+    skippedNoAssignee: built.skippedNoAssignee,
+    skippedNoCriteria: built.skippedNoCriteria,
+    elapsedMs: Date.now() - startedMs
+  };
 }
 
 function parseMasterAssignmentLocationBlock_(locationCode) {

@@ -94,62 +94,10 @@ using (active = true);
 grant select on public.v2_eval_assignment_rules to authenticated;
 grant select on public.v2_eval_assignment_rules to anon;
 
--- Upload workflow:
--- 1. Export the Google Sheet as CSV with these headers:
---    AssignedTo,WAREHOUSEI,ITEMCODE,CONTSIZE,COMMONNAME,LOCATIONCODE,SOURCE,GENUSNAME
--- 2. Before each import, run:
---    truncate table public.v2_eval_assignment_rules_import restart identity;
--- 3. Upload the CSV into public.v2_eval_assignment_rules_import with Supabase Table Editor.
--- 4. Normalize it with the block below.
-
-/*
-delete from public.v2_eval_assignment_rules
-where source_file = 'ALL IN ONE'
-  and source_sheet = 'ALL IN ONE';
-
-insert into public.v2_eval_assignment_rules (
-  source_file,
-  source_sheet,
-  sheet_row_number,
-  assignedto_raw,
-  assignedto,
-  warehousei,
-  itemcode,
-  contsize,
-  commonname,
-  locationcode,
-  source,
-  genusname
-)
-select
-  'ALL IN ONE',
-  'ALL IN ONE',
-  import_id::integer + 1,
-  btrim("AssignedTo"),
-  case lower(btrim("AssignedTo"))
-    when 'dylan' then 'dylan_collyge'
-    when 'josh' then 'josh_vann'
-    else regexp_replace(lower(btrim("AssignedTo")), '[^a-z0-9]+', '_', 'g')
-  end,
-  nullif(upper(btrim("WAREHOUSEI")), ''),
-  nullif(upper(btrim("ITEMCODE")), ''),
-  nullif(upper(btrim("CONTSIZE")), ''),
-  nullif(upper(btrim("COMMONNAME")), ''),
-  nullif(upper(btrim("LOCATIONCODE")), ''),
-  nullif(upper(btrim("SOURCE")), ''),
-  nullif(upper(btrim("GENUSNAME")), '')
-from public.v2_eval_assignment_rules_import
-where nullif(btrim(coalesce("AssignedTo", '')), '') is not null;
-
-select assignedto, count(*)
-from public.v2_eval_assignment_rules
-where active
-group by assignedto
-order by assignedto;
-
-select *
-from public.v2_eval_assignment_rules
-where active
-order by sheet_row_number
-limit 50;
-*/
+-- Normal workflow:
+-- 1. Update the ALL IN ONE Google Sheet in Google Drive.
+-- 2. Run the app sync script. Code.gs now runs runEvalAssignmentRulesOnly()
+--    during the normal manual sync order and upserts directly into
+--    public.v2_eval_assignment_rules.
+-- 3. If the sheet cannot be found, has no AssignedTo column, or produces no
+--    active rules, the sync stops before existing active rules are deactivated.
