@@ -1935,6 +1935,43 @@ function normalizeWarehouseAssignedItemsHeaderKey_(header) {
     .replace(/^_|_$/g, '');
 }
 
+function normalizeWarehouseAssignedTo_(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const key = raw.toLowerCase().replace(/@.+$/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  const map = {
+    abigal: 'abigail_vazquez',
+    abigal_vazquez: 'abigail_vazquez',
+    abigal_vazques: 'abigail_vazquez',
+    abigail: 'abigail_vazquez',
+    abigail_vasquez: 'abigail_vazquez',
+    abigail_vazques: 'abigail_vazquez',
+    abigail_vazquez: 'abigail_vazquez',
+    boby: 'bobby_adair',
+    bobby: 'bobby_adair',
+    bobby_adair: 'bobby_adair',
+    charley: 'charley_robertson',
+    charley_robertson: 'charley_robertson',
+    dylan: 'dylan_collyge',
+    dylan_collyge: 'dylan_collyge',
+    ellen: 'ellen_ward',
+    ellen_ward: 'ellen_ward',
+    jeroge: 'jorge_colunga',
+    jeroge_colunga: 'jorge_colunga',
+    jorge: 'jorge_colunga',
+    jorge_colunga: 'jorge_colunga',
+    josh: 'josh_vann',
+    josh_vann: 'josh_vann',
+    megan: 'megan_kelly',
+    megan_kelly: 'megan_kelly',
+    mitch: 'mitch_kaiser',
+    mitch_kaiser: 'mitch_kaiser',
+    zoe: 'zoe_green',
+    zoe_green: 'zoe_green'
+  };
+  return map[key] || raw;
+}
+
 function isWarehouseAssignedItemsHeaderRow_(row) {
   if (!Array.isArray(row)) return false;
   const headers = row.map(normalizeWarehouseAssignedItemsHeaderKey_).filter(Boolean);
@@ -2011,6 +2048,7 @@ function buildWarehouseAssignedItemsPayload(rawData, tableName, existingRows, sy
       if (!WAREHOUSE_ASSIGNED_ITEM_COLUMN_SET.has(key)) continue;
       fields[key] = (value === '' || value.toUpperCase() === 'NULL') ? null : value;
     }
+    if (fields.assignedto) fields.assignedto = normalizeWarehouseAssignedTo_(fields.assignedto);
 
     const uniqueId = getWarehouseAssignedItemsRowIdentity_(fields, idTracker, i + 1);
     if (!uniqueId) {
