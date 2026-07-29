@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.13';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.29.14';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4974,7 +4974,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.13').trim() || 'V2026.07.29.13';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.14').trim() || 'V2026.07.29.14';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6427,7 +6427,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.13';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.14';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -23524,7 +23524,7 @@ let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprova
         const MOVES_PAIR_SEASONS = new Set(['F1', 'S1']);
         const MOVES_UNIVERSAL_SEASONS = new Set(['U1', 'U2', 'U3']);
         const MOVES_PAIR_LOTCODES = new Set(['26.S1', '27.F1']);
-let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveSeason=null; let selectedDriveProgram=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let selectedDriveLocationCodes=new Set(); let driveLocationSearchTerm=''; let driveLocationFilterOpen=false; let selectedDriveLotCodes=new Set(); let driveLotSearchTerm=''; let driveLotFilterOpen=false; let drivePlantFilterItemsCache=[]; let drivePlantFilterGenusOptions=[]; let drivePlantFilterContSizeOptions=[]; let drivePlantFilterLocationOptions=[]; let drivePlantFilterLotOptions=[]; let driveGenusSelectionMode='all'; let driveContSizeSelectionMode='all'; let driveLocationSelectionMode='all'; let driveLotSelectionMode='all'; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; let driveSeasonSearchTerm=''; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); const AV_FILTER_SEASON_OPTIONS=Object.freeze(["F1","S1","U1","U2"]); const CAV_AV_BLANK_KEYS_QUERY=`select=*&salesyear=lte.${AV_OPEN_MAX_SALES_YEAR}&season=in.(${AV_FILTER_SEASON_OPTIONS.join(',')})&order=itemcode.asc`; const DRIVE_DRILL_ALL_VALUE='__ALL__'; const DRIVE_DRILL_ALL_LABEL='ALL'; const DRIVE_ITEM_PROGRAM_OPTIONS=Object.freeze([{ value:'q1', label:'Q1', suffix:'1' }, { value:'promo', label:'PROMO', suffix:'2' }]); let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS); let driveResolvedCardStateKey=''; let driveResolvedCardStateCache=null; let driveVisibleItemsStateCacheKey=''; let driveVisibleItemsStateCache=null; let driveDrillGroupStateCache=new Map(); let driveSearchRequiresManualSelection=false; let driveSearchDebounceTimer=null; let driveSearchRequestToken=0;
+let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveSeason=null; let selectedDriveProgram=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let selectedDriveLocationCodes=new Set(); let driveLocationSearchTerm=''; let driveLocationFilterOpen=false; let selectedDriveLotCodes=new Set(); let driveLotSearchTerm=''; let driveLotFilterOpen=false; let drivePlantFilterItemsCache=[]; let drivePlantFilterGenusOptions=[]; let drivePlantFilterContSizeOptions=[]; let drivePlantFilterLocationOptions=[]; let drivePlantFilterLotOptions=[]; let driveGenusSelectionMode='all'; let driveContSizeSelectionMode='all'; let driveLocationSelectionMode='all'; let driveLotSelectionMode='all'; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; let driveSeasonSearchTerm=''; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); const AV_FILTER_SEASON_OPTIONS=Object.freeze(["F1","S1","U1","U2"]); const CAV_AV_BLANK_KEYS_QUERY=`select=*&order=itemcode.asc`; const DRIVE_DRILL_ALL_VALUE='__ALL__'; const DRIVE_DRILL_ALL_LABEL='ALL'; const DRIVE_ITEM_PROGRAM_OPTIONS=Object.freeze([{ value:'q1', label:'Q1', suffix:'1' }, { value:'promo', label:'PROMO', suffix:'2' }]); let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS); let driveResolvedCardStateKey=''; let driveResolvedCardStateCache=null; let driveVisibleItemsStateCacheKey=''; let driveVisibleItemsStateCache=null; let driveDrillGroupStateCache=new Map(); let driveSearchRequiresManualSelection=false; let driveSearchDebounceTimer=null; let driveSearchRequestToken=0;
         let driveColumnFilters={}; let driveColumnFilterDrafts={}; let driveColumnFilterSelectedHeaders=new Set(); let driveColumnFilterDropdownOpen=false; let driveColumnFilterStep='select'; let driveColumnFilterFieldKey=''; let driveColumnFilterMode='values'; let driveColumnFilterValueSearchTerm=''; let driveColumnFilterFieldSearchTerm=''; let driveColumnFilterHeaderFieldsCache=[];
         let drivePlantFilterStateCacheKey=''; let drivePlantFilterStateCache=null;
 
@@ -23991,7 +23991,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.13').trim() || 'V2026.07.29.13';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.14').trim() || 'V2026.07.29.14';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
