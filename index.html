@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.15';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.29.16';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4974,7 +4974,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.15').trim() || 'V2026.07.29.15';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.16').trim() || 'V2026.07.29.16';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6428,7 +6428,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.15';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.16';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24147,12 +24147,20 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const APP_SEASON_SETTINGS_TABLE = 'v2_app_settings';
         const APP_SEASON_SETTINGS_KEY = 'current_season_salesyear';
         const APP_SEASON_SETTINGS_STORAGE_KEY = 'gnc_current_season_settings_v1';
+        const AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW = 'av-blanks-photo-bypass';
+        const AV_BLANKS_PHOTO_BYPASS_SETTINGS_KEY = 'av_blanks_photo_bypass_users';
+        const AV_BLANKS_PHOTO_BYPASS_STORAGE_KEY = 'gnc_av_blanks_photo_bypass_v1';
+        const AV_BLANKS_PHOTO_BYPASS_MANAGER_USERS = Object.freeze(['dylan_collyge', 'jd_jones']);
         const APP_CURRENT_SEASON_OPTIONS = Object.freeze(['S1', 'F1']);
         const APP_SEASON_DISPLAY_ORDER = Object.freeze(['S1', 'F1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.15').trim() || 'V2026.07.29.15';
+        let avBlanksPhotoBypassSettingsCache = null;
+        let avBlanksPhotoBypassRemoteLoaded = false;
+        let avBlanksPhotoBypassRemoteLoading = false;
+        let avBlanksPhotoBypassDraftUsers = null;
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.16').trim() || 'V2026.07.29.16';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -24482,6 +24490,331 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     <label class="block"><span class="mb-1 ml-1 block text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Salesyear</span><input id="app-current-salesyear-input" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="${escapeHtml(String(settings.salesYear))}" class="block w-full rounded-xl border border-emerald-200 bg-white px-4 py-3 text-lg font-black text-slate-900 shadow-sm"></label>
                     <button type="submit" class="min-h-[52px] rounded-xl bg-[#007a4d] px-5 py-3 text-[12px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-[0.99]"><i class="ph-bold ph-floppy-disk align-middle text-base"></i><span class="ml-2 align-middle">Save Season</span></button>
                 </div>
+            </form>`;
+        }
+
+        function normalizeAvBlanksPhotoBypassUser(value = '') {
+            return normalizePushUsername(value) || normalizeEvalAccessUserKey(value);
+        }
+
+        function normalizeAvBlanksPhotoBypassUserList(value = null) {
+            let entries = [];
+            if (Array.isArray(value)) {
+                entries = value;
+            } else if (value && typeof value === 'object') {
+                entries = firstNonEmptyValue(value.users, value.allowedUsers, value.allowed_users, value.usernames, value.assignees, []);
+                if (!Array.isArray(entries)) entries = String(entries || '').split(/[;,\n]+/);
+            } else if (typeof value === 'string') {
+                entries = value.split(/[;,\n]+/);
+            }
+            const normalized = entries.map((entry) => {
+                if (entry && typeof entry === 'object') {
+                    return normalizeAvBlanksPhotoBypassUser(firstNonEmptyValue(entry.username, entry.USERNAME, entry.userName, entry.display, entry.displayName, ''));
+                }
+                return normalizeAvBlanksPhotoBypassUser(entry);
+            }).filter(Boolean);
+            return Array.from(new Set(normalized)).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+        }
+
+        function areAvBlanksPhotoBypassUserListsEqual(left = [], right = []) {
+            const leftUsers = normalizeAvBlanksPhotoBypassUserList(left);
+            const rightUsers = normalizeAvBlanksPhotoBypassUserList(right);
+            if (leftUsers.length !== rightUsers.length) return false;
+            return leftUsers.every((user, index) => user === rightUsers[index]);
+        }
+
+        function normalizeAvBlanksPhotoBypassSettingsPayload(value = null) {
+            const raw = value && typeof value === 'object' && !Array.isArray(value) ? value : { users: value };
+            return {
+                users: normalizeAvBlanksPhotoBypassUserList(firstNonEmptyValue(raw.users, raw.allowedUsers, raw.allowed_users, raw.usernames, raw.assignees, [])),
+                updatedAt: String(firstNonEmptyValue(raw.updatedAt, raw.updated_at, '') || '').trim(),
+                updatedBy: String(firstNonEmptyValue(raw.updatedBy, raw.updated_by, '') || '').trim()
+            };
+        }
+
+        function readLocalAvBlanksPhotoBypassSettings() {
+            try {
+                const raw = localStorage.getItem(AV_BLANKS_PHOTO_BYPASS_STORAGE_KEY) || '';
+                if (!raw) return null;
+                return normalizeAvBlanksPhotoBypassSettingsPayload(JSON.parse(raw));
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function writeLocalAvBlanksPhotoBypassSettings(settings = null) {
+            const normalized = normalizeAvBlanksPhotoBypassSettingsPayload(settings);
+            avBlanksPhotoBypassSettingsCache = normalized;
+            avBlanksPhotoBypassDraftUsers = null;
+            try { localStorage.setItem(AV_BLANKS_PHOTO_BYPASS_STORAGE_KEY, JSON.stringify(normalized)); } catch (error) {}
+            return normalized;
+        }
+
+        function getAvBlanksPhotoBypassSettings() {
+            if (!avBlanksPhotoBypassSettingsCache) {
+                avBlanksPhotoBypassSettingsCache = readLocalAvBlanksPhotoBypassSettings() || normalizeAvBlanksPhotoBypassSettingsPayload({ users: [] });
+            }
+            return normalizeAvBlanksPhotoBypassSettingsPayload(avBlanksPhotoBypassSettingsCache);
+        }
+
+        function parseRemoteAvBlanksPhotoBypassSettingsRow(row = null) {
+            if (!row || typeof row !== 'object') return null;
+            const rawValue = firstNonEmptyValue(row.value, row.setting_value, row.settings, row.payload, row.config, null);
+            if (rawValue && typeof rawValue === 'object' && !Array.isArray(rawValue)) {
+                return normalizeAvBlanksPhotoBypassSettingsPayload({
+                    ...rawValue,
+                    updatedAt: firstNonEmptyValue(rawValue.updatedAt, rawValue.updated_at, row.updated_at, ''),
+                    updatedBy: firstNonEmptyValue(rawValue.updatedBy, rawValue.updated_by, row.updated_by, '')
+                });
+            }
+            if (typeof rawValue === 'string') {
+                try {
+                    return normalizeAvBlanksPhotoBypassSettingsPayload({
+                        ...JSON.parse(rawValue),
+                        updatedAt: firstNonEmptyValue(row.updated_at, ''),
+                        updatedBy: firstNonEmptyValue(row.updated_by, '')
+                    });
+                } catch (error) {}
+            }
+            return null;
+        }
+
+        async function refreshAvBlanksPhotoBypassSettingsFromRemote(options = {}) {
+            if (avBlanksPhotoBypassRemoteLoading) return getAvBlanksPhotoBypassSettings();
+            if (avBlanksPhotoBypassRemoteLoaded && !(options && options.force)) return getAvBlanksPhotoBypassSettings();
+            avBlanksPhotoBypassRemoteLoading = true;
+            try {
+                const rows = await supabaseFetch(APP_SEASON_SETTINGS_TABLE, 'GET', null, `select=key,value,updated_by,updated_at&key=eq.${encodeURIComponent(AV_BLANKS_PHOTO_BYPASS_SETTINGS_KEY)}&limit=1`);
+                const row = Array.isArray(rows) ? rows[0] : null;
+                const parsed = parseRemoteAvBlanksPhotoBypassSettingsRow(row);
+                if (parsed) writeLocalAvBlanksPhotoBypassSettings(parsed);
+                avBlanksPhotoBypassRemoteLoaded = true;
+                return getAvBlanksPhotoBypassSettings();
+            } catch (error) {
+                avBlanksPhotoBypassRemoteLoaded = true;
+                return getAvBlanksPhotoBypassSettings();
+            } finally {
+                avBlanksPhotoBypassRemoteLoading = false;
+            }
+        }
+
+        async function saveAvBlanksPhotoBypassSettingsToRemote(settings = null) {
+            const normalized = normalizeAvBlanksPhotoBypassSettingsPayload(settings);
+            const payload = {
+                key: AV_BLANKS_PHOTO_BYPASS_SETTINGS_KEY,
+                value: {
+                    users: normalized.users,
+                    updatedAt: normalized.updatedAt,
+                    updatedBy: normalized.updatedBy
+                },
+                updated_by: normalized.updatedBy,
+                updated_at: normalized.updatedAt
+            };
+            const verifyRemoteSettings = async (fallbackRow = null) => {
+                let parsed = parseRemoteAvBlanksPhotoBypassSettingsRow(fallbackRow);
+                if (!parsed || !areAvBlanksPhotoBypassUserListsEqual(parsed.users, normalized.users)) {
+                    const rows = await supabaseFetch(
+                        APP_SEASON_SETTINGS_TABLE,
+                        'GET',
+                        null,
+                        `select=key,value,updated_by,updated_at&key=eq.${encodeURIComponent(AV_BLANKS_PHOTO_BYPASS_SETTINGS_KEY)}&limit=1`,
+                        { timeoutMs: 10000 }
+                    );
+                    parsed = parseRemoteAvBlanksPhotoBypassSettingsRow(Array.isArray(rows) ? rows[0] : null);
+                }
+                if (!parsed || !areAvBlanksPhotoBypassUserListsEqual(parsed.users, normalized.users)) {
+                    throw new Error('AV Blanks bypass settings remote verification failed.');
+                }
+                writeLocalAvBlanksPhotoBypassSettings(parsed);
+                avBlanksPhotoBypassRemoteLoaded = true;
+                return true;
+            };
+            startGlobalProgress();
+            try {
+                const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/${APP_SEASON_SETTINGS_TABLE}?on_conflict=key`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': 'Bearer ' + SUPABASE_KEY,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=representation,resolution=merge-duplicates'
+                    },
+                    body: JSON.stringify(payload)
+                }, 15000, 'AV Blanks bypass settings write');
+                if (!response.ok) throw new Error(await getResponseError(response, `AV Blanks bypass settings write failed (${response.status})`));
+                const text = await response.text();
+                let rows = null;
+                try { rows = text ? JSON.parse(text) : null; } catch (parseError) {}
+                return await verifyRemoteSettings(Array.isArray(rows) ? rows[0] : rows);
+            } catch (error) {
+                console.warn('AV Blanks bypass settings remote save failed; keeping local setting only.', error);
+                return false;
+            } finally {
+                stopGlobalProgress();
+            }
+        }
+
+        function canManageAvBlanksPhotoBypassSettings(userOverride = '') {
+            const candidates = [userOverride, currentUser, currentUserDisplay]
+                .map((value) => normalizeAvBlanksPhotoBypassUser(value))
+                .filter(Boolean);
+            return candidates.some((key) => AV_BLANKS_PHOTO_BYPASS_MANAGER_USERS.includes(key));
+        }
+
+        function isAvBlanksPhotoBypassUserAllowed(userOverride = '') {
+            const settings = getAvBlanksPhotoBypassSettings();
+            const allowedUsers = new Set(normalizeAvBlanksPhotoBypassUserList(settings.users));
+            if (!allowedUsers.size) return false;
+            const candidates = [userOverride, currentUser, currentUserDisplay]
+                .map((value) => normalizeAvBlanksPhotoBypassUser(value))
+                .filter(Boolean);
+            return candidates.some((key) => allowedUsers.has(key));
+        }
+
+        function getAvBlanksPhotoBypassDraftUsers() {
+            if (!(avBlanksPhotoBypassDraftUsers instanceof Set)) {
+                avBlanksPhotoBypassDraftUsers = new Set(normalizeAvBlanksPhotoBypassUserList(getAvBlanksPhotoBypassSettings().users));
+            }
+            return avBlanksPhotoBypassDraftUsers;
+        }
+
+        function getAvBlanksPhotoBypassUserOptions(extraNames = []) {
+            const selectedUsers = Array.from(getAvBlanksPhotoBypassDraftUsers());
+            const extras = normalizeAvBlanksPhotoBypassUserList([].concat(extraNames || [], selectedUsers, EVAL_TASK_FALLBACK_USERS || []));
+            if (typeof getAssignableAppUserOptions === 'function') {
+                return getAssignableAppUserOptions(extras).map((entry) => ({
+                    username: normalizeAvBlanksPhotoBypassUser(firstNonEmptyValue(entry.username, entry.display, '')),
+                    display: String(firstNonEmptyValue(entry.display, entry.username, '') || '').trim(),
+                    role: String(firstNonEmptyValue(entry.role, '') || '').trim()
+                })).filter((entry) => entry.username);
+            }
+            return extras.map((username) => ({ username, display: username, role: '' }));
+        }
+
+        function ensureAvBlanksPhotoBypassUserOptionsLoaded(forceRefresh = false) {
+            if (typeof ensureAssignableAppUsers !== 'function') return Promise.resolve([]);
+            const wasLoaded = typeof assignableAppUsersLoaded !== 'undefined' && assignableAppUsersLoaded;
+            return ensureAssignableAppUsers(forceRefresh).then((rows) => {
+                if ((forceRefresh || !wasLoaded) && getCurrentVisibleViewId() === 'managers' && activeHomeTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW) scheduleManagersRender(true);
+                return rows;
+            }).catch(() => []);
+        }
+
+        function addAvBlanksPhotoBypassUserFromSelect(value = '') {
+            const normalized = normalizeAvBlanksPhotoBypassUser(value);
+            if (!normalized) return false;
+            getAvBlanksPhotoBypassDraftUsers().add(normalized);
+            const select = document.getElementById('av-blanks-photo-bypass-user-select');
+            if (select) select.value = '';
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        function removeAvBlanksPhotoBypassUser(value = '') {
+            const normalized = normalizeAvBlanksPhotoBypassUser(value);
+            if (normalized) getAvBlanksPhotoBypassDraftUsers().delete(normalized);
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        function clearAvBlanksPhotoBypassUsers() {
+            getAvBlanksPhotoBypassDraftUsers().clear();
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        function resetAvBlanksPhotoBypassDraftUsers() {
+            avBlanksPhotoBypassDraftUsers = new Set(normalizeAvBlanksPhotoBypassUserList(getAvBlanksPhotoBypassSettings().users));
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        async function saveAvBlanksPhotoBypassSettingsFromUi(event = null) {
+            if (event && typeof event.preventDefault === 'function') event.preventDefault();
+            if (!canManageAvBlanksPhotoBypassSettings()) return false;
+            const users = normalizeAvBlanksPhotoBypassUserList(Array.from(getAvBlanksPhotoBypassDraftUsers()));
+            const nextSettings = normalizeAvBlanksPhotoBypassSettingsPayload({
+                users,
+                updatedAt: new Date().toISOString(),
+                updatedBy: String(currentUserDisplay || currentUser || '').trim() || 'dylan_collyge'
+            });
+            writeLocalAvBlanksPhotoBypassSettings(nextSettings);
+            markViewDirty('tasks');
+            markViewDirty('managers');
+            scheduleHomeOrManagersRender(true);
+            const remoteSaved = await saveAvBlanksPhotoBypassSettingsToRemote(nextSettings);
+            showToast('AV Blanks Updated', `${users.length} user${users.length === 1 ? '' : 's'} can finish AV Blanks with AV Note only${remoteSaved ? ' saved live' : ' saved on this device only'}.`, !remoteSaved);
+            return false;
+        }
+
+        function isAvBlanksPhotoBypassTaskContext(prefix = '') {
+            if (String(prefix || '').trim().toLowerCase() !== 'ssn-') return false;
+            const sourceView = String(firstNonEmptyValue(activeDetailSourceView, lastView, '') || '').trim().toLowerCase();
+            if (sourceView !== 'tasks') return false;
+            const taskView = String(firstNonEmptyValue(activeTaskTab, activeTaskView, '') || '').trim().toLowerCase();
+            const taskSubview = String(firstNonEmptyValue(activeTaskSubview, activeTaskFilter, '') || '').trim().toLowerCase();
+            if (taskView === 'av-blanks') return true;
+            if (taskView === EVAL_TASK_ASSIGNMENT) {
+                return normalizeEvalTaskFilterValue(taskSubview, { values: EVAL_SIMPLE_TASK_FILTER_VALUES }) === 'av-blanks';
+            }
+            return false;
+        }
+
+        async function canBypassAvBlanksCompletionRequirementsForCurrentUser(item = null, prefix = '') {
+            if (!isAvBlanksPhotoBypassTaskContext(prefix)) return false;
+            if (!isAvBlanksPhotoBypassUserAllowed() && navigator.onLine !== false) {
+                await refreshAvBlanksPhotoBypassSettingsFromRemote({ force: !avBlanksPhotoBypassRemoteLoaded }).catch(() => {});
+            }
+            return isAvBlanksPhotoBypassUserAllowed();
+        }
+
+        function renderAvBlanksPhotoBypassSettingsPanel() {
+            if (!canManageAvBlanksPhotoBypassSettings()) return '';
+            const settings = getAvBlanksPhotoBypassSettings();
+            const draftUsers = getAvBlanksPhotoBypassDraftUsers();
+            const usersLoaded = typeof assignableAppUsersLoaded !== 'undefined' && assignableAppUsersLoaded;
+            if (!usersLoaded) ensureAvBlanksPhotoBypassUserOptionsLoaded(false).catch(() => {});
+            const userOptions = getAvBlanksPhotoBypassUserOptions(Array.from(draftUsers));
+            const selectedMeta = new Map(userOptions.map((entry) => [entry.username, entry]));
+            const selectedUsers = Array.from(draftUsers).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+            const selectedHtml = selectedUsers.length
+                ? selectedUsers.map((username) => {
+                    const meta = selectedMeta.get(username) || { username, display: username, role: '' };
+                    const label = escapeHtml(meta.display || username);
+                    const subtitle = [username, meta.role].filter(Boolean).join(' | ');
+                    return `<button type="button" class="flex min-h-[52px] items-center justify-between gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-left shadow-sm active:scale-[0.99]" onclick="return removeAvBlanksPhotoBypassUser('${escJsAttrValue(username)}')"><span class="min-w-0"><span class="block truncate text-sm font-black text-slate-900">${label}</span><span class="mt-1 block truncate text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${escapeHtml(subtitle)}</span></span><i class="ph-bold ph-x text-lg text-emerald-700"></i></button>`;
+                }).join('')
+                : '<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-bold text-slate-400">No users selected.</div>';
+            const selectedSet = new Set(selectedUsers);
+            const availableOptions = userOptions.filter((entry) => entry.username && !selectedSet.has(entry.username));
+            const selectOptionsHtml = `<option value="">Select user...</option>` + availableOptions.map((entry) => {
+                const label = String(entry.display || entry.username || '').trim() || entry.username;
+                const suffix = entry.role ? ` (${entry.role})` : '';
+                return `<option value="${escJsAttrValue(entry.username)}">${escapeHtml(label + suffix)}</option>`;
+            }).join('');
+            const updatedMeta = settings.updatedAt
+                ? `Last changed ${escapeHtml(formatInventoryEditMockTimestamp(settings.updatedAt))}${settings.updatedBy ? ` by ${escapeHtml(settings.updatedBy)}` : ''}`
+                : 'No AV Blanks bypass users have been saved yet.';
+            return `<form class="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm" onsubmit="saveAvBlanksPhotoBypassSettingsFromUi(event); return false;">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div class="min-w-0">
+                        <div class="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Manager Control</div>
+                        <div class="mt-3 text-2xl font-black text-slate-900">AV Blanks note-only completion</div>
+                        <div class="mt-2 max-w-2xl text-sm font-bold leading-relaxed text-slate-500">Selected users can complete Tasks &gt; AV Blanks by entering AV Note only. Photo and LOC MATCH are skipped in that view only, then the row follows the normal completion path.</div>
+                        <div class="mt-3 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">${updatedMeta}</div>
+                    </div>
+                    <div class="grid min-w-[180px] grid-cols-1 gap-1 rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-center">
+                        <div class="text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">Allowed Users</div>
+                        <div class="text-3xl font-black text-[#007a4d]">${escapeHtml(String(selectedUsers.length))}</div>
+                    </div>
+                </div>
+                <div class="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(240px,0.8fr)_auto_auto] lg:items-end">
+                    <label class="block"><span class="mb-1 ml-1 block text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">User</span><select id="av-blanks-photo-bypass-user-select" class="block min-h-[52px] w-full rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-black text-slate-900 shadow-sm" onchange="return addAvBlanksPhotoBypassUserFromSelect(this.value)">${selectOptionsHtml}</select></label>
+                    <button type="submit" class="min-h-[52px] rounded-xl bg-[#007a4d] px-5 py-3 text-[12px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-[0.99]"><i class="ph-bold ph-check align-middle text-base"></i><span class="ml-2 align-middle">Submit</span></button>
+                    <button type="button" class="min-h-[52px] rounded-xl border border-slate-200 bg-white px-5 py-3 text-[12px] font-black uppercase tracking-[0.14em] text-slate-500 shadow-sm active:scale-[0.99]" onclick="return resetAvBlanksPhotoBypassDraftUsers()">Reset</button>
+                </div>
+                <div class="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">${selectedHtml}</div>
+                ${selectedUsers.length ? '<button type="button" class="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-red-600 active:scale-[0.99]" onclick="return clearAvBlanksPhotoBypassUsers()">Clear Users</button>' : ''}
             </form>`;
         }
         function getPlantGroupCodeForSpecRules(item = null, fallbackPlantGroup = '') {
@@ -42098,6 +42431,11 @@ function toggleDriveQuickRequestItem(domId) {
             refreshManualSyncStatus(true).catch(() => {});
             refreshCurrentSeasonSettingsFromRemote().then(() => {
                 markSeasonSensitiveViewsDirty();
+                scheduleHomeOrManagersRender(true);
+            }).catch(() => {});
+            refreshAvBlanksPhotoBypassSettingsFromRemote().then(() => {
+                markViewDirty('tasks');
+                markViewDirty('managers');
                 scheduleHomeOrManagersRender(true);
             }).catch(() => {});
 
@@ -104412,6 +104750,7 @@ C.14.043 C.15.000
             else if (requestedTab === MANAGER_APPROVAL_HOME_VIEW && getManagersToolAccess().canViewApproval) nextTab = MANAGER_APPROVAL_HOME_VIEW;
             else if (requestedTab === 'moves' && canAccessView('moves')) nextTab = 'moves';
             else if (requestedTab === APP_SEASON_SETTINGS_VIEW && canManageCurrentSeasonSettings()) nextTab = APP_SEASON_SETTINGS_VIEW;
+            else if (requestedTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW && canManageAvBlanksPhotoBypassSettings()) nextTab = AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW;
             else if (isManagerApprovalTab(requestedTab) && canUseManagerApprovalTab(requestedTab)) nextTab = requestedTab;
             activeHomeTab = nextTab;
             if (nextTab !== SHEAR_APPROVAL_VIEW) activeShearApprovalDetailId = '';
@@ -107929,6 +108268,7 @@ C.14.043 C.15.000
                 canViewNotOnInventoryApprovals: canUseNotOnInventoryApprovalTaskView(),
                 canViewCropRoll: canViewCropRollHome(),
                 canManageSeasonSettings: canManageCurrentSeasonSettings(),
+                canManageAvBlanksPhotoBypass: canManageAvBlanksPhotoBypassSettings(),
                 canViewInventoryTransactions: canViewInventoryTransactionHistory()
             };
         }
@@ -107939,6 +108279,7 @@ C.14.043 C.15.000
             if (access.canViewCropRoll) return CROP_ROLL_HOME_TAB;
             if (access.canViewMoves) return 'moves';
             if (access.canManageSeasonSettings) return APP_SEASON_SETTINGS_VIEW;
+            if (access.canManageAvBlanksPhotoBypass) return AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW;
             if (access.canViewInventoryTransactions) return INVENTORY_TRANSACTION_HISTORY_VIEW;
             if (access.canViewProductivity) return 'productivity';
             return '';
@@ -107950,6 +108291,7 @@ C.14.043 C.15.000
             if (access.canViewCropRoll) tabs.push({ id: CROP_ROLL_HOME_TAB, label: 'Crop Roll' });
             if (access.canViewMoves) tabs.push({ id: 'moves', label: 'Move' });
             if (access.canManageSeasonSettings) tabs.push({ id: APP_SEASON_SETTINGS_VIEW, label: 'Season' });
+            if (access.canManageAvBlanksPhotoBypass) tabs.push({ id: AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW, label: 'AV Blanks' });
             if (access.canViewInventoryTransactions) tabs.push({ id: INVENTORY_TRANSACTION_HISTORY_VIEW, label: 'Transaction History' });
             return tabs;
         }
@@ -107978,6 +108320,7 @@ C.14.043 C.15.000
             if (safeTab === CROP_ROLL_HOME_TAB) return { label: 'Crop Roll', description: 'Review completed crop-roll itemcodes before Inventory Office.', icon: 'ph-plant' };
             if (safeTab === 'moves') return { label: 'Move', description: 'Build location-code move sessions from Drive Mode rows.', icon: 'ph-map-pin-line' };
             if (safeTab === APP_SEASON_SETTINGS_VIEW) return { label: 'Season', description: 'Set the current and next sales season logic.', icon: 'ph-calendar-check' };
+            if (safeTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW) return { label: 'AV Blanks', description: 'Allow selected users to finish AV Blanks with AV Note only.', icon: 'ph-note-pencil' };
             if (safeTab === INVENTORY_TRANSACTION_HISTORY_VIEW) return { label: 'Transaction History', description: 'Look up who made QTY, Transfer, and Reclass changes.', icon: 'ph-clock-counter-clockwise' };
             if (safeTab === 'productivity') return { label: 'Productivity', description: 'Review completed work by user and date.', icon: 'ph-chart-line-up' };
             if (safeTab === SHEAR_APPROVAL_VIEW) return { label: 'Shear Approvals', description: 'Approve explicit Add To Shear List requests before they enter Que.', icon: 'ph-scissors' };
@@ -110122,6 +110465,7 @@ C.14.043 C.15.000
             else if (activeHomeTab === CROP_ROLL_HOME_TAB) html += renderCropRollHomePanel();
             else if (activeHomeTab === 'moves') html += renderManagerMovesPanel();
             else if (activeHomeTab === APP_SEASON_SETTINGS_VIEW) html += renderCurrentSeasonSettingsPanel();
+            else if (activeHomeTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW) html += renderAvBlanksPhotoBypassSettingsPanel();
             else if (activeHomeTab === INVENTORY_TRANSACTION_HISTORY_VIEW) html += renderInventoryTransactionHistoryPanel();
             else if (isManagerApprovalTab(activeHomeTab)) html += renderManagerApprovalPanel(activeHomeTab);
             else html = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No manager tools are available for this login.</div>';
@@ -132393,6 +132737,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                     }
                 }
 
+                const canBypassAvBlanksCompletionRequirements = isComplete
+                    ? await canBypassAvBlanksCompletionRequirementsForCurrentUser(itemToSave, prefix)
+                    : false;
                 const isFlyerFolderRowSave = prefix === 'flyer-' && isFlyerFolderRow(itemToSave);
                 const canPersistFlyerShadow = prefix === 'flyer-' && String(itemToSave.SOURCE_TABLE || 'v2_master_inventory') === 'v2_master_inventory'
                     ? await ensureFlyerShadowColumnsReady().catch(() => false)
@@ -132415,8 +132762,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const effectiveCaliper = String(itemToSave.CALIPER || '').trim();
                     const requiresAvNote = requiresAvNoteForCompletion(itemToSave);
                     const needsCaliper = false;
-                    if (effectiveMatch == null) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required', getLocMatchRequiredMessage(itemToSave.MATCH, 'LOC MATCH % is required before completing this note.'), true); return; }
-                    if (requiresAvNote && !effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','AV Note is required before completing this note.',true); return; }
+                    if (!canBypassAvBlanksCompletionRequirements && effectiveMatch == null) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required', getLocMatchRequiredMessage(itemToSave.MATCH, 'LOC MATCH % is required before completing this note.'), true); return; }
+                    if ((requiresAvNote || canBypassAvBlanksCompletionRequirements) && !effectiveAvNote) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required', canBypassAvBlanksCompletionRequirements ? 'AV Note is required before completing this AV Blanks row.' : 'AV Note is required before completing this note.', true); return; }
                     if (needsCaliper && !effectiveCaliper) { if (btnComp) btnComp.innerText = 'MARK DONE'; showToast('Required','Caliper is required for this note.',true); return; }
                 }
 
@@ -132719,7 +133066,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     applyAvRuleTouchPayload(itemToSave, payload, trackedChangeFlags);
                 }
 
-                if (isComplete && isPhotoGuardedCompletionPrefix(prefix) && !rowHasRequiredCompletionPhoto(itemToSave, prefix)) {
+                if (isComplete && isPhotoGuardedCompletionPrefix(prefix) && !canBypassAvBlanksCompletionRequirements && !rowHasRequiredCompletionPhoto(itemToSave, prefix)) {
                     if (btnComp) btnComp.innerText = 'MARK DONE';
                     if (isCurrentView) {
                         renderSavedPhotos();
@@ -132730,7 +133077,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     return;
                 }
 
-                if (isComplete && !isSilentAutoSave && isPhotoGuardedCompletionPrefix(prefix)) {
+                if (isComplete && !isSilentAutoSave && isPhotoGuardedCompletionPrefix(prefix) && !canBypassAvBlanksCompletionRequirements) {
                     const markDonePromptPlan = prepareMarkDoneCompletionPrompt(itemToSave, prefix);
                     if (!markDonePromptPlan || !markDonePromptPlan.ok) {
                         if (btnComp) btnComp.innerText = 'MARK DONE';
