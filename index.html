@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.21';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.29.22';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4992,7 +4992,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.21').trim() || 'V2026.07.29.21';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.22').trim() || 'V2026.07.29.22';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6446,7 +6446,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.21';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.22';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6524,7 +6524,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             home: { realtimeTables: [], pollMs: 'visible-default' },
             managers: { realtimeTables: ['v2_master_inventory', ML_IMAGE_JOBS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             chat: { realtimeTables: ['v2_chat_conversations', 'v2_chat_participants', 'v2_chat_messages'], pollMs: 60000 },
-            drive: { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
+            drive: { realtimeTables: [WAREHOUSE_ASSIGNED_ITEMS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'crop-roll': { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             tasks: { realtimeTables: ['v2_master_inventory', 'v2_active_request', 'v2_sales_office', FLYER_FOLDER_ROWS_TABLE, FLYER_FOLDER_HISTORY_TABLE, ML_IMAGE_JOBS_TABLE, WAREHOUSE_ASSIGNED_ITEMS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             request: { realtimeTables: ['v2_active_request', REQUEST_HISTORY_TABLE], pollMs: REQUEST_VISIBLE_POLL_MS },
@@ -24285,7 +24285,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.21').trim() || 'V2026.07.29.21';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.22').trim() || 'V2026.07.29.22';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28196,7 +28196,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function getViewLoadingConfig(viewId) {
-            if (viewId === 'drive') return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'master', mode: 'full' }], background: [], label: 'Loading verified Drive rows from v2_master_inventory...' });
+            if (viewId === 'drive') return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'master', mode: 'full' }, { key: 'warehouseAssignedItems', mode: 'full' }], background: [], label: 'Loading verified Drive rows and assignments...' });
             if (viewId === 'crop-roll') {
                 if (cropRollDriveSchemaReady === false) {
                     return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'master', mode: 'full' }], background: [], label: 'Loading SY 27 rows from Drive Mode...' });
@@ -31846,6 +31846,37 @@ let avTopControlsRenderToken = 0;
             return !!(canAccessView('drive') && (access.isForeman || canUseDriveQuickRequest()));
         }
 
+        const DRIVE_CARD_OPTIONS_ALWAYS_USERS = Object.freeze(new Set(['kayla_knepp', 'jd_jones', 'dylan_collyge']));
+
+        function getCurrentDriveCardOptionUserKeys(userOverride = '', displayOverride = '') {
+            return [userOverride, displayOverride, currentUser, currentUserDisplay]
+                .map((value) => normalizeEvalAccessUserKey(value))
+                .filter(Boolean);
+        }
+
+        function isAlwaysDriveCardOptionsUser(userOverride = '', displayOverride = '') {
+            return getCurrentDriveCardOptionUserKeys(userOverride, displayOverride)
+                .some((key) => DRIVE_CARD_OPTIONS_ALWAYS_USERS.has(key));
+        }
+
+        function isWarehouseAssignedDriveCardForCurrentUser(item = null, userOverride = '', displayOverride = '') {
+            const assignedUser = getWarehouseAssignedUserForItem(item);
+            return !!assignedUser && isAssignedToCurrentUser(assignedUser, userOverride, displayOverride);
+        }
+
+        function canCurrentUserUseDriveCardOptions(item = null, sourceView = 'drive', roleOverride = '', userOverride = '', displayOverride = '') {
+            const safeSourceView = String(sourceView || '').trim().toLowerCase();
+            if (safeSourceView !== 'drive') return true;
+            const access = getRoleAccessState(roleOverride, userOverride);
+            if (!access || access.isAdmin || !access.isRep) return true;
+            if (isAlwaysDriveCardOptionsUser(userOverride, displayOverride)) return true;
+            return isWarehouseAssignedDriveCardForCurrentUser(item, userOverride, displayOverride);
+        }
+
+        function isCurrentDriveCardOptionsContext(sourceView = '') {
+            return String(firstNonEmptyValue(sourceView, activeDetailSourceView, lastView, currentPrimaryViewId, '') || '').trim().toLowerCase() === 'drive';
+        }
+
         function canUseFooterRequestShortcut() {
             return canAccessView('request');
         }
@@ -33351,6 +33382,7 @@ let avTopControlsRenderToken = 0;
         function buildArgosInventoryTransactionRailHtml(item = null, sourceView = '') {
             const safeSourceView = String(sourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
             if (safeSourceView !== 'drive') return '';
+            if (!canCurrentUserUseDriveCardOptions(item, 'drive')) return '';
             if (!isArgosInventoryTransactionEligible(item)) return '';
             const safeUid = escJsAttrValue(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, ''));
             const safeSource = escJsAttrValue(sourceView || activeDetailSourceView || lastView || '');
@@ -33634,6 +33666,11 @@ let avTopControlsRenderToken = 0;
             const item = findItemByUniqueId(safeUid);
             if (!isArgosInventoryTransactionEligible(item)) {
                 showToast('Unavailable', 'This card is not tied to a live inventory row.', true);
+                return false;
+            }
+            const safeSourceView = String(sourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
+            if (safeSourceView === 'drive' && !canCurrentUserUseDriveCardOptions(item, 'drive')) {
+                showToast('View Only', 'Drive Mode actions are only available on rows assigned to you.', true);
                 return false;
             }
             const modal = ensureArgosInventoryTransactionModal();
@@ -35214,6 +35251,10 @@ let avTopControlsRenderToken = 0;
             const loc = firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, 'No Loc');
             const itemCode = firstNonEmptyValue(item.ITEMCODE, item.itemcode, '-');
             const quickActions = ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'location_move', 'move_up', 'move_down', 'ncr', 'recount', 'note', 'shear'];
+            if (safeSourceView === 'drive' && !canCurrentUserUseDriveCardOptions(item, 'drive')) {
+                showToast('View Only', 'Drive Mode actions are only available on rows assigned to you.', true);
+                return false;
+            }
             const quickActionHtml = safeSourceView === 'av'
                 ? ''
                 : `<div class="rounded-2xl border border-slate-200 bg-slate-50 p-3"><div class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Inventory Edit</div><div class="grid grid-cols-1 gap-2 sm:grid-cols-2">${quickActions.map((action) => {
@@ -66370,7 +66411,7 @@ function toggleDriveQuickRequestItem(domId) {
                 }
             }
             const cornerThumbHtml = thumbHtml || `<div class="absolute top-3 right-3 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-1 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">No Photo</div>`;
-            const driveOrderHtml = getInventoryCardBottomRailHtml(item.DOM_ID);
+            const driveOrderHtml = getInventoryCardBottomRailHtml(item.DOM_ID, '', { sourceView: 'drive' });
             const quantityChipsHtml = buildInventoryQuantityChipsHtml(item, { compact: true });
             const compactCardFieldChipsHtml = buildInventoryCardFieldChipsHtml(item, { compact: true });
             return `<div class="mb-3 app-card-shell app-smart-card app-smart-card--inventory ${driveOrderHtml ? 'app-card-with-bottom-rail' : ''} rounded-[20px] border border-slate-200 bg-white p-3 pr-[3.75rem] sm:pr-[4.25rem] shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden relative" ${buildFastInvokeAttrs('selectAvReserveDriveRow', [safeUidJs], 'Open Drive Mode row ' + String(item.COMMONNAME || 'Unknown'))}>${cornerThumbHtml}<div class="text-[9px] font-black uppercase tracking-[0.16em] text-sky-600">Drive Mode Row</div><div class="app-card-topline mt-1"><span class="app-card-topline-common">${esc(item.COMMONNAME || 'Unknown')}</span><span class="app-card-topline-size">${esc(item.CONTSIZE || '-')}</span></div><div class="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-mono font-bold text-slate-600"><i class="ph-bold ph-barcode text-slate-400"></i><span class="truncate">${item.ITEMCODE || '-'}</span></div><div class="mt-2 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]"><span class="rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-blue-700">Loc ${item.LOCATIONCODE || 'No Loc'}</span><span class="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-slate-700">Lot ${item.LOTCODE || '-'}</span>${quantityChipsHtml}<span class="rounded-full border border-orange-100 bg-orange-50 px-2 py-1 text-orange-700">Pri ${item.PRIORITY || '-'}</span>${compactCardFieldChipsHtml}</div>${driveOrderHtml}</div>`;
@@ -66693,7 +66734,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const inlineThumbHtml = thumbHtml || `<div class="ml-3 flex-shrink-0"><div class="app-smart-thumb w-16 h-16 rounded-md border border-gray-300 bg-slate-100 shadow-sm flex items-center justify-center text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div></div>`;
             const quickShareHtml = `<div class="mt-3 grid ${actionVisibility.showText ? 'grid-cols-3' : 'grid-cols-2'} gap-2"><button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-700 shadow-sm active:scale-[0.98]" onclick="event.stopPropagation(); return shareAvReserveRow('copy', '${safeDomIdJs}')"><i class="ph-bold ph-copy text-base"></i>Copy</button><button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700 shadow-sm active:scale-[0.98]" onclick="event.stopPropagation(); return shareAvReserveRow('email', '${safeDomIdJs}')"><i class="ph-bold ph-envelope-simple text-base"></i>Email</button>${actionVisibility.showText ? `<button type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 shadow-sm active:scale-[0.98]" onclick="event.stopPropagation(); return shareAvReserveRow('text', '${safeDomIdJs}')"><i class="ph-bold ph-chat-circle-dots text-base"></i>Text</button>` : ''}</div>`;
-            const bottomRailHtml = getInventoryCardBottomRailHtml(item.DOM_ID);
+            const bottomRailHtml = getInventoryCardBottomRailHtml(item.DOM_ID, '', { sourceView: 'drive' });
         return `<div class="flex items-start w-full mb-3 item-row app-smart-card relative bg-white p-4 rounded-xl border border-indigo-200 shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${bottomRailHtml ? 'app-card-with-bottom-rail' : ''}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, 'av', 'Open AV row')}><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Item Code</div><div class="mt-1 font-mono font-black text-[16px] text-indigo-800 break-all">${esc(itemCode)}</div><div class="mt-3 font-black text-slate-900 text-[20px] leading-tight break-words">${esc(commonName)}</div><div class="mt-1 text-[14px] font-bold text-[#007a4d]">${esc(contSize)}</div><div class="mt-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">${detailCell('Customer Name', customerName)}${detailCell('Consignee Name', consigneeName)}${detailCell('Sales Rep Name', salesRepName)}${detailCell('Location', locationCode)}${detailCell('DesigLoc', getInventoryCardDesigLocValue(item))}${detailCell('Request Date', requestDate)}${detailCell('Lot Code', lotCode)}${detailCell('Quantity Ordered', qtyOrdered)}${detailCell('Quantity Shipped', qtyShipped)}${detailCell('LOC PHOTO MATCH', locPhotoMatch)}${showSpecFields ? detailCell('Spec', specText) : ''}${showSpecFields ? detailCell('Caliper', caliperText) : ''}${detailCell('AV Note', avNote)}</div>${quickShareHtml}</div>${inlineThumbHtml}</div>${bottomRailHtml}</div>`;
         }
 
@@ -66733,7 +66774,7 @@ function toggleDriveQuickRequestItem(domId) {
                 }
             }
             const cornerThumbHtml = thumbHtml || `<div class="absolute top-3 right-3 flex h-14 w-14 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-1 text-center text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">No Photo</div>`;
-            const bottomRailHtml = getInventoryCardBottomRailHtml(item.DOM_ID);
+            const bottomRailHtml = getInventoryCardBottomRailHtml(item.DOM_ID, '', { sourceView: 'drive' });
             return `<div class="mb-3 rounded-[22px] border border-sky-200 bg-white p-4 pr-[5.25rem] shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden relative ${bottomRailHtml ? 'app-card-with-bottom-rail' : ''}" ${buildCardActivationAttrs(item.DOM_ID || '', item.UNIQUE_ID || '', 'drive', 'Open drive location row')}>${cornerThumbHtml}<div class="text-[10px] font-black uppercase tracking-[0.16em] text-sky-600">Drive Mode Location</div><div class="mt-1 font-black text-[20px] text-slate-900 break-words">${esc(locationCode)}</div><div class="mt-3 font-black text-[18px] leading-tight text-slate-900 break-words">${esc(commonName)}</div><div class="mt-1 text-[14px] font-bold text-[#007a4d]">${esc(contSize)}</div><div class="mt-2 inline-flex max-w-full items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-mono font-bold text-slate-600"><i class="ph-bold ph-barcode text-slate-400"></i><span class="truncate">${esc(itemCode)}</span></div><div class="mt-3 grid grid-cols-2 xl:grid-cols-4 gap-2">${detailCell('On hand', ptrOnHand)}${detailCell('Review', ptrReviewed)}${detailCell('Available', ptrAvailable)}${detailCell('Open Stock', sLts)}</div><div class="mt-2 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">${detailCell('Lot Code', lotCode)}${detailCell('DesigLoc', getInventoryCardDesigLocValue(item))}${detailCell('Tag Color', getInventoryCardFieldTagColorDisplayValue(item))}${detailCell('Priority', priority)}${hasLocationPhotoEvidence ? detailCell('LOC PHOTO MATCH', locPhotoMatch) : ''}${hasLocationPhotoEvidence && showSpecFields ? detailCell('Spec', specText) : ''}${hasLocationPhotoEvidence && showSpecFields ? detailCell('Caliper', caliperText) : ''}${hasLocationPhotoEvidence ? detailCell('AV Note', avNote) : ''}</div>${bottomRailHtml}</div>`;
         }
 
@@ -72596,6 +72637,7 @@ function toggleDriveQuickRequestItem(domId) {
         function canAddItemToBloomPicker(item = null) {
             if (!item || !canUseCartInventoryActions([item])) return false;
             const access = getRoleAccessState();
+            if (isCurrentDriveCardOptionsContext() && !canCurrentUserUseDriveCardOptions(item, 'drive')) return false;
             if (access.isForeman) return canAccessView('drive') && hasPriorityColumnData(item);
             return true;
         }
@@ -76094,10 +76136,12 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
-        function getInventoryCardBottomCartButtonHtml(domId = '') {
+        function getInventoryCardBottomCartButtonHtml(domId = '', options = {}) {
             const safeDomId = String(domId || '').trim();
             if (!safeDomId) return '';
             const item = findItemByDomId(safeDomId);
+            const safeOptions = options && typeof options === 'object' && !Array.isArray(options) ? options : {};
+            if (String(safeOptions.sourceView || '').trim().toLowerCase() === 'drive' && !canCurrentUserUseDriveCardOptions(item, 'drive')) return '';
             if (getRoleAccessState().isForeman && !canAddItemToBloomPicker(item)) return '';
             const inBag = selectedItems.has(safeDomId);
             return `<button type="button" class="app-card-bottom-btn ${inBag ? 'app-card-bottom-btn--secondary' : ''}" data-cart-dom-id="${esc(safeDomId)}" aria-pressed="${inBag ? 'true' : 'false'}" onclick="return handleInventoryCardBottomCartAction(event, '${esc(safeDomId)}')"><i class="ph-bold ${inBag ? 'ph-check' : 'ph-package'} text-base"></i><span data-cart-label>${inBag ? 'In Bloom Picker' : 'Add To Bloom Picker'}</span></button>`;
@@ -76136,7 +76180,7 @@ function toggleDriveQuickRequestItem(domId) {
             const safeDomId = String(domId || '').trim();
             const safeOptions = options && typeof options === 'object' && !Array.isArray(options) ? options : {};
             const includeCart = safeOptions.includeCart !== false;
-            const cartButtonHtml = includeCart ? getInventoryCardBottomCartButtonHtml(safeDomId) : '';
+            const cartButtonHtml = includeCart ? getInventoryCardBottomCartButtonHtml(safeDomId, safeOptions) : '';
             const extraHtml = String(extraButtonsHtml || '').trim();
             if (!cartButtonHtml && !extraHtml) return '';
             const rows = [];
@@ -82113,6 +82157,13 @@ function toggleDriveQuickRequestItem(domId) {
             if (!safeDomId) return;
             const hadItem = selectedItems.has(safeDomId);
             const wantsAdd = isChecked === null ? !hadItem : !!isChecked;
+            if (wantsAdd && isCurrentDriveCardOptionsContext()) {
+                const item = findItemByDomId(safeDomId);
+                if (!canCurrentUserUseDriveCardOptions(item, 'drive')) {
+                    showToast('View Only', 'Drive Mode actions are only available on rows assigned to you.', true);
+                    return;
+                }
+            }
             if (wantsAdd && getRoleAccessState().isForeman) {
                 const item = findItemByDomId(safeDomId);
                 if (!canAddItemToBloomPicker(item)) {
@@ -113681,18 +113732,20 @@ C.14.043 C.15.000
                 const driveNotesGridClass = driveAvNoteHtml && driveSalesNoteHtml ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1';
                 const driveNotesHtml = driveAvNoteHtml || driveSalesNoteHtml ? `<div class="mt-2 grid ${driveNotesGridClass} gap-2">${driveAvNoteHtml}${driveSalesNoteHtml}</div>` : '';
                 let extraData='';extraData=`<div class="mt-2 flex flex-wrap gap-2 text-[10px] font-bold text-gray-500 uppercase">${displaySpec?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Spec: ${displaySpec}</span>`:''}${displayCaliper?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Cal: ${displayCaliper}</span>`:''}${displayMatch?`<span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">LOC MATCH %: ${displayMatch}%</span>`:''}</div>`;
-                const driveNewCropReleaseBtn = getDriveNewCropReleaseButtonHtml(item);
-                const driveHoldReleaseBtn = getDriveHoldReleaseButtonHtml(item);
-                const driveReverseRailBtn = buildNcrApprovalReverseRailButtonHtml(item, 'drive');
-                const driveArgosRailHtml = buildArgosInventoryTransactionRailHtml(item, 'drive');
-                const includeDriveBloomPickerBtn = canUseDriveBloomPickerForTakeBack();
+                const canUseDriveOptions = canCurrentUserUseDriveCardOptions(item, sourceView);
+                const driveNewCropReleaseBtn = canUseDriveOptions ? getDriveNewCropReleaseButtonHtml(item) : '';
+                const driveHoldReleaseBtn = canUseDriveOptions ? getDriveHoldReleaseButtonHtml(item) : '';
+                const driveReverseRailBtn = canUseDriveOptions ? buildNcrApprovalReverseRailButtonHtml(item, 'drive') : '';
+                const driveArgosRailHtml = canUseDriveOptions ? buildArgosInventoryTransactionRailHtml(item, 'drive') : '';
+                const includeDriveBloomPickerBtn = canUseDriveOptions && (canUseDriveBloomPickerForTakeBack() || isWarehouseAssignedDriveCardForCurrentUser(item));
                 let quickRequestBtn = '';
                 if(includeDriveBloomPickerBtn || driveNewCropReleaseBtn || driveHoldReleaseBtn || driveReverseRailBtn || driveArgosRailHtml){
-                    quickRequestBtn = getInventoryCardBottomRailHtml(item.DOM_ID, `${driveArgosRailHtml}${driveNewCropReleaseBtn}${driveHoldReleaseBtn}${driveReverseRailBtn}`, { includeCart: includeDriveBloomPickerBtn });
+                    quickRequestBtn = getInventoryCardBottomRailHtml(item.DOM_ID, `${driveArgosRailHtml}${driveNewCropReleaseBtn}${driveHoldReleaseBtn}${driveReverseRailBtn}`, { includeCart: includeDriveBloomPickerBtn, sourceView });
                 }
-                const customerOutreachHtml = buildCustomerConsigneeOutreachCardAction(item, displaySourceView);
+                const customerOutreachHtml = canUseDriveOptions ? buildCustomerConsigneeOutreachCardAction(item, displaySourceView) : '';
                 const cropRollCardClass = sourceView === 'crop-roll' ? 'app-smart-card--crop-roll' : '';
-        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory ${cropRollCardClass} ${seasonCardShellClass} ${quickRequestBtn ? 'app-card-with-bottom-rail' : ''} relative ${inventoryCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open drive row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div><div class="flex flex-grow min-w-0 flex-col"><div class="flex items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-', item)}${buildInventorySecondarylineHtml(item.LOCATIONCODE || 'No Loc', displaySource, { locationSuffixHtml: buildDriveEarlyABadgeHtml(item) })}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div>${buildHoldStopCodeRowHtml(displayHoldStopCode)}${buildHoldStopReasonRowHtml()}<div class="mt-3">${driveQuantityStackHtml}</div>${cardDesignChipRowHtml}${extraData}${driveNotesHtml}${noteHtml}${customerOutreachHtml}${inventoryEditActionHtml}</div>${inlineThumbHtml}</div>${quickRequestBtn}</div></div>`;
+                const driveCheckboxHtml = canUseDriveOptions ? `<div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked)"></div>` : '';
+        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory ${cropRollCardClass} ${seasonCardShellClass} ${quickRequestBtn ? 'app-card-with-bottom-rail' : ''} relative ${inventoryCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open drive row')}>${driveCheckboxHtml}<div class="flex flex-grow min-w-0 flex-col"><div class="flex items-start justify-between min-w-0"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-', item)}${buildInventorySecondarylineHtml(item.LOCATIONCODE || 'No Loc', displaySource, { locationSuffixHtml: buildDriveEarlyABadgeHtml(item) })}<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-black"><span class="text-[12px] font-black uppercase">PRI ${item.PRIORITY||'-'}</span><span class="text-[12px] font-black">${item.ITEMCODE||'-'}</span><span class="text-[12px] font-black">${item.LOTCODE||'-'}</span></div>${buildHoldStopCodeRowHtml(displayHoldStopCode)}${buildHoldStopReasonRowHtml()}<div class="mt-3">${driveQuantityStackHtml}</div>${cardDesignChipRowHtml}${extraData}${driveNotesHtml}${noteHtml}${customerOutreachHtml}${inventoryEditActionHtml}</div>${inlineThumbHtml}</div>${quickRequestBtn}</div></div>`;
             }
             if(sourceView==='tasks'){
                 const displaySourceView = sourceView;
