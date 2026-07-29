@@ -14,6 +14,7 @@ const PHOTO_BUCKETS: Record<string, string> = {
   "ssn-": "season_sales_notes_photos",
   "lsn-": "location_sales_notes_photos",
   "req-": "request_photos",
+  "credit-": "credit_photos",
   "dock-": "dock_photos",
   "flyer-": "flyer_photos",
   default: "flyer_photos",
@@ -27,6 +28,7 @@ const READABLE_TABLES = new Set([
   "v2_crop_roll_rows",
   "v2_active_request",
   "v2_request_history",
+  "v2_sales_credit_requests",
   "v2_request_email_threads",
   "v2_reserves",
   "v2_soc_master",
@@ -84,6 +86,7 @@ const WRITABLE_TABLES = new Set([
   "v2_crop_roll_rows",
   "v2_active_request",
   "v2_request_history",
+  "v2_sales_credit_requests",
   "v2_request_email_threads",
   "v2_sales_office",
   "v2_shear_list",
@@ -140,6 +143,7 @@ const REP_WRITE_TABLES = new Set([
   ...COMMON_AUTH_WRITE_TABLES,
   "v2_active_request",
   "v2_request_history",
+  "v2_sales_credit_requests",
   "v2_request_email_threads",
   "v2_sales_office",
   "v2_shear_list",
@@ -238,7 +242,7 @@ function hasTableReadAccess(role = "", table = "") {
   if (access.isAdmin) return true;
   if (table === "v2_app_users") return access.isQc || access.isQcSupervisor || access.isAdmin;
   if (access.isRep) {
-    return new Set(["v2_master_inventory", "v2_active_request", "v2_reserves", "v2_soc_master", "v2_sales_office", "v2_cav", "v2_av_notes", "v2_dock_team_status", "v2_dock_item_status"]).has(table);
+    return new Set(["v2_master_inventory", "v2_active_request", "v2_request_history", "v2_sales_credit_requests", "v2_reserves", "v2_soc_master", "v2_sales_office", "v2_cav", "v2_av_notes", "v2_dock_team_status", "v2_dock_item_status"]).has(table);
   }
   if (access.isQcSupervisor) {
     return new Set(["v2_master_inventory", "v2_soc_master", "v2_dock_team_status", "v2_dock_item_status"]).has(table);
@@ -400,10 +404,10 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readAppSessi
   if (!session) return errorResponse("Unauthorized", 401);
   const access = getRoleAccessState(session.role);
   if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
-  if (access.isRep) return errorResponse("REP users cannot upload row photos.", 403);
 
   const form = await req.formData();
   const prefix = String(form.get("prefix") || "default").trim();
+  if (access.isRep && prefix !== "credit-") return errorResponse("REP users can only upload credit photos.", 403);
   const file = form.get("file");
   if (!(file instanceof File)) return errorResponse("No photo file was provided.", 400);
 

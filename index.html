@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.22';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.29.23';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4992,7 +4992,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.22').trim() || 'V2026.07.29.22';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.23').trim() || 'V2026.07.29.23';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6357,6 +6357,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const ACTIVE_REQUEST_LIVE_ROWS_TABLE = 'v2_active_request_live_rows';
         const FLYER_FOLDER_ROWS_TABLE = 'v2_flyer_folder_rows';
         const REQUEST_HISTORY_TABLE = 'v2_request_history';
+        const SALES_CREDIT_REQUESTS_TABLE = 'v2_sales_credit_requests';
         const FLYER_FOLDER_HISTORY_TABLE = 'v2_flyer_folder_history';
         const ML_IMAGE_JOBS_TABLE = 'v2_ml_image_jobs';
         const ML_CAPTURE_PHOTO_BUCKET = 'ml_capture_photos';
@@ -6419,6 +6420,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             'ssn-': 'season_sales_notes_photos',
             'lsn-': 'location_sales_notes_photos',
             'req-': 'request_photos',
+            'credit-': 'credit_photos',
             'dock-': 'dock_photos',
             'flyer-': 'flyer_photos',
             'marketing-': 'marketing_materials',
@@ -6446,7 +6448,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.22';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.23';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6527,14 +6529,14 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             drive: { realtimeTables: [WAREHOUSE_ASSIGNED_ITEMS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'crop-roll': { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             tasks: { realtimeTables: ['v2_master_inventory', 'v2_active_request', 'v2_sales_office', FLYER_FOLDER_ROWS_TABLE, FLYER_FOLDER_HISTORY_TABLE, ML_IMAGE_JOBS_TABLE, WAREHOUSE_ASSIGNED_ITEMS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
-            request: { realtimeTables: ['v2_active_request', REQUEST_HISTORY_TABLE], pollMs: REQUEST_VISIBLE_POLL_MS },
+            request: { realtimeTables: ['v2_active_request', REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE], pollMs: REQUEST_VISIBLE_POLL_MS },
             'sales-office': { realtimeTables: ['v2_sales_office'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             moves: { realtimeTables: ['v2_sales_office'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'take-back': { realtimeTables: ['v2_take_back_queue'], pollMs: 'visible-default' },
             av: { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             reserves: { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             docks: { realtimeTables: ['v2_dock_team_status', 'v2_dock_item_status', 'v2_dock_issue_status', 'v2_dock_issue_allocations'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
-            reports: { realtimeTables: ['v2_active_request', REQUEST_HISTORY_TABLE, 'v2_soc_master'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
+            reports: { realtimeTables: ['v2_active_request', REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE, 'v2_soc_master'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             advertisement: { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             review: { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'move-up': { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
@@ -14949,6 +14951,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (tableName === 'v2_crop_roll_rows') return ['cropRollDrive'];
             if (tableName === 'v2_active_request') return ['requests'];
             if (tableName === REQUEST_HISTORY_TABLE) return ['requestHistory'];
+            if (tableName === SALES_CREDIT_REQUESTS_TABLE) return ['salesCredits'];
             if (tableName === 'v2_inventory_edit_requests') return ['inventoryEditRequests'];
             if (tableName === 'v2_reserves') return ['reserves'];
             if (tableName === 'v2_soc_master') return ['soc'];
@@ -15522,6 +15525,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 syncRealtimeRequestRows();
                 changedDatasetKeys.add('requestHistory');
                 changedDatasetKeys.add('requests');
+            }
+            if (tableSet.has(SALES_CREDIT_REQUESTS_TABLE)) {
+                changedDatasetKeys.add('salesCredits');
             }
             if (tableSet.has('v2_reserves')) {
                 syncRealtimeReserveRows();
@@ -16119,6 +16125,13 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                         ).filter((item) => isEvalScopedDataRowVisibleToCurrentUser(item));
                     }
                 }
+            } else if (tableName === SALES_CREDIT_REQUESTS_TABLE) {
+                if (eventType === 'DELETE') {
+                    changed = removeRealtimeRow(salesCreditRequestsInventory, uniqueId);
+                } else {
+                    const creditRow = normalizeSalesCreditRequestRow(payload.new || nextRow);
+                    if (creditRow) changed = upsertRealtimeRow(salesCreditRequestsInventory, creditRow, tableName);
+                }
             } else if (tableName === 'v2_reserves') {
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(reservesInventory, uniqueId)
@@ -16238,6 +16251,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             } else if (tableName === REQUEST_HISTORY_TABLE) {
                 invalidateResolvedViewStateCaches();
                 requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
+                triggerRequestRealtimeUiRefresh(0);
+            } else if (tableName === SALES_CREDIT_REQUESTS_TABLE) {
+                invalidateResolvedViewStateCaches();
                 triggerRequestRealtimeUiRefresh(0);
             } else if (tableName === 'v2_soc_master') {
                 invalidateResolvedViewStateCaches();
@@ -23231,7 +23247,7 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             return items.map((item) => stripTransientCacheFields(item));
         }
 
-        const CACHE_SCHEMA_VERSION = 23;
+        const CACHE_SCHEMA_VERSION = 24;
         const MIN_TRUSTED_MASTER_COMMON_NAME_CACHE_COUNT = 1200;
         const INLINE_CACHE_RESERVE_LIMIT = 180;
         const NETWORK_VERIFIED_DATASET_KEYS = new Set([
@@ -23240,6 +23256,7 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             'avOpen',
             'requests',
             'requestHistory',
+            'salesCredits',
             'inventoryEditRequests',
             'reserves',
             'customerRepMap',
@@ -23270,6 +23287,7 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
                 avOpenData: buildCacheRows(avOpenInventory),
                 requestsData: buildCacheRows(requestsInventory),
                 requestHistoryData: buildCacheRows(requestHistoryInventory),
+                salesCreditsData: buildCacheRows(salesCreditRequestsInventory),
                 inventoryEditRequestsData: buildCacheRows(inventoryEditRequestInventory),
                 reservesData: inlineReserveRows,
                 customerRepMapData: buildCacheRows(customerRepMapRows),
@@ -23309,6 +23327,7 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
                 avOpen: { initialLoaded: hasRows(cachedRes.avOpenData) || hasRows(cachedRes.data), fullLoaded: false },
                 requests: { initialLoaded: hasRows(cachedRes.requestsData), fullLoaded: false },
                 requestHistory: { initialLoaded: hasRows(cachedRes.requestHistoryData), fullLoaded: false },
+                salesCredits: { initialLoaded: hasRows(cachedRes.salesCreditsData), fullLoaded: false },
                 inventoryEditRequests: { initialLoaded: hasRows(cachedRes.inventoryEditRequestsData), fullLoaded: false },
                 reserves: { initialLoaded: hasRows(cachedRes.reservesData), fullLoaded: false },
                 customerRepMap: { initialLoaded: hasRows(cachedRes.customerRepMapData), fullLoaded: hasRows(cachedRes.customerRepMapData) },
@@ -23487,6 +23506,7 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
                 avOpen: createDatasetLoadEntry(),
                 requests: createDatasetLoadEntry(),
                 requestHistory: createDatasetLoadEntry(),
+                salesCredits: createDatasetLoadEntry(),
                 reserves: createDatasetLoadEntry(),
                 customerRepMap: createDatasetLoadEntry(),
                 soc: createDatasetLoadEntry(),
@@ -23504,10 +23524,10 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             };
         }
 
-        let fullInventory=[]; let cropRollDriveInventory=[]; let cropRollDriveSchemaReady=null; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let customerRepMapRows=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let inventoryEditRequestInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let mlImageJobsInventory=[]; let growerScoutReportsInventory=[]; let growerScoutAssetsInventory=[]; let warehouseAssignedItemsInventory=[]; let cavInventory=[]; let cavAvBlankKeyInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={}; let diagnosticIssueCardTabs=new Map();
+        let fullInventory=[]; let cropRollDriveInventory=[]; let cropRollDriveSchemaReady=null; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let customerRepMapRows=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let salesCreditRequestsInventory=[]; let inventoryEditRequestInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let mlImageJobsInventory=[]; let growerScoutReportsInventory=[]; let growerScoutAssetsInventory=[]; let warehouseAssignedItemsInventory=[]; let cavInventory=[]; let cavAvBlankKeyInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={}; let diagnosticIssueCardTabs=new Map();
 let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set(); let foregroundDepartmentCalendarNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null; let chatVoiceHoldPointerId=''; let chatVoiceHoldForComposer=false; let chatVoiceHoldFinishPending=''; let chatVoiceHoldStartPromise=null;
 let walkieChannels=[]; let walkieChannelMembers=[]; let walkieCalls=[]; let walkieCallMembers=[]; let walkieUsers=[]; let walkieSignalsSeen=new Set(); let walkieDataLoaded=false; let walkieLoadPromise=null; let walkieSchemaReady=null; let walkieSchemaProbePromise=null; let walkieSchemaWarningShown=false; let activeWalkieChannelId=''; let pendingWalkieOpenChannelId=''; let pendingWalkieOpenCallId=''; let walkieComposeOpen=false; let walkieUserSearchTerm=''; let walkieComposeTitle=''; let walkieSelectedUsers=new Set(); let walkieLastRenderSignature=''; let walkieDeviceId=''; let activeWalkieCallId=''; let walkieJoinedCallId=''; let walkieActiveMembershipId=''; let walkiePeerConnections=new Map(); let walkieRemoteAudioElements=new Map(); let walkieLocalStream=null; let walkieHeartbeatTimer=null; let walkieSpeakerHeartbeatTimer=null; let walkieReconnectTimer=null; let walkieActiveSpeakerIntent=false; let walkiePressedPointerId=''; let walkieForegroundNoticeShown=false;
-        let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let cropRollDriveInventoryById=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let requestHistoryInventoryById=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let flyerFolderHistoryInventoryById=new Map(); let mlImageJobsInventoryById=new Map(); let growerScoutReportsInventoryById=new Map(); let growerScoutAssetsByReportId=new Map(); let warehouseAssignedItemsByLookupKey=new Map(); let warehouseAssignedItemMatchCache=new WeakMap(); let warehouseAssignedItemIndexCacheKey=''; let cavInventoryById=new Map(); let inventoryDomIdLookupCache=new Map(); let inventoryDomIdLookupCacheSignature=''; let inventoryDomIdLookupCacheVersion=0; let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map(); let ncrCurrentCropInheritancePatchIds=new Set();
+        let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let cropRollDriveInventoryById=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let requestHistoryInventoryById=new Map(); let salesCreditRequestsById=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let flyerFolderHistoryInventoryById=new Map(); let mlImageJobsInventoryById=new Map(); let growerScoutReportsInventoryById=new Map(); let growerScoutAssetsByReportId=new Map(); let warehouseAssignedItemsByLookupKey=new Map(); let warehouseAssignedItemMatchCache=new WeakMap(); let warehouseAssignedItemIndexCacheKey=''; let cavInventoryById=new Map(); let inventoryDomIdLookupCache=new Map(); let inventoryDomIdLookupCacheSignature=''; let inventoryDomIdLookupCacheVersion=0; let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map(); let ncrCurrentCropInheritancePatchIds=new Set();
         let activeGrowerScoutTab='note'; let growerScoutRecorder=null; let growerScoutRecorderStream=null; let growerScoutRecordingActive=false; let growerScoutRecordingStartedAt=0; let growerScoutRecordingTimer=null; let growerScoutRecordMimeType=''; let growerScoutAudioChunks=[]; let growerScoutAudioBlob=null; let growerScoutAudioDurationSeconds=0; let growerScoutSubmitInFlight=false;
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
 let reviewSearchTerm=''; let moveUpSearchTerm=''; let reviewBrowseMode='item'; let moveUpBrowseMode='item'; let selectedReviewBlockAlpha=null; let selectedReviewLocationCode=null; let selectedMoveUpBlockAlpha=null; let selectedMoveUpLocationCode=null; let reviewDerivedRenderCache={ key: '', filteredRows: [], cardRows: null, blockRows: null, blockGroups: null, itemGroups: null }; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set(); let holdReleaseOverrideColumnsReady=null; let holdReleaseOverrideColumnsProbePromise=null; let holdReleaseOverrideSchemaWarningShown=false;
@@ -23864,7 +23884,7 @@ let taskCustomerOutreachOpen=false; let taskCustomerOutreachSelectedRowIds=new S
 
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null; let moveUpViewLevel=0; let selectedMoveUpItemCode=null; let selectedMoveUpCommonName=null; let selectedMoveUpContSize=null;
         let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let activeLocationMoveQueDetailUid=''; let activeShearQueDetailId=''; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let tempReqAppendToExistingFolder=false; let tempExistingReqCustomerSearch=""; let tempExistingReqSelectedCustomer=""; let tempExistingReqConsigneeSearch=""; let tempExistingReqSelectedConsignee=""; let tempExistingReqFolderSearch=""; let tempRequestEmailChainSelectedEmails=new Set(); let tempRequestEmailChainRecipientByEmail=new Map(); let previousReqStep=""; let pendingRequestOverQtyResolution=null; let requestQtyStepDomIds=[]; let requestQtyStepIndex=0; let requestQtyStepItemsData={}; let requestQtyEmailStepActive=false; let requestItemCodeOptionState={ key:'', rows:[], loading:false, loaded:false, error:'' }; let requestAvOptionsDropdownOpen=false; let driveQuickRequestItems=new Set(); let driveReturnedSelectionToolbarQueued=false; let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
-let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqConsigneeView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending'; let requestFolderSearchTerm=''; let requestRepSearchTerm=''; let requestCustomerSearchTerm=''; let requestConsigneeSearchTerm=''; let requestFolderDateFilter=''; let requestDylanFilterMode='all'; let requestDylanFilterValue=''; let requestDylanSalesRepValue=''; let requestDylanLocationValue=''; let requestDylanFilterMenuOpen=''; let requestSuspendTagDockFilter='all'; let requestSuspendTagAssignedToFilter='all'; let requestSuspendTagCommonNameSearchTerm=''; let hiddenCompletedDockSuspendDcRequestMirrorIds=new Set(); let requestDylanPendingEntriesCacheKey=''; let requestDylanPendingEntriesCache=[]; let lastRequestHeaderSearchMode='';
+let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqConsigneeView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending'; let requestFolderSearchTerm=''; let requestRepSearchTerm=''; let requestCustomerSearchTerm=''; let requestConsigneeSearchTerm=''; let requestFolderDateFilter=''; let requestConsigneeDrillMode='request'; let salesCreditSelectedRequestUid=''; let salesCreditSelectedFiles=[]; let salesCreditSubmitting=false; let requestDylanFilterMode='all'; let requestDylanFilterValue=''; let requestDylanSalesRepValue=''; let requestDylanLocationValue=''; let requestDylanFilterMenuOpen=''; let requestSuspendTagDockFilter='all'; let requestSuspendTagAssignedToFilter='all'; let requestSuspendTagCommonNameSearchTerm=''; let hiddenCompletedDockSuspendDcRequestMirrorIds=new Set(); let requestDylanPendingEntriesCacheKey=''; let requestDylanPendingEntriesCache=[]; let lastRequestHeaderSearchMode='';
 
         function invalidateRequestViewResolvedCaches() {
             requestScopedItemsCacheKey = '';
@@ -23893,6 +23913,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const salesRepList=["Abbey Burka","Alyssa Beitz","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kayla Knepp","Kevin Effinger","Molly Dixon","Nate Douglas","Rudy Martinez","Toby Brown","Tony Bono","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
         const PRIVILEGED_MANAGER_USER_KEYS = Object.freeze(['dylan_collyge', 'jd_jones', 'megan_kelly']);
         const PRIVILEGED_MANAGER_USER_TOKENS = new Set([...PRIVILEGED_MANAGER_USER_KEYS, 'dylan', 'jd', 'jdjones', 'jd jones', 'megan', 'megankelly', 'megan kelly']);
+        const SALES_CREDIT_REVIEW_USERS = new Set(['dylan_collyge', 'jd_jones']);
         const REQUEST_REP_ENABLED_TOKENS = new Set(['alyssa_beitz','alyssa beitz','alyssabeitz','tony_bono','tony bono','tonybono','kayla_knepp','kayla knepp','kaylaknepp']);
         const REQUEST_GLOBAL_ACCESS_TOKENS = new Set(['kayla_knepp','kayla knepp','kaylaknepp']);
         const REQUEST_ROW_ARCHIVE_USERS = new Set(['kayla_knepp','kayla knepp','kaylaknepp']);
@@ -24285,7 +24306,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.22').trim() || 'V2026.07.29.22';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.23').trim() || 'V2026.07.29.23';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -25630,6 +25651,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             avOpen: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: 'select=*&s_lts=gt.0&order=unique_id.asc', fullQuery: 'select=*&s_lts=gt.0&order=unique_id.asc', initialLimit: getPrimaryInventoryInitialLimit },
             requests: { table: ACTIVE_REQUEST_LIVE_ROWS_TABLE, sourceTable: ACTIVE_REQUEST_TABLE, initialQuery: 'select=*&order=unique_id.desc', fullQuery: 'select=*&order=unique_id.desc' },
             requestHistory: { table: REQUEST_HISTORY_TABLE, sourceTable: 'v2_active_request', initialQuery: () => `select=${REQUEST_HISTORY_SELECT_FIELDS}&order=updated_at.desc`, fullQuery: () => `select=${REQUEST_HISTORY_SELECT_FIELDS}&order=updated_at.desc` },
+            salesCredits: { table: SALES_CREDIT_REQUESTS_TABLE, sourceTable: SALES_CREDIT_REQUESTS_TABLE, initialQuery: 'select=*&order=updated_at.desc', fullQuery: 'select=*&order=updated_at.desc' },
             inventoryEditRequests: { table: INVENTORY_EDIT_REQUESTS_TABLE, sourceTable: INVENTORY_EDIT_REQUESTS_TABLE, initialQuery: 'select=*&order=stage_updated_at.desc', fullQuery: 'select=*&order=stage_updated_at.desc', initialFetchAll: true },
             reserves: { table: 'v2_reserves', sourceTable: 'v2_reserves', initialQuery: buildReserveDatasetQuery, fullQuery: buildReserveDatasetQuery, initialLimit: getReserveDatasetInitialLimit },
             customerRepMap: { table: 'v2_customer_consignee_sales_reps', sourceTable: 'v2_customer_consignee_sales_reps', initialQuery: 'select=unique_id,customername,consigneename,salesrepname,salesrepid,customeridentityid,consigneeid,territorycode,territorydesc&order=customername.asc', fullQuery: 'select=unique_id,customername,consigneename,salesrepname,salesrepid,customeridentityid,consigneeid,territorycode,territorydesc&order=customername.asc', initialFetchAll: true },
@@ -26227,6 +26249,412 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return row;
         }
 
+        function normalizeSalesCreditStatus(value = '') {
+            const normalized = String(value || '').trim().toLowerCase();
+            if (normalized === 'approved' || normalized === 'approve') return 'approved';
+            if (normalized === 'denied' || normalized === 'deny' || normalized === 'rejected') return 'denied';
+            return 'pending';
+        }
+
+        function normalizeSalesCreditRequestRow(rawRow = null, idx = 0) {
+            if (!rawRow || typeof rawRow !== 'object') return null;
+            const snapshot = parseHistorySnapshotValue(firstNonEmptyValue(rawRow.SNAPSHOT, rawRow.snapshot, {}));
+            const uniqueId = String(firstNonEmptyValue(rawRow.UNIQUE_ID, rawRow.unique_id, snapshot.UNIQUE_ID, `credit_${idx}`) || '').trim();
+            if (!uniqueId) return null;
+            const item = Object.assign({}, snapshot, rawRow);
+            item.SOURCE_TABLE = SALES_CREDIT_REQUESTS_TABLE;
+            item.source_table = SALES_CREDIT_REQUESTS_TABLE;
+            item.UNIQUE_ID = uniqueId;
+            item.unique_id = uniqueId;
+            item.REQUEST_UNIQUE_ID = String(firstNonEmptyValue(rawRow.REQUEST_UNIQUE_ID, rawRow.request_unique_id, snapshot.REQUEST_UNIQUE_ID, snapshot.UNIQUE_ID, '') || '').trim();
+            item.REQUEST_FOLDER = String(firstNonEmptyValue(rawRow.REQUEST_FOLDER, rawRow.request_folder, snapshot.REQUEST_FOLDER, 'Unassigned') || 'Unassigned').trim() || 'Unassigned';
+            item.REQUESTED_BY = String(firstNonEmptyValue(rawRow.REQUESTED_BY, rawRow.requested_by, rawRow.SALESREPNAME, rawRow.salesrepname, snapshot.REQUESTED_BY, snapshot.SALESREPNAME, 'Unknown Rep') || 'Unknown Rep').trim() || 'Unknown Rep';
+            item.SALESREPNAME = item.REQUESTED_BY;
+            item.CUSTOMERNAME = String(firstNonEmptyValue(rawRow.CUSTOMERNAME, rawRow.customername, snapshot.CUSTOMERNAME, snapshot.CUSTOMER, snapshot.REQ_CUSTOMER, '') || '').trim();
+            item.CONSIGNEENAME = String(firstNonEmptyValue(rawRow.CONSIGNEENAME, rawRow.consigneename, snapshot.CONSIGNEENAME, snapshot.CONSIGNEE, '') || '').trim() || 'No Consignee';
+            item.REQ_CUSTOMER = String(firstNonEmptyValue(rawRow.REQ_CUSTOMER, rawRow.req_customer, snapshot.REQ_CUSTOMER, item.CONSIGNEENAME, item.CUSTOMERNAME, '') || '').trim();
+            item.MASTER_ID = String(firstNonEmptyValue(rawRow.MASTER_ID, rawRow.master_id, rawRow.MASTER_UNIQUE_ID, rawRow.master_unique_id, snapshot.MASTER_ID, snapshot.MASTER_UNIQUE_ID, '') || '').trim();
+            item.MASTER_UNIQUE_ID = String(firstNonEmptyValue(rawRow.MASTER_UNIQUE_ID, rawRow.master_unique_id, item.MASTER_ID, '') || '').trim();
+            item.ITEMCODE = String(firstNonEmptyValue(rawRow.ITEMCODE, rawRow.itemcode, snapshot.ITEMCODE, '') || '').trim();
+            item.COMMONNAME = String(firstNonEmptyValue(rawRow.COMMONNAME, rawRow.commonname, snapshot.COMMONNAME, 'Credit Request') || 'Credit Request').trim();
+            item.CONTSIZE = String(firstNonEmptyValue(rawRow.CONTSIZE, rawRow.contsize, snapshot.CONTSIZE, '') || '').trim();
+            item.LOCATIONCODE = String(firstNonEmptyValue(rawRow.LOCATIONCODE, rawRow.locationcode, snapshot.LOCATIONCODE, '') || '').trim();
+            item.LOTCODE = String(firstNonEmptyValue(rawRow.LOTCODE, rawRow.lotcode, snapshot.LOTCODE, '') || '').trim();
+            item.PRIORITY = String(firstNonEmptyValue(rawRow.PRIORITY, rawRow.priority, snapshot.PRIORITY, '') || '').trim();
+            item.REQ_QTY = String(firstNonEmptyValue(rawRow.REQ_QTY, rawRow.req_qty, snapshot.REQ_QTY, '') || '').trim();
+            item.CREDIT_QTY = String(firstNonEmptyValue(rawRow.CREDIT_QTY, rawRow.credit_qty, snapshot.CREDIT_QTY, '') || '').trim();
+            item.CREDIT_REASON = String(firstNonEmptyValue(rawRow.CREDIT_REASON, rawRow.credit_reason, snapshot.CREDIT_REASON, '') || '').trim();
+            item.CREDIT_NOTE = String(firstNonEmptyValue(rawRow.CREDIT_NOTE, rawRow.credit_note, snapshot.CREDIT_NOTE, '') || '').trim();
+            item.CREDIT_STATUS = normalizeSalesCreditStatus(firstNonEmptyValue(rawRow.CREDIT_STATUS, rawRow.credit_status, snapshot.CREDIT_STATUS, 'pending'));
+            item.CREDIT_PHOTO_LINK = String(firstNonEmptyValue(rawRow.CREDIT_PHOTO_LINK, rawRow.credit_photo_link, snapshot.CREDIT_PHOTO_LINK, '') || '').trim();
+            item.CREDIT_PHOTO_NAME = String(firstNonEmptyValue(rawRow.CREDIT_PHOTO_NAME, rawRow.credit_photo_name, snapshot.CREDIT_PHOTO_NAME, '') || '').trim();
+            item.REQUEST_PHOTO_LINK = String(firstNonEmptyValue(rawRow.REQUEST_PHOTO_LINK, rawRow.request_photo_link, snapshot.REQUEST_PHOTO_LINK, snapshot.REQ_PHOTO_LINK, '') || '').trim();
+            item.REQUEST_PHOTO_NAME = String(firstNonEmptyValue(rawRow.REQUEST_PHOTO_NAME, rawRow.request_photo_name, snapshot.REQUEST_PHOTO_NAME, snapshot.REQ_PHOTO_NAME, '') || '').trim();
+            item.SUBMITTED_BY_USERNAME = String(firstNonEmptyValue(rawRow.SUBMITTED_BY_USERNAME, rawRow.submitted_by_username, snapshot.SUBMITTED_BY_USERNAME, '') || '').trim();
+            item.SUBMITTED_BY_DISPLAY = String(firstNonEmptyValue(rawRow.SUBMITTED_BY_DISPLAY, rawRow.submitted_by_display, snapshot.SUBMITTED_BY_DISPLAY, item.SUBMITTED_BY_USERNAME, '') || '').trim();
+            item.SUBMITTED_BY_EMAIL = String(firstNonEmptyValue(rawRow.SUBMITTED_BY_EMAIL, rawRow.submitted_by_email, snapshot.SUBMITTED_BY_EMAIL, '') || '').trim();
+            item.SUBMITTED_AT = String(firstNonEmptyValue(rawRow.SUBMITTED_AT, rawRow.submitted_at, snapshot.SUBMITTED_AT, rawRow.CREATED_AT, rawRow.created_at, '') || '').trim();
+            item.REVIEWED_BY_USERNAME = String(firstNonEmptyValue(rawRow.REVIEWED_BY_USERNAME, rawRow.reviewed_by_username, snapshot.REVIEWED_BY_USERNAME, '') || '').trim();
+            item.REVIEWED_BY_DISPLAY = String(firstNonEmptyValue(rawRow.REVIEWED_BY_DISPLAY, rawRow.reviewed_by_display, snapshot.REVIEWED_BY_DISPLAY, item.REVIEWED_BY_USERNAME, '') || '').trim();
+            item.REVIEWED_AT = String(firstNonEmptyValue(rawRow.REVIEWED_AT, rawRow.reviewed_at, snapshot.REVIEWED_AT, '') || '').trim();
+            item.REVIEW_NOTE = String(firstNonEmptyValue(rawRow.REVIEW_NOTE, rawRow.review_note, snapshot.REVIEW_NOTE, '') || '').trim();
+            item.UPDATED_AT = String(firstNonEmptyValue(rawRow.UPDATED_AT, rawRow.updated_at, snapshot.UPDATED_AT, '') || '').trim();
+            item.SNAPSHOT = snapshot;
+            item.DOM_ID = `credit_${uniqueId.replace(/[^a-z0-9_-]+/gi, '_') || idx}`;
+            item._search = `${item.REQUESTED_BY} ${item.CUSTOMERNAME} ${item.CONSIGNEENAME} ${item.REQUEST_FOLDER} ${item.COMMONNAME} ${item.ITEMCODE} ${item.LOCATIONCODE} ${item.CREDIT_STATUS} ${item.CREDIT_REASON}`.toLowerCase();
+            buildSearchIndex(item);
+            return item;
+        }
+
+        function cacheSalesCreditRequestRow(rawRow = null) {
+            const row = normalizeSalesCreditRequestRow(rawRow);
+            if (!row) return null;
+            const id = String(row.UNIQUE_ID || '').trim();
+            salesCreditRequestsInventory = (Array.isArray(salesCreditRequestsInventory) ? salesCreditRequestsInventory : [])
+                .filter((entry) => String(entry && entry.UNIQUE_ID || '').trim() !== id);
+            salesCreditRequestsInventory.push(row);
+            salesCreditRequestsInventory.sort((a, b) => {
+                const aMs = Date.parse(firstNonEmptyValue(a.UPDATED_AT, a.SUBMITTED_AT, '')) || 0;
+                const bMs = Date.parse(firstNonEmptyValue(b.UPDATED_AT, b.SUBMITTED_AT, '')) || 0;
+                return bMs - aMs;
+            });
+            salesCreditRequestsById.set(id, row);
+            return row;
+        }
+
+        function getSalesCreditRequestRep(row = null) {
+            return String(firstNonEmptyValue(row && row.REQUESTED_BY, row && row.requested_by, row && row.SALESREPNAME, row && row.salesrepname, '') || '').trim() || 'Unknown Rep';
+        }
+
+        function getSalesCreditRequestCustomer(row = null) {
+            return String(firstNonEmptyValue(row && row.CUSTOMERNAME, row && row.customername, row && row.REQ_CUSTOMER, row && row.req_customer, '') || '').trim() || 'Unknown Customer';
+        }
+
+        function getSalesCreditRequestConsignee(row = null) {
+            return String(firstNonEmptyValue(row && row.CONSIGNEENAME, row && row.consigneename, row && row.REQ_CUSTOMER, row && row.req_customer, '') || '').trim() || 'No Consignee';
+        }
+
+        function canReviewSalesCreditRequests() {
+            const userKey = normalizePushUsername(firstNonEmptyValue(currentUser, currentUserDisplay, '') || '');
+            return !!(userKey && SALES_CREDIT_REVIEW_USERS.has(userKey));
+        }
+
+        function getSalesCreditRowsForDrillScope(repName = '', customerName = '', consigneeName = '') {
+            const selectedRep = String(repName || '').trim();
+            const selectedCustomerKey = normalizeRequestCustomerFolderKey(customerName);
+            const selectedConsigneeKey = normalizeRequestConsigneeFolderKey(consigneeName);
+            return (Array.isArray(salesCreditRequestsInventory) ? salesCreditRequestsInventory : []).filter((row) => {
+                if (selectedRep && !doesRequestRepMatchValue(getSalesCreditRequestRep(row), selectedRep)) return false;
+                if (selectedCustomerKey && normalizeRequestCustomerFolderKey(getSalesCreditRequestCustomer(row)) !== selectedCustomerKey) return false;
+                if (selectedConsigneeKey && normalizeRequestConsigneeFolderKey(getSalesCreditRequestConsignee(row)) !== selectedConsigneeKey) return false;
+                return true;
+            }).sort((a, b) => {
+                const aMs = Date.parse(firstNonEmptyValue(a.UPDATED_AT, a.SUBMITTED_AT, '')) || 0;
+                const bMs = Date.parse(firstNonEmptyValue(b.UPDATED_AT, b.SUBMITTED_AT, '')) || 0;
+                return bMs - aMs;
+            });
+        }
+
+        function getSalesCreditRowsForSelectedConsignee() {
+            return getSalesCreditRowsForDrillScope(selectedReqRepView, selectedReqCustView, selectedReqConsigneeView);
+        }
+
+        function getSalesCreditSelectableRequestRows(rows = []) {
+            const seen = new Set();
+            return (Array.isArray(rows) ? rows : []).filter((row) => {
+                const uid = getItemUniqueId(row);
+                if (!uid || seen.has(uid)) return false;
+                seen.add(uid);
+                return true;
+            }).sort((a, b) => String(getRequestFolderName(a)).localeCompare(String(getRequestFolderName(b)), undefined, { numeric: true, sensitivity: 'base' })
+                || String(firstNonEmptyValue(a && a.COMMONNAME, '')).localeCompare(String(firstNonEmptyValue(b && b.COMMONNAME, '')), undefined, { numeric: true, sensitivity: 'base' }));
+        }
+
+        function getSalesCreditSourceRequestRow(uid = '') {
+            const safeUid = String(uid || '').trim();
+            if (!safeUid) return null;
+            return (Array.isArray(requestsInventory) ? requestsInventory : []).find((row) => getItemUniqueId(row) === safeUid) || null;
+        }
+
+        function setRequestConsigneeDrillMode(mode = 'request') {
+            requestConsigneeDrillMode = String(mode || '').trim().toLowerCase() === 'credit' ? 'credit' : 'request';
+            scheduleRequestRender(0, 32, true);
+            return false;
+        }
+
+        function renderRequestConsigneeModeTabs(requestCount = 0, creditCount = 0) {
+            const activeMode = requestConsigneeDrillMode === 'credit' ? 'credit' : 'request';
+            const buttonClass = (mode) => mode === activeMode
+                ? 'border-[#007a4d] bg-[#007a4d] text-white shadow-md'
+                : 'border-emerald-200 bg-white text-[#007a4d] shadow-sm';
+            return `<div class="mb-3 grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] active:scale-95 ${buttonClass('request')}" onclick="return setRequestConsigneeDrillMode('request')"><i class="ph-bold ph-folder mr-1"></i>Request <span class="ml-1 opacity-80">${Math.max(0, Number(requestCount) || 0)}</span></button><button type="button" class="rounded-xl border px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] active:scale-95 ${buttonClass('credit')}" onclick="return setRequestConsigneeDrillMode('credit')"><i class="ph-bold ph-receipt mr-1"></i>Credit <span class="ml-1 opacity-80">${Math.max(0, Number(creditCount) || 0)}</span></button></div>`;
+        }
+
+        function formatSalesCreditDate(value = '') {
+            const stamp = Date.parse(String(value || '').trim());
+            if (!Number.isFinite(stamp)) return '';
+            try {
+                return new Date(stamp).toLocaleString([], { month: 'numeric', day: 'numeric', year: '2-digit', hour: 'numeric', minute: '2-digit' });
+            } catch (error) {
+                return new Date(stamp).toLocaleString();
+            }
+        }
+
+        function renderSalesCreditPhotoStrip(photoCsv = '', title = 'Photos', emptyLabel = 'No photos') {
+            const urls = getPhotoUrlList(photoCsv);
+            if (!urls.length) {
+                return `<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">${escapeHtml(emptyLabel)}</div>`;
+            }
+            const maxVisible = Math.min(6, urls.length);
+            const photos = urls.slice(0, maxVisible).map((url, index) => {
+                const expandedUrl = getExpandedImageUrl(url);
+                const thumbUrl = getDirectImageUrl(url, index === 0 ? 'card-inline' : 'thumb');
+                const imageHtml = buildDeferredCardPhotoImg(thumbUrl, {
+                    className: 'h-28 w-full rounded-xl border border-slate-200 object-cover bg-white',
+                    loading: index === 0 ? 'eager' : 'lazy',
+                    fetchPriority: index === 0 ? 'high' : 'low',
+                    hydrateNow: index === 0,
+                    alt: `${title} ${index + 1}`
+                });
+                return `<button type="button" class="block min-w-0 active:scale-95" onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(expandedUrl)}','${escJsAttrValue(title)}')">${imageHtml}</button>`;
+            }).join('');
+            const more = urls.length > maxVisible ? `<div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">+${urls.length - maxVisible} more</div>` : '';
+            return `<div class="grid grid-cols-2 gap-2 sm:grid-cols-3">${photos}</div>${more}`;
+        }
+
+        function getSalesCreditStatusClasses(status = '') {
+            const normalized = normalizeSalesCreditStatus(status);
+            if (normalized === 'approved') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+            if (normalized === 'denied') return 'border-red-200 bg-red-50 text-red-700';
+            return 'border-amber-200 bg-amber-50 text-amber-700';
+        }
+
+        function renderSalesCreditRequestCard(row = null) {
+            if (!row) return '';
+            const id = String(row.UNIQUE_ID || '').trim();
+            const status = normalizeSalesCreditStatus(row.CREDIT_STATUS);
+            const statusLabel = status === 'approved' ? 'Approved' : status === 'denied' ? 'Denied' : 'Pending';
+            const submittedLabel = formatSalesCreditDate(firstNonEmptyValue(row.SUBMITTED_AT, row.CREATED_AT, ''));
+            const reviewedLabel = formatSalesCreditDate(row.REVIEWED_AT);
+            const reviewHtml = row.REVIEWED_BY_DISPLAY || reviewedLabel || row.REVIEW_NOTE
+                ? `<div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Review</div><div class="mt-1 text-sm font-black text-slate-900">${escapeHtml(firstNonEmptyValue(row.REVIEWED_BY_DISPLAY, row.REVIEWED_BY_USERNAME, 'Not reviewed'))}${reviewedLabel ? ` <span class="text-xs font-bold text-slate-400">${escapeHtml(reviewedLabel)}</span>` : ''}</div>${row.REVIEW_NOTE ? `<div class="mt-2 whitespace-pre-wrap text-sm font-semibold text-slate-600">${escapeHtml(row.REVIEW_NOTE)}</div>` : ''}</div>`
+                : '';
+            const actionHtml = canReviewSalesCreditRequests() && status === 'pending'
+                ? `<div class="mt-4 grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-emerald-600 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="return reviewSalesCreditRequest('${escJsAttrValue(id)}','approved')"><i class="ph-bold ph-check mr-1"></i>Approve</button><button type="button" class="rounded-xl border border-red-200 bg-red-600 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="return reviewSalesCreditRequest('${escJsAttrValue(id)}','denied')"><i class="ph-bold ph-x mr-1"></i>Deny</button></div>`
+                : '';
+            return `<div class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm"><div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">${escapeHtml(row.REQUEST_FOLDER || 'Request Folder')}</div><div class="mt-1 text-2xl font-black leading-tight text-slate-900">${escapeHtml(row.COMMONNAME || 'Credit Request')}</div><div class="mt-1 text-xs font-black uppercase tracking-[0.12em] text-slate-500">${escapeHtml(row.ITEMCODE || '-')} &bull; ${escapeHtml(row.CONTSIZE || '-')} &bull; Loc ${escapeHtml(row.LOCATIONCODE || '-')}</div></div><span class="rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] ${getSalesCreditStatusClasses(status)}">${statusLabel}</span></div><div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3"><div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Credit Qty</div><div class="text-xl font-black text-slate-900">${escapeHtml(row.CREDIT_QTY || '-')}</div></div><div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Reason</div><div class="text-sm font-black text-slate-900">${escapeHtml(row.CREDIT_REASON || '-')}</div></div><div class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Submitted</div><div class="text-sm font-black text-slate-900">${escapeHtml(firstNonEmptyValue(row.SUBMITTED_BY_DISPLAY, row.SUBMITTED_BY_USERNAME, '-'))}</div>${submittedLabel ? `<div class="text-xs font-bold text-slate-400">${escapeHtml(submittedLabel)}</div>` : ''}</div></div>${row.CREDIT_NOTE ? `<div class="mt-3 rounded-xl border border-slate-200 bg-white p-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Form Note</div><div class="mt-1 whitespace-pre-wrap text-sm font-semibold text-slate-700">${escapeHtml(row.CREDIT_NOTE)}</div></div>` : ''}<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2"><div><div class="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-blue-600">Original Request Photos</div>${renderSalesCreditPhotoStrip(row.REQUEST_PHOTO_LINK, 'Original Request Photos', 'No request photos')}</div><div><div class="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-red-600">Customer Credit Photos</div>${renderSalesCreditPhotoStrip(row.CREDIT_PHOTO_LINK, 'Customer Credit Photos', 'No credit photos')}</div></div>${reviewHtml}${actionHtml}</div>`;
+        }
+
+        function renderSalesCreditConsigneeView(consigneeItems = [], creditRows = []) {
+            const selectableRows = getSalesCreditSelectableRequestRows(consigneeItems);
+            if ((!salesCreditSelectedRequestUid || !selectableRows.some((row) => getItemUniqueId(row) === salesCreditSelectedRequestUid)) && selectableRows.length) {
+                salesCreditSelectedRequestUid = getItemUniqueId(selectableRows[0]);
+            }
+            const optionsHtml = selectableRows.map((row) => {
+                const uid = getItemUniqueId(row);
+                const label = `${getRequestFolderName(row)} | ${firstNonEmptyValue(row.COMMONNAME, 'Unknown')} | ${firstNonEmptyValue(row.ITEMCODE, '-')} | Loc ${firstNonEmptyValue(row.LOCATIONCODE, '-')}`;
+                return `<option value="${escapeHtml(uid)}" ${uid === salesCreditSelectedRequestUid ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+            }).join('');
+            const formHtml = selectableRows.length
+                ? `<form class="mb-4 rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm" onsubmit="return submitSalesCreditRequest(event)"><div class="mb-3 flex items-center justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Credit Form</div><div class="text-xl font-black text-slate-900">Upload customer credit photos</div></div><i class="ph-bold ph-receipt text-3xl text-emerald-600"></i></div><label class="block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Request Row<select id="sales-credit-request-select" class="input-field !mb-0 mt-1 border-emerald-200 focus:border-[#007a4d]" onchange="salesCreditSelectedRequestUid=this.value; return false;">${optionsHtml}</select></label><div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2"><label class="block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Credit Qty<input id="sales-credit-qty" class="input-field !mb-0 mt-1 border-emerald-200 focus:border-[#007a4d]" type="number" min="0" step="1" placeholder="0"></label><label class="block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Reason<select id="sales-credit-reason" class="input-field !mb-0 mt-1 border-emerald-200 focus:border-[#007a4d]"><option value="Quality">Quality</option><option value="Damaged">Damaged</option><option value="Short">Short</option><option value="Wrong Item">Wrong Item</option><option value="Other">Other</option></select></label></div><label class="mt-3 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Credit Note<textarea id="sales-credit-note" class="input-field !mb-0 mt-1 min-h-[6rem] border-emerald-200 focus:border-[#007a4d]" placeholder="Enter what happened..."></textarea></label><div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]"><label class="flex min-h-[72px] cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50 px-4 py-3 text-center text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700 active:scale-95"><i class="ph-bold ph-images mr-2 text-xl"></i><span id="sales-credit-file-count">Choose Customer Photos</span><input class="hidden" type="file" accept="image/*" multiple onchange="return handleSalesCreditFileSelection(this)"></label><button id="sales-credit-submit-btn" type="submit" class="min-h-[72px] rounded-xl bg-[#007a4d] px-6 text-[12px] font-black uppercase tracking-[0.18em] text-white shadow-lg active:scale-95 ${salesCreditSubmitting ? 'opacity-60 pointer-events-none' : ''}">${salesCreditSubmitting ? 'Saving...' : 'Submit Credit'}</button></div></form>`
+                : `<div class="mb-4 rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No request rows are available for a new credit in this consignee view.</div>`;
+            const cardsHtml = creditRows.length
+                ? `<div class="space-y-3">${creditRows.map((row) => renderSalesCreditRequestCard(row)).join('')}</div>`
+                : `<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No credit requests for this customer and consignee yet.</div>`;
+            return `${formHtml}${cardsHtml}`;
+        }
+
+        function handleSalesCreditFileSelection(input) {
+            salesCreditSelectedFiles = Array.from(input && input.files || []).filter((file) => file && String(file.type || '').startsWith('image/'));
+            const label = document.getElementById('sales-credit-file-count');
+            if (label) label.textContent = salesCreditSelectedFiles.length ? `${salesCreditSelectedFiles.length} Customer Photo${salesCreditSelectedFiles.length === 1 ? '' : 's'}` : 'Choose Customer Photos';
+            return false;
+        }
+
+        function buildSalesCreditPhotoFileName(file = null, creditId = '', index = 0) {
+            const idPart = sanitizeInventoryPhotoFileSegment(creditId || 'credit', 'credit').slice(0, 80);
+            const token = sanitizeInventoryPhotoFileSegment(createPendingPhotoToken(), String(Date.now()));
+            const ext = sanitizeInventoryPhotoFileSegment(getInventoryPhotoFileExtension(file, 'jpg'), 'jpg').toLowerCase();
+            return `${idPart}-${String(index + 1).padStart(2, '0')}-${token}.${ext}`;
+        }
+
+        async function uploadSalesCreditPhotoFile(file = null, creditId = '', index = 0) {
+            if (!file) throw new Error('Missing credit photo.');
+            const fileName = buildSalesCreditPhotoFileName(file, creditId, index);
+            const contentType = getPhotoUploadContentType(file, 'image/jpeg');
+            let bucketName = PHOTO_BUCKETS['credit-'] || 'credit_photos';
+            let filePath = `${new Date().toISOString().split('T')[0]}/${fileName}`;
+            let publicUrl = '';
+            try {
+                const apiUpload = await uploadPhotoViaAppApi('credit-', file, fileName, contentType, { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
+                bucketName = String(apiUpload.bucketName || bucketName).trim() || bucketName;
+                filePath = String(apiUpload.filePath || filePath).trim() || filePath;
+                publicUrl = String(apiUpload.publicUrl || '').trim();
+            } catch (secureUploadError) {
+                if (!appApiPhotoUploadFallbackWarningShown) {
+                    appApiPhotoUploadFallbackWarningShown = true;
+                    console.warn('Secure credit photo upload proxy unavailable; using direct Storage fallback.', secureUploadError);
+                }
+                const uploadResult = await withTimeout(
+                    supabaseClient.storage.from(bucketName).upload(filePath, file, {
+                        contentType,
+                        cacheControl: '31536000',
+                        upsert: true
+                    }),
+                    SUPABASE_UPLOAD_TIMEOUT_MS,
+                    'Credit photo upload'
+                );
+                const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
+                if (uploadError) throw uploadError;
+                const { data: publicUrlData } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
+                publicUrl = String(publicUrlData && publicUrlData.publicUrl || '').trim();
+            }
+            if (!publicUrl) throw new Error('Credit photo upload did not return a public URL.');
+            return { publicUrl, fileName, bucketName, filePath };
+        }
+
+        async function submitSalesCreditRequest(event = null) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (salesCreditSubmitting) return false;
+            const selectEl = document.getElementById('sales-credit-request-select');
+            const sourceUid = String((selectEl && selectEl.value) || salesCreditSelectedRequestUid || '').trim();
+            const sourceRow = getSalesCreditSourceRequestRow(sourceUid);
+            if (!sourceRow) {
+                showToast('Request Missing', 'Choose the request row this credit belongs to.', true);
+                return false;
+            }
+            const files = (Array.isArray(salesCreditSelectedFiles) ? salesCreditSelectedFiles : []).filter((file) => file && String(file.type || '').startsWith('image/'));
+            if (!files.length) {
+                showToast('Photos Required', 'Upload the customer credit photos before submitting.', true);
+                return false;
+            }
+            const qty = String((document.getElementById('sales-credit-qty') || {}).value || '').trim();
+            const reason = String((document.getElementById('sales-credit-reason') || {}).value || '').trim() || 'Other';
+            const note = String((document.getElementById('sales-credit-note') || {}).value || '').trim();
+            const creditId = `credit_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+            const submitBtn = document.getElementById('sales-credit-submit-btn');
+            salesCreditSubmitting = true;
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Saving...';
+            }
+            try {
+                showToast('Uploading', `Uploading ${files.length} credit photo${files.length === 1 ? '' : 's'}...`, false);
+                const uploaded = [];
+                for (let i = 0; i < files.length; i += 1) {
+                    uploaded.push(await uploadSalesCreditPhotoFile(files[i], creditId, i));
+                }
+                const requestSnapshot = buildRequestHistorySnapshot(sourceRow);
+                const submittedBy = normalizePushUsername(firstNonEmptyValue(currentUser, currentUserDisplay, '') || '');
+                const submittedDisplay = String(firstNonEmptyValue(currentUserDisplay, currentUser, submittedBy, '') || '').trim();
+                const submittedEmail = String(typeof resolveRequestRecipientEmail === 'function' ? resolveRequestRecipientEmail(firstNonEmptyValue(currentUser, currentUserDisplay, '') || '') : '').trim();
+                const submittedAt = new Date().toISOString();
+                const payload = {
+                    unique_id: creditId,
+                    request_unique_id: sourceUid,
+                    request_folder: getRequestFolderName(sourceRow),
+                    requested_by: String(firstNonEmptyValue(selectedReqRepView, getRequestAssignedRep(sourceRow), requestSnapshot.REQUESTED_BY, '') || '').trim(),
+                    salesrepname: String(firstNonEmptyValue(selectedReqRepView, getRequestAssignedRep(sourceRow), requestSnapshot.REQUESTED_BY, '') || '').trim(),
+                    customername: String(firstNonEmptyValue(selectedReqCustView, getRequestCustomerFolderName(sourceRow), requestSnapshot.REQ_CUSTOMER, '') || '').trim(),
+                    consigneename: String(firstNonEmptyValue(selectedReqConsigneeView, getRequestConsigneeFolderName(sourceRow), requestSnapshot.REQ_CUSTOMER, '') || '').trim() || 'No Consignee',
+                    req_customer: String(firstNonEmptyValue(sourceRow.REQ_CUSTOMER, sourceRow.req_customer, selectedReqConsigneeView, selectedReqCustView, '') || '').trim(),
+                    master_id: requestSnapshot.MASTER_ID || null,
+                    master_unique_id: requestSnapshot.MASTER_UNIQUE_ID || requestSnapshot.MASTER_ID || null,
+                    itemcode: requestSnapshot.ITEMCODE || null,
+                    commonname: requestSnapshot.COMMONNAME || null,
+                    contsize: requestSnapshot.CONTSIZE || null,
+                    locationcode: requestSnapshot.LOCATIONCODE || null,
+                    lotcode: requestSnapshot.LOTCODE || null,
+                    priority: requestSnapshot.PRIORITY || null,
+                    req_qty: requestSnapshot.REQ_QTY || null,
+                    credit_qty: qty || null,
+                    credit_reason: reason,
+                    credit_note: note || null,
+                    credit_status: 'pending',
+                    credit_photo_link: uploaded.map((entry) => entry.publicUrl).join(','),
+                    credit_photo_name: uploaded.map((entry) => entry.fileName).join(','),
+                    request_photo_link: requestSnapshot.REQ_PHOTO_LINK || getRequestHistoryPhotoLink(sourceRow) || null,
+                    request_photo_name: requestSnapshot.REQ_PHOTO_NAME || getRequestHistoryPhotoName(sourceRow) || null,
+                    submitted_by_username: submittedBy || null,
+                    submitted_by_display: submittedDisplay || null,
+                    submitted_by_email: submittedEmail || null,
+                    submitted_at: submittedAt,
+                    snapshot: {
+                        request: requestSnapshot,
+                        credit: {
+                            qty,
+                            reason,
+                            note,
+                            submitted_by_username: submittedBy,
+                            submitted_by_display: submittedDisplay,
+                            submitted_at: submittedAt,
+                            photo_count: uploaded.length
+                        }
+                    }
+                };
+                await supabaseFetch(SALES_CREDIT_REQUESTS_TABLE, 'POST', payload, 'on_conflict=unique_id');
+                cacheSalesCreditRequestRow(payload);
+                salesCreditSelectedFiles = [];
+                const fileLabel = document.getElementById('sales-credit-file-count');
+                if (fileLabel) fileLabel.textContent = 'Choose Customer Photos';
+                showToast('Credit Submitted', 'Saved in this customer/consignee Credit view for Dylan and JD review.');
+                triggerRequestRealtimeUiRefresh(0);
+            } catch (error) {
+                showToast('Credit Failed', error && error.message ? error.message : 'Could not save the credit request.', true);
+            } finally {
+                salesCreditSubmitting = false;
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit Credit';
+                }
+            }
+            return false;
+        }
+
+        async function reviewSalesCreditRequest(uniqueId = '', status = 'pending') {
+            const safeId = String(uniqueId || '').trim();
+            const nextStatus = normalizeSalesCreditStatus(status);
+            if (!safeId || nextStatus === 'pending') return false;
+            if (!canReviewSalesCreditRequests()) {
+                showToast('Restricted', 'Only Dylan and JD can approve or deny credits.', true);
+                return false;
+            }
+            const row = salesCreditRequestsById.get(safeId) || (Array.isArray(salesCreditRequestsInventory) ? salesCreditRequestsInventory.find((entry) => String(entry && entry.UNIQUE_ID || '').trim() === safeId) : null);
+            if (!row) {
+                showToast('Not Found', 'That credit request is no longer loaded.', true);
+                return false;
+            }
+            const label = nextStatus === 'approved' ? 'Approve' : 'Deny';
+            const note = await showAppPrompt(`${label} credit for ${row.COMMONNAME || 'this row'}?\n\nOptional review note:`, row.REVIEW_NOTE || '', {
+                title: `${label} Credit`,
+                confirmLabel: label,
+                tone: nextStatus === 'denied' ? 'danger' : '',
+                multiline: true
+            });
+            if (note === null) return false;
+            const reviewedAt = new Date().toISOString();
+            const payload = {
+                credit_status: nextStatus,
+                review_note: String(note || '').trim() || null,
+                reviewed_by_username: normalizePushUsername(firstNonEmptyValue(currentUser, currentUserDisplay, '') || '') || null,
+                reviewed_by_display: String(firstNonEmptyValue(currentUserDisplay, currentUser, '') || '').trim() || null,
+                reviewed_at: reviewedAt
+            };
+            try {
+                await supabaseFetch(SALES_CREDIT_REQUESTS_TABLE, 'PATCH', payload, `unique_id=eq.${encodeURIComponent(safeId)}`);
+                Object.assign(row, normalizeSalesCreditRequestRow(Object.assign({}, row, payload, { unique_id: safeId, updated_at: reviewedAt })) || {});
+                cacheSalesCreditRequestRow(row);
+                showToast('Credit Reviewed', `Credit ${nextStatus}.`);
+                triggerRequestRealtimeUiRefresh(0);
+            } catch (error) {
+                showToast('Review Failed', error && error.message ? error.message : 'Could not update the credit request.', true);
+            }
+            return false;
+        }
+
         async function upsertRequestHistoryRows(items = [], eventName = 'snapshot') {
             if (requestHistorySchemaReady === false) {
                 warnMissingRequestHistorySchema();
@@ -26529,6 +26957,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             requestCustomerSearchTerm = '';
             requestConsigneeSearchTerm = '';
             requestFolderDateFilter = '';
+            requestConsigneeDrillMode = 'request';
+            salesCreditSelectedRequestUid = '';
+            salesCreditSelectedFiles = [];
             requestDylanFilterMode = 'all';
             requestDylanFilterValue = '';
             requestDylanSalesRepValue = '';
@@ -26552,6 +26983,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 selectedReqConsigneeView: String(selectedReqConsigneeView || '').trim(),
                 selectedReqFolderView: String(selectedReqFolderView || '').trim(),
                 requestFolderSearchTerm: String(requestFolderSearchTerm || '').trim(),
+                requestConsigneeDrillMode: requestConsigneeDrillMode === 'credit' ? 'credit' : 'request',
                 requestRepSearchTerm: String(requestRepSearchTerm || '').trim(),
                 requestCustomerSearchTerm: String(requestCustomerSearchTerm || '').trim(),
                 requestConsigneeSearchTerm: String(requestConsigneeSearchTerm || '').trim(),
@@ -26577,6 +27009,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             selectedReqConsigneeView = String(snapshot.selectedReqConsigneeView || '').trim() || null;
             selectedReqFolderView = String(snapshot.selectedReqFolderView || '').trim() || null;
             requestFolderSearchTerm = String(snapshot.requestFolderSearchTerm || '').trim();
+            requestConsigneeDrillMode = String(snapshot.requestConsigneeDrillMode || '').trim().toLowerCase() === 'credit' ? 'credit' : 'request';
             requestRepSearchTerm = String(snapshot.requestRepSearchTerm || '').trim();
             requestCustomerSearchTerm = String(snapshot.requestCustomerSearchTerm || '').trim();
             requestConsigneeSearchTerm = String(snapshot.requestConsigneeSearchTerm || '').trim();
@@ -27212,7 +27645,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const repItems = selectedRepName
                 ? scopedItems.filter((item) => doesRequestRepMatchValue(getRequestAssignedRep(item), selectedRepName) && !item.REQ_ARCHIVED)
                 : [];
-            const hasSelectedRepFolder = selectedRepName && (repItems.length || doesRequestRepHaveMappedCustomerFolders(selectedRepName));
+            const repCreditRows = selectedRepName ? getSalesCreditRowsForDrillScope(selectedRepName) : [];
+            const hasSelectedRepFolder = selectedRepName && (repItems.length || repCreditRows.length || doesRequestRepHaveMappedCustomerFolders(selectedRepName));
             if (requestViewLevel > 0 && !hasSelectedRepFolder) {
                 requestViewLevel = 0;
                 selectedReqRepView = null;
@@ -27232,7 +27666,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const customerItems = selectedCustomerKey
                 ? repItems.filter((item) => normalizeRequestCustomerFolderKey(getRequestCustomerFolderName(item)) === selectedCustomerKey)
                 : [];
-            const hasSelectedCustomerFolder = selectedCustomerKey && (customerItems.length || doesRequestRepHaveMappedCustomerFolder(selectedRepName, selectedCustomerName));
+            const customerCreditRows = selectedCustomerKey ? getSalesCreditRowsForDrillScope(selectedRepName, selectedCustomerName) : [];
+            const hasSelectedCustomerFolder = selectedCustomerKey && (customerItems.length || customerCreditRows.length || doesRequestRepHaveMappedCustomerFolder(selectedRepName, selectedCustomerName));
             if (requestViewLevel >= 2 && !hasSelectedCustomerFolder) {
                 requestViewLevel = 1;
                 selectedReqCustView = null;
@@ -27250,7 +27685,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const consigneeItems = selectedConsigneeKey
                 ? customerItems.filter((item) => normalizeRequestConsigneeFolderKey(getRequestConsigneeFolderName(item)) === selectedConsigneeKey)
                 : [];
-            const hasSelectedConsigneeFolder = selectedConsigneeKey && (consigneeItems.length || doesRequestRepHaveMappedConsigneeFolder(selectedRepName, selectedCustomerName, selectedConsigneeName));
+            const consigneeCreditRows = selectedConsigneeKey ? getSalesCreditRowsForDrillScope(selectedRepName, selectedCustomerName, selectedConsigneeName) : [];
+            const hasSelectedConsigneeFolder = selectedConsigneeKey && (consigneeItems.length || consigneeCreditRows.length || doesRequestRepHaveMappedConsigneeFolder(selectedRepName, selectedCustomerName, selectedConsigneeName));
             if (requestViewLevel >= 3 && !hasSelectedConsigneeFolder) {
                 requestViewLevel = 2;
                 selectedReqConsigneeView = null;
@@ -27676,6 +28112,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (key === 'avOpen') return { avOpenData: formatted };
             if (key === 'requests') return { requestsData: formatted };
             if (key === 'requestHistory') return { requestHistoryData: formatted };
+            if (key === 'salesCredits') return { salesCreditsData: formatted };
             if (key === 'inventoryEditRequests') return { inventoryEditRequestsData: formatted };
             if (key === 'reserves') return { reservesData: formatted };
             if (key === 'customerRepMap') return { customerRepMapData: formatted };
@@ -27812,6 +28249,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 case 'avOpen': return Array.isArray(avOpenInventory) ? avOpenInventory.length : 0;
                 case 'requests': return Array.isArray(requestsInventory) ? requestsInventory.length : 0;
                 case 'requestHistory': return Array.isArray(requestHistoryInventory) ? requestHistoryInventory.length : 0;
+                case 'salesCredits': return Array.isArray(salesCreditRequestsInventory) ? salesCreditRequestsInventory.length : 0;
                 case 'inventoryEditRequests': return Array.isArray(inventoryEditRequestInventory) ? inventoryEditRequestInventory.length : 0;
                 case 'reserves': return Array.isArray(reservesInventory) ? reservesInventory.length : 0;
                 case 'customerRepMap': return Array.isArray(customerRepMapRows) ? customerRepMapRows.length : 0;
@@ -28226,7 +28664,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'master', mode: 'full' }], background: [], label: 'Loading verified AV open stock from Drive Mode rows...' });
             }
             if (viewId === 'docks') return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'soc', mode: 'full' }], background: [], label: 'Loading all dock rows...' });
-            if (viewId === 'request') return { required: [{ key: 'requests', mode: 'full' }, { key: 'requestHistory', mode: 'full' }, { key: 'inventoryEditRequests', mode: 'full' }, { key: 'soc', mode: 'full' }], background: [], label: 'Loading verified Que...' };
+            if (viewId === 'request') return { required: [{ key: 'requests', mode: 'full' }, { key: 'requestHistory', mode: 'full' }, { key: 'salesCredits', mode: 'full' }, { key: 'inventoryEditRequests', mode: 'full' }, { key: 'soc', mode: 'full' }], background: [], label: 'Loading verified Que...' };
             if (viewId === 'managers') {
                 if (isTaskDiagnosticsView(activeHomeTab)) {
                     return { required: [{ key: 'mlJobs', mode: 'initial' }], background: [{ key: 'mlJobs', mode: 'full' }], label: 'Loading manager diagnostics...' };
@@ -28312,7 +28750,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (viewId === 'diagnostics') return { required: [{ key: 'mlJobs', mode: 'initial' }], background: [{ key: 'mlJobs', mode: 'full' }], label: 'Loading diagnostics...' };
             if (viewId === 'grower') return { required: [{ key: 'growerScoutReports', mode: 'full' }, { key: 'growerScoutAssets', mode: 'full' }, { key: 'master', mode: 'full' }], background: [], label: 'Loading verified grower scouting...' };
             if (viewId === 'pest-management') return { required: [{ key: 'growerScoutReports', mode: 'full' }, { key: 'growerScoutAssets', mode: 'full' }], background: [], label: 'Loading verified pest management...' };
-            if (viewId === 'reports') return { required: [{ key: 'master', mode: 'full' }, { key: 'requests', mode: 'full' }, { key: 'requestHistory', mode: 'full' }, { key: 'reserves', mode: 'full' }, { key: 'soc', mode: 'full' }], background: [], label: 'Loading verified reports...' };
+            if (viewId === 'reports') return { required: [{ key: 'master', mode: 'full' }, { key: 'requests', mode: 'full' }, { key: 'requestHistory', mode: 'full' }, { key: 'salesCredits', mode: 'full' }, { key: 'reserves', mode: 'full' }, { key: 'soc', mode: 'full' }], background: [], label: 'Loading verified reports...' };
             return null;
         }
 
@@ -28657,6 +29095,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 salesOfficeInventory,
                 flyerFolderInventory,
                 requestHistoryInventory,
+                salesCreditRequestsInventory,
                 flyerFolderHistoryInventory
             ];
         }
@@ -28715,6 +29154,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             salesOfficeInventoryById = rebuildInventoryByIdMap(salesOfficeInventory);
             flyerFolderInventoryById = rebuildInventoryByIdMap(flyerFolderInventory);
             requestHistoryInventoryById = rebuildInventoryByIdMap(requestHistoryInventory);
+            salesCreditRequestsById = rebuildInventoryByIdMap(salesCreditRequestsInventory);
             flyerFolderHistoryInventoryById = rebuildInventoryByIdMap(flyerFolderHistoryInventory);
             cavInventoryById = rebuildInventoryByIdMap(cavInventory);
             rebuildRequestInventoryIndexes();
@@ -28733,6 +29173,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (safeTableName === REQUEST_HISTORY_TABLE) {
                 requestHistoryInventoryById = rebuildInventoryByIdMap(requestHistoryInventory);
                 rebuildRequestInventoryIndexes();
+                invalidateLookup();
+                return;
+            }
+            if (safeTableName === SALES_CREDIT_REQUESTS_TABLE) {
+                salesCreditRequestsById = rebuildInventoryByIdMap(salesCreditRequestsInventory);
                 invalidateLookup();
                 return;
             }
@@ -43211,6 +43656,7 @@ function toggleDriveQuickRequestItem(domId) {
             const hasAvOpen = hasKey('avOpenData');
             const hasRequests = hasKey('requestsData');
             const hasRequestHistory = hasKey('requestHistoryData');
+            const hasSalesCredits = hasKey('salesCreditsData');
             const hasInventoryEditRequests = hasKey('inventoryEditRequestsData');
             const hasReserves = hasKey('reservesData');
             const hasCustomerRepMap = hasKey('customerRepMapData');
@@ -43226,13 +43672,14 @@ function toggleDriveQuickRequestItem(domId) {
             const hasCavAvBlankKeys = hasKey('cavAvBlankKeysData');
             const hasAvHotPrice = hasKey('avHotPriceKeysData');
             const hasAvNotes = hasKey('avNotesData');
-            const didStructuralDataChange = hasMaster || hasCropRollDrive || hasAvOpen || hasRequests || hasRequestHistory || hasInventoryEditRequests || hasReserves || hasCustomerRepMap || hasSoc || hasSalesOffice || hasFlyerRows || hasFlyerHistory || hasMlJobs || hasGrowerScoutReports || hasGrowerScoutAssets || hasWarehouseAssignedItems || hasCav || hasCavAvBlankKeys || hasAvHotPrice || hasAvNotes;
+            const didStructuralDataChange = hasMaster || hasCropRollDrive || hasAvOpen || hasRequests || hasRequestHistory || hasSalesCredits || hasInventoryEditRequests || hasReserves || hasCustomerRepMap || hasSoc || hasSalesOffice || hasFlyerRows || hasFlyerHistory || hasMlJobs || hasGrowerScoutReports || hasGrowerScoutAssets || hasWarehouseAssignedItems || hasCav || hasCavAvBlankKeys || hasAvHotPrice || hasAvNotes;
             const changedDatasetKeys = [];
             if (hasMaster) changedDatasetKeys.push('master');
             if (hasCropRollDrive) changedDatasetKeys.push('cropRollDrive');
             if (hasAvOpen) changedDatasetKeys.push('avOpen');
             if (hasRequests) changedDatasetKeys.push('requests');
             if (hasRequestHistory) changedDatasetKeys.push('requestHistory');
+            if (hasSalesCredits) changedDatasetKeys.push('salesCredits');
             if (hasInventoryEditRequests) changedDatasetKeys.push('inventoryEditRequests');
             if (hasReserves) changedDatasetKeys.push('reserves');
             if (hasCustomerRepMap) changedDatasetKeys.push('customerRepMap');
@@ -43315,6 +43762,11 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasRequestHistory) {
                 requestHistoryInventory = (res.requestHistoryData || []).map((item, idx) => normalizeRequestHistoryRow(item, idx)).filter(Boolean);
                 requestHistoryInventoryById = rebuildInventoryByIdMap(requestHistoryInventory);
+            }
+
+            if (hasSalesCredits) {
+                salesCreditRequestsInventory = (res.salesCreditsData || []).map((item, idx) => normalizeSalesCreditRequestRow(item, idx)).filter(Boolean);
+                salesCreditRequestsById = rebuildInventoryByIdMap(salesCreditRequestsInventory);
             }
 
             if (hasInventoryEditRequests) {
@@ -50628,8 +51080,11 @@ function toggleDriveQuickRequestItem(domId) {
                 const datasetKeys = [...(config.required || []), ...(config.background || [])].map((item) => item.key);
                 return datasetKeys.some((key) => changedSet.has(key));
             });
-            if ((changedSet.has('requests') || changedSet.has('requestHistory') || changedSet.has('salesOffice')) && !affectedViews.includes('tasks')) {
+            if ((changedSet.has('requests') || changedSet.has('requestHistory') || changedSet.has('salesCredits') || changedSet.has('salesOffice')) && !affectedViews.includes('tasks')) {
                 affectedViews.push('tasks');
+            }
+            if (changedSet.has('salesCredits') && !affectedViews.includes('request')) {
+                affectedViews.push('request');
             }
             if (activeReqTab === 'recount' && (changedSet.has('master') || changedSet.has('salesOffice')) && !affectedViews.includes('request')) {
                 affectedViews.push('request');
@@ -89077,6 +89532,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 if (!item || item.REQ_ARCHIVED) return;
                 appendRep(getRequestAssignedRep(item));
             });
+            (Array.isArray(salesCreditRequestsInventory) ? salesCreditRequestsInventory : []).forEach((row) => {
+                appendRep(getSalesCreditRequestRep(row));
+            });
             if (canUseRequestMappedFoldersForCurrentUser()) {
                 (Array.isArray(customerRepMapRows) ? customerRepMapRows : []).forEach((row) => appendRep(getCustomerRepMapRepValue(row)));
             }
@@ -89114,8 +89572,30 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 if (consigneeLabel) entry.consigneeNames.add(consigneeLabel);
                 entry.rows.push(item);
             });
+            getSalesCreditRowsForDrillScope(repName).forEach((row) => {
+                const label = getSalesCreditRequestCustomer(row);
+                const consigneeLabel = getSalesCreditRequestConsignee(row);
+                const key = normalizeRequestCustomerFolderKey(label);
+                if (!key) return;
+                if (!folderMap.has(key)) {
+                    folderMap.set(key, {
+                        key,
+                        customerName: label,
+                        consigneeNames: new Set(),
+                        label,
+                        rows: [],
+                        creditRows: [],
+                        mapRows: []
+                    });
+                }
+                const entry = folderMap.get(key);
+                if (!Array.isArray(entry.creditRows)) entry.creditRows = [];
+                if (consigneeLabel) entry.consigneeNames.add(consigneeLabel);
+                entry.creditRows.push(row);
+            });
             return Array.from(folderMap.values()).map((entry) => {
                 const rows = Array.isArray(entry.rows) ? entry.rows : [];
+                const creditRows = Array.isArray(entry.creditRows) ? entry.creditRows : [];
                 const folderGroups = new Map();
                 rows.forEach((item) => {
                     const consigneeName = getRequestConsigneeFolderName(item);
@@ -89127,15 +89607,20 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 const unreadCount = Array.from(folderGroups.values()).reduce((count, group) => {
                     return count + (isCompletedRequestFolderUnread(repName, entry.label, group.folderName, group.rows, group.consigneeName) ? 1 : 0);
                 }, 0);
+                const creditLatestMs = creditRows.reduce((latest, row) => Math.max(latest, Date.parse(firstNonEmptyValue(row.UPDATED_AT, row.SUBMITTED_AT, row.CREATED_AT, '')) || 0), 0);
+                const info = getRequestFolderStatusInfo(rows);
                 return Object.assign(entry, {
                     rows,
-                    info: getRequestFolderStatusInfo(rows),
+                    creditRows,
+                    creditCount: creditRows.length,
+                    info,
+                    sortMs: Math.max(info.latestMs || 0, creditLatestMs),
                     folderCount: folderGroups.size,
                     consigneeCount: entry.consigneeNames instanceof Set ? entry.consigneeNames.size : 0,
                     unreadCount,
-                    searchText: `${entry.label || ''} ${entry.customerName || ''} ${Array.from(entry.consigneeNames || []).join(' ')} ${rows.map((row) => [row.REQ_CUSTOMER, row.REQUEST_FOLDER, row.COMMONNAME, row.ITEMCODE].join(' ')).join(' ')}`
+                    searchText: `${entry.label || ''} ${entry.customerName || ''} ${Array.from(entry.consigneeNames || []).join(' ')} ${rows.map((row) => [row.REQ_CUSTOMER, row.REQUEST_FOLDER, row.COMMONNAME, row.ITEMCODE].join(' ')).join(' ')} ${creditRows.map((row) => [row.CONSIGNEENAME, row.REQUEST_FOLDER, row.COMMONNAME, row.ITEMCODE, row.CREDIT_REASON, row.CREDIT_STATUS].join(' ')).join(' ')}`
                 });
-            }).sort((a, b) => (b.info.latestMs - a.info.latestMs) || String(a.label || '').localeCompare(String(b.label || ''), undefined, { numeric: true, sensitivity: 'base' }));
+            }).sort((a, b) => ((b.sortMs || 0) - (a.sortMs || 0)) || String(a.label || '').localeCompare(String(b.label || ''), undefined, { numeric: true, sensitivity: 'base' }));
         }
 
         function buildRequestConsigneeFolderEntriesForCustomer(repName = '', customerName = '', customerItems = []) {
@@ -89171,21 +89656,33 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 const entry = ensureEntry(getRequestConsigneeFolderName(item));
                 if (entry) entry.rows.push(item);
             });
+            getSalesCreditRowsForDrillScope(repName, customerName).forEach((row) => {
+                const entry = ensureEntry(getSalesCreditRequestConsignee(row));
+                if (!entry) return;
+                if (!Array.isArray(entry.creditRows)) entry.creditRows = [];
+                entry.creditRows.push(row);
+            });
             return Array.from(folderMap.values()).map((entry) => {
                 const rows = Array.isArray(entry.rows) ? entry.rows : [];
+                const creditRows = Array.isArray(entry.creditRows) ? entry.creditRows : [];
                 const folderNames = [...new Set(rows.map((item) => getRequestFolderName(item)).filter(Boolean))];
                 const unreadCount = folderNames.reduce((count, folderName) => {
                     const folderRows = rows.filter((item) => getRequestFolderName(item) === folderName);
                     return count + (isCompletedRequestFolderUnread(repName, customerName, folderName, folderRows, entry.label) ? 1 : 0);
                 }, 0);
+                const creditLatestMs = creditRows.reduce((latest, row) => Math.max(latest, Date.parse(firstNonEmptyValue(row.UPDATED_AT, row.SUBMITTED_AT, row.CREATED_AT, '')) || 0), 0);
+                const info = getRequestFolderStatusInfo(rows);
                 return Object.assign(entry, {
                     rows,
-                    info: getRequestFolderStatusInfo(rows),
+                    creditRows,
+                    creditCount: creditRows.length,
+                    info,
+                    sortMs: Math.max(info.latestMs || 0, creditLatestMs),
                     folderCount: folderNames.length,
                     unreadCount,
-                    searchText: `${entry.label || ''} ${entry.customerName || ''} ${rows.map((row) => [row.REQ_CUSTOMER, row.REQUEST_FOLDER, row.COMMONNAME, row.ITEMCODE].join(' ')).join(' ')}`
+                    searchText: `${entry.label || ''} ${entry.customerName || ''} ${rows.map((row) => [row.REQ_CUSTOMER, row.REQUEST_FOLDER, row.COMMONNAME, row.ITEMCODE].join(' ')).join(' ')} ${creditRows.map((row) => [row.REQUEST_FOLDER, row.COMMONNAME, row.ITEMCODE, row.CREDIT_REASON, row.CREDIT_STATUS].join(' ')).join(' ')}`
                 });
-            }).sort((a, b) => (b.info.latestMs - a.info.latestMs) || String(a.label || '').localeCompare(String(b.label || ''), undefined, { numeric: true, sensitivity: 'base' }));
+            }).sort((a, b) => ((b.sortMs || 0) - (a.sortMs || 0)) || String(a.label || '').localeCompare(String(b.label || ''), undefined, { numeric: true, sensitivity: 'base' }));
         }
 
         function normalizeDockSuspendRequestValue(value = '') {
@@ -91087,6 +91584,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 requestCustomerSearchTerm = '';
                 requestConsigneeSearchTerm = '';
                 requestFolderDateFilter = '';
+                requestConsigneeDrillMode = 'request';
+                salesCreditSelectedRequestUid = '';
+                salesCreditSelectedFiles = [];
                 requestViewLevel = 1;
             }, {
                 resetScrollTopAfterRender: true,
@@ -91103,6 +91603,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 requestFolderSearchTerm = '';
                 requestConsigneeSearchTerm = '';
                 requestFolderDateFilter = '';
+                requestConsigneeDrillMode = 'request';
+                salesCreditSelectedRequestUid = '';
+                salesCreditSelectedFiles = [];
                 requestViewLevel = 2;
             }, {
                 resetScrollTopAfterRender: true,
@@ -91117,6 +91620,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 selectedReqFolderView = null;
                 requestFolderSearchTerm = '';
                 requestFolderDateFilter = '';
+                requestConsigneeDrillMode = 'request';
+                salesCreditSelectedRequestUid = '';
+                salesCreditSelectedFiles = [];
                 requestViewLevel = 3;
             }, {
                 resetScrollTopAfterRender: true,
@@ -91174,6 +91680,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 requestCustomerSearchTerm = '';
                 requestConsigneeSearchTerm = '';
                 requestFolderDateFilter = '';
+                requestConsigneeDrillMode = 'request';
+                salesCreditSelectedRequestUid = '';
+                salesCreditSelectedFiles = [];
             }, {
                 resetScrollTopAfterRender: true,
                 scrollResetKey: 'request-rep-list'
@@ -91190,6 +91699,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 requestCustomerSearchTerm = '';
                 requestConsigneeSearchTerm = '';
                 requestFolderDateFilter = '';
+                requestConsigneeDrillMode = 'request';
+                salesCreditSelectedRequestUid = '';
+                salesCreditSelectedFiles = [];
             }, {
                 resetScrollTopAfterRender: true,
                 scrollResetKey: `request-rep:${selectedReqRepView || ''}`
@@ -91203,6 +91715,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 selectedReqFolderView = null;
                 requestFolderSearchTerm = '';
                 requestFolderDateFilter = '';
+                requestConsigneeDrillMode = 'request';
+                salesCreditSelectedRequestUid = '';
+                salesCreditSelectedFiles = [];
             }, {
                 delay: 0,
                 typingDelay: 32,
@@ -92203,13 +92718,14 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     }
                     let html = `<div class="request-card-list request-card-list--spaced request-card-list--rep-customers"><div class="back-btn" ${buildFastInvokeAttrs('backToRequestRepList', [], 'Back to Reps')}><i class="ph-bold ph-arrow-left"></i> Back to Reps</div>`;
                     html += visibleCustomerEntries.map((entry) => {
-                        const latestLabel = formatRequestFolderLatestLabel(entry.info.latestMs);
+                        const latestLabel = formatRequestFolderLatestLabel(entry.sortMs || entry.info.latestMs);
                         const unreadDot = entry.unreadCount ? `<span class="inline-flex h-3 w-3 rounded-full bg-red-500 shadow-sm ring-2 ring-white" aria-label="Unread completed request"></span>` : '';
                         const pendingBadge = entry.info.pendingCount ? `<span class="rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-orange-700">${entry.info.pendingCount} Pending</span>` : '';
                         const completeBadge = entry.info.completeCount ? `<span class="rounded-full border border-green-200 bg-green-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-green-700">${entry.info.completeCount} Complete</span>` : '';
+                        const creditBadge = entry.creditCount ? `<span class="rounded-full border border-red-200 bg-red-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-red-700">${entry.creditCount} Credit</span>` : '';
                         const consigneeSummary = entry.consigneeCount ? `${entry.consigneeCount} consignee${entry.consigneeCount === 1 ? '' : 's'}` : 'No consignee folders yet';
-                        const folderSummary = entry.folderCount ? `${consigneeSummary} &bull; ${entry.folderCount} request folder${entry.folderCount === 1 ? '' : 's'}${latestLabel ? ` &bull; Newest ${escapeShareHtml(latestLabel)}` : ''}` : `${entry.mapRows && entry.mapRows.length ? consigneeSummary : 'No request folders yet'}`;
-                        return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('openRequestCustomerView', [entry.label], 'Open customer ' + entry.label)}><div class="flex justify-between items-center gap-3"><div class="flex items-center gap-3 min-w-0"><div class="bg-emerald-50 p-2 rounded-lg"><i class="ph-bold ph-users-three text-2xl text-[#007a4d]"></i></div><div class="min-w-0"><div class="flex items-center gap-2"><span class="font-bold text-sm text-emerald-900 break-words">${escapeShareHtml(entry.label)}</span>${unreadDot}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${folderSummary}</div></div></div><i class="ph-bold ph-caret-right text-gray-300"></i></div><div class="mt-3 flex flex-wrap gap-2">${pendingBadge}${completeBadge}</div></div>`;
+                        const folderSummary = entry.folderCount ? `${consigneeSummary} &bull; ${entry.folderCount} request folder${entry.folderCount === 1 ? '' : 's'}${entry.creditCount ? ` &bull; ${entry.creditCount} credit${entry.creditCount === 1 ? '' : 's'}` : ''}${latestLabel ? ` &bull; Newest ${escapeShareHtml(latestLabel)}` : ''}` : `${entry.creditCount ? `${consigneeSummary} &bull; ${entry.creditCount} credit${entry.creditCount === 1 ? '' : 's'}${latestLabel ? ` &bull; Newest ${escapeShareHtml(latestLabel)}` : ''}` : (entry.mapRows && entry.mapRows.length ? consigneeSummary : 'No request folders yet')}`;
+                        return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('openRequestCustomerView', [entry.label], 'Open customer ' + entry.label)}><div class="flex justify-between items-center gap-3"><div class="flex items-center gap-3 min-w-0"><div class="bg-emerald-50 p-2 rounded-lg"><i class="ph-bold ph-users-three text-2xl text-[#007a4d]"></i></div><div class="min-w-0"><div class="flex items-center gap-2"><span class="font-bold text-sm text-emerald-900 break-words">${escapeShareHtml(entry.label)}</span>${unreadDot}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${folderSummary}</div></div></div><i class="ph-bold ph-caret-right text-gray-300"></i></div><div class="mt-3 flex flex-wrap gap-2">${pendingBadge}${completeBadge}${creditBadge}</div></div>`;
                     }).join('');
                     html += `</div>`;
                     applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:customers:${customerSearchToken}:${visibleCustomerEntries.map((entry) => entry.label).join('|')}`);
@@ -92235,12 +92751,13 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     }
                     let html = `<div class="request-card-list request-card-list--spaced request-card-list--rep-consignees"><div class="back-btn" ${buildFastInvokeAttrs('backToRequestStatusList', [], 'Back to Customers')}><i class="ph-bold ph-arrow-left"></i> Back to Customers</div>`;
                     html += visibleConsigneeEntries.map((entry) => {
-                        const latestLabel = formatRequestFolderLatestLabel(entry.info.latestMs);
+                        const latestLabel = formatRequestFolderLatestLabel(entry.sortMs || entry.info.latestMs);
                         const unreadDot = entry.unreadCount ? `<span class="inline-flex h-3 w-3 rounded-full bg-red-500 shadow-sm ring-2 ring-white" aria-label="Unread completed request"></span>` : '';
                         const pendingBadge = entry.info.pendingCount ? `<span class="rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-orange-700">${entry.info.pendingCount} Pending</span>` : '';
                         const completeBadge = entry.info.completeCount ? `<span class="rounded-full border border-green-200 bg-green-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-green-700">${entry.info.completeCount} Complete</span>` : '';
-                        const folderSummary = entry.folderCount ? `${entry.folderCount} request folder${entry.folderCount === 1 ? '' : 's'}${latestLabel ? ` &bull; Newest ${escapeShareHtml(latestLabel)}` : ''}` : `${entry.mapRows && entry.mapRows.length ? 'Mapped Consignee / Location' : 'No request folders yet'}`;
-                        return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('openRequestConsigneeView', [entry.label], 'Open consignee ' + entry.label)}><div class="flex justify-between items-center gap-3"><div class="flex items-center gap-3 min-w-0"><div class="bg-emerald-50 p-2 rounded-lg"><i class="ph-bold ph-map-pin text-2xl text-[#007a4d]"></i></div><div class="min-w-0"><div class="flex items-center gap-2"><span class="font-bold text-sm text-emerald-900 break-words">${escapeShareHtml(entry.label)}</span>${unreadDot}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${folderSummary}</div></div></div><i class="ph-bold ph-caret-right text-gray-300"></i></div><div class="mt-3 flex flex-wrap gap-2">${pendingBadge}${completeBadge}</div></div>`;
+                        const creditBadge = entry.creditCount ? `<span class="rounded-full border border-red-200 bg-red-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-red-700">${entry.creditCount} Credit</span>` : '';
+                        const folderSummary = entry.folderCount ? `${entry.folderCount} request folder${entry.folderCount === 1 ? '' : 's'}${entry.creditCount ? ` &bull; ${entry.creditCount} credit${entry.creditCount === 1 ? '' : 's'}` : ''}${latestLabel ? ` &bull; Newest ${escapeShareHtml(latestLabel)}` : ''}` : `${entry.creditCount ? `${entry.creditCount} credit${entry.creditCount === 1 ? '' : 's'}${latestLabel ? ` &bull; Newest ${escapeShareHtml(latestLabel)}` : ''}` : (entry.mapRows && entry.mapRows.length ? 'Mapped Consignee / Location' : 'No request folders yet')}`;
+                        return `<div class="bg-white border border-emerald-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform" ${buildFastInvokeAttrs('openRequestConsigneeView', [entry.label], 'Open consignee ' + entry.label)}><div class="flex justify-between items-center gap-3"><div class="flex items-center gap-3 min-w-0"><div class="bg-emerald-50 p-2 rounded-lg"><i class="ph-bold ph-map-pin text-2xl text-[#007a4d]"></i></div><div class="min-w-0"><div class="flex items-center gap-2"><span class="font-bold text-sm text-emerald-900 break-words">${escapeShareHtml(entry.label)}</span>${unreadDot}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${folderSummary}</div></div></div><i class="ph-bold ph-caret-right text-gray-300"></i></div><div class="mt-3 flex flex-wrap gap-2">${pendingBadge}${completeBadge}${creditBadge}</div></div>`;
                     }).join('');
                     html += `</div>`;
                     applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:${selectedReqCustView}:consignees:${consigneeSearchToken}:${visibleConsigneeEntries.map((entry) => entry.label).join('|')}`);
@@ -92250,8 +92767,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     const selectedCustomerKey = normalizeRequestCustomerFolderKey(selectedReqCustView);
                     const selectedConsigneeKey = normalizeRequestConsigneeFolderKey(selectedReqConsigneeView);
                     let consigneeItems = items.filter(i => doesRequestRepMatchValue(getRequestAssignedRep(i), selectedReqRepView) && !i.REQ_ARCHIVED && normalizeRequestCustomerFolderKey(getRequestCustomerFolderName(i)) === selectedCustomerKey && normalizeRequestConsigneeFolderKey(getRequestConsigneeFolderName(i)) === selectedConsigneeKey);
+                    const creditRows = getSalesCreditRowsForSelectedConsignee();
 
-                    if (consigneeItems.length === 0) {
+                    if (consigneeItems.length === 0 && creditRows.length === 0) {
                         const html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestConsigneeList', [], 'Back to Consignees')}><i class="ph-bold ph-arrow-left"></i> Back to Consignees</div><div class="p-8 text-center text-gray-400">No request folders for this consignee yet.</div>`;
                         applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:${selectedReqCustView}:${selectedReqConsigneeView}:folders:empty`);
                         return;
@@ -92281,7 +92799,19 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         return matchesSearch && matchesDate;
                     }).length;
                     const hasFolderFilters = !!(searchToken || dateFilter);
-                    let html = `<div class="request-card-list request-card-list--spaced request-card-list--rep-folders"><div class="back-btn" ${buildFastInvokeAttrs('backToRequestConsigneeList', [], 'Back to Consignees')}><i class="ph-bold ph-arrow-left"></i> Back to Consignees</div><div class="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_12rem_auto]"><div class="relative"><input id="request-folder-search-input" class="input-field !mb-0 border-emerald-200 focus:border-[#007a4d] pr-10" type="text" value="${esc(requestFolderSearchTerm)}" placeholder="Search folders..." oninput="return setRequestFolderSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"><i class="ph-bold ph-magnifying-glass pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-emerald-500"></i></div><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Date<input id="request-folder-date-filter" class="input-field !mb-0 mt-1 border-emerald-200 focus:border-[#007a4d]" type="date" value="${esc(requestFolderDateFilter)}" oninput="return setRequestFolderDateFilter(this.value)" onchange="return setRequestFolderDateFilter(this.value)"></label><button id="request-folder-clear-filters" type="button" class="min-h-[42px] rounded-xl border border-emerald-200 bg-white px-4 text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm self-end ${hasFolderFilters ? '' : 'opacity-50 cursor-not-allowed pointer-events-none'}" onclick="return clearRequestFolderFilters()">Clear</button></div><div id="request-folder-empty-filter" class="${visibleFolderCount ? 'hidden ' : ''}p-8 text-center text-gray-400">No matching request folders.</div>`;
+                    const tabsHtml = renderRequestConsigneeModeTabs(folderEntries.length, creditRows.length);
+                    if (requestConsigneeDrillMode === 'credit') {
+                        const html = `<div class="request-card-list request-card-list--spaced request-card-list--rep-credit"><div class="back-btn" ${buildFastInvokeAttrs('backToRequestConsigneeList', [], 'Back to Consignees')}><i class="ph-bold ph-arrow-left"></i> Back to Consignees</div>${tabsHtml}${renderSalesCreditConsigneeView(consigneeItems, creditRows)}</div>`;
+                        const creditRenderKey = [
+                            `request:credit:${selectedReqRepView}:${selectedReqCustView}:${selectedReqConsigneeView}`,
+                            creditRows.map((row) => [row.UNIQUE_ID, row.CREDIT_STATUS, row.UPDATED_AT, row.CREDIT_PHOTO_LINK, row.REQUEST_PHOTO_LINK].join(':')).join('|'),
+                            consigneeItems.map((row) => getItemUniqueId(row)).join('|')
+                        ].join('::');
+                        const didRender = applyRequestRenderMarkup(container, crumb, crumbText, html, creditRenderKey);
+                        setTimeout(() => scheduleDeferredCardPhotoHydration(container), didRender ? 80 : 20);
+                        return;
+                    }
+                    let html = `<div class="request-card-list request-card-list--spaced request-card-list--rep-folders"><div class="back-btn" ${buildFastInvokeAttrs('backToRequestConsigneeList', [], 'Back to Consignees')}><i class="ph-bold ph-arrow-left"></i> Back to Consignees</div>${tabsHtml}<div class="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_12rem_auto]"><div class="relative"><input id="request-folder-search-input" class="input-field !mb-0 border-emerald-200 focus:border-[#007a4d] pr-10" type="text" value="${esc(requestFolderSearchTerm)}" placeholder="Search folders..." oninput="return setRequestFolderSearchTerm(this.value)" onkeydown="dismissSearchKeyboard(event)"><i class="ph-bold ph-magnifying-glass pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-emerald-500"></i></div><label class="min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Date<input id="request-folder-date-filter" class="input-field !mb-0 mt-1 border-emerald-200 focus:border-[#007a4d]" type="date" value="${esc(requestFolderDateFilter)}" oninput="return setRequestFolderDateFilter(this.value)" onchange="return setRequestFolderDateFilter(this.value)"></label><button id="request-folder-clear-filters" type="button" class="min-h-[42px] rounded-xl border border-emerald-200 bg-white px-4 text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm self-end ${hasFolderFilters ? '' : 'opacity-50 cursor-not-allowed pointer-events-none'}" onclick="return clearRequestFolderFilters()">Clear</button></div><div id="request-folder-empty-filter" class="${visibleFolderCount ? 'hidden ' : ''}p-8 text-center text-gray-400">${folderEntries.length ? 'No matching request folders.' : 'No request folders for this consignee yet.'}</div>`;
                     html += folderEntries.map((entry) => {
                         const f = entry.folderName;
                         const folderStatus = entry.info.allComplete ? 'Complete' : 'Pending';
