@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.05';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.29.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -646,11 +646,9 @@ body.ios-device .manager-crop-roll-review-filter-shell{
 .app-card-bottom-btn--argos-qty{background:#ecfdf5;color:#166534;border-color:#86efac;box-shadow:0 8px 16px rgba(22,101,52,.12)}
 .app-card-bottom-btn--argos-transfer{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;box-shadow:0 8px 16px rgba(37,99,235,.12)}
 .app-card-bottom-btn--argos-reclass{background:#f5f3ff;color:#6d28d9;border-color:#ddd6fe;box-shadow:0 8px 16px rgba(109,40,217,.12)}
-.app-card-bottom-btn--argos-priority{background:#fff7ed;color:#c2410c;border-color:#fed7aa;box-shadow:0 8px 16px rgba(194,65,12,.12)}
 .app-card-bottom-btn--argos-qty:disabled,
 .app-card-bottom-btn--argos-transfer:disabled,
-.app-card-bottom-btn--argos-reclass:disabled,
-.app-card-bottom-btn--argos-priority:disabled{opacity:.72;box-shadow:none}
+.app-card-bottom-btn--argos-reclass:disabled{opacity:.72;box-shadow:none}
 .argos-tx-panel{display:flex;max-height:calc(100dvh - 1rem);min-height:0;flex-direction:column;overflow:hidden;border-radius:1.1rem;background:#fff;box-shadow:0 28px 70px rgba(15,23,42,.34)}
 .argos-tx-header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:.75rem;border-bottom:1px solid #e2e8f0;padding:.78rem .92rem}
 .argos-tx-title{font-size:clamp(1.05rem,4.8vw,1.45rem);font-weight:900;line-height:1.08;color:#0f172a}
@@ -658,7 +656,7 @@ body.ios-device .manager-crop-roll-review-filter-shell{
 .argos-tx-close{display:flex;min-height:2.5rem;min-width:2.5rem;align-items:center;justify-content:center;border-radius:999px;border:1px solid #e2e8f0;background:#fff;color:#475569;box-shadow:0 8px 18px rgba(15,23,42,.08)}
 .argos-tx-body{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:.72rem .92rem}
 .argos-tx-notice{border-left:4px solid #84cc16;border-radius:.78rem;background:#f7fee7;padding:.52rem .68rem;color:#365314;font-size:.72rem;font-weight:800;line-height:1.28}
-.argos-tx-tabs{margin-top:.58rem;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.28rem;border-radius:.8rem;background:#f1f5f9;padding:.25rem}
+.argos-tx-tabs{margin-top:.58rem;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.28rem;border-radius:.8rem;background:#f1f5f9;padding:.25rem}
 .argos-transaction-tab{min-width:0;border-radius:.62rem;padding:.52rem .25rem;font-size:.55rem;font-weight:900;letter-spacing:.08em;line-height:1.06;text-transform:uppercase;color:#064e3b}
 .argos-transaction-tab i{display:block;margin:0 auto .12rem;font-size:.84rem}
 .argos-tx-source{margin-top:.55rem;border-radius:.78rem;background:#f8fafc;padding:.52rem}
@@ -706,7 +704,6 @@ body.ios-device .manager-crop-roll-review-filter-shell{
     .app-card-bottom-rail{gap:.5rem}
     .app-card-bottom-rail-row--split{gap:.42rem}
     .app-card-bottom-rail-row--split[data-button-count="3"]{grid-template-columns:repeat(3,minmax(0,1fr))}
-    .app-card-bottom-rail-row--split[data-button-count="4"]{grid-template-columns:repeat(4,minmax(0,1fr))}
     .app-card-bottom-rail-row--split .app-card-bottom-btn{min-height:2.35rem;padding:.56rem .32rem;font-size:.48rem;letter-spacing:.07em;gap:.28rem}
     .app-card-bottom-rail-row--split .app-card-bottom-btn i{font-size:.82rem}
     .argos-tx-panel{width:calc(100vw - 1rem);max-height:calc(100dvh - .75rem);border-radius:1rem}
@@ -4977,7 +4974,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.05').trim() || 'V2026.07.29.05';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.06').trim() || 'V2026.07.29.06';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6430,7 +6427,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24010,7 +24007,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.05').trim() || 'V2026.07.29.05';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.06').trim() || 'V2026.07.29.06';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -32718,32 +32715,32 @@ let avTopControlsRenderToken = 0;
             return [
                 `<button type="button" class="app-card-bottom-btn app-card-bottom-btn--argos-qty" aria-label="Open quantity transaction" onclick="event.stopPropagation(); return openArgosInventoryTransactionModal('${safeUid}', 'qty', '${safeSource}')"><i class="ph-bold ph-pencil-simple-line text-base"></i><span>QTY</span></button>`,
                 `<button type="button" class="app-card-bottom-btn app-card-bottom-btn--argos-transfer" aria-label="Open transfer transaction" onclick="event.stopPropagation(); return openArgosInventoryTransactionModal('${safeUid}', 'transfer', '${safeSource}')"><i class="ph-bold ph-export text-base"></i><span>Transfer</span></button>`,
-                `<button type="button" class="app-card-bottom-btn app-card-bottom-btn--argos-reclass" aria-label="Open reclass transaction" onclick="event.stopPropagation(); return openArgosInventoryTransactionModal('${safeUid}', 'reclass', '${safeSource}')"><i class="ph-bold ph-arrows-clockwise text-base"></i><span>Reclass</span></button>`,
-                `<button type="button" class="app-card-bottom-btn app-card-bottom-btn--argos-priority" aria-label="Open priority change transaction" onclick="event.stopPropagation(); return openArgosInventoryTransactionModal('${safeUid}', 'priority_change', '${safeSource}')"><i class="ph-bold ph-flag text-base"></i><span>Pri</span></button>`
+                `<button type="button" class="app-card-bottom-btn app-card-bottom-btn--argos-reclass" aria-label="Open reclass transaction" onclick="event.stopPropagation(); return openArgosInventoryTransactionModal('${safeUid}', 'reclass', '${safeSource}')"><i class="ph-bold ph-arrows-clockwise text-base"></i><span>Reclass</span></button>`
             ].join('');
         }
 
-        const ARGOS_INVENTORY_TRANSACTION_ACTIONS = Object.freeze(['qty', 'transfer', 'reclass', 'priority_change']);
+        const ARGOS_INVENTORY_TRANSACTION_ACTIONS = Object.freeze(['qty', 'transfer', 'reclass']);
 
         function normalizeArgosInventoryTransactionAction(value = '') {
             const safeAction = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
-            if (safeAction === 'priority' || safeAction === 'prioritychange') return 'priority_change';
             return ARGOS_INVENTORY_TRANSACTION_ACTIONS.includes(safeAction) ? safeAction : 'qty';
         }
 
         function getArgosInventoryTransactionActionLabel(action = '') {
+            const rawAction = String(action || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+            if (rawAction === 'priority_change' || rawAction === 'priority' || rawAction === 'prioritychange') return 'Priority Change';
             const safeAction = normalizeArgosInventoryTransactionAction(action);
             if (safeAction === 'transfer') return 'Transfer';
             if (safeAction === 'reclass') return 'Reclass';
-            if (safeAction === 'priority_change') return 'Priority Change';
             return 'Quantity Change';
         }
 
         function getArgosInventoryTransactionActionShortLabel(action = '') {
+            const rawAction = String(action || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+            if (rawAction === 'priority_change' || rawAction === 'priority' || rawAction === 'prioritychange') return 'PRIORITY';
             const safeAction = normalizeArgosInventoryTransactionAction(action);
             if (safeAction === 'transfer') return 'ALT+T | TRANSFER';
             if (safeAction === 'reclass') return 'ALT+R | RECLASS';
-            if (safeAction === 'priority_change') return 'ALT+P | PRIORITY';
             return 'ALT+Q | QTY';
         }
 
@@ -32796,7 +32793,7 @@ let avTopControlsRenderToken = 0;
         }
 
         const ARGOS_INVENTORY_TRANSACTION_LOT_SEASONS = Object.freeze(['S1', 'F1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
-        const ARGOS_INVENTORY_TRANSACTION_REQUEST_ACTIONS = Object.freeze(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'ncr', 'recount', 'move_up', 'move_down']);
+        const ARGOS_INVENTORY_TRANSACTION_REQUEST_ACTIONS = Object.freeze(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'ncr', 'recount', 'priority_change', 'move_up', 'move_down']);
         const ARGOS_INVENTORY_TRANSACTION_REQUEST_LABELS = Object.freeze({
             hold: 'On Hold',
             take_off_hold: 'Off Hold',
@@ -32804,6 +32801,7 @@ let avTopControlsRenderToken = 0;
             off_stop_ship: 'Off Stop',
             ncr: 'NCR',
             recount: 'Re-Count',
+            priority_change: 'Priority Change',
             move_up: 'Move Up',
             move_down: 'Move Down'
         });
@@ -32815,6 +32813,7 @@ let avTopControlsRenderToken = 0;
             { value: 'off_stop_ship', label: 'Off Stop Request', detail: 'Email only' },
             { value: 'ncr', label: 'NCR Request', detail: 'Email only' },
             { value: 'recount', label: 'Re-Count Request', detail: 'Email only' },
+            { value: 'priority_change', label: 'Priority Change', detail: 'Updates priority column' },
             { value: 'move_up', label: 'Move Up Request', detail: 'Email only' },
             { value: 'move_down', label: 'Move Down Request', detail: 'Email only' }
         ]);
@@ -32920,7 +32919,6 @@ let avTopControlsRenderToken = 0;
                             <button type="button" data-argos-transaction-tab="qty" class="argos-transaction-tab" onclick="return setArgosInventoryTransactionAction('qty')"><i class="ph-bold ph-pencil-simple-line"></i>QTY</button>
                             <button type="button" data-argos-transaction-tab="transfer" class="argos-transaction-tab" onclick="return setArgosInventoryTransactionAction('transfer')"><i class="ph-bold ph-export"></i>Transfer</button>
                             <button type="button" data-argos-transaction-tab="reclass" class="argos-transaction-tab" onclick="return setArgosInventoryTransactionAction('reclass')"><i class="ph-bold ph-arrows-clockwise"></i>Reclass</button>
-                            <button type="button" data-argos-transaction-tab="priority_change" class="argos-transaction-tab" onclick="return setArgosInventoryTransactionAction('priority_change')"><i class="ph-bold ph-flag"></i>Priority</button>
                         </div>
                         <div id="argos-inventory-transaction-source" class="argos-tx-source"></div>
                         <div class="argos-tx-send-as" aria-label="Send as request actions">
@@ -32938,7 +32936,7 @@ let avTopControlsRenderToken = 0;
                             <label class="argos-tx-field" data-argos-destination-field="location"><span>New Location</span><input id="argos-inventory-transaction-new-location" class="argos-tx-input" placeholder="Location"></label>
                             <div class="argos-tx-field argos-tx-field-wide" data-argos-hold-field="action">
                                 <span>Request / Hold-Stop</span>
-                                <select id="argos-inventory-transaction-hold-action" class="argos-tx-select-native" tabindex="-1" aria-hidden="true" onchange="return setArgosInventoryTransactionHoldAction(this.value)"><option value="none">No request</option><option value="hold">On Hold Request (email only)</option><option value="take_off_hold">Off Hold Request (email only)</option><option value="stop_ship">On Stop Request (email only)</option><option value="off_stop_ship">Off Stop Request (email only)</option><option value="ncr">NCR Request (email only)</option><option value="recount">Re-Count Request (email only)</option><option value="move_up">Move Up Request (email only)</option><option value="move_down">Move Down Request (email only)</option></select>
+                                <select id="argos-inventory-transaction-hold-action" class="argos-tx-select-native" tabindex="-1" aria-hidden="true" onchange="return setArgosInventoryTransactionHoldAction(this.value)"><option value="none">No request</option><option value="hold">On Hold Request (email only)</option><option value="take_off_hold">Off Hold Request (email only)</option><option value="stop_ship">On Stop Request (email only)</option><option value="off_stop_ship">Off Stop Request (email only)</option><option value="ncr">NCR Request (email only)</option><option value="recount">Re-Count Request (email only)</option><option value="priority_change">Priority Change (updates priority)</option><option value="move_up">Move Up Request (email only)</option><option value="move_down">Move Down Request (email only)</option></select>
                                 <button type="button" id="argos-inventory-transaction-hold-action-button" class="argos-tx-input argos-tx-select-button" aria-expanded="false" aria-controls="argos-inventory-transaction-hold-action-picker" onclick="return toggleArgosInventoryTransactionHoldActionPicker()"><span class="argos-tx-select-copy"><strong data-argos-hold-label>No request</strong><small data-argos-hold-detail>No email request</small></span><i class="ph-bold ph-caret-down text-lg text-slate-500"></i></button>
                                 <div id="argos-inventory-transaction-hold-action-picker" class="argos-tx-choice-panel hidden" role="listbox" aria-label="Request / Hold-Stop options">
                                     <button type="button" class="argos-tx-choice-option active" data-argos-hold-option="none" role="option" aria-selected="true" onclick="return selectArgosInventoryTransactionHoldAction('none')"><span><strong>No request</strong><small>Apply inventory change normally</small></span><i class="ph-bold ph-check text-[#007a4d]"></i></button>
@@ -32948,6 +32946,7 @@ let avTopControlsRenderToken = 0;
                                     <button type="button" class="argos-tx-choice-option" data-argos-hold-option="off_stop_ship" role="option" aria-selected="false" onclick="return selectArgosInventoryTransactionHoldAction('off_stop_ship')"><span><strong>Off Stop Request</strong><small>Email only</small></span><i class="ph-bold ph-circle text-slate-300"></i></button>
                                     <button type="button" class="argos-tx-choice-option" data-argos-hold-option="ncr" role="option" aria-selected="false" onclick="return selectArgosInventoryTransactionHoldAction('ncr')"><span><strong>NCR Request</strong><small>Email only</small></span><i class="ph-bold ph-circle text-slate-300"></i></button>
                                     <button type="button" class="argos-tx-choice-option" data-argos-hold-option="recount" role="option" aria-selected="false" onclick="return selectArgosInventoryTransactionHoldAction('recount')"><span><strong>Re-Count Request</strong><small>Email only</small></span><i class="ph-bold ph-circle text-slate-300"></i></button>
+                                    <button type="button" class="argos-tx-choice-option" data-argos-hold-option="priority_change" role="option" aria-selected="false" onclick="return selectArgosInventoryTransactionHoldAction('priority_change')"><span><strong>Priority Change</strong><small>Updates priority column</small></span><i class="ph-bold ph-circle text-slate-300"></i></button>
                                     <button type="button" class="argos-tx-choice-option" data-argos-hold-option="move_up" role="option" aria-selected="false" onclick="return selectArgosInventoryTransactionHoldAction('move_up')"><span><strong>Move Up Request</strong><small>Email only</small></span><i class="ph-bold ph-circle text-slate-300"></i></button>
                                     <button type="button" class="argos-tx-choice-option" data-argos-hold-option="move_down" role="option" aria-selected="false" onclick="return selectArgosInventoryTransactionHoldAction('move_down')"><span><strong>Move Down Request</strong><small>Email only</small></span><i class="ph-bold ph-circle text-slate-300"></i></button>
                                 </div>
@@ -33052,7 +33051,6 @@ let avTopControlsRenderToken = 0;
         function setArgosInventoryTransactionAction(action = 'qty') {
             if (!argosInventoryTransactionState) return false;
             const safeAction = normalizeArgosInventoryTransactionAction(action);
-            const isPriorityChange = safeAction === 'priority_change';
             argosInventoryTransactionState.action = safeAction;
             document.querySelectorAll('.argos-transaction-tab').forEach((button) => {
                 const active = button.getAttribute('data-argos-transaction-tab') === safeAction;
@@ -33068,22 +33066,25 @@ let avTopControlsRenderToken = 0;
             const itemField = document.querySelector('[data-argos-destination-field="item"]');
             const lotField = document.querySelector('[data-argos-destination-field="lot"]');
             const locationField = document.querySelector('[data-argos-destination-field="location"]');
-            if (sourceField) sourceField.classList.toggle('hidden', isPriorityChange);
-            if (qtyField) qtyField.classList.toggle('hidden', isPriorityChange);
-            if (priorityField) priorityField.hidden = !isPriorityChange;
+            if (sourceField) sourceField.classList.remove('hidden');
+            if (qtyField) qtyField.classList.remove('hidden');
+            if (priorityField) {
+                priorityField.hidden = true;
+                priorityField.classList.add('hidden');
+            }
             if (itemField) itemField.hidden = safeAction !== 'reclass';
-            if (lotField) lotField.hidden = safeAction === 'qty' || isPriorityChange;
-            if (locationField) locationField.hidden = safeAction === 'qty' || isPriorityChange;
+            if (lotField) lotField.hidden = safeAction === 'qty';
+            if (locationField) locationField.hidden = safeAction === 'qty';
             const newItemInput = document.getElementById('argos-inventory-transaction-new-item');
             const newLotInput = document.getElementById('argos-inventory-transaction-new-lot');
             const newLocationInput = document.getElementById('argos-inventory-transaction-new-location');
             const qtyInput = document.getElementById('argos-inventory-transaction-qty');
             const priorityInput = document.getElementById('argos-inventory-transaction-priority');
-            if (qtyInput) qtyInput.required = !isPriorityChange;
+            if (qtyInput) qtyInput.required = true;
             if (priorityInput) priorityInput.required = false;
             if (newItemInput) newItemInput.required = safeAction === 'reclass';
-            if (newLotInput) newLotInput.required = safeAction !== 'qty' && !isPriorityChange;
-            if (newLocationInput) newLocationInput.required = safeAction !== 'qty' && !isPriorityChange;
+            if (newLotInput) newLotInput.required = safeAction !== 'qty';
+            if (newLocationInput) newLocationInput.required = safeAction !== 'qty';
             const advanced = document.querySelector('.argos-tx-advanced');
             if (advanced) advanced.open = false;
             const apply = document.getElementById('argos-inventory-transaction-apply');
@@ -33156,8 +33157,13 @@ let avTopControlsRenderToken = 0;
             return false;
         }
 
+        function isArgosInventoryTransactionPriorityChangeMode() {
+            return getArgosInventoryTransactionRequestAction() === 'priority_change';
+        }
+
         function isArgosInventoryTransactionRequestOnlyMode() {
-            return !!getArgosInventoryTransactionRequestAction();
+            const requestAction = getArgosInventoryTransactionRequestAction();
+            return !!requestAction && requestAction !== 'priority_change';
         }
 
         function isArgosInventoryTransactionOffHoldRequestMode() {
@@ -33166,37 +33172,46 @@ let avTopControlsRenderToken = 0;
 
         function syncArgosInventoryTransactionRequestOnlyMode() {
             const requestAction = getArgosInventoryTransactionRequestAction();
-            const requestOnly = !!requestAction;
+            const isPriorityChange = requestAction === 'priority_change';
+            const requestOnly = !!requestAction && !isPriorityChange;
             const requestLabel = getArgosInventoryTransactionRequestLabel(requestAction);
             const notice = document.getElementById('argos-inventory-transaction-notice');
             const apply = document.getElementById('argos-inventory-transaction-apply');
             const note = document.querySelector('[data-argos-hold-field="note"]');
             const advanced = document.querySelector('.argos-tx-advanced');
-            document.querySelectorAll('[data-argos-core-field="reason"], [data-argos-core-field="source"], [data-argos-core-field="qty"], [data-argos-priority-field], [data-argos-destination-field], [data-argos-hold-field="reason"]').forEach((field) => {
-                field.classList.toggle('hidden', requestOnly);
-            });
-            const stateAction = argosInventoryTransactionState && argosInventoryTransactionState.action ? argosInventoryTransactionState.action : 'qty';
-            const isPriorityChange = stateAction === 'priority_change';
+            const stateAction = normalizeArgosInventoryTransactionAction(argosInventoryTransactionState && argosInventoryTransactionState.action ? argosInventoryTransactionState.action : 'qty');
+            const reasonField = document.querySelector('[data-argos-core-field="reason"]');
+            const sourceField = document.querySelector('[data-argos-core-field="source"]');
+            const qtyField = document.querySelector('[data-argos-core-field="qty"]');
+            const priorityField = document.querySelector('[data-argos-priority-field="priority"]');
+            const itemField = document.querySelector('[data-argos-destination-field="item"]');
+            const lotField = document.querySelector('[data-argos-destination-field="lot"]');
+            const locationField = document.querySelector('[data-argos-destination-field="location"]');
             const qtyInput = document.getElementById('argos-inventory-transaction-qty');
             const priorityInput = document.getElementById('argos-inventory-transaction-priority');
             const newItemInput = document.getElementById('argos-inventory-transaction-new-item');
             const newLotInput = document.getElementById('argos-inventory-transaction-new-lot');
             const newLocationInput = document.getElementById('argos-inventory-transaction-new-location');
             const reasonInput = document.getElementById('argos-inventory-transaction-hold-reason');
-            document.querySelectorAll('[data-argos-core-field="source"], [data-argos-core-field="qty"]').forEach((field) => {
-                field.classList.toggle('hidden', requestOnly || isPriorityChange);
-            });
-            const priorityField = document.querySelector('[data-argos-priority-field="priority"]');
-            if (priorityField) priorityField.hidden = requestOnly || !isPriorityChange;
+            if (reasonField) reasonField.classList.toggle('hidden', requestOnly);
+            if (sourceField) sourceField.classList.toggle('hidden', requestOnly || isPriorityChange);
+            if (qtyField) qtyField.classList.toggle('hidden', requestOnly || isPriorityChange);
+            if (priorityField) {
+                priorityField.hidden = !isPriorityChange;
+                priorityField.classList.toggle('hidden', !isPriorityChange);
+            }
+            if (itemField) itemField.hidden = requestOnly || isPriorityChange || stateAction !== 'reclass';
+            if (lotField) lotField.hidden = requestOnly || isPriorityChange || stateAction === 'qty';
+            if (locationField) locationField.hidden = requestOnly || isPriorityChange || stateAction === 'qty';
             if (qtyInput) qtyInput.required = !requestOnly && !isPriorityChange;
             if (priorityInput) priorityInput.required = false;
-            if (newItemInput) newItemInput.required = !requestOnly && stateAction === 'reclass';
+            if (newItemInput) newItemInput.required = !requestOnly && !isPriorityChange && stateAction === 'reclass';
             if (newLotInput) newLotInput.required = !requestOnly && stateAction !== 'qty' && !isPriorityChange;
             if (newLocationInput) newLocationInput.required = !requestOnly && stateAction !== 'qty' && !isPriorityChange;
-            if (reasonInput && requestOnly) reasonInput.required = false;
+            if (reasonInput && (requestOnly || isPriorityChange)) reasonInput.required = false;
             if (advanced) {
-                advanced.classList.toggle('hidden', requestOnly);
-                if (requestOnly) advanced.open = false;
+                advanced.classList.toggle('hidden', requestOnly || isPriorityChange);
+                if (requestOnly || isPriorityChange) advanced.open = false;
             }
             if (notice) {
                 notice.innerHTML = requestOnly
@@ -33210,10 +33225,15 @@ let avTopControlsRenderToken = 0;
             if (note && requestOnly) {
                 note.hidden = false;
                 note.textContent = `This opens the ${requestLabel} request and email flow only. It does not write to inventory.`;
-            } else if (note && !requestOnly) {
+            } else if (note && isPriorityChange) {
+                note.hidden = false;
+                note.textContent = 'This updates only the priority column on this inventory row.';
+            } else if (note) {
+                note.hidden = true;
                 note.textContent = 'Applies to every current season/current sales year row for this item.';
             }
             if (apply && requestOnly) apply.innerHTML = `<i class="ph-bold ph-envelope mr-1"></i> Open ${escapeHtml(requestLabel)} Request`;
+            else if (apply && isPriorityChange) apply.innerHTML = '<i class="ph-bold ph-check mr-1"></i> Apply Priority Change';
             else if (apply && argosInventoryTransactionState) apply.innerHTML = `<i class="ph-bold ph-check mr-1"></i> Apply ${escapeHtml(getArgosInventoryTransactionActionLabel(argosInventoryTransactionState.action || 'qty'))}`;
         }
 
@@ -33421,8 +33441,10 @@ let avTopControlsRenderToken = 0;
         function buildArgosInventoryTransactionPayload() {
             const state = argosInventoryTransactionState || {};
             const snapshot = state.snapshot || {};
-            const action = normalizeArgosInventoryTransactionAction(state.action || 'qty');
-            const isPriorityChange = action === 'priority_change';
+            const transactionAction = normalizeArgosInventoryTransactionAction(state.action || 'qty');
+            const requestedHoldAction = normalizeArgosInventoryTransactionRequestAction(getArgosInventoryTransactionInputValue('argos-inventory-transaction-hold-action'));
+            const isPriorityChange = requestedHoldAction === 'priority_change';
+            const action = isPriorityChange ? 'priority_change' : transactionAction;
             const actorEmail = getArgosInventoryTransactionActorEmail();
             const qtyValue = getArgosInventoryTransactionInputValue('argos-inventory-transaction-qty');
             const priorityValue = normalizeArgosInventoryTransactionPriorityValue(getArgosInventoryTransactionInputValue('argos-inventory-transaction-priority'));
@@ -33431,24 +33453,23 @@ let avTopControlsRenderToken = 0;
             if (!isPriorityChange) {
                 qty = parseAppNumber(qtyValue);
                 if (!Number.isFinite(qty)) throw new Error('Enter a valid quantity.');
-                if (action === 'qty' && qty < 0) throw new Error('New quantity cannot be negative.');
-                if (action !== 'qty' && qty <= 0) throw new Error('Quantity to move must be greater than 0.');
+                if (transactionAction === 'qty' && qty < 0) throw new Error('New quantity cannot be negative.');
+                if (transactionAction !== 'qty' && qty <= 0) throw new Error('Quantity to move must be greater than 0.');
             } else {
                 if (priorityValue === null) throw new Error('Choose a priority from 1 to 99, or blank to clear it.');
                 if ((priorityValue || '') === (currentPriority || '')) throw new Error('Priority is already set to that value.');
             }
-            const requestedHoldAction = getArgosInventoryTransactionInputValue('argos-inventory-transaction-hold-action').toLowerCase();
-            const holdAction = ['hold', 'release'].includes(requestedHoldAction) ? requestedHoldAction : 'none';
+            const holdAction = requestedHoldAction === 'hold' ? 'hold' : (requestedHoldAction === 'take_off_hold' ? 'release' : 'none');
             const holdStopReason = getArgosInventoryTransactionInputValue('argos-inventory-transaction-hold-reason');
             if (holdAction === 'hold' && !holdStopReason) throw new Error('Enter the hold/stop reason.');
             const tx = {
                 quantity: qty,
-                newQuantity: action === 'qty' ? qty : '',
+                newQuantity: !isPriorityChange && transactionAction === 'qty' ? qty : '',
                 newPriority: isPriorityChange ? priorityValue : '',
                 priority: isPriorityChange ? priorityValue : snapshot.priority,
-                newItemCode: action === 'reclass' ? getArgosInventoryTransactionInputValue('argos-inventory-transaction-new-item') : snapshot.itemCode,
-                newLotCode: (action === 'qty' || isPriorityChange) ? '' : getArgosInventoryTransactionInputValue('argos-inventory-transaction-new-lot'),
-                newLocationCode: (action === 'qty' || isPriorityChange) ? '' : getArgosInventoryTransactionInputValue('argos-inventory-transaction-new-location'),
+                newItemCode: !isPriorityChange && transactionAction === 'reclass' ? getArgosInventoryTransactionInputValue('argos-inventory-transaction-new-item') : snapshot.itemCode,
+                newLotCode: (transactionAction === 'qty' || isPriorityChange) ? '' : getArgosInventoryTransactionInputValue('argos-inventory-transaction-new-lot'),
+                newLocationCode: (transactionAction === 'qty' || isPriorityChange) ? '' : getArgosInventoryTransactionInputValue('argos-inventory-transaction-new-location'),
                 source: getArgosInventoryTransactionInputValue('argos-inventory-transaction-source-code'),
                 reason: getArgosInventoryTransactionInputValue('argos-inventory-transaction-reason'),
                 desigCust: getArgosInventoryTransactionInputValue('argos-inventory-transaction-desigcust'),
@@ -33458,14 +33479,15 @@ let avTopControlsRenderToken = 0;
                 holdAction,
                 holdStopCode: holdAction === 'hold' ? 'H' : '',
                 holdStopReason: holdAction === 'hold' ? holdStopReason : '',
+                requestAction: requestedHoldAction || 'none',
                 sourceSeason: snapshot.season,
                 sourceSalesYear: snapshot.salesYear
             };
-            if (action === 'transfer' || action === 'reclass') {
+            if (!isPriorityChange && (transactionAction === 'transfer' || transactionAction === 'reclass')) {
                 if (!String(tx.newLotCode || '').trim()) throw new Error('Enter the destination lot.');
                 if (!String(tx.newLocationCode || '').trim()) throw new Error('Enter the destination location.');
             }
-            if (action === 'reclass' && !String(tx.newItemCode || '').trim()) throw new Error('Enter the destination item.');
+            if (!isPriorityChange && transactionAction === 'reclass' && !String(tx.newItemCode || '').trim()) throw new Error('Enter the destination item.');
             return {
                 type: 'inventory_transaction',
                 action,
