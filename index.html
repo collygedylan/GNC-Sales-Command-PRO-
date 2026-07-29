@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.19';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.29.20';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2090,6 +2090,23 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
         body.viewport-compact #view-detail.detail-photo-update-mode :is(#ssn-comments,#lsn-comments,#na-comments,#req-comments,#ncr-comments,#flyer-notes,#dock-sales-desc){min-height:52px!important}
         body.viewport-compact #view-detail.detail-photo-update-mode :is(#ssn-av-note,#lsn-av-note,#na-av-note,#req-av-note,#flyer-av-note) + button{height:34px!important;width:34px!important;border-radius:9px!important}
         body.viewport-compact #view-detail.detail-photo-update-mode :is(#ssn-btn-save-complete,#lsn-btn-save-complete,#na-btn-save-complete,#req-btn-save-complete,#ncr-btn-save-complete,#flyer-btn-save-complete){min-height:38px!important;padding:7px 10px!important}
+        .av-note-combo-row{align-items:stretch}
+        .av-note-dropdown-trigger{display:inline-flex;height:48px;width:48px;flex:0 0 48px;align-items:center;justify-content:center;border-radius:12px;border:1px solid #93c5fd;background:#eff6ff;color:#1d4ed8;box-shadow:0 8px 18px rgba(37,99,235,.12);transition:transform .14s ease,background .14s ease,border-color .14s ease,color .14s ease}
+        .av-note-dropdown-trigger i{font-size:1.35rem;line-height:1}
+        .av-note-dropdown-trigger[aria-expanded="true"]{background:#dbeafe;border-color:#2563eb;color:#1e40af}
+        .av-note-dropdown-trigger:active{transform:scale(.96)}
+        .av-note-dropdown-panel{left:0!important;right:0!important;top:calc(100% + .45rem)!important;z-index:10020!important;max-height:min(18rem,42vh)!important;display:flex;flex-direction:column;gap:.32rem;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;border-radius:16px!important;border:1px solid #93c5fd!important;background:#fff!important;padding:.42rem!important;box-shadow:0 18px 38px rgba(15,23,42,.18)!important}
+        .av-note-dropdown-panel.hidden{display:none!important}
+        .av-note-dropdown-header{position:sticky;top:-.42rem;z-index:1;margin:-.42rem -.42rem .12rem;padding:.55rem .7rem;border-bottom:1px solid #dbeafe;background:linear-gradient(180deg,#eff6ff 0%,#fff 100%);color:#1e40af;font-size:.62rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase}
+        .av-note-dropdown-option{width:100%;min-height:46px;border-radius:12px;border:1px solid #dbeafe;background:#fff;padding:.7rem .78rem;text-align:left;color:#1e3a8a;font-size:.82rem;font-weight:900;line-height:1.2;box-shadow:0 4px 12px rgba(37,99,235,.05)}
+        .av-note-dropdown-option:hover{background:#eff6ff;border-color:#bfdbfe}
+        .av-note-dropdown-option:active{background:#dbeafe;transform:scale(.995)}
+        .av-note-dropdown-empty,.av-note-dropdown-footer{border-radius:12px;border:1px dashed #bfdbfe;background:#f8fbff;padding:.8rem;color:#64748b;font-size:.72rem;font-weight:900;line-height:1.25;text-transform:uppercase;letter-spacing:.08em}
+        .av-note-dropdown-footer{border-style:solid;background:#f8fafc;text-align:center;font-size:.64rem;color:#64748b}
+        body.viewport-compact .av-note-dropdown-trigger{height:38px;width:38px;flex-basis:38px;border-radius:10px}
+        body.viewport-compact .av-note-dropdown-trigger i{font-size:1.05rem}
+        body.viewport-compact .av-note-dropdown-panel{max-height:min(14rem,38vh)!important;border-radius:14px!important;padding:.36rem!important}
+        body.viewport-compact .av-note-dropdown-option{min-height:42px;padding:.58rem .65rem;font-size:.74rem}
         :root{--detail-keyboard-height:0px}
         body.detail-field-active #bottom-nav{opacity:0;pointer-events:none;transform:translate3d(-50%,120%,0);transition:transform .18s ease,opacity .18s ease}
         body.detail-field-active #global-action-bar{opacity:0;pointer-events:none;transform:translateY(120%);transition:transform .18s ease,opacity .18s ease}
@@ -4974,7 +4991,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.19').trim() || 'V2026.07.29.19';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.20').trim() || 'V2026.07.29.20';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6428,7 +6445,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.19';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.20';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10755,11 +10772,109 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         let avNoteOptionLastPressAt = 0;
         let avNoteOptionLastPressPrefix = '';
         let avNoteOptionLastPressNote = '';
+        const AV_NOTE_DROPDOWN_PREFIXES = Object.freeze(['global-','ssn-','lsn-','na-','req-','flyer-','hold-release-']);
+        let avNoteDropdownDocumentListenerInitialized = false;
 
         function isAvNoteInput(target = null) {
             if (!target || !target.id) return false;
             const id = String(target.id || '').trim().toLowerCase();
             return id === 'global-av-note' || id.endsWith('-av-note');
+        }
+
+        function getAvNoteInputIdForPrefix(prefix = '') {
+            const safePrefix = String(prefix || '').trim();
+            return safePrefix === 'global-' ? 'global-av-note' : `${safePrefix}av-note`;
+        }
+
+        function getAvNoteDropdownListIdForPrefix(prefix = '') {
+            return `${String(prefix || '').trim()}av-dropdown-list`;
+        }
+
+        function getAvNoteDropdownTrigger(prefix = '') {
+            const safePrefix = String(prefix || '').trim();
+            return safePrefix ? document.querySelector(`[data-av-note-dropdown-trigger="${safePrefix}"]`) : null;
+        }
+
+        function setAvNoteDropdownExpanded(prefix = '', expanded = false) {
+            const trigger = getAvNoteDropdownTrigger(prefix);
+            if (trigger) trigger.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        }
+
+        function hideAvNoteDropdown(prefix = '') {
+            const safePrefix = String(prefix || '').trim();
+            const list = document.getElementById(getAvNoteDropdownListIdForPrefix(safePrefix));
+            if (list) list.classList.add('hidden');
+            setAvNoteDropdownExpanded(safePrefix, false);
+            return false;
+        }
+
+        function hideAllAvNoteDropdowns(exceptPrefix = '') {
+            const except = String(exceptPrefix || '').trim();
+            AV_NOTE_DROPDOWN_PREFIXES.forEach((prefix) => {
+                if (prefix !== except) hideAvNoteDropdown(prefix);
+            });
+        }
+
+        function toggleAvNoteDropdown(prefix = '', event = null) {
+            const safePrefix = String(prefix || '').trim();
+            if (event && typeof event.preventDefault === 'function') event.preventDefault();
+            if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+            if (!canEditRowDetails(safePrefix)) {
+                showRowEditRestrictedToast(safePrefix);
+                return false;
+            }
+            const list = document.getElementById(getAvNoteDropdownListIdForPrefix(safePrefix));
+            const input = document.getElementById(getAvNoteInputIdForPrefix(safePrefix));
+            if (!list || !input) return false;
+            if (!list.classList.contains('hidden')) return hideAvNoteDropdown(safePrefix);
+            hideAllAvNoteDropdowns(safePrefix);
+            avNoteRenderedKeys[safePrefix] = '';
+            filterAvNotes(safePrefix, { showAll: true, fromDropdownButton: true });
+            if (!list.classList.contains('hidden')) {
+                list.scrollTop = 0;
+                setAvNoteDropdownExpanded(safePrefix, true);
+            }
+            return false;
+        }
+
+        function initializeAvNoteDropdownCombos() {
+            AV_NOTE_DROPDOWN_PREFIXES.forEach((prefix) => {
+                const input = document.getElementById(getAvNoteInputIdForPrefix(prefix));
+                const list = document.getElementById(getAvNoteDropdownListIdForPrefix(prefix));
+                if (!input || !list) return;
+                const row = input.parentElement;
+                if (row) row.classList.add('av-note-combo-row');
+                input.classList.add('av-note-combo-input');
+                list.classList.add('av-note-dropdown-panel');
+                list.setAttribute('role', 'listbox');
+                list.setAttribute('aria-label', 'AV Note options');
+                if (!getAvNoteDropdownTrigger(prefix) && row) {
+                    const trigger = document.createElement('button');
+                    trigger.type = 'button';
+                    trigger.className = 'av-note-dropdown-trigger';
+                    trigger.setAttribute('aria-label', 'Open AV Note dropdown');
+                    trigger.setAttribute('aria-expanded', 'false');
+                    trigger.setAttribute('data-av-note-dropdown-trigger', prefix);
+                    trigger.innerHTML = '<i class="ph-bold ph-caret-down"></i>';
+                    trigger.addEventListener('mousedown', (event) => event.preventDefault());
+                    trigger.addEventListener('click', (event) => toggleAvNoteDropdown(prefix, event));
+                    const plusButton = row.querySelector('button[onclick*="appendSpecCaliperToAvNote"]');
+                    row.insertBefore(trigger, plusButton ? plusButton.nextSibling : input.nextSibling);
+                }
+                input.addEventListener('blur', () => {
+                    setTimeout(() => {
+                        if (list.classList.contains('hidden')) setAvNoteDropdownExpanded(prefix, false);
+                    }, 230);
+                });
+            });
+            if (!avNoteDropdownDocumentListenerInitialized) {
+                avNoteDropdownDocumentListenerInitialized = true;
+                document.addEventListener('click', (event) => {
+                    const target = event && event.target;
+                    if (target && target.closest && target.closest('.av-note-combo-row, .av-note-dropdown-panel')) return;
+                    hideAllAvNoteDropdowns();
+                });
+            }
         }
 
         function readAvNoteScrollElement(target = null) {
@@ -24160,7 +24275,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.19').trim() || 'V2026.07.29.19';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.20').trim() || 'V2026.07.29.20';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -134159,20 +134274,22 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (changed) flushPendingEditsCache(true);
         }
 
-        function filterAvNotes(prefix) {
+        function filterAvNotes(prefix, options = {}) {
             const safePrefix = String(prefix || '');
+            const safeOptions = options && typeof options === 'object' ? options : {};
             const avNoteContextItem = safePrefix === 'hold-release-' && holdReleasePromptItem ? holdReleasePromptItem : activeItem;
             if (!avNoteContextItem) return;
             if (!isDatasetLoaded('avNotes', 'initial')) {
-                ensureDatasetLoaded('avNotes', 'full').then(() => filterAvNotes(prefix)).catch(() => {});
+                ensureDatasetLoaded('avNotes', 'full').then(() => filterAvNotes(prefix, safeOptions)).catch(() => {});
                 return;
             }
             const inputEl = document.getElementById(safePrefix + 'av-note');
             if (!inputEl) return;
-            const inputVal = inputEl.value.toUpperCase();
+            const inputText = String(inputEl.value || '').trim();
+            const inputVal = safeOptions.showAll === true ? '' : inputText.toUpperCase();
             const keyboardOwnsInput = detailMeasurementKeyboardTarget === inputEl || (inputEl.dataset && inputEl.dataset.detailMeasurementKeyboard === 'true');
             const shouldRestoreFocus = document.activeElement === inputEl || keyboardOwnsInput;
-            const restoreStart = typeof inputEl.selectionStart === 'number' ? inputEl.selectionStart : inputVal.length;
+            const restoreStart = typeof inputEl.selectionStart === 'number' ? inputEl.selectionStart : inputText.length;
             const restoreEnd = typeof inputEl.selectionEnd === 'number' ? inputEl.selectionEnd : restoreStart;
             const scrollState = captureAvNoteScrollState(inputEl);
             const mobileLocked = isMobileTextEntryPositionLocked(inputEl) || (shouldUseMobileTextEntryStabilizer() && document.activeElement === inputEl);
@@ -134203,7 +134320,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             if (matchingNotes.length === 0) {
                 avNoteRenderedKeys[safePrefix] = cacheKey;
-                list.classList.add('hidden');
+                const emptyText = inputText
+                    ? `No saved AV notes match "${inputText.toUpperCase()}". Keep typing to use your custom note.`
+                    : 'No saved AV notes for this row. Type your own AV note above.';
+                list.innerHTML = `<div class="av-note-dropdown-header">AV Note Options</div><div class="av-note-dropdown-empty">${esc(emptyText)}</div>`;
+                list.classList.remove('hidden');
+                setAvNoteDropdownExpanded(safePrefix, true);
                 keepAvNoteFocus();
                 return;
             }
@@ -134212,10 +134334,16 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return;
             }
             const touchOptimized = isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-            const renderedNotes = matchingNotes.slice(0, touchOptimized ? 18 : 24);
-            list.innerHTML = renderedNotes.map(n => `<div class="p-3 border-b border-gray-100 text-sm font-bold text-blue-800 cursor-pointer hover:bg-blue-50 active:bg-blue-100" data-av-note-option="${esc(n)}" data-av-note-prefix="${esc(safePrefix)}" role="button" tabindex="-1" onmousedown="event.preventDefault()" onclick="selectAvNote('${esc(n)}', '${esc(safePrefix)}')">${esc(n)}</div>`).join('');
+            const maxRenderedNotes = touchOptimized ? 80 : 120;
+            const renderedNotes = matchingNotes.slice(0, maxRenderedNotes);
+            const listLabel = inputVal ? `${matchingNotes.length} Matching AV Note${matchingNotes.length === 1 ? '' : 's'}` : `${matchingNotes.length} Saved AV Note${matchingNotes.length === 1 ? '' : 's'}`;
+            const footerHtml = matchingNotes.length > renderedNotes.length
+                ? `<div class="av-note-dropdown-footer">Showing first ${renderedNotes.length}. Type to narrow the list.</div>`
+                : (inputText ? `<div class="av-note-dropdown-footer">Type anything above to use a custom AV note.</div>` : '');
+            list.innerHTML = `<div class="av-note-dropdown-header">${esc(listLabel)}</div>` + renderedNotes.map(n => `<button type="button" class="av-note-dropdown-option" data-av-note-option="${esc(n)}" data-av-note-prefix="${esc(safePrefix)}" role="option" tabindex="-1" onmousedown="event.preventDefault()" onclick="return selectAvNote(this.dataset.avNoteOption || '', this.dataset.avNotePrefix || '', event)">${esc(n)}</button>`).join('') + footerHtml;
             avNoteRenderedKeys[safePrefix] = cacheKey;
             list.classList.remove('hidden');
+            setAvNoteDropdownExpanded(safePrefix, true);
             keepAvNoteFocus();
         }
 
@@ -134244,7 +134372,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!input) return false;
             const scrollState = captureAvNoteScrollState(input);
             input.value = safeNote.toUpperCase();
-            if (list) list.classList.add('hidden');
+            if (list) hideAvNoteDropdown(normalizedPrefix);
             const nextCaret = String(input.value || '').length;
             preserveAvNoteTextFocus(input, nextCaret, nextCaret, { force: safeOptions.fromPressStart === true });
             if (safeOptions.fromPressStart) {
@@ -134272,6 +134400,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             restoreAvNoteScrollState(scrollState);
             return false;
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeAvNoteDropdownCombos, { once: true });
+        } else {
+            initializeAvNoteDropdownCombos();
         }
 
         function scheduleDeferredPhotoUploadStart(task) {
