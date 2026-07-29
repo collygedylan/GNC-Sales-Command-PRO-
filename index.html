@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.14';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.29.15';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4974,7 +4974,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.14').trim() || 'V2026.07.29.14';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.15').trim() || 'V2026.07.29.15';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6347,6 +6347,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const DISEASE_TRAINING_ASSETS_TABLE = 'v2_disease_training_assets';
         const GROWER_SCOUT_REPORTS_TABLE = 'v2_grower_scout_reports';
         const GROWER_SCOUT_ASSETS_TABLE = 'v2_grower_scout_assets';
+        const WAREHOUSE_ASSIGNED_ITEMS_TABLE = 'v2_warehouse_assigned_items';
         const SHEAR_LIST_TABLE = 'v2_shear_list';
         const SHEAR_LIST_SELECT_FIELDS = '*';
         const PRODUCTION_WORKFLOW_ROWS_TABLE = 'v2_production_workflow_rows';
@@ -6427,7 +6428,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.14';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.15';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6468,7 +6469,7 @@ const FOREGROUND_INVENTORY_FULL_MAX_AGE_MS = 30000;
 const FOREGROUND_INVENTORY_INITIAL_MAX_AGE_MS = 15000;
 const FORCE_VIEW_ENTER_REFRESH_MIN_INTERVAL_MS = 10000;
 const FAST_FOREGROUND_DATA_VIEW_IDS = new Set(['drive', 'crop-roll', 'av', 'reserves', 'tasks', 'request', 'managers', 'docks', 'sales-office', 'moves', 'review', 'move-up', 'low-stock', 'advertisement', 'reports', 'grower', 'pest-management', 'shear-list', 'sales-inventory', 'production-workflow']);
-const FAST_FOREGROUND_DATASET_KEYS = new Set(['master', 'cropRollDrive', 'avOpen', 'avHotPriceKeys', 'reserves', 'customerRepMap', 'cav', 'cavAvBlankKeys', 'soc', 'salesOffice', 'flyerRows', 'flyerHistory', 'mlJobs', 'growerScoutReports', 'growerScoutAssets', 'avNotes']);
+const FAST_FOREGROUND_DATASET_KEYS = new Set(['master', 'cropRollDrive', 'avOpen', 'avHotPriceKeys', 'reserves', 'customerRepMap', 'cav', 'cavAvBlankKeys', 'soc', 'salesOffice', 'flyerRows', 'flyerHistory', 'mlJobs', 'growerScoutReports', 'growerScoutAssets', 'warehouseAssignedItems', 'avNotes']);
 const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'reserves', 'tasks', 'request', 'managers', 'docks', 'sales-office', 'moves', 'review', 'move-up', 'low-stock', 'advertisement', 'reports', 'grower', 'pest-management', 'shear-list', 'sales-inventory', 'production-workflow']);
         const APP_LIVE_EVENT_VIEW_AREAS = Object.freeze({
             home: ['request', 'sales-office', 'tasks', 'diagnostics', 'grower', 'production', 'sales-inventory', 'shear-list', 'take-back', 'customer-rep-map'],
@@ -6507,7 +6508,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             chat: { realtimeTables: ['v2_chat_conversations', 'v2_chat_participants', 'v2_chat_messages'], pollMs: 60000 },
             drive: { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'crop-roll': { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
-            tasks: { realtimeTables: ['v2_master_inventory', 'v2_active_request', 'v2_sales_office', FLYER_FOLDER_ROWS_TABLE, FLYER_FOLDER_HISTORY_TABLE, ML_IMAGE_JOBS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
+            tasks: { realtimeTables: ['v2_master_inventory', 'v2_active_request', 'v2_sales_office', FLYER_FOLDER_ROWS_TABLE, FLYER_FOLDER_HISTORY_TABLE, ML_IMAGE_JOBS_TABLE, WAREHOUSE_ASSIGNED_ITEMS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             request: { realtimeTables: ['v2_active_request', REQUEST_HISTORY_TABLE], pollMs: REQUEST_VISIBLE_POLL_MS },
             'sales-office': { realtimeTables: ['v2_sales_office'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             moves: { realtimeTables: ['v2_sales_office'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
@@ -6563,7 +6564,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const MANUAL_SYNC_ACTIVE_STALE_MS = 12 * 60 * 1000;
         const MANUAL_SYNC_COMPLETION_REFRESH_DELAY_MS = 300;
         const MANUAL_SYNC_COMPLETION_CATCHUP_DELAY_MS = 18000;
-        const MANUAL_SYNC_FROZEN_DATASET_KEYS = new Set(['master', 'avOpen', 'soc', 'reserves', 'cav', 'cavAvBlankKeys', 'salesOffice', 'avHotPriceKeys']);
+        const MANUAL_SYNC_FROZEN_DATASET_KEYS = new Set(['master', 'avOpen', 'soc', 'reserves', 'cav', 'cavAvBlankKeys', 'warehouseAssignedItems', 'salesOffice', 'avHotPriceKeys']);
         const DASHBOARD_SYNC_METADATA_TTL_MS = 45000;
         const DASHBOARD_SYNC_METADATA_LIMIT = 30;
         let realtimeChannels = [];
@@ -8532,6 +8533,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (safeTable === FLYER_FOLDER_HISTORY_TABLE) return 'tasks';
             if (safeTable === ML_IMAGE_JOBS_TABLE) return 'diagnostics';
             if (safeTable === GROWER_SCOUT_REPORTS_TABLE || safeTable === GROWER_SCOUT_ASSETS_TABLE) return 'grower';
+            if (safeTable === WAREHOUSE_ASSIGNED_ITEMS_TABLE) return 'tasks';
             if (safeTable === 'v2_master_inventory') return 'inventory';
             if (safeTable === 'v2_reserves') return 'reserves';
             if (safeTable === 'v2_customer_consignee_sales_reps') return 'customer-rep-map';
@@ -8555,7 +8557,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function getAppLiveEventDatasetKeys(tableName = '', eventRow = null) {
             const safeTable = String(tableName || '').trim();
-            if (safeTable === 'manual_sync') return ['master', 'cropRollDrive', 'avOpen', 'soc', 'reserves', 'customerRepMap', 'cav', 'cavAvBlankKeys', 'salesOffice', 'avHotPriceKeys'];
+            if (safeTable === 'manual_sync') return ['master', 'cropRollDrive', 'avOpen', 'soc', 'reserves', 'customerRepMap', 'cav', 'cavAvBlankKeys', 'warehouseAssignedItems', 'salesOffice', 'avHotPriceKeys'];
             const tableKeys = getDatasetKeysForTable(safeTable);
             if (tableKeys.length) return tableKeys;
             const payload = normalizeAppLiveEventPayload(eventRow && (eventRow.payload || eventRow.PAYLOAD));
@@ -14831,6 +14833,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (tableName === ML_IMAGE_JOBS_TABLE) return ['mlJobs'];
             if (tableName === GROWER_SCOUT_REPORTS_TABLE) return ['growerScoutReports'];
             if (tableName === GROWER_SCOUT_ASSETS_TABLE) return ['growerScoutAssets'];
+            if (tableName === WAREHOUSE_ASSIGNED_ITEMS_TABLE) return ['warehouseAssignedItems'];
             if (tableName === 'v2_cav_import') return ['cav', 'cavAvBlankKeys'];
             if (tableName === 'v2_view_av_hot_price_keys') return ['avHotPriceKeys'];
             if (tableName === 'v2_av_notes') return ['avNotes'];
@@ -14952,6 +14955,144 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             normalizeRowPhotoFields(item);
             buildSearchIndex(item);
             return item;
+        }
+
+        function normalizeWarehouseAssignedMatchPart(value = '') {
+            return String(value == null ? '' : value).trim().toUpperCase().replace(/\s+/g, ' ');
+        }
+
+        function normalizeWarehouseAssignedCompactPart(value = '') {
+            return normalizeWarehouseAssignedMatchPart(value).replace(/\s+/g, '');
+        }
+
+        function getWarehouseAssignedIdentityParts(item = null) {
+            const source = item || {};
+            return {
+                warehouse: normalizeWarehouseAssignedCompactPart(firstNonEmptyValue(source.WAREHOUSEI, source.warehousei, source.WAREHOUSEID, source.warehouseid, source.WAREHOUSE, source.warehouse, '')),
+                itemcode: normalizeWarehouseAssignedCompactPart(firstNonEmptyValue(source.ITEMCODE, source.itemcode, source.ITEM, source.item, '')),
+                contsize: normalizeWarehouseAssignedCompactPart(firstNonEmptyValue(source.CONTSIZE, source.contsize, source.ITEMSPEC, source.itemspec, source.SIZE, source.size, '')),
+                locationcode: normalizeWarehouseAssignedCompactPart(firstNonEmptyValue(source.LOCATIONCODE, source.locationcode, source.LOCATION, source.location, source.LOC, source.loc, '')),
+                source: normalizeWarehouseAssignedCompactPart(firstNonEmptyValue(source.SOURCE, source.source, source.SOURCECODE, source.sourcecode, source.BRAND, source.brand, '')),
+                commonname: normalizeWarehouseAssignedMatchPart(firstNonEmptyValue(source.COMMONNAME, source.commonname, source.DESCRIPTION, source.description, source.PLANT_NAME, source.plant_name, '')),
+                genusname: normalizeWarehouseAssignedMatchPart(firstNonEmptyValue(source.GENUSNAME, source.genusname, source.GENUS_NAME, source.genus_name, source.GENUS, source.genus, ''))
+            };
+        }
+
+        function buildWarehouseAssignedLookupKeys(parts = {}) {
+            const keys = [];
+            const pushKey = (...values) => {
+                if (values.some((value) => !value)) return;
+                const key = values.join('|');
+                if (!keys.includes(key)) keys.push(key);
+            };
+            pushKey('wisl', parts.warehouse, parts.itemcode, parts.contsize, parts.locationcode, parts.source);
+            pushKey('isl', parts.itemcode, parts.contsize, parts.locationcode, parts.source);
+            pushKey('wil', parts.warehouse, parts.itemcode, parts.contsize, parts.locationcode);
+            pushKey('il', parts.itemcode, parts.contsize, parts.locationcode);
+            return keys;
+        }
+
+        function clearWarehouseAssignedItemCaches() {
+            warehouseAssignedItemIndexCacheKey = '';
+            warehouseAssignedItemsByLookupKey = new Map();
+            warehouseAssignedItemMatchCache = new WeakMap();
+        }
+
+        function normalizeWarehouseAssignedItemRow(item, idx = 0) {
+            if (!item || typeof item !== 'object') return null;
+            item.UNIQUE_ID = firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, item.ID, item.id, `warehouse_assigned_${idx}`);
+            item.ID = firstNonEmptyValue(item.ID, item.id, item.UNIQUE_ID, '');
+            item.DOM_ID = item.DOM_ID || `wai_${item.UNIQUE_ID || idx}`;
+            item.ASSIGNEDTO = String(firstNonEmptyValue(item.ASSIGNEDTO, item.assignedto, item.ASSIGNED_TO, item.assigned_to, '') || '').trim();
+            item.assignedto = item.ASSIGNEDTO;
+            item.WAREHOUSEI = String(firstNonEmptyValue(item.WAREHOUSEI, item.warehousei, item.WAREHOUSEID, item.warehouseid, '') || '').trim();
+            item.warehousei = item.WAREHOUSEI;
+            item.ITEMCODE = String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, item.ITEM, item.item, '') || '').trim();
+            item.itemcode = item.ITEMCODE;
+            item.CONTSIZE = String(firstNonEmptyValue(item.CONTSIZE, item.contsize, item.ITEMSPEC, item.itemspec, item.SIZE, item.size, '') || '').trim();
+            item.contsize = item.CONTSIZE;
+            item.COMMONNAME = String(firstNonEmptyValue(item.COMMONNAME, item.commonname, item.DESCRIPTION, item.description, '') || '').trim();
+            item.commonname = item.COMMONNAME;
+            item.LOCATIONCODE = String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, item.LOCATION, item.location, item.LOC, item.loc, '') || '').trim();
+            item.locationcode = item.LOCATIONCODE;
+            item.SOURCE = String(firstNonEmptyValue(item.SOURCE, item.source, item.SOURCECODE, item.sourcecode, '') || '').trim();
+            item.source = item.SOURCE;
+            item.GENUSNAME = String(firstNonEmptyValue(item.GENUSNAME, item.genusname, item.GENUS_NAME, item.genus_name, item.GENUS, item.genus, '') || '').trim();
+            item.genusname = item.GENUSNAME;
+            item.WAREHOUSE_ASSIGNED_USER = normalizeEvalAssignableUser(item.ASSIGNEDTO);
+            item._search = `${item.ASSIGNEDTO} ${item.WAREHOUSEI} ${item.ITEMCODE} ${item.CONTSIZE} ${item.COMMONNAME} ${item.LOCATIONCODE} ${item.SOURCE} ${item.GENUSNAME}`.toLowerCase();
+            return item.WAREHOUSE_ASSIGNED_USER && item.ITEMCODE && item.CONTSIZE && item.LOCATIONCODE ? item : null;
+        }
+
+        function rebuildWarehouseAssignedItemIndexes(force = false) {
+            const cacheKey = [
+                getDatasetLoadSignature('warehouseAssignedItems'),
+                Array.isArray(warehouseAssignedItemsInventory) ? warehouseAssignedItemsInventory.length : 0
+            ].join('|');
+            if (!force && warehouseAssignedItemIndexCacheKey === cacheKey) return;
+            warehouseAssignedItemIndexCacheKey = cacheKey;
+            warehouseAssignedItemsByLookupKey = new Map();
+            warehouseAssignedItemMatchCache = new WeakMap();
+            (Array.isArray(warehouseAssignedItemsInventory) ? warehouseAssignedItemsInventory : []).forEach((row) => {
+                if (!row || !row.WAREHOUSE_ASSIGNED_USER) return;
+                const parts = getWarehouseAssignedIdentityParts(row);
+                buildWarehouseAssignedLookupKeys(parts).forEach((key) => {
+                    if (!warehouseAssignedItemsByLookupKey.has(key)) warehouseAssignedItemsByLookupKey.set(key, []);
+                    warehouseAssignedItemsByLookupKey.get(key).push(row);
+                });
+            });
+        }
+
+        function chooseWarehouseAssignedRowForItem(candidates = [], itemParts = {}) {
+            const rows = (Array.isArray(candidates) ? candidates : []).filter((row) => row && row.WAREHOUSE_ASSIGNED_USER);
+            if (!rows.length) return null;
+            if (rows.length === 1) return rows[0];
+            let narrowed = rows;
+            if (itemParts.source) {
+                const sourceMatches = narrowed.filter((row) => getWarehouseAssignedIdentityParts(row).source === itemParts.source);
+                if (sourceMatches.length) narrowed = sourceMatches;
+            }
+            if (itemParts.warehouse) {
+                const warehouseMatches = narrowed.filter((row) => getWarehouseAssignedIdentityParts(row).warehouse === itemParts.warehouse);
+                if (warehouseMatches.length) narrowed = warehouseMatches;
+            }
+            if (itemParts.commonname) {
+                const commonMatches = narrowed.filter((row) => {
+                    const rowCommon = getWarehouseAssignedIdentityParts(row).commonname;
+                    return rowCommon && rowCommon === itemParts.commonname;
+                });
+                if (commonMatches.length) narrowed = commonMatches;
+            }
+            if (itemParts.genusname) {
+                const genusMatches = narrowed.filter((row) => {
+                    const rowGenus = getWarehouseAssignedIdentityParts(row).genusname;
+                    return rowGenus && rowGenus === itemParts.genusname;
+                });
+                if (genusMatches.length) narrowed = genusMatches;
+            }
+            return narrowed[0] || rows[0] || null;
+        }
+
+        function getWarehouseAssignedRowForItem(item = null) {
+            if (!item || typeof item !== 'object') return null;
+            rebuildWarehouseAssignedItemIndexes();
+            if (warehouseAssignedItemMatchCache.has(item)) return warehouseAssignedItemMatchCache.get(item) || null;
+            const parts = getWarehouseAssignedIdentityParts(item);
+            let matchedRow = null;
+            if (parts.itemcode && parts.contsize && parts.locationcode) {
+                for (const key of buildWarehouseAssignedLookupKeys(parts)) {
+                    const candidates = warehouseAssignedItemsByLookupKey.get(key);
+                    matchedRow = chooseWarehouseAssignedRowForItem(candidates, parts);
+                    if (matchedRow) break;
+                }
+            }
+            warehouseAssignedItemMatchCache.set(item, matchedRow || null);
+            return matchedRow || null;
+        }
+
+        function getWarehouseAssignedUserForItem(item = null) {
+            const matchedRow = getWarehouseAssignedRowForItem(item);
+            return matchedRow ? String(firstNonEmptyValue(matchedRow.WAREHOUSE_ASSIGNED_USER, matchedRow.ASSIGNEDTO, matchedRow.assignedto, '') || '').trim() : '';
         }
 
         function normalizeSocDockRowAliases(item) {
@@ -15275,6 +15416,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }
             if (tableSet.has(FLYER_FOLDER_HISTORY_TABLE)) {
                 changedDatasetKeys.add('flyerHistory');
+            }
+            if (tableSet.has(WAREHOUSE_ASSIGNED_ITEMS_TABLE)) {
+                clearWarehouseAssignedItemCaches();
+                changedDatasetKeys.add('warehouseAssignedItems');
             }
             if (tableSet.has('v2_cav_import')) {
                 syncRealtimeCavRows();
@@ -15897,6 +16042,13 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     changed = upsertRealtimeRow(growerScoutAssetsInventory, normalizeGrowerScoutAssetRow(nextRow), tableName);
                 }
                 rebuildGrowerScoutIndexes();
+            } else if (tableName === WAREHOUSE_ASSIGNED_ITEMS_TABLE) {
+                if (eventType === 'DELETE') {
+                    changed = removeRealtimeRow(warehouseAssignedItemsInventory, uniqueId);
+                } else if (nextRow) {
+                    changed = upsertRealtimeRow(warehouseAssignedItemsInventory, normalizeWarehouseAssignedItemRow(nextRow), tableName);
+                }
+                if (changed) clearWarehouseAssignedItemCaches();
             } else if (tableName === 'v2_cav_import') {
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(cavInventory, uniqueId)
@@ -16006,6 +16158,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 markViewDirty('pest-management');
                 if (isViewVisible('grower')) queueInteractiveViewRender('grower', false, true, 0, 120);
                 if (isViewVisible('pest-management')) queueInteractiveViewRender('pest-management', false, true, 0, 120);
+            } else if (tableName === WAREHOUSE_ASSIGNED_ITEMS_TABLE) {
+                invalidateResolvedViewStateCaches();
+                markViewDirty('tasks');
+                if (!shouldDeferInteractiveBackgroundWork() && isViewVisible('tasks')) scheduleTasksRender(0, 0, true);
             }
             if (!deferVisualSync) flushRealtimeDatasetUpdates([tableName]);
             recordInternalPerfDuration('realtimeApplyDurations', realtimeApplyStartedAt, tableName || 'unknown');
@@ -20812,6 +20968,8 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
         }
 
         function getEvalTaskAssignedUsersFromItem(item = null) {
+            const warehouseAssignee = normalizeEvalAssignableUser(getWarehouseAssignedUserForItem(item));
+            if (warehouseAssignee) return [warehouseAssignee];
             const overrideAssignee = normalizeEvalAssignableUser(getEvalTaskAssignmentOverrideForItem(item));
             if (overrideAssignee) return [overrideAssignee];
             const explicitAssignees = getEvalTaskAssignedUsersFromValue(firstNonEmptyValue(
@@ -22948,7 +23106,7 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             return items.map((item) => stripTransientCacheFields(item));
         }
 
-        const CACHE_SCHEMA_VERSION = 22;
+        const CACHE_SCHEMA_VERSION = 23;
         const MIN_TRUSTED_MASTER_COMMON_NAME_CACHE_COUNT = 1200;
         const INLINE_CACHE_RESERVE_LIMIT = 180;
         const NETWORK_VERIFIED_DATASET_KEYS = new Set([
@@ -22967,6 +23125,7 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             'mlJobs',
             'growerScoutReports',
             'growerScoutAssets',
+            'warehouseAssignedItems',
             'cav',
             'cavAvBlankKeys',
             'avHotPriceKeys',
@@ -22996,6 +23155,7 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
                 mlJobsData: buildCacheRows(mlImageJobsInventory),
                 growerScoutReportsData: buildCacheRows(growerScoutReportsInventory),
                 growerScoutAssetsData: buildCacheRows(growerScoutAssetsInventory),
+                warehouseAssignedItemsData: buildCacheRows(warehouseAssignedItemsInventory),
                 cavData: buildCacheRows(cavInventory),
                 cavAvBlankKeysData: buildCacheRows(cavAvBlankKeyInventory),
                 avHotPriceKeysData: buildCacheRows(avHotPriceKeysInventory),
@@ -23034,6 +23194,7 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
                 mlJobs: { initialLoaded: hasRows(cachedRes.mlJobsData), fullLoaded: false },
                 growerScoutReports: { initialLoaded: hasRows(cachedRes.growerScoutReportsData), fullLoaded: false },
                 growerScoutAssets: { initialLoaded: hasRows(cachedRes.growerScoutAssetsData), fullLoaded: false },
+                warehouseAssignedItems: { initialLoaded: hasRows(cachedRes.warehouseAssignedItemsData), fullLoaded: false },
                 cav: { initialLoaded: hasRows(cachedRes.cavData), fullLoaded: false },
                 cavAvBlankKeys: { initialLoaded: hasRows(cachedRes.cavAvBlankKeysData), fullLoaded: false },
                 avHotPriceKeys: { initialLoaded: hasRows(cachedRes.avHotPriceKeysData), fullLoaded: false },
@@ -23218,10 +23379,10 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             };
         }
 
-        let fullInventory=[]; let cropRollDriveInventory=[]; let cropRollDriveSchemaReady=null; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let customerRepMapRows=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let inventoryEditRequestInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let mlImageJobsInventory=[]; let growerScoutReportsInventory=[]; let growerScoutAssetsInventory=[]; let cavInventory=[]; let cavAvBlankKeyInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={}; let diagnosticIssueCardTabs=new Map();
+        let fullInventory=[]; let cropRollDriveInventory=[]; let cropRollDriveSchemaReady=null; let avOpenInventory=[]; let avHotPriceKeysInventory=[]; let lowStockInventory=[]; let socInventory=[]; let reservesInventory=[]; let customerRepMapRows=[]; let requestsInventory=[]; let requestHistoryInventory=[]; let inventoryEditRequestInventory=[]; let optimisticRequestIds=new Set(); let optimisticCompletedRowIds=new Set(); let managerReviewInventory=[]; let moveUpInventory=[]; let salesOfficeInventory=[]; let flyerFolderInventory=[]; let flyerFolderHistoryInventory=[]; let mlImageJobsInventory=[]; let growerScoutReportsInventory=[]; let growerScoutAssetsInventory=[]; let warehouseAssignedItemsInventory=[]; let cavInventory=[]; let cavAvBlankKeyInventory=[]; let avNotesDb=[]; let avNotesCommonNameIndex=new Map(); let avNotesCommonNameIndexVersion=-1; let avNoteFilterTimers={}; let avNoteFilterResultCache=new Map(); let avNoteRenderedKeys={}; let diagnosticIssueCardTabs=new Map();
 let chatConversations=[]; let chatParticipants=[]; let chatMessages=[]; let chatUsers=[]; let chatDataLoaded=false; let chatLoadPromise=null; let chatSchemaReady=null; let chatSchemaProbePromise=null; let chatSchemaWarningShown=false; let activeChatConversationId=''; let pendingChatOpenConversationId=''; let chatComposeOpen=false; let chatUserSearchTerm=''; let chatComposeTitle=''; let chatSelectedUsers=new Set(); let chatMessageDraft=''; let chatLastRenderSignature=''; let chatBackgroundPollTimer=null; let foregroundChatNotificationIds=new Set(); let foregroundDepartmentCalendarNotificationIds=new Set(); let chatVoiceRecorder=null; let chatVoiceRecorderStream=null; let chatVoiceChunks=[]; let chatVoiceRecordingStartAt=0; let chatVoiceRecordingForComposer=false; let chatVoiceRecordingActive=false; let chatVoiceUploadInFlight=false; let chatVoiceRecordMimeType=''; let chatVoiceRecordTimer=null; let chatVoiceHoldPointerId=''; let chatVoiceHoldForComposer=false; let chatVoiceHoldFinishPending=''; let chatVoiceHoldStartPromise=null;
 let walkieChannels=[]; let walkieChannelMembers=[]; let walkieCalls=[]; let walkieCallMembers=[]; let walkieUsers=[]; let walkieSignalsSeen=new Set(); let walkieDataLoaded=false; let walkieLoadPromise=null; let walkieSchemaReady=null; let walkieSchemaProbePromise=null; let walkieSchemaWarningShown=false; let activeWalkieChannelId=''; let pendingWalkieOpenChannelId=''; let pendingWalkieOpenCallId=''; let walkieComposeOpen=false; let walkieUserSearchTerm=''; let walkieComposeTitle=''; let walkieSelectedUsers=new Set(); let walkieLastRenderSignature=''; let walkieDeviceId=''; let activeWalkieCallId=''; let walkieJoinedCallId=''; let walkieActiveMembershipId=''; let walkiePeerConnections=new Map(); let walkieRemoteAudioElements=new Map(); let walkieLocalStream=null; let walkieHeartbeatTimer=null; let walkieSpeakerHeartbeatTimer=null; let walkieReconnectTimer=null; let walkieActiveSpeakerIntent=false; let walkiePressedPointerId=''; let walkieForegroundNoticeShown=false;
-        let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let cropRollDriveInventoryById=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let requestHistoryInventoryById=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let flyerFolderHistoryInventoryById=new Map(); let mlImageJobsInventoryById=new Map(); let growerScoutReportsInventoryById=new Map(); let growerScoutAssetsByReportId=new Map(); let cavInventoryById=new Map(); let inventoryDomIdLookupCache=new Map(); let inventoryDomIdLookupCacheSignature=''; let inventoryDomIdLookupCacheVersion=0; let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map(); let ncrCurrentCropInheritancePatchIds=new Set();
+        let masterInventoryById=new Map(); let masterInventoryByExactKey=new Map(); let cropRollDriveInventoryById=new Map(); let avOpenInventoryById=new Map(); let avHotPriceKeysInventoryById=new Map(); let lowStockInventoryById=new Map(); let socInventoryById=new Map(); let reservesInventoryById=new Map(); let requestsInventoryById=new Map(); let requestsInventoryByMasterId=new Map(); let requestHistoryInventoryById=new Map(); let managerReviewInventoryById=new Map(); let moveUpInventoryById=new Map(); let salesOfficeInventoryById=new Map(); let flyerFolderInventoryById=new Map(); let flyerFolderHistoryInventoryById=new Map(); let mlImageJobsInventoryById=new Map(); let growerScoutReportsInventoryById=new Map(); let growerScoutAssetsByReportId=new Map(); let warehouseAssignedItemsByLookupKey=new Map(); let warehouseAssignedItemMatchCache=new WeakMap(); let warehouseAssignedItemIndexCacheKey=''; let cavInventoryById=new Map(); let inventoryDomIdLookupCache=new Map(); let inventoryDomIdLookupCacheSignature=''; let inventoryDomIdLookupCacheVersion=0; let lowStockInventoryDirty=true; let managerReviewInventoryDirty=true; let moveUpInventoryDirty=true; let ncrActionabilitySummaryCache=new Map(); let ncrCurrentCropInheritancePatchIds=new Set();
         let activeGrowerScoutTab='note'; let growerScoutRecorder=null; let growerScoutRecorderStream=null; let growerScoutRecordingActive=false; let growerScoutRecordingStartedAt=0; let growerScoutRecordingTimer=null; let growerScoutRecordMimeType=''; let growerScoutAudioChunks=[]; let growerScoutAudioBlob=null; let growerScoutAudioDurationSeconds=0; let growerScoutSubmitInFlight=false;
 let taskReserveScopedDataCacheKey=''; let taskReserveScopedDataCache=null; let taskReserveDriveJoinCacheKey=''; let taskReserveDriveRowsByExactKey=new Map(); let taskReserveDriveRowsByItemCode=new Map(); let taskReserveJoinedDriveRowsCacheKey=''; let taskReserveJoinedDriveRowsCache=new Map();
 let reviewSearchTerm=''; let moveUpSearchTerm=''; let reviewBrowseMode='item'; let moveUpBrowseMode='item'; let selectedReviewBlockAlpha=null; let selectedReviewLocationCode=null; let selectedMoveUpBlockAlpha=null; let selectedMoveUpLocationCode=null; let reviewDerivedRenderCache={ key: '', filteredRows: [], cardRows: null, blockRows: null, blockGroups: null, itemGroups: null }; let ncrDraftState=new Map(); let ncrCompletionRecordsByUid=new Map(); let optimisticNcrCompletedRowIds=new Set(); let fallbackNcrCompletedRowIds=new Set(); let holdReleaseOverrideColumnsReady=null; let holdReleaseOverrideColumnsProbePromise=null; let holdReleaseOverrideSchemaWarningShown=false;
@@ -23991,7 +24152,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.14').trim() || 'V2026.07.29.14';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.15').trim() || 'V2026.07.29.15';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -25021,6 +25182,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             mlJobs: { table: ML_IMAGE_JOBS_TABLE, sourceTable: ML_IMAGE_JOBS_TABLE, initialQuery: 'select=*&order=created_at.desc', fullQuery: 'select=*&order=created_at.desc' },
             growerScoutReports: { table: GROWER_SCOUT_REPORTS_TABLE, sourceTable: GROWER_SCOUT_REPORTS_TABLE, initialQuery: 'select=*&order=created_at.desc', fullQuery: 'select=*&order=created_at.desc' },
             growerScoutAssets: { table: GROWER_SCOUT_ASSETS_TABLE, sourceTable: GROWER_SCOUT_ASSETS_TABLE, initialQuery: 'select=*&order=created_at.desc', fullQuery: 'select=*&order=created_at.desc' },
+            warehouseAssignedItems: { table: WAREHOUSE_ASSIGNED_ITEMS_TABLE, sourceTable: WAREHOUSE_ASSIGNED_ITEMS_TABLE, initialQuery: 'select=*&order=updated_at.desc', fullQuery: 'select=*&order=updated_at.desc', initialFetchAll: true },
             cav: { table: 'v2_cav_import', sourceTable: 'v2_cav_import', initialQuery: 'select=*', fullQuery: 'select=*' },
             cavAvBlankKeys: { table: 'v2_cav_import', sourceTable: 'v2_cav_import', initialQuery: CAV_AV_BLANK_KEYS_QUERY, fullQuery: CAV_AV_BLANK_KEYS_QUERY, initialFetchAll: true },
             avHotPriceKeys: { table: 'v2_view_av_hot_price_keys', sourceTable: 'v2_view_av_hot_price_keys', initialQuery: 'select=*', fullQuery: 'select=*' },
@@ -27062,6 +27224,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (key === 'mlJobs') return { mlJobsData: formatted };
             if (key === 'growerScoutReports') return { growerScoutReportsData: formatted };
             if (key === 'growerScoutAssets') return { growerScoutAssetsData: formatted };
+            if (key === 'warehouseAssignedItems') return { warehouseAssignedItemsData: formatted };
             if (key === 'cav') return { cavData: formatted };
             if (key === 'cavAvBlankKeys') return { cavAvBlankKeysData: formatted };
             if (key === 'avHotPriceKeys') return { avHotPriceKeysData: formatted };
@@ -27197,6 +27360,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 case 'mlJobs': return Array.isArray(mlImageJobsInventory) ? mlImageJobsInventory.length : 0;
                 case 'growerScoutReports': return Array.isArray(growerScoutReportsInventory) ? growerScoutReportsInventory.length : 0;
                 case 'growerScoutAssets': return Array.isArray(growerScoutAssetsInventory) ? growerScoutAssetsInventory.length : 0;
+                case 'warehouseAssignedItems': return Array.isArray(warehouseAssignedItemsInventory) ? warehouseAssignedItemsInventory.length : 0;
                 case 'cav': return Array.isArray(cavInventory) ? cavInventory.length : 0;
                 case 'cavAvBlankKeys': return Array.isArray(cavAvBlankKeyInventory) ? cavAvBlankKeyInventory.length : 0;
                 case 'avHotPriceKeys': return Array.isArray(avHotPriceKeysInventory) ? avHotPriceKeysInventory.length : 0;
@@ -27662,7 +27826,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 }
                 const isFlyerTaskView = activeTaskView === 'flyer';
                 const isAvBlankTaskView = activeTaskView === 'av-blanks';
-                const required = [{ key: 'master', mode: 'full' }];
+                const required = [{ key: 'master', mode: 'full' }, { key: 'warehouseAssignedItems', mode: 'full' }];
                 if (isFlyerTaskView) required.push({ key: 'flyerRows', mode: 'full' }, { key: 'flyerHistory', mode: 'full' });
                 const background = [{ key: 'master', mode: 'full' }, { key: 'flyerRows', mode: 'full' }, { key: 'flyerHistory', mode: 'full' }, { key: 'avNotes', mode: 'full' }];
                 const activeEvalSimpleFilter = activeTaskView === EVAL_TASK_ASSIGNMENT && shouldUseSimplifiedEvalTaskFilters()
@@ -31228,6 +31392,7 @@ let avTopControlsRenderToken = 0;
                 const taskUsers = getEvalTaskAssignedUsersFromItem(item);
                 if (taskUsers.some((user) => isAssignedToCurrentUser(user, userOverride, displayOverride))) return true;
                 if (isAssignedToCurrentUser(firstNonEmptyValue(
+                    getMasterAssignedToValue(item),
                     item && item.ASSIGNEDTO,
                     item && item.assignedto,
                     item && item.ASSIGNED_TO,
@@ -36552,6 +36717,7 @@ let avTopControlsRenderToken = 0;
             const ruleAssignee = getEvalTaskRuleAssigneeForItem(item);
             if (ruleAssignee && isAssignedToCurrentUser(ruleAssignee, userOverride, displayOverride)) return true;
             return isAssignedToCurrentUser(firstNonEmptyValue(
+                getMasterAssignedToValue(item),
                 item && item.ASSIGNEDTO,
                 item && item.assignedto,
                 item && item.ASSIGNED_TO,
@@ -42496,11 +42662,12 @@ function toggleDriveQuickRequestItem(domId) {
             const hasMlJobs = hasKey('mlJobsData');
             const hasGrowerScoutReports = hasKey('growerScoutReportsData');
             const hasGrowerScoutAssets = hasKey('growerScoutAssetsData');
+            const hasWarehouseAssignedItems = hasKey('warehouseAssignedItemsData');
             const hasCav = hasKey('cavData');
             const hasCavAvBlankKeys = hasKey('cavAvBlankKeysData');
             const hasAvHotPrice = hasKey('avHotPriceKeysData');
             const hasAvNotes = hasKey('avNotesData');
-            const didStructuralDataChange = hasMaster || hasCropRollDrive || hasAvOpen || hasRequests || hasRequestHistory || hasInventoryEditRequests || hasReserves || hasCustomerRepMap || hasSoc || hasSalesOffice || hasFlyerRows || hasFlyerHistory || hasMlJobs || hasGrowerScoutReports || hasGrowerScoutAssets || hasCav || hasCavAvBlankKeys || hasAvHotPrice || hasAvNotes;
+            const didStructuralDataChange = hasMaster || hasCropRollDrive || hasAvOpen || hasRequests || hasRequestHistory || hasInventoryEditRequests || hasReserves || hasCustomerRepMap || hasSoc || hasSalesOffice || hasFlyerRows || hasFlyerHistory || hasMlJobs || hasGrowerScoutReports || hasGrowerScoutAssets || hasWarehouseAssignedItems || hasCav || hasCavAvBlankKeys || hasAvHotPrice || hasAvNotes;
             const changedDatasetKeys = [];
             if (hasMaster) changedDatasetKeys.push('master');
             if (hasCropRollDrive) changedDatasetKeys.push('cropRollDrive');
@@ -42517,6 +42684,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasMlJobs) changedDatasetKeys.push('mlJobs');
             if (hasGrowerScoutReports) changedDatasetKeys.push('growerScoutReports');
             if (hasGrowerScoutAssets) changedDatasetKeys.push('growerScoutAssets');
+            if (hasWarehouseAssignedItems) changedDatasetKeys.push('warehouseAssignedItems');
             if (hasCav) changedDatasetKeys.push('cav');
             if (hasCavAvBlankKeys) changedDatasetKeys.push('cavAvBlankKeys');
             if (hasAvHotPrice) changedDatasetKeys.push('avHotPriceKeys');
@@ -42607,6 +42775,12 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasGrowerScoutAssets) {
                 growerScoutAssetsInventory = (res.growerScoutAssetsData || []).map((item, idx) => normalizeGrowerScoutAssetRow(item, idx)).filter(Boolean);
                 rebuildGrowerScoutIndexes();
+            }
+
+            if (hasWarehouseAssignedItems) {
+                warehouseAssignedItemsInventory = (res.warehouseAssignedItemsData || []).map((item, idx) => normalizeWarehouseAssignedItemRow(item, idx)).filter(Boolean);
+                clearWarehouseAssignedItemCaches();
+                rebuildWarehouseAssignedItemIndexes(true);
             }
 
             if (hasRequests || hasRequestHistory || (hasMaster && requestsInventory.length)) {
@@ -46289,6 +46463,8 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getMasterAssignedToValue(item = null) {
+            const warehouseAssignee = getWarehouseAssignedUserForItem(item);
+            if (warehouseAssignee) return warehouseAssignee;
             return String(firstNonEmptyValue(
                 item && item.ASSIGNEDTO,
                 item && item.assignedto,
@@ -66345,6 +66521,7 @@ function toggleDriveQuickRequestItem(domId) {
             const hotPriceCacheKey = [
                 resolvedViewStateEpoch,
                 getDatasetLoadSignature('master'),
+                getDatasetLoadSignature('warehouseAssignedItems'),
                 getDatasetLoadSignature('avHotPriceKeys'),
                 Array.isArray(fullInventory) ? fullInventory.length : 0,
                 Array.isArray(avHotPriceKeysInventory) ? avHotPriceKeysInventory.length : 0
@@ -85906,7 +86083,7 @@ function toggleDriveQuickRequestItem(domId) {
                 taskFieldsHtml = `<div class="grid grid-cols-1 gap-3"><div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-600"><span class="font-black text-slate-800">Current Hold:</span> ${escapeHtml(currentHoldCode || '-')} ${currentHoldReason ? `| ${escapeHtml(currentHoldReason)}` : ''}</div><label class="block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Hold Action<select id="eval-task-hold-action" class="input-field mt-1 bg-white !mb-0">${options}</select></label><label class="block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Hold Code<input id="eval-task-hold-code" type="text" class="input-field mt-1 !mb-0 uppercase" value="${escapeHtml(holdCodeValue)}" placeholder="H"></label><label class="block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Hold Reason<textarea id="eval-task-hold-reason" class="input-field mt-1 h-24 resize-y !mb-0" placeholder="Hold reason...">${escapeHtml(holdReasonValue)}</textarea></label></div>`;
             }
             const noteValue = firstNonEmptyValue(item.EVAL_TASK_RESULT_NOTE, item.eval_task_result_note, '');
-            panel.innerHTML = `<div class="rounded-[1.35rem] border border-emerald-200 bg-white p-4 shadow-sm"><div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0"><div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700"><i class="ph-bold ${typeIcon} text-sm"></i><span>${escapeHtml(typeLabel)}</span></div>${assignedMeta ? `<div class="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">${escapeHtml(assignedMeta)}</div>` : ''}</div><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${escapeHtml(String(firstNonEmptyValue(item.ASSIGNEDTO, item.assignedto, '') || 'Unassigned'))}</span></div><div class="mt-3 whitespace-pre-wrap rounded-xl border border-emerald-100 bg-emerald-50/80 px-3 py-3 text-[12px] font-semibold leading-5 text-emerald-950">${escapeHtml(instructions)}</div><div class="mt-4 grid grid-cols-1 gap-3">${taskFieldsHtml}<label class="block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Result Note<textarea id="eval-task-result-note" class="input-field mt-1 h-20 resize-y !mb-0" placeholder="Result note...">${escapeHtml(noteValue)}</textarea></label><button id="eval-task-complete-btn" type="button" class="w-full rounded-xl bg-[#007a4d] px-4 py-4 text-[12px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="return completeEvalTaskFromDetail()">Complete EVAL Task</button></div></div>`;
+            panel.innerHTML = `<div class="rounded-[1.35rem] border border-emerald-200 bg-white p-4 shadow-sm"><div class="flex flex-wrap items-start justify-between gap-3"><div class="min-w-0"><div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700"><i class="ph-bold ${typeIcon} text-sm"></i><span>${escapeHtml(typeLabel)}</span></div>${assignedMeta ? `<div class="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">${escapeHtml(assignedMeta)}</div>` : ''}</div><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${escapeHtml(String(getMasterAssignedToValue(item) || 'Unassigned'))}</span></div><div class="mt-3 whitespace-pre-wrap rounded-xl border border-emerald-100 bg-emerald-50/80 px-3 py-3 text-[12px] font-semibold leading-5 text-emerald-950">${escapeHtml(instructions)}</div><div class="mt-4 grid grid-cols-1 gap-3">${taskFieldsHtml}<label class="block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">Result Note<textarea id="eval-task-result-note" class="input-field mt-1 h-20 resize-y !mb-0" placeholder="Result note...">${escapeHtml(noteValue)}</textarea></label><button id="eval-task-complete-btn" type="button" class="w-full rounded-xl bg-[#007a4d] px-4 py-4 text-[12px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="return completeEvalTaskFromDetail()">Complete EVAL Task</button></div></div>`;
             panel.classList.remove('hidden');
         }
 
@@ -85917,7 +86094,7 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             const access = getRoleAccessState();
-            const assignedTo = String(firstNonEmptyValue(item.ASSIGNEDTO, item.assignedto, '') || '').trim();
+            const assignedTo = String(getMasterAssignedToValue(item) || '').trim();
             if (!access.isAdmin && !isAssignedToCurrentUser(assignedTo)) {
                 showToast('Restricted', 'This EVAL task is assigned to another user.', true);
                 return false;
@@ -120994,6 +121171,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 safeRole,
                 String(taskViewTargetUser || ''),
                 getDatasetLoadSignature('master'),
+                getDatasetLoadSignature('warehouseAssignedItems'),
                 getDatasetLoadSignature('reserves'),
                 getDatasetLoadSignature('request'),
                 fullInventory.length
@@ -121014,8 +121192,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                         getFlyerAssigneeList(item.FLYER_ASSIGNED || item.ASSIGNEDTO || '').forEach((name) => appendUserTask(name, item));
                         return;
                     }
-                    if (item.ASSIGNEDTO && !String(firstNonEmptyValue(item.DATE_COMPLETED, item.date_completed, '')).trim()) {
-                        appendUserTask(item.ASSIGNEDTO, item);
+                    const assignedTo = getMasterAssignedToValue(item);
+                    if (assignedTo && !String(firstNonEmptyValue(item.DATE_COMPLETED, item.date_completed, '')).trim()) {
+                        appendUserTask(assignedTo, item);
                     }
                 });
                 if (!userTaskBuckets.size) {
@@ -122127,6 +122306,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const cacheKey = [
                 resolvedViewStateEpoch,
                 getDatasetLoadSignature('master'),
+                getDatasetLoadSignature('warehouseAssignedItems'),
                 getDatasetLoadSignature('requests'),
                 getDatasetLoadSignature('salesOffice'),
                 safeView === 'flyer' ? getDatasetLoadSignature('flyerRows') : 'flyerRows:na',
@@ -122173,7 +122353,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             } else if (owner) {
                 nextItems = safeView === 'flyer'
                     ? taskAssignableItems.filter((item) => isFlyerTaskItem(item))
-                    : taskAssignableItems.filter((item) => isRestrictedEvalTaskQueue || isAssignedToCurrentUser(item.ASSIGNEDTO, owner, owner));
+                    : taskAssignableItems.filter((item) => isRestrictedEvalTaskQueue || isAssignedToCurrentUser(getMasterAssignedToValue(item), owner, owner));
             }
             taskScopedQueueItemsCache.set(cacheKey, nextItems.slice());
             trimInternalCacheMap(taskScopedQueueItemsCache, 18);
@@ -122298,6 +122478,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const assignedUsers = getEvalTaskAssignedUsersFromItem(item);
             if (assignedUsers.includes(safeOwner)) return true;
             return isAssignedToCurrentUser(firstNonEmptyValue(
+                getMasterAssignedToValue(item),
                 item && item.ASSIGNEDTO,
                 item && item.assignedto,
                 item && item.REQUESTED_BY,
@@ -124703,6 +124884,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const cacheKey = [
                 resolvedViewStateEpoch,
                 getDatasetLoadSignature('master'),
+                getDatasetLoadSignature('warehouseAssignedItems'),
                 getDatasetLoadSignature('requests'),
                 getDatasetLoadSignature('salesOffice'),
                 cavSignature,
