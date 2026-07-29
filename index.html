@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.16';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.29.17';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4974,7 +4974,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.16').trim() || 'V2026.07.29.16';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.17').trim() || 'V2026.07.29.17';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6428,7 +6428,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.16';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.17';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -23739,7 +23739,7 @@ let taskCustomerOutreachOpen=false; let taskCustomerOutreachSelectedRowIds=new S
 
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null; let moveUpViewLevel=0; let selectedMoveUpItemCode=null; let selectedMoveUpCommonName=null; let selectedMoveUpContSize=null;
         let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let activeLocationMoveQueDetailUid=''; let activeShearQueDetailId=''; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let tempReqAppendToExistingFolder=false; let tempExistingReqCustomerSearch=""; let tempExistingReqSelectedCustomer=""; let tempExistingReqConsigneeSearch=""; let tempExistingReqSelectedConsignee=""; let tempExistingReqFolderSearch=""; let tempRequestEmailChainSelectedEmails=new Set(); let tempRequestEmailChainRecipientByEmail=new Map(); let previousReqStep=""; let pendingRequestOverQtyResolution=null; let requestQtyStepDomIds=[]; let requestQtyStepIndex=0; let requestQtyStepItemsData={}; let requestQtyEmailStepActive=false; let requestItemCodeOptionState={ key:'', rows:[], loading:false, loaded:false, error:'' }; let requestAvOptionsDropdownOpen=false; let driveQuickRequestItems=new Set(); let driveReturnedSelectionToolbarQueued=false; let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
-let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqConsigneeView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending'; let requestFolderSearchTerm=''; let requestRepSearchTerm=''; let requestCustomerSearchTerm=''; let requestConsigneeSearchTerm=''; let requestFolderDateFilter=''; let requestDylanFilterMode='all'; let requestDylanFilterValue=''; let requestDylanSalesRepValue=''; let requestDylanLocationValue=''; let requestDylanFilterMenuOpen=''; let requestSuspendTagDockFilter='all'; let requestSuspendTagCommonNameSearchTerm=''; let hiddenCompletedDockSuspendDcRequestMirrorIds=new Set(); let requestDylanPendingEntriesCacheKey=''; let requestDylanPendingEntriesCache=[]; let lastRequestHeaderSearchMode='';
+let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqConsigneeView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending'; let requestFolderSearchTerm=''; let requestRepSearchTerm=''; let requestCustomerSearchTerm=''; let requestConsigneeSearchTerm=''; let requestFolderDateFilter=''; let requestDylanFilterMode='all'; let requestDylanFilterValue=''; let requestDylanSalesRepValue=''; let requestDylanLocationValue=''; let requestDylanFilterMenuOpen=''; let requestSuspendTagDockFilter='all'; let requestSuspendTagAssignedToFilter='all'; let requestSuspendTagCommonNameSearchTerm=''; let hiddenCompletedDockSuspendDcRequestMirrorIds=new Set(); let requestDylanPendingEntriesCacheKey=''; let requestDylanPendingEntriesCache=[]; let lastRequestHeaderSearchMode='';
 
         function invalidateRequestViewResolvedCaches() {
             requestScopedItemsCacheKey = '';
@@ -24160,7 +24160,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.16').trim() || 'V2026.07.29.16';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.17').trim() || 'V2026.07.29.17';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -26410,6 +26410,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             requestDylanLocationValue = '';
             requestDylanFilterMenuOpen = '';
             requestSuspendTagDockFilter = 'all';
+            requestSuspendTagAssignedToFilter = 'all';
             requestSuspendTagCommonNameSearchTerm = '';
             syncRequestTabButtons();
             if (safeOptions.clearSelection) clearSelection();
@@ -26435,6 +26436,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 requestDylanSalesRepValue: String(requestDylanSalesRepValue || '').trim(),
                 requestDylanLocationValue: String(requestDylanLocationValue || '').trim(),
                 requestSuspendTagDockFilter: normalizeRequestSuspendTagDockFilterValue(requestSuspendTagDockFilter),
+                requestSuspendTagAssignedToFilter: normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter),
                 requestSuspendTagCommonNameSearchTerm: String(requestSuspendTagCommonNameSearchTerm || '').trim()
             };
         }
@@ -26459,6 +26461,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             requestDylanSalesRepValue = String(snapshot.requestDylanSalesRepValue || '').trim();
             requestDylanLocationValue = String(snapshot.requestDylanLocationValue || '').trim();
             requestSuspendTagDockFilter = normalizeRequestSuspendTagDockFilterValue(snapshot.requestSuspendTagDockFilter);
+            requestSuspendTagAssignedToFilter = normalizeRequestSuspendTagAssignedToFilterValue(snapshot.requestSuspendTagAssignedToFilter);
             requestSuspendTagCommonNameSearchTerm = String(snapshot.requestSuspendTagCommonNameSearchTerm || '').trim();
             if (!canUseRequestDylanViewerFilter()) {
                 requestDylanFilterMode = 'all';
@@ -26469,6 +26472,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             requestDylanFilterMenuOpen = '';
             if (activeReqTab !== 'suspend-tag') {
                 requestSuspendTagDockFilter = 'all';
+                requestSuspendTagAssignedToFilter = 'all';
                 requestSuspendTagCommonNameSearchTerm = '';
             }
             syncRequestTabButtons();
@@ -63973,9 +63977,11 @@ function toggleDriveQuickRequestItem(domId) {
                     requestDylanSalesRepValue = '';
                     requestDylanFilterMenuOpen = '';
                     requestSuspendTagDockFilter = 'all';
+                    requestSuspendTagAssignedToFilter = 'all';
                     requestSuspendTagCommonNameSearchTerm = '';
                 } else {
                     requestSuspendTagDockFilter = 'all';
+                    requestSuspendTagAssignedToFilter = 'all';
                     requestSuspendTagCommonNameSearchTerm = '';
                 }
                 clearSelection();
@@ -89019,8 +89025,35 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 || null;
         }
 
+        const REQUEST_SUSPEND_TAG_ASSIGNED_FILTER_USERS = Object.freeze(['dylan_collyge', 'jd_jones', 'megan_kelly']);
+
+        function canUseRequestSuspendTagAssignedToFilter(userOverride = '') {
+            const candidates = [userOverride, currentUser, currentUserDisplay]
+                .map((value) => normalizePushUsername(value) || normalizeEvalAccessUserKey(value))
+                .filter(Boolean);
+            return candidates.some((key) => REQUEST_SUSPEND_TAG_ASSIGNED_FILTER_USERS.includes(key));
+        }
+
         function canCurrentUserViewDockSuspendDcRequests() {
-            return isExactDylanCollygeUser();
+            return canUseRequestSuspendTagAssignedToFilter();
+        }
+
+        function getDockSuspendDcRequestAssignedToRaw(item = null) {
+            return String(firstNonEmptyValue(
+                item && item.ASSIGNEDTO,
+                item && item.assignedto,
+                item && item.AssignedTo,
+                item && item.assigned_to,
+                item && item.ASSIGNED_TO,
+                item && item.assigned,
+                item && item.ASSIGNED,
+                ''
+            ) || '').trim();
+        }
+
+        function getDockSuspendDcRequestAssignedToValue(item = null) {
+            const rawAssigned = getDockSuspendDcRequestAssignedToRaw(item);
+            return normalizePushUsername(rawAssigned || getDockSuspendDcRequestSalesRepName(item));
         }
 
         function buildDockSuspendDcRequestMirrorRow(item = null, indexHint = 0) {
@@ -89034,6 +89067,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const stopLabel = String(firstNonEmptyValue(item.STOPNUMBER, item.STOP, item.stopnumber, item.stop, '') || '').trim();
             const requestQty = getDockOrderedQtyDisplay(item) || formatDockDisplayQty(getDockDisplayQty(item));
             const assignedRepName = getDockSuspendDcRequestSalesRepName(item);
+            const assignedToUser = getDockSuspendDcRequestAssignedToValue(item);
             const noteParts = [
                 'Docks row is suspended to DC.',
                 dockLabel ? `Dock: ${dockLabel}` : '',
@@ -89050,7 +89084,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 REQUEST_FOLDER: 'Dock Suspend DC',
                 REQ_CUSTOMER: reqCustomer,
                 REQUESTED_BY: assignedRepName,
-                ASSIGNEDTO: normalizePushUsername(assignedRepName),
+                ASSIGNEDTO: assignedToUser,
                 REQ_STATUS: 'Pending',
                 STATUS: 'Pending',
                 REQ_ARCHIVED: false,
@@ -89218,6 +89252,56 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return Array.from(optionByValue.values()).sort(compareRequestSuspendTagDockOptions);
         }
 
+        function normalizeRequestSuspendTagAssignedToFilterValue(value = '') {
+            const raw = String(value == null ? '' : value).trim();
+            if (!raw || raw.toLowerCase() === 'all') return 'all';
+            if (raw.toLowerCase() === 'no-assigned') return 'no-assigned';
+            return normalizePushUsername(raw) || normalizeEvalAccessUserKey(raw) || 'no-assigned';
+        }
+
+        function formatRequestSuspendTagAssignedToLabel(value = '') {
+            const raw = String(value == null ? '' : value).trim();
+            if (!raw || raw.toLowerCase() === 'no-assigned') return 'No AssignedTo';
+            return raw;
+        }
+
+        function getRequestSuspendTagAssignedToFilterOptionForItem(item = null) {
+            const sourceRow = findDockSuspendDcRequestSourceRow(item) || {};
+            const rawAssigned = firstNonEmptyValue(
+                getDockSuspendDcRequestAssignedToRaw(item),
+                getDockSuspendDcRequestAssignedToRaw(sourceRow),
+                getDockSuspendDcRequestSalesRepName(item),
+                ''
+            );
+            const value = normalizeRequestSuspendTagAssignedToFilterValue(rawAssigned || 'no-assigned');
+            return {
+                value,
+                label: formatRequestSuspendTagAssignedToLabel(rawAssigned || value)
+            };
+        }
+
+        function compareRequestSuspendTagAssignedToOptions(a, b) {
+            const av = String(a && a.value || '');
+            const bv = String(b && b.value || '');
+            if (av === 'no-assigned' && bv !== 'no-assigned') return 1;
+            if (bv === 'no-assigned' && av !== 'no-assigned') return -1;
+            return String(a && a.label || '').localeCompare(String(b && b.label || ''), undefined, { numeric: true, sensitivity: 'base' });
+        }
+
+        function getRequestSuspendTagAssignedToFilterOptions(items = []) {
+            const optionByValue = new Map();
+            (Array.isArray(items) ? items : []).forEach((item) => {
+                const option = getRequestSuspendTagAssignedToFilterOptionForItem(item);
+                const existing = optionByValue.get(option.value);
+                if (existing) {
+                    existing.count += 1;
+                } else {
+                    optionByValue.set(option.value, { ...option, count: 1 });
+                }
+            });
+            return Array.from(optionByValue.values()).sort(compareRequestSuspendTagAssignedToOptions);
+        }
+
         function getRequestSuspendTagCommonNameSearchTerm() {
             return String(requestSuspendTagCommonNameSearchTerm || '').trim();
         }
@@ -89238,6 +89322,22 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 return safeItems;
             }
             return safeItems.filter((item) => getRequestSuspendTagDockFilterOptionForItem(item).value === filterValue);
+        }
+
+        function applyRequestSuspendTagAssignedToFilter(items = []) {
+            const safeItems = Array.isArray(items) ? items : [];
+            if (!canUseRequestSuspendTagAssignedToFilter()) {
+                requestSuspendTagAssignedToFilter = 'all';
+                return safeItems;
+            }
+            const filterValue = normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter);
+            if (filterValue === 'all') return safeItems;
+            const hasFilterValue = safeItems.some((item) => getRequestSuspendTagAssignedToFilterOptionForItem(item).value === filterValue);
+            if (!hasFilterValue) {
+                requestSuspendTagAssignedToFilter = 'all';
+                return safeItems;
+            }
+            return safeItems.filter((item) => getRequestSuspendTagAssignedToFilterOptionForItem(item).value === filterValue);
         }
 
         function compareRequestSuspendTagRows(a, b) {
@@ -89285,11 +89385,22 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return true;
         }
 
-        function renderRequestSuspendTagFilters(allItems = [], searchItems = [], visibleItems = []) {
+        function renderRequestSuspendTagFilters(allItems = [], searchItems = [], assignedItems = [], visibleItems = []) {
             const safeAllItems = Array.isArray(allItems) ? allItems : [];
             const safeSearchItems = Array.isArray(searchItems) ? searchItems : safeAllItems;
+            const safeAssignedItems = Array.isArray(assignedItems) ? assignedItems : safeSearchItems;
             const safeVisibleItems = Array.isArray(visibleItems) ? visibleItems : [];
-            const options = getRequestSuspendTagDockFilterOptions(safeSearchItems);
+            const canFilterAssigned = canUseRequestSuspendTagAssignedToFilter();
+            const assignedOptions = canFilterAssigned ? getRequestSuspendTagAssignedToFilterOptions(safeSearchItems) : [];
+            const assignedOptionValues = new Set(assignedOptions.map((option) => option.value));
+            const currentAssignedValue = normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter);
+            if (!canFilterAssigned || (currentAssignedValue !== 'all' && !assignedOptionValues.has(currentAssignedValue))) {
+                requestSuspendTagAssignedToFilter = 'all';
+            } else {
+                requestSuspendTagAssignedToFilter = currentAssignedValue;
+            }
+            const selectedAssignedValue = requestSuspendTagAssignedToFilter;
+            const options = getRequestSuspendTagDockFilterOptions(safeAssignedItems);
             const optionValues = new Set(options.map((option) => option.value));
             const currentValue = normalizeRequestSuspendTagDockFilterValue(requestSuspendTagDockFilter);
             if (currentValue !== 'all' && !optionValues.has(currentValue)) {
@@ -89303,20 +89414,38 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 const label = `${option.label} (${option.count})`;
                 return `<option value="${escapeHtml(option.value)}"${selected}>${escapeHtml(label)}</option>`;
             }).join('');
+            const assignedOptionsHtml = canFilterAssigned ? assignedOptions.map((option) => {
+                const selected = option.value === selectedAssignedValue ? ' selected' : '';
+                const label = `${option.label} (${option.count})`;
+                return `<option value="${escapeHtml(option.value)}"${selected}>${escapeHtml(label)}</option>`;
+            }).join('') : '';
             const searchTerm = getRequestSuspendTagCommonNameSearchTerm();
             const clearButtonClass = searchTerm ? '' : ' hidden';
-            const countLabel = searchTerm
-                ? `${safeVisibleItems.length} of ${safeSearchItems.length} matches`
-                : `${safeVisibleItems.length} of ${safeAllItems.length} rows`;
-            const totalLabel = searchTerm ? `<span class="mt-1 block text-[10px] text-emerald-500">${escapeHtml(String(safeAllItems.length))} total rows</span>` : '';
-            return `<div class="mb-3 grid grid-cols-1 gap-2 rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_auto]">
+            const hasAssignedFilter = canFilterAssigned && selectedAssignedValue !== 'all';
+            const hasDockFilter = selectedValue !== 'all';
+            const hasAnyFilter = !!searchTerm || hasAssignedFilter || hasDockFilter;
+            const countLabel = hasAnyFilter
+                ? `${safeVisibleItems.length} of ${safeAllItems.length} rows`
+                : `${safeVisibleItems.length} rows`;
+            const totalLabel = hasAnyFilter ? `<span class="mt-1 block text-[10px] text-emerald-500">${escapeHtml(String(safeAllItems.length))} total rows</span>` : '';
+            const assignedFilterHtml = canFilterAssigned ? `<label class="block min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Assigned To
+                    <select id="request-suspend-tag-assigned-filter" class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[15px] font-black text-slate-900 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" onchange="return setRequestSuspendTagAssignedToFilter(this.value)" onclick="event.stopPropagation()">
+                        <option value="all"${selectedAssignedValue === 'all' ? ' selected' : ''}>All Users (${escapeHtml(String(safeSearchItems.length))})</option>
+                        ${assignedOptionsHtml}
+                    </select>
+                </label>` : '';
+            const gridColsClass = canFilterAssigned
+                ? 'md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)_auto]'
+                : 'md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_auto]';
+            return `<div class="mb-3 grid grid-cols-1 gap-2 rounded-2xl border border-emerald-100 bg-white p-3 shadow-sm ${gridColsClass}">
                 <label class="relative block min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Common Name
                     <input id="request-suspend-tag-common-search" type="text" class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 pr-12 text-[16px] font-black text-slate-900 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" placeholder="Search common name..." value="${escapeHtml(searchTerm)}" oninput="return setRequestSuspendTagCommonNameSearch(this.value, event)" onkeydown="dismissSearchKeyboard(event)" autocomplete="off" autocapitalize="words" spellcheck="false">
                     <button id="request-suspend-tag-common-clear" type="button" class="absolute right-3 top-[31px] flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-emerald-50 hover:text-[#007a4d]${clearButtonClass}" onclick="event.stopPropagation(); return clearRequestSuspendTagCommonNameSearch(event)" aria-label="Clear common name search"><i class="ph-bold ph-x text-lg"></i></button>
                 </label>
+                ${assignedFilterHtml}
                 <label class="block min-w-0 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Dock
                     <select id="request-suspend-tag-dock-filter" class="mt-1 min-h-[46px] w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[15px] font-black text-slate-900 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" onchange="return setRequestSuspendTagDockFilter(this.value)" onclick="event.stopPropagation()">
-                        <option value="all"${selectedValue === 'all' ? ' selected' : ''}>All Docks (${escapeHtml(String(safeSearchItems.length))})</option>
+                        <option value="all"${selectedValue === 'all' ? ' selected' : ''}>All Docks (${escapeHtml(String(safeAssignedItems.length))})</option>
                         ${dockOptionsHtml}
                     </select>
                 </label>
@@ -89324,7 +89453,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             </div>`;
         }
 
-        function updateRequestSuspendTagFiltersInPlace(allItems = [], searchItems = [], visibleItems = []) {
+        function updateRequestSuspendTagFiltersInPlace(allItems = [], searchItems = [], assignedItems = [], visibleItems = []) {
             const input = document.getElementById('request-suspend-tag-common-search');
             const searchTerm = getRequestSuspendTagCommonNameSearchTerm();
             if (input && document.activeElement !== input && String(input.value || '') !== searchTerm) input.value = searchTerm;
@@ -89333,15 +89462,31 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
             const safeAllItems = Array.isArray(allItems) ? allItems : [];
             const safeSearchItems = Array.isArray(searchItems) ? searchItems : safeAllItems;
+            const safeAssignedItems = Array.isArray(assignedItems) ? assignedItems : safeSearchItems;
             const safeVisibleItems = Array.isArray(visibleItems) ? visibleItems : [];
-            const options = getRequestSuspendTagDockFilterOptions(safeSearchItems);
+            const canFilterAssigned = canUseRequestSuspendTagAssignedToFilter();
+            const assignedOptions = canFilterAssigned ? getRequestSuspendTagAssignedToFilterOptions(safeSearchItems) : [];
+            const assignedOptionValues = new Set(assignedOptions.map((option) => option.value));
+            const currentAssignedValue = normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter);
+            requestSuspendTagAssignedToFilter = canFilterAssigned && (currentAssignedValue === 'all' || assignedOptionValues.has(currentAssignedValue)) ? currentAssignedValue : 'all';
+            const selectedAssignedValue = requestSuspendTagAssignedToFilter;
+            const assignedSelect = document.getElementById('request-suspend-tag-assigned-filter');
+            if (assignedSelect && document.activeElement !== assignedSelect) {
+                const nextAssignedOptionsHtml = `<option value="all"${selectedAssignedValue === 'all' ? ' selected' : ''}>All Users (${escapeHtml(String(safeSearchItems.length))})</option>` + assignedOptions.map((option) => {
+                    const selected = option.value === selectedAssignedValue ? ' selected' : '';
+                    return `<option value="${escapeHtml(option.value)}"${selected}>${escapeHtml(`${option.label} (${option.count})`)}</option>`;
+                }).join('');
+                if (assignedSelect.innerHTML !== nextAssignedOptionsHtml) assignedSelect.innerHTML = nextAssignedOptionsHtml;
+                if (assignedSelect.value !== selectedAssignedValue) assignedSelect.value = selectedAssignedValue;
+            }
+            const options = getRequestSuspendTagDockFilterOptions(safeAssignedItems);
             const optionValues = new Set(options.map((option) => option.value));
             const currentValue = normalizeRequestSuspendTagDockFilterValue(requestSuspendTagDockFilter);
             requestSuspendTagDockFilter = currentValue !== 'all' && !optionValues.has(currentValue) ? 'all' : currentValue;
             const selectedValue = requestSuspendTagDockFilter;
             const select = document.getElementById('request-suspend-tag-dock-filter');
             if (select && document.activeElement !== select) {
-                const nextOptionsHtml = `<option value="all"${selectedValue === 'all' ? ' selected' : ''}>All Docks (${escapeHtml(String(safeSearchItems.length))})</option>` + options.map((option) => {
+                const nextOptionsHtml = `<option value="all"${selectedValue === 'all' ? ' selected' : ''}>All Docks (${escapeHtml(String(safeAssignedItems.length))})</option>` + options.map((option) => {
                     const selected = option.value === selectedValue ? ' selected' : '';
                     return `<option value="${escapeHtml(option.value)}"${selected}>${escapeHtml(`${option.label} (${option.count})`)}</option>`;
                 }).join('');
@@ -89350,27 +89495,28 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
             const count = document.getElementById('request-suspend-tag-filter-count');
             if (count) {
-                const countLabel = searchTerm
-                    ? `${safeVisibleItems.length} of ${safeSearchItems.length} matches`
-                    : `${safeVisibleItems.length} of ${safeAllItems.length} rows`;
-                const totalLabel = searchTerm ? `<span class="mt-1 block text-[10px] text-emerald-500">${escapeHtml(String(safeAllItems.length))} total rows</span>` : '';
+                const hasAnyFilter = !!searchTerm || (canFilterAssigned && selectedAssignedValue !== 'all') || selectedValue !== 'all';
+                const countLabel = hasAnyFilter
+                    ? `${safeVisibleItems.length} of ${safeAllItems.length} rows`
+                    : `${safeVisibleItems.length} rows`;
+                const totalLabel = hasAnyFilter ? `<span class="mt-1 block text-[10px] text-emerald-500">${escapeHtml(String(safeAllItems.length))} total rows</span>` : '';
                 count.innerHTML = `${escapeHtml(countLabel)}${totalLabel}`;
             }
             return true;
         }
 
-        function ensureRequestSuspendTagRenderShell(container, crumb, crumbText, allItems = [], searchItems = [], visibleItems = []) {
+        function ensureRequestSuspendTagRenderShell(container, crumb, crumbText, allItems = [], searchItems = [], assignedItems = [], visibleItems = []) {
             if (!container) return null;
             const filterShell = container.querySelector('#request-suspend-tag-filter-shell');
             const resultsShell = container.querySelector('#request-suspend-tag-results');
             const activeInput = document.activeElement && document.activeElement.id === 'request-suspend-tag-common-search';
             if (!filterShell || !resultsShell) {
-                setContainerHtml(container, `<div id="request-suspend-tag-filter-shell">${renderRequestSuspendTagFilters(allItems, searchItems, visibleItems)}</div><div id="request-suspend-tag-results"></div>`);
+                setContainerHtml(container, `<div id="request-suspend-tag-filter-shell">${renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, visibleItems)}</div><div id="request-suspend-tag-results"></div>`);
             } else if (activeInput) {
-                updateRequestSuspendTagFiltersInPlace(allItems, searchItems, visibleItems);
+                updateRequestSuspendTagFiltersInPlace(allItems, searchItems, assignedItems, visibleItems);
             } else {
-                filterShell.innerHTML = renderRequestSuspendTagFilters(allItems, searchItems, visibleItems);
-                updateRequestSuspendTagFiltersInPlace(allItems, searchItems, visibleItems);
+                filterShell.innerHTML = renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, visibleItems);
+                updateRequestSuspendTagFiltersInPlace(allItems, searchItems, assignedItems, visibleItems);
             }
             if (crumb && typeof crumbText === 'string') crumb.innerText = crumbText;
             return container.querySelector('#request-suspend-tag-results');
@@ -89456,6 +89602,25 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return false;
         }
 
+        function setRequestSuspendTagAssignedToFilter(value = 'all') {
+            requestSuspendTagAssignedToFilter = canUseRequestSuspendTagAssignedToFilter()
+                ? normalizeRequestSuspendTagAssignedToFilterValue(value)
+                : 'all';
+            requestSuspendTagDockFilter = 'all';
+            requestViewLevel = 0;
+            selectedReqFolder = null;
+            selectedReqRepView = null;
+            selectedReqCustView = null;
+            selectedReqConsigneeView = null;
+            selectedReqFolderView = null;
+            clearSelection();
+            syncRequestTabButtons();
+            markViewDirty('request');
+            renderRequest();
+            schedulePersistAppFilterState(120);
+            return false;
+        }
+
         function buildDockSuspendDcRequestMirrorSignature(rows = []) {
             return (Array.isArray(rows) ? rows : [])
                 .filter(isDockSuspendDcRequestSource)
@@ -89469,7 +89634,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     String(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, '') || '').trim(),
                     String(firstNonEmptyValue(row && row.QUANTITYORDERED, row && row.QTY_ORDERED, row && row.PTRAVAILABLE, row && row.ptravailable, '') || '').trim(),
                     String(firstNonEmptyValue(row && row.CUSTOMERNAME, row && row.customername, '') || '').trim(),
-                    String(firstNonEmptyValue(row && row.CONSIGNEENAME, row && row.consigneename, '') || '').trim()
+                    String(firstNonEmptyValue(row && row.CONSIGNEENAME, row && row.consigneename, '') || '').trim(),
+                    String(firstNonEmptyValue(row && row.ASSIGNEDTO, row && row.assignedto, row && row.AssignedTo, row && row.ASSIGNED_TO, row && row.assigned_to, '') || '').trim()
                 ].join('\u001F'))
                 .sort()
                 .join('\u001E');
@@ -90842,7 +91008,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (activeReqTab === 'pending') {
                 items = items.filter(isRequestPendingVisible).filter(isRegularRequestQueueItem);
             } else if (activeReqTab === 'suspend-tag') {
-                items = applyRequestSuspendTagDockFilter(applyRequestSuspendTagCommonNameSearchFilter(getSuspendTagRequestItems(items)));
+                items = applyRequestSuspendTagDockFilter(applyRequestSuspendTagAssignedToFilter(applyRequestSuspendTagCommonNameSearchFilter(getSuspendTagRequestItems(items))));
             } else if (activeReqTab === 'reps') {
                 items = items.filter(i => isRegularRequestQueueItem(i) && doesRequestRepMatchValue(getRequestAssignedRep(i), selectedReqRepView) && !i.REQ_ARCHIVED);
                 if (requestViewLevel >= 2 && selectedReqCustView) {
@@ -91730,18 +91896,20 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 const crumbText = `Suspend Tag${requestFilterSuffix}`;
                 const allSuspendTagItems = getSuspendTagRequestItems(items).sort(compareRequestSuspendTagRows);
                 const searchSuspendTagItems = applyRequestSuspendTagCommonNameSearchFilter(allSuspendTagItems).sort(compareRequestSuspendTagRows);
-                const suspendTagItems = applyRequestSuspendTagDockFilter(searchSuspendTagItems).sort(compareRequestSuspendTagRows);
+                const assignedSuspendTagItems = applyRequestSuspendTagAssignedToFilter(searchSuspendTagItems).sort(compareRequestSuspendTagRows);
+                const suspendTagItems = applyRequestSuspendTagDockFilter(assignedSuspendTagItems).sort(compareRequestSuspendTagRows);
                 if (!allSuspendTagItems.length) {
                     applyRequestRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No suspend tag rows.</div>`, 'request:suspend-tag:empty');
                     return;
                 }
                 const searchKey = normalizeSearchValue(requestSuspendTagCommonNameSearchTerm);
-                const renderKey = buildRequestChunkRenderKey(`request:suspend-tag:${requestSuspendTagDockFilter}:${searchKey}`, `${crumbText}|${requestSuspendTagDockFilter}|${searchKey}`, suspendTagItems);
-                const resultsContainer = ensureRequestSuspendTagRenderShell(container, crumb, crumbText, allSuspendTagItems, searchSuspendTagItems, suspendTagItems);
+                const assignedKey = normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter);
+                const renderKey = buildRequestChunkRenderKey(`request:suspend-tag:${assignedKey}:${requestSuspendTagDockFilter}:${searchKey}`, `${crumbText}|${assignedKey}|${requestSuspendTagDockFilter}|${searchKey}`, suspendTagItems);
+                const resultsContainer = ensureRequestSuspendTagRenderShell(container, crumb, crumbText, allSuspendTagItems, searchSuspendTagItems, assignedSuspendTagItems, suspendTagItems);
                 renderMarkupChunkedByKey('request-main', resultsContainer, crumb, suspendTagItems, crumbText, (item) => generateCard(item, 'request', 'status-red'), {
                     approxCardHeight: 360,
                     renderSignature: renderKey,
-                    emptyHtml: `<div class="p-8 text-center text-gray-400">${requestSuspendTagCommonNameSearchTerm ? 'No suspend tag rows match this search and dock.' : 'No suspend tag rows for this dock.'}</div>`,
+                    emptyHtml: `<div class="p-8 text-center text-gray-400">${requestSuspendTagCommonNameSearchTerm || requestSuspendTagAssignedToFilter !== 'all' ? 'No suspend tag rows match these filters.' : 'No suspend tag rows for this dock.'}</div>`,
                     onComplete: decorateRequestRows,
                     onCompleteAfterInteractive: true,
                     onCompleteDelayMs: 140
