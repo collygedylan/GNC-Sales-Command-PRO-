@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.23';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.29.24';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4992,7 +4992,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.23').trim() || 'V2026.07.29.23';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.24').trim() || 'V2026.07.29.24';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6448,7 +6448,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.23';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.24';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24306,7 +24306,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.23').trim() || 'V2026.07.29.23';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.24').trim() || 'V2026.07.29.24';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27683,7 +27683,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const selectedConsigneeName = String(selectedReqConsigneeView || '').trim();
             const selectedConsigneeKey = normalizeRequestConsigneeFolderKey(selectedConsigneeName);
             const consigneeItems = selectedConsigneeKey
-                ? customerItems.filter((item) => normalizeRequestConsigneeFolderKey(getRequestConsigneeFolderName(item)) === selectedConsigneeKey)
+                ? customerItems.filter((item) => doesRequestItemMatchCustomerConsigneeFolder(item, selectedCustomerKey, selectedConsigneeKey))
                 : [];
             const consigneeCreditRows = selectedConsigneeKey ? getSalesCreditRowsForDrillScope(selectedRepName, selectedCustomerName, selectedConsigneeName) : [];
             const hasSelectedConsigneeFolder = selectedConsigneeKey && (consigneeItems.length || consigneeCreditRows.length || doesRequestRepHaveMappedConsigneeFolder(selectedRepName, selectedCustomerName, selectedConsigneeName));
@@ -89653,7 +89653,11 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
             (Array.isArray(customerItems) ? customerItems : []).forEach((item) => {
                 if (!item) return;
-                const entry = ensureEntry(getRequestConsigneeFolderName(item));
+                const itemConsigneeName = getRequestConsigneeFolderName(item);
+                let entry = ensureEntry(itemConsigneeName);
+                if (!requestItemHasExplicitConsigneeFolder(item) && selectedCustomerKey && folderMap.has(selectedCustomerKey)) {
+                    entry = folderMap.get(selectedCustomerKey);
+                }
                 if (entry) entry.rows.push(item);
             });
             getSalesCreditRowsForDrillScope(repName, customerName).forEach((row) => {
@@ -91292,6 +91296,23 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return getRequestConsigneeFolderLabel(parts.consigneeName);
         }
 
+        function requestItemHasExplicitConsigneeFolder(item = null) {
+            if (!item || typeof item !== 'object') return false;
+            const parts = parseRequestCustomerFolderParts('', item || {});
+            return !!String(parts.consigneeName || '').trim();
+        }
+
+        function doesRequestItemMatchCustomerConsigneeFolder(item = null, customerKey = '', consigneeKey = '') {
+            if (!item) return false;
+            const safeCustomerKey = String(customerKey || '').trim();
+            const safeConsigneeKey = String(consigneeKey || '').trim();
+            if (safeCustomerKey && normalizeRequestCustomerFolderKey(getRequestCustomerFolderName(item)) !== safeCustomerKey) return false;
+            if (!safeConsigneeKey) return true;
+            const itemConsigneeKey = normalizeRequestConsigneeFolderKey(getRequestConsigneeFolderName(item));
+            if (itemConsigneeKey === safeConsigneeKey) return true;
+            return !requestItemHasExplicitConsigneeFolder(item) && safeCustomerKey && safeConsigneeKey === safeCustomerKey;
+        }
+
         function getRequestFolderName(item) {
             return String(firstNonEmptyValue(item && item.REQUEST_FOLDER, item && item.request_folder, 'Unassigned') || 'Unassigned').trim() || 'Unassigned';
         }
@@ -91655,8 +91676,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 const selectedConsigneeKey = normalizeRequestConsigneeFolderKey(selectedReqConsigneeView);
                 const folderItems = getScopedRequestItems(requestsInventory).filter((item) => {
                     if (!doesRequestRepMatchValue(getRequestAssignedRep(item), selectedReqRepView) || item.REQ_ARCHIVED) return false;
-                    if (normalizeRequestCustomerFolderKey(getRequestCustomerFolderName(item)) !== selectedCustomerKey) return false;
-                    if (normalizeRequestConsigneeFolderKey(getRequestConsigneeFolderName(item)) !== selectedConsigneeKey) return false;
+                    if (!doesRequestItemMatchCustomerConsigneeFolder(item, selectedCustomerKey, selectedConsigneeKey)) return false;
                     return getRequestFolderName(item) === safeFolderName;
                 });
                 if (getRequestFolderStatusInfo(folderItems).allComplete) {
@@ -91759,8 +91779,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     items = items.filter(i => normalizeRequestCustomerFolderKey(getRequestCustomerFolderName(i)) === selectedCustomerKey);
                 }
                 if (requestViewLevel >= 3 && selectedReqConsigneeView) {
+                    const selectedCustomerKey = normalizeRequestCustomerFolderKey(selectedReqCustView);
                     const selectedConsigneeKey = normalizeRequestConsigneeFolderKey(selectedReqConsigneeView);
-                    items = items.filter(i => normalizeRequestConsigneeFolderKey(getRequestConsigneeFolderName(i)) === selectedConsigneeKey);
+                    items = items.filter(i => doesRequestItemMatchCustomerConsigneeFolder(i, selectedCustomerKey, selectedConsigneeKey));
                 }
                 if (requestViewLevel >= 4 && selectedReqFolderView) {
                     items = items.filter(i => {
@@ -92766,7 +92787,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     const crumbText = `${selectedReqRepView} > ${selectedReqCustView} > ${selectedReqConsigneeView}`;
                     const selectedCustomerKey = normalizeRequestCustomerFolderKey(selectedReqCustView);
                     const selectedConsigneeKey = normalizeRequestConsigneeFolderKey(selectedReqConsigneeView);
-                    let consigneeItems = items.filter(i => doesRequestRepMatchValue(getRequestAssignedRep(i), selectedReqRepView) && !i.REQ_ARCHIVED && normalizeRequestCustomerFolderKey(getRequestCustomerFolderName(i)) === selectedCustomerKey && normalizeRequestConsigneeFolderKey(getRequestConsigneeFolderName(i)) === selectedConsigneeKey);
+                    let consigneeItems = items.filter(i => doesRequestRepMatchValue(getRequestAssignedRep(i), selectedReqRepView) && !i.REQ_ARCHIVED && doesRequestItemMatchCustomerConsigneeFolder(i, selectedCustomerKey, selectedConsigneeKey));
                     const creditRows = getSalesCreditRowsForSelectedConsignee();
 
                     if (consigneeItems.length === 0 && creditRows.length === 0) {
@@ -92835,8 +92856,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     const selectedCustomerKey = normalizeRequestCustomerFolderKey(selectedReqCustView);
                     const selectedConsigneeKey = normalizeRequestConsigneeFolderKey(selectedReqConsigneeView);
                     let folderItems = items.filter(i => doesRequestRepMatchValue(getRequestAssignedRep(i), selectedReqRepView) && !i.REQ_ARCHIVED);
-                    folderItems = folderItems.filter(i => normalizeRequestCustomerFolderKey(getRequestCustomerFolderName(i)) === selectedCustomerKey);
-                    folderItems = folderItems.filter(i => normalizeRequestConsigneeFolderKey(getRequestConsigneeFolderName(i)) === selectedConsigneeKey);
+                    folderItems = folderItems.filter(i => doesRequestItemMatchCustomerConsigneeFolder(i, selectedCustomerKey, selectedConsigneeKey));
                     folderItems = folderItems.filter(i => getRequestFolderName(i) === selectedReqFolderView);
                     folderItems.sort((a,b) => String(a.LOCATIONCODE||'').localeCompare(String(b.LOCATIONCODE||''), undefined, {numeric: true}));
                     const prefixHtml = `<div class="back-btn" onclick="return backToRequestFolderList()"><i class="ph-bold ph-arrow-left"></i> Back to Folders</div>`;
