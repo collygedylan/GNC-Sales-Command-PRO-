@@ -84,6 +84,9 @@ const DRIVE_AROUND_HISTORY_FLUSH_ROW_THRESHOLD = 50000;
 const DRIVE_AROUND_HISTORY_SUPPORTED_EXTENSIONS = Object.freeze(['.csv', '.xls', '.xlsx']);
 const DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER = 'runDriveAroundHistoryBackfillChunk_';
 const GOOGLE_SHEETS_MIME_TYPE = 'application/vnd.google-apps.spreadsheet';
+const WAREHOUSE_ASSIGNED_ITEMS_TABLE = 'v2_warehouse_assigned_items';
+const WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID = '1gZ2qeKnsOdEYKMMxXerUUTU5Fq7aeeNz9yVOxKK76OQ';
+const WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID = '1zDQbk9alVLqd6rW0O9QbJa9ZN6hax5P2';
 
 const FOLDERS = {
   MASTER_DROP: '1MWLYsQJ41bZVcg1SzDIw93uNmQpzPn48',
@@ -96,6 +99,7 @@ const FOLDERS = {
   CUSTOMER_REP_PROCESSED: '1_62SsOENs5DSEU6JIyGi3ZsC3Z8IDGUd',
   CAV_DROP: '1K-y4thhw_iu2UEEZGRc39LzlpUZtcOBZ',
   CAV_PROCESSED: '1reWKO3GzeFhwsy_ot7Sjb2RPiFs448A5',
+  WAREHOUSE_ASSIGNED_ITEMS_SOURCE: WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID,
   DISEASE_ROOT: '1SpE0YA8Otu6otpjJULoJClBqk31Dv1wJ'
 };
 
@@ -147,6 +151,7 @@ function runDriveAroundOnly() {
 function runDriveAroundHistoryOnly() { return syncDriveAroundHistoricalFileIndex_({ parseRows: true }); }
 function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, getRuntimeSiteSplitTableName_('v2_reserves', 'PH'), buildStandardPayload, { deltaMode: true }); }
 function runCustomerRepMapOnly() { return processLatestFileOnlyFolder(FOLDERS.CUSTOMER_REP_DROP, FOLDERS.CUSTOMER_REP_PROCESSED, CUSTOMER_REP_MAP_TABLE, buildCustomerRepMapPayload, { deltaMode: true, selectColumnsBuilder: getCustomerRepMapSelectColumns_, headerMatcher: isCustomerRepMapHeaderRow_ }); }
+function runWarehouseAssignedItemsOnly() { return syncWarehouseAssignedItemsSheet_(WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID, FOLDERS.WAREHOUSE_ASSIGNED_ITEMS_SOURCE, WAREHOUSE_ASSIGNED_ITEMS_TABLE); }
 function runCavOnly() { return processLatestFileOnlyFolder(FOLDERS.CAV_DROP, FOLDERS.CAV_PROCESSED, getRuntimeSiteSplitTableName_('v2_cav_import', 'PH'), buildCavPayload, { deltaMode: true }); }
 function runDiseaseDriveToSupabaseSyncOnly() { return runDiseaseDriveToSupabaseSync(); }
 
@@ -275,7 +280,7 @@ function isSiteSplitPhysicalTable_(tableName) {
 
 const MANUAL_SYNC_STATUS_KEY = 'MANUAL_SYNC_STATUS';
 const MANUAL_SYNC_TRIGGER_HANDLER = 'runQueuedManualSyncStage_';
-const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'customer_rep_map', 'cav', 'disease']);
+const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'customer_rep_map', 'warehouse_assigned_items', 'cav', 'disease']);
 const MANUAL_SYNC_EXECUTION_BUDGET_MS = 285000;
 const MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS = 120000;
 const MANUAL_SYNC_QUEUED_STALE_MS = 5 * 60 * 1000;
@@ -470,6 +475,7 @@ const MANUAL_SYNC_STAGE_DEFINITIONS = Object.freeze({
   soc: { label: 'SOC', run: runSOCOnly },
   reserves: { label: 'Reserves', run: runReservesOnly },
   customer_rep_map: { label: 'Customer Rep Map', run: runCustomerRepMapOnly },
+  warehouse_assigned_items: { label: 'Warehouse Assigned Items', run: runWarehouseAssignedItemsOnly },
   cav: { label: 'CAV', run: runCavOnly },
   disease: { label: 'Disease Lab Assets', run: runDiseaseDriveToSupabaseSyncOnly }
 });
@@ -590,6 +596,7 @@ function getManualSyncStageOrder_(jobName) {
   if (normalized === 'drive_history' || normalized === 'drivearound_history' || normalized === 'drive_around_history') return ['drive_history'];
   if (normalized === 'soc') return ['soc'];
   if (normalized === 'reserves') return ['reserves'];
+  if (normalized === 'warehouse_assigned_items' || normalized === 'warehouse_assignments' || normalized === 'assigned_items') return ['warehouse_assigned_items'];
   if (normalized === 'cav') return ['cav'];
   if (normalized === 'disease' || normalized === 'lab' || normalized === 'lab_reports') return ['disease'];
   return MANUAL_SYNC_STAGE_ORDER_DEFAULT.slice();
@@ -1893,9 +1900,260 @@ function getCustomerRepMapSelectColumns_() {
   return ['unique_id', 'row_hash'];
 }
 
+const WAREHOUSE_ASSIGNED_ITEM_COLUMNS = Object.freeze([
+  'assignedto',
+  'warehousei',
+  'itemcode',
+  'contsize',
+  'commonname',
+  'locationcode',
+  'source',
+  'genusname'
+]);
+const WAREHOUSE_ASSIGNED_ITEM_COLUMN_SET = new Set(WAREHOUSE_ASSIGNED_ITEM_COLUMNS);
+
+function normalizeWarehouseAssignedItemsHeaderKey_(header) {
+  const raw = String(header || '').trim();
+  const compact = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const map = {
+    ASSIGNEDTO: 'assignedto',
+    WAREHOUSEI: 'warehousei',
+    WAREHOUSEID: 'warehousei',
+    ITEMCODE: 'itemcode',
+    CONTSIZE: 'contsize',
+    COMMONNAME: 'commonname',
+    LOCATIONCODE: 'locationcode',
+    SOURCE: 'source',
+    GENUSNAME: 'genusname',
+    GENUS: 'genusname'
+  };
+  if (map[compact]) return map[compact];
+  return raw
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+}
+
+function isWarehouseAssignedItemsHeaderRow_(row) {
+  if (!Array.isArray(row)) return false;
+  const headers = row.map(normalizeWarehouseAssignedItemsHeaderKey_).filter(Boolean);
+  if (!headers.length) return false;
+  const knownHeaderCount = headers.filter(function(header) {
+    return WAREHOUSE_ASSIGNED_ITEM_COLUMN_SET.has(header);
+  }).length;
+  return knownHeaderCount >= 6 &&
+    headers.indexOf('assignedto') !== -1 &&
+    headers.indexOf('itemcode') !== -1 &&
+    headers.indexOf('locationcode') !== -1;
+}
+
+function getWarehouseAssignedItemsSelectColumns_() {
+  return ['unique_id', 'concat'];
+}
+
+function getWarehouseAssignedItemsRowIdentity_(fields, idTracker, rowNumber) {
+  const baseParts = [
+    fields.warehousei,
+    fields.itemcode,
+    fields.contsize,
+    fields.locationcode,
+    fields.source
+  ].map(function(value) {
+    return String(value || '').trim();
+  });
+  let baseId = baseParts.join('-').replace(/[^a-zA-Z0-9-]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+  if (!baseId) baseId = 'row-' + String(rowNumber || '');
+  if (!baseId) return '';
+  if (idTracker[baseId] === undefined) idTracker[baseId] = 0;
+  else idTracker[baseId]++;
+  return 'warehouse_assigned_' + baseId + (idTracker[baseId] > 0 ? '-' + idTracker[baseId] : '');
+}
+
+function buildWarehouseAssignedItemsPayload(rawData, tableName, existingRows, syncStartTime, fileName) {
+  const rawHeaders = Array.isArray(rawData) && Array.isArray(rawData[0]) ? rawData[0].map(function(header) { return String(header || '').trim(); }) : [];
+  const normalizedHeaders = rawHeaders.map(normalizeWarehouseAssignedItemsHeaderKey_);
+  const getIdx = function(columnName) {
+    return normalizedHeaders.indexOf(String(columnName || '').trim().toLowerCase());
+  };
+  const itemCodeIdx = getIdx('itemcode');
+  const locationCodeIdx = getIdx('locationcode');
+  const upserts = [];
+  const seenIds = new Set();
+  const existingMap = buildExistingRowMap_(existingRows);
+  const stats = createDeltaSyncStats_();
+  const idTracker = {};
+  let totalRows = 0;
+  stats.sourceRows = Math.max(0, (rawData.length || 1) - 1);
+
+  for (let i = 1; i < rawData.length; i++) {
+    const row = rawData[i] || [];
+    const itemCode = itemCodeIdx > -1 ? String(row[itemCodeIdx] || '').trim() : '';
+    const locationCode = locationCodeIdx > -1 ? String(row[locationCodeIdx] || '').trim() : '';
+    const hasAnyValue = row.some(function(value) { return String(value || '').trim() !== ''; });
+    if (!hasAnyValue) {
+      stats.skippedRows++;
+      continue;
+    }
+    if (!itemCode || !locationCode) {
+      stats.skippedRows++;
+      continue;
+    }
+
+    totalRows++;
+    const fields = {};
+    const rawRow = {};
+    for (let c = 0; c < normalizedHeaders.length; c++) {
+      const key = normalizedHeaders[c];
+      const header = rawHeaders[c] || key || ('column_' + (c + 1));
+      const value = String(row[c] || '').trim();
+      rawRow[header] = value;
+      if (!WAREHOUSE_ASSIGNED_ITEM_COLUMN_SET.has(key)) continue;
+      fields[key] = (value === '' || value.toUpperCase() === 'NULL') ? null : value;
+    }
+
+    const uniqueId = getWarehouseAssignedItemsRowIdentity_(fields, idTracker, i + 1);
+    if (!uniqueId) {
+      stats.skippedRows++;
+      continue;
+    }
+    stats.validIdentityRows++;
+
+    const obj = {
+      unique_id: uniqueId,
+      assignedto: fields.assignedto || null,
+      warehousei: fields.warehousei || null,
+      itemcode: fields.itemcode || null,
+      contsize: fields.contsize || null,
+      commonname: fields.commonname || null,
+      locationcode: fields.locationcode || null,
+      source: fields.source || null,
+      genusname: fields.genusname || null,
+      sheet_row_number: i + 1,
+      import_batch: syncStartTime,
+      filename: fileName,
+      last_updated: syncStartTime,
+      raw_row: rawRow
+    };
+    obj.concat = buildRowSyncHash_(obj, ['raw_row', 'import_batch', 'created_at', 'updated_at']);
+
+    seenIds.add(uniqueId);
+    const existingRow = existingMap[uniqueId];
+    if (!existingRow) {
+      stats.insertedRows++;
+      upserts.push(obj);
+      continue;
+    }
+    if (String(existingRow.concat || existingRow.CONCAT || '').trim() !== String(obj.concat || '').trim()) {
+      stats.changedRows++;
+      upserts.push(obj);
+      continue;
+    }
+    stats.unchangedRows++;
+  }
+
+  return { upserts: upserts, seenIds: seenIds, totalRows: totalRows, stats: stats };
+}
+
+function syncWarehouseAssignedItemsSheet_(sheetId, folderId, tableName) {
+  const safeSheetId = String(sheetId || '').trim();
+  const safeFolderId = String(folderId || '').trim();
+  const safeTableName = String(tableName || WAREHOUSE_ASSIGNED_ITEMS_TABLE).trim();
+  let fileName = safeSheetId;
+  let upsertCount = 0;
+  let deleteCount = 0;
+  let totalRows = 0;
+  let syncDiagnostics = createDeltaSyncStats_();
+
+  try {
+    if (!safeSheetId) throw new Error('Missing Warehouse Assigned Items sheet ID.');
+    if (safeFolderId) getDriveFolderByIdWithRetry_(safeFolderId, 'Warehouse Assigned Items source folder');
+    const file = withDriveRetry_('Warehouse Assigned Items source file lookup', function() {
+      return DriveApp.getFileById(safeSheetId);
+    });
+    fileName = file && typeof file.getName === 'function' ? String(file.getName() || safeSheetId).trim() : safeSheetId;
+    console.log(`[START] Processing fixed sheet: ${fileName} -> Table: ${safeTableName}`);
+
+    const syncStartTime = new Date().toISOString();
+    const rawData = extractDataFromFile(file, safeFolderId || WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID, {
+      headerMatcher: isWarehouseAssignedItemsHeaderRow_
+    });
+    if (!rawData || rawData.length < 1) {
+      throw new Error(`No readable rows were found in ${fileName}.`);
+    }
+
+    const existingRows = fetchAllSupabaseData(safeTableName, getWarehouseAssignedItemsSelectColumns_(), getSupabaseFetchOptionsForTable_(safeTableName));
+    const results = buildWarehouseAssignedItemsPayload(rawData, safeTableName, existingRows, syncStartTime, fileName);
+    const upserts = Array.isArray(results && results.upserts) ? results.upserts : [];
+    const seenIds = results && results.seenIds instanceof Set ? results.seenIds : new Set();
+    totalRows = Number(results && results.totalRows) || 0;
+    syncDiagnostics = results && results.stats ? results.stats : createDeltaSyncStats_();
+    if (shouldAbortSnapshotDelete_(syncDiagnostics, totalRows)) {
+      throw new Error(`0 valid snapshot identities were found in ${fileName}; skipped destructive sync for ${safeTableName}.`);
+    }
+
+    const deletes = combineSnapshotDeleteIds_(existingRows, seenIds);
+    syncDiagnostics.deletedRows = deletes.length;
+    upsertCount = upserts.length;
+    deleteCount = deletes.length;
+
+    console.log(formatDeltaSyncStats_(safeTableName, syncDiagnostics, {
+      filesProcessed: 1,
+      archivedOlderFiles: 0,
+      upserts: upsertCount
+    }));
+
+    if (upserts.length > 0) pushToSupabase(safeTableName, upserts);
+    if (deletes.length > 0) deleteFromSupabase(safeTableName, deletes);
+
+    emitTableSyncLiveEvent_(safeTableName, {
+      filesProcessed: 1,
+      tempFilesRemoved: 0,
+      skippedFilesArchived: 0,
+      upsertCount: upsertCount,
+      deleteCount: deleteCount,
+      totalRows: totalRows,
+      sourceSheetId: safeSheetId,
+      sourceFolderId: safeFolderId
+    });
+
+    console.log(`[DONE] ${safeTableName}: fixed sheet processed | ${deleteCount} removed row${deleteCount === 1 ? '' : 's'} | ${upsertCount} row${upsertCount === 1 ? '' : 's'} upserted | ${totalRows} parsed row${totalRows === 1 ? '' : 's'}.`);
+    return {
+      tableName: safeTableName,
+      filesProcessed: 1,
+      tempFilesRemoved: 0,
+      skippedFilesArchived: 0,
+      failedFiles: 0,
+      failedFileNames: [],
+      upsertCount: upsertCount,
+      deleteCount: deleteCount,
+      totalRows: totalRows,
+      diagnostics: syncDiagnostics
+    };
+  } catch (err) {
+    const errorMessage = err && err.message ? err.message : String(err);
+    console.error(`[ERROR] Failed Warehouse Assigned Items sync for ${fileName}: ${err && err.stack ? err.stack : errorMessage}`);
+    return {
+      tableName: safeTableName,
+      filesProcessed: 0,
+      tempFilesRemoved: 0,
+      skippedFilesArchived: 0,
+      failedFiles: 1,
+      failedFileNames: [fileName],
+      failedFileErrors: [{ name: fileName, error: errorMessage }],
+      upsertCount: 0,
+      deleteCount: 0,
+      totalRows: totalRows,
+      diagnostics: syncDiagnostics,
+      error: errorMessage
+    };
+  }
+}
+
 function getPayloadSelectColumns_(tableName, rawData) {
   if (isMasterInventoryTable_(tableName)) return getMasterPayloadSelectColumns_(rawData);
   if (tableName === CUSTOMER_REP_MAP_TABLE) return getCustomerRepMapSelectColumns_();
+  if (tableName === WAREHOUSE_ASSIGNED_ITEMS_TABLE) return getWarehouseAssignedItemsSelectColumns_();
   if (getSiteSplitLegacyTableName_(tableName) === 'v2_cav_import') return getCavPayloadSelectColumns_();
   return getStandardPayloadSelectColumns_(rawData);
 }
