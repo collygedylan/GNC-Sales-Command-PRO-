@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.07';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.29.08';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4974,7 +4974,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.07').trim() || 'V2026.07.29.07';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.08').trim() || 'V2026.07.29.08';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6427,7 +6427,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.07';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.08';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24007,7 +24007,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.07').trim() || 'V2026.07.29.07';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.08').trim() || 'V2026.07.29.08';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -32813,7 +32813,7 @@ let avTopControlsRenderToken = 0;
             { value: 'off_stop_ship', label: 'Off Stop Request', detail: 'Email only' },
             { value: 'ncr', label: 'NCR Request', detail: 'Email only' },
             { value: 'recount', label: 'Re-Count Request', detail: 'Email only' },
-            { value: 'priority_change', label: 'Priority Change', detail: 'Update app + email report' },
+            { value: 'priority_change', label: 'Priority Change', detail: 'Email report only' },
             { value: 'move_up', label: 'Move Up Request', detail: 'Email only' },
             { value: 'move_down', label: 'Move Down Request', detail: 'Email only' }
         ]);
@@ -32877,7 +32877,7 @@ let avTopControlsRenderToken = 0;
             const values = [''].concat(Array.from({ length: 99 }, (_, index) => String(index + 1)));
             if (normalizedCurrent && !values.includes(normalizedCurrent)) values.push(normalizedCurrent);
             return values.map((value) => {
-                const label = value ? `Priority ${value}` : 'Blank / Clear';
+                const label = value ? `Priority ${value}` : 'Choose Priority';
                 return `<option value="${escapeHtml(value)}" ${value === (normalizedCurrent || '') ? 'selected' : ''}>${escapeHtml(label)}</option>`;
             }).join('');
         }
@@ -32936,7 +32936,7 @@ let avTopControlsRenderToken = 0;
                             <label class="argos-tx-field" data-argos-destination-field="location"><span>New Location</span><input id="argos-inventory-transaction-new-location" class="argos-tx-input" placeholder="Location"></label>
                             <div class="argos-tx-field argos-tx-field-wide" data-argos-hold-field="action">
                                 <span>Request / Hold-Stop</span>
-                                <select id="argos-inventory-transaction-hold-action" class="argos-tx-select-native" tabindex="-1" aria-hidden="true" onchange="return setArgosInventoryTransactionHoldAction(this.value)"><option value="none">No request</option><option value="hold">On Hold Request (email only)</option><option value="take_off_hold">Off Hold Request (email only)</option><option value="stop_ship">On Stop Request (email only)</option><option value="off_stop_ship">Off Stop Request (email only)</option><option value="ncr">NCR Request (email only)</option><option value="recount">Re-Count Request (email only)</option><option value="priority_change">Priority Change (update app + email)</option><option value="move_up">Move Up Request (email only)</option><option value="move_down">Move Down Request (email only)</option></select>
+                                <select id="argos-inventory-transaction-hold-action" class="argos-tx-select-native" tabindex="-1" aria-hidden="true" onchange="return setArgosInventoryTransactionHoldAction(this.value)"><option value="none">No request</option><option value="hold">On Hold Request (email only)</option><option value="take_off_hold">Off Hold Request (email only)</option><option value="stop_ship">On Stop Request (email only)</option><option value="off_stop_ship">Off Stop Request (email only)</option><option value="ncr">NCR Request (email only)</option><option value="recount">Re-Count Request (email only)</option><option value="priority_change">Priority Change (email report only)</option><option value="move_up">Move Up Request (email only)</option><option value="move_down">Move Down Request (email only)</option></select>
                                 <button type="button" id="argos-inventory-transaction-hold-action-button" class="argos-tx-input argos-tx-select-button" aria-expanded="false" aria-controls="argos-inventory-transaction-hold-action-picker" onclick="return toggleArgosInventoryTransactionHoldActionPicker()"><span class="argos-tx-select-copy"><strong data-argos-hold-label>No request</strong><small data-argos-hold-detail>No email request</small></span><i class="ph-bold ph-caret-down text-lg text-slate-500"></i></button>
                                 <div id="argos-inventory-transaction-hold-action-picker" class="argos-tx-choice-panel hidden" role="listbox" aria-label="Request / Hold-Stop options">
                                     <button type="button" class="argos-tx-choice-option active" data-argos-hold-option="none" role="option" aria-selected="true" onclick="return selectArgosInventoryTransactionHoldAction('none')"><span><strong>No request</strong><small>Apply inventory change normally</small></span><i class="ph-bold ph-check text-[#007a4d]"></i></button>
@@ -32946,7 +32946,7 @@ let avTopControlsRenderToken = 0;
                                     <button type="button" class="argos-tx-choice-option" data-argos-hold-option="off_stop_ship" role="option" aria-selected="false" onclick="return selectArgosInventoryTransactionHoldAction('off_stop_ship')"><span><strong>Off Stop Request</strong><small>Email only</small></span><i class="ph-bold ph-circle text-slate-300"></i></button>
                                     <button type="button" class="argos-tx-choice-option" data-argos-hold-option="ncr" role="option" aria-selected="false" onclick="return selectArgosInventoryTransactionHoldAction('ncr')"><span><strong>NCR Request</strong><small>Email only</small></span><i class="ph-bold ph-circle text-slate-300"></i></button>
                                     <button type="button" class="argos-tx-choice-option" data-argos-hold-option="recount" role="option" aria-selected="false" onclick="return selectArgosInventoryTransactionHoldAction('recount')"><span><strong>Re-Count Request</strong><small>Email only</small></span><i class="ph-bold ph-circle text-slate-300"></i></button>
-                                    <button type="button" class="argos-tx-choice-option" data-argos-hold-option="priority_change" role="option" aria-selected="false" onclick="return selectArgosInventoryTransactionHoldAction('priority_change')"><span><strong>Priority Change</strong><small>Update app + email report</small></span><i class="ph-bold ph-circle text-slate-300"></i></button>
+                                    <button type="button" class="argos-tx-choice-option" data-argos-hold-option="priority_change" role="option" aria-selected="false" onclick="return selectArgosInventoryTransactionHoldAction('priority_change')"><span><strong>Priority Change</strong><small>Email report only</small></span><i class="ph-bold ph-circle text-slate-300"></i></button>
                                     <button type="button" class="argos-tx-choice-option" data-argos-hold-option="move_up" role="option" aria-selected="false" onclick="return selectArgosInventoryTransactionHoldAction('move_up')"><span><strong>Move Up Request</strong><small>Email only</small></span><i class="ph-bold ph-circle text-slate-300"></i></button>
                                     <button type="button" class="argos-tx-choice-option" data-argos-hold-option="move_down" role="option" aria-selected="false" onclick="return selectArgosInventoryTransactionHoldAction('move_down')"><span><strong>Move Down Request</strong><small>Email only</small></span><i class="ph-bold ph-circle text-slate-300"></i></button>
                                 </div>
@@ -33217,7 +33217,7 @@ let avTopControlsRenderToken = 0;
                 notice.innerHTML = requestOnly
                     ? `<span class="font-black">Request Only</span> - Opens the ${escapeHtml(requestLabel)} email/card flow. No app or Supabase inventory data is changed.`
                     : (isPriorityChange
-                        ? '<span class="font-black">Auto-Commit + Email</span> - Updates the app priority column, records an audit row, then sends the report email.'
+                        ? '<span class="font-black">Email Report Only</span> - Sends the Priority Change report email. No app or Supabase inventory data is changed.'
                         : '<span class="font-black">Auto-Commit</span> - Apply writes to live inventory and records an audit row.');
                 notice.classList.toggle('bg-emerald-50', requestOnly);
                 notice.classList.toggle('text-emerald-800', requestOnly);
@@ -33227,13 +33227,13 @@ let avTopControlsRenderToken = 0;
                 note.textContent = `This opens the ${requestLabel} request and email flow only. It does not write to inventory.`;
             } else if (note && isPriorityChange) {
                 note.hidden = false;
-                note.textContent = 'This updates the app priority column and sends the Priority Change report email.';
+                note.textContent = 'This sends the Priority Change report email only. It does not write to inventory.';
             } else if (note) {
                 note.hidden = true;
                 note.textContent = 'Applies to every current season/current sales year row for this item.';
             }
             if (apply && requestOnly) apply.innerHTML = `<i class="ph-bold ph-envelope mr-1"></i> Open ${escapeHtml(requestLabel)} Request`;
-            else if (apply && isPriorityChange) apply.innerHTML = '<i class="ph-bold ph-envelope mr-1"></i> Apply + Email Priority';
+            else if (apply && isPriorityChange) apply.innerHTML = '<i class="ph-bold ph-envelope mr-1"></i> Send Priority Report';
             else if (apply && argosInventoryTransactionState) apply.innerHTML = `<i class="ph-bold ph-check mr-1"></i> Apply ${escapeHtml(getArgosInventoryTransactionActionLabel(argosInventoryTransactionState.action || 'qty'))}`;
         }
 
@@ -33361,83 +33361,6 @@ let avTopControlsRenderToken = 0;
             return row;
         }
 
-        async function applyArgosInventoryPriorityChangePayload(payload = null) {
-            const state = argosInventoryTransactionState || {};
-            const item = state.item || null;
-            const snapshot = state.snapshot || {};
-            const safePayload = payload && typeof payload === 'object' ? payload : {};
-            const tx = safePayload.transaction && typeof safePayload.transaction === 'object' ? safePayload.transaction : {};
-            const source = safePayload.source && typeof safePayload.source === 'object' ? safePayload.source : {};
-            const sourceUid = String(firstNonEmptyValue(source.unique_id, snapshot.uniqueId, item && item.UNIQUE_ID, '') || '').trim();
-            if (!sourceUid) throw new Error('Missing source inventory row id.');
-            const newPriority = normalizeArgosInventoryTransactionPriorityValue(firstNonEmptyValue(tx.newPriority, tx.priority, ''));
-            if (newPriority === null) throw new Error('Choose a priority from 1 to 99, or blank to clear it.');
-            const tableName = getArgosInventoryTransactionWriteTable(snapshot, item);
-            const sourceBefore = buildArgosInventoryTransactionAuditSnapshot(item, snapshot);
-            const sourceAfterSnapshot = buildArgosInventoryTransactionAuditSnapshot(item, snapshot, newPriority);
-            const transactionId = generateArgosInventoryTransactionId('priority_change');
-            const nowIso = new Date().toISOString();
-            await runDetailWriteWithRetry(tableName, 'PATCH', {
-                priority: newPriority || null
-            }, `unique_id=eq.${encodeURIComponent(sourceUid)}`, {
-                timeoutMs: getDetailRowWriteTimeoutMs(),
-                retries: DETAIL_ROW_WRITE_RETRY_COUNT
-            });
-            let refreshedRow = null;
-            try {
-                const rows = await supabaseFetch(tableName, 'GET', null, `select=*&unique_id=eq.${encodeURIComponent(sourceUid)}&limit=1`, {
-                    timeoutMs: SUPABASE_READ_TIMEOUT_MS
-                });
-                refreshedRow = Array.isArray(rows) && rows.length ? rows[0] : null;
-            } catch (error) {}
-            const sourceAfter = refreshedRow || Object.assign({}, item || {}, sourceAfterSnapshot, {
-                UNIQUE_ID: sourceUid,
-                unique_id: sourceUid,
-                PRIORITY: newPriority,
-                priority: newPriority || null
-            });
-            sourceAfter.__approval_table_name = tableName;
-            try {
-                await supabaseFetch(INVENTORY_TRANSACTION_AUDIT_TABLE, 'POST', {
-                    unique_id: transactionId,
-                    created_at: nowIso,
-                    action: 'priority_change',
-                    actor_username: safePayload.actor && safePayload.actor.username || '',
-                    actor_display: safePayload.actor && safePayload.actor.display || '',
-                    actor_email: safePayload.actor && safePayload.actor.email || '',
-                    source_table: tableName,
-                    source_unique_id: sourceUid,
-                    destination_table: '',
-                    destination_unique_id: '',
-                    source_itemcode: sourceAfterSnapshot.itemcode,
-                    source_lotcode: sourceAfterSnapshot.lotcode,
-                    source_locationcode: sourceAfterSnapshot.locationcode,
-                    destination_itemcode: '',
-                    destination_lotcode: '',
-                    destination_locationcode: '',
-                    quantity: null,
-                    source_before: sourceBefore,
-                    source_after: buildArgosInventoryTransactionAuditSnapshot(sourceAfter, snapshot, newPriority),
-                    destination_before: null,
-                    destination_after: null,
-                    raw_payload: Object.assign({}, safePayload, { transactionId }),
-                    status: 'applied'
-                }, 'on_conflict=unique_id', {
-                    timeoutMs: SUPABASE_WRITE_TIMEOUT_MS
-                });
-            } catch (auditError) {
-                console.warn('Priority change audit insert failed.', auditError);
-            }
-            return {
-                ok: true,
-                status: 'success',
-                action: 'priority_change',
-                transactionId,
-                sourceRow: sourceAfter,
-                message: `Priority ${sourceBefore.priority || 'blank'} -> ${newPriority || 'blank'} saved.`
-            };
-        }
-
         function buildArgosInventoryPriorityChangeReportRow(payload = null) {
             const state = argosInventoryTransactionState || {};
             const item = state.item || null;
@@ -33490,7 +33413,7 @@ let avTopControlsRenderToken = 0;
             const safePayload = payload && typeof payload === 'object' ? payload : {};
             const tx = safePayload.transaction && typeof safePayload.transaction === 'object' ? safePayload.transaction : {};
             const requestedPriority = normalizeArgosInventoryTransactionPriorityValue(firstNonEmptyValue(tx.newPriority, tx.priority, ''));
-            if (requestedPriority === null) throw new Error('Choose a priority from 1 to 99, or blank to clear it.');
+            if (requestedPriority === null || !requestedPriority) throw new Error('Choose the requested priority for the report.');
             const reportRow = safeOptions.reportRow || buildArgosInventoryPriorityChangeReportRow(safePayload);
             const selections = {
                 actions: ['priority'],
@@ -33555,7 +33478,6 @@ let avTopControlsRenderToken = 0;
             const actorEmail = getArgosInventoryTransactionActorEmail();
             const qtyValue = getArgosInventoryTransactionInputValue('argos-inventory-transaction-qty');
             const priorityValue = normalizeArgosInventoryTransactionPriorityValue(getArgosInventoryTransactionInputValue('argos-inventory-transaction-priority'));
-            const currentPriority = normalizeArgosInventoryTransactionPriorityValue(snapshot.priority);
             let qty = null;
             if (!isPriorityChange) {
                 qty = parseAppNumber(qtyValue);
@@ -33563,8 +33485,7 @@ let avTopControlsRenderToken = 0;
                 if (transactionAction === 'qty' && qty < 0) throw new Error('New quantity cannot be negative.');
                 if (transactionAction !== 'qty' && qty <= 0) throw new Error('Quantity to move must be greater than 0.');
             } else {
-                if (priorityValue === null) throw new Error('Choose a priority from 1 to 99, or blank to clear it.');
-                if ((priorityValue || '') === (currentPriority || '')) throw new Error('Priority is already set to that value.');
+                if (priorityValue === null || !priorityValue) throw new Error('Choose the requested priority for the report.');
             }
             const holdAction = requestedHoldAction === 'hold' ? 'hold' : (requestedHoldAction === 'take_off_hold' ? 'release' : 'none');
             const holdStopReason = getArgosInventoryTransactionInputValue('argos-inventory-transaction-hold-reason');
@@ -33741,11 +33662,15 @@ let avTopControlsRenderToken = 0;
                 argosInventoryTransactionState.submitting = true;
                 if (apply) {
                     apply.disabled = true;
-                    apply.textContent = 'Applying...';
+                    apply.textContent = isPriorityPayload ? 'Sending...' : 'Applying...';
                 }
-                const result = payload.action === 'priority_change'
-                    ? await applyArgosInventoryPriorityChangePayload(payload)
-                    : await postArgosInventoryTransactionPayload(payload);
+                if (isPriorityPayload) {
+                    await sendArgosInventoryPriorityChangeReportEmail(payload, null, priorityReportOptions);
+                    showToast('Email Sent', 'Priority Change report sent. No inventory data was changed.');
+                    closeArgosInventoryTransactionModal();
+                    return false;
+                }
+                const result = await postArgosInventoryTransactionPayload(payload);
                 if (!result || result.ok === false) {
                     const message = getFriendlyBackendErrorMessage(firstNonEmptyValue(result && result.message, result && result.error, result && result.rawResponse, ''), 'Inventory update failed. Try again.');
                     throw new Error(message);
@@ -33754,25 +33679,14 @@ let avTopControlsRenderToken = 0;
                 applyArgosInventoryTransactionReturnedRow(result.destinationRow || result.destination_row, '');
                 const holdRows = Array.isArray(result.holdRows) ? result.holdRows : (Array.isArray(result.hold_rows) ? result.hold_rows : []);
                 holdRows.forEach((row) => applyArgosInventoryTransactionReturnedRow(row, ''));
-                if (isPriorityPayload) {
-                    try {
-                        await sendArgosInventoryPriorityChangeReportEmail(payload, result, priorityReportOptions);
-                    } catch (emailError) {
-                        console.error('Priority change report email failed after inventory update', emailError);
-                        showToast('Email Failed', `Priority was saved, but the report email did not send: ${emailError && emailError.message ? emailError.message : 'Unknown email error'}`, true);
-                        closeArgosInventoryTransactionModal();
-                        const currentViewId = getCurrentVisibleViewId();
-                        if (currentViewId) queueInteractiveViewRender(currentViewId, false, false, 0, 120);
-                        return false;
-                    }
-                }
-                showToast('Inventory Updated', isPriorityPayload ? 'Priority updated and report email sent.' : (result.message || `${getArgosInventoryTransactionActionLabel(payload.action)} applied.`));
+                showToast('Inventory Updated', result.message || `${getArgosInventoryTransactionActionLabel(payload.action)} applied.`);
                 closeArgosInventoryTransactionModal();
                 const currentViewId = getCurrentVisibleViewId();
                 if (currentViewId) queueInteractiveViewRender(currentViewId, false, false, 0, 120);
             } catch (error) {
-                const message = getFriendlyBackendErrorMessage(error, 'Inventory update failed. Try again.');
-                showToast('Inventory Error', message, true);
+                const priorityReportOnly = getArgosInventoryTransactionRequestAction() === 'priority_change';
+                const message = getFriendlyBackendErrorMessage(error, priorityReportOnly ? 'Priority Change report did not send.' : 'Inventory update failed. Try again.');
+                showToast(priorityReportOnly ? 'Email Error' : 'Inventory Error', message, true);
             } finally {
                 if (argosInventoryTransactionState) argosInventoryTransactionState.submitting = false;
                 if (apply) {
