@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.17';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.29.19';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4974,7 +4974,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.17').trim() || 'V2026.07.29.17';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.19').trim() || 'V2026.07.29.19';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6428,7 +6428,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.17';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.19';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24160,7 +24160,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.17').trim() || 'V2026.07.29.17';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.19').trim() || 'V2026.07.29.19';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -42768,6 +42768,40 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getMasterItemCodeKey(item = null) {
             return String(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, '') || '').trim().toUpperCase();
+        }
+
+        function isHotPriceTaskContext(tab = activeTaskTab, subview = activeTaskSubview, item = null) {
+            const safeView = normalizeTaskViewValue(tab || activeTaskView || activeTaskTab);
+            const simpleFilter = normalizeEvalTaskFilterValue(firstNonEmptyValue(subview, activeTaskFilter, activeTaskSubview, activeEvalSimpleFilter, ''), { values: EVAL_SIMPLE_TASK_FILTER_VALUES });
+            if (safeView === 'hot-price') return true;
+            if (safeView === EVAL_TASK_ASSIGNMENT && (simpleFilter === 'hot-price' || simpleFilter === 'hot-price-ssn')) return true;
+            return getNormalizedAvHotPrice(firstNonEmptyValue(item && item.CAV_HOT_PRICE, item && item.HOT_PRICE, item && item.HOTPRICE, item && item.hot_price, '')) !== '';
+        }
+
+        function getSeasonWinnerFamilyRowsForItem(item = null) {
+            const itemCode = getMasterItemCodeKey(item);
+            if (!itemCode || !Array.isArray(fullInventory) || !fullInventory.length) return [];
+            return fullInventory.filter((row) => {
+                if (!row) return false;
+                const sourceTable = String(firstNonEmptyValue(row.SOURCE_TABLE, row.source_table, 'v2_master_inventory') || '').trim().toLowerCase();
+                return sourceTable === 'v2_master_inventory' && getMasterItemCodeKey(row) === itemCode;
+            });
+        }
+
+        function getHotPriceSeasonWinnerForItem(item = null) {
+            const winnerRows = getSeasonWinnerFamilyRowsForItem(item).filter((row) => isMasterSeasonWinnerBaseCandidate(row));
+            return winnerRows.length ? pickSeasonWinnerCandidate(winnerRows) : null;
+        }
+
+        function getHotPriceSeasonCompletionTarget(item = null, prefix = '') {
+            const safePrefix = String(prefix || '').trim().toLowerCase();
+            if (!['ssn-','lsn-','na-'].includes(safePrefix)) return null;
+            if (!isHotPriceTaskContext(activeTaskTab || activeTaskView, activeTaskSubview || activeTaskFilter, item)) return null;
+            const winner = getHotPriceSeasonWinnerForItem(item);
+            const winnerId = getItemUniqueId(winner);
+            const sourceId = getItemUniqueId(item);
+            if (!winner || !winnerId || winnerId === sourceId) return null;
+            return winner;
         }
 
         function isSeasonSalesOfficeAutoPublishable(item = null) {
@@ -123418,6 +123452,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const safeView = normalizeTaskViewValue(tab);
             const currentAssignment = String(firstNonEmptyValue(item && item.APP_TAB_ASSIGNMENT, item && item.app_tab_assignment, item && item.MASTER_APP_TAB_ASSIGNMENT, item && item.master_app_tab_assignment, '') || '').trim().toLowerCase();
             if (isSeasonSalesNoteCardItem(item) || (currentAssignment === 'season' && isCurrentSeasonSalesNotesRow(item))) return 'status-orange';
+            if (isHotPriceTaskContext(safeView, activeTaskSubview || activeTaskFilter, null) && getHotPriceSeasonWinnerForItem(item)) return 'status-orange';
             if (safeView === EVAL_TASK_ASSIGNMENT) return 'status-green';
             if (safeView === 'colorwalk') return 'status-indigo';
             if (safeView === 'endcap') return 'status-yellow';
@@ -133408,6 +133443,46 @@ ${folderNote ? `Folder Note: ${folderNote}
                         artifacts.cloneSO.SAVED_PHOTO_LINK = artifacts.soPayload.photo_link;
                         artifacts.cloneSO.SAVED_PHOTO_NAME = artifacts.soPayload.photo_name || '';
                         normalizeRowPhotoFields(artifacts.cloneSO);
+                    }
+
+                    const hotPriceSeasonTargetItem = artifacts.soPayload ? null : getHotPriceSeasonCompletionTarget(itemToSave, prefix);
+                    if (hotPriceSeasonTargetItem) {
+                        const hotPriceSeasonTargetId = getItemUniqueId(hotPriceSeasonTargetItem);
+                        const hotPriceSyncValues = buildCompletionMasterSyncValues(prefix, itemToSave, hotPriceSeasonTargetItem, payload);
+                        if (hotPriceSyncValues && typeof hotPriceSyncValues === 'object') {
+                            const targetPtrAvailable = parseAppNumber(firstNonEmptyValue(hotPriceSeasonTargetItem.PTRAVAILABLE, hotPriceSeasonTargetItem.ptravailable, ''));
+                            const targetMatch = parseLocMatchPercent(hotPriceSyncValues.match);
+                            if (targetPtrAvailable != null) hotPriceSyncValues.initialPtr = targetPtrAvailable;
+                            if (targetPtrAvailable != null && targetMatch != null) {
+                                hotPriceSyncValues.locMatchQty = calculateLocMatchQtyValue({ MATCH: targetMatch, PTRAVAILABLE: targetPtrAvailable });
+                            }
+                        }
+                        const hotPriceSyncPayload = hotPriceSeasonTargetId && hasCompletionMasterSyncValues(hotPriceSyncValues)
+                            ? buildCompletionMasterSyncPayload(hotPriceSeasonTargetItem, hotPriceSyncValues)
+                            : null;
+                        if (hotPriceSyncPayload) {
+                            hotPriceSyncPayload.app_tab_assignment = 'season';
+                            artifacts.masterSyncId = hotPriceSeasonTargetId;
+                            artifacts.masterSyncItem = hotPriceSeasonTargetItem;
+                            artifacts.masterSyncPayload = hotPriceSyncPayload;
+                            artifacts.applyAvSync = true;
+                            artifacts.skipRemoteMasterSync = false;
+                            const hotPricePreview = buildCompletionMasterSyncPreviewItem(hotPriceSeasonTargetItem, hotPriceSyncValues);
+                            if (hotPricePreview) {
+                                applySeasonLocationAssignmentFields(hotPricePreview, 'season');
+                                if (!isHeldSeasonSalesNotesRow(hotPricePreview, 'season') && isSeasonSalesOfficeAutoPublishable(hotPricePreview)) {
+                                    const hotPriceSalesOfficeArtifacts = buildSeasonSalesOfficeArtifactsFromMasterItem(hotPricePreview);
+                                    if (hotPriceSalesOfficeArtifacts && hotPriceSalesOfficeArtifacts.soPayload) {
+                                        artifacts.soPayload = hotPriceSalesOfficeArtifacts.soPayload;
+                                        artifacts.cloneSO = hotPriceSalesOfficeArtifacts.cloneSO;
+                                    }
+                                }
+                            }
+                            getSeasonWinnerFamilyRowsForItem(itemToSave).forEach((row) => {
+                                const rowId = getItemUniqueId(row);
+                                if (rowId && rowId !== hotPriceSeasonTargetId) artifacts.extraSalesOfficeDeleteIds.push(rowId);
+                            });
+                        }
                     }
 
                     const isSeasonQualifiedCompletion = ['req-','ssn-','lsn-','na-','flyer-'].includes(prefix) && salesRuleIsCurrentSeasonSalesNote;
