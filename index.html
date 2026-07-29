@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.11';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.29.12';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1604,9 +1604,9 @@ body.ios-device .home-dashboard-sticky{transition:none!important;backdrop-filter
         #view-av #av-content{position:relative;z-index:1;padding-top:var(--av-filter-fixed-space,0px)}
         body.ios-device #view-av .av-primary-tabs-sticky{overflow:visible !important}
         #view-tasks{--task-filter-fixed-top:0px;--task-filter-fixed-space:0px}
-        #view-tasks .task-controls-sticky{position:fixed !important;top:var(--task-filter-fixed-top,0px);left:50%;transform:translateX(-50%);z-index:69;width:min(var(--content-max-width),calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2));box-sizing:border-box;padding:.1rem 0 .26rem;margin:0;background:var(--sticky-chrome-bg);border-bottom:1px solid #d1fae5;box-shadow:0 12px 24px rgba(15,23,42,.08);overflow:visible}
-        #view-tasks .task-controls-sticky::before{content:"";position:absolute;left:calc(var(--shell-gutter) * -1);right:calc(var(--shell-gutter) * -1);top:0;bottom:0;background:var(--sticky-chrome-bg);pointer-events:none;z-index:-1}
-        #view-tasks #task-content{position:relative;z-index:1;padding-top:var(--task-filter-fixed-space,0px);padding-bottom:calc(1.25rem + var(--footer-nav-reserve) + env(safe-area-inset-bottom))}
+        #view-tasks .task-controls-sticky{position:relative !important;top:auto !important;left:auto !important;right:auto !important;transform:none !important;-webkit-transform:none !important;z-index:48;width:100% !important;max-width:100% !important;box-sizing:border-box;padding:.1rem 0 .26rem;margin:0 0 .42rem;background:var(--sticky-chrome-bg);border-bottom:1px solid #d1fae5;box-shadow:none;overflow:visible}
+        #view-tasks .task-controls-sticky::before{display:none !important}
+        #view-tasks #task-content{position:relative;z-index:1;padding-top:0 !important;padding-bottom:calc(1.25rem + var(--footer-nav-reserve) + env(safe-area-inset-bottom))}
         body.ios-device #view-tasks .task-controls-sticky{overflow:visible !important}
         #global-header-search-slot > .sticky-search{position:relative !important;top:auto !important;z-index:auto !important;padding-top:0 !important;padding-bottom:0 !important;margin:0 !important;background:transparent !important;box-shadow:none !important;transform:none !important;-webkit-transform:none !important;backface-visibility:visible !important}
         #global-header-search-slot > .sticky-search .input-field{box-shadow:0 8px 18px rgba(7,94,63,.12)}
@@ -4974,7 +4974,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.11').trim() || 'V2026.07.29.11';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.12').trim() || 'V2026.07.29.12';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6427,7 +6427,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.11';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.12';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9459,24 +9459,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const view = document.getElementById('view-tasks');
             const rail = document.querySelector('#view-tasks .task-controls-sticky');
             if (!view || !rail) return;
-            if (shouldUseMobileFlowFilterChrome_()) {
-                view.style.setProperty('--task-filter-fixed-space', '0px');
-                rail.style.setProperty('--task-filter-fixed-top', '0px');
-                return;
-            }
-            const isTaskVisible = !view.classList.contains('hidden')
-                && (!window.getComputedStyle || window.getComputedStyle(view).display !== 'none')
-                && (typeof getCurrentVisibleViewId !== 'function' || getCurrentVisibleViewId() === 'tasks');
-            if (!isTaskVisible) {
-                view.style.setProperty('--task-filter-fixed-space', '0px');
-                rail.style.setProperty('--task-filter-fixed-top', '0px');
-                return;
-            }
-            const globalSearchRow = document.getElementById('global-header-search-row');
-            const top = getFixedFilterRailTopPx(globalSearchRow);
-            rail.style.setProperty('--task-filter-fixed-top', `${top}px`);
-            const height = Math.ceil(rail.getBoundingClientRect().height || rail.offsetHeight || 0);
-            view.style.setProperty('--task-filter-fixed-space', `${Math.max(0, height + 12)}px`);
+            view.style.setProperty('--task-filter-fixed-space', '0px');
+            rail.style.setProperty('--task-filter-fixed-top', '0px');
         }
 
         function syncStickyRailOffsets() {
@@ -24007,7 +23991,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.11').trim() || 'V2026.07.29.11';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.12').trim() || 'V2026.07.29.12';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
