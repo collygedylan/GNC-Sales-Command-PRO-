@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.03';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.29.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4973,7 +4973,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.03').trim() || 'V2026.07.29.03';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.04').trim() || 'V2026.07.29.04';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6426,7 +6426,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24005,7 +24005,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.03').trim() || 'V2026.07.29.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.04').trim() || 'V2026.07.29.04';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -24228,22 +24228,58 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         async function saveCurrentSeasonSettingsToRemote(settings = null) {
             const normalized = normalizeAppSeasonSettingsPayload(settings);
-            try {
-                await supabaseFetch(APP_SEASON_SETTINGS_TABLE, 'POST', {
-                    key: APP_SEASON_SETTINGS_KEY,
-                    value: {
-                        seasonCode: normalized.seasonCode,
-                        salesYear: normalized.salesYear,
-                        updatedAt: normalized.updatedAt,
-                        updatedBy: normalized.updatedBy
-                    },
-                    updated_by: normalized.updatedBy,
-                    updated_at: normalized.updatedAt
-                }, 'on_conflict=key', { timeoutMs: 10000 });
+            const payload = {
+                key: APP_SEASON_SETTINGS_KEY,
+                value: {
+                    seasonCode: normalized.seasonCode,
+                    salesYear: normalized.salesYear,
+                    updatedAt: normalized.updatedAt,
+                    updatedBy: normalized.updatedBy
+                },
+                updated_by: normalized.updatedBy,
+                updated_at: normalized.updatedAt
+            };
+            const verifyRemoteSettings = async (fallbackRow = null) => {
+                let parsed = parseRemoteAppSeasonSettingsRow(fallbackRow);
+                if (!parsed || parsed.seasonCode !== normalized.seasonCode || parsed.salesYear !== normalized.salesYear) {
+                    const rows = await supabaseFetch(
+                        APP_SEASON_SETTINGS_TABLE,
+                        'GET',
+                        null,
+                        `select=key,value,updated_by,updated_at&key=eq.${encodeURIComponent(APP_SEASON_SETTINGS_KEY)}&limit=1`,
+                        { timeoutMs: 10000 }
+                    );
+                    parsed = parseRemoteAppSeasonSettingsRow(Array.isArray(rows) ? rows[0] : null);
+                }
+                if (!parsed || parsed.seasonCode !== normalized.seasonCode || parsed.salesYear !== normalized.salesYear) {
+                    throw new Error('Season settings remote verification failed.');
+                }
+                writeLocalAppSeasonSettings(parsed);
                 appSeasonSettingsRemoteLoaded = true;
                 return true;
+            };
+            startGlobalProgress();
+            try {
+                const response = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/${APP_SEASON_SETTINGS_TABLE}?on_conflict=key`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': 'Bearer ' + SUPABASE_KEY,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=representation,resolution=merge-duplicates'
+                    },
+                    body: JSON.stringify(payload)
+                }, 15000, 'Season settings write');
+                if (!response.ok) throw new Error(await getResponseError(response, `Season settings write failed (${response.status})`));
+                const text = await response.text();
+                let rows = null;
+                try { rows = text ? JSON.parse(text) : null; } catch (parseError) {}
+                return await verifyRemoteSettings(Array.isArray(rows) ? rows[0] : rows);
             } catch (error) {
+                console.warn('Season settings remote save failed; keeping local setting only.', error);
                 return false;
+            } finally {
+                stopGlobalProgress();
             }
         }
 
@@ -24269,7 +24305,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             scheduleHomeOrManagersRender(true);
             if (typeof renderBuilding === 'function' && typeof currentView !== 'undefined' && currentView === 'building') renderBuilding();
             const remoteSaved = await saveCurrentSeasonSettingsToRemote(nextSettings);
-            showToast('Season Updated', `${nextSettings.seasonCode} salesyear ${nextSettings.salesYear}${remoteSaved ? '' : ' saved on this device'}`, !remoteSaved);
+            showToast('Season Updated', `${nextSettings.seasonCode} salesyear ${nextSettings.salesYear}${remoteSaved ? ' saved live' : ' saved on this device only'}`, !remoteSaved);
             return false;
         }
 
