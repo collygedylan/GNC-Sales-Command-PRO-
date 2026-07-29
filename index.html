@@ -2760,6 +2760,60 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
                 padding-right:.34rem !important;
             }
         }
+        @media (min-width:721px){
+            #view-av #av-top-filters.av-top-inline .av-top-controls-row{
+                display:grid !important;
+                grid-auto-flow:column !important;
+                grid-auto-columns:minmax(0,1fr) !important;
+                grid-template-columns:none !important;
+                grid-template-rows:minmax(0,1fr) !important;
+                gap:.34rem !important;
+                width:100% !important;
+                min-width:0 !important;
+                max-width:100% !important;
+                overflow:visible !important;
+            }
+            #view-av #av-top-filters.av-top-inline .av-filter-shell{
+                min-width:0 !important;
+                width:auto !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-button{
+                min-width:0 !important;
+                justify-content:flex-start !important;
+                text-align:left !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-button > i:first-child{
+                display:inline-block !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-button > span{
+                align-items:flex-start !important;
+                text-align:left !important;
+                padding-right:0 !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel{
+                position:absolute !important;
+                left:0 !important;
+                right:auto !important;
+                top:calc(100% + .28rem) !important;
+                bottom:auto !important;
+                width:min(18rem,calc(100vw - (var(--shell-gutter) * 2))) !important;
+                min-width:0 !important;
+                max-width:calc(100vw - (var(--shell-gutter) * 2)) !important;
+                max-height:min(52vh,26rem) !important;
+                margin-top:0 !important;
+                transform:none !important;
+                -webkit-transform:none !important;
+                z-index:22000 !important;
+            }
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="hold"] .task-top-control-panel.excel-filter-panel,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="genus"] .task-top-control-panel.excel-filter-panel,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="contsize"] .task-top-control-panel.excel-filter-panel,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="customer"] .task-top-control-panel.excel-filter-panel,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="columns"] .task-top-control-panel.excel-filter-panel{
+                left:auto !important;
+                right:0 !important;
+            }
+        }
         /* Phone filters should open in the page flow instead of floating above the cards. */
         @media (max-width:720px),(pointer:coarse){
             #task-tabs-container.task-top-inline,
@@ -66405,6 +66459,7 @@ function toggleDriveQuickRequestItem(domId) {
                 normalizeDriveColumnFilterMode(avColumnFilterMode || 'values'),
                 String(avColumnFilterValueSearchTerm || '').trim().toLowerCase(),
                 String(avColumnFilterFieldSearchTerm || '').trim().toLowerCase(),
+                state.detailFiltersCollapsed ? 'detail-filters-collapsed' : 'detail-filters-expanded',
                 getAvColumnFilterFields(Array.isArray(state.baseItems) ? state.baseItems : []).map((field) => field.key).join('|'),
                 buildAvColumnFilterStateKeyFromMap(avColumnFilterDrafts),
                 buildAvColumnFilterStateKey(),
@@ -66686,6 +66741,19 @@ function toggleDriveQuickRequestItem(domId) {
                 const selected = value === safeSelected;
                 const iconHtml = icon ? `<i class="${esc(icon)} text-base"></i>` : '';
                 return `<button type="button" class="flex w-full items-center justify-between gap-3 px-3 py-3 text-left text-[12px] font-black uppercase tracking-[0.08em] ${selected ? 'bg-emerald-50 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50'}" ${buildExcelFilterFastAttrs(safeHandler, value)}><span class="inline-flex min-w-0 items-center gap-2">${iconHtml}<span class="truncate">${esc(label)}</span></span>${selected ? '<i class="ph-bold ph-check text-base text-emerald-600"></i>' : ''}</button>`;
+            }).join('');
+        }
+
+        function buildAvMultiChoiceOptionsHtml(options = [], selectedSet = new Set(), handlerName = '', emptyText = 'No matches') {
+            const safeOptions = Array.isArray(options) ? options.map((value) => String(value || '').trim()).filter(Boolean) : [];
+            if (!safeOptions.length) {
+                return `<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">${esc(emptyText)}</div>`;
+            }
+            const selected = selectedSet instanceof Set ? selectedSet : new Set();
+            const safeHandler = String(handlerName || '').trim();
+            return safeOptions.map((value) => {
+                const checked = selected.has(value) ? 'checked' : '';
+                return `<label class="excel-filter-option flex items-center justify-between gap-3 px-3 py-2 hover:bg-emerald-50" ${buildExcelFilterFastAttrs(safeHandler, value)}><span class="min-w-0 break-words text-[12px] font-bold text-slate-700">${esc(value)}</span><input type="checkbox" class="h-4 w-4 shrink-0 accent-emerald-600" data-excel-value="${esc(encodeURIComponent(value))}" ${checked} onclick="event.stopPropagation(); return handleExcelFilterButtonClick(event, '${escJsAttrValue(safeHandler)}', decodeURIComponent(this.dataset.excelValue || ''))"></label>`;
             }).join('');
         }
 
@@ -67089,6 +67157,14 @@ function toggleDriveQuickRequestItem(domId) {
                 || !!getAvSearchBoxValue();
         }
 
+        function shouldCollapseAvDetailedTopFilters() {
+            const body = document.body;
+            const compactBody = !!(body && body.classList.contains('viewport-compact'));
+            const viewportWidth = Math.max(window.innerWidth || 0, document.documentElement ? document.documentElement.clientWidth : 0);
+            const mobilePlatform = isIOSDevice() || /Android/i.test(navigator.userAgent || '');
+            return compactBody || viewportWidth <= 720 || mobilePlatform;
+        }
+
         function renderAvTopControls(items = []) {
             const container = document.getElementById('av-top-filters');
             if (!container) return buildAvSharedFilterState(items);
@@ -67100,6 +67176,12 @@ function toggleDriveQuickRequestItem(domId) {
             const columnSummary = getAvColumnFilterSummaryLabel();
             const showSalesRepFilter = canUseAvSalesRepFilter();
             const showRepCustomerFilter = shouldShowRepAvCustomerFilter();
+            const collapseDetailFilters = shouldCollapseAvDetailedTopFilters();
+            if (collapseDetailFilters) {
+                avGenusFilterOpen = false;
+                avContSizeFilterOpen = false;
+                avHoldDropdownOpen = false;
+            }
             const needsSalesRepOptions = showSalesRepFilter && (avSalesRepDropdownOpen || !!selectedAvSalesRepName);
             const needsRepCustomerOptions = showRepCustomerFilter && (avRepCustomerDropdownOpen || !!selectedAvRepCustomerKey);
             const salesRepOptions = needsSalesRepOptions ? getAvSalesRepOptions() : [];
@@ -67110,7 +67192,8 @@ function toggleDriveQuickRequestItem(domId) {
             const repCustomerSummary = showRepCustomerFilter
                 ? (needsRepCustomerOptions ? getAvRepCustomerSummaryLabel(repCustomerOptions) : 'All Customers')
                 : '';
-            const visibleFilterCount = 3 + (showSalesRepFilter ? 1 : 0) + (showRepCustomerFilter ? 1 : 0);
+            const visibleFilterCount = 3 + (collapseDetailFilters ? 0 : 3) + (showSalesRepFilter ? 1 : 0) + (showRepCustomerFilter ? 1 : 0);
+            state.detailFiltersCollapsed = collapseDetailFilters;
             const hasResettableFilters = hasActiveAvQuickResetFilters();
             container.classList.toggle('av-top-has-salesrep', showSalesRepFilter);
             container.classList.toggle('av-top-has-customer', showRepCustomerFilter);
@@ -67131,6 +67214,13 @@ function toggleDriveQuickRequestItem(domId) {
             const sourceChoices = getAvViewChoices();
             const sourceOptionsHtml = buildAvSingleChoiceOptionsHtml(sourceChoices, getAvViewModeKey(), 'setAvSourceFilter');
             const photoOptionsHtml = buildAvSingleChoiceOptionsHtml(AV_PHOTO_VIEW_OPTIONS, getAvPhotoMode(), 'setAvPhotoMode');
+            const genusOptionsHtml = buildAvMultiChoiceOptionsHtml(state.filteredGenusOptions, selectedAvGenusNames, 'toggleAvGenusSelection', 'No matching genus.');
+            const contSizeOptionsHtml = buildAvMultiChoiceOptionsHtml(state.filteredSizeOptions, selectedAvContSizes, 'toggleAvContSizeSelection', 'No matching sizes.');
+            const holdOptionsHtml = buildAvSingleChoiceOptionsHtml([
+                { value: 'all', label: 'All Rows', icon: 'ph-bold ph-list-checks' },
+                { value: 'hold', label: 'Holdstop Only', icon: 'ph-bold ph-warning-circle' },
+                { value: 'clear', label: 'Hide Holdstop', icon: 'ph-bold ph-prohibit' }
+            ], avHoldFilterMode, 'setAvHoldFilterMode');
             const salesRepRenderLimit = getAvDropdownOptionRenderLimit();
             const visibleSalesRepOptions = filteredSalesRepOptions.slice(0, salesRepRenderLimit);
             const salesRepOptionsHtml = [
@@ -67179,22 +67269,28 @@ function toggleDriveQuickRequestItem(domId) {
                 bodySignature: `av-photo-mode:${getAvPhotoMode()}:${avSeasonDropdownOpen ? 'open' : 'closed'}`
             });
             syncAvTopControlShell(container, 'genus', {
-                hidden: true,
-                open: false,
-                bodyHtml: '',
-                bodySignature: 'av-genus:hidden'
+                hidden: collapseDetailFilters,
+                buttonClass: controlButtonClass(avGenusFilterOpen || avGenusSelectionMode !== 'all'),
+                summary: getAvGenusSummaryLabel(state.genusOptions),
+                open: !collapseDetailFilters && avGenusFilterOpen,
+                bodyHtml: (!collapseDetailFilters && avGenusFilterOpen) ? `${buildExcelFilterSearchHtml('av-genus-search', avGenusSearchTerm, 'Search genus...', 'setAvGenusSearchTerm', 'handleAvGenusSearchKeydown')}<div class="excel-filter-options">${genusOptionsHtml}</div>${buildAvExcelBulkFooterHtml('selectAllAvGenus', 'deselectAllAvGenus', 'closeAvGenusDropdown', !state.genusOptions.length || state.genusAllSelected, !state.genusOptions.length || !selectedAvGenusNames.size)}` : '',
+                bodySignature: collapseDetailFilters ? 'av-genus:hidden' : `av-genus:${buildSelectionStateKey(selectedAvGenusNames)}:${String(avGenusSearchTerm || '').trim().toLowerCase()}:${avGenusFilterOpen ? 'open' : 'closed'}:${state.genusOptions.join('|')}`
             });
             syncAvTopControlShell(container, 'contsize', {
-                hidden: true,
-                open: false,
-                bodyHtml: '',
-                bodySignature: 'av-contsize:hidden'
+                hidden: collapseDetailFilters,
+                buttonClass: controlButtonClass(avContSizeFilterOpen || avContSizeSelectionMode !== 'all'),
+                summary: getAvContSizeSummaryLabel(state.sizeOptions),
+                open: !collapseDetailFilters && avContSizeFilterOpen,
+                bodyHtml: (!collapseDetailFilters && avContSizeFilterOpen) ? `${buildExcelFilterSearchHtml('av-contsize-search', avContSizeSearchTerm, 'Search cont size...', 'setAvContSizeSearchTerm', 'handleAvContSizeSearchKeydown')}<div class="excel-filter-options">${contSizeOptionsHtml}</div>${buildAvExcelBulkFooterHtml('selectAllAvContSizes', 'deselectAllAvContSizes', 'closeAvContSizeDropdown', !state.sizeOptions.length || state.contSizeAllSelected, !state.sizeOptions.length || !selectedAvContSizes.size)}` : '',
+                bodySignature: collapseDetailFilters ? 'av-contsize:hidden' : `av-contsize:${buildSelectionStateKey(selectedAvContSizes)}:${String(avContSizeSearchTerm || '').trim().toLowerCase()}:${avContSizeFilterOpen ? 'open' : 'closed'}:${state.sizeOptions.join('|')}`
             });
             syncAvTopControlShell(container, 'hold', {
-                hidden: true,
-                open: false,
-                bodyHtml: '',
-                bodySignature: 'av-hold:hidden'
+                hidden: collapseDetailFilters,
+                buttonClass: controlButtonClass(avHoldDropdownOpen || avHoldFilterMode !== 'all'),
+                summary: getAvHoldFilterSummary(),
+                open: !collapseDetailFilters && avHoldDropdownOpen,
+                bodyHtml: (!collapseDetailFilters && avHoldDropdownOpen) ? `<div class="excel-filter-options">${holdOptionsHtml}</div>${buildAvFilterDoneFooterHtml('closeAvHoldDropdown')}` : '',
+                bodySignature: collapseDetailFilters ? 'av-hold:hidden' : `av-hold:${avHoldFilterMode}:${avHoldDropdownOpen ? 'open' : 'closed'}`
             });
             syncAvTopControlShell(container, 'salesrep', {
                 hidden: !showSalesRepFilter,
@@ -67233,9 +67329,9 @@ function toggleDriveQuickRequestItem(domId) {
             const states = {
                 source: avSourceDropdownOpen,
                 season: avSeasonDropdownOpen,
-                genus: false,
-                contsize: false,
-                hold: false,
+                genus: avGenusFilterOpen,
+                contsize: avContSizeFilterOpen,
+                hold: avHoldDropdownOpen,
                 salesrep: avSalesRepDropdownOpen,
                 customer: avRepCustomerDropdownOpen,
                 columns: false
