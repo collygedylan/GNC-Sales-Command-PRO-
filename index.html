@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.08';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.29.09';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4974,7 +4974,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.08').trim() || 'V2026.07.29.08';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.09').trim() || 'V2026.07.29.09';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6427,7 +6427,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.08';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.09';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24007,7 +24007,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.08').trim() || 'V2026.07.29.08';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.09').trim() || 'V2026.07.29.09';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -33163,7 +33163,7 @@ let avTopControlsRenderToken = 0;
 
         function isArgosInventoryTransactionRequestOnlyMode() {
             const requestAction = getArgosInventoryTransactionRequestAction();
-            return !!requestAction && requestAction !== 'priority_change';
+            return !!requestAction;
         }
 
         function isArgosInventoryTransactionOffHoldRequestMode() {
@@ -33173,7 +33173,7 @@ let avTopControlsRenderToken = 0;
         function syncArgosInventoryTransactionRequestOnlyMode() {
             const requestAction = getArgosInventoryTransactionRequestAction();
             const isPriorityChange = requestAction === 'priority_change';
-            const requestOnly = !!requestAction && !isPriorityChange;
+            const requestOnly = !!requestAction;
             const requestLabel = getArgosInventoryTransactionRequestLabel(requestAction);
             const notice = document.getElementById('argos-inventory-transaction-notice');
             const apply = document.getElementById('argos-inventory-transaction-apply');
@@ -33197,8 +33197,8 @@ let avTopControlsRenderToken = 0;
             if (sourceField) sourceField.classList.toggle('hidden', requestOnly || isPriorityChange);
             if (qtyField) qtyField.classList.toggle('hidden', requestOnly || isPriorityChange);
             if (priorityField) {
-                priorityField.hidden = !isPriorityChange;
-                priorityField.classList.toggle('hidden', !isPriorityChange);
+                priorityField.hidden = true;
+                priorityField.classList.add('hidden');
             }
             if (itemField) itemField.hidden = requestOnly || isPriorityChange || stateAction !== 'reclass';
             if (lotField) lotField.hidden = requestOnly || isPriorityChange || stateAction === 'qty';
@@ -33216,24 +33216,18 @@ let avTopControlsRenderToken = 0;
             if (notice) {
                 notice.innerHTML = requestOnly
                     ? `<span class="font-black">Request Only</span> - Opens the ${escapeHtml(requestLabel)} email/card flow. No app or Supabase inventory data is changed.`
-                    : (isPriorityChange
-                        ? '<span class="font-black">Email Report Only</span> - Sends the Priority Change report email. No app or Supabase inventory data is changed.'
-                        : '<span class="font-black">Auto-Commit</span> - Apply writes to live inventory and records an audit row.');
+                    : '<span class="font-black">Auto-Commit</span> - Apply writes to live inventory and records an audit row.';
                 notice.classList.toggle('bg-emerald-50', requestOnly);
                 notice.classList.toggle('text-emerald-800', requestOnly);
             }
             if (note && requestOnly) {
                 note.hidden = false;
                 note.textContent = `This opens the ${requestLabel} request and email flow only. It does not write to inventory.`;
-            } else if (note && isPriorityChange) {
-                note.hidden = false;
-                note.textContent = 'This sends the Priority Change report email only. It does not write to inventory.';
             } else if (note) {
                 note.hidden = true;
                 note.textContent = 'Applies to every current season/current sales year row for this item.';
             }
             if (apply && requestOnly) apply.innerHTML = `<i class="ph-bold ph-envelope mr-1"></i> Open ${escapeHtml(requestLabel)} Request`;
-            else if (apply && isPriorityChange) apply.innerHTML = '<i class="ph-bold ph-envelope mr-1"></i> Send Priority Report';
             else if (apply && argosInventoryTransactionState) apply.innerHTML = `<i class="ph-bold ph-check mr-1"></i> Apply ${escapeHtml(getArgosInventoryTransactionActionLabel(argosInventoryTransactionState.action || 'qty'))}`;
         }
 
@@ -33363,9 +33357,9 @@ let avTopControlsRenderToken = 0;
 
         function buildArgosInventoryPriorityChangeReportRow(payload = null) {
             const state = argosInventoryTransactionState || {};
-            const item = state.item || null;
-            const snapshot = state.snapshot || {};
             const safePayload = payload && typeof payload === 'object' ? payload : {};
+            const item = safePayload.item || safePayload.row || state.item || null;
+            const snapshot = state.snapshot || {};
             const source = safePayload.source && typeof safePayload.source === 'object' ? safePayload.source : {};
             const row = Object.assign({}, item || {});
             const assignPair = (upperKey, lowerKey, value) => {
@@ -33388,6 +33382,32 @@ let avTopControlsRenderToken = 0;
             row.PRIORITY = currentPriority || '';
             row.priority = currentPriority || '';
             return row;
+        }
+
+        function buildArgosInventoryPriorityChangeReportRowFromForm(item = null, rowOptions = null, index = 0) {
+            const reportRow = buildArgosInventoryPriorityChangeReportRow({ item });
+            const safeOptions = rowOptions && typeof rowOptions === 'object' ? rowOptions : {};
+            const screenValues = safeOptions.screenValues && typeof safeOptions.screenValues === 'object' ? safeOptions.screenValues : {};
+            const setPair = (upperKey, lowerKey, value) => {
+                const raw = String(value == null ? '' : value).trim();
+                if (raw === '') return;
+                reportRow[upperKey] = raw;
+                reportRow[lowerKey] = raw;
+            };
+            setPair('LOTCODE', 'lotcode', screenValues.lotcode);
+            setPair('LOCATIONCODE', 'locationcode', screenValues.locationcode);
+            setPair('SOURCE', 'source', firstNonEmptyValue(screenValues.source, screenValues.sourcecode, ''));
+            setPair('PTRAVAILABLE', 'ptravailable', screenValues.ptravailable);
+            setPair('PTRONHAND', 'ptronhand', screenValues.ptronhand);
+            setPair('PTRREVIEWED', 'ptrreviewed', screenValues.ptrreviewed);
+            setPair('HOLDSTOPCODE', 'holdstopcode', screenValues.holdstopcode);
+            setPair('HOLDSTOPREASON', 'holdstopreason', screenValues.holdstopreason);
+            const currentPriority = normalizeArgosInventoryTransactionPriorityValue(firstNonEmptyValue(item && item.PRIORITY, item && item.priority, reportRow.PRIORITY, reportRow.priority, ''));
+            reportRow.PRIORITY = currentPriority || '';
+            reportRow.priority = currentPriority || '';
+            reportRow.ROW = index + 1;
+            reportRow.row = index + 1;
+            return reportRow;
         }
 
         async function collectArgosInventoryPriorityChangeReportOptions(payload = null) {
@@ -33465,6 +33485,56 @@ let avTopControlsRenderToken = 0;
             if (!responseData || responseData.ok !== true) {
                 throw new Error(getGoogleScriptEmailFailureMessage(responseData, 'Priority Change report email did not send.'));
             }
+            return responseData;
+        }
+
+        async function sendArgosInventoryPriorityChangeReportFromRowForm(rows = [], options = {}) {
+            const safeRows = (Array.isArray(rows) ? rows : []).filter(Boolean);
+            if (!safeRows.length) throw new Error('No row is selected for the Priority Change report.');
+            const safeOptions = options && typeof options === 'object' ? options : {};
+            const sourceRow = safeRows[0];
+            const rowOptions = getGroupedBloomNcrRowOption(safeOptions.rowOptionsByUid || null, sourceRow, 0);
+            const screenValues = rowOptions && rowOptions.screenValues && typeof rowOptions.screenValues === 'object' ? rowOptions.screenValues : {};
+            const requestedPriority = normalizeArgosInventoryTransactionPriorityValue(firstNonEmptyValue(screenValues.priority, rowOptions && rowOptions.priority, ''));
+            if (requestedPriority === null || !requestedPriority) throw new Error('Enter the requested priority before sending the report.');
+            const reportRow = buildArgosInventoryPriorityChangeReportRowFromForm(sourceRow, rowOptions, 0);
+            const defaultRecipientEmails = dedupeRequestEmailRecipients([
+                ...getNcrApprovalFirstStageEmails(),
+                ...getNcrApprovalJdStageEmails(),
+                resolveRequestRecipientEmail(currentUser || currentUserDisplay || '')
+            ]);
+            const recipientEmails = await openGroupedBloomNcrRecipientModal([reportRow], defaultRecipientEmails, {
+                brandLabel: 'GNC PH Priority Change',
+                title: 'Select Priority Change Recipients'
+            });
+            const safeRecipients = dedupeRequestEmailRecipients(recipientEmails || []);
+            if (!safeRecipients.length) return false;
+            const reportPayload = {
+                type: 'inventory_priority_change_report',
+                item: sourceRow,
+                source: {
+                    unique_id: firstNonEmptyValue(sourceRow && sourceRow.UNIQUE_ID, sourceRow && sourceRow.unique_id, ''),
+                    itemcode: firstNonEmptyValue(sourceRow && sourceRow.ITEMCODE, sourceRow && sourceRow.itemcode, ''),
+                    lotcode: firstNonEmptyValue(reportRow.LOTCODE, reportRow.lotcode, ''),
+                    locationcode: firstNonEmptyValue(reportRow.LOCATIONCODE, reportRow.locationcode, ''),
+                    source: firstNonEmptyValue(reportRow.SOURCE, reportRow.source, ''),
+                    priority: firstNonEmptyValue(reportRow.PRIORITY, reportRow.priority, ''),
+                    ptronhand: firstNonEmptyValue(reportRow.PTRONHAND, reportRow.ptronhand, ''),
+                    ptrreviewed: firstNonEmptyValue(reportRow.PTRREVIEWED, reportRow.ptrreviewed, ''),
+                    ptravailable: firstNonEmptyValue(reportRow.PTRAVAILABLE, reportRow.ptravailable, '')
+                },
+                transaction: {
+                    newPriority: requestedPriority,
+                    priority: requestedPriority,
+                    reason: String(firstNonEmptyValue(screenValues.locationnote, screenValues.note, safeOptions.reason, '') || '').trim()
+                }
+            };
+            const responseData = await sendArgosInventoryPriorityChangeReportEmail(reportPayload, null, {
+                reportRow,
+                recipientEmails: safeRecipients
+            });
+            showToast('Email Sent', 'Priority Change report sent. No inventory data was changed.');
+            if (safeOptions.clearSelection === true) clearSelection();
             return responseData;
         }
 
@@ -33616,6 +33686,20 @@ let avTopControlsRenderToken = 0;
             }
             if (!requestAction) return false;
             closeArgosInventoryTransactionModal();
+            if (requestAction === 'priority_change') {
+                return openBloomActionRowFormModal([item], {
+                    action: requestAction,
+                    selectionKind: 'inventory',
+                    emailOnly: true,
+                    afterPersist: async (persisted) => {
+                        const rows = persisted && Array.isArray(persisted.rows) ? persisted.rows.filter(Boolean) : [item].filter(Boolean);
+                        return await sendArgosInventoryPriorityChangeReportFromRowForm(rows, {
+                            rowOptionsByUid: persisted && persisted.rowOptionsByUid ? persisted.rowOptionsByUid : null,
+                            clearSelection: false
+                        });
+                    }
+                });
+            }
             if (requestAction === 'ncr' || requestAction === 'move_up') {
                 return openBloomActionRowFormModal([item], {
                     action: requestAction,
@@ -76629,6 +76713,7 @@ function toggleDriveQuickRequestItem(domId) {
             crop_update: 'Crop Update',
             ncr: 'NCR',
             recount: 'Re-Count',
+            priority_change: 'Priority Change',
             move_up: 'Move Up',
             move_down: 'Move Down',
             note: 'Note',
@@ -76666,6 +76751,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (purpose === 'shift') return 'Shift';
             if (purpose === 'ncr') return 'NCR';
             if (purpose === 'recount') return 'Re-Count';
+            if (purpose === 'priority_change') return 'Priority Change';
             if (purpose === 'move_up') return 'Move Up';
             if (purpose === 'move_down') return 'Move Down';
             if (purpose === 'note') return 'Note';
@@ -76680,6 +76766,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (purpose === 'off_stop_ship') return 'Off Stop Ship Note';
             if (purpose === 'move_down') return 'Move Down Note';
             if (purpose === 'recount') return 'Re-Count Note';
+            if (purpose === 'priority_change') return 'Priority Change Note';
             if (purpose === 'note') return 'Note';
             if (purpose === 'shear') return 'Shear Instructions';
             return 'Note';
@@ -76693,6 +76780,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (purpose === 'shift') return 'GNC PH Shift';
             if (purpose === 'ncr') return 'GNC PH NCR';
             if (purpose === 'recount') return 'GNC PH Re-Count';
+            if (purpose === 'priority_change') return 'GNC PH Priority Change';
             if (purpose === 'move_up') return 'GNC PH Move Up';
             if (purpose === 'move_down') return 'GNC PH Move Down';
             if (purpose === 'note') return 'GNC PH Note';
@@ -78266,7 +78354,9 @@ function toggleDriveQuickRequestItem(domId) {
                 moveUpQty,
                 holdstopcode: normalizeBloomActionHoldStopCodeChoice(firstNonEmptyValue(screenValues.holdstopcode, getBloomActionRowHoldStopDefault(action, item), ''), action),
                 holdstopreason: normalizeBloomActionHoldStopReasonValue(firstNonEmptyValue(screenValues.holdstopreason, getBloomActionRowCurrentHoldStopReason(item), '')),
-                priority: String(firstNonEmptyValue(screenValues.priority, item && item.PRIORITY, item && item.priority, '') || '').trim(),
+                priority: String(action === 'priority_change'
+                    ? firstNonEmptyValue(screenValues.priority, '')
+                    : firstNonEmptyValue(screenValues.priority, item && item.PRIORITY, item && item.priority, '') || '').trim(),
                 priBy: String(firstNonEmptyValue(screenValues.priBy, item && item.PRISETBY, item && item.prisetby, item && item.PRIBY, item && item.priby, currentUserLabel, '') || '').trim(),
                 lotcode: String(firstNonEmptyValue(screenValues.lotcode, action === 'move_down' ? getBloomActionMoveDownLotCode(moveDownSeason) : '', getBloomActionRowReadonlyValue(item, 'lotcode'), '') || '').trim(),
                 locationcode: String(firstNonEmptyValue(screenValues.locationcode, getBloomActionRowReadonlyValue(item, 'locationcode'), '') || '').trim(),
@@ -78340,7 +78430,9 @@ function toggleDriveQuickRequestItem(domId) {
             const moveDownSeason = normalizeBloomActionMoveDownSeason(getBloomActionRowStoredValue(savedValues, 'moveDownSeason', 'U1'));
             const holdstop = normalizeBloomActionHoldStopCodeChoice(getBloomActionRowStoredValue(savedValues, 'holdstopcode', getBloomActionRowHoldStopDefault(action, item)), action);
             const holdstopreason = normalizeBloomActionHoldStopReasonValue(getBloomActionRowStoredValue(savedValues, 'holdstopreason', getBloomActionRowCurrentHoldStopReason(item)));
-            const priority = getBloomActionRowStoredValue(savedValues, 'priority', String(firstNonEmptyValue(item && item.PRIORITY, item && item.priority, '') || '').trim());
+            const isPriorityChangeAction = action === 'priority_change';
+            const currentPriority = String(firstNonEmptyValue(item && item.PRIORITY, item && item.priority, '') || '').trim();
+            const priority = getBloomActionRowStoredValue(savedValues, 'priority', isPriorityChangeAction ? '' : currentPriority);
             const priBy = getBloomActionRowStoredValue(savedValues, 'priBy', currentUserLabel);
             const lotcode = getBloomActionRowStoredValue(savedValues, 'lotcode', action === 'move_down' ? getBloomActionMoveDownLotCode(moveDownSeason) : getBloomActionRowReadonlyValue(item, 'lotcode'));
             const locationcode = getBloomActionRowStoredValue(savedValues, 'locationcode', getBloomActionRowReadonlyValue(item, 'locationcode'));
@@ -78395,7 +78487,7 @@ function toggleDriveQuickRequestItem(domId) {
                     ${editInput('Lotcode', 'lotcode', lotcode)}
                     ${editInput('Locationcode', 'locationcode', locationcode)}
                     ${editInput('Source', 'source', source)}
-                    <label class="block"><span class="${labelBase}">Priority</span><input data-bloom-action-field="priority" data-index="${index}" class="${inputBase}" inputmode="numeric" pattern="[0-9]*" value="${escapeHtml(priority)}" placeholder="Optional"></label>
+                    <label class="block"><span class="${labelBase}">${isPriorityChangeAction ? 'Requested Priority' : 'Priority'}</span><input data-bloom-action-field="priority" data-index="${index}" class="${inputBase}" inputmode="numeric" pattern="[0-9]*" value="${escapeHtml(priority)}" placeholder="${isPriorityChangeAction ? `Current ${escapeHtml(currentPriority || '-')}` : 'Optional'}"></label>
                     ${editInput('PTRONHAND', 'ptronhand', ptronhand, 'inputmode="numeric" pattern="-?[0-9]*"')}
                     ${editInput('PTRREVIEWED', 'ptrreviewed', ptrreviewed)}
                     ${editInput('Eval Date', 'evaldate', evaldate)}
@@ -78676,6 +78768,16 @@ function toggleDriveQuickRequestItem(domId) {
                         title: 'Move Down Season',
                         message: `Select U1, U2, U3, X, Y, or Z for row ${index + 1}.`,
                         field: 'move_down_season'
+                    };
+                }
+            }
+            if (context.action === 'priority_change') {
+                const requestedPriority = normalizeArgosInventoryTransactionPriorityValue(values.priority);
+                if (requestedPriority === null || !requestedPriority) {
+                    return {
+                        title: 'Priority Required',
+                        message: `Enter the requested priority for row ${index + 1}.`,
+                        field: 'priority'
                     };
                 }
             }
