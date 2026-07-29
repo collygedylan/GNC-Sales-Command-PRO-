@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.02';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.29.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -84,7 +84,7 @@
             will-change:auto !important;
         }
         @supports (content-visibility:auto){
-            @media (pointer:fine){
+            @media (pointer:fine),(min-width:821px){
                 body:not(.ios-device) #main-scroll-area .app-smart-card,
                 body:not(.ios-device) #main-scroll-area .app-card-shell,
                 body:not(.ios-device) #main-scroll-area .inv-card,
@@ -200,7 +200,7 @@ body.gnc-perf-adaptive-hard .app-smart-card:active,body.gnc-perf-adaptive-hard .
 .crop-roll-priority-review-rows{max-height:none;overflow:visible;overscroll-behavior:auto;touch-action:pan-y;contain:layout paint}
 .crop-roll-priority-review-row{contain:layout paint;transition:none}
 .crop-roll-review-card{contain:layout paint}
-@supports (content-visibility:auto){@media (pointer:coarse){.performance-windowed-list>.app-smart-card,.performance-windowed-list>.item-row,.performance-windowed-list>.request-swipe-row,.performance-windowed-list>.drill-item{content-visibility:visible!important;contain-intrinsic-size:auto!important}}}
+@supports (content-visibility:auto){@media (pointer:coarse) and (max-width:820px){.performance-windowed-list>.app-smart-card,.performance-windowed-list>.item-row,.performance-windowed-list>.request-swipe-row,.performance-windowed-list>.drill-item{content-visibility:visible!important;contain-intrinsic-size:auto!important}}}
 .manager-move-selection-rail{position:-webkit-sticky;position:sticky;top:0;z-index:46;margin:0 0 .75rem;padding:.45rem 0 .7rem;background:linear-gradient(180deg,var(--sticky-chrome-bg) 0%,rgba(248,251,249,.98) 86%,rgba(248,251,249,0) 100%);isolation:isolate}
 .manager-move-selection-rail::before{content:"";position:absolute;left:calc(var(--shell-gutter) * -1);right:calc(var(--shell-gutter) * -1);top:0;bottom:0;background:inherit;pointer-events:none;z-index:-1}
 .manager-move-selection-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem}
@@ -4973,7 +4973,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.02').trim() || 'V2026.07.29.02';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.03').trim() || 'V2026.07.29.03';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6426,7 +6426,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24005,7 +24005,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.02').trim() || 'V2026.07.29.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.03').trim() || 'V2026.07.29.03';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
