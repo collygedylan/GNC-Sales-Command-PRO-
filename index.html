@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.01';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.29.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4064,6 +4064,27 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 grid-template-columns:1fr;
             }
         }
+        @media (min-width:821px){
+            body:not(.ios-device) #view-av .av-primary-tabs-sticky{
+                position:fixed !important;
+                top:var(--av-filter-fixed-top,0px) !important;
+                left:50% !important;
+                right:auto !important;
+                transform:translateX(-50%) !important;
+                -webkit-transform:translateX(-50%) !important;
+                width:min(var(--content-max-width),calc(100vw - (var(--shell-gutter) * 2))) !important;
+                max-width:calc(100vw - (var(--shell-gutter) * 2)) !important;
+                margin:0 !important;
+                z-index:70 !important;
+                box-shadow:0 12px 24px rgba(15,23,42,.08) !important;
+            }
+            body:not(.ios-device) #view-av .av-primary-tabs-sticky::before{
+                display:block !important;
+            }
+            body:not(.ios-device) #view-av #av-content{
+                padding-top:var(--av-filter-fixed-space,0px) !important;
+            }
+        }
     </style>
     <style>
         .nav-outdoor-toggle{display:inline-flex;align-items:center;justify-content:center;gap:.22rem;min-width:2.7rem;min-height:26px;padding:.32rem .62rem;border-radius:999px;border:1px solid rgba(209,250,229,.45);background:rgba(236,253,245,.16);color:#fff;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 4px 10px rgba(15,23,42,.12);touch-action:manipulation}
@@ -4952,7 +4973,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.01').trim() || 'V2026.07.29.01';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.02').trim() || 'V2026.07.29.02';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6405,7 +6426,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9318,6 +9339,13 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return compactBody || viewportWidth <= 820 || compactMedia || isIOSDevice() || isCoarsePointerDevice();
         }
 
+        function shouldUseAvMobileFlowFilterChrome_() {
+            const body = document.body;
+            const compactBody = !!(body && (body.classList.contains('viewport-compact') || body.classList.contains('ios-device')));
+            const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+            return compactBody || viewportWidth <= 820 || isIOSDevice();
+        }
+
         function shouldUseFixedFilterRailForView(viewId = '') {
             if (String(viewId || '').trim() === 'docks') return false;
             return !shouldUseMobileFlowFilterChrome_();
@@ -9406,7 +9434,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const view = document.getElementById('view-av');
             const rail = document.querySelector('#view-av .av-primary-tabs-sticky');
             if (!view || !rail) return;
-            if (shouldUseMobileFlowFilterChrome_()) {
+            if (shouldUseAvMobileFlowFilterChrome_()) {
                 view.style.setProperty('--av-filter-fixed-space', '0px');
                 rail.style.setProperty('--av-filter-fixed-top', '0px');
                 return;
@@ -23977,7 +24005,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let appSeasonSettingsCache = null;
         let appSeasonSettingsRemoteLoaded = false;
         let appSeasonSettingsRemoteLoading = false;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.01').trim() || 'V2026.07.29.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.02').trim() || 'V2026.07.29.02';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
