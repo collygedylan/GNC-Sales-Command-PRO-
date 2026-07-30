@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.30.11';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.30.12';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5004,7 +5004,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.11').trim() || 'V2026.07.30.11';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.12').trim() || 'V2026.07.30.12';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6459,7 +6459,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.11';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.12';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -14620,6 +14620,14 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         const AV_OPEN_ALLOWED_SEASONS = Object.freeze(['F1', 'S1', 'U1', 'U2']);
         const AV_OPEN_MAX_SALES_YEAR = 27;
 
+        function getAvOpenMaxSalesYear() {
+            const configuredYear = typeof getConfiguredCurrentSalesYearCode === 'function'
+                ? getConfiguredCurrentSalesYearCode()
+                : AV_OPEN_MAX_SALES_YEAR;
+            const normalizedYear = normalizeNcrSalesYearValue(configuredYear);
+            return normalizedYear == null ? AV_OPEN_MAX_SALES_YEAR : normalizedYear;
+        }
+
         function getMasterAvOpenSeasonValue(item) {
             const explicitSeason = normalizeNcrSeasonCode(firstNonEmptyValue(item && item.SEASON, item && item.season, ''));
             const lotSeason = normalizeNcrSeasonCode(getNcrLotInfo(item).suffix);
@@ -14630,8 +14638,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const season = getMasterAvOpenSeasonValue(item);
             if (!AV_OPEN_ALLOWED_SEASONS.includes(season)) return false;
             const salesYear = getNcrSalesYear(item);
+            if (salesYear == null) return false;
             const numericSalesYear = Number(salesYear);
-            return Number.isFinite(numericSalesYear) && numericSalesYear <= AV_OPEN_MAX_SALES_YEAR;
+            return Number.isFinite(numericSalesYear) && numericSalesYear <= getAvOpenMaxSalesYear();
         }
 
         function applyAvOpenSalesWindowScope(items = []) {
@@ -24380,8 +24389,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS = 30000;
         const SPEC_OPTIONAL_PLANTGROUP_CODE_TOKENS = Object.freeze(['150', '151', '155', '160', '245', '240']);
         const CALIPER_MEASUREMENT_NOTE = '** Caliper is measured 12 inches above soil level.';
-        const PICK_NOTE_CURRENT_SEASON_CODE = 'S1';
-        const PICK_NOTE_CURRENT_SALESYEAR_CODE = 26;
+        const PICK_NOTE_CURRENT_SEASON_CODE = 'F1';
+        const PICK_NOTE_CURRENT_SALESYEAR_CODE = 27;
         const APP_SEASON_SETTINGS_VIEW = 'season-settings';
         const APP_SEASON_SETTINGS_TABLE = 'v2_app_settings';
         const APP_SEASON_SETTINGS_KEY = 'current_season_salesyear';
@@ -24399,7 +24408,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.11').trim() || 'V2026.07.30.11';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.12').trim() || 'V2026.07.30.12';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -67634,9 +67643,19 @@ function toggleDriveQuickRequestItem(domId) {
         function itemMatchesAvCurrentSeasonBucket(item = null) {
             const season = getAvSalesSeasonValue(item);
             const year = getAvSalesYearValue(item);
+            const currentSeason = normalizeNcrSeasonCode(typeof getConfiguredCurrentSeasonCode === 'function'
+                ? getConfiguredCurrentSeasonCode()
+                : PICK_NOTE_CURRENT_SEASON_CODE);
+            const currentSalesYear = normalizeNcrSalesYearValue(typeof getConfiguredCurrentSalesYearCode === 'function'
+                ? getConfiguredCurrentSalesYearCode()
+                : PICK_NOTE_CURRENT_SALESYEAR_CODE);
             const numericYear = Number(year);
-            const withinAvYearWindow = year == null || (Number.isFinite(numericYear) && numericYear <= AV_OPEN_MAX_SALES_YEAR);
-            return AV_OPEN_ALLOWED_SEASONS.includes(season) && withinAvYearWindow;
+            return !!currentSeason
+                && season === currentSeason
+                && currentSalesYear != null
+                && year != null
+                && Number.isFinite(numericYear)
+                && numericYear <= currentSalesYear;
         }
 
         function itemMatchesAvNextUpBucket(item = null) {
@@ -68252,6 +68271,8 @@ function toggleDriveQuickRequestItem(domId) {
                 activeAvReserveMode,
                 activeAvSalesBucket,
                 activeAvPhotoMode,
+                getConfiguredCurrentSeasonCode(),
+                String(getConfiguredCurrentSalesYearCode()),
                 selectedAvResRep || '',
                 getDatasetLoadSignature('master'),
                 getDatasetLoadSignature('avOpen'),
@@ -69994,6 +70015,8 @@ function toggleDriveQuickRequestItem(domId) {
                 activeAvReserveMode,
                 activeAvSalesBucket,
                 activeAvPhotoMode,
+                getConfiguredCurrentSeasonCode(),
+                String(getConfiguredCurrentSalesYearCode()),
                 selectedAvResRep || '',
                 selectedAvSalesRepName || '',
                 selectedAvRepCustomerKey || '',
