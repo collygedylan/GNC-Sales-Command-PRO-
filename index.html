@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.26';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.29.27';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4992,7 +4992,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.26').trim() || 'V2026.07.29.26';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.27').trim() || 'V2026.07.29.27';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6448,7 +6448,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.26';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.27';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24306,7 +24306,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.26').trim() || 'V2026.07.29.26';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.27').trim() || 'V2026.07.29.27';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29129,6 +29129,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     || reservesInventoryById.get(normalizedUid)
                     || cavInventoryById.get(normalizedUid)
                     || requestsInventoryById.get(normalizedUid)
+                    || requestHistoryInventoryById.get(normalizedUid)
                     || socInventoryById.get(normalizedUid)
                     || dockDisplayInventoryById.get(normalizedUid)
                     || findDockSuspendDcRequestMirrorRowByUniqueId(normalizedUid)
@@ -29150,6 +29151,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 || reservesInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
                 || cavInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
                 || requestsInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
+                || requestHistoryInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
                 || socInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
                 || dockDisplayInventory.find(i=>String((i && i.UNIQUE_ID) || '').trim() === normalizedUid)
                 || findDockSuspendDcRequestMirrorRowByUniqueId(normalizedUid)
@@ -31796,6 +31798,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 incrementInternalPerfCounter('detailLookupMapHits');
                 return exact;
             }
+            const historyExact = requestHistoryInventoryById.get(normalizedUid);
             const dockSuspendMirror = findDockSuspendDcRequestMirrorRowByUniqueId(normalizedUid);
             if (dockSuspendMirror) {
                 incrementInternalPerfCounter('detailLookupMapHits');
@@ -31810,6 +31813,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             incrementInternalPerfCounter('detailLookupFallbackScans');
             const fallbackExact = requestsInventory.find((row) => String((row && row.UNIQUE_ID) || '').trim() === normalizedUid);
             if (fallbackExact) return fallbackExact;
+            if (historyExact) return historyExact;
+            const fallbackHistoryExact = requestHistoryInventory.find((row) => String((row && row.UNIQUE_ID) || '').trim() === normalizedUid);
+            if (fallbackHistoryExact) return fallbackHistoryExact;
             const fallbackPending = requestsInventory.find((row) => {
                 if (!row || row.REQ_ARCHIVED) return false;
                 const masterId = String(firstNonEmptyValue(row.MASTER_ID, row.MASTER_UNIQUE_ID, row.master_id, '')).trim();
@@ -84575,9 +84581,15 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (normalizedSourceView === 'request') {
                 const sourceDomId = String((options && options.sourceDomId) || '').trim();
-                const requestItem = findRequestRowByUniqueId(normalizedUid)
+                const domMatchedRequestItem = sourceDomId
+                    ? findItemByDomId(sourceDomId)
+                    : null;
+                const requestItem = domMatchedRequestItem
+                    || findRequestRowByUniqueId(normalizedUid)
                     || (sourceDomId ? (requestsInventory.find((row) => String(firstNonEmptyValue(row && row.DOM_ID, row && row.dom_id, '') || '').trim() === sourceDomId) || null) : null)
+                    || (sourceDomId ? (requestHistoryInventory.find((row) => String(firstNonEmptyValue(row && row.DOM_ID, row && row.dom_id, '') || '').trim() === sourceDomId) || null) : null)
                     || requestsInventory.find((row) => String(firstNonEmptyValue(row && row.DOM_ID, row && row.dom_id, '') || '').trim() === normalizedUid)
+                    || requestHistoryInventory.find((row) => String(firstNonEmptyValue(row && row.DOM_ID, row && row.dom_id, '') || '').trim() === normalizedUid)
                     || null;
                 if (requestItem && hasEvalTaskRequestMeta(requestItem)) hydrateEvalTaskRequestRowFromMeta(requestItem);
                 return requestItem || findItemByUniqueId(normalizedUid);
@@ -91781,7 +91793,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 requestViewLevel = 4;
                 const selectedCustomerKey = normalizeRequestCustomerFolderKey(selectedReqCustView);
                 const selectedConsigneeKey = normalizeRequestConsigneeFolderKey(selectedReqConsigneeView);
-                const folderItems = getScopedRequestItems(requestsInventory).filter((item) => {
+                const folderItems = mergeRequestHistoryRowsForRequestFolders(getScopedRequestItems(requestsInventory)).filter((item) => {
                     if (!doesRequestRepMatchValue(getRequestAssignedRep(item), selectedReqRepView) || item.REQ_ARCHIVED) return false;
                     if (!doesRequestItemMatchCustomerConsigneeFolder(item, selectedCustomerKey, selectedConsigneeKey)) return false;
                     return getRequestFolderName(item) === safeFolderName;
@@ -91880,6 +91892,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             } else if (activeReqTab === 'suspend-tag') {
                 items = applyRequestSuspendTagDockFilter(applyRequestSuspendTagAssignedToFilter(applyRequestSuspendTagCommonNameSearchFilter(getSuspendTagRequestItems(items))));
             } else if (activeReqTab === 'reps') {
+                items = mergeRequestHistoryRowsForRequestFolders(items);
                 items = items.filter(i => isRegularRequestQueueItem(i) && doesRequestRepMatchValue(getRequestAssignedRep(i), selectedReqRepView) && !i.REQ_ARCHIVED);
                 if (requestViewLevel >= 2 && selectedReqCustView) {
                     const selectedCustomerKey = normalizeRequestCustomerFolderKey(selectedReqCustView);
