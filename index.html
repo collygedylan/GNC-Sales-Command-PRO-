@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.30.06';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.30.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4992,7 +4992,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.06').trim() || 'V2026.07.30.06';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.07').trim() || 'V2026.07.30.07';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6447,7 +6447,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.06';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24352,7 +24352,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.06').trim() || 'V2026.07.30.06';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.07').trim() || 'V2026.07.30.07';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -40434,7 +40434,9 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function showRequestModalBase() {
-            tempSelectedReqRep = '';
+            const repPickerLocked = isRequestRepPickerLockedForCurrentUser();
+            const lockedRepName = resolveRequestRepSelectionForCurrentUser('', { showToast: false });
+            tempSelectedReqRep = lockedRepName || '';
             tempReqFolder = null;
             tempReqCust = null;
             tempReqAppendToExistingFolder = false;
@@ -40444,8 +40446,13 @@ function toggleDriveQuickRequestItem(domId) {
             pendingRequestOverQtyResolution = null;
             resetRequestQtyStepState();
             previousReqStep = '';
-            document.getElementById('step-1-rep').classList.remove('hidden');
-            document.getElementById('step-1.5-folder').classList.add('hidden');
+            if (repPickerLocked) {
+                document.getElementById('step-1-rep').classList.add('hidden');
+                document.getElementById('step-1.5-folder').classList.remove('hidden');
+            } else {
+                document.getElementById('step-1-rep').classList.remove('hidden');
+                document.getElementById('step-1.5-folder').classList.add('hidden');
+            }
             document.getElementById('step-2-cust').classList.add('hidden');
             document.getElementById('step-3-qty').classList.add('hidden');
             const requestModal = document.getElementById('request-rep-modal');
@@ -40463,8 +40470,15 @@ function toggleDriveQuickRequestItem(domId) {
             requestModalCustomerOptionsReady = areRequestModalCustomerDatasetsReady();
             requestModalCustomerOptionsError = '';
             buildRequestModalCustomerOptionsCache(true);
-            ensureRequestModalCustomerOptionsReady();
-            scheduleRequestModalSearchRender('rep', '', () => filterRepList(''), { force: true, skipDebounce: true });
+            const customerOptionsPromise = ensureRequestModalCustomerOptionsReady();
+            if (repPickerLocked) {
+                renderExistingRequestFolderPicker();
+                if (customerOptionsPromise && typeof customerOptionsPromise.then === 'function') {
+                    customerOptionsPromise.then(() => renderExistingRequestFolderPicker()).catch(() => renderExistingRequestFolderPicker());
+                }
+            } else {
+                scheduleRequestModalSearchRender('rep', '', () => filterRepList(''), { force: true, skipDebounce: true });
+            }
         }
 
         function closeRequestModal() {
@@ -66341,6 +66355,49 @@ function toggleDriveQuickRequestItem(domId) {
                     : (clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase());
             };
             return resolveCanonicalRequestRepName(parts.map(formatPart).filter(Boolean).join(' ').trim());
+        }
+
+        function isRequestRepPickerLockedForCurrentUser() {
+            const access = getRoleAccessState();
+            return !!((access.isRep || access.isRequestRepScopedUser) && !access.isAdmin && !canUseGlobalRequestAccess());
+        }
+
+        function getLockedRequestRepNameForCurrentUser() {
+            if (!isRequestRepPickerLockedForCurrentUser()) return '';
+            const defaultRepName = getDefaultRequestRepName();
+            if (defaultRepName) return defaultRepName;
+            const rawUser = String(currentUser || currentUserDisplay || '').trim();
+            if (!rawUser) return '';
+            return resolveCanonicalRequestRepName(rawUser.replace(/_/g, ' '));
+        }
+
+        function getAllowedRequestModalRepOptions() {
+            if (!isRequestRepPickerLockedForCurrentUser()) return REQUEST_MODAL_REP_OPTIONS;
+            const lockedRepName = getLockedRequestRepNameForCurrentUser();
+            if (!lockedRepName) return [];
+            const lockedToken = normalizeRepMatchToken(lockedRepName);
+            const lockedCollapsedToken = lockedToken.replace(/\s+/g, '');
+            const matchedOption = REQUEST_MODAL_REP_OPTIONS.find((option) => (
+                option.token === lockedToken ||
+                option.collapsedToken === lockedCollapsedToken ||
+                doesRequestRepMatchValue(option.label, lockedRepName)
+            ));
+            return matchedOption ? [matchedOption] : [{
+                label: lockedRepName,
+                token: lockedToken,
+                collapsedToken: lockedCollapsedToken
+            }];
+        }
+
+        function resolveRequestRepSelectionForCurrentUser(repName = '', options = {}) {
+            const requestedRepName = resolveCanonicalRequestRepName(repName);
+            if (!isRequestRepPickerLockedForCurrentUser()) return requestedRepName;
+            const lockedRepName = getLockedRequestRepNameForCurrentUser();
+            if (!lockedRepName) return '';
+            if (requestedRepName && !doesRequestRepMatchValue(requestedRepName, lockedRepName) && options && options.showToast) {
+                showToast('Restricted', 'Sales reps can only create requests for themselves.', true);
+            }
+            return lockedRepName;
         }
 
         function resetHoursView() {
@@ -114862,7 +114919,7 @@ C.14.043 C.15.000
             resetQuickDriveRequestState();
             showRequestModalBase();
             const defaultRepName = getDefaultRequestRepName();
-            if (defaultRepName) {
+            if (defaultRepName && !isRequestRepPickerLockedForCurrentUser()) {
                 selectRepForRequest(defaultRepName);
             }
         }
@@ -114875,8 +114932,10 @@ C.14.043 C.15.000
             const container = document.getElementById('rep-list-container');
             const customBtn = document.getElementById('custom-rep-btn');
             if (!container || !customBtn) return;
+            const repPickerLocked = isRequestRepPickerLockedForCurrentUser();
+            const allowedRepOptions = getAllowedRequestModalRepOptions();
             let exactMatch = false;
-            const filteredOptions = REQUEST_MODAL_REP_OPTIONS.filter((option) => {
+            const filteredOptions = allowedRepOptions.filter((option) => {
                 if (!val) return true;
                 return option.token.includes(val) || option.collapsedToken.includes(collapsedVal);
             });
@@ -114884,8 +114943,10 @@ C.14.043 C.15.000
                 if (option.token === val || option.collapsedToken === collapsedVal) exactMatch = true;
                 return `<button class="request-choice-card request-rep-option" ${buildFastInvokeAttrs('selectRepForRequest', [option.label], 'Select sales rep ' + option.label)}><i class="request-choice-icon ph-bold ph-user"></i><span class="request-choice-title truncate">${esc(option.label)}</span></button>`;
             }).join('');
-            container.innerHTML = html || `<div class="request-empty-state">No matching sales reps found. Type above to use a custom name.</div>`;
-            if (val.length > 0 && !exactMatch) {
+            container.innerHTML = html || (repPickerLocked
+                ? `<div class="request-empty-state">Requests are locked to ${esc(getLockedRequestRepNameForCurrentUser() || 'your login')}.</div>`
+                : `<div class="request-empty-state">No matching sales reps found. Type above to use a custom name.</div>`);
+            if (!repPickerLocked && val.length > 0 && !exactMatch) {
                 customBtn.classList.remove('hidden');
                 customBtn.querySelector('span').innerText = rawVal.trim();
             } else {
@@ -115207,7 +115268,7 @@ C.14.043 C.15.000
             const customerSearch = normalizeRepMatchToken(tempExistingReqCustomerSearch || '');
             const { customerGroup: selectedGroup, consigneeGroup: selectedConsigneeGroup } = getSelectedExistingRequestFolderGroups(groups);
             const stepTitle = selectedConsigneeGroup ? 'Select Request Folder' : (selectedGroup ? 'Select Consignee' : 'Select Customer');
-            const canBackToRepPicker = !selectedGroup && (safeRole !== 'SALESREP' || canUseGlobalRequestAccess());
+            const canBackToRepPicker = !selectedGroup && !isRequestRepPickerLockedForCurrentUser();
             let html = `<div class="request-step-header flex-shrink-0">${canBackToRepPicker ? `<i class="request-back-icon ph-bold ph-arrow-left cursor-pointer" ${buildFastInvokeAttrs('backToRequestRepStep', [], 'Back to Sales Reps')}></i>` : ''}<h3 class="font-bold text-lg text-orange-600">${stepTitle}</h3></div>`;
             html += `<div class="request-folder-picker-body">`;
             if (!selectedGroup) {
@@ -115272,7 +115333,12 @@ C.14.043 C.15.000
         }
 
         function selectRepForRequest(repName) {
-            tempSelectedReqRep = resolveCanonicalRequestRepName(repName);
+            const resolvedRepName = resolveRequestRepSelectionForCurrentUser(repName, { showToast: true });
+            if (!resolvedRepName) {
+                showToast('Required', 'Please choose a sales rep for this request.', true);
+                return false;
+            }
+            tempSelectedReqRep = resolvedRepName;
             resetExistingRequestFolderPickerState();
             resetRequestCustomerSelectionState();
             const customerOptionsPromise = ensureRequestModalCustomerOptionsReady();
@@ -115290,6 +115356,17 @@ C.14.043 C.15.000
         function backToRequestRepStep() {
             resetExistingRequestFolderPickerState();
             resetRequestCustomerSelectionState();
+            const repPickerLocked = isRequestRepPickerLockedForCurrentUser();
+            const lockedRepName = resolveRequestRepSelectionForCurrentUser('', { showToast: false });
+            if (repPickerLocked) {
+                tempSelectedReqRep = lockedRepName;
+                document.getElementById('step-1-rep').classList.add('hidden');
+                document.getElementById('step-2-cust').classList.add('hidden');
+                document.getElementById('step-3-qty').classList.add('hidden');
+                document.getElementById('step-1.5-folder').classList.remove('hidden');
+                renderExistingRequestFolderPicker();
+                return false;
+            }
             document.getElementById('step-1.5-folder').classList.add('hidden');
             document.getElementById('step-2-cust').classList.add('hidden');
             document.getElementById('step-3-qty').classList.add('hidden');
@@ -116227,7 +116304,8 @@ C.14.043 C.15.000
             let cust=existingCust;let folderId=String(existingFolderId || '').trim();
             const appendingToExistingFolder = !!folderId;
             const quickMode = isQuickDriveRequestMode();
-            const requestedBy = resolveCanonicalRequestRepName(String(tempSelectedReqRep || getDefaultRequestRepName() || '').trim());
+            const requestedBy = resolveRequestRepSelectionForCurrentUser(String(tempSelectedReqRep || getDefaultRequestRepName() || '').trim(), { showToast: false });
+            if (requestedBy) tempSelectedReqRep = requestedBy;
             syncRequestEmailChainSelectionFromInputs();
             const emailChainRecipients = canUseRequestEmailChainPicker() ? getRequestEmailChainSelectedRecipients() : [];
             const emailChainRecipientEmails = dedupeRequestEmailRecipients(emailChainRecipients.map((rep) => rep && rep.email));
