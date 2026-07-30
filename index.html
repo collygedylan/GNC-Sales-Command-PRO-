@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.30.07';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.30.08';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4992,7 +4992,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.07').trim() || 'V2026.07.30.07';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.08').trim() || 'V2026.07.30.08';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6447,7 +6447,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.07';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.08';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24352,7 +24352,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.07').trim() || 'V2026.07.30.07';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.08').trim() || 'V2026.07.30.08';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -114306,7 +114306,7 @@ C.14.043 C.15.000
                 const avNoteDisplay = avNoteText || String(firstNonEmptyValue(item.AVNOTE, item.AV_NOTES, '') || '').trim();
                 const visibleAvNoteText = avNoteDisplay || 'No AV Note';
                 const specText = String(firstNonEmptyValue(item.SPEC, item.SPECIFICATION, item.AV_SPEC, item.SPECS, '') || '').trim();
-                const availableText = normalizeCardQuantityValue(getCardPtrAvailableValue(item));
+                const openStockText = getCardOpenStockValue(item);
                 const seasonText = String(firstNonEmptyValue(item.SEASON, item.season, '-') || '-').trim() || '-';
                 const safeDomId = escJsAttrValue(domIdText);
                 const inBloomPicker = domIdText && selectedItems.has(domIdText);
@@ -114327,7 +114327,7 @@ C.14.043 C.15.000
                 const holdReasonCatalogHtml = holdReasonValue
                     ? `<section class="app-av-catalog-note app-av-catalog-note--hold"><span class="app-av-catalog-note-label">Hold / Stop</span><div class="app-av-catalog-note-text">${cleanHoldCode ? `${esc(cleanHoldCode)} - ` : ''}${esc(holdReasonValue)}</div></section>`
                     : '';
-        return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av app-av-catalog-card relative rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView === 'reserves_drill' ? 'av' : sourceView, avCardActivationLabel)}><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked, '${safeCardSourceViewKey}')"></div><div class="app-av-catalog-frame"><div class="app-av-catalog-media"><div class="app-av-catalog-photo-wrap">${heroHtml}</div>${saveRowHtml}</div><div class="app-av-catalog-info"><div><span class="app-av-catalog-eyebrow"><i class="ph-bold ph-leaf"></i> Greenleaf Availability</span><h3 class="app-av-catalog-title">${esc(commonNameText)}</h3><div class="app-av-catalog-meta"><span>${esc(contSizeText)}</span><span>${esc(itemCodeText)}</span><span>Location ${esc(locationCodeText)}</span><span>Season ${esc(seasonText)}</span></div></div><div class="app-av-catalog-highlight"><div><span class="app-av-catalog-available-label">Available</span><span class="app-av-catalog-available-value">${esc(availableText)}</span>${locPhotoMatchHtml}</div>${priceHtml}</div><div class="app-av-catalog-note-grid">${avNoteCatalogHtml}${holdReasonCatalogHtml}</div><div class="app-av-catalog-actions">${bloomButtonHtml}<div class="app-av-secondary-actions">${viewPhotosButtonHtml}</div></div></div></div></div>`;
+        return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av app-av-catalog-card relative rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView === 'reserves_drill' ? 'av' : sourceView, avCardActivationLabel)}><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked, '${safeCardSourceViewKey}')"></div><div class="app-av-catalog-frame"><div class="app-av-catalog-media"><div class="app-av-catalog-photo-wrap">${heroHtml}</div>${saveRowHtml}</div><div class="app-av-catalog-info"><div><span class="app-av-catalog-eyebrow"><i class="ph-bold ph-leaf"></i> Greenleaf Availability</span><h3 class="app-av-catalog-title">${esc(commonNameText)}</h3><div class="app-av-catalog-meta"><span>${esc(contSizeText)}</span><span>${esc(itemCodeText)}</span><span>Location ${esc(locationCodeText)}</span><span>Season ${esc(seasonText)}</span></div></div><div class="app-av-catalog-highlight"><div><span class="app-av-catalog-available-label">Open Stock</span><span class="app-av-catalog-available-value">${esc(openStockText)}</span>${locPhotoMatchHtml}</div>${priceHtml}</div><div class="app-av-catalog-note-grid">${avNoteCatalogHtml}${holdReasonCatalogHtml}</div><div class="app-av-catalog-actions">${bloomButtonHtml}<div class="app-av-secondary-actions">${viewPhotosButtonHtml}</div></div></div></div></div>`;
             };
 
             if(sourceView === 'av-photo' || sourceView === 'av') {
