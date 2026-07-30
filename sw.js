@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.07.30.04';
+const APP_SHELL_BUILD = 'V2026.07.30.05';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
@@ -22,6 +22,7 @@ const ASSETS_TO_CACHE = [
   'https://unpkg.com/@phosphor-icons/web',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
 ];
+const RUNTIME_CACHE_EXTENSION_REGEX = /\.(?:css|js|mjs|json|png|jpg|jpeg|webp|svg|ico|woff2?)$/i;
 
 function normalizeShellBuild(value = '') {
   return String(value || '').trim();
@@ -89,6 +90,30 @@ async function cacheShellInstallAsset(cache, asset) {
   } catch (error) {}
 }
 
+function getAbsoluteAssetUrl(asset = '') {
+  try {
+    return new URL(String(asset || ''), self.registration.scope).href;
+  } catch (error) {
+    return '';
+  }
+}
+
+function isPrecachedRuntimeAssetUrl(url = null) {
+  if (!url) return false;
+  const href = typeof url === 'string' ? url : url.href;
+  if (!href) return false;
+  return ASSETS_TO_CACHE.some((asset) => getAbsoluteAssetUrl(asset) === href);
+}
+
+function shouldRuntimeCacheRequest(request, response) {
+  if (!request || !response || response.status !== 200) return false;
+  const requestUrl = getRequestUrl(request);
+  if (!requestUrl) return false;
+  if (requestUrl.origin !== self.location.origin) return isPrecachedRuntimeAssetUrl(requestUrl);
+  if (/\/index\.html$/i.test(requestUrl.pathname)) return false;
+  return RUNTIME_CACHE_EXTENSION_REGEX.test(requestUrl.pathname);
+}
+
 async function broadcastShellVersion(type = 'GNC_SHELL_VERSION') {
   try {
     const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
@@ -148,6 +173,7 @@ self.addEventListener('activate', (event) => {
       .then((keys) => Promise.all(keys.map((key) => key !== CACHE_NAME ? caches.delete(key) : Promise.resolve())))
       .then(() => self.clients.claim())
       .then(() => broadcastShellVersion('GNC_SHELL_ACTIVATED'))
+      .then(() => navigateStaleShellClients('activate'))
   );
 });
 self.addEventListener('message', (event) => {
@@ -235,7 +261,7 @@ self.addEventListener('fetch', (event) => {
   }
   event.respondWith(
     fetch(event.request).then((networkResponse) => {
-      if (networkResponse && networkResponse.status === 200) {
+      if (shouldRuntimeCacheRequest(event.request, networkResponse)) {
         const responseClone = networkResponse.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone)).catch(() => {});
       }

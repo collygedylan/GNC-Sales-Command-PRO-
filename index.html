@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.30.04';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.30.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4992,7 +4992,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.04').trim() || 'V2026.07.30.04';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.05').trim() || 'V2026.07.30.05';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6448,7 +6448,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6894,6 +6894,22 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
         }
 
+        function getStartupPerformanceHintLevel() {
+            const ua = String(navigator.userAgent || '');
+            const memoryGb = Number(navigator.deviceMemory || 0);
+            const cpuCores = Number(navigator.hardwareConcurrency || 0);
+            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection || {};
+            const networkType = String(connection.effectiveType || '').toLowerCase();
+            const touchOrFieldDevice = isIOSDevice() || /Android/i.test(ua) || isStandaloneApp() || isCoarsePointerDevice();
+            const lowMemory = memoryGb > 0 && memoryGb <= 4;
+            const veryLowMemory = memoryGb > 0 && memoryGb <= 2;
+            const lowCpu = cpuCores > 0 && cpuCores <= 4;
+            const slowNetwork = /(^|-)2g$|slow-2g|3g/.test(networkType);
+            if ((touchOrFieldDevice && veryLowMemory && lowCpu) || (veryLowMemory && slowNetwork)) return 2;
+            if (touchOrFieldDevice || lowMemory || slowNetwork) return 1;
+            return 0;
+        }
+
         function beginInternalPerfMeasure() {
             return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
         }
@@ -7047,14 +7063,29 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 && typeof getIsAvPhotoSubview === 'function'
                 && getIsAvPhotoSubview();
             if (avPhotoFeedVisible) {
-                if (level >= 2) return isTouchConstrainedDevice() ? 18 : 64;
-                if (level === 1) return isTouchConstrainedDevice() ? 28 : 96;
-                return isTouchConstrainedDevice() ? 44 : 180;
+                if (level >= 2) return isTouchConstrainedDevice() ? 24 : 80;
+                if (level === 1) return isTouchConstrainedDevice() ? 38 : 120;
+                return isTouchConstrainedDevice() ? 64 : 220;
             }
             if (level >= 2) return isTouchConstrainedDevice() ? 8 : 12;
             if (level === 1) return isTouchConstrainedDevice() ? 12 : 20;
             return isTouchConstrainedDevice() ? 20 : 56;
         }
+
+        function initializeStartupPerformanceMode() {
+            const startupLevel = getStartupPerformanceHintLevel();
+            if (startupLevel > 0) {
+                setAdaptivePerformanceLevel(startupLevel, 'startup-device-hint');
+                return;
+            }
+            try {
+                if (document && document.body && (isIOSDevice() || isStandaloneApp() || isCoarsePointerDevice())) {
+                    document.body.classList.add('performance-lean-shell');
+                }
+            } catch (error) {}
+        }
+
+        initializeStartupPerformanceMode();
 
         function installInternalLongTaskObserver() {
             if (window.__gncLongTaskObserverInstalled) return;
@@ -24326,7 +24357,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.04').trim() || 'V2026.07.30.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.05').trim() || 'V2026.07.30.05';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -31927,6 +31958,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         const DEFERRED_CARD_PHOTO_ROOT_MARGIN = '1800px 0px 2200px 0px';
         let deferredCardPhotoObserver = null;
+        let deferredCardPhotoObserverRootMargin = '';
         let deferredCardPhotoHydrationFrame = 0;
         let deferredCardPhotoHydrationIdleTimer = 0;
         const deferredCardPhotoHydrationRoots = new Set();
@@ -32016,15 +32048,33 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             img.src = src;
         }
 
+        function getDeferredCardPhotoRootMargin() {
+            const avPhotoFeedVisible = typeof getCurrentVisibleViewId === 'function'
+                && getCurrentVisibleViewId() === 'av'
+                && typeof getIsAvPhotoSubview === 'function'
+                && getIsAvPhotoSubview();
+            if (avPhotoFeedVisible) {
+                return isTouchConstrainedDevice() ? '2600px 0px 3600px 0px' : '3200px 0px 4600px 0px';
+            }
+            return DEFERRED_CARD_PHOTO_ROOT_MARGIN;
+        }
+
         function getDeferredCardPhotoObserver() {
-            if (deferredCardPhotoObserver || typeof IntersectionObserver !== 'function') return deferredCardPhotoObserver;
+            if (typeof IntersectionObserver !== 'function') return deferredCardPhotoObserver;
+            const rootMargin = getDeferredCardPhotoRootMargin();
+            if (deferredCardPhotoObserver && deferredCardPhotoObserverRootMargin === rootMargin) return deferredCardPhotoObserver;
+            if (deferredCardPhotoObserver) {
+                try { deferredCardPhotoObserver.disconnect(); } catch (error) {}
+                deferredCardPhotoObserver = null;
+            }
+            deferredCardPhotoObserverRootMargin = rootMargin;
             deferredCardPhotoObserver = new IntersectionObserver((entries) => {
                 entries.forEach((entry) => {
                     if (!entry || (!entry.isIntersecting && Number(entry.intersectionRatio || 0) <= 0)) return;
                     if (deferredCardPhotoObserver) deferredCardPhotoObserver.unobserve(entry.target);
                     hydrateDeferredCardPhoto(entry.target);
                 });
-            }, { root: null, rootMargin: DEFERRED_CARD_PHOTO_ROOT_MARGIN, threshold: 0.01 });
+            }, { root: null, rootMargin, threshold: 0.01 });
             return deferredCardPhotoObserver;
         }
 
@@ -32080,7 +32130,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 });
                 eagerImgs.forEach(hydrateDeferredCardPhoto);
                 if (!observerImgs.length) return;
-                if (isTouchConstrainedDevice() && typeof isUserInLiveTouchScrollGesture === 'function' && isUserInLiveTouchScrollGesture()) {
+                const avPhotoFeedVisible = typeof getCurrentVisibleViewId === 'function'
+                    && getCurrentVisibleViewId() === 'av'
+                    && typeof getIsAvPhotoSubview === 'function'
+                    && getIsAvPhotoSubview();
+                if (!avPhotoFeedVisible && isTouchConstrainedDevice() && typeof isUserInLiveTouchScrollGesture === 'function' && isUserInLiveTouchScrollGesture()) {
                     roots.forEach((candidateRoot) => deferredCardPhotoHydrationRoots.add(candidateRoot));
                     deferredCardPhotoHydrationIdleTimer = window.setTimeout(() => {
                         deferredCardPhotoHydrationIdleTimer = 0;
@@ -32122,6 +32176,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (document.hidden && deferredCardPhotoObserver) {
                 try { deferredCardPhotoObserver.disconnect(); } catch (error) {}
                 deferredCardPhotoObserver = null;
+                deferredCardPhotoObserverRootMargin = '';
             }
         }
         window.__trimDeferredCardPhotoHydrationState = trimDeferredCardPhotoHydrationState;
@@ -114241,8 +114296,8 @@ C.14.043 C.15.000
                     const hasKnownRowIndex = Number.isFinite(rowIndex);
                     const isAvPhotoFeed = sourceView === 'av-photo'
                         || (typeof getIsAvPhotoSubview === 'function' && getIsAvPhotoSubview());
-                    const eagerHeroRowLimit = isTouchConstrainedDevice() ? 10 : 32;
-                    const hydrateAheadRowLimit = isTouchConstrainedDevice() ? 28 : 72;
+                    const eagerHeroRowLimit = isTouchConstrainedDevice() ? 16 : 40;
+                    const hydrateAheadRowLimit = isTouchConstrainedDevice() ? 44 : 104;
                     const photoSlidesHtml = validAvPhotoUrls.map((url, index) => {
                         const thumbUrl = getDirectImageUrl(url, 'card-feature');
                         const isPrimaryHeroPhoto = index === 0;
