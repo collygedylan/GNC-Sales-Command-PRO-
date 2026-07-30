@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.30.14';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.30.15';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5006,7 +5006,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.14').trim() || 'V2026.07.30.14';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.15').trim() || 'V2026.07.30.15';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6461,7 +6461,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.14';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.15';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24435,7 +24435,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.14').trim() || 'V2026.07.30.14';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.15').trim() || 'V2026.07.30.15';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -68744,12 +68744,9 @@ function toggleDriveQuickRequestItem(domId) {
             const safeSelectHandler = String(selectHandler || '').trim();
             const safeDeselectHandler = String(deselectHandler || '').trim();
             const safeDoneHandler = String(doneHandler || '').trim();
-            const shouldDeselect = !!allSelected && !noneSelected;
-            const toggleHandler = shouldDeselect ? safeDeselectHandler : safeSelectHandler;
-            const toggleLabel = shouldDeselect ? 'Deselect All' : 'Select All';
-            const toggleTone = shouldDeselect ? 'border-slate-200 text-slate-700' : 'border-emerald-200 text-emerald-700';
-            const disabledToggleClass = (!toggleHandler || (allSelected && noneSelected)) ? 'opacity-50 cursor-not-allowed pointer-events-none' : '';
-            return `<div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border bg-white px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.08em] shadow-sm ${toggleTone} ${disabledToggleClass}" ${buildExcelFilterFastAttrs(toggleHandler)}>${toggleLabel}</button><button type="button" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" ${buildExcelFilterFastAttrs(safeDoneHandler)}>Done</button></div>`;
+            const disabledSelectClass = allSelected ? 'opacity-50 cursor-not-allowed pointer-events-none' : '';
+            const disabledDeselectClass = noneSelected ? 'opacity-50 cursor-not-allowed pointer-events-none' : '';
+            return `<div class="excel-filter-footer grid grid-cols-2 gap-2"><button type="button" class="rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.08em] text-emerald-700 shadow-sm ${disabledSelectClass}" ${buildExcelFilterFastAttrs(safeSelectHandler)}>Select All</button><button type="button" class="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.08em] text-slate-700 shadow-sm ${disabledDeselectClass}" ${buildExcelFilterFastAttrs(safeDeselectHandler)}>Deselect All</button><button type="button" class="col-span-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm" ${buildExcelFilterFastAttrs(safeDoneHandler)}>Done</button></div>`;
         }
 
         function buildAvFilterDoneFooterHtml(doneHandler = '') {
