@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.30.02';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.30.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4992,7 +4992,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.02').trim() || 'V2026.07.30.02';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.03').trim() || 'V2026.07.30.03';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6448,7 +6448,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24326,7 +24326,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.02').trim() || 'V2026.07.30.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.03').trim() || 'V2026.07.30.03';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -116924,6 +116924,16 @@ C.14.043 C.15.000
                 }
                 return fallback;
             };
+            const getChangedDisplayInfo = (item, valueKeys = [], originalKeys = []) => {
+                const value = getValue(item, valueKeys, '');
+                const original = getValue(item, originalKeys, '');
+                const rawValue = String(firstNonEmptyValue(value, '') || '').trim();
+                const rawOriginal = String(firstNonEmptyValue(original, '') || '').trim();
+                return {
+                    value,
+                    highlight: !!rawValue && (!rawOriginal || isPaperNcrValueChanged(rawValue, rawOriginal))
+                };
+            };
             const coreRequestLabels = new Set([
                 'item code',
                 'location',
@@ -116972,12 +116982,15 @@ C.14.043 C.15.000
                         dataCell(getValue(item, ['PTRAVAILABLE', 'ptravailable', 'AVAILABLE', 'available'], ''), { bold: true, nowrap: true })
                     ]
                 );
+                const noteDateInfo = getChangedDisplayInfo(item, ['LOCATIONNOTEDATE', 'locationnotedate', 'NOTE_DATE', 'note_date'], ['ORIGINAL_LOCATIONNOTEDATE', 'originalLocationNoteDate', 'original_location_note_date']);
+                const noteInfo = getChangedDisplayInfo(item, ['LOCATIONNOTE', 'locationnote', 'LOC_NOTE', 'loc_note'], ['ORIGINAL_LOCATIONNOTE', 'originalLocationNote', 'original_location_note']);
+                const ptn1Info = getChangedDisplayInfo(item, ['LOCATIONPTN1', 'locationptn1', 'PTN1', 'ptn1'], ['ORIGINAL_LOCATIONPTN1', 'originalLocationPtn1', 'original_locationptn1', 'original_location_ptn1']);
                 const noteTable = table(
                     ['LOCATIONNOTEDATE', 'LOCATIONNOTE', 'LOCATIONPTN1'],
                     [
-                        dataCell(getValue(item, ['LOCATIONNOTEDATE', 'locationnotedate', 'NOTE_DATE', 'note_date'], ''), { bold: true }),
-                        dataCell(getValue(item, ['LOCATIONNOTE', 'locationnote', 'LOC_NOTE', 'loc_note'], ''), { bold: true }),
-                        dataCell(getValue(item, ['LOCATIONPTN1', 'locationptn1', 'PTN1', 'ptn1'], ''), { bold: true })
+                        dataCell(noteDateInfo.value, { bold: true, highlight: noteDateInfo.highlight }),
+                        dataCell(noteInfo.value, { bold: true, highlight: noteInfo.highlight }),
+                        dataCell(ptn1Info.value, { bold: true, highlight: ptn1Info.highlight })
                     ]
                 );
                 const actionValue = getValue(item, ['APPROVAL_LABEL', 'approval_label', 'APPROVAL_TYPE', 'approval_type', 'ACTION', 'action', 'NCR_APPROVAL_TYPE', 'ncr_approval_type'], '');
@@ -117743,6 +117756,16 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
                 return fallback;
             };
+            const getChangedDisplayInfo = (item, valueKeys = [], originalKeys = []) => {
+                const value = getValue(item, valueKeys, '');
+                const original = getValue(item, originalKeys, '');
+                const rawValue = String(firstNonEmptyValue(value, '') || '').trim();
+                const rawOriginal = String(firstNonEmptyValue(original, '') || '').trim();
+                return {
+                    value,
+                    highlight: !!rawValue && (!rawOriginal || isPaperNcrValueChanged(rawValue, rawOriginal))
+                };
+            };
             const coreLabels = new Set([
                 'item code',
                 'priority',
@@ -117788,12 +117811,15 @@ ${folderNote ? `Folder Note: ${folderNote}
                         dataCell(getCardOpenStockValue(item), { bold: true, nowrap: true })
                     ]
                 );
+                const noteDateInfo = getChangedDisplayInfo(item, ['LOCATIONNOTEDATE', 'locationnotedate', 'NOTE_DATE', 'note_date'], ['ORIGINAL_LOCATIONNOTEDATE', 'originalLocationNoteDate', 'original_location_note_date']);
+                const noteInfo = getChangedDisplayInfo(item, ['LOCATIONNOTE', 'locationnote', 'LOC_NOTE', 'loc_note'], ['ORIGINAL_LOCATIONNOTE', 'originalLocationNote', 'original_location_note']);
+                const ptn1Info = getChangedDisplayInfo(item, ['LOCATIONPTN1', 'locationptn1', 'PTN1', 'ptn1'], ['ORIGINAL_LOCATIONPTN1', 'originalLocationPtn1', 'original_locationptn1', 'original_location_ptn1']);
                 const noteTable = table(
                     ['LOCATIONNOTEDATE', 'LOCATIONNOTE', 'LOCATIONPTN1'],
                     [
-                        dataCell(getValue(item, ['LOCATIONNOTEDATE', 'locationnotedate', 'NOTE_DATE', 'note_date'], ''), { bold: true }),
-                        dataCell(getValue(item, ['LOCATIONNOTE', 'locationnote', 'LOC_NOTE', 'loc_note'], ''), { bold: true }),
-                        dataCell(getValue(item, ['LOCATIONPTN1', 'locationptn1', 'PTN1', 'ptn1'], ''), { bold: true })
+                        dataCell(noteDateInfo.value, { bold: true, highlight: noteDateInfo.highlight }),
+                        dataCell(noteInfo.value, { bold: true, highlight: noteInfo.highlight }),
+                        dataCell(ptn1Info.value, { bold: true, highlight: ptn1Info.highlight })
                     ]
                 );
                 const fieldRows = getInventoryShareFieldRows(item).map(field => {
@@ -127321,6 +127347,17 @@ ${folderNote ? `Folder Note: ${folderNote}
             };
         }
 
+        function getPaperNcrEmailChangedValueInfo(originalValue = '', requestedValue = '') {
+            const cleanValue = (value = '') => String(firstNonEmptyValue(value, '') || '').trim();
+            const original = cleanValue(originalValue);
+            const requested = cleanValue(requestedValue);
+            const changed = !!requested && isPaperNcrValueChanged(requested, original);
+            return {
+                value: changed ? requested : (original || requested),
+                highlight: changed
+            };
+        }
+
         function buildPaperNcrPackageEmailHtml(pkg = null, options = {}) {
             const safePkg = normalizePaperNcrPackage(pkg);
             if (!safePkg) return '';
@@ -127402,9 +127439,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const contSize = firstNonEmptyValue(row.contSize, safePkg.contSize, '');
                 const itemCode = firstNonEmptyValue(row.itemCode, safePkg.itemCode, '');
                 const priorityInfo = getPaperNcrEmailPriorityInfo(row);
-                const currentLocationNoteDate = firstNonEmptyValue(row.originalLocationNoteDate, row.locationnoteDate, '');
-                const currentLocationNote = firstNonEmptyValue(row.originalLocationNote, row.locationnote, '');
-                const currentLocationPtn1 = firstNonEmptyValue(row.originalLocationPtn1, row.locationptn1, '');
+                const locationNoteDateInfo = getPaperNcrEmailChangedValueInfo(row.originalLocationNoteDate, row.locationnoteDate);
+                const locationNoteInfo = getPaperNcrEmailChangedValueInfo(row.originalLocationNote, row.locationnote);
+                const locationPtn1Info = getPaperNcrEmailChangedValueInfo(row.originalLocationPtn1, row.locationptn1);
+                const currentLocationNoteDate = locationNoteDateInfo.value;
+                const currentLocationNote = locationNoteInfo.value;
+                const currentLocationPtn1 = locationPtn1Info.value;
                 const sourceHoldStopCodeRaw = displayHoldStopCode(firstNonEmptyValue(
                     getBloomActionRowCurrentHoldStopFromSource(row),
                     getBloomActionRowCurrentHoldStop(row),
@@ -127438,6 +127478,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                     ? ''
                     : display(isNoteAction ? firstNonEmptyValue(row.note, row.ncrNote, '') : (isRecountAction ? firstNonEmptyValue(row.ncrNote, row.note, '') : row.ncrNote), '');
                 const requestedLineLabel = isNoteAction ? 'Note' : (isRecountAction ? 'Re-Count' : 'Key This Line');
+                const noteTable = buildTable(
+                    ['LOCATIONNOTEDATE', 'LOCATIONNOTE', 'LOCATIONPTN1'],
+                    [
+                        dataCell(currentLocationNoteDate, { bold: true, highlight: locationNoteDateInfo.highlight }),
+                        dataCell(currentLocationNote, { bold: true, highlight: locationNoteInfo.highlight }),
+                        dataCell(currentLocationPtn1, { bold: true, highlight: locationPtn1Info.highlight })
+                    ]
+                );
                 if (actionType === 'off-hold') {
                     const oldHoldStopCode = firstNonEmptyValue(emailCurrentHoldStopCodeRaw, row.originalHoldStopCode, row.original_holdstopcode, '');
                     const oldHoldStopReason = firstNonEmptyValue(emailCurrentHoldStopReasonRaw, row.originalHoldStopReason, row.original_holdstopreason, '');
@@ -127454,6 +127502,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     return `<div style="margin:0 0 18px 0;line-height:1.45;">
                         <div style="font-weight:700;margin:0 0 10px 0;">Selected ${h(packageLabel)} Rows</div>
                         ${offHoldTable}
+                        ${noteTable}
                         ${index === 0 ? buildPriorityChangeRequestHtml() : ''}
                     </div>`;
                 }
@@ -127485,14 +127534,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                         dataCell(onHandMathHtml(row, actionType), { html: true, bold: true }),
                         dataCell(getPaperNcrQtyDisplay(row.ptrreviewed), { bold: true, nowrap: true }),
                         dataCell(getPaperNcrQtyDisplay(row.ptravailable), { bold: true, nowrap: true })
-                    ]
-                );
-                const noteTable = buildTable(
-                    ['LOCATIONNOTEDATE', 'LOCATIONNOTE', 'LOCATIONPTN1'],
-                    [
-                        dataCell(currentLocationNoteDate, { bold: true }),
-                        dataCell(currentLocationNote, { bold: true }),
-                        dataCell(currentLocationPtn1, { bold: true })
                     ]
                 );
                 return `<div style="margin:0 0 18px 0;line-height:1.45;">
@@ -127547,9 +127588,12 @@ ${folderNote ? `Folder Note: ${folderNote}
             activeRows.forEach((row, index) => {
                 const actionType = normalizePaperNcrRowAction(row.actionType || 'ncr');
                 const priorityInfo = getPaperNcrEmailPriorityInfo(row);
-                const currentLocationNoteDate = firstNonEmptyValue(row.originalLocationNoteDate, row.locationnoteDate, '');
-                const currentLocationNote = firstNonEmptyValue(row.originalLocationNote, row.locationnote, '');
-                const currentLocationPtn1 = firstNonEmptyValue(row.originalLocationPtn1, row.locationptn1, '');
+                const locationNoteDateInfo = getPaperNcrEmailChangedValueInfo(row.originalLocationNoteDate, row.locationnoteDate);
+                const locationNoteInfo = getPaperNcrEmailChangedValueInfo(row.originalLocationNote, row.locationnote);
+                const locationPtn1Info = getPaperNcrEmailChangedValueInfo(row.originalLocationPtn1, row.locationptn1);
+                const currentLocationNoteDate = locationNoteDateInfo.value;
+                const currentLocationNote = locationNoteInfo.value;
+                const currentLocationPtn1 = locationPtn1Info.value;
                 const sourceHoldStopCodeRaw = getCurrentHoldStopCodeText({
                     ...row,
                     originalHoldStopCode: firstNonEmptyValue(getBloomActionRowCurrentHoldStopFromSource(row), getBloomActionRowCurrentHoldStop(row), row.originalHoldStopCode, '')
