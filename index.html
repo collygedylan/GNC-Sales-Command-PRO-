@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.30.13';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.30.14';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -539,6 +539,8 @@ body.ios-device .manager-crop-roll-review-filter-shell{
 .app-av-catalog-metric-pill{display:inline-flex;max-width:100%;align-items:center;border-radius:999px;padding:.28rem .62rem;font-size:.58rem;font-weight:900;letter-spacing:.1em;line-height:1;text-transform:uppercase;white-space:nowrap}
 .app-av-catalog-metric-pill--season{border:1px solid #bae6fd;background:#f0f9ff;color:#0369a1}
 .app-av-catalog-metric-pill--season .app-av-catalog-metric-value{color:#0c4a6e}
+.app-av-catalog-metric-pill--hand{border:1px solid #bbf7d0;background:#f0fdf4;color:#047857}
+.app-av-catalog-metric-pill--hand .app-av-catalog-metric-value{color:#064e3b}
 .app-av-catalog-metric-pill--loc{border:1px solid #a7f3d0;background:#ecfdf5;color:#047857}
 .app-av-catalog-metric-pill--loc .app-av-catalog-metric-value{color:#064e3b}
 .app-av-catalog-metric-separator{padding:0 .22rem;opacity:.45}
@@ -5004,7 +5006,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.13').trim() || 'V2026.07.30.13';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.14').trim() || 'V2026.07.30.14';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6459,7 +6461,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.13';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.14';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24433,7 +24435,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.13').trim() || 'V2026.07.30.13';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.14').trim() || 'V2026.07.30.14';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -114438,6 +114440,7 @@ C.14.043 C.15.000
                 const visibleAvNoteText = avNoteDisplay || 'No AV Note';
                 const specText = String(firstNonEmptyValue(item.SPEC, item.SPECIFICATION, item.AV_SPEC, item.SPECS, '') || '').trim();
                 const openStockText = getCardOpenStockValue(item);
+                const locOnHandText = getCardPtrOnHandValue(item);
                 const showSeasonOh = rowSourceContainsHl(item);
                 const seasonOhText = showSeasonOh ? getCardSeasonOhValue(item) : '';
                 const seasonText = String(firstNonEmptyValue(item.SEASON, item.season, '-') || '-').trim() || '-';
@@ -114452,9 +114455,10 @@ C.14.043 C.15.000
                 const priceHtml = activePriceText && activePriceText !== '-'
                     ? `<div class="app-av-catalog-price"><span class="app-av-catalog-price-label">${esc(priceLabel)}</span><span class="app-av-catalog-price-value">${esc(activePriceText)}</span></div>`
                     : '';
+                const locOnHandHtml = `<span class="app-av-catalog-metric-pill app-av-catalog-metric-pill--hand"><span>Loc On Hand</span><span class="app-av-catalog-metric-separator">-</span><span class="app-av-catalog-metric-value">${esc(normalizeCardQuantityValue(locOnHandText))}</span></span>`;
                 const locPhotoMatchHtml = `<span class="app-av-catalog-metric-pill app-av-catalog-metric-pill--loc"><span>Loc Photo Match</span><span class="app-av-catalog-metric-separator">-</span><span class="app-av-catalog-metric-value">${esc(normalizeCardQuantityValue(locPhotoMatchText))}</span></span>`;
                 const seasonOhHtml = showSeasonOh ? `<span class="app-av-catalog-metric-pill app-av-catalog-metric-pill--season"><span>Season OH</span><span class="app-av-catalog-metric-separator">-</span><span class="app-av-catalog-metric-value">${esc(seasonOhText)}</span></span>` : '';
-                const avStockMetricRowHtml = `<span class="app-av-catalog-metric-row">${seasonOhHtml}${locPhotoMatchHtml}</span>`;
+                const avStockMetricRowHtml = `<span class="app-av-catalog-metric-row">${locOnHandHtml}${seasonOhHtml}${locPhotoMatchHtml}</span>`;
                 const avSpecHtml = specText
                     ? `<div class="mt-2"><span class="app-av-catalog-note-label">Spec</span><div class="app-av-catalog-note-text">${esc(specText)}</div></div>`
                     : '';
