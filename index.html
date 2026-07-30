@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.24';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.29.25';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4992,7 +4992,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.24').trim() || 'V2026.07.29.24';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.25').trim() || 'V2026.07.29.25';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6448,7 +6448,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.24';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.25';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24306,7 +24306,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.24').trim() || 'V2026.07.29.24';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.25').trim() || 'V2026.07.29.25';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -26247,6 +26247,79 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             requestHistoryInventory.push(row);
             requestHistoryInventoryById.set(id, row);
             return row;
+        }
+
+        const requestHistoryRepFallbackPromises = new Map();
+        const requestHistoryRepFallbackLastAttemptAt = new Map();
+        const REQUEST_HISTORY_REP_FALLBACK_RETRY_MS = 30000;
+
+        function buildRequestHistoryRepFetchPattern(repName = '') {
+            const canonicalRep = resolveCanonicalRequestRepName(repName) || String(repName || '').trim();
+            const normalized = normalizeRepMatchToken(canonicalRep);
+            const parts = normalized.split(/\s+/).filter(Boolean);
+            if (parts.length >= 2) return `*${parts[0]}*${parts[parts.length - 1]}*`;
+            return normalized ? `*${normalized}*` : '';
+        }
+
+        function mergeCachedRequestHistoryRowsIntoRequests(reason = 'request-history-fallback') {
+            const activeRows = (Array.isArray(requestsInventory) ? requestsInventory : []).filter((item) => item && !item.REQUEST_HISTORY);
+            const mergedRows = mergeRequestRowsWithHistory(activeRows, requestHistoryInventory);
+            requestsInventory = mergedRows.map((item) => {
+                if (!item) return item;
+                if (!item.DOM_ID) item.DOM_ID = 'req_' + (item.UNIQUE_ID || item.unique_id || '');
+                item.REQ_STATUS = normalizeRequestStatus(firstNonEmptyValue(item.REQ_STATUS, item.req_status, item.STATUS, 'Pending')) || 'Pending';
+                item.REQ_ARCHIVED = item.REQUEST_HISTORY ? false : (item.REQ_ARCHIVED === true || item.REQ_ARCHIVED === 1 || item.REQ_ARCHIVED === '1' || String(item.REQ_ARCHIVED || '').trim().toLowerCase() === 'true');
+                normalizeRowPhotoFields(item);
+                buildSearchIndex(item);
+                return item;
+            }).filter(Boolean);
+            rebuildDetailLookupIndexes();
+            invalidateRequestViewResolvedCaches();
+            refreshLocalRequestViewState(reason, { renderVisible: true, forceRender: true, typingDelay: 44 });
+            return mergedRows.length;
+        }
+
+        async function ensureRequestHistoryRowsForRep(repName = '', reason = 'request-history-fallback') {
+            const canonicalRep = resolveCanonicalRequestRepName(repName) || String(repName || '').trim();
+            const repKey = normalizeRepMatchToken(canonicalRep);
+            if (!repKey || navigator.onLine === false) return false;
+            const pattern = buildRequestHistoryRepFetchPattern(canonicalRep);
+            if (!pattern) return false;
+            const query = `select=${REQUEST_HISTORY_SELECT_FIELDS}&requested_by=ilike.${encodeURIComponent(pattern)}&order=updated_at.desc`;
+            const rawRows = await fetchAllSupabaseRows(REQUEST_HISTORY_TABLE, query);
+            const matchingRows = (Array.isArray(rawRows) ? rawRows : []).filter((row) => {
+                const requestedBy = firstNonEmptyValue(row && row.requested_by, row && row.REQUESTED_BY, row && row.salesrepname, row && row.SALESREPNAME, '');
+                return doesRequestRepMatchValue(requestedBy, canonicalRep);
+            });
+            if (!matchingRows.length) return false;
+            matchingRows.forEach((row) => cacheRequestHistoryRow(row));
+            const state = getDatasetState('requestHistory');
+            state.initialLoaded = true;
+            state.fullLoaded = state.fullLoaded || matchingRows.length < 1000;
+            state.lastLoadedAt = new Date().toISOString();
+            mergeCachedRequestHistoryRowsIntoRequests(reason);
+            return true;
+        }
+
+        function queueRequestHistoryRepFallbackFetch(repName = '', reason = 'request-history-fallback') {
+            const canonicalRep = resolveCanonicalRequestRepName(repName) || String(repName || '').trim();
+            const repKey = normalizeRepMatchToken(canonicalRep);
+            if (!repKey || navigator.onLine === false) return false;
+            if (requestHistoryRepFallbackPromises.has(repKey)) return true;
+            const now = Date.now();
+            const lastAttemptAt = Number(requestHistoryRepFallbackLastAttemptAt.get(repKey) || 0) || 0;
+            if (lastAttemptAt && now - lastAttemptAt < REQUEST_HISTORY_REP_FALLBACK_RETRY_MS) return false;
+            requestHistoryRepFallbackLastAttemptAt.set(repKey, now);
+            const promise = ensureRequestHistoryRowsForRep(canonicalRep, reason)
+                .catch((error) => {
+                    console.warn('Could not fetch request history rows for selected sales rep.', error);
+                    return false;
+                })
+                .finally(() => {
+                    requestHistoryRepFallbackPromises.delete(repKey);
+                });
+            requestHistoryRepFallbackPromises.set(repKey, promise);
+            return true;
         }
 
         function normalizeSalesCreditStatus(value = '') {
@@ -92728,8 +92801,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         ? customerEntries.filter((entry) => doesProgressiveSearchTextMatch(normalizeRepMatchToken(entry.searchText || entry.label || ''), customerSearchToken))
                         : customerEntries;
                     if (!customerEntries.length) {
-                        const html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestRepList', [], 'Back to Reps')}><i class="ph-bold ph-arrow-left"></i> Back to Reps</div><div class="p-8 text-center text-gray-400">No customer request folders for this rep.</div>`;
-                        applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:customers:empty`);
+                        const historyLoading = queueRequestHistoryRepFallbackFetch(selectedReqRepView, 'request-history-empty-customers');
+                        const emptyText = historyLoading ? 'Loading request history for this sales rep...' : 'No customer request folders for this rep.';
+                        const html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestRepList', [], 'Back to Reps')}><i class="ph-bold ph-arrow-left"></i> Back to Reps</div><div class="p-8 text-center text-gray-400">${emptyText}</div>`;
+                        applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:customers:empty:${historyLoading ? 'loading' : 'idle'}`);
                         return;
                     }
                     if (!visibleCustomerEntries.length) {
@@ -92761,8 +92836,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         ? consigneeEntries.filter((entry) => doesProgressiveSearchTextMatch(normalizeRepMatchToken(entry.searchText || entry.label || ''), consigneeSearchToken))
                         : consigneeEntries;
                     if (!consigneeEntries.length) {
-                        const html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestStatusList', [], 'Back to Customers')}><i class="ph-bold ph-arrow-left"></i> Back to Customers</div><div class="p-8 text-center text-gray-400">No consignee folders for this customer yet.</div>`;
-                        applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:${selectedReqCustView}:consignees:empty`);
+                        const historyLoading = queueRequestHistoryRepFallbackFetch(selectedReqRepView, 'request-history-empty-consignees');
+                        const emptyText = historyLoading ? 'Loading request history for this customer...' : 'No consignee folders for this customer yet.';
+                        const html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestStatusList', [], 'Back to Customers')}><i class="ph-bold ph-arrow-left"></i> Back to Customers</div><div class="p-8 text-center text-gray-400">${emptyText}</div>`;
+                        applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:${selectedReqCustView}:consignees:empty:${historyLoading ? 'loading' : 'idle'}`);
                         return;
                     }
                     if (!visibleConsigneeEntries.length) {
@@ -92791,8 +92868,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     const creditRows = getSalesCreditRowsForSelectedConsignee();
 
                     if (consigneeItems.length === 0 && creditRows.length === 0) {
-                        const html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestConsigneeList', [], 'Back to Consignees')}><i class="ph-bold ph-arrow-left"></i> Back to Consignees</div><div class="p-8 text-center text-gray-400">No request folders for this consignee yet.</div>`;
-                        applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:${selectedReqCustView}:${selectedReqConsigneeView}:folders:empty`);
+                        const historyLoading = queueRequestHistoryRepFallbackFetch(selectedReqRepView, 'request-history-empty-folders');
+                        const emptyText = historyLoading ? 'Loading request history folders...' : 'No request folders for this consignee yet.';
+                        const html = `<div class="back-btn" ${buildFastInvokeAttrs('backToRequestConsigneeList', [], 'Back to Consignees')}><i class="ph-bold ph-arrow-left"></i> Back to Consignees</div><div class="p-8 text-center text-gray-400">${emptyText}</div>`;
+                        applyRequestRenderMarkup(container, crumb, crumbText, html, `request:reps:${selectedReqRepView}:${selectedReqCustView}:${selectedReqConsigneeView}:folders:empty:${historyLoading ? 'loading' : 'idle'}`);
                         return;
                     }
 
