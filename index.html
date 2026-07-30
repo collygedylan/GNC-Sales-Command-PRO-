@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.27';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.30.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4992,7 +4992,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.27').trim() || 'V2026.07.29.27';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.01').trim() || 'V2026.07.30.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6448,7 +6448,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.27';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -18102,6 +18102,26 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return buildFastPressAttrs('invoke', actionName, args, label);
         }
 
+        function buildRequestFolderOpenAttrs(folderName = '', label = 'Open request folder') {
+            const safeFolderName = escJsAttrValue(folderName);
+            const safeLabel = escapeHtml(label);
+            return `role="button" tabindex="0" aria-label="${safeLabel}" onclick="return handleRequestFolderCardOpen(event, '${safeFolderName}')" onkeydown="return handleRequestFolderCardKeydown(event, '${safeFolderName}')"`;
+        }
+
+        function handleRequestFolderCardOpen(event, folderName = '') {
+            if (event) {
+                if (typeof event.preventDefault === 'function') event.preventDefault();
+                if (typeof event.stopPropagation === 'function') event.stopPropagation();
+            }
+            return openRequestFolderView(folderName);
+        }
+
+        function handleRequestFolderCardKeydown(event, folderName = '') {
+            const key = String(event && event.key || '').trim();
+            if (key !== 'Enter' && key !== ' ') return true;
+            return handleRequestFolderCardOpen(event, folderName);
+        }
+
         function getFastPressBindingConfigFromElement(element) {
             if (!element) return null;
             return {
@@ -24306,7 +24326,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.27').trim() || 'V2026.07.29.27';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.01').trim() || 'V2026.07.30.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -92965,14 +92985,16 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         const folderNote = getRequestFolderNote(f, folderStatus, selectedReqRepView);
                         const noteHtml = folderNote ? `<div class="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-2 text-[11px] font-semibold text-amber-900 whitespace-pre-wrap"><span class="font-black uppercase text-[10px] tracking-wider text-amber-700">Folder Note</span><div class="mt-1">${esc(folderNote)}</div></div>` : '';
                         const showResendAction = entry.info.completeCount > 0;
-                        const shareActions = canShareRequestFolders() ? `<div class="grid ${showResendAction ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'} gap-2 mt-3"><button class="bg-white border border-purple-200 text-purple-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('copy', '${esc(f)}', '${folderStatus}', '${esc(selectedReqRepView)}')">Copy</button><button class="bg-white border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('email', '${esc(f)}', '${folderStatus}', '${esc(selectedReqRepView)}')">Email</button><button class="bg-white border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('text', '${esc(f)}', '${folderStatus}', '${esc(selectedReqRepView)}')">Text</button>${showResendAction ? `<button class="bg-white border border-sky-200 text-sky-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); resendRequestCompletionEmail('${esc(f)}', '${esc(selectedReqRepView)}')">Resend</button>` : ''}<button class="bg-white border border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); setRequestFolderNote('${esc(f)}', '${folderStatus}', '${esc(selectedReqRepView)}')">Note</button></div>` : '';
+                        const safeFolderJs = escJsAttrValue(f);
+                        const safeRepJs = escJsAttrValue(selectedReqRepView);
+                        const shareActions = canShareRequestFolders() ? `<div class="grid ${showResendAction ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'} gap-2 mt-3"><button class="bg-white border border-purple-200 text-purple-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('copy', '${safeFolderJs}', '${folderStatus}', '${safeRepJs}')">Copy</button><button class="bg-white border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('email', '${safeFolderJs}', '${folderStatus}', '${safeRepJs}')">Email</button><button class="bg-white border border-emerald-200 text-emerald-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); shareRequestFolder('text', '${safeFolderJs}', '${folderStatus}', '${safeRepJs}')">Text</button>${showResendAction ? `<button class="bg-white border border-sky-200 text-sky-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); resendRequestCompletionEmail('${safeFolderJs}', '${safeRepJs}')">Resend</button>` : ''}<button class="bg-white border border-amber-200 text-amber-700 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg" onclick="event.stopPropagation(); setRequestFolderNote('${safeFolderJs}', '${folderStatus}', '${safeRepJs}')">Note</button></div>` : '';
                         const latestLabel = formatRequestFolderLatestLabel(entry.info.latestMs);
                         const unreadDot = isCompletedRequestFolderUnread(selectedReqRepView, selectedReqCustView, f, entry.rows, selectedReqConsigneeView) ? `<span class="inline-flex h-3 w-3 rounded-full bg-red-500 shadow-sm ring-2 ring-white" aria-label="Unread completed request"></span>` : '';
                         const matchesSearch = !searchToken || doesProgressiveSearchTextMatch(normalizeRepMatchToken(entry.searchText), searchToken);
                         const matchesDate = !dateFilter || entry.dateKey === dateFilter;
                         const hiddenClass = matchesSearch && matchesDate ? '' : ' hidden';
                         const statusBadges = `<span class="rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-orange-700">${entry.info.pendingCount} Pending</span><span class="rounded-full border border-green-200 bg-green-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-green-700">${entry.info.completeCount} Complete</span>`;
-                        return `<div data-request-folder-card="true" data-request-folder-search="${escapeShareHtml(entry.searchText)}" data-request-folder-date="${escapeShareHtml(entry.dateKey)}" class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform${hiddenClass}" ${buildFastInvokeAttrs('openRequestFolderView', [f], 'Open folder ' + f)}><div class="flex justify-between items-center gap-3"><div class="flex items-center gap-3 min-w-0"><div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div><div class="min-w-0"><div class="flex items-center gap-2"><span class="font-bold text-sm text-purple-800 break-all">${escapeShareHtml(f)}</span>${unreadDot}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${latestLabel ? `Newest ${escapeShareHtml(latestLabel)}` : 'Request Folder'}</div></div></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg min-w-max ml-2">${entry.info.itemCount} Items</span></div><div class="mt-3 flex flex-wrap gap-2">${statusBadges}</div>${noteHtml}${shareActions}</div>`;
+                        return `<div data-request-folder-card="true" data-request-folder-search="${escapeShareHtml(entry.searchText)}" data-request-folder-date="${escapeShareHtml(entry.dateKey)}" class="bg-white border border-purple-200 rounded-xl shadow-sm mb-3 p-4 cursor-pointer active:scale-95 transition-transform${hiddenClass}" ${buildRequestFolderOpenAttrs(f, 'Open folder ' + f)}><div class="flex justify-between items-center gap-3"><div class="flex items-center gap-3 min-w-0"><div class="bg-purple-50 p-2 rounded-lg"><i class="ph-fill ph-folder text-2xl text-purple-500"></i></div><div class="min-w-0"><div class="flex items-center gap-2"><span class="font-bold text-sm text-purple-800 break-all">${escapeShareHtml(f)}</span>${unreadDot}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${latestLabel ? `Newest ${escapeShareHtml(latestLabel)}` : 'Request Folder'}</div></div></div><span class="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-lg min-w-max ml-2">${entry.info.itemCount} Items</span></div><div class="mt-3 flex flex-wrap gap-2">${statusBadges}</div>${noteHtml}${shareActions}</div>`;
                     }).join('');
                     html += `</div>`;
                     applyRequestRenderMarkup(container, crumb, crumbText, html);
