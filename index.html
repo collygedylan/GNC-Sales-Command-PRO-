@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.29.25';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.29.26';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4992,7 +4992,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.25').trim() || 'V2026.07.29.25';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.29.26').trim() || 'V2026.07.29.26';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6448,7 +6448,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.25';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.29.26';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24306,7 +24306,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.25').trim() || 'V2026.07.29.25';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.29.26').trim() || 'V2026.07.29.26';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -26273,10 +26273,42 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 buildSearchIndex(item);
                 return item;
             }).filter(Boolean);
+            if (typeof rebuildRequestInventoryIndexes === 'function') rebuildRequestInventoryIndexes();
             rebuildDetailLookupIndexes();
             invalidateRequestViewResolvedCaches();
             refreshLocalRequestViewState(reason, { renderVisible: true, forceRender: true, typingDelay: 44 });
             return mergedRows.length;
+        }
+
+        function mergeRequestHistoryRowsForRequestFolders(items = []) {
+            const nextItems = Array.isArray(items) ? items.slice() : [];
+            const seenIds = new Set(nextItems.map((item) => String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim()).filter(Boolean));
+            let scopedHistoryRows = getScopedRequestItems(Array.isArray(requestHistoryInventory) ? requestHistoryInventory : []);
+            const filter = typeof getRequestDylanViewerFilter === 'function'
+                ? getRequestDylanViewerFilter()
+                : { mode: 'all', values: [], locationValues: [] };
+            if (filter.mode === 'salesrep') {
+                scopedHistoryRows = filter.values && filter.values.length
+                    ? scopedHistoryRows.filter((item) => doesRequestRepMatchAnyValue(getRequestAssignedRep(item), filter.values))
+                    : scopedHistoryRows.slice();
+            } else if (filter.mode === 'eval') {
+                const evalRows = scopedHistoryRows.filter((item) => getRequestEvalAssigneeLabelFromItem(item));
+                scopedHistoryRows = filter.values && filter.values.length
+                    ? evalRows.filter((item) => doesRequestEvalAssigneeMatchAnyValue(getRequestEvalAssigneeLabelFromItem(item), filter.values))
+                    : evalRows;
+            }
+            scopedHistoryRows = typeof applyRequestDylanLocationFilterToItems === 'function'
+                ? applyRequestDylanLocationFilterToItems(scopedHistoryRows, filter.locationValues || [])
+                : scopedHistoryRows;
+            scopedHistoryRows.forEach((row) => {
+                if (!row || isMoveRequestRow(row) || !isRegularRequestQueueItem(row)) return;
+                if (row.REQ_ARCHIVED) return;
+                const id = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
+                if (!id || seenIds.has(id)) return;
+                seenIds.add(id);
+                nextItems.push(row);
+            });
+            return nextItems;
         }
 
         async function ensureRequestHistoryRowsForRep(repName = '', reason = 'request-history-fallback') {
@@ -26745,6 +26777,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const state = getDatasetState('requestHistory');
             state.initialLoaded = true;
             state.lastLoadedAt = new Date().toISOString();
+            invalidateRequestViewResolvedCaches();
             try {
                 await postRequestHistoryPayloads(payloads);
                 requestHistorySchemaReady = true;
@@ -26909,7 +26942,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     : [];
                 const pendingItems = pendingEntries.map((entry) => entry && entry.item).filter(Boolean);
                 counts.pending = pendingItems.filter(isRequestPendingVisible).filter(isRegularRequestQueueItem).length;
-                counts.reps = counts.pending;
 
                 let requestItems = baseItems;
                 if (filter.mode === 'salesrep') {
@@ -26925,6 +26957,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const locationFilteredItems = typeof applyRequestDylanLocationFilterToItems === 'function'
                     ? applyRequestDylanLocationFilterToItems(requestItems, filter.locationValues || [])
                     : requestItems;
+                const repFolderItems = mergeRequestHistoryRowsForRequestFolders(locationFilteredItems);
+                counts.reps = repFolderItems.filter((item) => !isMoveRequestRow(item) && isRegularRequestQueueItem(item) && !item.REQ_ARCHIVED).length;
                 counts['suspend-tag'] = getSuspendTagRequestItems(locationFilteredItems).length;
                 counts.moves = getApprovedMoveRequestRowsForCurrentUser(locationFilteredItems).length;
             } catch (error) {
@@ -92774,7 +92808,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 return;
 
             } else if (activeReqTab === 'reps') {
-                items = items.filter((item) => !isMoveRequestRow(item) && isRegularRequestQueueItem(item));
+                items = mergeRequestHistoryRowsForRequestFolders(items).filter((item) => !isMoveRequestRow(item) && isRegularRequestQueueItem(item));
                 if (requestViewLevel === 0) {
                     const crumbText = `Sales Reps${requestFilterSuffix}`;
                     const allReps = getRequestSalesRepFolderNames(items);
