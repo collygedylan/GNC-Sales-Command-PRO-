@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.31.06';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.31.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -3140,12 +3140,24 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
             touch-action:pan-y !important;
         }
         @media (min-width:721px){
+            #view-av .av-primary-tabs-sticky:has(#av-top-filters .task-top-control-panel.excel-filter-panel:not(.hidden)){
+                z-index:50000 !important;
+                overflow:visible !important;
+            }
+            #view-av #av-top-filters.av-top-inline,
+            #view-av #av-top-filters.av-top-inline .av-top-controls-row,
+            #view-av #av-top-filters.av-top-inline .av-filter-shell{
+                overflow:visible !important;
+            }
+            #view-av #av-top-filters.av-top-inline .av-filter-shell.av-filter-shell--open{
+                z-index:50001 !important;
+            }
             #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating,
             body.mobile-excel-filter-panel-open #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe.av-excel-filter-panel--floating{
-                position:fixed !important;
-                left:var(--av-filter-panel-left,.75rem) !important;
+                position:absolute !important;
+                left:0 !important;
                 right:auto !important;
-                top:var(--av-filter-panel-top,7rem) !important;
+                top:calc(100% + .36rem) !important;
                 bottom:auto !important;
                 width:var(--av-filter-panel-width,min(18rem,calc(100vw - 1.5rem))) !important;
                 min-width:0 !important;
@@ -3157,6 +3169,20 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
                 -webkit-transform:none !important;
                 z-index:50000 !important;
                 display:flex !important;
+            }
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="hold"] .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="genus"] .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="contsize"] .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="customer"] .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="columns"] .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating{
+                left:auto !important;
+                right:0 !important;
+            }
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="source"] .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="season"] .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating,
+            #view-av #av-top-filters.av-top-inline [data-av-filter-shell="salesrep"] .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating{
+                left:0 !important;
+                right:auto !important;
             }
             #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.av-excel-filter-panel--floating.hidden,
             body.mobile-excel-filter-panel-open #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe.av-excel-filter-panel--floating.hidden{
@@ -5126,7 +5152,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.31.06').trim() || 'V2026.07.31.06';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.31.07').trim() || 'V2026.07.31.07';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6581,7 +6607,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.31.06';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.31.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24566,7 +24592,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.31.06').trim() || 'V2026.07.31.06';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.31.07').trim() || 'V2026.07.31.07';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -69381,14 +69407,11 @@ function toggleDriveQuickRequestItem(domId) {
             const viewportHeight = Math.max(320, Math.round(window.innerHeight || document.documentElement.clientHeight || 0));
             const gutter = 12;
             const panelWidth = Math.min(viewportWidth - (gutter * 2), Math.max(Math.round(rect.width || 0), getAvTopControlFloatingPanelBaseWidth(shellName)));
-            let left = Math.round(rect.left);
-            if (left + panelWidth > viewportWidth - gutter) left = viewportWidth - gutter - panelWidth;
-            left = Math.max(gutter, left);
             const top = Math.max(gutter, Math.round(rect.bottom + 8));
             const maxHeight = Math.max(180, Math.min(520, viewportHeight - top - gutter));
             panel.classList.add('av-excel-filter-panel--floating');
-            panel.style.setProperty('--av-filter-panel-left', `${left}px`);
-            panel.style.setProperty('--av-filter-panel-top', `${top}px`);
+            panel.style.removeProperty('--av-filter-panel-left');
+            panel.style.removeProperty('--av-filter-panel-top');
             panel.style.setProperty('--av-filter-panel-width', `${panelWidth}px`);
             panel.style.setProperty('--av-filter-panel-max-height', `${maxHeight}px`);
         }
