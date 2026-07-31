@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.31.03';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.31.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5102,7 +5102,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.31.03').trim() || 'V2026.07.31.03';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.31.04').trim() || 'V2026.07.31.04';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6557,7 +6557,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.31.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.31.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24542,7 +24542,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.31.03').trim() || 'V2026.07.31.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.31.04').trim() || 'V2026.07.31.04';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -68622,6 +68622,71 @@ function toggleDriveQuickRequestItem(domId) {
             return true;
         }
 
+        function normalizeAvFacetValue(value = '', fallback = '') {
+            const normalized = String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+            return normalized || String(fallback || '').trim();
+        }
+
+        function normalizeAvFacetCompareKey(value = '') {
+            return normalizeAvFacetValue(value).toLowerCase();
+        }
+
+        function getAvFilterGenusFacetValue(item = null) {
+            const directValue = normalizeAvFacetValue(firstNonEmptyValue(
+                item && item.GENUSNAME,
+                item && item.genusname,
+                item && item.GENUS_NAME,
+                item && item.genus_name,
+                item && item.GENUS,
+                item && item.genus,
+                item && item.BOTANICALNAME,
+                item && item.botanicalname,
+                ''
+            ));
+            if (directValue) return directValue;
+            const taskGenus = typeof getTaskGenusName === 'function' ? normalizeAvFacetValue(getTaskGenusName(item)) : '';
+            return taskGenus || '(Blank)';
+        }
+
+        function getAvFilterContSizeFacetValue(item = null) {
+            return normalizeAvFacetValue(firstNonEmptyValue(
+                item && item.CONTSIZE,
+                item && item.contsize,
+                item && item.ITEMSPEC,
+                item && item.itemspec,
+                item && item.SIZE,
+                item && item.size,
+                ''
+            ), '-');
+        }
+
+        function buildAvFacetSelectionStateKey(selectedSet = new Set()) {
+            const values = selectedSet instanceof Set ? Array.from(selectedSet) : (Array.isArray(selectedSet) ? selectedSet : []);
+            return values
+                .map(normalizeAvFacetCompareKey)
+                .filter(Boolean)
+                .sort((left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' }))
+                .join('|');
+        }
+
+        function itemMatchesAvFacetSelection(value = '', selectedSet = new Set(), mode = 'all') {
+            if (String(mode || 'all').trim().toLowerCase() !== 'custom') return true;
+            const selectedKeys = new Set((selectedSet instanceof Set ? Array.from(selectedSet) : [])
+                .map(normalizeAvFacetCompareKey)
+                .filter(Boolean));
+            if (!selectedKeys.size) return false;
+            return selectedKeys.has(normalizeAvFacetCompareKey(value));
+        }
+
+        function itemMatchesAvTopFilterSelections(item = null) {
+            normalizeAvSelectedSeasons();
+            if (!selectedAvSeasons.has(getAvFilterSeasonValue(item))) return false;
+            if (!itemMatchesAvHoldFilter(item)) return false;
+            if (!itemMatchesAvFacetSelection(getAvFilterGenusFacetValue(item), selectedAvGenusNames, avGenusSelectionMode)) return false;
+            if (!itemMatchesAvFacetSelection(getAvFilterContSizeFacetValue(item), selectedAvContSizes, avContSizeSelectionMode)) return false;
+            return true;
+        }
+
         function getAvGenusSummaryLabel(options = []) {
             const normalizedOptions = Array.isArray(options) ? options : [];
             const selectedCount = selectedAvGenusNames.size;
@@ -68871,10 +68936,10 @@ function toggleDriveQuickRequestItem(domId) {
                 return avSharedFilterOptionsCache;
             }
             normalizeAvSelectedSeasons();
-            const genusOptions = [...new Set(baseItems.map((item) => getDrivePlantGenusValue(item)))]
-                .sort((a, b) => String(a).localeCompare(String(b)));
+            const genusOptions = [...new Set(baseItems.map((item) => getAvFilterGenusFacetValue(item)).filter(Boolean))]
+                .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
             const genusState = syncAvGenusSelectionState(genusOptions);
-            const sizeOptions = [...new Set(baseItems.map((item) => getDrivePlantContSize(item)).filter(Boolean))]
+            const sizeOptions = [...new Set(baseItems.map((item) => getAvFilterContSizeFacetValue(item)).filter(Boolean))]
                 .sort(compareDrivePlantContSize);
             const sizeState = syncAvContSizeSelectionState(sizeOptions);
             const nextState = {
@@ -68908,6 +68973,12 @@ function toggleDriveQuickRequestItem(domId) {
                 optionState.cacheKey,
                 activeAvSalesBucket,
                 activeAvPhotoMode,
+                buildSelectionStateKey([...selectedAvSeasons].map((season) => String(season || '').trim().toUpperCase())),
+                avHoldFilterMode,
+                avGenusSelectionMode,
+                buildAvFacetSelectionStateKey(selectedAvGenusNames),
+                avContSizeSelectionMode,
+                buildAvFacetSelectionStateKey(selectedAvContSizes),
                 buildAvColumnFilterStateKey()
             ].join('|');
             let filteredItems = [];
@@ -68915,7 +68986,8 @@ function toggleDriveQuickRequestItem(domId) {
                 incrementInternalPerfCounter('avFilteredRowsCacheHits');
                 filteredItems = avSharedFilteredRowsCache.slice();
             } else {
-                filteredItems = applyAvColumnFiltersToItems(optionState.baseItems.slice());
+                filteredItems = applyAvColumnFiltersToItems(optionState.baseItems.slice())
+                    .filter((item) => itemMatchesAvTopFilterSelections(item));
                 avSharedFilteredRowsCacheKey = filteredRowsCacheKey;
                 avSharedFilteredRowsCache = filteredItems.slice();
             }
@@ -70378,10 +70450,11 @@ function toggleDriveQuickRequestItem(domId) {
 
         function applyVisibleAvContSizeResults() {
             const state = buildAvSharedFilterState(avFilterItemsCache);
-            if (!state.filteredSizeOptions.length) return false;
+            const visibleSelection = buildVisibleExcelFilterSelection(state.sizeOptions, state.filteredSizeOptions);
+            if (!visibleSelection) return false;
             beginDirectNavigationActivity();
-            selectedAvContSizes = new Set(state.filteredSizeOptions);
-            avContSizeSelectionMode = state.filteredSizeOptions.length === state.sizeOptions.length ? 'all' : 'custom';
+            selectedAvContSizes = visibleSelection.selectedSet;
+            avContSizeSelectionMode = visibleSelection.selectionMode;
             avContSizeSearchTerm = '';
             closeAvTopControlDropdowns(false);
             invalidateAvFilterSelectionCaches();
@@ -119421,14 +119494,14 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function sortDriveHoldStopCodeItems(items = []) {
             return [...(Array.isArray(items) ? items : [])].sort((a, b) => {
-                const itemCompare = String(firstNonEmptyValue(a && a.ITEMCODE, a && a.itemcode, '') || '').localeCompare(String(firstNonEmptyValue(b && b.ITEMCODE, b && b.itemcode, '') || ''), undefined, { numeric: true, sensitivity: 'base' });
-                if (itemCompare !== 0) return itemCompare;
+                const locationCompare = compareLocationCodeValues(getDrivePlantLocationCode(a), getDrivePlantLocationCode(b));
+                if (locationCompare !== 0) return locationCompare;
                 const nameCompare = getDrivePlantCommonName(a).localeCompare(getDrivePlantCommonName(b), undefined, { numeric: true, sensitivity: 'base' });
                 if (nameCompare !== 0) return nameCompare;
                 const sizeCompare = compareDrivePlantContSize(getDrivePlantContSize(a), getDrivePlantContSize(b));
                 if (sizeCompare !== 0) return sizeCompare;
-                const locationCompare = compareLocationCodeValues(getDrivePlantLocationCode(a), getDrivePlantLocationCode(b));
-                if (locationCompare !== 0) return locationCompare;
+                const itemCompare = String(firstNonEmptyValue(a && a.ITEMCODE, a && a.itemcode, '') || '').localeCompare(String(firstNonEmptyValue(b && b.ITEMCODE, b && b.itemcode, '') || ''), undefined, { numeric: true, sensitivity: 'base' });
+                if (itemCompare !== 0) return itemCompare;
                 const lotCompare = getDrivePlantLotCode(a).localeCompare(getDrivePlantLotCode(b), undefined, { numeric: true, sensitivity: 'base' });
                 if (lotCompare !== 0) return lotCompare;
                 return getDriveHoldStopCode(a).localeCompare(getDriveHoldStopCode(b), undefined, { numeric: true, sensitivity: 'base' });
