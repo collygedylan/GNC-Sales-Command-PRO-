@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.30.23';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.30.24';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4291,6 +4291,21 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
         <div id="photo-swipe-hint" class="absolute bottom-10 text-white text-xs font-bold uppercase tracking-widest opacity-50 hidden pointer-events-none"><i class="ph-bold ph-arrows-left-right mr-1 text-lg align-middle"></i> Swipe for more</div>
     </div>
+    <div id="weather-hold-item-modal" class="hidden fixed inset-0 z-[16000] bg-black bg-opacity-60 p-2 sm:p-4 flex items-end sm:items-center justify-center" onclick="if(event.target===this) return closeWeatherHoldItemMlDetail()">
+        <section class="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[24px] border border-emerald-100 bg-white shadow-2xl" onclick="event.stopPropagation()">
+            <div class="flex items-start justify-between gap-3 border-b border-emerald-100 bg-emerald-50 px-4 py-4 sm:px-5">
+                <div class="min-w-0">
+                    <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Itemcode ML Detail</div>
+                    <div id="weather-hold-item-modal-title" class="mt-1 text-xl font-black leading-tight text-slate-900">Itemcode</div>
+                    <div id="weather-hold-item-modal-meta" class="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-500"></div>
+                </div>
+                <button type="button" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm active:scale-95" onclick="return closeWeatherHoldItemMlDetail()" aria-label="Close itemcode detail">
+                    <i class="ph-bold ph-x text-xl"></i>
+                </button>
+            </div>
+            <div id="weather-hold-item-modal-body" class="flex-1 overflow-y-auto p-4 sm:p-5"></div>
+        </section>
+    </div>
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
@@ -5080,7 +5095,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.23').trim() || 'V2026.07.30.23';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.24').trim() || 'V2026.07.30.24';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6535,7 +6550,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.23';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.24';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24520,7 +24535,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.23').trim() || 'V2026.07.30.23';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.24').trim() || 'V2026.07.30.24';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -57300,6 +57315,14 @@ function toggleDriveQuickRequestItem(domId) {
             holdEvents: [],
             holdProfiles: [],
             holdCycles: [],
+            holdProfileVisibleCount: 24,
+            itemMlDetailItemcode: '',
+            itemMlDetailLoading: false,
+            itemMlDetailError: '',
+            itemMlDetailProfiles: [],
+            itemMlDetailCycles: [],
+            itemMlDetailJobs: [],
+            itemMlDetailAssets: [],
             inventorySearch: '',
             inventoryContsize: '',
             inventoryVisibleCount: 240,
@@ -60172,6 +60195,372 @@ function toggleDriveQuickRequestItem(domId) {
             return values.reduce((total, value) => total + value, 0) / values.length;
         }
 
+        function normalizeWeatherHoldItemcode(value = '') {
+            return String(value || '').trim().toUpperCase();
+        }
+
+        function getWeatherHoldProfileItemcode(row = null) {
+            return normalizeWeatherHoldItemcode(firstNonEmptyValue(row && row.itemcode, row && row.ITEMCODE, ''));
+        }
+
+        function getWeatherHoldProfileNumber(row = null, fields = [], fallback = NaN) {
+            const keys = Array.isArray(fields) ? fields : [fields];
+            const values = [];
+            keys.forEach((key) => {
+                const safeKey = String(key || '').trim();
+                if (!safeKey) return;
+                values.push(row && row[safeKey]);
+                values.push(row && row[safeKey.toUpperCase()]);
+            });
+            return getWeatherHoldNumber(firstNonEmptyValue(...values, fallback), fallback);
+        }
+
+        function getWeatherHoldProfileDate(row = null, fields = []) {
+            const keys = Array.isArray(fields) ? fields : [fields];
+            const values = [];
+            keys.forEach((key) => {
+                const safeKey = String(key || '').trim();
+                if (!safeKey) return;
+                values.push(row && row[safeKey]);
+                values.push(row && row[safeKey.toUpperCase()]);
+            });
+            return String(firstNonEmptyValue(...values, '') || '').trim();
+        }
+
+        function compareWeatherHoldDateDesc(left = '', right = '') {
+            const leftTime = Date.parse(left || '');
+            const rightTime = Date.parse(right || '');
+            if (Number.isFinite(rightTime) && Number.isFinite(leftTime) && rightTime !== leftTime) return rightTime - leftTime;
+            if (Number.isFinite(rightTime) !== Number.isFinite(leftTime)) return Number.isFinite(rightTime) ? 1 : -1;
+            return String(right || '').localeCompare(String(left || ''));
+        }
+
+        function getWeatherHoldItemProfiles(itemcode = '') {
+            const safeItemcode = normalizeWeatherHoldItemcode(itemcode);
+            if (!safeItemcode) return [];
+            return (Array.isArray(weatherHoldState.holdProfiles) ? weatherHoldState.holdProfiles : [])
+                .filter((row) => getWeatherHoldProfileItemcode(row) === safeItemcode)
+                .sort((left, right) => {
+                    const releaseDiff = getWeatherHoldProfileNumber(right, 'release_sample_count', 0) - getWeatherHoldProfileNumber(left, 'release_sample_count', 0);
+                    if (releaseDiff) return releaseDiff;
+                    const holdDiff = getWeatherHoldProfileNumber(right, 'sample_count', 0) - getWeatherHoldProfileNumber(left, 'sample_count', 0);
+                    if (holdDiff) return holdDiff;
+                    return compareWeatherHoldDateDesc(getWeatherHoldProfileDate(left, 'last_hold_on'), getWeatherHoldProfileDate(right, 'last_hold_on'));
+                });
+        }
+
+        function getWeatherHoldItemCycles(itemcode = '') {
+            const safeItemcode = normalizeWeatherHoldItemcode(itemcode);
+            if (!safeItemcode) return [];
+            return (Array.isArray(weatherHoldState.holdCycles) ? weatherHoldState.holdCycles : [])
+                .filter((row) => normalizeWeatherHoldItemcode(firstNonEmptyValue(row && row.itemcode, row && row.ITEMCODE, '')) === safeItemcode)
+                .sort((left, right) => compareWeatherHoldDateDesc(firstNonEmptyValue(left && left.hold_started_on, left && left.HOLD_STARTED_ON, ''), firstNonEmptyValue(right && right.hold_started_on, right && right.HOLD_STARTED_ON, '')));
+        }
+
+        function getWeatherHoldItemProfileCards() {
+            const groups = new Map();
+            (Array.isArray(weatherHoldState.holdProfiles) ? weatherHoldState.holdProfiles : []).forEach((row) => {
+                const itemcode = getWeatherHoldProfileItemcode(row);
+                if (!itemcode) return;
+                if (!groups.has(itemcode)) {
+                    groups.set(itemcode, {
+                        itemcode,
+                        commonname: '',
+                        genus: '',
+                        contsizes: new Set(),
+                        reasons: new Set(),
+                        profiles: [],
+                        holdSamples: 0,
+                        releaseSamples: 0,
+                        firstHoldOn: '',
+                        lastHoldOn: '',
+                        bestReleaseProfile: null,
+                        bestWeatherProfile: null
+                    });
+                }
+                const group = groups.get(itemcode);
+                const commonname = String(firstNonEmptyValue(row.commonname, row.COMMONNAME, '') || '').trim();
+                const genus = String(firstNonEmptyValue(row.genus, row.GENUS, '') || '').trim();
+                const contsize = String(firstNonEmptyValue(row.contsize, row.CONTSIZE, '') || '').trim();
+                const reason = String(firstNonEmptyValue(row.hold_reason_category, row.HOLD_REASON_CATEGORY, 'unknown') || 'unknown').trim().toLowerCase();
+                if (!group.commonname && commonname) group.commonname = commonname;
+                if (!group.genus && genus) group.genus = genus;
+                if (contsize) group.contsizes.add(contsize);
+                if (reason) group.reasons.add(reason);
+                group.profiles.push(row);
+                group.holdSamples += Math.max(0, Math.round(getWeatherHoldProfileNumber(row, 'sample_count', 0)));
+                group.releaseSamples += Math.max(0, Math.round(getWeatherHoldProfileNumber(row, 'release_sample_count', 0)));
+                const firstHoldOn = getWeatherHoldProfileDate(row, 'first_hold_on');
+                const lastHoldOn = getWeatherHoldProfileDate(row, 'last_hold_on');
+                if (firstHoldOn && (!group.firstHoldOn || Date.parse(firstHoldOn) < Date.parse(group.firstHoldOn))) group.firstHoldOn = firstHoldOn;
+                if (lastHoldOn && (!group.lastHoldOn || compareWeatherHoldDateDesc(group.lastHoldOn, lastHoldOn) > 0)) group.lastHoldOn = lastHoldOn;
+                const releaseCount = getWeatherHoldProfileNumber(row, 'release_sample_count', 0);
+                const bestReleaseCount = group.bestReleaseProfile ? getWeatherHoldProfileNumber(group.bestReleaseProfile, 'release_sample_count', 0) : -1;
+                if (releaseCount > bestReleaseCount) group.bestReleaseProfile = row;
+                const weatherGdd = getWeatherHoldProfileNumber(row, ['median_gdd_base_50_30d', 'avg_gdd_base_50_30d'], NaN);
+                const bestWeatherGdd = group.bestWeatherProfile ? getWeatherHoldProfileNumber(group.bestWeatherProfile, ['median_gdd_base_50_30d', 'avg_gdd_base_50_30d'], NaN) : NaN;
+                if (Number.isFinite(weatherGdd) && (!Number.isFinite(bestWeatherGdd) || releaseCount >= bestReleaseCount)) group.bestWeatherProfile = row;
+            });
+            return Array.from(groups.values()).sort((left, right) => {
+                const releaseDiff = right.releaseSamples - left.releaseSamples;
+                if (releaseDiff) return releaseDiff;
+                const holdDiff = right.holdSamples - left.holdSamples;
+                if (holdDiff) return holdDiff;
+                const dateDiff = compareWeatherHoldDateDesc(left.lastHoldOn, right.lastHoldOn);
+                if (dateDiff) return dateDiff;
+                return String(left.commonname || left.itemcode).localeCompare(String(right.commonname || right.itemcode), undefined, { numeric: true, sensitivity: 'base' });
+            });
+        }
+
+        function renderWeatherHoldItemcodeProfileCard(group = null) {
+            if (!group || !group.itemcode) return '';
+            const contsizeText = Array.from(group.contsizes || []).slice(0, 3).join(', ') || '-';
+            const title = [group.commonname || group.genus || 'Itemcode', contsizeText && contsizeText !== '-' ? contsizeText : ''].filter(Boolean).join(' ');
+            const reasonText = Array.from(group.reasons || []).map(getHoldRecoveryReasonLabel).filter(Boolean).slice(0, 4).join(', ') || 'hold';
+            const releaseProfile = group.bestReleaseProfile || {};
+            const weatherProfile = group.bestWeatherProfile || releaseProfile || {};
+            const releaseGdd = getWeatherHoldProfileNumber(releaseProfile, ['median_gdd_base_50_to_release', 'avg_gdd_base_50_to_release'], NaN);
+            const releaseDays = getWeatherHoldProfileNumber(releaseProfile, 'avg_days_to_release', NaN);
+            const weatherGdd = getWeatherHoldProfileNumber(weatherProfile, ['median_gdd_base_50_30d', 'avg_gdd_base_50_30d'], NaN);
+            return `<button type="button" class="w-full rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openWeatherHoldItemMlDetail('${escJsAttrValue(group.itemcode)}')">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="font-black text-slate-900 leading-tight break-words">${escapeHtml(title || group.itemcode)}</div>
+                        <div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Item ${escapeHtml(group.itemcode)} | ${escapeHtml(reasonText)} | ${escapeHtml(String(group.holdSamples || 0))} hold samples | ${escapeHtml(String(group.releaseSamples || 0))} release cycles</div>
+                    </div>
+                    <div class="shrink-0 text-right text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(formatWeatherHoldDate(group.lastHoldOn))}</div>
+                </div>
+                <div class="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
+                    <div class="rounded-xl bg-emerald-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">GDD 30</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldInteger(weatherGdd))}</div></div>
+                    <div class="rounded-xl bg-rose-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">GDD Off H</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldInteger(releaseGdd))}</div></div>
+                    <div class="rounded-xl bg-slate-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Days Off H</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldNumber(releaseDays, 1))}</div></div>
+                    <div class="rounded-xl bg-blue-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">ML Detail</div><div class="text-sm font-black text-blue-700">Open</div></div>
+                </div>
+            </button>`;
+        }
+
+        function showMoreWeatherHoldProfileItems() {
+            weatherHoldState.holdProfileVisibleCount = Math.min(10000, Math.max(24, Number(weatherHoldState.holdProfileVisibleCount) || 24) + 24);
+            renderWeatherHold();
+            return false;
+        }
+
+        function getWeatherHoldItemCardForCode(itemcode = '') {
+            const safeItemcode = normalizeWeatherHoldItemcode(itemcode);
+            if (!safeItemcode) return null;
+            return getWeatherHoldItemProfileCards().find((group) => group.itemcode === safeItemcode) || null;
+        }
+
+        function setWeatherHoldItemModalHtml(html = '') {
+            const body = document.getElementById('weather-hold-item-modal-body');
+            if (body) body.innerHTML = html;
+        }
+
+        function renderWeatherHoldItemDetailMetric(label = '', value = '', tone = 'slate') {
+            const toneMap = {
+                green: 'border-emerald-100 bg-emerald-50 text-emerald-700',
+                rose: 'border-rose-100 bg-rose-50 text-rose-700',
+                blue: 'border-blue-100 bg-blue-50 text-blue-700',
+                amber: 'border-amber-100 bg-amber-50 text-amber-700',
+                slate: 'border-slate-200 bg-slate-50 text-slate-700'
+            };
+            return `<div class="rounded-xl border ${toneMap[tone] || toneMap.slate} px-3 py-3"><div class="text-[9px] font-black uppercase tracking-[0.14em] opacity-70">${escapeHtml(label)}</div><div class="mt-1 text-lg font-black text-slate-900">${escapeHtml(value)}</div></div>`;
+        }
+
+        function renderWeatherHoldProfileDetailCard(row = null) {
+            if (!row) return '';
+            const reason = String(firstNonEmptyValue(row.hold_reason_category, row.HOLD_REASON_CATEGORY, 'unknown') || 'unknown').trim();
+            const releaseGdd = getWeatherHoldProfileNumber(row, ['median_gdd_base_50_to_release', 'avg_gdd_base_50_to_release'], NaN);
+            const forecast = getShearDecisionFutureReleaseEstimate(releaseGdd);
+            const forecastLabel = forecast && forecast.date ? `${forecast.extrapolated ? 'Estimated' : 'Forecast'} ${formatWeatherHoldDate(forecast.date)}` : '-';
+            return `<div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">${escapeHtml(getHoldRecoveryReasonLabel(reason))} Learning</div>
+                        <div class="mt-1 text-base font-black text-slate-900">${escapeHtml(String(firstNonEmptyValue(row.commonname, row.COMMONNAME, 'Hold profile') || 'Hold profile'))} ${escapeHtml(String(firstNonEmptyValue(row.contsize, row.CONTSIZE, '') || ''))}</div>
+                    </div>
+                    <div class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${escapeHtml(String(getWeatherHoldProfileNumber(row, 'release_sample_count', 0)))} cycles</div>
+                </div>
+                <div class="mt-3 grid grid-cols-2 gap-2 md:grid-cols-5">
+                    ${renderWeatherHoldItemDetailMetric('Hold Samples', formatWeatherHoldInteger(getWeatherHoldProfileNumber(row, 'sample_count', NaN)), 'green')}
+                    ${renderWeatherHoldItemDetailMetric('GDD Before Hold', formatWeatherHoldInteger(getWeatherHoldProfileNumber(row, ['median_gdd_base_50_30d', 'avg_gdd_base_50_30d'], NaN)), 'blue')}
+                    ${renderWeatherHoldItemDetailMetric('GDD To Release', formatWeatherHoldInteger(releaseGdd), 'rose')}
+                    ${renderWeatherHoldItemDetailMetric('Avg Days', formatWeatherHoldNumber(getWeatherHoldProfileNumber(row, 'avg_days_to_release', NaN), 1), 'slate')}
+                    ${renderWeatherHoldItemDetailMetric('Off Hold Date', forecastLabel, 'amber')}
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+                    <span class="rounded-full bg-slate-100 px-2.5 py-1">First ${escapeHtml(formatWeatherHoldDate(getWeatherHoldProfileDate(row, 'first_hold_on')))}</span>
+                    <span class="rounded-full bg-slate-100 px-2.5 py-1">Last ${escapeHtml(formatWeatherHoldDate(getWeatherHoldProfileDate(row, 'last_hold_on')))}</span>
+                    <span class="rounded-full bg-slate-100 px-2.5 py-1">Updated ${escapeHtml(formatWeatherHoldDate(getWeatherHoldProfileDate(row, 'updated_at')))}</span>
+                </div>
+            </div>`;
+        }
+
+        function renderWeatherHoldReleaseCycleDetailCard(row = null) {
+            if (!row) return '';
+            const label = [row.commonname, row.contsize].map((value) => String(value || '').trim()).filter(Boolean).join(' ');
+            const meta = [`Loc ${row.locationcode || '-'}`, `Lot ${row.lotcode || '-'}`, row.season || ''].filter(Boolean).join(' | ');
+            return `<div class="rounded-2xl border border-rose-100 bg-white p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0"><div class="font-black text-slate-900">${escapeHtml(label || row.itemcode || 'Release cycle')}</div><div class="mt-1 text-[11px] font-bold text-slate-500">${escapeHtml(meta)}</div></div>
+                    <span class="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-rose-700">${escapeHtml(getHoldRecoveryReasonLabel(row.hold_reason_category || 'unknown'))}</span>
+                </div>
+                <div class="mt-3 rounded-xl bg-slate-50 p-3 text-[12px] font-bold text-slate-700">${escapeHtml(row.holdstopreason || 'No hold reason listed')}</div>
+                <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">
+                    <span class="rounded-full bg-rose-50 px-2.5 py-1 text-rose-700">H ${escapeHtml(formatWeatherHoldDate(row.hold_started_on))}</span>
+                    <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">Off H ${escapeHtml(formatWeatherHoldDate(row.hold_released_on))}</span>
+                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">GDD ${escapeHtml(formatWeatherHoldInteger(row.gdd_base_50_to_release))}</span>
+                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">Days ${escapeHtml(String(row.hold_days || 0))}</span>
+                </div>
+            </div>`;
+        }
+
+        function renderWeatherHoldMlJobDetailCard(row = null) {
+            const item = normalizeMlImageJobRow(row);
+            if (!item) return '';
+            const photoCsv = getMlJobPhotoCsv(item);
+            const photoUrls = getPhotoUrlList(photoCsv);
+            const imageUrl = photoUrls[0] || getMlJobImageUrl(item);
+            const imageHtml = imageUrl
+                ? `<button type="button" class="shrink-0" onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(photoCsv || imageUrl)}', '${escJsAttrValue(getMlJobDisplayCommonName(item))}'); return false;">${buildDeferredCardPhotoImg(getDirectImageUrl(imageUrl, 'gallery-tile'), { className: 'h-20 w-20 rounded-xl border border-slate-200 bg-slate-100 object-cover active:scale-95' })}</button>`
+                : '<div class="h-20 w-20 shrink-0 rounded-xl border border-dashed border-slate-300 bg-slate-50"></div>';
+            const statusClass = item.STATUS === 'ml_failed' ? 'border-red-200 bg-red-50 text-red-700' : (item.STATUS === 'approved' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-blue-200 bg-blue-50 text-blue-700');
+            const meta = [item.CONTSIZE, item.LOCATIONCODE ? `Loc ${item.LOCATIONCODE}` : '', item.LOTCODE ? `Lot ${item.LOTCODE}` : '', item.SEASON, item.ML_GRADE ? `Grade ${item.ML_GRADE}` : ''].filter(Boolean).join(' | ');
+            const referenceHtml = item.DIAGNOSTIC_REFERENCE_LABEL || item.DIAGNOSTIC_REFERENCE_REPORT_REWRITE || item.DIAGNOSTIC_REFERENCE_REPORT_TEXT
+                ? `<div class="mt-2 rounded-xl border border-violet-100 bg-violet-50 px-3 py-2 text-[11px] font-bold text-violet-900"><div class="font-black uppercase tracking-[0.12em] text-[9px] text-violet-700">Matched ML Reference</div><div class="mt-1">${escapeHtml(firstNonEmptyValue(item.DIAGNOSTIC_REFERENCE_LABEL, item.DIAGNOSTIC_REFERENCE_REPORT_REWRITE, item.DIAGNOSTIC_REFERENCE_REPORT_TEXT, 'Reference stored'))}</div></div>`
+                : '';
+            return `<div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="flex gap-3">
+                    ${imageHtml}
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap gap-2"><span class="rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${statusClass}">${escapeHtml(item.STATUS.replace(/_/g, ' '))}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${escapeHtml(formatMlConfidence(item.ML_CONFIDENCE))}</span></div>
+                        <div class="mt-2 text-base font-black leading-tight text-slate-900">${escapeHtml(getMlJobDisplayCommonName(item))}</div>
+                        <div class="mt-1 text-[11px] font-bold text-slate-500">${escapeHtml(meta || item.ITEMCODE || '')}</div>
+                    </div>
+                </div>
+                <div class="mt-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-[12px] font-semibold text-slate-700">
+                    <div><span class="font-black">Diagnosis:</span> ${escapeHtml(firstNonEmptyValue(item.DIAGNOSIS, item.LAST_ERROR, 'No diagnosis stored yet'))}</div>
+                    <div class="mt-1"><span class="font-black">Treatment:</span> ${escapeHtml(firstNonEmptyValue(item.RECOMMENDED_TREATMENT, 'No treatment stored yet'))}</div>
+                    <div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Updated ${escapeHtml(formatMlTimestamp(firstNonEmptyValue(item.UPDATED_AT, item.CREATED_AT, '')))}</div>
+                </div>
+                ${referenceHtml}
+            </div>`;
+        }
+
+        function renderWeatherHoldTrainingAssetDetailCard(row = null) {
+            if (!row || typeof row !== 'object') return '';
+            const url = String(firstNonEmptyValue(row.public_url, row.PUBLIC_URL, '') || '').trim();
+            const imageHtml = url
+                ? `<button type="button" class="shrink-0" onclick="event.stopPropagation(); openPhotoModal('${escJsAttrValue(url)}', '${escJsAttrValue(firstNonEmptyValue(row.label, row.file_name, 'ML reference'))}'); return false;">${buildDeferredCardPhotoImg(getDirectImageUrl(url, 'gallery-tile'), { className: 'h-16 w-16 rounded-xl border border-slate-200 bg-slate-100 object-cover active:scale-95' })}</button>`
+                : '<div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-slate-300"><i class="ph-bold ph-file-text text-xl"></i></div>';
+            const reportText = String(firstNonEmptyValue(row.report_rewrite, row.report_text, row.reviewer_report, row.recommended_treatment, row.diagnosis, '') || '').trim();
+            return `<div class="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm">
+                <div class="flex gap-3">
+                    ${imageHtml}
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap gap-2"><span class="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-violet-700">${escapeHtml(firstNonEmptyValue(row.asset_kind, row.ASSET_KIND, 'asset'))}</span><span class="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">${escapeHtml(firstNonEmptyValue(row.processed_status, row.PROCESSED_STATUS, '-'))}</span></div>
+                        <div class="mt-2 text-base font-black leading-tight text-slate-900">${escapeHtml(firstNonEmptyValue(row.label, row.source_file_title, row.file_name, 'ML learning reference'))}</div>
+                        <div class="mt-1 text-[11px] font-bold text-slate-500">${escapeHtml([row.learning_scope, formatMlTimestamp(firstNonEmptyValue(row.updated_at, row.processed_at, row.created_at, ''))].filter(Boolean).join(' | '))}</div>
+                    </div>
+                </div>
+                ${reportText ? `<div class="mt-3 rounded-xl bg-violet-50 px-3 py-3 text-[12px] font-semibold text-violet-900">${escapeHtml(reportText)}</div>` : ''}
+            </div>`;
+        }
+
+        function renderWeatherHoldItemMlDetail() {
+            const itemcode = normalizeWeatherHoldItemcode(weatherHoldState.itemMlDetailItemcode);
+            const group = getWeatherHoldItemCardForCode(itemcode);
+            const profiles = (Array.isArray(weatherHoldState.itemMlDetailProfiles) && weatherHoldState.itemMlDetailProfiles.length) ? weatherHoldState.itemMlDetailProfiles : getWeatherHoldItemProfiles(itemcode);
+            const cycles = (Array.isArray(weatherHoldState.itemMlDetailCycles) && weatherHoldState.itemMlDetailCycles.length) ? weatherHoldState.itemMlDetailCycles : getWeatherHoldItemCycles(itemcode);
+            const jobs = (Array.isArray(weatherHoldState.itemMlDetailJobs) ? weatherHoldState.itemMlDetailJobs : []).map((row, idx) => normalizeMlImageJobRow(row, idx)).filter(Boolean);
+            const assets = Array.isArray(weatherHoldState.itemMlDetailAssets) ? weatherHoldState.itemMlDetailAssets : [];
+            const holdSampleTotal = profiles.reduce((total, row) => total + Math.max(0, Math.round(getWeatherHoldProfileNumber(row, 'sample_count', 0))), 0);
+            const releaseSampleTotal = profiles.reduce((total, row) => total + Math.max(0, Math.round(getWeatherHoldProfileNumber(row, 'release_sample_count', 0))), 0);
+            const titleEl = document.getElementById('weather-hold-item-modal-title');
+            const metaEl = document.getElementById('weather-hold-item-modal-meta');
+            if (titleEl) titleEl.innerText = group ? `${group.commonname || group.genus || 'Itemcode'} ${Array.from(group.contsizes || [])[0] || ''}`.trim() : itemcode;
+            if (metaEl) metaEl.innerText = itemcode ? `ITEM ${itemcode}` : '';
+            if (weatherHoldState.itemMlDetailLoading) {
+                setWeatherHoldItemModalHtml('<div class="space-y-3"><div class="skeleton h-24 w-full rounded-xl"></div><div class="skeleton h-24 w-full rounded-xl"></div><div class="text-center text-xs font-black uppercase tracking-[0.14em] text-slate-400">Loading itemcode ML detail...</div></div>');
+                return false;
+            }
+            if (weatherHoldState.itemMlDetailError) {
+                setWeatherHoldItemModalHtml(`<div class="rounded-2xl border border-red-100 bg-red-50 p-6 text-center"><div class="text-lg font-black text-red-700">Could not load itemcode ML detail</div><div class="mt-2 text-sm font-bold text-red-600">${escapeHtml(weatherHoldState.itemMlDetailError)}</div><button type="button" class="mt-4 rounded-xl bg-[#007a4d] px-4 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-white" onclick="return openWeatherHoldItemMlDetail('${escJsAttrValue(itemcode)}')">Retry</button></div>`);
+                return false;
+            }
+            const summaryHtml = `<section class="grid grid-cols-2 gap-2 md:grid-cols-5">
+                ${renderWeatherHoldItemDetailMetric('Profiles', String(profiles.length), 'green')}
+                ${renderWeatherHoldItemDetailMetric('Hold Samples', formatWeatherHoldInteger(holdSampleTotal || (group && group.holdSamples)), 'blue')}
+                ${renderWeatherHoldItemDetailMetric('Release Cycles', formatWeatherHoldInteger(releaseSampleTotal || (group && group.releaseSamples)), 'rose')}
+                ${renderWeatherHoldItemDetailMetric('ML Jobs', String(jobs.length), 'slate')}
+                ${renderWeatherHoldItemDetailMetric('ML References', String(assets.length), 'amber')}
+            </section>`;
+            const profileHtml = profiles.length ? profiles.map(renderWeatherHoldProfileDetailCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No itemcode hold learning profile yet.</div>';
+            const cycleHtml = cycles.length ? cycles.slice(0, 12).map(renderWeatherHoldReleaseCycleDetailCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No itemcode release cycles yet.</div>';
+            const jobHtml = jobs.length ? jobs.slice(0, 20).map(renderWeatherHoldMlJobDetailCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No ML image jobs stored for this itemcode yet.</div>';
+            const assetHtml = assets.length ? assets.slice(0, 20).map(renderWeatherHoldTrainingAssetDetailCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No ML learning references stored for this itemcode yet.</div>';
+            setWeatherHoldItemModalHtml(`<div class="space-y-5">${summaryHtml}<section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Hold Learning By Itemcode</div>${profileHtml}</section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-rose-700">Release Cycles For Itemcode</div>${cycleHtml}</section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-blue-700">ML Image Jobs For Itemcode</div>${jobHtml}</section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-700">ML Learning References For Itemcode</div>${assetHtml}</section></div>`);
+            return false;
+        }
+
+        async function openWeatherHoldItemMlDetail(itemcode = '') {
+            const safeItemcode = normalizeWeatherHoldItemcode(itemcode);
+            if (!safeItemcode) return false;
+            weatherHoldState.itemMlDetailItemcode = safeItemcode;
+            weatherHoldState.itemMlDetailLoading = true;
+            weatherHoldState.itemMlDetailError = '';
+            weatherHoldState.itemMlDetailProfiles = [];
+            weatherHoldState.itemMlDetailCycles = [];
+            weatherHoldState.itemMlDetailJobs = [];
+            weatherHoldState.itemMlDetailAssets = [];
+            const modal = document.getElementById('weather-hold-item-modal');
+            if (modal) modal.classList.remove('hidden');
+            renderWeatherHoldItemMlDetail();
+            try {
+                const [profiles, cycles, jobs, assets] = await Promise.all([
+                    supabaseFetch('v2_hold_learning_profiles', 'GET', null, `select=*&itemcode=eq.${encodeURIComponent(safeItemcode)}&order=updated_at.desc&limit=120`),
+                    supabaseFetch('v2_hold_release_cycles', 'GET', null, `select=*&itemcode=eq.${encodeURIComponent(safeItemcode)}&order=hold_started_on.desc&limit=120`),
+                    supabaseFetch(ML_IMAGE_JOBS_TABLE, 'GET', null, `select=*&itemcode=eq.${encodeURIComponent(safeItemcode)}&order=updated_at.desc&limit=120`),
+                    supabaseFetch(DISEASE_TRAINING_ASSETS_TABLE, 'GET', null, `select=*&itemcode=eq.${encodeURIComponent(safeItemcode)}&order=updated_at.desc&limit=120`)
+                ]);
+                weatherHoldState.itemMlDetailProfiles = Array.isArray(profiles) ? profiles : [];
+                weatherHoldState.itemMlDetailCycles = Array.isArray(cycles) ? cycles : [];
+                weatherHoldState.itemMlDetailJobs = Array.isArray(jobs) ? jobs : [];
+                weatherHoldState.itemMlDetailAssets = Array.isArray(assets) ? assets : [];
+                if (weatherHoldState.itemMlDetailJobs.length) {
+                    const existingIds = new Set((Array.isArray(mlImageJobsInventory) ? mlImageJobsInventory : []).map((row) => String(firstNonEmptyValue(row && row.unique_id, row && row.UNIQUE_ID, '') || '').trim()).filter(Boolean));
+                    const additions = weatherHoldState.itemMlDetailJobs.filter((row) => {
+                        const id = String(firstNonEmptyValue(row && row.unique_id, row && row.UNIQUE_ID, '') || '').trim();
+                        return id && !existingIds.has(id);
+                    });
+                    if (additions.length) {
+                        mlImageJobsInventory = (Array.isArray(mlImageJobsInventory) ? mlImageJobsInventory : []).concat(additions);
+                        rebuildMlImageJobIndexes();
+                    }
+                }
+            } catch (error) {
+                weatherHoldState.itemMlDetailError = error && error.message ? error.message : 'Itemcode ML detail could not load.';
+            } finally {
+                weatherHoldState.itemMlDetailLoading = false;
+                renderWeatherHoldItemMlDetail();
+            }
+            return false;
+        }
+
+        function closeWeatherHoldItemMlDetail() {
+            const modal = document.getElementById('weather-hold-item-modal');
+            if (modal) modal.classList.add('hidden');
+            weatherHoldState.itemMlDetailItemcode = '';
+            weatherHoldState.itemMlDetailLoading = false;
+            weatherHoldState.itemMlDetailError = '';
+            weatherHoldState.itemMlDetailProfiles = [];
+            weatherHoldState.itemMlDetailCycles = [];
+            weatherHoldState.itemMlDetailJobs = [];
+            weatherHoldState.itemMlDetailAssets = [];
+            setWeatherHoldItemModalHtml('');
+            return false;
+        }
+
         function renderWeatherHoldMetric(label = '', value = '', subtext = '') {
             return `<div class="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">${escapeHtml(label)}</div><div class="mt-2 text-2xl font-black text-slate-900">${escapeHtml(value)}</div>${subtext ? `<div class="mt-1 text-[11px] font-bold text-slate-500">${escapeHtml(subtext)}</div>` : ''}</div>`;
         }
@@ -60443,7 +60832,7 @@ function toggleDriveQuickRequestItem(domId) {
                     supabaseFetch('v2_weather_hourly', 'GET', null, `select=observed_at,local_time,temperature_f,relative_humidity,precipitation_in,wind_speed_mph,wind_direction_deg,gdd_base_50,chill_hours&station_key=eq.park_hill_ok&observed_at=gte.${encodeURIComponent(weatherCutoff)}&order=observed_at.desc&limit=1200`),
                     supabaseFetch('v2_weather_daily', 'GET', null, `select=date,temperature_high_f,temperature_low_f,daily_gdd_base_50,precipitation_in,wind_speed_mph,wind_direction_deg&station_key=eq.park_hill_ok&date=gte.${encodeURIComponent(dailyCutoff)}&order=date.desc&limit=80`),
                     supabaseFetch('v2_hold_learning_events', 'GET', null, 'select=hold_started_on,hold_detected_at,released_on,hold_days,gdd_base_50_to_release,itemcode,commonname,genus,contsize,locationcode,lotcode,season,blockalpha,holdstopreason,hold_reason_category,gdd_base_50_30d,gdd_base_50_season,chill_hours_30d,chill_hours_season,precipitation_in_30d,avg_temperature_f_30d,weather_features_refreshed_at&order=hold_started_on.desc&limit=250'),
-                    supabaseFetch('v2_hold_learning_profiles', 'GET', null, 'select=itemcode,commonname,genus,contsize,hold_reason_category,sample_count,first_hold_on,last_hold_on,avg_gdd_base_50_30d,median_gdd_base_50_30d,avg_chill_hours_30d,avg_precipitation_in_30d,avg_temperature_f_30d,release_sample_count,avg_gdd_base_50_to_release,median_gdd_base_50_to_release,avg_days_to_release,updated_at&order=updated_at.desc&limit=5000'),
+                    supabaseFetch('v2_hold_learning_profiles', 'GET', null, 'select=itemcode,commonname,genus,contsize,hold_reason_category,sample_count,first_hold_on,last_hold_on,avg_gdd_base_50_30d,median_gdd_base_50_30d,avg_chill_hours_30d,avg_precipitation_in_30d,avg_temperature_f_30d,release_sample_count,avg_gdd_base_50_to_release,median_gdd_base_50_to_release,avg_days_to_release,updated_at&order=updated_at.desc&limit=10000'),
                     supabaseFetch('v2_hold_release_cycles', 'GET', null, 'select=itemcode,commonname,genus,contsize,locationcode,lotcode,season,blockalpha,holdstopreason,hold_reason_category,hold_started_on,hold_released_on,hold_days,gdd_base_50_to_release,start_file_name,release_file_name&order=hold_started_on.desc&limit=250')
                 ]);
                 weatherHoldState.weatherRows = Array.isArray(weatherRows) ? weatherRows : [];
@@ -60505,11 +60894,12 @@ function toggleDriveQuickRequestItem(domId) {
                 renderWeatherHoldMetric('Wind', `${formatWeatherHoldNumber(latest.wind_speed_mph, 0)} mph`, formatWindDirection(latest.wind_direction_deg || latestDaily.wind_direction_deg)),
                 renderWeatherHoldMetric('Avg Temp', `${formatWeatherHoldNumber(avg30, 1)} F`, 'Last 30 days')
             ].join('');
-            const profileRows = (weatherHoldState.holdProfiles || []).slice(0, 12).map((row) => {
-                const label = [row.commonname, row.contsize].map((value) => String(value || '').trim()).filter(Boolean).join(' ');
-                const itemMeta = row.itemcode ? `Item ${row.itemcode} | ` : '';
-                return `<div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="font-black text-slate-900">${escapeHtml(label || row.genus || 'Hold Profile')}</div><div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${escapeHtml(itemMeta)}${escapeHtml(row.hold_reason_category || 'unknown')} | ${escapeHtml(String(row.sample_count || 0))} hold samples | ${escapeHtml(String(row.release_sample_count || 0))} release cycles</div></div><div class="text-right text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(formatWeatherHoldDate(row.last_hold_on))}</div></div><div class="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-5"><div class="rounded-xl bg-emerald-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">GDD 30</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldInteger(row.median_gdd_base_50_30d || row.avg_gdd_base_50_30d))}</div></div><div class="rounded-xl bg-sky-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Chill</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldInteger(row.avg_chill_hours_30d))}</div></div><div class="rounded-xl bg-amber-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Rain</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldNumber(row.avg_precipitation_in_30d, 2))}</div></div><div class="rounded-xl bg-rose-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">GDD Off H</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldInteger(row.median_gdd_base_50_to_release || row.avg_gdd_base_50_to_release))}</div></div><div class="rounded-xl bg-slate-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Days Off H</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldNumber(row.avg_days_to_release, 1))}</div></div></div></div>`;
-            }).join('');
+            const profileCards = getWeatherHoldItemProfileCards();
+            const visibleProfileCount = Math.max(24, Math.min(profileCards.length, Number(weatherHoldState.holdProfileVisibleCount) || 24));
+            const profileRows = profileCards.slice(0, visibleProfileCount).map(renderWeatherHoldItemcodeProfileCard).join('');
+            const profileMoreHtml = profileCards.length > visibleProfileCount
+                ? `<button type="button" class="w-full rounded-xl border border-emerald-200 bg-white px-4 py-3 text-center text-[11px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm active:scale-95" onclick="return showMoreWeatherHoldProfileItems()">Show More Itemcodes (${escapeHtml(String(visibleProfileCount))} of ${escapeHtml(String(profileCards.length))})</button>`
+                : '';
             const cycleRows = (weatherHoldState.holdCycles || []).slice(0, 16).map((row) => {
                 const label = [row.commonname, row.contsize].map((value) => String(value || '').trim()).filter(Boolean).join(' ');
                 const meta = [`Item ${row.itemcode || '-'}`, `Loc ${row.locationcode || '-'}`, `Lot ${row.lotcode || '-'}`].join(' | ');
@@ -60520,10 +60910,10 @@ function toggleDriveQuickRequestItem(domId) {
                 const meta = [`Loc ${row.locationcode || '-'}`, `Lot ${row.lotcode || '-'}`, row.season || ''].filter(Boolean).join(' | ');
                 return `<div class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="font-black text-slate-900">${escapeHtml(label || row.genus || 'Hold Event')}</div><div class="mt-1 text-[11px] font-bold text-slate-500">${escapeHtml(meta)}</div></div><span class="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-amber-700">${escapeHtml(row.hold_reason_category || 'unknown')}</span></div><div class="mt-3 rounded-xl bg-slate-50 p-3 text-[12px] font-bold text-slate-700">${escapeHtml(row.holdstopreason || 'No hold reason listed')}</div><div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]"><span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">GDD 30 ${escapeHtml(formatWeatherHoldInteger(row.gdd_base_50_30d))}</span><span class="rounded-full bg-sky-50 px-2.5 py-1 text-sky-700">Chill ${escapeHtml(formatWeatherHoldInteger(row.chill_hours_30d))}</span><span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-500">${escapeHtml(formatWeatherHoldDate(row.hold_started_on))}</span></div></div>`;
             }).join('');
-            const emptyProfileHtml = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No hold learning profiles loaded yet.</div>';
+            const emptyProfileHtml = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No itemcode hold learning profiles loaded yet.</div>';
             const emptyCycleHtml = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No Drive Around hold release cycles loaded yet.</div>';
             const emptyEventHtml = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No hold learning events loaded yet.</div>';
-            setContainerHtml(container, `<div class="space-y-5"><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">${metricHtml}</div>${renderWeatherHoldInventoryLookup()}<section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">When Items Go On Hold</div><div class="grid gap-3 lg:grid-cols-2">${profileRows || emptyProfileHtml}</div></section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-rose-700">GDD To Come Off Hold</div><div class="grid gap-3 lg:grid-cols-2">${cycleRows || emptyCycleHtml}</div></section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">Recent Hold Events</div>${eventRows || emptyEventHtml}</section></div>`);
+            setContainerHtml(container, `<div class="space-y-5"><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">${metricHtml}</div>${renderWeatherHoldInventoryLookup()}<section class="space-y-3"><div class="flex flex-wrap items-center justify-between gap-2"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">When Items Go On Hold By Itemcode</div><div class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${escapeHtml(String(profileCards.length))} Itemcodes</div></div><div class="grid gap-3 lg:grid-cols-2">${profileRows || emptyProfileHtml}</div>${profileMoreHtml}</section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-rose-700">GDD To Come Off Hold</div><div class="grid gap-3 lg:grid-cols-2">${cycleRows || emptyCycleHtml}</div></section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">Recent Hold Events</div>${eventRows || emptyEventHtml}</section></div>`);
         }
 
         function reloadWeatherHoldData() {
