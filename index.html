@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.30.25';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.31.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5095,7 +5095,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.25').trim() || 'V2026.07.30.25';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.31.01').trim() || 'V2026.07.31.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6550,7 +6550,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.25';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.31.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24535,7 +24535,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.25').trim() || 'V2026.07.30.25';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.31.01').trim() || 'V2026.07.31.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -60195,6 +60195,10 @@ function toggleDriveQuickRequestItem(domId) {
             return values.reduce((total, value) => total + value, 0) / values.length;
         }
 
+        function canUseWeatherHoldRiskTools() {
+            return isStrictDylanCollygeUser();
+        }
+
         function normalizeWeatherHoldItemcode(value = '') {
             return String(value || '').trim().toUpperCase();
         }
@@ -60504,6 +60508,11 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function openWeatherHoldItemMlDetail(itemcode = '') {
+            if (!canUseWeatherHoldRiskTools()) {
+                closeWeatherHoldItemMlDetail();
+                showToast('Restricted', 'Weather hold risk learning is Dylan only right now.', true);
+                return false;
+            }
             const safeItemcode = normalizeWeatherHoldItemcode(itemcode);
             if (!safeItemcode) return false;
             weatherHoldState.itemMlDetailItemcode = safeItemcode;
@@ -60793,6 +60802,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function renderWeatherHoldInventoryLookup() {
+            if (!canUseWeatherHoldRiskTools()) return '';
             const fullLoaded = ensureWeatherHoldInventoryData();
             const rows = getWeatherHoldInventoryFilteredRows();
             const groups = groupWeatherHoldInventoryCards(rows);
@@ -60838,13 +60848,18 @@ function toggleDriveQuickRequestItem(domId) {
             const weatherCutoff = new Date(Date.now() - (45 * 24 * 60 * 60 * 1000)).toISOString();
             const dailyCutoff = new Date(Date.now() - (45 * 24 * 60 * 60 * 1000)).toISOString().slice(0, 10);
             weatherHoldState.promise = (async () => {
-                const [weatherRows, dailyWeatherRows, holdEvents, holdProfiles, holdCycles] = await Promise.all([
+                const weatherRequests = [
                     supabaseFetch('v2_weather_hourly', 'GET', null, `select=observed_at,local_time,temperature_f,relative_humidity,precipitation_in,wind_speed_mph,wind_direction_deg,gdd_base_50,chill_hours&station_key=eq.park_hill_ok&observed_at=gte.${encodeURIComponent(weatherCutoff)}&order=observed_at.desc&limit=1200`),
-                    supabaseFetch('v2_weather_daily', 'GET', null, `select=date,temperature_high_f,temperature_low_f,daily_gdd_base_50,precipitation_in,wind_speed_mph,wind_direction_deg&station_key=eq.park_hill_ok&date=gte.${encodeURIComponent(dailyCutoff)}&order=date.desc&limit=80`),
-                    supabaseFetch('v2_hold_learning_events', 'GET', null, 'select=hold_started_on,hold_detected_at,released_on,hold_days,gdd_base_50_to_release,itemcode,commonname,genus,contsize,locationcode,lotcode,season,blockalpha,holdstopreason,hold_reason_category,gdd_base_50_30d,gdd_base_50_season,chill_hours_30d,chill_hours_season,precipitation_in_30d,avg_temperature_f_30d,weather_features_refreshed_at&order=hold_started_on.desc&limit=250'),
-                    supabaseFetch('v2_hold_learning_profiles', 'GET', null, 'select=itemcode,commonname,genus,contsize,hold_reason_category,sample_count,first_hold_on,last_hold_on,avg_gdd_base_50_30d,median_gdd_base_50_30d,avg_chill_hours_30d,avg_precipitation_in_30d,avg_temperature_f_30d,release_sample_count,avg_gdd_base_50_to_release,median_gdd_base_50_to_release,avg_days_to_release,updated_at&order=updated_at.desc&limit=10000'),
-                    supabaseFetch('v2_hold_release_cycles', 'GET', null, 'select=itemcode,commonname,genus,contsize,locationcode,lotcode,season,blockalpha,holdstopreason,hold_reason_category,hold_started_on,hold_released_on,hold_days,gdd_base_50_to_release,start_file_name,release_file_name&order=hold_started_on.desc&limit=250')
-                ]);
+                    supabaseFetch('v2_weather_daily', 'GET', null, `select=date,temperature_high_f,temperature_low_f,daily_gdd_base_50,precipitation_in,wind_speed_mph,wind_direction_deg&station_key=eq.park_hill_ok&date=gte.${encodeURIComponent(dailyCutoff)}&order=date.desc&limit=80`)
+                ];
+                const riskRequests = canUseWeatherHoldRiskTools()
+                    ? [
+                        supabaseFetch('v2_hold_learning_events', 'GET', null, 'select=hold_started_on,hold_detected_at,released_on,hold_days,gdd_base_50_to_release,itemcode,commonname,genus,contsize,locationcode,lotcode,season,blockalpha,holdstopreason,hold_reason_category,gdd_base_50_30d,gdd_base_50_season,chill_hours_30d,chill_hours_season,precipitation_in_30d,avg_temperature_f_30d,weather_features_refreshed_at&order=hold_started_on.desc&limit=250'),
+                        supabaseFetch('v2_hold_learning_profiles', 'GET', null, 'select=itemcode,commonname,genus,contsize,hold_reason_category,sample_count,first_hold_on,last_hold_on,avg_gdd_base_50_30d,median_gdd_base_50_30d,avg_chill_hours_30d,avg_precipitation_in_30d,avg_temperature_f_30d,release_sample_count,avg_gdd_base_50_to_release,median_gdd_base_50_to_release,avg_days_to_release,updated_at&order=updated_at.desc&limit=10000'),
+                        supabaseFetch('v2_hold_release_cycles', 'GET', null, 'select=itemcode,commonname,genus,contsize,locationcode,lotcode,season,blockalpha,holdstopreason,hold_reason_category,hold_started_on,hold_released_on,hold_days,gdd_base_50_to_release,start_file_name,release_file_name&order=hold_started_on.desc&limit=250')
+                    ]
+                    : [Promise.resolve([]), Promise.resolve([]), Promise.resolve([])];
+                const [weatherRows, dailyWeatherRows, holdEvents, holdProfiles, holdCycles] = await Promise.all(weatherRequests.concat(riskRequests));
                 weatherHoldState.weatherRows = Array.isArray(weatherRows) ? weatherRows : [];
                 weatherHoldState.dailyWeatherRows = Array.isArray(dailyWeatherRows) ? dailyWeatherRows : [];
                 weatherHoldState.holdEvents = Array.isArray(holdEvents) ? holdEvents : [];
@@ -60894,17 +60909,21 @@ function toggleDriveQuickRequestItem(domId) {
             const rain7 = dailyRows7.length ? sumWeatherField(dailyRows7, 'precipitation_in') : sumWeatherField(rows7, 'precipitation_in');
             const avg30 = avgWeatherField(rows30, 'temperature_f');
             const latestTime = formatWeatherHoldDate(latest.observed_at);
-            const metricHtml = [
+            const currentMetricHtml = [
                 renderWeatherHoldMetric('Current Temp', `${formatWeatherHoldNumber(latest.temperature_f, 1)} F`, latestTime),
                 renderWeatherHoldMetric('Daily High / Low', `${formatWeatherHoldNumber(latestDaily.temperature_high_f, 0)} / ${formatWeatherHoldNumber(latestDaily.temperature_low_f, 0)} F`, latestDaily.date || 'Latest day'),
+                renderWeatherHoldMetric('Rainfall', `${formatWeatherHoldNumber(rain7, 2)} in`, 'Last 7 days'),
+                renderWeatherHoldMetric('Wind', `${formatWeatherHoldNumber(latest.wind_speed_mph, 0)} mph`, formatWindDirection(latest.wind_direction_deg || latestDaily.wind_direction_deg))
+            ].join('');
+            const dylanOnlyMetricHtml = canUseWeatherHoldRiskTools() ? [
                 renderWeatherHoldMetric('GDD Base 50', formatWeatherHoldInteger(gdd7), 'Last 7 days, daily high/low'),
                 renderWeatherHoldMetric('GDD Base 50', formatWeatherHoldInteger(gdd30), 'Last 30 days, daily high/low'),
                 renderWeatherHoldMetric('Chill Hours', formatWeatherHoldInteger(chill30), 'Last 30 days'),
-                renderWeatherHoldMetric('Rainfall', `${formatWeatherHoldNumber(rain7, 2)} in`, 'Last 7 days'),
-                renderWeatherHoldMetric('Wind', `${formatWeatherHoldNumber(latest.wind_speed_mph, 0)} mph`, formatWindDirection(latest.wind_direction_deg || latestDaily.wind_direction_deg)),
                 renderWeatherHoldMetric('Avg Temp', `${formatWeatherHoldNumber(avg30, 1)} F`, 'Last 30 days')
-            ].join('');
-            setContainerHtml(container, `<div class="space-y-5"><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">${metricHtml}</div>${renderWeatherHoldInventoryLookup()}</div>`);
+            ].join('') : '';
+            const currentWeatherHtml = `<section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-sky-700">Current Weather</div><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">${currentMetricHtml}${dylanOnlyMetricHtml}</div></section>`;
+            const riskHtml = canUseWeatherHoldRiskTools() ? renderWeatherHoldInventoryLookup() : '';
+            setContainerHtml(container, `<div class="space-y-5">${currentWeatherHtml}${riskHtml}</div>`);
         }
 
         function reloadWeatherHoldData() {
