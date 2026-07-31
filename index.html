@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.31.04';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.31.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5102,7 +5102,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.31.04').trim() || 'V2026.07.31.04';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.31.05').trim() || 'V2026.07.31.05';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6557,7 +6557,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.31.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.31.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24542,7 +24542,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.31.04').trim() || 'V2026.07.31.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.31.05').trim() || 'V2026.07.31.05';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -69181,7 +69181,7 @@ function toggleDriveQuickRequestItem(domId) {
         function ensureAvTopControlsShell(container) {
             if (!container) return false;
             ensureAvControlsVisible(container);
-            const shellSignature = 'av-top-controls-shell:v10';
+            const shellSignature = 'av-top-controls-shell:v11';
             if (container.dataset.avTopControlsShell === shellSignature) {
                 ensureAvControlsVisible(container);
                 return false;
@@ -69306,14 +69306,44 @@ function toggleDriveQuickRequestItem(domId) {
             if (button && config.buttonClass) setNodeClassNameIfChanged(button, config.buttonClass);
             const summary = shell.querySelector('[data-role="summary"]');
             if (summary) setNodeTextIfChanged(summary, config.summary || '');
-            const panel = shell.querySelector('[data-role="panel"]');
-            if (panel) panel.classList.toggle('hidden', !config.open);
             const caret = shell.querySelector('[data-role="caret"]');
             if (caret) caret.classList.toggle('rotate-180', !!config.open);
             const body = shell.querySelector('[data-role="body"]');
             if (body && typeof config.bodyHtml === 'string') {
                 setContainerHtmlWithSignature(body, config.bodyHtml, config.bodySignature || `${shellName}:${config.open ? 'open' : 'closed'}`);
             }
+            const panel = shell.querySelector('[data-role="panel"]');
+            const hasBodyContent = !!(body && String(body.innerHTML || '').trim());
+            if (panel) panel.classList.toggle('hidden', !config.open || !hasBodyContent);
+        }
+
+        function isAnyAvTopControlDropdownOpen() {
+            return !!(avSourceDropdownOpen
+                || avSeasonDropdownOpen
+                || avGenusFilterOpen
+                || avContSizeFilterOpen
+                || avHoldDropdownOpen
+                || avPhotoDropdownOpen
+                || avSalesRepDropdownOpen
+                || avRepCustomerDropdownOpen
+                || avColumnFilterDropdownOpen);
+        }
+
+        function hasOpenAvTopControlPanelWithoutBody(container) {
+            if (!container) return false;
+            return Array.from(container.querySelectorAll('[data-av-filter-shell]')).some((shell) => {
+                const panel = shell.querySelector('[data-role="panel"]');
+                if (!panel || panel.classList.contains('hidden')) return false;
+                const body = shell.querySelector('[data-role="body"]');
+                return !(body && String(body.innerHTML || '').trim());
+            });
+        }
+
+        function renderAvTopControlsForDropdownStateChange() {
+            lastAvTopControlsRenderSignature = '';
+            syncAvTopControlOpenStatesQuick();
+            renderAvTopControls(avFilterItemsCache);
+            return false;
         }
 
         function buildAvSingleChoiceOptionsHtml(options = [], selectedValue = '', handlerName = '') {
@@ -69832,7 +69862,9 @@ function toggleDriveQuickRequestItem(domId) {
             ensureAvControlsVisible(container);
             const previousRenderSignature = lastAvTopControlsRenderSignature;
             const renderSignature = buildAvTopControlsSignature(state);
-            if (!didMountShell && renderSignature === lastAvTopControlsRenderSignature) {
+            const openDropdownActive = isAnyAvTopControlDropdownOpen();
+            const openPanelNeedsBody = hasOpenAvTopControlPanelWithoutBody(container);
+            if (!didMountShell && !openDropdownActive && !openPanelNeedsBody && renderSignature === lastAvTopControlsRenderSignature) {
                 ensureAvControlsVisible(container);
                 renderAvColumnFilterWindow(state);
                 requestAnimationFrame(() => syncAvFixedFilterToolbar());
@@ -69926,7 +69958,9 @@ function toggleDriveQuickRequestItem(domId) {
                 const open = !!states[shellName];
                 shell.classList.toggle('av-filter-shell--open', open);
                 const panel = shell.querySelector('[data-role="panel"]');
-                if (panel) panel.classList.toggle('hidden', !open);
+                const body = shell.querySelector('[data-role="body"]');
+                const hasBodyContent = !!(body && String(body.innerHTML || '').trim());
+                if (panel) panel.classList.toggle('hidden', !open || !hasBodyContent);
                 const caret = shell.querySelector('[data-role="caret"]');
                 if (caret) caret.classList.toggle('rotate-180', open);
             });
@@ -69979,17 +70013,13 @@ function toggleDriveQuickRequestItem(domId) {
             const nextState = !avSourceDropdownOpen;
             closeAvTopControlDropdowns(false);
             avSourceDropdownOpen = nextState;
-            syncAvTopControlOpenStatesQuick();
-            scheduleAvTopControlsRender(avFilterItemsCache, { delay: isTouchConstrainedDevice() ? 16 : 0 });
-            return false;
+            return renderAvTopControlsForDropdownStateChange();
         }
 
         function closeAvSourceDropdown() {
             if (!avSourceDropdownOpen) return false;
             avSourceDropdownOpen = false;
-            syncAvTopControlOpenStatesQuick();
-            scheduleAvTopControlsRender(avFilterItemsCache, { delay: 0 });
-            return false;
+            return renderAvTopControlsForDropdownStateChange();
         }
 
         function setAvViewMode(viewKey = 'open-all') {
@@ -70090,17 +70120,13 @@ function toggleDriveQuickRequestItem(domId) {
             const nextState = !avSalesRepDropdownOpen;
             closeAvTopControlDropdowns(false);
             avSalesRepDropdownOpen = nextState;
-            syncAvTopControlOpenStatesQuick();
-            scheduleAvTopControlsRender(avFilterItemsCache, { delay: isTouchConstrainedDevice() ? 16 : 0 });
-            return false;
+            return renderAvTopControlsForDropdownStateChange();
         }
 
         function closeAvSalesRepDropdown() {
             if (!avSalesRepDropdownOpen) return false;
             avSalesRepDropdownOpen = false;
-            syncAvTopControlOpenStatesQuick();
-            scheduleAvTopControlsRender(avFilterItemsCache, { delay: 0 });
-            return false;
+            return renderAvTopControlsForDropdownStateChange();
         }
 
         function setAvSalesRepFilter(repName = '') {
@@ -70162,17 +70188,13 @@ function toggleDriveQuickRequestItem(domId) {
                 if (!isDatasetLoaded('reserves', 'full')) queueDatasetLoad('reserves', 'full', isTouchConstrainedDevice() ? 220 : 80);
                 if (!isDatasetLoaded('customerRepMap', 'full')) queueDatasetLoad('customerRepMap', 'full', isTouchConstrainedDevice() ? 320 : 120);
             }
-            syncAvTopControlOpenStatesQuick();
-            scheduleAvTopControlsRender(avFilterItemsCache, { delay: isTouchConstrainedDevice() ? 16 : 0 });
-            return false;
+            return renderAvTopControlsForDropdownStateChange();
         }
 
         function closeAvRepCustomerDropdown() {
             if (!avRepCustomerDropdownOpen) return false;
             avRepCustomerDropdownOpen = false;
-            syncAvTopControlOpenStatesQuick();
-            scheduleAvTopControlsRender(avFilterItemsCache, { delay: 0 });
-            return false;
+            return renderAvTopControlsForDropdownStateChange();
         }
 
         function setAvRepCustomerFilter(customerKey = '') {
@@ -70258,17 +70280,13 @@ function toggleDriveQuickRequestItem(domId) {
             const nextState = !avHoldDropdownOpen;
             closeAvTopControlDropdowns(false);
             avHoldDropdownOpen = nextState;
-            syncAvTopControlOpenStatesQuick();
-            scheduleAvTopControlsRender(avFilterItemsCache, { delay: isTouchConstrainedDevice() ? 16 : 0 });
-            return false;
+            return renderAvTopControlsForDropdownStateChange();
         }
 
         function closeAvHoldDropdown() {
             if (!avHoldDropdownOpen) return false;
             avHoldDropdownOpen = false;
-            syncAvTopControlOpenStatesQuick();
-            scheduleAvTopControlsRender(avFilterItemsCache, { delay: 0 });
-            return false;
+            return renderAvTopControlsForDropdownStateChange();
         }
 
         function setAvHoldFilterMode(mode = 'all') {
@@ -70287,51 +70305,39 @@ function toggleDriveQuickRequestItem(domId) {
             const nextState = !avSeasonDropdownOpen;
             closeAvTopControlDropdowns(false);
             avSeasonDropdownOpen = nextState;
-            syncAvTopControlOpenStatesQuick();
-            scheduleAvTopControlsRender(avFilterItemsCache, { delay: isTouchConstrainedDevice() ? 16 : 0 });
-            return false;
+            return renderAvTopControlsForDropdownStateChange();
         }
 
         function closeAvSeasonDropdown() {
             if (!avSeasonDropdownOpen) return false;
             avSeasonDropdownOpen = false;
-            syncAvTopControlOpenStatesQuick();
-            scheduleAvTopControlsRender(avFilterItemsCache, { delay: 0 });
-            return false;
+            return renderAvTopControlsForDropdownStateChange();
         }
 
         function toggleAvGenusDropdown() {
             const nextState = !avGenusFilterOpen;
             closeAvTopControlDropdowns(false);
             avGenusFilterOpen = nextState;
-            syncAvTopControlOpenStatesQuick();
-            scheduleAvTopControlsRender(avFilterItemsCache, { delay: isTouchConstrainedDevice() ? 16 : 0 });
-            return false;
+            return renderAvTopControlsForDropdownStateChange();
         }
 
         function closeAvGenusDropdown() {
             if (!avGenusFilterOpen) return false;
             avGenusFilterOpen = false;
-            syncAvTopControlOpenStatesQuick();
-            scheduleAvTopControlsRender(avFilterItemsCache, { delay: 0 });
-            return false;
+            return renderAvTopControlsForDropdownStateChange();
         }
 
         function toggleAvContSizeDropdown() {
             const nextState = !avContSizeFilterOpen;
             closeAvTopControlDropdowns(false);
             avContSizeFilterOpen = nextState;
-            syncAvTopControlOpenStatesQuick();
-            scheduleAvTopControlsRender(avFilterItemsCache, { delay: isTouchConstrainedDevice() ? 16 : 0 });
-            return false;
+            return renderAvTopControlsForDropdownStateChange();
         }
 
         function closeAvContSizeDropdown() {
             if (!avContSizeFilterOpen) return false;
             avContSizeFilterOpen = false;
-            syncAvTopControlOpenStatesQuick();
-            scheduleAvTopControlsRender(avFilterItemsCache, { delay: 0 });
-            return false;
+            return renderAvTopControlsForDropdownStateChange();
         }
 
         function toggleAvSeason(season = '') {
