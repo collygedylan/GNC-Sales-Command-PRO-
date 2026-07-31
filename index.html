@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.30.17';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.30.18';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5008,7 +5008,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.17').trim() || 'V2026.07.30.17';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.18').trim() || 'V2026.07.30.18';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6463,7 +6463,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.17';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.18';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24398,6 +24398,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return appendEvalMasterScopeToQuery('select=*&order=unique_id.asc');
         }
 
+        function buildAvSeasonDatasetQuery() {
+            return appendEvalMasterScopeToQuery('select=*&season=in.(F1,S1,U1,U2)&order=unique_id.asc');
+        }
+
         function buildCropRollDriveDatasetQuery() {
             return `select=${CROP_ROLL_DRIVE_ROW_SELECT_FIELDS}&order=crop_roll_view.desc,blockalpha.asc,locationcode.asc,itemcode.asc,lotcode.asc`;
         }
@@ -24444,7 +24448,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.17').trim() || 'V2026.07.30.17';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.18').trim() || 'V2026.07.30.18';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -25786,7 +25790,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const DATASET_DEFINITIONS = {
             master: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: buildMasterInitialDatasetQuery, fullQuery: buildMasterFullDatasetQuery, initialLimit: getPrimaryInventoryInitialLimit, initialFetchAll: true, mergeInitialRows: true },
             cropRollDrive: { table: CROP_ROLL_DRIVE_OPEN_ROWS_TABLE, sourceTable: CROP_ROLL_DRIVE_SOURCE_TABLE, initialQuery: buildCropRollDriveDatasetQuery, fullQuery: buildCropRollDriveDatasetQuery, initialLimit: getPrimaryInventoryInitialLimit, initialFetchAll: true },
-            avOpen: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: 'select=*&s_lts=gt.0&order=unique_id.asc', fullQuery: 'select=*&s_lts=gt.0&order=unique_id.asc', initialLimit: getPrimaryInventoryInitialLimit },
+            avOpen: { table: 'v2_master_inventory', sourceTable: 'v2_master_inventory', initialQuery: buildAvSeasonDatasetQuery, fullQuery: buildAvSeasonDatasetQuery, initialLimit: getPrimaryInventoryInitialLimit },
             requests: { table: ACTIVE_REQUEST_LIVE_ROWS_TABLE, sourceTable: ACTIVE_REQUEST_TABLE, initialQuery: 'select=*&order=unique_id.desc', fullQuery: 'select=*&order=unique_id.desc' },
             requestHistory: { table: REQUEST_HISTORY_TABLE, sourceTable: 'v2_active_request', initialQuery: () => `select=${REQUEST_HISTORY_SELECT_FIELDS}&order=updated_at.desc`, fullQuery: () => `select=${REQUEST_HISTORY_SELECT_FIELDS}&order=updated_at.desc` },
             salesCredits: { table: SALES_CREDIT_REQUESTS_TABLE, sourceTable: SALES_CREDIT_REQUESTS_TABLE, initialQuery: 'select=*&order=updated_at.desc', fullQuery: 'select=*&order=updated_at.desc' },
@@ -28902,9 +28906,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         required.push({ key: 'reserves', mode: 'full' });
                         background.push({ key: 'customerRepMap', mode: 'full' });
                     }
-                    return withEvalInventoryEditRequestsForRowView({ required, background, label: 'Loading verified AV open stock...' });
+                    return withEvalInventoryEditRequestsForRowView({ required, background, label: 'Loading verified AV season rows...' });
                 }
-                return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'master', mode: 'full' }], background: [], label: 'Loading verified AV open stock from Drive Mode rows...' });
+                return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'master', mode: 'full' }], background: [], label: 'Loading verified AV season rows from Drive Mode rows...' });
             }
             if (viewId === 'docks') return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'soc', mode: 'full' }], background: [], label: 'Loading all dock rows...' });
             if (viewId === 'request') return { required: [{ key: 'requests', mode: 'full' }, { key: 'requestHistory', mode: 'full' }, { key: 'salesCredits', mode: 'full' }, { key: 'inventoryEditRequests', mode: 'full' }, { key: 'soc', mode: 'full' }], background: [], label: 'Loading verified Que...' };
