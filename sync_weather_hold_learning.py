@@ -364,6 +364,32 @@ class SupabaseRest:
         except ValueError:
             return 0
 
+    def count_daily_ready_rows_since(self, table: str, station_key: str, date_gte: date) -> int:
+        query = urllib.parse.urlencode({
+            "select": "unique_id",
+            "station_key": f"eq.{station_key}",
+            "date": f"gte.{date_gte.isoformat()}",
+            "temperature_high_f": "not.is.null",
+            "temperature_low_f": "not.is.null",
+            "limit": "1",
+        })
+        endpoint = f"{self.url}/rest/v1/{urllib.parse.quote(table, safe='')}?{query}"
+        headers = self.headers("count=exact")
+        headers["Range"] = "0-0"
+        request = urllib.request.Request(endpoint, headers=headers, method="GET")
+        with urllib.request.urlopen(request, timeout=60) as response:
+            content_range = response.headers.get("Content-Range", "")
+            response.read()
+        if "/" not in content_range:
+            return 0
+        total = content_range.rsplit("/", 1)[-1].strip()
+        if not total or total == "*":
+            return 0
+        try:
+            return int(total)
+        except ValueError:
+            return 0
+
 
 def run() -> int:
     supabase_url = first_non_empty(os.environ.get("SUPABASE_URL"))
@@ -382,7 +408,7 @@ def run() -> int:
     history_force = env_bool("WEATHER_HISTORY_FORCE", False)
     history_max_chunks = env_int("WEATHER_HISTORY_MAX_CHUNKS", 0)
     refresh_limit = env_int("HOLD_WEATHER_REFRESH_LIMIT", 2000)
-    history_refresh_limit = env_int("HOLD_HISTORY_REFRESH_LIMIT", 15000)
+    history_refresh_limit = env_int("HOLD_HISTORY_REFRESH_LIMIT", 100000)
 
     started = time.time()
     supabase = SupabaseRest(supabase_url, supabase_key)
@@ -396,13 +422,21 @@ def run() -> int:
         observed_at_gte = datetime.combine(history_start, datetime.min.time(), ZoneInfo(timezone_name)).astimezone(timezone.utc).isoformat()
         existing_history_hours = supabase.count_weather_rows_since("v2_weather_hourly", station_key, observed_at_gte)
         existing_history_days = supabase.count_daily_rows_since("v2_weather_daily", station_key, history_start)
+        existing_history_ready_days = supabase.count_daily_ready_rows_since("v2_weather_daily", station_key, history_start)
         hourly_coverage_ratio = existing_history_hours / expected_history_hours
         daily_coverage_ratio = existing_history_days / expected_history_days
-        should_backfill_history = history_force or hourly_coverage_ratio < history_min_coverage or daily_coverage_ratio < history_min_coverage
+        daily_ready_coverage_ratio = existing_history_ready_days / expected_history_days
+        should_backfill_history = (
+            history_force
+            or hourly_coverage_ratio < history_min_coverage
+            or daily_coverage_ratio < history_min_coverage
+            or daily_ready_coverage_ratio < history_min_coverage
+        )
         print(
             f"Weather history coverage since {history_start}: {existing_history_hours}/{expected_history_hours} "
             f"hours ({hourly_coverage_ratio:.1%}), {existing_history_days}/{expected_history_days} "
-            f"days ({daily_coverage_ratio:.1%}). Backfill needed: {should_backfill_history}."
+            f"days ({daily_coverage_ratio:.1%}), {existing_history_ready_days}/{expected_history_days} "
+            f"days with high/low ({daily_ready_coverage_ratio:.1%}). Backfill needed: {should_backfill_history}."
         )
         if should_backfill_history:
             history_upserted = 0

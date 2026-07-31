@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.30.22';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.30.23';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5080,7 +5080,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.22').trim() || 'V2026.07.30.22';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.23').trim() || 'V2026.07.30.23';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6535,7 +6535,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.22';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.23';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24520,7 +24520,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.22').trim() || 'V2026.07.30.22';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.23').trim() || 'V2026.07.30.23';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -61716,10 +61716,26 @@ function toggleDriveQuickRequestItem(domId) {
             if (!text) return 'sheared';
             if (/(aphid|mite|scale|thrip|snail|caterpillar|insect|bug|pest|borer|beetle)/.test(text)) return 'pest';
             if (/(fung|disease|leaf spot|phytophthora|rhizoctonia|botrytis|canker|mildew|rot|rust|anthracnose|blight|phomopsis|sclerotinia)/.test(text)) return 'fungal_disease';
+            if (/(size|sizing|spec|height|too small|too short|too tall|caliper|under[ -]?size|undersized|not ready|not saleable|not ready to ship)/.test(text)) return 'size';
             if (/(leaf quality|leaf|foliar|chlorosis|yellow|necrosis|spotting|burn)/.test(text)) return 'leaf_quality';
             if (/(shear|sheared|trim|cutback|cut back|prune|pruned)/.test(text)) return 'sheared';
             if (/(freeze|frost|cold|heat|hail|weather|wind|drought|wet)/.test(text)) return 'weather_stress';
             return 'other';
+        }
+
+        function getHoldRecoveryReasonLabel(reason = '') {
+            const key = String(reason || '').trim().toLowerCase();
+            const labels = {
+                sheared: 'shear',
+                leaf_quality: 'leaf quality',
+                size: 'size',
+                pest: 'pest',
+                fungal_disease: 'fungal disease',
+                weather_stress: 'weather stress',
+                other: 'hold',
+                unknown: 'hold'
+            };
+            return labels[key] || 'hold';
         }
 
         function getHoldLearningProfileReason(item = null) {
@@ -61790,8 +61806,26 @@ function toggleDriveQuickRequestItem(domId) {
                     const cont = getShearListCompareKey(firstNonEmptyValue(profile && profile.contsize, profile && profile.CONTSIZE, ''));
                     const genus = getShearListCompareKey(firstNonEmptyValue(profile && profile.genus, profile && profile.GENUS, ''));
                     const reason = getShearListCompareKey(firstNonEmptyValue(profile && profile.hold_reason_category, profile && profile.HOLD_REASON_CATEGORY, ''));
+                    const releaseSampleCount = Math.max(0, Math.round(getShearDecisionNumber(firstNonEmptyValue(
+                        profile && profile.release_sample_count,
+                        profile && profile.RELEASE_SAMPLE_COUNT,
+                        0
+                    ), 0)));
+                    const releaseGdd = getShearDecisionNumber(firstNonEmptyValue(
+                        profile && profile.median_gdd_base_50_to_release,
+                        profile && profile.MEDIAN_GDD_BASE_50_TO_RELEASE,
+                        profile && profile.avg_gdd_base_50_to_release,
+                        profile && profile.AVG_GDD_BASE_50_TO_RELEASE,
+                        NaN
+                    ), NaN);
+                    const releaseDays = getShearDecisionNumber(firstNonEmptyValue(
+                        profile && profile.avg_days_to_release,
+                        profile && profile.AVG_DAYS_TO_RELEASE,
+                        NaN
+                    ), NaN);
                     let score = 0;
-                    if (targetItemCode && itemCode === targetItemCode) score += 20;
+                    if (!releaseSampleCount || (!Number.isFinite(releaseGdd) && !Number.isFinite(releaseDays))) score -= 100;
+                    if (targetItemCode && itemCode === targetItemCode) score += 35;
                     if (targetReason && reason === targetReason) score += 10;
                     if (targetReason === 'sheared' && reason.includes('shear')) score += 8;
                     if (targetCommon && common === targetCommon) score += 5;
@@ -61820,10 +61854,6 @@ function toggleDriveQuickRequestItem(domId) {
                 matched.MEDIAN_GDD_BASE_50_TO_RELEASE,
                 matched.avg_gdd_base_50_to_release,
                 matched.AVG_GDD_BASE_50_TO_RELEASE,
-                matched.median_gdd_base_50_30d,
-                matched.MEDIAN_GDD_BASE_50_30D,
-                matched.avg_gdd_base_50_30d,
-                matched.AVG_GDD_BASE_50_30D,
                 NaN
             ), NaN);
             let days = getShearDecisionNumber(firstNonEmptyValue(
@@ -61847,6 +61877,7 @@ function toggleDriveQuickRequestItem(domId) {
             ), 0)));
             const forecast = getShearDecisionFutureReleaseEstimate(gdd);
             const reason = getShearListCompareKey(firstNonEmptyValue(matched.hold_reason_category, matched.HOLD_REASON_CATEGORY, targetReason));
+            const reasonLabel = getHoldRecoveryReasonLabel(reason);
             const parts = [];
             if (Number.isFinite(days)) parts.push(`avg ${formatShearDecisionNumber(days, 1)} days on hold`);
             if (Number.isFinite(gdd)) parts.push(`${formatShearDecisionNumber(gdd, 0)} GDD to release`);
@@ -61861,7 +61892,7 @@ function toggleDriveQuickRequestItem(domId) {
                 reason,
                 forecast,
                 itemcode: firstNonEmptyValue(matched.itemcode, matched.ITEMCODE, ''),
-                label: parts.length ? `Learned ${reason === 'sheared' ? 'shear' : reason} recovery: ${parts.join(' | ')}` : 'Learned hold recovery profile found.'
+                label: parts.length ? `Learned ${reasonLabel} recovery: ${parts.join(' | ')}` : 'Learned hold recovery profile found.'
             };
         }
 
@@ -61895,15 +61926,15 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getShearRecoveryDisplayText(recovery = null) {
-            if (!recovery || typeof recovery !== 'object') return 'Learned shear recovery: not loaded yet';
+            if (!recovery || typeof recovery !== 'object') return 'Learned hold recovery: not loaded yet';
             if (recovery.label && (recovery.forecast || recovery.releaseSampleCount || recovery.reason)) return String(recovery.label);
             const parts = [];
             if (Number.isFinite(Number(recovery.days))) parts.push(`avg ${formatShearDecisionNumber(Number(recovery.days), 1)} days on hold`);
             if (Number.isFinite(Number(recovery.gdd))) parts.push(`${formatShearDecisionNumber(Number(recovery.gdd), 0)} GDD to release`);
             if (recovery.forecast && recovery.forecast.date) parts.push(`est off hold ${formatWeatherHoldDate(recovery.forecast.date)}`);
             if (Number(recovery.releaseSampleCount || recovery.sampleCount || 0) > 0) parts.push(`${formatShearDecisionNumber(Number(recovery.releaseSampleCount || recovery.sampleCount), 0)} cycles`);
-            if (parts.length) return `Learned shear recovery: ${parts.join(' | ')}`;
-            return String(recovery.label || 'Learned shear recovery: no profile yet');
+            if (parts.length) return `Learned ${getHoldRecoveryReasonLabel(recovery.reason)} recovery: ${parts.join(' | ')}`;
+            return String(recovery.label || 'Learned hold recovery: no profile yet');
         }
 
         function renderShearRecoverySummaryHtml(recovery = null, extraClass = '') {

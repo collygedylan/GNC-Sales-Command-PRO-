@@ -154,6 +154,7 @@ as $$
   select case
     when lower(coalesce(p_reason, '')) ~ '(aphid|mite|scale|thrip|snail|caterpillar|insect|bug|pest|borer|beetle)' then 'pest'
     when lower(coalesce(p_reason, '')) ~ '(fung|disease|leaf spot|phytophthora|rhizoctonia|botrytis|canker|mildew|rot|rust|anthracnose|blight|phomopsis|sclerotinia)' then 'fungal_disease'
+    when lower(coalesce(p_reason, '')) ~ '(size|sizing|spec|height|too small|too short|too tall|caliper|under[ -]?size|undersized|not ready|not saleable|not ready to ship)' then 'size'
     when lower(coalesce(p_reason, '')) ~ '(leaf quality|leaf|foliar|chlorosis|yellow|necrosis|spotting|burn)' then 'leaf_quality'
     when lower(coalesce(p_reason, '')) ~ '(shear|sheared|trim|cutback|cut back|prune|pruned)' then 'sheared'
     when lower(coalesce(p_reason, '')) ~ '(freeze|frost|cold|heat|hail|weather|wind|drought|wet)' then 'weather_stress'
@@ -246,7 +247,10 @@ begin
     'H' as holdstopcode,
     nullif(trim(s.holdstopreason), '') as holdstopreason,
     nullif(trim(s.holdstopbegindate_raw), '') as holdstopbegindate_raw,
-    coalesce(nullif(trim(s.hold_reason_category), ''), public.v2_classify_hold_reason(s.holdstopreason)) as hold_reason_category,
+    case
+      when nullif(trim(coalesce(s.holdstopreason, '')), '') is not null then public.v2_classify_hold_reason(s.holdstopreason)
+      else coalesce(nullif(trim(s.hold_reason_category), ''), 'unknown')
+    end as hold_reason_category,
     'park_hill_ok' as weather_station_key,
     now() as created_at,
     now() as updated_at
@@ -349,7 +353,10 @@ begin
     nullif(trim(c.blockalpha), '') as blockalpha,
     nullif(trim(c.salesyear), '') as salesyear,
     nullif(trim(c.holdstopreason), '') as holdstopreason,
-    coalesce(nullif(trim(c.hold_reason_category), ''), public.v2_classify_hold_reason(c.holdstopreason)) as hold_reason_category,
+    case
+      when nullif(trim(coalesce(c.holdstopreason, '')), '') is not null then public.v2_classify_hold_reason(c.holdstopreason)
+      else coalesce(nullif(trim(c.hold_reason_category), ''), 'unknown')
+    end as hold_reason_category,
     c.report_date as hold_started_on,
     c.hold_released_on,
     c.hold_days,
@@ -604,7 +611,7 @@ $$;
 create or replace function public.v2_refresh_hold_learning_from_drive_around_rows_range(
   p_start_date date,
   p_end_date date,
-  p_limit integer default 15000
+  p_limit integer default 100000
 )
 returns table(hold_events_upserted integer, release_cycles_upserted integer)
 language plpgsql
@@ -614,13 +621,20 @@ as $$
 declare
   event_count integer := 0;
   cycle_count integer := 0;
-  safe_start date := coalesce(p_start_date, current_date - 180);
-  safe_end date := coalesce(p_end_date, current_date);
-  safe_limit integer := greatest(1, least(coalesce(p_limit, 15000), 50000));
+  safe_start date;
+  safe_end date;
+  safe_limit integer := greatest(1, least(coalesce(p_limit, 100000), 500000));
 begin
   if to_regclass('public.v2_drive_around_report_rows') is null then
     raise exception 'public.v2_drive_around_report_rows does not exist. Run drive_around_report_rows_migration.sql and import Drive Around history first.';
   end if;
+
+  select
+    coalesce(p_start_date, min(report_date), current_date),
+    coalesce(p_end_date, max(report_date), current_date)
+  into safe_start, safe_end
+  from public.v2_drive_around_report_rows
+  where report_date is not null;
 
   if safe_start > safe_end then
     raise exception 'Start date % must be on or before end date %.', safe_start, safe_end;
@@ -707,7 +721,10 @@ begin
     'H' as holdstopcode,
     nullif(trim(s.holdstopreason), '') as holdstopreason,
     nullif(trim(s.holdstopbegindate_raw), '') as holdstopbegindate_raw,
-    coalesce(nullif(trim(s.hold_reason_category), ''), public.v2_classify_hold_reason(s.holdstopreason)) as hold_reason_category,
+    case
+      when nullif(trim(coalesce(s.holdstopreason, '')), '') is not null then public.v2_classify_hold_reason(s.holdstopreason)
+      else coalesce(nullif(trim(s.hold_reason_category), ''), 'unknown')
+    end as hold_reason_category,
     'park_hill_ok' as weather_station_key,
     now() as created_at,
     now() as updated_at
@@ -819,7 +836,10 @@ begin
     nullif(trim(c.blockalpha), '') as blockalpha,
     nullif(trim(c.salesyear), '') as salesyear,
     nullif(trim(c.holdstopreason), '') as holdstopreason,
-    coalesce(nullif(trim(c.hold_reason_category), ''), public.v2_classify_hold_reason(c.holdstopreason)) as hold_reason_category,
+    case
+      when nullif(trim(coalesce(c.holdstopreason, '')), '') is not null then public.v2_classify_hold_reason(c.holdstopreason)
+      else coalesce(nullif(trim(c.hold_reason_category), ''), 'unknown')
+    end as hold_reason_category,
     c.report_date as hold_started_on,
     c.hold_released_on,
     c.hold_days,
@@ -891,19 +911,27 @@ begin
 end;
 $$;
 
-create or replace function public.v2_refresh_hold_learning_from_drive_around_rows(p_limit integer default 15000)
+create or replace function public.v2_refresh_hold_learning_from_drive_around_rows(p_limit integer default 100000)
 returns table(hold_events_upserted integer, release_cycles_upserted integer)
 language plpgsql
 security definer
 set search_path = public, extensions
 as $$
+declare
+  safe_start date;
+  safe_end date;
 begin
+  select min(report_date), max(report_date)
+  into safe_start, safe_end
+  from public.v2_drive_around_report_rows
+  where report_date is not null;
+
   return query
   select *
   from public.v2_refresh_hold_learning_from_drive_around_rows_range(
-    (current_date - interval '180 days')::date,
-    current_date,
-    least(coalesce(p_limit, 15000), 15000)
+    safe_start,
+    safe_end,
+    greatest(1, least(coalesce(p_limit, 100000), 500000))
   );
 end;
 $$;
@@ -957,16 +985,14 @@ exception
   when undefined_object then null;
 end $$;
 
--- Dashboard-safe starter refresh. This processes recent history only.
--- For older history, run the date-range examples below one at a time.
+-- Dashboard-safe starter refresh. This processes all imported Drive Around
+-- history by default so old hold starts can build release-cycle learning.
 select *
-from public.v2_refresh_hold_learning_from_drive_around_rows(15000);
+from public.v2_refresh_hold_learning_from_drive_around_rows(100000);
 
 -- Optional historical backfill examples. Run one line at a time if you need
--- to fill older years through the Supabase SQL Editor timeout window.
+-- smaller chunks through the Supabase SQL Editor timeout window.
 --
--- select * from public.v2_refresh_hold_learning_from_drive_around_rows_range('2026-01-01', '2026-05-18', 15000);
--- select * from public.v2_refresh_hold_learning_from_drive_around_rows_range('2025-07-01', '2025-12-31', 15000);
--- select * from public.v2_refresh_hold_learning_from_drive_around_rows_range('2025-01-01', '2025-06-30', 15000);
--- select * from public.v2_refresh_hold_learning_from_drive_around_rows_range('2024-07-01', '2024-12-31', 15000);
--- select * from public.v2_refresh_hold_learning_from_drive_around_rows_range('2024-01-01', '2024-06-30', 15000);
+-- select * from public.v2_refresh_hold_learning_from_drive_around_rows_range('2026-01-01', '2026-12-31', 100000);
+-- select * from public.v2_refresh_hold_learning_from_drive_around_rows_range('2024-01-01', '2025-12-31', 100000);
+-- select * from public.v2_refresh_hold_learning_from_drive_around_rows_range('2020-01-01', '2023-12-31', 100000);
