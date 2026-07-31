@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.31.02';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.31.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -536,14 +536,14 @@ body.ios-device .manager-crop-roll-review-filter-shell{
 .app-av-catalog-meta{display:flex;flex-wrap:wrap;gap:.38rem;color:#475569;font-size:.68rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
 .app-av-catalog-meta span{display:inline-flex;align-items:center;min-height:1.55rem;border-radius:999px;border:1px solid #dbeafe;background:#eff6ff;padding:.22rem .62rem;color:#1d4ed8}
 .app-av-catalog-meta span:nth-child(2){border-color:#a7f3d0;background:#ecfdf5;color:#047857}
-.app-av-catalog-highlight{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.6rem;align-items:start;border-radius:.95rem;border:1px solid #a7f3d0;background:#fff;padding:.72rem .82rem;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
+.app-av-catalog-highlight{display:grid;grid-template-columns:minmax(0,1fr) minmax(7.2rem,auto);gap:.58rem;align-items:stretch;border-radius:.95rem;border:1px solid #a7f3d0;background:#fff;padding:.62rem .68rem;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
 .app-av-catalog-stock-block{min-width:0}
-.app-av-catalog-stock-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem .75rem;align-items:end;min-width:0}
+.app-av-catalog-stock-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.42rem;align-items:stretch;min-width:0;height:100%}
 .app-av-catalog-stock-grid--with-season{grid-template-columns:repeat(4,minmax(0,1fr))}
-.app-av-catalog-stock-stat{min-width:0}
-.app-av-catalog-stock-label{display:block;color:#007a4d;font-size:.55rem;font-weight:900;letter-spacing:.13em;text-transform:uppercase;line-height:1.05;overflow-wrap:anywhere}
-.app-av-catalog-stock-value{display:block;margin-top:.24rem;color:#0f172a;font-size:clamp(1.18rem,2.35vw,1.95rem);font-weight:900;line-height:.96;overflow-wrap:anywhere}
-.app-av-catalog-stock-stat--open .app-av-catalog-stock-value{font-size:clamp(1.55rem,3.2vw,2.4rem)}
+.app-av-catalog-stock-stat{min-width:0;display:flex;min-height:4.1rem;flex-direction:column;align-items:center;justify-content:center;border-radius:.72rem;border:1px solid #d1fae5;background:linear-gradient(180deg,#fbfffd 0%,#f0fdf4 100%);padding:.48rem .44rem;text-align:center}
+.app-av-catalog-stock-label{display:flex;min-height:1.25rem;align-items:flex-end;justify-content:center;color:#007a4d;font-size:.5rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;line-height:1.06;overflow-wrap:anywhere;text-align:center}
+.app-av-catalog-stock-value{display:block;margin-top:.28rem;color:#0f172a;font-size:clamp(1.45rem,2.4vw,2.05rem);font-weight:900;font-variant-numeric:tabular-nums;line-height:.96;overflow-wrap:anywhere;text-align:center}
+.app-av-catalog-stock-stat--open .app-av-catalog-stock-value{font-size:clamp(1.45rem,2.4vw,2.05rem)}
 .app-av-catalog-stock-stat--season .app-av-catalog-stock-label,.app-av-catalog-stock-stat--season .app-av-catalog-stock-value{color:#0369a1}
 .app-av-catalog-metric-row{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem}
 .app-av-catalog-metric-pill{display:inline-flex;max-width:100%;align-items:center;border-radius:999px;padding:.28rem .62rem;font-size:.58rem;font-weight:900;letter-spacing:.1em;line-height:1;text-transform:uppercase;white-space:nowrap}
@@ -554,7 +554,7 @@ body.ios-device .manager-crop-roll-review-filter-shell{
 .app-av-catalog-metric-pill--loc{border:1px solid #a7f3d0;background:#ecfdf5;color:#047857}
 .app-av-catalog-metric-pill--loc .app-av-catalog-metric-value{color:#064e3b}
 .app-av-catalog-metric-separator{padding:0 .22rem;opacity:.45}
-.app-av-catalog-price{align-self:start;justify-self:end;text-align:right;color:#0f172a}
+.app-av-catalog-price{align-self:stretch;justify-self:end;display:flex;min-width:7.2rem;flex-direction:column;justify-content:center;border-radius:.72rem;border:1px solid #e2e8f0;background:#f8fafc;padding:.48rem .6rem;text-align:right;color:#0f172a}
 .app-av-catalog-price-label{display:block;color:#64748b;font-size:.52rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase;line-height:1}
 .app-av-catalog-price-value{display:block;margin-top:.18rem;color:#007a4d;font-size:clamp(1.05rem,2vw,1.55rem);font-weight:900;line-height:1}
 .app-av-catalog-photo-wrap{border-radius:1rem;border:1px solid #b7f3d6;background:#fff;overflow:hidden;box-shadow:0 12px 28px rgba(15,23,42,.10)}
@@ -603,16 +603,18 @@ body.ios-device .manager-crop-roll-review-filter-shell{
     .app-av-catalog-title{font-size:1.26rem;line-height:1.03}
     .app-av-catalog-meta{gap:.24rem;font-size:.52rem}
     .app-av-catalog-meta span{min-height:1.22rem;padding:.12rem .4rem}
-    .app-av-catalog-highlight{grid-template-columns:1fr auto;gap:.44rem;padding:.52rem .58rem;border-radius:.82rem}
-    .app-av-catalog-stock-grid{gap:.42rem .55rem}
+    .app-av-catalog-highlight{grid-template-columns:1fr;gap:.48rem;padding:.52rem .58rem;border-radius:.82rem}
+    .app-av-catalog-stock-grid{gap:.36rem}
     .app-av-catalog-stock-grid--with-season{grid-template-columns:repeat(2,minmax(0,1fr))}
-    .app-av-catalog-stock-label{font-size:.48rem;letter-spacing:.1em}
-    .app-av-catalog-stock-value{font-size:1.05rem}
-    .app-av-catalog-stock-stat--open .app-av-catalog-stock-value{font-size:1.45rem}
-    .app-av-catalog-price-value{font-size:1rem}
+    .app-av-catalog-stock-stat{min-height:3.45rem;padding:.38rem .3rem;border-radius:.62rem}
+    .app-av-catalog-stock-label{min-height:1.1rem;font-size:.42rem;letter-spacing:.08em}
+    .app-av-catalog-stock-value{font-size:1.18rem}
+    .app-av-catalog-stock-stat--open .app-av-catalog-stock-value{font-size:1.18rem}
+    .app-av-catalog-price{width:100%;min-width:0;align-items:flex-start;padding:.44rem .52rem;text-align:left}
+    .app-av-catalog-price-value{font-size:1.15rem}
     .app-av-catalog-metric-row{gap:.25rem}
     .app-av-catalog-metric-pill{padding:.24rem .46rem;font-size:.5rem;letter-spacing:.08em}
-    .app-av-catalog-price{justify-self:end;text-align:right}
+    .app-av-catalog-price{justify-self:stretch}
     .app-av-catalog-note{padding:.52rem .58rem;border-radius:.78rem}
     .app-av-catalog-note-text{font-size:.74rem;line-height:1.16}
     .app-av-primary-action,.app-av-secondary-action{min-height:2.45rem}
@@ -5100,7 +5102,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.31.02').trim() || 'V2026.07.31.02';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.31.03').trim() || 'V2026.07.31.03';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6555,7 +6557,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.31.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.31.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24540,7 +24542,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.31.02').trim() || 'V2026.07.31.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.31.03').trim() || 'V2026.07.31.03';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
