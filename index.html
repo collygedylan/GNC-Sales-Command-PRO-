@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.30.19';
+        window.__APP_SHELL_VERSION__ = 'V2026.07.30.20';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5008,7 +5008,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.19').trim() || 'V2026.07.30.19';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.30.20').trim() || 'V2026.07.30.20';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6463,7 +6463,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.19';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.30.20';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24448,7 +24448,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.19').trim() || 'V2026.07.30.19';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.30.20').trim() || 'V2026.07.30.20';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -51292,11 +51292,12 @@ function toggleDriveQuickRequestItem(domId) {
             let delayedReplyResult = null;
             const wantsCompletionReply = !!safeOptions.queueDelayedCompletionReply || !!safeOptions.sendImmediateCompletionReply;
             const canSendCompletionReply = wantsCompletionReply && (!!safeOptions.skipSummaryNotification || (summaryEmailResult && summaryEmailResult.ok));
-            if (canSendCompletionReply) {
+            const shouldSendCompletionFallback = wantsCompletionReply && !canSendCompletionReply && safeOptions.sendCompletionWhenSummaryFails !== false;
+            if (canSendCompletionReply || shouldSendCompletionFallback) {
                 const completionItemsCount = Number(safeOptions.completionItemsCount) || itemsCount;
                 delayedReplyResult = await sendEmailNotification('request_complete', folderId, repName, customer, completionItemsCount, completionDetails || {}, {
                     suppressFailureToast: !!safeOptions.suppressDelayedReplyFailureToast,
-                    delayMs: safeOptions.sendImmediateCompletionReply ? 0 : Math.max(REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS, Number(safeOptions.delayMs) || 0)
+                    delayMs: (safeOptions.sendImmediateCompletionReply || shouldSendCompletionFallback) ? 0 : Math.max(REQUEST_AUTO_COMPLETE_REPLY_DELAY_MS, Number(safeOptions.delayMs) || 0)
                 });
                 if (!delayedReplyResult || delayedReplyResult.ok !== false) {
                     sendPushNotification('request_complete', folderId, repName, customer, completionItemsCount);
@@ -116546,6 +116547,11 @@ C.14.043 C.15.000
                         app_tab_assignment:sourceAppTabAssignment||null,
                         master_app_tab_assignment:sourceAppTabAssignment||null
                     };
+                    if (autoCompleteUser) {
+                        newReq.completed_by_username = autoCompleteUser.username || currentUser || null;
+                        newReq.completed_by_display = autoCompleteUser.display || currentUserDisplay || currentUser || null;
+                        newReq.completed_by_email = autoCompleteUser.email || null;
+                    }
                     if (requestNote) newReq.request_note = requestNote;
                     insertPayloads.push(newReq);
                     optimisticIds.push(newReqId);
