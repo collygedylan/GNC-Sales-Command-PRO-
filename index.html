@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.01.01';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.01.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5152,7 +5152,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.01.01').trim() || 'V2026.08.01.01';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.01.02').trim() || 'V2026.08.01.02';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -5262,6 +5262,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div id="home-tile-walkie" onclick="switchView('walkie')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer hidden"><i class="ph-bold ph-radio text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Walkie</span></div>
                                 <div id="home-tile-sales" onclick="switchView('sales')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-handshake text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales</span></div>
                                 <div id="home-tile-managers" onclick="switchView('managers')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-users-three text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Managers</span></div>
+                                <div id="home-tile-hl-po" onclick="switchView('hl-po')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-file-pdf text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">HL PO</span></div>
                                 <div id="home-tile-building" onclick="switchView('building')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-hammer text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Building</span></div>
                                 <div id="home-tile-qc" onclick="switchView('qc')" class="bg-white border-2 border-orange-600 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-shield-check text-3xl text-orange-700"></i><span class="font-bold text-sm text-orange-700 uppercase tracking-wide">QC</span></div>
                                 <div id="home-tile-reserves" onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
@@ -5284,6 +5285,9 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             </div>
                         </div>
                     </div>
+                </div>
+                <div id="view-hl-po" class="hidden">
+                    <div id="hl-po-content" class="space-y-4"></div>
                 </div>
                 <div id="view-crop-roll" class="hidden">
                     <div id="crop-roll-sy27-search-container" class="sticky-search relative mb-2 drive-search-static">
@@ -6607,7 +6611,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.01.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.01.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6647,9 +6651,9 @@ const FOREGROUND_INVENTORY_POLL_MS = 30000;
 const FOREGROUND_INVENTORY_FULL_MAX_AGE_MS = 30000;
 const FOREGROUND_INVENTORY_INITIAL_MAX_AGE_MS = 15000;
 const FORCE_VIEW_ENTER_REFRESH_MIN_INTERVAL_MS = 10000;
-const FAST_FOREGROUND_DATA_VIEW_IDS = new Set(['drive', 'crop-roll', 'av', 'reserves', 'tasks', 'request', 'managers', 'docks', 'sales-office', 'moves', 'review', 'move-up', 'low-stock', 'advertisement', 'reports', 'grower', 'pest-management', 'shear-list', 'sales-inventory', 'production-workflow']);
+const FAST_FOREGROUND_DATA_VIEW_IDS = new Set(['drive', 'crop-roll', 'av', 'reserves', 'tasks', 'request', 'managers', 'hl-po', 'docks', 'sales-office', 'moves', 'review', 'move-up', 'low-stock', 'advertisement', 'reports', 'grower', 'pest-management', 'shear-list', 'sales-inventory', 'production-workflow']);
 const FAST_FOREGROUND_DATASET_KEYS = new Set(['master', 'cropRollDrive', 'avOpen', 'avHotPriceKeys', 'reserves', 'customerRepMap', 'cav', 'cavAvBlankKeys', 'soc', 'salesOffice', 'flyerRows', 'flyerHistory', 'mlJobs', 'growerScoutReports', 'growerScoutAssets', 'warehouseAssignedItems', 'avNotes']);
-const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'reserves', 'tasks', 'request', 'managers', 'docks', 'sales-office', 'moves', 'review', 'move-up', 'low-stock', 'advertisement', 'reports', 'grower', 'pest-management', 'shear-list', 'sales-inventory', 'production-workflow']);
+const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'reserves', 'tasks', 'request', 'managers', 'hl-po', 'docks', 'sales-office', 'moves', 'review', 'move-up', 'low-stock', 'advertisement', 'reports', 'grower', 'pest-management', 'shear-list', 'sales-inventory', 'production-workflow']);
         const APP_LIVE_EVENT_VIEW_AREAS = Object.freeze({
             home: ['request', 'sales-office', 'tasks', 'diagnostics', 'grower', 'production', 'sales-inventory', 'shear-list', 'take-back', 'customer-rep-map'],
             drive: ['inventory', 'av', 'reserves', 'request', 'sales-office', 'customer-rep-map'],
@@ -19950,6 +19954,7 @@ bindFastInvokeById('footer-request-btn', 'switchView', ['request'], 'Que');
 bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 'Communication');
 bindFastInvokeById('footer-walkie-btn', 'switchView', ['walkie'], 'Walkie');
 bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
+            bindFastInvokeById('home-tile-hl-po', 'switchView', ['hl-po'], 'HL PO');
             bindFastInvokeById('inventory-open-tasks', 'switchView', ['tasks'], 'Task');
             bindFastInvokeById('inventory-open-drive', 'switchView', ['drive'], 'Drive Mode');
             bindFastInvokeById('inventory-open-request', 'switchView', ['request'], 'Que');
@@ -24592,7 +24597,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.01.01').trim() || 'V2026.08.01.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.01.02').trim() || 'V2026.08.01.02';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -25322,6 +25327,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const AMAZON_HEADER_META = {
             home: { eyebrow: 'Current View', title: 'Home' },
             managers: { eyebrow: 'Managers', title: 'Managers' },
+            'hl-po': { eyebrow: 'PO Reports', title: 'HL PO' },
             av: { eyebrow: 'Amazon Search', title: 'AV Stock' },
             reserves: { eyebrow: 'Amazon Search', title: 'Reserves' },
             docks: { eyebrow: 'Amazon Search', title: 'Docks' },
@@ -25678,16 +25684,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
         }
 
-        function runGoogleHlPoScriptTrigger() {
-            return runGoogleAppsScriptTrigger({
-                job: 'hl_po',
-                trigger: 'hl_po_module',
-                startingToast: 'Starting HL PO report...',
-                initialStageOrder: ['hl_po'],
-                initialStageLabel: 'HL PO'
-            });
-        }
-
         async function runGoogleAppsScriptTrigger(options = {}) {
             if (!isDylanCollygeUser() || window.googleScriptRunInFlight) return false;
             const safeOptions = options && typeof options === 'object' ? options : {};
@@ -25970,6 +25966,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         const VIEW_LOAD_UI = {
             managers: { container: 'managers-content' },
+            'hl-po': { container: 'hl-po-content' },
             'crop-roll': { container: 'crop-roll-content' },
             building: { container: 'building-content', crumb: 'building-crumb' },
             drive: { container: 'drive-content', crumb: 'drive-crumb' },
@@ -47726,6 +47723,7 @@ function toggleDriveQuickRequestItem(domId) {
             'shear-list': [],
             sales: ['drawer-sales-btn', 'home-tile-sales', 'footer-sales-btn'],
             managers: ['drawer-managers-btn', 'home-tile-managers', 'footer-managers-btn'],
+            'hl-po': ['home-tile-hl-po'],
             building: ['drawer-building-btn', 'home-tile-building'],
             qc: ['drawer-qc-btn', 'home-tile-qc'],
             av: ['drawer-av-btn', 'home-tile-av'],
@@ -47856,6 +47854,7 @@ function toggleDriveQuickRequestItem(domId) {
                 allowedViews.add('shear-list');
             }
             if (isStrictDylanCollygeUser()) allowedViews.add('disease-pest');
+            if (isExactDylanCollygeUser(userOverride)) allowedViews.add('hl-po');
             return { isAdmin, isRep, isSalesRole, isQcSupervisor, isQc, isCsr, isForeman, isGrower, isEval, isDivision, isPrivilegedManager, isEvalAdminOverride, isTakeBackOnly, isRequestRepScopedUser, allowedViews };
         }
 
@@ -47866,6 +47865,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (targetView === 'diagnostics') return isStrictDylanCollygeUser();
             if (targetView === 'pest-management') return isStrictDylanCollygeUser();
             if (targetView === 'disease-pest') return isStrictDylanCollygeUser();
+            if (targetView === 'hl-po') return isExactDylanCollygeUser();
             if (targetView === 'crop-roll') return canViewCropRollHome();
             const access = getRoleAccessState();
             if (targetView === 'moves') return canUseMovesModule() || access.allowedViews.has('moves');
@@ -51534,7 +51534,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (canAccessView(target)) switchView(target);
         }
 
-        const TRACKED_VIEW_IDS = ['drive','crop-roll','tasks','review','move-up','advertisement','diagnostics','grower','pest-management','communication','department-calendar','sales','managers','building','qc','production','production-workflow','weather-hold','shear-list','sales-inventory','disease-pest','office','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
+        const TRACKED_VIEW_IDS = ['drive','crop-roll','tasks','review','move-up','advertisement','diagnostics','grower','pest-management','communication','department-calendar','sales','managers','hl-po','building','qc','production','production-workflow','weather-hold','shear-list','sales-inventory','disease-pest','office','sales-office','moves','reports','low-stock','docks','take-back','request','chat','reserves','av','hours'];
 
         function getAffectedViewsForDatasets(changedKeys = []) {
             const changedSet = new Set((changedKeys || []).filter(Boolean));
@@ -63786,6 +63786,8 @@ function toggleDriveQuickRequestItem(domId) {
                 renderRequest();
             } else if (viewId === 'managers') {
                 renderManagers();
+            } else if (viewId === 'hl-po') {
+                renderHlPoReportView();
             } else if (viewId === 'building') {
                 renderBuilding();
             } else if (viewId === 'sales') {
@@ -110301,7 +110303,6 @@ C.14.043 C.15.000
             if (access.canViewCropRoll) tabs.push({ id: CROP_ROLL_HOME_TAB, label: 'Crop Roll' });
             if (access.canViewMoves) tabs.push({ id: 'moves', label: 'Move' });
             if (access.canManageSeasonSettings) tabs.push({ id: APP_SEASON_SETTINGS_VIEW, label: 'Season' });
-            if (isExactDylanCollygeUser()) tabs.push({ id: 'hl_po', label: 'HL PO Report', actionName: 'runGoogleHlPoScriptTrigger', actionArgs: [], kicker: 'Run Report' });
             if (access.canManageAvBlanksPhotoBypass) tabs.push({ id: AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW, label: 'AV Blanks' });
             if (access.canViewInventoryTransactions) tabs.push({ id: INVENTORY_TRANSACTION_HISTORY_VIEW, label: 'Transaction History' });
             return tabs;
@@ -110334,7 +110335,6 @@ C.14.043 C.15.000
             if (safeTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW) return { label: 'AV Blanks', description: 'Allow selected users to finish AV Blanks with AV Note only.', icon: 'ph-note-pencil' };
             if (safeTab === INVENTORY_TRANSACTION_HISTORY_VIEW) return { label: 'Transaction History', description: 'Look up who made QTY, Transfer, and Reclass changes.', icon: 'ph-clock-counter-clockwise' };
             if (safeTab === 'productivity') return { label: 'Productivity', description: 'Review completed work by user and date.', icon: 'ph-chart-line-up' };
-            if (safeTab === 'hl_po') return { label: 'HL PO Report', description: 'Run the HL PO report and upload Quantity Summary rows to Supabase.', icon: 'ph-file-pdf' };
             if (safeTab === SHEAR_APPROVAL_VIEW) return { label: 'Shear Approvals', description: 'Approve explicit Add To Shear List requests before they enter Que.', icon: 'ph-scissors' };
             if (safeTab === NCR_APPROVAL_NEW_CROP_VIEW) return { label: 'NCR Approvals', description: 'Approve future season new crop release rows.', icon: 'ph-seal-check' };
             if (safeTab === NOT_ON_INVENTORY_APPROVAL_VIEW) return { label: 'Not On Inventory', description: 'Review rows flagged outside inventory.', icon: 'ph-clipboard-text' };
@@ -112489,6 +112489,230 @@ C.14.043 C.15.000
             else html = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No manager tools are available for this login.</div>';
             container.innerHTML = html;
             syncManagersHeaderChrome();
+        }
+
+        const HL_PO_REPORT_TABLE = 'v2_hl_po';
+        const HL_PO_REPORT_PAGE_SIZE = 1000;
+        const HL_PO_REPORT_MAX_ROWS = 12000;
+        let hlPoReportState = {
+            rows: [],
+            loaded: false,
+            loading: false,
+            error: '',
+            promise: null,
+            lastLoadedAt: ''
+        };
+
+        function canViewHlPoHomeModule(userOverride = '') {
+            return isExactDylanCollygeUser(userOverride);
+        }
+
+        function getHlPoRowValue(row = {}, ...keys) {
+            if (!row || typeof row !== 'object') return '';
+            for (const key of keys) {
+                const directKey = String(key || '').trim();
+                if (!directKey) continue;
+                if (row[directKey] != null && String(row[directKey]).trim() !== '') return row[directKey];
+                const lowerKey = directKey.toLowerCase();
+                if (row[lowerKey] != null && String(row[lowerKey]).trim() !== '') return row[lowerKey];
+                const upperKey = directKey.toUpperCase();
+                if (row[upperKey] != null && String(row[upperKey]).trim() !== '') return row[upperKey];
+            }
+            return '';
+        }
+
+        function formatHlPoNumber(value = '') {
+            const raw = String(value == null ? '' : value).trim();
+            if (!raw) return '-';
+            const num = Number(raw.replace(/,/g, ''));
+            if (!Number.isFinite(num)) return raw;
+            return Math.round(num).toLocaleString();
+        }
+
+        function formatHlPoDate(value = '') {
+            const raw = String(value || '').trim();
+            if (!raw) return 'No report date';
+            const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (match) return `${match[2]}/${match[3]}/${match[1]}`;
+            const date = new Date(raw);
+            if (!Number.isNaN(date.getTime())) return date.toLocaleDateString();
+            return raw;
+        }
+
+        function getLatestHlPoReportDate(rows = hlPoReportState.rows) {
+            const safeRows = Array.isArray(rows) ? rows : [];
+            return String(getHlPoRowValue(safeRows[0] || {}, 'report_date') || '').trim();
+        }
+
+        function getLatestHlPoRows() {
+            const rows = Array.isArray(hlPoReportState.rows) ? hlPoReportState.rows : [];
+            const latestDate = getLatestHlPoReportDate(rows);
+            const filteredRows = latestDate
+                ? rows.filter((row) => String(getHlPoRowValue(row, 'report_date') || '').trim() === latestDate)
+                : rows;
+            return filteredRows.slice().sort((a, b) => {
+                const rowA = Number(getHlPoRowValue(a, 'row_index', 'ROW_INDEX') || 0);
+                const rowB = Number(getHlPoRowValue(b, 'row_index', 'ROW_INDEX') || 0);
+                if (rowA !== rowB) return rowA - rowB;
+                return String(getHlPoRowValue(a, 'itemcode', 'ITEMCODE') || '').localeCompare(String(getHlPoRowValue(b, 'itemcode', 'ITEMCODE') || ''), undefined, { sensitivity: 'base' });
+            });
+        }
+
+        async function fetchHlPoReportRowsFromSupabase() {
+            const allRows = [];
+            let offset = 0;
+            const query = 'select=*&order=report_date.desc,row_index.asc,id.asc';
+            while (offset < HL_PO_REPORT_MAX_ROWS) {
+                const page = await fetchSupabasePage(HL_PO_REPORT_TABLE, query, HL_PO_REPORT_PAGE_SIZE, offset);
+                const rows = Array.isArray(page) ? page : [];
+                allRows.push(...rows);
+                if (rows.length < HL_PO_REPORT_PAGE_SIZE) break;
+                offset += HL_PO_REPORT_PAGE_SIZE;
+                await yieldToUiFrame();
+            }
+            return allRows;
+        }
+
+        function refreshHlPoReportRows(force = true) {
+            loadHlPoReportRows(!!force);
+            return false;
+        }
+
+        async function loadHlPoReportRows(force = false) {
+            if (!canViewHlPoHomeModule()) return [];
+            const state = hlPoReportState;
+            if (state.loading) return state.promise || [];
+            if (!force && state.loaded) return state.rows;
+            state.loading = true;
+            state.error = '';
+            state.promise = fetchHlPoReportRowsFromSupabase()
+                .then((rows) => {
+                    state.rows = Array.isArray(rows) ? rows : [];
+                    state.loaded = true;
+                    state.error = '';
+                    state.lastLoadedAt = new Date().toISOString();
+                    return state.rows;
+                })
+                .catch((error) => {
+                    state.rows = [];
+                    state.loaded = true;
+                    state.error = getFriendlyBackendErrorMessage(error, 'Could not load HL PO rows from v2_hl_po.');
+                    return [];
+                })
+                .finally(() => {
+                    state.loading = false;
+                    state.promise = null;
+                    if (getCurrentVisibleViewId() === 'hl-po') renderHlPoReportView();
+                });
+            if (getCurrentVisibleViewId() === 'hl-po') renderHlPoReportView();
+            return state.promise;
+        }
+
+        function renderHlPoMetric(label = '', value = '', accentClass = 'text-slate-950') {
+            return `<div class="rounded-2xl border border-emerald-100 bg-white px-4 py-3 shadow-sm">
+                <div class="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">${escapeHtml(label)}</div>
+                <div class="mt-1 break-words text-xl font-black ${accentClass}">${escapeHtml(String(value || '-'))}</div>
+            </div>`;
+        }
+
+        function renderHlPoReportCard(row = {}) {
+            const itemcode = getHlPoRowValue(row, 'itemcode', 'ITEMCODE');
+            const commonname = getHlPoRowValue(row, 'commonname', 'COMMONNAME');
+            const contsize = getHlPoRowValue(row, 'contsize', 'CONTSIZE');
+            const locationcode = getHlPoRowValue(row, 'locationcode', 'LOCATIONCODE');
+            const priority = getHlPoRowValue(row, 'priority', 'PRIORITY');
+            const lotcode = getHlPoRowValue(row, 'lotcode', 'LOTCODE');
+            const ordered = getHlPoRowValue(row, 'total_quantity_ordered', 'Total Quantity Ordered', 'TOTAL_QUANTITY_ORDERED');
+            const onHand = getHlPoRowValue(row, 'ptronhand', 'PTRONHAND');
+            return `<article class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="truncate text-base font-black text-slate-950">${escapeHtml(commonname || 'Unnamed item')}</div>
+                        <div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-blue-600">${escapeHtml(itemcode || '-')} | ${escapeHtml(lotcode || '-')} | ${escapeHtml(locationcode || '-')}</div>
+                    </div>
+                    <span class="shrink-0 rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-[#007a4d]">${escapeHtml(contsize || '-')}</span>
+                </div>
+                <div class="mt-3 grid grid-cols-3 gap-2 text-center">
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 px-2 py-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">Ordered</div><div class="text-lg font-black text-slate-950">${escapeHtml(formatHlPoNumber(ordered))}</div></div>
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 px-2 py-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">PTR OH</div><div class="text-lg font-black text-slate-950">${escapeHtml(formatHlPoNumber(onHand))}</div></div>
+                    <div class="rounded-xl border border-slate-100 bg-slate-50 px-2 py-2"><div class="text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">Priority</div><div class="text-lg font-black text-slate-950">${escapeHtml(priority || '-')}</div></div>
+                </div>
+            </article>`;
+        }
+
+        function renderHlPoReportTable(rows = []) {
+            const headers = ['ITEMCODE', 'COMMONNAME', 'CONTSIZE', 'LOCATIONCODE', 'PRIORITY', 'LOTCODE', 'Total Quantity Ordered', 'PTRONHAND'];
+            const rowHtml = rows.map((row) => {
+                const cells = [
+                    getHlPoRowValue(row, 'itemcode', 'ITEMCODE'),
+                    getHlPoRowValue(row, 'commonname', 'COMMONNAME'),
+                    getHlPoRowValue(row, 'contsize', 'CONTSIZE'),
+                    getHlPoRowValue(row, 'locationcode', 'LOCATIONCODE'),
+                    getHlPoRowValue(row, 'priority', 'PRIORITY'),
+                    getHlPoRowValue(row, 'lotcode', 'LOTCODE'),
+                    formatHlPoNumber(getHlPoRowValue(row, 'total_quantity_ordered', 'Total Quantity Ordered', 'TOTAL_QUANTITY_ORDERED')),
+                    formatHlPoNumber(getHlPoRowValue(row, 'ptronhand', 'PTRONHAND'))
+                ];
+                return `<tr class="border-b border-slate-100 last:border-b-0">${cells.map((cell, index) => `<td class="px-3 py-2 align-top text-[12px] font-bold ${index === 1 ? 'min-w-[14rem] text-slate-900' : 'whitespace-nowrap text-slate-700'}">${escapeHtml(cell || '-')}</td>`).join('')}</tr>`;
+            }).join('');
+            return `<div class="hidden lg:block overflow-auto rounded-2xl border border-emerald-100 bg-white shadow-sm">
+                <table class="min-w-full border-collapse">
+                    <thead class="sticky top-0 z-10 bg-emerald-50 text-left">
+                        <tr>${headers.map((header) => `<th class="whitespace-nowrap px-3 py-3 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">${escapeHtml(header)}</th>`).join('')}</tr>
+                    </thead>
+                    <tbody>${rowHtml}</tbody>
+                </table>
+            </div>`;
+        }
+
+        function renderHlPoReportView() {
+            const container = document.getElementById('hl-po-content');
+            if (!container) return;
+            if (!canViewHlPoHomeModule()) {
+                container.innerHTML = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">HL PO is Dylan-only.</div>';
+                return;
+            }
+            const state = hlPoReportState;
+            if (!state.loaded && !state.loading) {
+                setTimeout(() => loadHlPoReportRows(false), 0);
+            }
+            const latestRows = getLatestHlPoRows();
+            const metaRow = latestRows[0] || state.rows[0] || {};
+            const reportDate = getLatestHlPoReportDate();
+            const sourceFile = getHlPoRowValue(metaRow, 'source_file_name', 'SOURCE_FILE_NAME') || 'No source file yet';
+            const runId = getHlPoRowValue(metaRow, 'run_id', 'RUN_ID') || '-';
+            const summary = latestRows.length
+                ? `${latestRows.length.toLocaleString()} rows from latest report`
+                : 'No rows loaded from v2_hl_po yet';
+            const bodyHtml = state.loading
+                ? '<div class="rounded-2xl border border-emerald-100 bg-white p-8 text-center text-sm font-black text-[#007a4d] shadow-sm">Loading HL PO rows...</div>'
+                : (state.error
+                    ? `<div class="rounded-2xl border border-red-100 bg-red-50 p-6 text-sm font-bold text-red-700 shadow-sm">${escapeHtml(state.error)}</div>`
+                    : (latestRows.length
+                        ? `${renderHlPoReportTable(latestRows)}<div class="space-y-3 lg:hidden">${latestRows.map(renderHlPoReportCard).join('')}</div>`
+                        : `<div class="rounded-2xl border border-dashed border-slate-200 bg-white px-5 py-10 text-center shadow-sm">
+                            <div class="text-lg font-black text-slate-900">No HL PO rows in v2_hl_po yet.</div>
+                            <div class="mx-auto mt-2 max-w-xl text-sm font-semibold text-slate-500">Use the Home tab Run Script button after the updated Apps Script is deployed. That script should save HL PO YYYY-MM-DD and upload the Quantity Summary rows into Supabase.</div>
+                        </div>`));
+            container.innerHTML = `<div class="space-y-4">
+                <div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Dylan Only</div>
+                            <div class="mt-1 text-2xl font-black text-slate-950">HL PO</div>
+                            <div class="mt-1 text-[12px] font-semibold text-slate-500">Reads the latest Quantity Summary rows from v2_hl_po. Run Script from Home is the upload trigger.</div>
+                        </div>
+                        <button type="button" class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-emerald-800 shadow-sm active:scale-95" onclick="return refreshHlPoReportRows(true)"><i class="ph-bold ph-arrows-clockwise align-middle text-sm"></i><span class="ml-1 align-middle">Refresh Data</span></button>
+                    </div>
+                    <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        ${renderHlPoMetric('Status', state.loading ? 'Loading' : summary, 'text-[#007a4d]')}
+                        ${renderHlPoMetric('Report Date', formatHlPoDate(reportDate))}
+                        ${renderHlPoMetric('Source File', sourceFile)}
+                        ${renderHlPoMetric('Run ID', runId)}
+                    </div>
+                </div>
+                ${bodyHtml}
+            </div>`;
         }
 
         function renderHome() {
