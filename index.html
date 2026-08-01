@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.31.07';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.01.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5152,7 +5152,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.31.07').trim() || 'V2026.07.31.07';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.01.01').trim() || 'V2026.08.01.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6607,7 +6607,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.31.07';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.01.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24592,7 +24592,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.31.07').trim() || 'V2026.07.31.07';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.01.01').trim() || 'V2026.08.01.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -110301,6 +110301,7 @@ C.14.043 C.15.000
             if (access.canViewCropRoll) tabs.push({ id: CROP_ROLL_HOME_TAB, label: 'Crop Roll' });
             if (access.canViewMoves) tabs.push({ id: 'moves', label: 'Move' });
             if (access.canManageSeasonSettings) tabs.push({ id: APP_SEASON_SETTINGS_VIEW, label: 'Season' });
+            if (isExactDylanCollygeUser()) tabs.push({ id: 'hl_po', label: 'HL PO Report', actionName: 'runGoogleHlPoScriptTrigger', actionArgs: [], kicker: 'Run Report' });
             if (access.canManageAvBlanksPhotoBypass) tabs.push({ id: AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW, label: 'AV Blanks' });
             if (access.canViewInventoryTransactions) tabs.push({ id: INVENTORY_TRANSACTION_HISTORY_VIEW, label: 'Transaction History' });
             return tabs;
@@ -110315,7 +110316,6 @@ C.14.043 C.15.000
                 .filter((tab) => ![SHEAR_APPROVAL_VIEW, NCR_APPROVAL_NEW_CROP_VIEW].includes(String(tab && tab.id || '').trim().toLowerCase()))
                 .forEach((tab) => options.push(Object.assign({}, tab)));
             if (access.canViewProductivity) options.push({ id: 'productivity', label: 'Productivity' });
-            if (isExactDylanCollygeUser()) options.push({ id: 'hl_po', label: 'HL PO', actionName: 'runGoogleHlPoScriptTrigger', actionArgs: [], kicker: 'Run Report' });
             const seen = new Set();
             return options.filter((option) => {
                 const id = String(option && option.id || '').trim().toLowerCase();
@@ -110334,7 +110334,7 @@ C.14.043 C.15.000
             if (safeTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW) return { label: 'AV Blanks', description: 'Allow selected users to finish AV Blanks with AV Note only.', icon: 'ph-note-pencil' };
             if (safeTab === INVENTORY_TRANSACTION_HISTORY_VIEW) return { label: 'Transaction History', description: 'Look up who made QTY, Transfer, and Reclass changes.', icon: 'ph-clock-counter-clockwise' };
             if (safeTab === 'productivity') return { label: 'Productivity', description: 'Review completed work by user and date.', icon: 'ph-chart-line-up' };
-            if (safeTab === 'hl_po') return { label: 'HL PO', description: 'Run the HL PO report and upload Quantity Summary rows to Supabase.', icon: 'ph-file-pdf' };
+            if (safeTab === 'hl_po') return { label: 'HL PO Report', description: 'Run the HL PO report and upload Quantity Summary rows to Supabase.', icon: 'ph-file-pdf' };
             if (safeTab === SHEAR_APPROVAL_VIEW) return { label: 'Shear Approvals', description: 'Approve explicit Add To Shear List requests before they enter Que.', icon: 'ph-scissors' };
             if (safeTab === NCR_APPROVAL_NEW_CROP_VIEW) return { label: 'NCR Approvals', description: 'Approve future season new crop release rows.', icon: 'ph-seal-check' };
             if (safeTab === NOT_ON_INVENTORY_APPROVAL_VIEW) return { label: 'Not On Inventory', description: 'Review rows flagged outside inventory.', icon: 'ph-clipboard-text' };
