@@ -11405,6 +11405,19 @@ function doPost(e) {
     if (payload.type === 'clear_request_gallery_cache') {
       return jsonOutput_(cleanupRequestGalleryPropertyCache_());
     }
+
+    if (payload.type === 'drivearound_name_preview' || payload.type === 'drivearound_name_cleanup') {
+      const requestedBy = String(payload.requested_by || payload.requestedBy || '').trim().toLowerCase();
+      const allowedRequester = requestedBy === 'dylan_collyge' || requestedBy === 'dylancollyge@agmetricapp.com';
+      if (!allowedRequester) {
+        throw new Error('DriveAround name cleanup is restricted to dylan_collyge.');
+      }
+      const limit = Math.max(1, Math.min(5000, Number(payload.limit) || 0));
+      const result = payload.type === 'drivearound_name_cleanup'
+        ? normalizeDriveAroundProcessedNames(limit || DRIVE_AROUND_CANONICAL_APPLY_LIMIT)
+        : previewNormalizeDriveAroundProcessedNames(limit || DRIVE_AROUND_CANONICAL_PREVIEW_LIMIT);
+      return jsonOutput_(result);
+    }
     
     if (payload.type === 'manual_run') {
       cleanupRequestGalleryPropertyCache_();
