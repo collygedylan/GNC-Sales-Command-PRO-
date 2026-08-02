@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.07.31.08';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.02.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5152,7 +5152,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.07.31.08').trim() || 'V2026.07.31.08';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.02.01').trim() || 'V2026.08.02.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6508,7 +6508,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
         <script id="app-script-source" type="text/plain">
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0";
+        const SUPABASE_KEY = "";
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec";
         const PUSH_SUBSCRIPTIONS_TABLE = 'v2_push_subscriptions';
         const APP_LIVE_EVENTS_TABLE = 'v2_app_live_events';
@@ -6557,7 +6557,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const APP_API_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/app-api`;
         const LEAF_ASSISTANT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/inventory-assistant`;
         const APP_API_DB_WRITE_PROXY_ENABLED = true;
-        const APP_API_DB_WRITE_PROXY_DIRECT_FALLBACK_ENABLED = true;
+        const APP_API_DB_WRITE_PROXY_DIRECT_FALLBACK_ENABLED = false;
         const APP_API_DB_WRITE_PROXY_COOLDOWN_MS = 120000;
         const APP_API_DB_WRITE_PROXY_UNAVAILABLE_STORAGE_KEY = 'gnc_app_api_write_proxy_unavailable_until_v1';
         const PUSH_VAPID_PUBLIC_KEY = 'BAnr5wnptNgeqol-aJzw1eW_4CnuHpQNlvJ3vmo4VGVfuRsHNO5bRZdT-8NN8qUL5bTlUxYrx592fbG26EYjEN4';
@@ -6607,7 +6607,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.07.31.08';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.02.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6624,10 +6624,12 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const APP_SHELL_RUNTIME_BOOTED_AT = Date.now();
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         const IOS_DEVICE_REGEX = /iPad|iPhone|iPod/;
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-            auth: { persistSession: false, autoRefreshToken: false },
-            realtime: { params: { eventsPerSecond: 8 } }
-        });
+        const supabaseClient = (window.supabase && SUPABASE_KEY)
+            ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+                auth: { persistSession: false, autoRefreshToken: false },
+                realtime: { params: { eventsPerSecond: 8 } }
+            })
+            : null;
 const QUOTA_SAFE_REALTIME_MODE = true;
 const QUOTA_SAFE_VISIBLE_POLL_STANDALONE_MS = 240000;
 const QUOTA_SAFE_VISIBLE_POLL_BROWSER_MS = 360000;
@@ -20074,7 +20076,61 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             }
         }
 
+        function getSupabaseRestProxyPayload(url, options = {}) {
+            try {
+                if (SUPABASE_KEY) return null;
+                const parsedUrl = new URL(String(url || ''), window.location.href);
+                const supabaseUrl = new URL(SUPABASE_URL);
+                if (parsedUrl.origin !== supabaseUrl.origin) return null;
+                const restPrefix = '/rest/v1/';
+                if (!parsedUrl.pathname.startsWith(restPrefix)) return null;
+                const table = decodeURIComponent(parsedUrl.pathname.slice(restPrefix.length).split('/')[0] || '').trim();
+                const method = String((options && options.method) || 'GET').trim().toUpperCase() || 'GET';
+                if (!table || !['GET', 'POST', 'PATCH', 'DELETE'].includes(method)) return null;
+                let body = null;
+                if (method !== 'GET' && options && Object.prototype.hasOwnProperty.call(options, 'body')) {
+                    const rawBody = options.body;
+                    if (typeof rawBody === 'string') {
+                        try { body = rawBody ? JSON.parse(rawBody) : null; }
+                        catch (error) { body = rawBody; }
+                    } else {
+                        body = rawBody === undefined ? null : rawBody;
+                    }
+                }
+                return {
+                    action: 'db',
+                    table,
+                    method,
+                    query: parsedUrl.search ? parsedUrl.search.slice(1) : '',
+                    body: method === 'GET' ? null : body
+                };
+            } catch (error) {
+                return null;
+            }
+        }
+
+        async function fetchSupabaseRestViaAppApiIfNeeded(url, options = {}, timeoutMs = SUPABASE_WRITE_TIMEOUT_MS, label = 'Request') {
+            const payload = getSupabaseRestProxyPayload(url, options);
+            if (!payload) return null;
+            const proxiedPayload = await postAppFunctionJson(APP_API_FUNCTION_URL, payload, {
+                timeoutMs,
+                label: `${label} secure database request`
+            });
+            if (!proxiedPayload || proxiedPayload.ok !== true) {
+                const error = new Error(String(proxiedPayload && (proxiedPayload.error || proxiedPayload.message) || 'Secure database request failed.'));
+                error.payload = proxiedPayload;
+                throw error;
+            }
+            const responseBody = JSON.stringify(Object.prototype.hasOwnProperty.call(proxiedPayload, 'data') ? proxiedPayload.data : null);
+            return new Response(responseBody, {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
         async function fetchWithTimeout(url, options = {}, timeoutMs = SUPABASE_WRITE_TIMEOUT_MS, label = 'Request') {
+            const secureSupabaseResponse = await fetchSupabaseRestViaAppApiIfNeeded(url, options, timeoutMs, label);
+            if (secureSupabaseResponse) return secureSupabaseResponse;
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
             try {
@@ -20892,19 +20948,19 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
         async function runAppApiSupabaseWrite(table, method = 'POST', body = null, query = '', requestOptions = {}) {
             const safeTable = String(table || '').trim();
             const safeMethod = String(method || 'POST').trim().toUpperCase();
-            if (!safeTable || !isSupabaseWriteMethod(safeMethod)) throw new Error('Invalid secure write request.');
+            if (!safeTable || !['GET', 'POST', 'PATCH', 'DELETE'].includes(safeMethod)) throw new Error('Invalid secure database request.');
             const hasSession = await ensureAppApiWriteProxySession();
-            if (!hasSession) throw new Error('App session unavailable for secure database write.');
+            if (!hasSession) throw new Error('App session unavailable for secure database request.');
             const timeoutMs = Math.max(1000, Number(requestOptions && requestOptions.timeoutMs) || SUPABASE_WRITE_TIMEOUT_MS);
             const payload = await postAppFunctionJson(APP_API_FUNCTION_URL, {
                 action: 'db',
                 table: safeTable,
                 method: safeMethod,
                 query: String(query || '').trim(),
-                body: body === undefined ? null : body
+                body: safeMethod === 'GET' ? null : (body === undefined ? null : body)
             }, {
                 timeoutMs,
-                label: `${safeTable} ${safeMethod} secure write`
+                label: `${safeTable} ${safeMethod} secure database request`
             });
             if (!payload || payload.ok !== true) {
                 const error = new Error(String(payload && (payload.error || payload.message) || 'Secure database write failed.'));
@@ -20924,6 +20980,18 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
                         try {
                             const readTimeoutMs = Math.max(1000, Number(requestOptions && requestOptions.timeoutMs) || SUPABASE_READ_TIMEOUT_MS);
                             let allData=[]; let offset=0; const limit=1000; let hasMore=true;
+                            try {
+                                while(hasMore){
+                                    let queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
+                                    const data = await runAppApiSupabaseWrite(table, 'GET', null, queryString, { timeoutMs: readTimeoutMs });
+                                    if(Array.isArray(data)&&data.length>0){ allData=allData.concat(data); offset+=data.length; if(data.length<limit) hasMore=false; }
+                                    else { hasMore=false; }
+                                }
+                                return allData;
+                            } catch (secureReadError) {
+                                if (!SUPABASE_KEY) throw secureReadError;
+                            }
+                            allData=[]; offset=0; hasMore=true;
                     while(hasMore){
                         let queryString = query ? `${query}&limit=${limit}&offset=${offset}` : `limit=${limit}&offset=${offset}`;
                         const url=`${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
@@ -20959,6 +21027,7 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
                             if (!shouldUseDirectSupabaseWriteFallback(proxyError, requestOptions)) throw proxyError;
                         }
                     }
+                    if (!SUPABASE_KEY) throw new Error('Direct Supabase write fallback is disabled.');
                     const options={method:safeMethod,headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'}};
                     if(safeMethod==='POST') options.headers['Prefer']=table==='v2_active_request' ? 'return=minimal' : 'return=minimal,resolution=merge-duplicates';
                     else if(safeMethod==='PATCH' || safeMethod==='DELETE') options.headers['Prefer']='return=minimal';
@@ -22454,11 +22523,11 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
 
         async function postAppFunctionJson(url, body, options = {}) {
             const safeOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
-            const headers = {
-                'apikey': SUPABASE_KEY,
-                'Authorization': 'Bearer ' + SUPABASE_KEY,
-                'Content-Type': 'application/json'
-            };
+            const headers = { 'Content-Type': 'application/json' };
+            if (SUPABASE_KEY) {
+                headers['apikey'] = SUPABASE_KEY;
+                headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
+            }
             const sessionToken = getCurrentAppSessionToken();
             if (safeOptions.includeSession !== false && sessionToken) headers['x-gnc-session'] = sessionToken;
             const response = await fetchWithTimeout(url, {
@@ -22482,10 +22551,11 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
 
         async function postAppFunctionFormData(url, formData, options = {}) {
             const safeOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
-            const headers = {
-                'apikey': SUPABASE_KEY,
-                'Authorization': 'Bearer ' + SUPABASE_KEY
-            };
+            const headers = {};
+            if (SUPABASE_KEY) {
+                headers['apikey'] = SUPABASE_KEY;
+                headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
+            }
             const sessionToken = getCurrentAppSessionToken();
             if (safeOptions.includeSession !== false && sessionToken) headers['x-gnc-session'] = sessionToken;
             const response = await fetchWithTimeout(url, {
@@ -23419,17 +23489,26 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
         }
 
         async function fetchRemoteLoginUser(normalizedUsername, normalizedPassword) {
-            const exactUrl = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password,division,language&username=eq.${encodeURIComponent(normalizedUsername)}&limit=1`;
-            let rows = await fetchLoginRowsWithRetry(exactUrl, 'Login');
-            if ((!Array.isArray(rows) || rows.length === 0) && normalizedUsername) {
-                const fallbackUrl = `${SUPABASE_URL}/rest/v1/v2_app_users?select=username,role,password,division,language&username=ilike.${encodeURIComponent(normalizedUsername)}&limit=3`;
-                rows = await fetchLoginRowsWithRetry(fallbackUrl, 'Login');
+            const payload = await postAppFunctionJson(APP_API_FUNCTION_URL, {
+                action: 'login',
+                username: normalizedUsername,
+                password: normalizedPassword
+            }, {
+                includeSession: false,
+                timeoutMs: LOGIN_READ_TIMEOUT_MS,
+                label: 'Login'
+            });
+            if (!payload || !payload.ok || !payload.user) return { ok: false, reason: (payload && payload.reason) || 'mismatch' };
+            if (payload.session && payload.session.token) {
+                persistAppSessionRecord({
+                    token: payload.session.token,
+                    expiresAt: Number(payload.session.expiresAt || 0),
+                    username: String(firstNonEmptyValue(payload.session.username, payload.user.username, normalizedUsername) || '').trim(),
+                    displayName: String(firstNonEmptyValue(payload.session.displayName, payload.user.username, normalizedUsername) || '').trim(),
+                    role: String(firstNonEmptyValue(payload.session.role, payload.user.role, '') || '').trim()
+                });
             }
-            const matchedUser = Array.isArray(rows)
-                ? rows.find((row) => String(row.username || '').trim().toLowerCase() === normalizedUsername && String(row.password || '').trim() === normalizedPassword)
-                : null;
-            if (!matchedUser) return { ok: false, reason: 'mismatch' };
-            return { ok: true, user: matchedUser, source: 'remote' };
+            return { ok: true, user: payload.user, source: 'remote' };
         }
 
         function getLoginFailureMessage(error) {
@@ -24592,7 +24671,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.07.31.08').trim() || 'V2026.07.31.08';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.02.01').trim() || 'V2026.08.02.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -26894,6 +26973,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 filePath = String(apiUpload.filePath || filePath).trim() || filePath;
                 publicUrl = String(apiUpload.publicUrl || '').trim();
             } catch (secureUploadError) {
+                if (!supabaseClient || !supabaseClient.storage) {
+                    throw (secureUploadError instanceof Error ? secureUploadError : new Error('Secure credit photo upload proxy unavailable.'));
+                }
                 if (!appApiPhotoUploadFallbackWarningShown) {
                     appApiPhotoUploadFallbackWarningShown = true;
                     console.warn('Secure credit photo upload proxy unavailable; using direct Storage fallback.', secureUploadError);
@@ -28302,18 +28384,28 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const safeLimit = Math.max(1, Number(limit) || 1000);
             const safeOffset = Math.max(0, Number(offset) || 0);
             const queryString = query ? `${query}&limit=${safeLimit}&offset=${safeOffset}` : `limit=${safeLimit}&offset=${safeOffset}`;
-            const url = `${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
-            const headers = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' };
-            if (options && options.count === true) headers.Prefer = 'count=exact';
-            const response = await fetchWithTimeout(url, { method: 'GET', headers }, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
-            if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
-            const text = await response.text();
-            const rows = text ? JSON.parse(text) : [];
-            return {
-                offset: safeOffset,
-                rows: Array.isArray(rows) ? rows : [],
-                total: parseSupabaseContentRangeTotal(response)
-            };
+            try {
+                const rows = await runAppApiSupabaseWrite(table, 'GET', null, queryString, { timeoutMs: SUPABASE_READ_TIMEOUT_MS });
+                return {
+                    offset: safeOffset,
+                    rows: Array.isArray(rows) ? rows : [],
+                    total: null
+                };
+            } catch (secureReadError) {
+                if (!SUPABASE_KEY) throw secureReadError;
+                const url = `${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
+                const headers = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' };
+                if (options && options.count === true) headers.Prefer = 'count=exact';
+                const response = await fetchWithTimeout(url, { method: 'GET', headers }, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
+                if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
+                const text = await response.text();
+                const rows = text ? JSON.parse(text) : [];
+                return {
+                    offset: safeOffset,
+                    rows: Array.isArray(rows) ? rows : [],
+                    total: parseSupabaseContentRangeTotal(response)
+                };
+            }
         }
 
         async function fetchSupabaseRowsPageBatch(table, query, limit, offsets, concurrency) {
@@ -28461,11 +28553,17 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 for (const attemptLimit of attemptLimits) {
                     try {
                         const queryString = query ? `${query}&limit=${attemptLimit}&offset=${offset}` : `limit=${attemptLimit}&offset=${offset}`;
-                        const url = `${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
-                        const response = await fetchWithTimeout(url, { method: 'GET', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' } }, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
-                        if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
-                        const text = await response.text();
-                        return text ? JSON.parse(text) : [];
+                        try {
+                            const rows = await runAppApiSupabaseWrite(table, 'GET', null, queryString, { timeoutMs: SUPABASE_READ_TIMEOUT_MS });
+                            return Array.isArray(rows) ? rows : [];
+                        } catch (secureReadError) {
+                            if (!SUPABASE_KEY) throw secureReadError;
+                            const url = `${SUPABASE_URL}/rest/v1/${table}?${queryString}`;
+                            const response = await fetchWithTimeout(url, { method: 'GET', headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' } }, SUPABASE_READ_TIMEOUT_MS, `${table} read`);
+                            if (!response.ok) throw new Error(await getResponseError(response, `Supabase read failed (${response.status})`));
+                            const text = await response.text();
+                            return text ? JSON.parse(text) : [];
+                        }
                     } catch (error) {
                         lastError = error;
                         const message = String(error && error.message || '');
@@ -43623,9 +43721,16 @@ function toggleDriveQuickRequestItem(domId) {
             const checkTime=new Date().toISOString();
             try {
                 const masterDeltaQuery = appendEvalMasterScopeToQuery(`select=*&last_updated=gt.${encodeURIComponent(lastSyncTime)}`);
-                const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?${masterDeltaQuery}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
-                if(response.ok) {
-                    const data=await response.json();
+                let data = [];
+                try {
+                    const secureDeltaRows = await runAppApiSupabaseWrite('v2_master_inventory', 'GET', null, masterDeltaQuery, { timeoutMs: SUPABASE_READ_TIMEOUT_MS });
+                    data = Array.isArray(secureDeltaRows) ? secureDeltaRows : [];
+                } catch (secureDeltaError) {
+                    if (!SUPABASE_KEY) throw secureDeltaError;
+                    const response=await fetch(`${SUPABASE_URL}/rest/v1/v2_master_inventory?${masterDeltaQuery}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                    if(response.ok) data=await response.json();
+                }
+                if(Array.isArray(data)) {
                     if(data&&data.length>0){
                         let updated=false;
                         data.forEach(updatedRow=>{
@@ -43665,9 +43770,16 @@ function toggleDriveQuickRequestItem(domId) {
                     queueInteractiveViewRender('request', false, true, 48, 220);
                 }
 
-                const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
-                if(soRes.ok) {
-                    const soData = await soRes.json();
+                let soData = [];
+                try {
+                    const secureSalesOfficeRows = await runAppApiSupabaseWrite('v2_sales_office', 'GET', null, 'select=*', { timeoutMs: SUPABASE_READ_TIMEOUT_MS });
+                    soData = Array.isArray(secureSalesOfficeRows) ? secureSalesOfficeRows : [];
+                } catch (secureSalesOfficeError) {
+                    if (!SUPABASE_KEY) throw secureSalesOfficeError;
+                    const soRes = await fetch(`${SUPABASE_URL}/rest/v1/v2_sales_office?select=*`, {method:'GET', headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+                    if(soRes.ok) soData = await soRes.json();
+                }
+                if(Array.isArray(soData)) {
                     let soHash = JSON.stringify(soData);
                     if(soHash !== localStorage.getItem('last_so_hash')) {
                         processAndLoadData({ salesOfficeData: formatFetchedRows(soData, 'v2_sales_office') });
@@ -51371,11 +51483,11 @@ function toggleDriveQuickRequestItem(domId) {
                 await ensureLeafAssistantSession(false).catch(() => null);
             }
             const sessionToken = getCurrentAppSessionToken();
-            const headers = {
-                'apikey': SUPABASE_KEY,
-                'Authorization': 'Bearer ' + SUPABASE_KEY,
-                'Content-Type': 'application/json'
-            };
+            const headers = { 'Content-Type': 'application/json' };
+            if (SUPABASE_KEY) {
+                headers['apikey'] = SUPABASE_KEY;
+                headers['Authorization'] = 'Bearer ' + SUPABASE_KEY;
+            }
             if (sessionToken) headers['x-gnc-session'] = sessionToken;
             const response = await fetchWithTimeout(PUSH_FUNCTION_URL, {
                 method: 'POST',
@@ -136283,6 +136395,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 filePath = String(apiUpload.filePath || filePath).trim() || filePath;
                                 publicUrl = String(apiUpload.publicUrl || '').trim();
                             } catch (secureUploadError) {
+                                if (!supabaseClient || !supabaseClient.storage) {
+                                    throw (secureUploadError instanceof Error ? secureUploadError : new Error('Secure photo upload proxy unavailable.'));
+                                }
                                 if (!appApiPhotoUploadFallbackWarningShown) {
                                     appApiPhotoUploadFallbackWarningShown = true;
                                     console.warn('Secure photo upload proxy unavailable; using direct Storage fallback for this browser session.', secureUploadError);

@@ -37,6 +37,7 @@ const READABLE_TABLES = new Set([
   "v2_take_back_queue",
   "v2_cav",
   "v2_av_notes",
+  "v2_view_av_hot_price_keys",
   "v2_dock_team_status",
   "v2_dock_item_status",
   "v2_dock_issue_status",
@@ -74,6 +75,8 @@ const READABLE_TABLES = new Set([
   "v2_hold_learning_events",
   "v2_hold_learning_profiles",
   "v2_hold_release_cycles",
+  "v2_warehouse_assigned_items",
+  "v2_hl_po",
 ]);
 const WRITABLE_TABLES = new Set([
   "v2_master_inventory",
@@ -236,13 +239,14 @@ function sanitizeStorageFileName(value = "") {
   return "";
 }
 
-function hasTableReadAccess(role = "", table = "") {
+function hasTableReadAccess(role = "", table = "", username = "") {
   if (!READABLE_TABLES.has(table)) return false;
+  if (table === "v2_hl_po") return normalizeUsername(username) === "dylan_collyge";
   const access = getRoleAccessState(role);
   if (access.isAdmin) return true;
   if (table === "v2_app_users") return access.isQc || access.isQcSupervisor || access.isAdmin;
   if (access.isRep) {
-    return new Set(["v2_master_inventory", "v2_active_request", "v2_request_history", "v2_sales_credit_requests", "v2_reserves", "v2_soc_master", "v2_sales_office", "v2_cav", "v2_av_notes", "v2_dock_team_status", "v2_dock_item_status"]).has(table);
+    return new Set(["v2_master_inventory", "v2_active_request", "v2_request_history", "v2_sales_credit_requests", "v2_reserves", "v2_soc_master", "v2_sales_office", "v2_cav", "v2_av_notes", "v2_warehouse_assigned_items", "v2_dock_team_status", "v2_dock_item_status"]).has(table);
   }
   if (access.isQcSupervisor) {
     return new Set(["v2_master_inventory", "v2_soc_master", "v2_dock_team_status", "v2_dock_item_status"]).has(table);
@@ -283,7 +287,7 @@ async function handleLogin(payload: Record<string, unknown>) {
   const password = String(payload.password || "").trim();
   if (!username || !password) return errorResponse("Username and password are required.", 400);
 
-  const selectCols = "username,role,password";
+  const selectCols = "username,role,password,division,language";
   const normalizedInput = normalizeUsername(username);
   const exactResponse = await restRequest(
     "v2_app_users",
@@ -313,6 +317,8 @@ async function handleLogin(payload: Record<string, unknown>) {
 
   const dbUsername = String(matchedUser.username || matchedUser.USERNAME || username).trim() || username;
   const role = String(matchedUser.role || matchedUser.ROLE || "User").trim() || "User";
+  const division = String(matchedUser.division || matchedUser.DIVISION || "10").trim() || "10";
+  const language = String(matchedUser.language || matchedUser.LANGUAGE || "English").trim() || "English";
   const mustChangePassword = isForcedPasswordValue(password);
   const session = await createAppSession({
     username: dbUsername,
@@ -323,7 +329,7 @@ async function handleLogin(payload: Record<string, unknown>) {
 
   return jsonResponse({
     ok: true,
-    user: { username: dbUsername, role },
+    user: { username: dbUsername, role, division, language },
     session: {
       token: session.token,
       username: session.claims.username,
@@ -383,7 +389,7 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
 
   if (!["GET", "POST", "PATCH", "DELETE"].includes(method)) return errorResponse("Unsupported method.", 400);
   if (method === "GET") {
-    if (!hasTableReadAccess(session.role, table)) return errorResponse("Forbidden", 403);
+  if (!hasTableReadAccess(session.role, table, session.username)) return errorResponse("Forbidden", 403);
   } else if (!hasTableWriteAccess(session.role, table, method, body)) {
     return errorResponse("Forbidden", 403);
   }

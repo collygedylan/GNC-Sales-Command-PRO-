@@ -69,7 +69,7 @@ function runAutoDropFolderSync_() {
 // SUPABASE CONSTANTS & FOLDERS
 // =========================================================================
 const SUPABASE_URL = 'https://kzrnyjsosryejjejliii.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6cm55anNvc3J5ZWpqZWpsaWlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzAyNzM1NywiZXhwIjoyMDg4NjAzMzU3fQ.Bc46UfJ1N4AgAS1PgfhFg6S4BEyybR6g_TUnPZsE2t0';
+const SUPABASE_KEY = '__SUPABASE_SERVICE_ROLE_KEY__';
 const APP_LIVE_EVENTS_TABLE = 'v2_app_live_events';
 const INVENTORY_TRANSACTION_TABLE = 'v2_inventory_transactions';
 const EMIT_APP_LIVE_EVENTS = true;
