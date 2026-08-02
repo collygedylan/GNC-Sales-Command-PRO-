@@ -1402,7 +1402,7 @@ function normalizeDriveAroundProcessedNames_(options) {
   const safeOptions = options || {};
   const apply = safeOptions.apply === true;
   const limit = Math.max(1, Number(safeOptions.limit) || (apply ? DRIVE_AROUND_CANONICAL_APPLY_LIMIT : DRIVE_AROUND_CANONICAL_PREVIEW_LIMIT));
-  const lock = LockService.getScriptLock();
+  const lock = LockService.getUserLock();
   if (!lock.tryLock(10000)) throw new Error('DriveAround name cleanup is already running.');
   try {
     const started = new Date();
