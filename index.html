@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.02.02';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.02.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5152,7 +5152,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.02.02').trim() || 'V2026.08.02.02';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.02.03').trim() || 'V2026.08.02.03';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6607,7 +6607,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.02.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.02.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -20960,16 +20960,31 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             const hasSession = await ensureAppApiWriteProxySession();
             if (!hasSession) throw new Error('App session unavailable for secure database request.');
             const timeoutMs = Math.max(1000, Number(requestOptions && requestOptions.timeoutMs) || SUPABASE_WRITE_TIMEOUT_MS);
-            const payload = await postAppFunctionJson(APP_API_FUNCTION_URL, {
-                action: 'db',
-                table: safeTable,
-                method: safeMethod,
-                query: String(query || '').trim(),
-                body: safeMethod === 'GET' ? null : (body === undefined ? null : body)
-            }, {
-                timeoutMs,
-                label: `${safeTable} ${safeMethod} secure database request`
-            });
+            let payload = null;
+            try {
+                payload = await postAppFunctionJson(APP_API_FUNCTION_URL, {
+                    action: 'db',
+                    table: safeTable,
+                    method: safeMethod,
+                    query: String(query || '').trim(),
+                    body: safeMethod === 'GET' ? null : (body === undefined ? null : body)
+                }, {
+                    timeoutMs,
+                    label: `${safeTable} ${safeMethod} secure database request`
+                });
+            } catch (error) {
+                if (requestOptions && requestOptions.retryAfterPasswordRecovery === false) throw error;
+                if (isPasswordChangeRequiredError(error)) {
+                    const recovered = await recoverAppApiSessionAfterPasswordRequired(error);
+                    if (recovered) {
+                        return await runAppApiSupabaseWrite(table, safeMethod, body, query, {
+                            ...requestOptions,
+                            retryAfterPasswordRecovery: false
+                        });
+                    }
+                }
+                throw error;
+            }
             if (!payload || payload.ok !== true) {
                 const error = new Error(String(payload && (payload.error || payload.message) || 'Secure database write failed.'));
                 error.payload = payload;
@@ -21032,6 +21047,7 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
                             queueAppLiveEventForWrite(table, safeMethod, liveEventBody, query);
                             return result;
                         } catch (proxyError) {
+                            if (isPasswordChangeRequiredError(proxyError)) throw proxyError;
                             markAppApiWriteProxyUnavailable(proxyError);
                             if (!shouldUseDirectSupabaseWriteFallback(proxyError, requestOptions)) throw proxyError;
                         }
@@ -22480,7 +22496,8 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
                     expiresAt,
                     username: String(parsed.username || '').trim(),
                     displayName: String(parsed.displayName || '').trim(),
-                    role: String(parsed.role || '').trim()
+                    role: String(parsed.role || '').trim(),
+                    mustChangePassword: parsed.mustChangePassword === true
                 };
             } catch (error) {
                 return null;
@@ -22511,7 +22528,8 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
                     expiresAt,
                     username: String(safeRecord.username || currentUser || '').trim(),
                     displayName: String(safeRecord.displayName || currentUserDisplay || '').trim(),
-                    role: String(safeRecord.role || currentRole || '').trim()
+                    role: String(safeRecord.role || currentRole || '').trim(),
+                    mustChangePassword: safeRecord.mustChangePassword === true
                 }));
             } catch (error) {}
             return true;
@@ -22558,6 +22576,81 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             return payload;
         }
 
+        function isPasswordChangeRequiredPayload(payload = null) {
+            if (!payload || typeof payload !== 'object') return false;
+            const code = String(payload.code || '').trim().toUpperCase();
+            const message = String(firstNonEmptyValue(payload.error, payload.message, payload.details, '') || '').trim().toLowerCase();
+            return code === 'PASSWORD_CHANGE_REQUIRED' || message.includes('password change required');
+        }
+
+        function isPasswordChangeRequiredError(error = null) {
+            if (!error) return false;
+            if (isPasswordChangeRequiredPayload(error.payload)) return true;
+            const message = String(firstNonEmptyValue(error.message, error.details, '') || '').trim().toLowerCase();
+            return Number(error.status || 0) === 403 && message.includes('password change required');
+        }
+
+        function getSavedLoginCredentialsForPasswordRecovery() {
+            const usernameField = document.getElementById('username-input');
+            const passwordField = document.getElementById('pin-code');
+            const username = normalizeSessionIdentity(firstNonEmptyValue(
+                currentUser,
+                localStorage.getItem('gnc_user_v3'),
+                usernameField && usernameField.value,
+                ''
+            ));
+            const password = String(firstNonEmptyValue(
+                localStorage.getItem('gnc_pin_v3'),
+                passwordField && passwordField.value,
+                ''
+            ) || '').trim();
+            const role = String(firstNonEmptyValue(currentRole, localStorage.getItem('gnc_role_v3'), 'User') || 'User').trim() || 'User';
+            const displayName = String(firstNonEmptyValue(currentUserDisplay, getStoredDisplayName(), username) || '').trim() || username;
+            return { username, password, role, displayName };
+        }
+
+        function showPasswordChangeGateFromServerState(credentials = null) {
+            const creds = credentials && typeof credentials === 'object' ? credentials : getSavedLoginCredentialsForPasswordRecovery();
+            if (creds && creds.username && creds.password) {
+                showForcedPasswordChangeGate(creds.username, creds.password, creds.role, creds.displayName);
+                showToast('Password Required', 'Please set a new password to continue.', true);
+                return true;
+            }
+            persistAppSessionRecord(null);
+            clearInMemorySessionIdentity();
+            resetLoginUiState();
+            showToast('Password Required', 'Please sign in again and set a new password.', true);
+            return false;
+        }
+
+        async function recoverAppApiSessionAfterPasswordRequired(error = null) {
+            if (!isPasswordChangeRequiredError(error)) return false;
+            const credentials = getSavedLoginCredentialsForPasswordRecovery();
+            persistAppSessionRecord(null);
+            if (!credentials.username || !credentials.password) {
+                showPasswordChangeGateFromServerState(credentials);
+                return false;
+            }
+            try {
+                const refreshed = await fetchRemoteLoginUser(credentials.username, credentials.password);
+                if (refreshed && refreshed.ok && refreshed.session && !refreshed.session.mustChangePassword) return true;
+                if (refreshed && refreshed.ok && refreshed.session && refreshed.session.mustChangePassword) {
+                    showPasswordChangeGateFromServerState(credentials);
+                    return false;
+                }
+            } catch (refreshError) {
+                console.warn('Could not refresh stale app session after password-required response.', refreshError);
+            }
+            if (shouldRequirePasswordChangeForUser(credentials.username, credentials.password, false, credentials.displayName)) {
+                showPasswordChangeGateFromServerState(credentials);
+                return false;
+            }
+            clearInMemorySessionIdentity();
+            resetLoginUiState();
+            showToast('Session Expired', 'Please sign in again.', true);
+            return false;
+        }
+
         async function postAppFunctionFormData(url, formData, options = {}) {
             const safeOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const headers = {};
@@ -22598,10 +22691,24 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             formData.append('prefix', String(prefix || 'default').trim() || 'default');
             formData.append('fileName', safeFileName);
             formData.append('file', blob, safeFileName);
-            const payload = await postAppFunctionFormData(APP_API_FUNCTION_URL, formData, {
-                timeoutMs: Math.max(1000, Number(options && options.timeoutMs) || SUPABASE_UPLOAD_TIMEOUT_MS),
-                label: 'Secure photo upload'
-            });
+            let payload = null;
+            try {
+                payload = await postAppFunctionFormData(APP_API_FUNCTION_URL, formData, {
+                    timeoutMs: Math.max(1000, Number(options && options.timeoutMs) || SUPABASE_UPLOAD_TIMEOUT_MS),
+                    label: 'Secure photo upload'
+                });
+            } catch (error) {
+                if (isPasswordChangeRequiredError(error)) {
+                    const recovered = await recoverAppApiSessionAfterPasswordRequired(error);
+                    if (recovered) {
+                        payload = await postAppFunctionFormData(APP_API_FUNCTION_URL, formData, {
+                            timeoutMs: Math.max(1000, Number(options && options.timeoutMs) || SUPABASE_UPLOAD_TIMEOUT_MS),
+                            label: 'Secure photo upload'
+                        });
+                    }
+                }
+                if (!payload) throw error;
+            }
             if (!payload || payload.ok !== true || !payload.publicUrl) {
                 throw new Error(String(payload && (payload.error || payload.message) || 'Secure photo upload failed.'));
             }
@@ -23153,14 +23260,19 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             }
         }
 
-        const HARD_REQUIRED_PASSWORD_CHANGE_VALUE = 'GREENLEAF 25';
+        const HARD_REQUIRED_PASSWORD_CHANGE_VALUES = Object.freeze(['GREENLEAF 25', 'GREENLEAF25']);
 
         function normalizePasswordForComparison(value = '') {
             return String(value || '').trim().replace(/\s+/g, ' ').toUpperCase();
         }
 
+        function normalizeForcedPasswordForComparison(value = '') {
+            return normalizePasswordForComparison(value).replace(/\s+/g, '');
+        }
+
         function isHardRequiredDefaultPassword(password = '') {
-            return normalizePasswordForComparison(password) === normalizePasswordForComparison(HARD_REQUIRED_PASSWORD_CHANGE_VALUE);
+            const normalized = normalizeForcedPasswordForComparison(password);
+            return HARD_REQUIRED_PASSWORD_CHANGE_VALUES.some((candidate) => normalizeForcedPasswordForComparison(candidate) === normalized);
         }
 
         function isDefaultPasswordForUser(username = '', displayName = '', password = '') {
@@ -23201,10 +23313,12 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             const changePasswordView = document.getElementById('view-change-password');
             const loginInputs = document.getElementById('login-inputs');
             const spinner = document.getElementById('loading-spinner');
+            const appWrapper = document.getElementById('app-wrapper');
             if (usernameInput) usernameInput.value = normalizedUsername;
             if (pinInput) pinInput.value = normalizedPassword;
             finishInitialAppLoad();
             setBootingSession(false);
+            if (appWrapper) appWrapper.classList.add('hidden');
             if (loginView) loginView.style.display = 'none';
             if (changePasswordView) changePasswordView.style.display = 'flex';
             if (loginInputs) loginInputs.classList.remove('hidden');
@@ -23514,10 +23628,17 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
                     expiresAt: Number(payload.session.expiresAt || 0),
                     username: String(firstNonEmptyValue(payload.session.username, payload.user.username, normalizedUsername) || '').trim(),
                     displayName: String(firstNonEmptyValue(payload.session.displayName, payload.user.username, normalizedUsername) || '').trim(),
-                    role: String(firstNonEmptyValue(payload.session.role, payload.user.role, '') || '').trim()
+                    role: String(firstNonEmptyValue(payload.session.role, payload.user.role, '') || '').trim(),
+                    mustChangePassword: payload.session.mustChangePassword === true
                 });
             }
-            return { ok: true, user: payload.user, source: 'remote' };
+            return {
+                ok: true,
+                user: payload.user,
+                source: 'remote',
+                session: payload.session || null,
+                mustChangePassword: !!(payload.session && payload.session.mustChangePassword === true)
+            };
         }
 
         function getLoginFailureMessage(error) {
@@ -24680,7 +24801,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.02.02').trim() || 'V2026.08.02.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.02.03').trim() || 'V2026.08.02.03';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -43167,7 +43288,7 @@ function toggleDriveQuickRequestItem(domId) {
                         showToast('Success', 'Signed in with saved verified login.');
                     }
                     safeRole=String(currentRole).toUpperCase().replace(/\s+/g,'');
-                    if(shouldRequirePasswordChangeForUser(currentUser,inputPass,isBiometricLogin,currentUserDisplay)){
+                    if(result.mustChangePassword || shouldRequirePasswordChangeForUser(currentUser,inputPass,isBiometricLogin,currentUserDisplay)){
                         showForcedPasswordChangeGate(currentUser, inputPass, currentRole, currentUserDisplay);
                     }
                     else{
@@ -43217,11 +43338,47 @@ function toggleDriveQuickRequestItem(domId) {
             document.getElementById('loading-spinner').classList.remove('hidden');
             beginInitialAppLoad('Saving password...');
             scheduleLoginStartupWatchdog('password-change');
-            try{ await supabaseFetch('ph_app_users','PATCH',{password:newPass},`username=ilike.*${encodeURIComponent(currentUser)}*`); }catch(e){}
-            localStorage.setItem('gnc_pw_changed_'+currentUser,'true');
-            document.getElementById('new-password').value="";
-            document.getElementById('confirm-password').value="";
-            await finalizeLogin(currentUser,newPass,false);
+            try {
+                const oldPassword = String(firstNonEmptyValue(document.getElementById('pin-code') && document.getElementById('pin-code').value, localStorage.getItem('gnc_pin_v3'), '') || '').trim();
+                if (!getCurrentAppSessionToken()) {
+                    const loginResult = await fetchRemoteLoginUser(currentUser, oldPassword);
+                    if (!loginResult || !loginResult.ok || !loginResult.session || !loginResult.session.token) {
+                        throw new Error('Could not verify the old password. Please sign in again.');
+                    }
+                }
+                const payload = await postAppFunctionJson(APP_API_FUNCTION_URL, {
+                    action: 'password_change',
+                    newPassword: newPass,
+                    confirmPassword: confirmPass
+                }, {
+                    timeoutMs: LOGIN_READ_TIMEOUT_MS,
+                    label: 'Password change'
+                });
+                if (!payload || payload.ok !== true || !payload.session || !payload.session.token) {
+                    throw new Error(String(payload && (payload.error || payload.message) || 'Password update failed.'));
+                }
+                persistAppSessionRecord({
+                    token: payload.session.token,
+                    expiresAt: Number(payload.session.expiresAt || 0),
+                    username: String(firstNonEmptyValue(payload.session.username, currentUser) || '').trim(),
+                    displayName: String(firstNonEmptyValue(payload.session.displayName, currentUserDisplay, currentUser) || '').trim(),
+                    role: String(firstNonEmptyValue(payload.session.role, currentRole) || '').trim(),
+                    mustChangePassword: false
+                });
+                localStorage.setItem('gnc_pw_changed_'+currentUser,'true');
+                document.getElementById('new-password').value="";
+                document.getElementById('confirm-password').value="";
+                await finalizeLogin(currentUser,newPass,false);
+            } catch (error) {
+                finishInitialAppLoad();
+                setBootingSession(false);
+                clearLoginStartupWatchdog();
+                document.getElementById('view-login').style.display='none';
+                document.getElementById('view-change-password').style.display='flex';
+                document.getElementById('login-inputs').classList.remove('hidden');
+                document.getElementById('loading-spinner').classList.add('hidden');
+                showToast('Password Save Failed', error && error.message ? error.message : 'Could not update password.', true);
+            }
         }
 
         function openAppShellAfterLogin(fromCache = false) {
@@ -48514,18 +48671,23 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function chatApiGet(table, query = 'select=*', label = 'Chat') {
-            const url = `${SUPABASE_URL}/rest/v1/${table}?${query}`;
-            const response = await fetchWithTimeout(url, {
-                method: 'GET',
-                headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-            }, SUPABASE_READ_TIMEOUT_MS, label);
-            if (!response.ok) throw new Error(await getResponseError(response, `${label} read failed (${response.status})`));
-            const text = await response.text();
-            return text ? JSON.parse(text) : [];
+            return await runAppApiSupabaseWrite(table, 'GET', null, query, {
+                timeoutMs: SUPABASE_READ_TIMEOUT_MS
+            });
         }
 
-        function maybeWarnChatSchemaMissing() {
+        function isMissingSupabaseSchemaError(error = null) {
+            const raw = [
+                error && error.message,
+                error && error.details,
+                error && error.payload ? JSON.stringify(error.payload) : ''
+            ].filter(Boolean).join(' ').toLowerCase();
+            return /42p01|pgrst20[045]|does not exist|could not find the table|schema cache|column .* does not exist/.test(raw);
+        }
+
+        function maybeWarnChatSchemaMissing(error = null) {
             if (chatSchemaWarningShown || !currentUser) return;
+            if (!isMissingSupabaseSchemaError(error)) return;
             chatSchemaWarningShown = true;
             showToast('Chat Setup Required', 'Run chat_messaging_migration.sql in Supabase to enable chat.', true);
         }
@@ -48546,7 +48708,7 @@ function toggleDriveQuickRequestItem(domId) {
                     return true;
                 } catch (error) {
                     chatSchemaReady = false;
-                    maybeWarnChatSchemaMissing();
+                    maybeWarnChatSchemaMissing(error);
                     return false;
                 } finally {
                     chatSchemaProbePromise = null;
@@ -49896,8 +50058,9 @@ function toggleDriveQuickRequestItem(domId) {
             return walkieDeviceId;
         }
 
-        function maybeWarnWalkieSchemaMissing() {
+        function maybeWarnWalkieSchemaMissing(error = null) {
             if (walkieSchemaWarningShown || !currentUser) return;
+            if (!isMissingSupabaseSchemaError(error)) return;
             walkieSchemaWarningShown = true;
             showToast('Walkie Setup Required', 'Run walkie_talkie_migration.sql in Supabase to enable Walkie.', true);
         }
@@ -49920,7 +50083,7 @@ function toggleDriveQuickRequestItem(domId) {
                     return true;
                 } catch (error) {
                     walkieSchemaReady = false;
-                    maybeWarnWalkieSchemaMissing();
+                    maybeWarnWalkieSchemaMissing(error);
                     return false;
                 } finally {
                     walkieSchemaProbePromise = null;

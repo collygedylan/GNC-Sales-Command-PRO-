@@ -146,6 +146,16 @@ const COMMON_AUTH_WRITE_TABLES = new Set([
   "ph_walkie_call_members",
   "ph_walkie_signal_events",
 ]);
+const COMMON_AUTH_READ_TABLES = new Set([
+  "ph_chat_conversations",
+  "ph_chat_participants",
+  "ph_chat_messages",
+  "ph_walkie_channels",
+  "ph_walkie_channel_members",
+  "ph_walkie_calls",
+  "ph_walkie_call_members",
+  "ph_walkie_signal_events",
+]);
 const REP_WRITE_TABLES = new Set([
   ...COMMON_AUTH_WRITE_TABLES,
   "ph_active_request",
@@ -278,6 +288,7 @@ function hasTableReadAccess(role = "", table = "", username = "") {
   if (table === "ph_hl_po") return normalizeUsername(username) === "dylan_collyge";
   const access = getRoleAccessState(role);
   if (access.isAdmin) return true;
+  if (COMMON_AUTH_READ_TABLES.has(table)) return true;
   if (table === "ph_app_users") return access.isQc || access.isQcSupervisor || access.isAdmin;
   if (access.isRep) {
     return new Set(["ph_master_inventory", "ph_active_request", "ph_request_history", "ph_sales_credit_requests", "ph_reserves", "ph_soc_master", "ph_sales_office", "ph_cav_import", "ph_av_notes", "ph_warehouse_assigned_items", "ph_dock_team_status", "ph_dock_item_status"]).has(table);

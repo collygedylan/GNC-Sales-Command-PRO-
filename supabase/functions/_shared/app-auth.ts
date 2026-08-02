@@ -6,8 +6,8 @@ const FORCED_PASSWORD_CHANGE_VALUES = new Set([
   "GREENLEAF25",
   "1234",
   "12345",
-  "welcome",
-  "password",
+  "WELCOME",
+  "PASSWORD",
 ]);
 
 export type AppSessionClaims = {
@@ -34,7 +34,8 @@ export function normalizeRole(value = "") {
 }
 
 export function isForcedPasswordValue(value = "") {
-  return FORCED_PASSWORD_CHANGE_VALUES.has(String(value || "").trim());
+  const normalized = String(value || "").trim().replace(/\s+/g, "").toUpperCase();
+  return FORCED_PASSWORD_CHANGE_VALUES.has(normalized);
 }
 
 export function getRoleAccessState(role = "") {
