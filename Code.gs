@@ -68,8 +68,26 @@ function runAutoDropFolderSync_() {
 // =========================================================================
 // SUPABASE CONSTANTS & FOLDERS
 // =========================================================================
+function resolveSupabaseServiceRoleKey_(sourceFallbackKey) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const propertyKey = String(
+      props.getProperty('SUPABASE_SERVICE_ROLE_KEY') ||
+      props.getProperty('SUPABASE_KEY') ||
+      props.getProperty('SUPABASE_API_KEY') ||
+      props.getProperty('SUPABASE_SERVICE_KEY') ||
+      ''
+    ).trim();
+    if (propertyKey) return propertyKey;
+  } catch (err) {
+    console.warn('[SUPABASE] Could not read script properties for service role key: ' + (err && err.message ? err.message : err));
+  }
+  const fallbackKey = String(sourceFallbackKey || '').trim();
+  return fallbackKey && fallbackKey !== '__SUPABASE_SERVICE_ROLE_KEY__' ? fallbackKey : '';
+}
+
 const SUPABASE_URL = 'https://kzrnyjsosryejjejliii.supabase.co';
-const SUPABASE_KEY = '__SUPABASE_SERVICE_ROLE_KEY__';
+const SUPABASE_KEY = resolveSupabaseServiceRoleKey_('__SUPABASE_SERVICE_ROLE_KEY__');
 const APP_LIVE_EVENTS_TABLE = 'ph_app_live_events';
 const INVENTORY_TRANSACTION_TABLE = 'ph_inventory_transactions';
 const EMIT_APP_LIVE_EVENTS = true;
@@ -84,7 +102,7 @@ const DRIVE_AROUND_HISTORY_FLUSH_ROW_THRESHOLD = 50000;
 const DRIVE_AROUND_HISTORY_SUPPORTED_EXTENSIONS = Object.freeze(['.csv', '.xls', '.xlsx']);
 const DRIVE_AROUND_CANONICAL_TIMEZONE = 'America/Chicago';
 const DRIVE_AROUND_CANONICAL_PREVIEW_LIMIT = 1000;
-const DRIVE_AROUND_CANONICAL_APPLY_LIMIT = 250;
+const DRIVE_AROUND_CANONICAL_APPLY_LIMIT = 75;
 const DRIVE_AROUND_CANONICAL_NAME_PATTERN = /^(20\d{2}-\d{2}-\d{2})\s+(\d{2,})(?:\.[^.]+)?$/i;
 const DRIVE_AROUND_MACHINE_NAME_PATTERN = /^drivearoundmc\b/i;
 const DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER = 'runDriveAroundHistoryBackfillChunk_';
@@ -1380,13 +1398,30 @@ function normalizeDriveAroundProcessedNames_(options) {
     const applyTargets = renameNeeded.slice(0, limit);
     let renamed = 0;
     let renameErrors = 0;
+    let manifestRows = 0;
+    let manifestError = null;
     if (apply) {
       applyTargets.forEach(function(assignment) {
         renameDriveAroundFileSafely_(assignment);
         if (assignment.renamedAt) renamed += 1;
         if (assignment.renameError) renameErrors += 1;
       });
-      pushDriveAroundCanonicalManifestRows_(applyTargets, nowIso);
+      const auditTargets = plan.assignments
+        .filter(function(assignment) { return !assignment.shouldRename; })
+        .slice(0, limit);
+      const manifestTargetsById = {};
+      applyTargets.concat(auditTargets).forEach(function(assignment) {
+        if (assignment && assignment.fileId) manifestTargetsById[assignment.fileId] = assignment;
+      });
+      const manifestTargets = Object.keys(manifestTargetsById).map(function(fileId) {
+        return manifestTargetsById[fileId];
+      });
+      try {
+        manifestRows = pushDriveAroundCanonicalManifestRows_(manifestTargets, nowIso);
+      } catch (err) {
+        manifestError = err && err.message ? err.message : String(err);
+        console.warn(`[DRIVE AROUND NAME] Manifest update failed during cleanup: ${manifestError}`);
+      }
     }
     const samples = plan.assignments.slice(0, 40).map(function(assignment) {
       return {
@@ -1409,6 +1444,8 @@ function normalizeDriveAroundProcessedNames_(options) {
       processedThisRun: apply ? applyTargets.length : 0,
       renamed: renamed,
       renameErrors: renameErrors,
+      manifestRows: manifestRows,
+      manifestError: manifestError,
       skippedAlreadyCanonical: plan.assignments.length - renameNeeded.length,
       remainingRenameNeeded: apply ? Math.max(0, renameNeeded.length - applyTargets.length + renameErrors) : renameNeeded.length,
       warnings: plan.warnings.slice(0, 25),
