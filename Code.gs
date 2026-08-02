@@ -88,6 +88,24 @@ function resolveSupabaseServiceRoleKey_(sourceFallbackKey) {
 
 const SUPABASE_URL = 'https://kzrnyjsosryejjejliii.supabase.co';
 const SUPABASE_KEY = resolveSupabaseServiceRoleKey_('__SUPABASE_SERVICE_ROLE_KEY__');
+
+function getSupabaseHeadersForKey_(key, extraHeaders) {
+  const headers = Object.assign({}, extraHeaders || {});
+  const safeKey = String(key || '').trim();
+  if (safeKey) {
+    headers.apikey = safeKey;
+    const modernSecretKey = /^sb_(secret|publishable)_/i.test(safeKey);
+    if (!modernSecretKey) {
+      headers.Authorization = 'Bearer ' + safeKey;
+    }
+  }
+  return headers;
+}
+
+function getSupabaseHeaders_(extraHeaders) {
+  return getSupabaseHeadersForKey_(SUPABASE_KEY, extraHeaders);
+}
+
 const APP_LIVE_EVENTS_TABLE = 'ph_app_live_events';
 const INVENTORY_TRANSACTION_TABLE = 'ph_inventory_transactions';
 const EMIT_APP_LIVE_EVENTS = true;
@@ -445,12 +463,10 @@ function emitAppLiveEvent_(area, eventType, sourceTable, rowIds, payload) {
   try {
     const response = UrlFetchApp.fetch(`${SUPABASE_URL}/rest/v1/${APP_LIVE_EVENTS_TABLE}`, {
       method: 'post',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
+      headers: getSupabaseHeaders_({
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal'
-      },
+      }),
       payload: JSON.stringify(event),
       muteHttpExceptions: true
     });
@@ -1466,10 +1482,7 @@ function fetchExistingDriveAroundHistoryManifestMap_() {
     const url = `${SUPABASE_URL}/rest/v1/${DRIVE_AROUND_HISTORY_TABLE}?select=file_id,file_name,report_date,drive_modified_time,row_count,hold_row_count,status,error_message,raw,original_file_name,canonical_file_name,canonical_report_date,canonical_sequence,canonical_date_source,renamed_at,first_seen_at&limit=${limit}&offset=${offset}`;
     const res = UrlFetchApp.fetch(url, {
       method: 'get',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY
-      },
+      headers: getSupabaseHeaders_(),
       muteHttpExceptions: true
     });
     if (res.getResponseCode() !== 200) {
@@ -1498,10 +1511,7 @@ function fetchPendingDriveAroundHistoryManifestRows_(limit) {
   const url = `${SUPABASE_URL}/rest/v1/${DRIVE_AROUND_HISTORY_TABLE}?${query}`;
   const res = UrlFetchApp.fetch(url, {
     method: 'get',
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY
-    },
+    headers: getSupabaseHeaders_(),
     muteHttpExceptions: true
   });
   if (res.getResponseCode() !== 200) {
@@ -2778,7 +2788,7 @@ function fetchAllSupabaseData(tableName, selectColumns, options) {
   let countUrl = `${SUPABASE_URL}/rest/v1/${tableName}?select=unique_id&limit=1`;
   let countRes = UrlFetchApp.fetch(countUrl, {
     method: 'get',
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Prefer': 'count=exact' },
+    headers: getSupabaseHeaders_({ 'Prefer': 'count=exact' }),
     muteHttpExceptions: true
   });
   
@@ -2796,7 +2806,7 @@ function fetchAllSupabaseData(tableName, selectColumns, options) {
        requests.push({
          url: `${SUPABASE_URL}/rest/v1/${tableName}?select=${safeSelect}&limit=${limit}&offset=${offset}`,
          method: 'get',
-         headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY },
+         headers: getSupabaseHeaders_(),
          muteHttpExceptions: true
        });
     }
@@ -2831,7 +2841,7 @@ function fetchSupabaseRowsForFile(tableName, fileName, selectColumns) {
     let url = `${SUPABASE_URL}/rest/v1/${tableName}?select=${safeSelect}&filename=eq.${encodedFileName}&limit=${limit}&offset=${offset}`;
     let res = UrlFetchApp.fetch(url, {
       method: 'get',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY },
+      headers: getSupabaseHeaders_(),
       muteHttpExceptions: true
     });
 
@@ -2859,7 +2869,7 @@ function fetchAllSupabaseRowIds(tableName) {
     let url = `${SUPABASE_URL}/rest/v1/${tableName}?select=unique_id&limit=${limit}&offset=${offset}`;
     let res = UrlFetchApp.fetch(url, {
       method: 'get',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY },
+      headers: getSupabaseHeaders_(),
       muteHttpExceptions: true
     });
 
@@ -2896,7 +2906,7 @@ function fetchAllSupabaseRowIdsForMaster_(tableName) {
       function() {
         return UrlFetchApp.fetch(url, {
           method: 'get',
-          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY },
+          headers: getSupabaseHeaders_(),
           muteHttpExceptions: true
         });
       },
@@ -2980,7 +2990,7 @@ function fetchSupabaseRowsByIds_(tableName, ids, selectColumns, options) {
       return {
         url: `${chunkPlan.prefix}${chunk.join(',')}${chunkPlan.suffix}`,
         method: 'get',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY },
+        headers: getSupabaseHeaders_(),
         muteHttpExceptions: true
       };
     });
@@ -3041,11 +3051,9 @@ function fetchSupabaseRowCount(tableName) {
   const url = `${SUPABASE_URL}/rest/v1/${tableName}?select=unique_id&limit=1`;
   const res = UrlFetchApp.fetch(url, {
     method: 'get',
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
+    headers: getSupabaseHeaders_({
       'Prefer': 'count=exact'
-    },
+    }),
     muteHttpExceptions: true
   });
   const code = res.getResponseCode();
@@ -3081,11 +3089,9 @@ function clearSupabaseSnapshotTable(tableName) {
   const url = `${SUPABASE_URL}/rest/v1/${tableName}?unique_id=not.is.null`;
   const res = UrlFetchApp.fetch(url, {
     method: 'delete',
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
+    headers: getSupabaseHeaders_({
       'Prefer': 'return=minimal,count=exact'
-    },
+    }),
     muteHttpExceptions: true
   });
   const code = res.getResponseCode();
@@ -3125,7 +3131,7 @@ function deleteFromSupabase(tableName, idsToDelete) {
       requests.push({
         url: `${prefix}${currentChunk.join(',')}${suffix}`,
         method: 'delete',
-        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY },
+        headers: getSupabaseHeaders_(),
         muteHttpExceptions: true
       });
       currentChunk = [encodedId];
@@ -3139,7 +3145,7 @@ function deleteFromSupabase(tableName, idsToDelete) {
     requests.push({
       url: `${prefix}${currentChunk.join(',')}${suffix}`,
       method: 'delete',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY },
+      headers: getSupabaseHeaders_(),
       muteHttpExceptions: true
     });
   }
@@ -3175,7 +3181,7 @@ function pushToSupabaseLegacy_(tableName, payloadArray) {
     requests.push({
       url: `${SUPABASE_URL}/rest/v1/${tableName}`,
       method: 'post', 
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      headers: getSupabaseHeaders_({ 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' }),
       payload: JSON.stringify(chunk), 
       muteHttpExceptions: true
     });
@@ -3200,12 +3206,10 @@ function buildSupabaseUpsertRequests_(tableName, payloadArray) {
     requests.push({
       url: `${SUPABASE_URL}/rest/v1/${tableName}`,
       method: 'post',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
+      headers: getSupabaseHeaders_({
         'Content-Type': 'application/json',
         'Prefer': 'resolution=merge-duplicates,return=minimal'
-      },
+      }),
       payload: JSON.stringify(chunk),
       muteHttpExceptions: true
     });
@@ -6483,10 +6487,7 @@ function fetchRequestRowsForEmailFolder_(folderId) {
     const result = UrlFetchApp.fetch(url, {
       method: 'get',
       muteHttpExceptions: true,
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY
-      }
+      headers: getSupabaseHeaders_()
     });
     return result;
   };
@@ -6576,10 +6577,7 @@ function fetchRequestRowsForEmailRequestIds_(requestIds) {
     return UrlFetchApp.fetch(url, {
       method: 'get',
       muteHttpExceptions: true,
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY
-      }
+      headers: getSupabaseHeaders_()
     });
   };
   let rows = [];
@@ -6636,10 +6634,7 @@ function fetchRequestHistoryRowsForEmailFolder_(folderId) {
     const response = UrlFetchApp.fetch(url, {
       method: 'get',
       muteHttpExceptions: true,
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY
-      }
+      headers: getSupabaseHeaders_()
     });
     const status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
     const bodyText = response && response.getContentText ? response.getContentText() : '';
@@ -6685,10 +6680,7 @@ function fetchRequestHistoryRowsForEmailRequestIds_(requestIds) {
       const response = UrlFetchApp.fetch(url, {
         method: 'get',
         muteHttpExceptions: true,
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': 'Bearer ' + SUPABASE_KEY
-        }
+        headers: getSupabaseHeaders_()
       });
       const status = Number(response && response.getResponseCode ? response.getResponseCode() : 0) || 0;
       const bodyText = response && response.getContentText ? response.getContentText() : '';
@@ -7675,7 +7667,7 @@ function fetchEmailApprovalMasterRow_(uid) {
     const url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(tableName) + '?select=*&unique_id=eq.' + encodeURIComponent(safeUid) + '&limit=1';
     const res = UrlFetchApp.fetch(url, {
       method: 'get',
-      headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY },
+      headers: getSupabaseHeaders_(),
       muteHttpExceptions: true
     });
     if (res.getResponseCode() !== 200) continue;
@@ -7697,11 +7689,9 @@ function patchEmailApprovalMasterRow_(uid, patch, tableName) {
     method: 'patch',
     contentType: 'application/json',
     payload: JSON.stringify(patch || {}),
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: 'Bearer ' + SUPABASE_KEY,
+    headers: getSupabaseHeaders_({
       Prefer: 'return=representation'
-    },
+    }),
     muteHttpExceptions: true
   });
   const code = res.getResponseCode();
@@ -7864,12 +7854,10 @@ function patchInventoryTransactionHoldScopeRows_(tableName, scope, patch, useLot
   const query = buildInventoryTransactionHoldScopeQuery_(scope, useLotFallback);
   const response = UrlFetchApp.fetch(SUPABASE_URL + '/rest/v1/' + encodeURIComponent(tableName) + '?' + query, {
     method: 'patch',
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: 'Bearer ' + SUPABASE_KEY,
+    headers: getSupabaseHeaders_({
       'Content-Type': 'application/json',
       Prefer: 'return=representation'
-    },
+    }),
     payload: JSON.stringify(patch),
     muteHttpExceptions: true
   });
@@ -8082,7 +8070,7 @@ function fetchInventoryTransactionDestinationRowBySpec_(sourceRow, spec) {
     const url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(tableName) + '?' + query;
     const res = UrlFetchApp.fetch(url, {
       method: 'get',
-      headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY },
+      headers: getSupabaseHeaders_(),
       muteHttpExceptions: true
     });
     if (res.getResponseCode() !== 200) continue;
@@ -8112,7 +8100,7 @@ function fetchInventoryTransactionItemTemplateRow_(sourceRow, itemCode) {
     const url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(tableName) + '?' + query;
     const res = UrlFetchApp.fetch(url, {
       method: 'get',
-      headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY },
+      headers: getSupabaseHeaders_(),
       muteHttpExceptions: true
     });
     if (res.getResponseCode() !== 200) continue;
@@ -8192,12 +8180,10 @@ function insertInventoryTransactionDestinationRow_(sourceRow, transaction, actio
   const payload = buildInventoryTransactionDestinationInsertPayload_(sourceRow, transaction, action, spec);
   const response = UrlFetchApp.fetch(SUPABASE_URL + '/rest/v1/' + encodeURIComponent(tableName), {
     method: 'post',
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: 'Bearer ' + SUPABASE_KEY,
+    headers: getSupabaseHeaders_({
       'Content-Type': 'application/json',
       Prefer: 'return=representation'
-    },
+    }),
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
   });
@@ -8220,10 +8206,7 @@ function deleteInventoryTransactionCreatedRow_(row) {
     + '?unique_id=eq.' + encodeURIComponent(uid);
   const response = UrlFetchApp.fetch(url, {
     method: 'delete',
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: 'Bearer ' + SUPABASE_KEY
-    },
+    headers: getSupabaseHeaders_(),
     muteHttpExceptions: true
   });
   const code = response.getResponseCode();
@@ -8243,12 +8226,10 @@ function insertInventoryTransactionAudit_(record) {
   const payload = Object.assign({}, record || {});
   const response = UrlFetchApp.fetch(SUPABASE_URL + '/rest/v1/' + encodeURIComponent(INVENTORY_TRANSACTION_TABLE), {
     method: 'post',
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: 'Bearer ' + SUPABASE_KEY,
+    headers: getSupabaseHeaders_({
       'Content-Type': 'application/json',
       Prefer: 'return=minimal'
-    },
+    }),
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
   });
@@ -8349,11 +8330,9 @@ function fetchInventoryTransactionHistory_(payload) {
   const url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(INVENTORY_TRANSACTION_TABLE) + '?' + params.join('&');
   const response = UrlFetchApp.fetch(url, {
     method: 'get',
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: 'Bearer ' + SUPABASE_KEY,
+    headers: getSupabaseHeaders_({
       Accept: 'application/json'
-    },
+    }),
     muteHttpExceptions: true
   });
   const code = response.getResponseCode();
@@ -11312,11 +11291,9 @@ function uploadDiseaseAssetToSupabase_(config, storagePath, blob) {
     muteHttpExceptions: true,
     contentType: blob.getContentType() || 'application/octet-stream',
     payload: blob.getBytes(),
-    headers: {
-      apikey: config.serviceRoleKey,
-      Authorization: 'Bearer ' + config.serviceRoleKey,
+    headers: getSupabaseHeadersForKey_(config.serviceRoleKey, {
       'x-upsert': 'true'
-    }
+    })
   });
   const code = response.getResponseCode();
   if (code < 200 || code >= 300) {
@@ -11331,11 +11308,9 @@ function upsertDiseaseAssetRow_(config, row) {
     muteHttpExceptions: true,
     contentType: 'application/json',
     payload: JSON.stringify(row),
-    headers: {
-      apikey: config.serviceRoleKey,
-      Authorization: 'Bearer ' + config.serviceRoleKey,
+    headers: getSupabaseHeadersForKey_(config.serviceRoleKey, {
       Prefer: 'resolution=merge-duplicates,return=minimal'
-    }
+    })
   });
   const code = response.getResponseCode();
   if (code < 200 || code >= 300) {
