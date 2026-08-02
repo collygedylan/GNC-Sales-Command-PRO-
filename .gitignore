@@ -1,4 +1,15 @@
 desktop.ini
 __pycache__/
 *.pyc
+.env
+.venv/
+*.log
+*.tmp
+*.bak
+*.bak.*
+index.tmp.html
+FULL_CODE_GS_WITH_*.gs
+hl_po_apps_script_full.gs
+rollback-backup-*/
+tmp-video-frames*/
 

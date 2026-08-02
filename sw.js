@@ -17,7 +17,6 @@ const ASSETS_TO_CACHE = [
   './ag-data-solutions-icon-v20260708023-192.png',
   './ag-data-solutions-icon-v20260708023-512.png',
   './Greenleaf Logo.png',
-  './assets/greenleaf-logo.png',
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/@phosphor-icons/web',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
