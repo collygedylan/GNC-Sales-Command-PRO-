@@ -82,6 +82,11 @@ const DRIVE_AROUND_HISTORY_PENDING_FETCH_LIMIT = 1000;
 const DRIVE_AROUND_HISTORY_WORKSPACE_RUN_BUDGET_MS = 27 * 60 * 1000;
 const DRIVE_AROUND_HISTORY_FLUSH_ROW_THRESHOLD = 50000;
 const DRIVE_AROUND_HISTORY_SUPPORTED_EXTENSIONS = Object.freeze(['.csv', '.xls', '.xlsx']);
+const DRIVE_AROUND_CANONICAL_TIMEZONE = 'America/Chicago';
+const DRIVE_AROUND_CANONICAL_PREVIEW_LIMIT = 1000;
+const DRIVE_AROUND_CANONICAL_APPLY_LIMIT = 250;
+const DRIVE_AROUND_CANONICAL_NAME_PATTERN = /^(20\d{2}-\d{2}-\d{2})\s+(\d{2,})(?:\.[^.]+)?$/i;
+const DRIVE_AROUND_MACHINE_NAME_PATTERN = /^drivearoundmc\b/i;
 const DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER = 'runDriveAroundHistoryBackfillChunk_';
 const GOOGLE_SHEETS_MIME_TYPE = 'application/vnd.google-apps.spreadsheet';
 const WAREHOUSE_ASSIGNED_ITEMS_TABLE = 'ph_warehouse_assigned_items';
@@ -1044,12 +1049,384 @@ function getDriveFileSizeSafe_(file) {
   }
 }
 
+function getDriveFileDateObjectSafe_(file, getterName) {
+  try {
+    const value = file && typeof file[getterName] === 'function' ? file[getterName]() : null;
+    return value instanceof Date && !isNaN(value.getTime()) ? value : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+function formatDriveAroundCanonicalDate_(date) {
+  const safeDate = date instanceof Date && !isNaN(date.getTime()) ? date : new Date();
+  return Utilities.formatDate(safeDate, DRIVE_AROUND_CANONICAL_TIMEZONE, 'yyyy-MM-dd');
+}
+
+function padDriveAroundCanonicalSequence_(sequence) {
+  const safeSequence = Math.max(1, Number(sequence) || 1);
+  return safeSequence < 10 ? `0${safeSequence}` : String(safeSequence);
+}
+
+function isDriveAroundMachineNamedFile_(fileName) {
+  return DRIVE_AROUND_MACHINE_NAME_PATTERN.test(String(fileName || '').trim());
+}
+
+function parseDriveAroundCanonicalFileName_(fileName) {
+  const text = String(fileName || '').trim();
+  const match = text.match(DRIVE_AROUND_CANONICAL_NAME_PATTERN);
+  if (!match) return null;
+  const sequence = Number(match[2] || 0);
+  return {
+    canonicalDate: match[1],
+    sequence: sequence > 0 ? sequence : null
+  };
+}
+
+function getDriveAroundFileExtension_(fileName) {
+  const match = String(fileName || '').trim().match(/(\.[A-Za-z0-9]{1,12})$/);
+  return match ? match[1] : '';
+}
+
+function buildDriveAroundCanonicalFileName_(canonicalDate, sequence, extension) {
+  return `${canonicalDate} ${padDriveAroundCanonicalSequence_(sequence)}${String(extension || '')}`;
+}
+
+function normalizeDriveAroundRawManifest_(raw) {
+  if (!raw) return {};
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (err) {
+      return {};
+    }
+  }
+  return typeof raw === 'object' ? raw : {};
+}
+
+function resolveDriveAroundCanonicalDate_(file, options) {
+  const safeOptions = options || {};
+  const fileName = String(file && typeof file.getName === 'function' ? file.getName() : '').trim();
+  const isMachineName = isDriveAroundMachineNamedFile_(fileName);
+  const parsedFileNameDate = parseDriveAroundReportDateString_(fileName);
+  const createdDate = getDriveFileDateObjectSafe_(file, 'getDateCreated');
+  const modifiedDate = getDriveFileDateObjectSafe_(file, 'getLastUpdated');
+  const fallbackDate = safeOptions.fallbackDate instanceof Date && !isNaN(safeOptions.fallbackDate.getTime())
+    ? safeOptions.fallbackDate
+    : null;
+  if (parsedFileNameDate && !isMachineName) {
+    return {
+      canonicalDate: parsedFileNameDate,
+      canonicalDateSource: 'filename',
+      parsedFileNameDate: parsedFileNameDate,
+      driveCreatedAt: createdDate ? createdDate.toISOString() : null,
+      driveModifiedAt: modifiedDate ? modifiedDate.toISOString() : null,
+      firstSeenAt: createdDate ? createdDate.toISOString() : fallbackDate ? fallbackDate.toISOString() : null
+    };
+  }
+  const sourceDate = createdDate || fallbackDate || modifiedDate || new Date();
+  return {
+    canonicalDate: formatDriveAroundCanonicalDate_(sourceDate),
+    canonicalDateSource: isMachineName ? 'drive_drop_date_machine_name' : 'drive_drop_date',
+    parsedFileNameDate: parsedFileNameDate,
+    driveCreatedAt: createdDate ? createdDate.toISOString() : null,
+    driveModifiedAt: modifiedDate ? modifiedDate.toISOString() : null,
+    firstSeenAt: createdDate ? createdDate.toISOString() : fallbackDate ? fallbackDate.toISOString() : sourceDate.toISOString()
+  };
+}
+
+function getDriveAroundCanonicalSortTime_(file) {
+  const createdDate = getDriveFileDateObjectSafe_(file, 'getDateCreated');
+  if (createdDate) return createdDate.getTime();
+  const modifiedDate = getDriveFileDateObjectSafe_(file, 'getLastUpdated');
+  return modifiedDate ? modifiedDate.getTime() : 0;
+}
+
+function getDriveAroundCanonicalFolderFiles_(folder) {
+  const iterator = listDriveFilesWithRetry_(folder, 'DriveAround canonical folder scan');
+  const files = [];
+  while (iterator.hasNext()) {
+    const file = iterator.next();
+    if (isDriveAroundHistoricalFileSupported_(file.getName(), file.getMimeType())) {
+      files.push(file);
+    }
+  }
+  return files;
+}
+
+function buildDriveAroundCanonicalRenamePlan_(targetFiles, processedFolder, options) {
+  const safeOptions = options || {};
+  const targetIdSet = {};
+  (targetFiles || []).forEach(function(file) {
+    const fileId = String(file && typeof file.getId === 'function' ? file.getId() : '').trim();
+    if (fileId) targetIdSet[fileId] = true;
+  });
+  const folderFiles = getDriveAroundCanonicalFolderFiles_(processedFolder);
+  const usedNames = {};
+  const maxSequenceByDate = {};
+  folderFiles.forEach(function(file) {
+    const fileName = String(file.getName() || '').trim();
+    const canonical = parseDriveAroundCanonicalFileName_(fileName);
+    if (!canonical || !canonical.canonicalDate || !canonical.sequence) return;
+    usedNames[fileName.toLowerCase()] = true;
+    const currentMax = Number(maxSequenceByDate[canonical.canonicalDate] || 0);
+    if (canonical.sequence > currentMax) maxSequenceByDate[canonical.canonicalDate] = canonical.sequence;
+  });
+
+  const entries = (targetFiles || []).filter(function(file) {
+    return file && isDriveAroundHistoricalFileSupported_(file.getName(), file.getMimeType());
+  }).map(function(file) {
+    const originalName = String(file.getName() || '').trim();
+    const resolved = resolveDriveAroundCanonicalDate_(file, safeOptions);
+    const existingCanonical = parseDriveAroundCanonicalFileName_(originalName);
+    return {
+      file: file,
+      fileId: String(file.getId() || '').trim(),
+      originalFileName: originalName,
+      extension: getDriveAroundFileExtension_(originalName),
+      canonicalDate: resolved.canonicalDate,
+      canonicalDateSource: resolved.canonicalDateSource,
+      parsedFileNameDate: resolved.parsedFileNameDate,
+      driveCreatedAt: resolved.driveCreatedAt,
+      driveModifiedAt: resolved.driveModifiedAt,
+      firstSeenAt: resolved.firstSeenAt,
+      sortTime: getDriveAroundCanonicalSortTime_(file),
+      existingCanonical: existingCanonical
+    };
+  });
+
+  entries.sort(function(a, b) {
+    if (a.canonicalDate !== b.canonicalDate) return a.canonicalDate < b.canonicalDate ? -1 : 1;
+    if (a.sortTime !== b.sortTime) return a.sortTime - b.sortTime;
+    if (a.originalFileName !== b.originalFileName) return a.originalFileName < b.originalFileName ? -1 : 1;
+    return a.fileId < b.fileId ? -1 : a.fileId > b.fileId ? 1 : 0;
+  });
+
+  const warnings = [];
+  const assignments = entries.map(function(entry) {
+    const alreadyCanonicalForDate = entry.existingCanonical &&
+      entry.existingCanonical.canonicalDate === entry.canonicalDate &&
+      entry.existingCanonical.sequence;
+    let sequence = alreadyCanonicalForDate ? entry.existingCanonical.sequence : Number(maxSequenceByDate[entry.canonicalDate] || 0) + 1;
+    let canonicalFileName = alreadyCanonicalForDate
+      ? entry.originalFileName
+      : buildDriveAroundCanonicalFileName_(entry.canonicalDate, sequence, entry.extension);
+    while (!alreadyCanonicalForDate && usedNames[String(canonicalFileName || '').toLowerCase()]) {
+      sequence += 1;
+      canonicalFileName = buildDriveAroundCanonicalFileName_(entry.canonicalDate, sequence, entry.extension);
+    }
+    usedNames[String(canonicalFileName || '').toLowerCase()] = true;
+    const priorMax = Number(maxSequenceByDate[entry.canonicalDate] || 0);
+    if (sequence > priorMax) maxSequenceByDate[entry.canonicalDate] = sequence;
+    if (sequence > 4) {
+      warnings.push(`${entry.canonicalDate} has sequence ${sequence}; keeping the file and continuing.`);
+    }
+    return Object.assign({}, entry, {
+      canonicalSequence: sequence,
+      canonicalFileName: canonicalFileName,
+      shouldRename: canonicalFileName !== entry.originalFileName,
+      isTargetFile: !!targetIdSet[entry.fileId],
+      renamedAt: null,
+      renameError: null
+    });
+  });
+
+  return {
+    assignments: assignments,
+    warnings: warnings
+  };
+}
+
+function buildDriveAroundCanonicalManifestRow_(file, assignment, nowIso, existingManifestRow) {
+  const existing = existingManifestRow || {};
+  const raw = normalizeDriveAroundRawManifest_(existing.raw);
+  const canonicalFileName = String(assignment && assignment.canonicalFileName || file.getName() || '').trim();
+  const originalFileName = String(assignment && assignment.originalFileName || raw.original_file_name || canonicalFileName).trim();
+  const canonicalDate = String(assignment && assignment.canonicalDate || parseDriveAroundReportDateString_(canonicalFileName) || '').trim() || null;
+  const canonicalSequence = assignment && assignment.canonicalSequence ? Number(assignment.canonicalSequence) : null;
+  const driveModifiedAt = getDriveFileIsoDateSafe_(file, 'getLastUpdated') || assignment && assignment.driveModifiedAt || existing.drive_modified_time || null;
+  const driveCreatedAt = assignment && assignment.driveCreatedAt || getDriveFileIsoDateSafe_(file, 'getDateCreated') || raw.created_at || null;
+  const mergedRaw = Object.assign({}, raw, {
+    source: 'apps_script_drivearound_canonical_naming',
+    source_folder_id: DRIVE_AROUND_HISTORY_FOLDER_ID,
+    original_file_name: originalFileName,
+    canonical_file_name: canonicalFileName,
+    canonical_report_date: canonicalDate,
+    canonical_sequence: canonicalSequence,
+    canonical_date_source: assignment && assignment.canonicalDateSource || raw.canonical_date_source || null,
+    parsed_file_name_date: assignment && assignment.parsedFileNameDate || raw.parsed_file_name_date || null,
+    size_bytes: getDriveFileSizeSafe_(file),
+    created_at: driveCreatedAt,
+    modified_at: driveModifiedAt,
+    renamed_at: assignment && assignment.renamedAt || raw.renamed_at || null,
+    indexed_at: nowIso
+  });
+  return {
+    file_id: String(file.getId() || '').trim(),
+    file_name: canonicalFileName,
+    mime_type: String(file.getMimeType() || '').trim() || null,
+    report_date: canonicalDate,
+    drive_modified_time: driveModifiedAt,
+    web_view_link: file.getUrl(),
+    processed_at: nowIso,
+    row_count: Number(existing.row_count || 0),
+    hold_row_count: Number(existing.hold_row_count || 0),
+    status: String(existing.status || '').trim() || 'indexed',
+    error_message: existing.error_message || null,
+    original_file_name: originalFileName,
+    canonical_file_name: canonicalFileName,
+    canonical_report_date: canonicalDate,
+    canonical_sequence: canonicalSequence,
+    canonical_date_source: assignment && assignment.canonicalDateSource || raw.canonical_date_source || null,
+    renamed_at: assignment && assignment.renamedAt || raw.renamed_at || null,
+    first_seen_at: assignment && assignment.firstSeenAt || raw.first_seen_at || driveCreatedAt || nowIso,
+    raw: mergedRaw
+  };
+}
+
+function pushDriveAroundCanonicalManifestRows_(assignments, nowIso, existingManifestById) {
+  const existingMap = existingManifestById || fetchExistingDriveAroundHistoryManifestMap_();
+  const rows = (assignments || []).map(function(assignment) {
+    const existing = existingMap[String(assignment.fileId || '').trim()] || null;
+    return buildDriveAroundCanonicalManifestRow_(assignment.file, assignment, nowIso, existing);
+  });
+  if (rows.length) pushToSupabase(DRIVE_AROUND_HISTORY_TABLE, rows);
+  return rows.length;
+}
+
+function renameDriveAroundFileSafely_(assignment) {
+  if (!assignment || !assignment.shouldRename) return assignment;
+  try {
+    renameDriveFileWithRetry_(assignment.file, assignment.canonicalFileName, `DriveAround canonical rename ${assignment.originalFileName}`);
+    assignment.renamedAt = new Date().toISOString();
+  } catch (err) {
+    assignment.renameError = err && err.message ? err.message : String(err);
+    console.warn(`[DRIVE AROUND NAME] Rename failed for ${assignment.originalFileName}: ${assignment.renameError}`);
+  }
+  return assignment;
+}
+
+function moveAndNormalizeDriveAroundProcessedFiles_(parsedFiles, processedFolder, options) {
+  const files = (parsedFiles || []).map(function(entry) { return entry && entry.file; }).filter(Boolean);
+  if (!files.length) return { moved: 0, renamed: 0, renameErrors: 0, manifestRows: 0, warnings: [] };
+  const nowIso = options && options.nowIso || new Date().toISOString();
+  const plan = buildDriveAroundCanonicalRenamePlan_(files, processedFolder, { fallbackDate: new Date(nowIso) });
+  const assignmentsById = {};
+  plan.assignments.forEach(function(assignment) {
+    assignmentsById[assignment.fileId] = assignment;
+  });
+  let moved = 0;
+  let renamed = 0;
+  let renameErrors = 0;
+  (parsedFiles || []).forEach(function(entry) {
+    const file = entry && entry.file;
+    if (!file) return;
+    const fileId = String(file.getId() || '').trim();
+    const assignment = assignmentsById[fileId];
+    moveDriveFileToFolderWithRetry_(file, processedFolder, `Move processed file ${file.getName()}`);
+    moved += 1;
+    if (assignment && assignment.shouldRename) {
+      renameDriveAroundFileSafely_(assignment);
+      if (assignment.renamedAt) renamed += 1;
+      if (assignment.renameError) renameErrors += 1;
+    }
+  });
+  let manifestRows = 0;
+  let manifestError = null;
+  try {
+    manifestRows = pushDriveAroundCanonicalManifestRows_(plan.assignments, nowIso);
+  } catch (err) {
+    manifestError = err && err.message ? err.message : String(err);
+    console.warn(`[DRIVE AROUND NAME] Manifest update failed after processed files moved: ${manifestError}`);
+  }
+  return {
+    moved: moved,
+    renamed: renamed,
+    renameErrors: renameErrors,
+    manifestRows: manifestRows,
+    manifestError: manifestError,
+    warnings: plan.warnings
+  };
+}
+
+function previewNormalizeDriveAroundProcessedNames(limit) {
+  return normalizeDriveAroundProcessedNames_({
+    apply: false,
+    limit: Math.max(1, Math.min(5000, Number(limit) || DRIVE_AROUND_CANONICAL_PREVIEW_LIMIT))
+  });
+}
+
+function normalizeDriveAroundProcessedNames(limit) {
+  return normalizeDriveAroundProcessedNames_({
+    apply: true,
+    limit: Math.max(1, Math.min(5000, Number(limit) || DRIVE_AROUND_CANONICAL_APPLY_LIMIT))
+  });
+}
+
+function normalizeDriveAroundProcessedNames_(options) {
+  const safeOptions = options || {};
+  const apply = safeOptions.apply === true;
+  const limit = Math.max(1, Number(safeOptions.limit) || (apply ? DRIVE_AROUND_CANONICAL_APPLY_LIMIT : DRIVE_AROUND_CANONICAL_PREVIEW_LIMIT));
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error('DriveAround name cleanup is already running.');
+  try {
+    const started = new Date();
+    const nowIso = started.toISOString();
+    const folder = DriveApp.getFolderById(DRIVE_AROUND_HISTORY_FOLDER_ID);
+    const files = getDriveAroundCanonicalFolderFiles_(folder);
+    const plan = buildDriveAroundCanonicalRenamePlan_(files, folder, { fallbackDate: started });
+    const renameNeeded = plan.assignments.filter(function(assignment) { return assignment.shouldRename; });
+    const applyTargets = renameNeeded.slice(0, limit);
+    let renamed = 0;
+    let renameErrors = 0;
+    if (apply) {
+      applyTargets.forEach(function(assignment) {
+        renameDriveAroundFileSafely_(assignment);
+        if (assignment.renamedAt) renamed += 1;
+        if (assignment.renameError) renameErrors += 1;
+      });
+      pushDriveAroundCanonicalManifestRows_(applyTargets, nowIso);
+    }
+    const samples = plan.assignments.slice(0, 40).map(function(assignment) {
+      return {
+        fileId: assignment.fileId,
+        oldName: assignment.originalFileName,
+        newName: assignment.canonicalFileName,
+        canonicalDate: assignment.canonicalDate,
+        sequence: assignment.canonicalSequence,
+        dateSource: assignment.canonicalDateSource,
+        wouldRename: assignment.shouldRename,
+        renamed: !!assignment.renamedAt,
+        error: assignment.renameError || null
+      };
+    });
+    const summary = {
+      apply: apply,
+      scanned: files.length,
+      planned: plan.assignments.length,
+      renameNeeded: renameNeeded.length,
+      processedThisRun: apply ? applyTargets.length : 0,
+      renamed: renamed,
+      renameErrors: renameErrors,
+      skippedAlreadyCanonical: plan.assignments.length - renameNeeded.length,
+      remainingRenameNeeded: apply ? Math.max(0, renameNeeded.length - applyTargets.length + renameErrors) : renameNeeded.length,
+      warnings: plan.warnings.slice(0, 25),
+      samples: samples
+    };
+    console.log(`[DRIVE AROUND NAME] ${JSON.stringify(summary)}`);
+    return summary;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function fetchExistingDriveAroundHistoryManifestMap_() {
   const limit = SUPABASE_FETCH_PAGE_SIZE;
   let offset = 0;
   const byId = {};
   while (true) {
-    const url = `${SUPABASE_URL}/rest/v1/${DRIVE_AROUND_HISTORY_TABLE}?select=file_id,file_name,report_date,drive_modified_time,row_count,hold_row_count,status,error_message&limit=${limit}&offset=${offset}`;
+    const url = `${SUPABASE_URL}/rest/v1/${DRIVE_AROUND_HISTORY_TABLE}?select=file_id,file_name,report_date,drive_modified_time,row_count,hold_row_count,status,error_message,raw,original_file_name,canonical_file_name,canonical_report_date,canonical_sequence,canonical_date_source,renamed_at,first_seen_at&limit=${limit}&offset=${offset}`;
     const res = UrlFetchApp.fetch(url, {
       method: 'get',
       headers: {
@@ -1233,11 +1610,13 @@ function buildDriveAroundHistoryManifestRow_(file, folderPath, nowIso) {
   const fileName = String(file.getName() || '').trim();
   const mimeType = String(file.getMimeType() || '').trim();
   const modifiedAt = getDriveFileIsoDateSafe_(file, 'getLastUpdated');
+  const canonical = resolveDriveAroundCanonicalDate_(file, { fallbackDate: new Date(nowIso) });
+  const canonicalName = parseDriveAroundCanonicalFileName_(fileName);
   return {
     file_id: fileId,
     file_name: fileName,
     mime_type: mimeType || null,
-    report_date: parseDriveAroundReportDateString_(fileName),
+    report_date: canonical.canonicalDate,
     drive_modified_time: modifiedAt,
     web_view_link: file.getUrl(),
     processed_at: nowIso,
@@ -1245,12 +1624,26 @@ function buildDriveAroundHistoryManifestRow_(file, folderPath, nowIso) {
     hold_row_count: 0,
     status: 'indexed',
     error_message: null,
+    original_file_name: fileName,
+    canonical_file_name: canonicalName ? fileName : null,
+    canonical_report_date: canonical.canonicalDate,
+    canonical_sequence: canonicalName && canonicalName.sequence || null,
+    canonical_date_source: canonical.canonicalDateSource,
+    renamed_at: null,
+    first_seen_at: canonical.firstSeenAt || nowIso,
     raw: {
       source: 'apps_script_drive_around_history_index',
       source_folder_id: DRIVE_AROUND_HISTORY_FOLDER_ID,
       folder_path: String(folderPath || ''),
+      original_file_name: fileName,
+      canonical_file_name: canonicalName ? fileName : null,
+      canonical_report_date: canonical.canonicalDate,
+      canonical_sequence: canonicalName && canonicalName.sequence || null,
+      canonical_date_source: canonical.canonicalDateSource,
+      parsed_file_name_date: canonical.parsedFileNameDate || null,
       size_bytes: getDriveFileSizeSafe_(file),
       created_at: getDriveFileIsoDateSafe_(file, 'getDateCreated'),
+      modified_at: modifiedAt,
       indexed_at: nowIso
     }
   };
@@ -1565,6 +1958,12 @@ function trashDriveFileWithRetry_(file, label) {
 function moveDriveFileToFolderWithRetry_(file, folder, label) {
   return withDriveRetry_(`Move file: ${label}`, function() {
     return file.moveTo(folder);
+  });
+}
+
+function renameDriveFileWithRetry_(file, newName, label) {
+  return withDriveRetry_(`Rename file: ${label}`, function() {
+    return file.setName(newName);
   });
 }
 
@@ -3327,9 +3726,10 @@ function processSiteSplitMasterSnapshotBatchFolder_(dropFolderId, processedFolde
 
     if (!anySiteRows) throw new Error('No PH/TX/NC/HL Drive Around rows were found; skipped site split sync.');
 
-    parsedFiles.forEach(function(entry) {
-      moveDriveFileToFolderWithRetry_(entry.file, processedFolder, `site split drive around processed snapshot file ${entry.fileName}`);
-    });
+    const namingSummary = moveAndNormalizeDriveAroundProcessedFiles_(parsedFiles, processedFolder, { nowIso: syncStartTime });
+    if (namingSummary && namingSummary.warnings && namingSummary.warnings.length) {
+      console.warn(`[DRIVE AROUND NAME] ${namingSummary.warnings.join(' | ')}`);
+    }
     importSucceeded = true;
   } catch (err) {
     const errorMessage = err && err.message ? err.message : String(err);
@@ -3484,9 +3884,17 @@ function processSnapshotBatchFolder(dropFolderId, processedFolderId, tableName, 
     if (upserts.length > 0) pushToSupabase(tableName, upserts);
     if (deletes.length > 0) deleteFromSupabase(tableName, deletes);
 
-    parsedFiles.forEach(function(entry) {
-      moveDriveFileToFolderWithRetry_(entry.file, processedFolder, `${tableName} processed snapshot file ${entry.fileName}`);
-    });
+    let namingSummary = null;
+    if (isMasterInventoryTable_(tableName) && String(processedFolderId || '') === String(FOLDERS.MASTER_PROCESSED || '')) {
+      namingSummary = moveAndNormalizeDriveAroundProcessedFiles_(parsedFiles, processedFolder, { nowIso: syncStartTime });
+      if (namingSummary && namingSummary.warnings && namingSummary.warnings.length) {
+        console.warn(`[DRIVE AROUND NAME] ${namingSummary.warnings.join(' | ')}`);
+      }
+    } else {
+      parsedFiles.forEach(function(entry) {
+        moveDriveFileToFolderWithRetry_(entry.file, processedFolder, `${tableName} processed snapshot file ${entry.fileName}`);
+      });
+    }
     importSucceeded = true;
   } catch (err) {
     const errorMessage = err && err.message ? err.message : String(err);
