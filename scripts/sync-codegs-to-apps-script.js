@@ -31,11 +31,17 @@ function parseClaspRc(rawValue) {
 }
 
 function getOAuthClientFromClaspRc(claspRc) {
-  const token = claspRc.token || claspRc.tokens || {};
+  const tokens = claspRc.tokens && typeof claspRc.tokens === 'object' ? claspRc.tokens : {};
+  const mappedToken = tokens.default && typeof tokens.default === 'object'
+    ? tokens.default
+    : Object.values(tokens).find((candidate) => {
+      return candidate && typeof candidate === 'object' && candidate.refresh_token;
+    });
+  const token = claspRc.token || (tokens.refresh_token ? tokens : mappedToken) || {};
   const settings = claspRc.oauth2ClientSettings || claspRc.oauth2Client || {};
-  const clientId = String(settings.clientId || settings.client_id || process.env.APPS_SCRIPT_CLIENT_ID || '').trim();
-  const clientSecret = String(settings.clientSecret || settings.client_secret || process.env.APPS_SCRIPT_CLIENT_SECRET || '').trim();
-  const redirectUri = String(settings.redirectUri || settings.redirect_uri || 'http://localhost').trim();
+  const clientId = String(settings.clientId || settings.client_id || token.client_id || process.env.APPS_SCRIPT_CLIENT_ID || '').trim();
+  const clientSecret = String(settings.clientSecret || settings.client_secret || token.client_secret || process.env.APPS_SCRIPT_CLIENT_SECRET || '').trim();
+  const redirectUri = String(settings.redirectUri || settings.redirect_uri || token.redirect_uri || token.redirectUri || 'http://localhost').trim();
   const refreshToken = String(token.refresh_token || process.env.APPS_SCRIPT_REFRESH_TOKEN || '').trim();
 
   if (!clientId) fail('OAuth client ID is missing from APPS_SCRIPT_CLASPRC_JSON.');
