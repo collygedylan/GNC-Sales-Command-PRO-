@@ -106,62 +106,6 @@ function getSupabaseHeaders_(extraHeaders) {
   return getSupabaseHeadersForKey_(SUPABASE_KEY, extraHeaders);
 }
 
-function diagnoseSupabaseRuntime_() {
-  const key = String(SUPABASE_KEY || '').trim();
-  const headers = getSupabaseHeaders_();
-  const directHeaders = {
-    apikey: key,
-    Authorization: key ? 'Bearer ' + key : ''
-  };
-  const probeUrl = `${SUPABASE_URL}/rest/v1/${DRIVE_AROUND_HISTORY_TABLE}?select=file_id&limit=1`;
-  function probe(name, probeHeaders) {
-    try {
-      const response = UrlFetchApp.fetch(probeUrl, {
-        method: 'get',
-        headers: probeHeaders,
-        muteHttpExceptions: true
-      });
-      return {
-        name: name,
-        status: response.getResponseCode(),
-        bodyStart: String(response.getContentText() || '').slice(0, 220)
-      };
-    } catch (err) {
-      return {
-        name: name,
-        status: 'fetch_error',
-        bodyStart: err && err.message ? err.message : String(err)
-      };
-    }
-  }
-  return {
-    keyLength: key.length,
-    keyPrefix: key ? key.slice(0, 3) : '',
-    headerKeys: Object.keys(headers),
-    hasApikeyHeader: !!headers.apikey,
-    hasAuthorizationHeader: !!headers.Authorization,
-    directHeaderKeys: Object.keys(directHeaders).filter(function(headerName) {
-      return !!directHeaders[headerName];
-    }),
-    sharedProbe: probe('shared', headers),
-    directProbe: probe('direct', directHeaders)
-  };
-}
-
-function setSupabaseServiceRoleKeyForMaintenance(key) {
-  const safeKey = String(key || '').trim();
-  if (!safeKey || safeKey.slice(0, 3) !== 'eyJ' || safeKey.length < 100) {
-    throw new Error('Expected the legacy Supabase service_role JWT key.');
-  }
-  PropertiesService.getScriptProperties().setProperty('SUPABASE_SERVICE_ROLE_KEY', safeKey);
-  return {
-    ok: true,
-    property: 'SUPABASE_SERVICE_ROLE_KEY',
-    keyPrefix: safeKey.slice(0, 3),
-    keyLength: safeKey.length
-  };
-}
-
 const APP_LIVE_EVENTS_TABLE = 'ph_app_live_events';
 const INVENTORY_TRANSACTION_TABLE = 'ph_inventory_transactions';
 const EMIT_APP_LIVE_EVENTS = true;
@@ -11472,22 +11416,6 @@ function doPost(e) {
 
     if (payload.type === 'clear_request_gallery_cache') {
       return jsonOutput_(cleanupRequestGalleryPropertyCache_());
-    }
-
-    if (payload.type === 'supabase_runtime_diag') {
-      const requestedBy = String(payload.requested_by || payload.requestedBy || '').trim().toLowerCase();
-      if (requestedBy !== 'dylan_collyge' && requestedBy !== 'dylancollyge@agmetricapp.com') {
-        throw new Error('Supabase runtime diagnostics are restricted to dylan_collyge.');
-      }
-      return jsonOutput_(diagnoseSupabaseRuntime_());
-    }
-
-    if (payload.type === 'set_supabase_service_role_key') {
-      const requestedBy = String(payload.requested_by || payload.requestedBy || '').trim().toLowerCase();
-      if (requestedBy !== 'dylan_collyge' && requestedBy !== 'dylancollyge@agmetricapp.com') {
-        throw new Error('Supabase key maintenance is restricted to dylan_collyge.');
-      }
-      return jsonOutput_(setSupabaseServiceRoleKeyForMaintenance(payload.key || payload.serviceRoleKey || ''));
     }
 
     if (payload.type === 'drivearound_name_preview' || payload.type === 'drivearound_name_cleanup') {
