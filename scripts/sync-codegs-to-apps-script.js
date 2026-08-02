@@ -8,7 +8,6 @@ const scriptId = String(process.env.APPS_SCRIPT_SCRIPT_ID || '').trim();
 const claspRcJson = String(process.env.APPS_SCRIPT_CLASPRC_JSON || process.env.CLASPRC_JSON || '').trim();
 const deploymentId = String(process.env.APPS_SCRIPT_DEPLOYMENT_ID || '').trim();
 const githubSha = String(process.env.GITHUB_SHA || '').trim();
-const supabaseServiceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 const supabaseServiceRolePlaceholder = '__SUPABASE_SERVICE_ROLE_KEY__';
 
 function fail(message) {
@@ -71,8 +70,7 @@ async function main() {
   let source = fs.readFileSync(codeGsPath, 'utf8');
   if (!source.trim()) fail('Code.gs is empty. Refusing to sync an empty Apps Script source file.');
   if (source.includes(supabaseServiceRolePlaceholder)) {
-    if (!supabaseServiceRoleKey) fail('SUPABASE_SERVICE_ROLE_KEY secret is required to deploy Code.gs.');
-    source = source.split(supabaseServiceRolePlaceholder).join(supabaseServiceRoleKey);
+    console.log('Leaving Supabase service key placeholder in source; Apps Script reads the key from Script Properties at runtime.');
   }
 
   const claspRc = parseClaspRc(claspRcJson);
