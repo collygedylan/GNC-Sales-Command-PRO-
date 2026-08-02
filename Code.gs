@@ -641,10 +641,22 @@ function queueManualSyncRequest_(options) {
   lock.waitLock(30000);
   try {
     cleanupRequestGalleryPropertyCache_();
+    const forceIfStale = !!(options && (options.forceIfStale === true || options.force_if_stale === true));
     let existing = loadManualSyncStatus_();
     if (existing && existing.active && isManualSyncStatusStale_(existing)) {
       const staleStageLabel = String(existing.currentStageLabel || existing.currentStage || 'manual sync');
       existing = markManualSyncStatusStale_(existing, `${staleStageLabel} did not update before the safety timeout.`);
+    }
+    if (existing && existing.active && forceIfStale) {
+      const nowMs = Date.now();
+      const updatedAtMs = parseManualSyncTimestampMs_(existing.updatedAt || existing.updated_at || existing.startedAt || existing.started_at);
+      const startedAtMs = parseManualSyncTimestampMs_(existing.startedAt || existing.started_at || existing.updatedAt || existing.updated_at);
+      const oldestKnownMs = Math.min.apply(null, [updatedAtMs, startedAtMs].filter(function(value) { return value > 0; }));
+      const forceClearAgeMs = oldestKnownMs > 0 ? nowMs - oldestKnownMs : 0;
+      if (forceClearAgeMs > MANUAL_SYNC_ACTIVE_STALE_MS) {
+        const staleStageLabel = String(existing.currentStageLabel || existing.currentStage || 'manual sync');
+        existing = markManualSyncStatusStale_(existing, `Force-cleared stale manual sync before starting a new run. Last stage: ${staleStageLabel}.`);
+      }
     }
     if (existing && existing.active) {
       console.warn(`[MANUAL SYNC][${existing.runId || 'active'}] A manual sync is already running.`);
@@ -10992,6 +11004,7 @@ function doPost(e) {
         job: payload.job || 'all',
         source: payload.trigger || 'webhook',
         requestedBy: payload.requested_by || payload.requestedBy || 'Unknown',
+        forceIfStale: payload.force_if_stale === true || payload.forceIfStale === true,
         deferStart: !runInline
       });
       if (runInline && result && result.status === 'queued') {
@@ -11003,6 +11016,18 @@ function doPost(e) {
         return jsonOutput_(finalStatus || result);
       }
       return jsonOutput_(result);
+    }
+
+    if (payload.type === 'manual_clear_status') {
+      cleanupRequestGalleryPropertyCache_();
+      clearManualSyncStatus();
+      return jsonOutput_({
+        ok: true,
+        active: false,
+        currentStage: '',
+        currentStageLabel: '',
+        message: 'Manual sync status cleared.'
+      });
     }
 
     if (payload.type === 'manual_status') {
