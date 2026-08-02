@@ -26,7 +26,7 @@ const FLYER_ALERT_USERNAMES = new Set(
     .map((value) => normalizeUsername(value))
     .filter(Boolean)
 );
-const PUSH_TABLE = "v2_push_subscriptions";
+const PUSH_TABLE = "ph_push_subscriptions";
 const PUSH_SEND_CONCURRENCY = Math.max(1, Number(Deno.env.get("PUSH_SEND_CONCURRENCY") || "8") || 8);
 const WEB_PUSH_OPTIONS = { TTL: 120, urgency: "high", timeout: 8000 };
 

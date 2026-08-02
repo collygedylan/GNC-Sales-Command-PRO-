@@ -118,13 +118,13 @@ const TABLE_LABELS: Record<DatasetKey, string> = {
 };
 
 const TABLE_NAMES: Record<DatasetKey, string> = {
-  master: "v2_master_inventory",
-  reserves: "v2_reserves",
-  requests: "v2_active_request",
-  "sales-office": "v2_sales_office",
-  docks: "v2_soc_master",
-  "dock-team": "v2_dock_team_status",
-  future: "v2_master_inventory",
+  master: "ph_master_inventory",
+  reserves: "ph_reserves",
+  requests: "ph_active_request",
+  "sales-office": "ph_sales_office",
+  docks: "ph_soc_master",
+  "dock-team": "ph_dock_team_status",
+  future: "ph_master_inventory",
 };
 
 const NUMBER_WORDS: Record<string, string> = {
@@ -497,17 +497,17 @@ function mapTableToDataset(tableName: string): DatasetKey {
 }
 
 async function fetchRows(tableName: string, intent: Intent) {
-  let query = supabase.from(tableName).select("*").limit(tableName === "v2_master_inventory" ? 650 : 500);
+  let query = supabase.from(tableName).select("*").limit(tableName === "ph_master_inventory" ? 650 : 500);
   const searchTokens = Array.from(new Set(expandAliasTokens(intent.itemTokens || []).filter(Boolean)))
     .sort((left, right) => right.length - left.length || left.localeCompare(right))
     .slice(0, 5);
-  if (searchTokens.length && tableName !== "v2_dock_team_status") {
+  if (searchTokens.length && tableName !== "ph_dock_team_status") {
     const fieldOptions: Record<string, string[]> = {
-      v2_master_inventory: ["commonname", "itemcode", "locationcode"],
-      v2_reserves: ["commonname", "itemcode", "customername", "consigneename", "salesrepname"],
-      v2_active_request: ["commonname", "itemcode", "requested_by", "req_customer", "request_folder"],
-      v2_sales_office: ["commonname", "itemcode", "order_customer", "order_folder"],
-      v2_soc_master: ["commonname", "itemcode", "locationcode", "dock_note", "dock_num", "customername", "salesrepname"],
+      ph_master_inventory: ["commonname", "itemcode", "locationcode"],
+      ph_reserves: ["commonname", "itemcode", "customername", "consigneename", "salesrepname"],
+      ph_active_request: ["commonname", "itemcode", "requested_by", "req_customer", "request_folder"],
+      ph_sales_office: ["commonname", "itemcode", "order_customer", "order_folder"],
+      ph_soc_master: ["commonname", "itemcode", "locationcode", "dock_note", "dock_num", "customername", "salesrepname"],
     };
     const orFields = fieldOptions[tableName] || [];
     const clauses: string[] = [];
@@ -521,15 +521,15 @@ async function fetchRows(tableName: string, intent: Intent) {
     }
   }
   const salesRepFieldMap: Record<string, string> = {
-    v2_reserves: "salesrepname",
-    v2_active_request: "requested_by",
-    v2_soc_master: "salesrepname",
+    ph_reserves: "salesrepname",
+    ph_active_request: "requested_by",
+    ph_soc_master: "salesrepname",
   };
   const customerFieldMap: Record<string, string> = {
-    v2_reserves: "customername",
-    v2_active_request: "req_customer",
-    v2_sales_office: "order_customer",
-    v2_soc_master: "customername",
+    ph_reserves: "customername",
+    ph_active_request: "req_customer",
+    ph_sales_office: "order_customer",
+    ph_soc_master: "customername",
   };
   if (intent.salesRep && salesRepFieldMap[tableName]) {
     query = query.ilike(salesRepFieldMap[tableName], `%${intent.salesRep}%`);
@@ -537,9 +537,9 @@ async function fetchRows(tableName: string, intent: Intent) {
   if (intent.customer && customerFieldMap[tableName]) {
     query = query.ilike(customerFieldMap[tableName], `%${intent.customer}%`);
   }
-  if (intent.size && tableName !== "v2_dock_team_status") query = query.ilike("contsize", `%${intent.size}%`);
-  if (intent.priority && tableName !== "v2_dock_team_status") query = query.eq("priority", intent.priority);
-  if (intent.lot && tableName !== "v2_dock_team_status") query = query.ilike("lotcode", `%${intent.lot}%`);
+  if (intent.size && tableName !== "ph_dock_team_status") query = query.ilike("contsize", `%${intent.size}%`);
+  if (intent.priority && tableName !== "ph_dock_team_status") query = query.eq("priority", intent.priority);
+  if (intent.lot && tableName !== "ph_dock_team_status") query = query.ilike("lotcode", `%${intent.lot}%`);
   const { data, error } = await query;
   if (error) throw new Error(`${tableName} query failed: ${String(error.message || error || "").trim()}`);
   return Array.isArray(data) ? data : [];

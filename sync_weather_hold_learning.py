@@ -3,7 +3,7 @@
 
 This script is designed for GitHub Actions. It uses the free Open-Meteo API,
 stores hourly Park Hill, OK weather in Supabase, then refreshes GDD/chill-hour
-rollups on hold events captured from v2_master_inventory.
+rollups on hold events captured from ph_master_inventory.
 """
 
 from __future__ import annotations
@@ -420,9 +420,9 @@ def run() -> int:
         expected_history_hours = max(1, ((history_end - history_start).days + 1) * 24)
         expected_history_days = max(1, ((history_end - history_start).days + 1))
         observed_at_gte = datetime.combine(history_start, datetime.min.time(), ZoneInfo(timezone_name)).astimezone(timezone.utc).isoformat()
-        existing_history_hours = supabase.count_weather_rows_since("v2_weather_hourly", station_key, observed_at_gte)
-        existing_history_days = supabase.count_daily_rows_since("v2_weather_daily", station_key, history_start)
-        existing_history_ready_days = supabase.count_daily_ready_rows_since("v2_weather_daily", station_key, history_start)
+        existing_history_hours = supabase.count_weather_rows_since("ph_weather_hourly", station_key, observed_at_gte)
+        existing_history_days = supabase.count_daily_rows_since("ph_weather_daily", station_key, history_start)
+        existing_history_ready_days = supabase.count_daily_ready_rows_since("ph_weather_daily", station_key, history_start)
         hourly_coverage_ratio = existing_history_hours / expected_history_hours
         daily_coverage_ratio = existing_history_days / expected_history_days
         daily_ready_coverage_ratio = existing_history_ready_days / expected_history_days
@@ -450,8 +450,8 @@ def run() -> int:
                 archive_payload = fetch_open_meteo_archive_hourly(latitude, longitude, timezone_name, chunk_start, chunk_end)
                 archive_rows = hourly_rows_from_response(archive_payload, station_key, latitude, longitude, timezone_name)
                 archive_daily_rows = daily_rows_from_response(archive_payload, station_key, latitude, longitude, timezone_name)
-                history_upserted += supabase.upsert("v2_weather_hourly", archive_rows, on_conflict="unique_id")
-                supabase.upsert("v2_weather_daily", archive_daily_rows, on_conflict="unique_id")
+                history_upserted += supabase.upsert("ph_weather_hourly", archive_rows, on_conflict="unique_id")
+                supabase.upsert("ph_weather_daily", archive_daily_rows, on_conflict="unique_id")
                 print(f"Upserted {len(archive_rows)} archive rows for {chunk_start} to {chunk_end}.")
             print(f"Historical weather backfill upserted {history_upserted} rows.")
 
@@ -462,8 +462,8 @@ def run() -> int:
     if not rows:
         raise RuntimeError("Open-Meteo returned no hourly weather rows.")
 
-    upserted = supabase.upsert("v2_weather_hourly", rows, on_conflict="unique_id")
-    daily_upserted = supabase.upsert("v2_weather_daily", daily_rows, on_conflict="unique_id")
+    upserted = supabase.upsert("ph_weather_hourly", rows, on_conflict="unique_id")
+    daily_upserted = supabase.upsert("ph_weather_daily", daily_rows, on_conflict="unique_id")
     print(f"Upserted {upserted} hourly weather rows.")
     print(f"Upserted {daily_upserted} daily weather rows.")
 
@@ -488,7 +488,7 @@ def run() -> int:
     call_optional_rpc(
         "v2_refresh_hold_learning_from_drive_around_rows",
         {"p_limit": history_refresh_limit},
-        "Refreshed Drive Around hold learning from v2_drive_around_report_rows",
+        "Refreshed Drive Around hold learning from ph_drive_around_report_rows",
     )
     call_optional_rpc(
         "v2_refresh_hold_learning_weather_features",

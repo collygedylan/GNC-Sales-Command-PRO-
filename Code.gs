@@ -70,11 +70,11 @@ function runAutoDropFolderSync_() {
 // =========================================================================
 const SUPABASE_URL = 'https://kzrnyjsosryejjejliii.supabase.co';
 const SUPABASE_KEY = '__SUPABASE_SERVICE_ROLE_KEY__';
-const APP_LIVE_EVENTS_TABLE = 'v2_app_live_events';
-const INVENTORY_TRANSACTION_TABLE = 'v2_inventory_transactions';
+const APP_LIVE_EVENTS_TABLE = 'ph_app_live_events';
+const INVENTORY_TRANSACTION_TABLE = 'ph_inventory_transactions';
 const EMIT_APP_LIVE_EVENTS = true;
-const DRIVE_AROUND_HISTORY_TABLE = 'v2_drive_around_report_files';
-const DRIVE_AROUND_HISTORY_ROW_TABLE = 'v2_drive_around_report_rows';
+const DRIVE_AROUND_HISTORY_TABLE = 'ph_drive_around_report_files';
+const DRIVE_AROUND_HISTORY_ROW_TABLE = 'ph_drive_around_report_rows';
 const DRIVE_AROUND_HISTORY_FOLDER_ID = '1hswTWk4GooXIAXFmfdx9I6IyqLJ1LqSA';
 const DRIVE_AROUND_HISTORY_MAX_FILES_PER_RUN = 2500;
 const DRIVE_AROUND_HISTORY_MAX_PARSED_FILES_PER_RUN = 75;
@@ -84,7 +84,7 @@ const DRIVE_AROUND_HISTORY_FLUSH_ROW_THRESHOLD = 50000;
 const DRIVE_AROUND_HISTORY_SUPPORTED_EXTENSIONS = Object.freeze(['.csv', '.xls', '.xlsx']);
 const DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER = 'runDriveAroundHistoryBackfillChunk_';
 const GOOGLE_SHEETS_MIME_TYPE = 'application/vnd.google-apps.spreadsheet';
-const WAREHOUSE_ASSIGNED_ITEMS_TABLE = 'v2_warehouse_assigned_items';
+const WAREHOUSE_ASSIGNED_ITEMS_TABLE = 'ph_warehouse_assigned_items';
 const WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID = '1gZ2qeKnsOdEYKMMxXerUUTU5Fq7aeeNz9yVOxKK76OQ';
 const WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID = '1zDQbk9alVLqd6rW0O9QbJa9ZN6hax5P2';
 
@@ -104,8 +104,8 @@ const FOLDERS = {
 };
 
 const DISEASE_ASSET_BUCKET = 'disease_training_assets';
-const DISEASE_ASSET_TABLE = 'v2_disease_training_assets';
-const CUSTOMER_REP_MAP_TABLE = 'v2_customer_consignee_sales_reps';
+const DISEASE_ASSET_TABLE = 'ph_disease_training_assets';
+const CUSTOMER_REP_MAP_TABLE = 'ph_customer_consignee_sales_reps';
 const DISEASE_PROCESSED_FOLDER_NAME = 'Processed';
 const DISEASE_SYNC_MAX_FILES_PER_RUN = 25;
 const DISEASE_SYNC_PROPERTY_PREFIX = 'DISEASE_SYNC_';
@@ -144,15 +144,15 @@ const ALLOWED_DB_COLUMNS = new Set([
   'hold_release_approved_at', 'hold_release_approved_by', 'hold_release_approved_by_display', 'hold_release_approved_holdstopbegindate'
 ]);
 
-function runSOCOnly() { return processLatestFileOnlyFolder(FOLDERS.SOC_DROP, FOLDERS.SOC_PROCESSED, getRuntimeSiteSplitTableName_('v2_soc_master', 'PH'), buildStandardPayload, { deltaMode: true }); }
+function runSOCOnly() { return processLatestFileOnlyFolder(FOLDERS.SOC_DROP, FOLDERS.SOC_PROCESSED, getRuntimeSiteSplitTableName_('ph_soc_master', 'PH'), buildStandardPayload, { deltaMode: true }); }
 function runDriveAroundOnly() {
-  return processSnapshotBatchFolder(FOLDERS.MASTER_DROP, FOLDERS.MASTER_PROCESSED, 'v2_master_inventory', buildMasterPayload);
+  return processSnapshotBatchFolder(FOLDERS.MASTER_DROP, FOLDERS.MASTER_PROCESSED, 'ph_master_inventory', buildMasterPayload);
 }
 function runDriveAroundHistoryOnly() { return syncDriveAroundHistoricalFileIndex_({ parseRows: true }); }
-function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, getRuntimeSiteSplitTableName_('v2_reserves', 'PH'), buildStandardPayload, { deltaMode: true }); }
+function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, getRuntimeSiteSplitTableName_('ph_reserves', 'PH'), buildStandardPayload, { deltaMode: true }); }
 function runCustomerRepMapOnly() { return processLatestFileOnlyFolder(FOLDERS.CUSTOMER_REP_DROP, FOLDERS.CUSTOMER_REP_PROCESSED, CUSTOMER_REP_MAP_TABLE, buildCustomerRepMapPayload, { deltaMode: true, selectColumnsBuilder: getCustomerRepMapSelectColumns_, headerMatcher: isCustomerRepMapHeaderRow_ }); }
 function runWarehouseAssignedItemsOnly() { return syncWarehouseAssignedItemsSheet_(WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID, FOLDERS.WAREHOUSE_ASSIGNED_ITEMS_SOURCE, WAREHOUSE_ASSIGNED_ITEMS_TABLE); }
-function runCavOnly() { return processLatestFileOnlyFolder(FOLDERS.CAV_DROP, FOLDERS.CAV_PROCESSED, getRuntimeSiteSplitTableName_('v2_cav_import', 'PH'), buildCavPayload, { deltaMode: true }); }
+function runCavOnly() { return processLatestFileOnlyFolder(FOLDERS.CAV_DROP, FOLDERS.CAV_PROCESSED, getRuntimeSiteSplitTableName_('ph_cav_import', 'PH'), buildCavPayload, { deltaMode: true }); }
 function runDiseaseDriveToSupabaseSyncOnly() { return runDiseaseDriveToSupabaseSync(); }
 
 const SITE_SPLIT_SITE_CODES_ = Object.freeze(['PH', 'TX', 'NC', 'HL']);
@@ -163,43 +163,43 @@ const SITE_SPLIT_SITE_BY_WAREHOUSE_ = Object.freeze({
   '60': 'HL'
 });
 const SITE_SPLIT_TABLE_BASE_BY_LEGACY_ = Object.freeze({
-  v2_master_inventory: 'master_inventory',
-  v2_active_request: 'active_request',
-  v2_request_history: 'request_history',
-  v2_reserves: 'reserves',
-  v2_soc_master: 'soc_master',
-  v2_cav_import: 'cav_import',
-  v2_view_av_hot_price_keys: 'view_av_hot_price_keys',
-  v2_av_notes: 'av_notes',
-  v2_labor_hours: 'labor_hours',
-  v2_sales_office: 'sales_office',
-  v2_flyer_folder_rows: 'flyer_folder_rows',
-  v2_flyer_folder_history: 'flyer_folder_history',
-  v2_ncr_completions: 'ncr_completions',
-  v2_take_back_queue: 'take_back_queue',
-  v2_productivity_history: 'productivity_history',
-  v2_ml_image_jobs: 'ml_image_jobs',
-  v2_diagnostic_lab_cases: 'diagnostic_lab_cases',
-  v2_diagnostic_reference_reports: 'diagnostic_reference_reports',
-  v2_diagnostic_review_feedback: 'diagnostic_review_feedback',
-  v2_disease_training_assets: 'disease_training_assets',
-  v2_grower_scout_reports: 'grower_scout_reports',
-  v2_grower_scout_assets: 'grower_scout_assets',
-  v2_shear_list: 'shear_list',
-  v2_production_workflow_rows: 'production_workflow_rows',
-  v2_spread_counts: 'spread_counts',
-  v2_bunch_counts: 'bunch_counts',
-  v2_dock_team_status: 'dock_team_status',
-  v2_dock_item_status: 'dock_item_status',
-  v2_dock_issue_status: 'dock_issue_status',
-  v2_dock_issue_allocations: 'dock_issue_allocations',
-  v2_drive_around_report_files: 'drive_around_report_files',
-  v2_drive_around_report_rows: 'drive_around_report_rows',
-  v2_weather_hourly: 'weather_hourly',
-  v2_weather_daily: 'weather_daily',
-  v2_hold_learning_events: 'hold_learning_events',
-  v2_hold_release_cycles: 'hold_release_cycles',
-  v2_hold_learning_profiles: 'hold_learning_profiles'
+  ph_master_inventory: 'master_inventory',
+  ph_active_request: 'active_request',
+  ph_request_history: 'request_history',
+  ph_reserves: 'reserves',
+  ph_soc_master: 'soc_master',
+  ph_cav_import: 'cav_import',
+  ph_view_av_hot_price_keys: 'view_av_hot_price_keys',
+  ph_av_notes: 'av_notes',
+  ph_labor_hours: 'labor_hours',
+  ph_sales_office: 'sales_office',
+  ph_flyer_folder_rows: 'flyer_folder_rows',
+  ph_flyer_folder_history: 'flyer_folder_history',
+  ph_ncr_completions: 'ncr_completions',
+  ph_take_back_queue: 'take_back_queue',
+  ph_productivity_history: 'productivity_history',
+  ph_ml_image_jobs: 'ml_image_jobs',
+  ph_diagnostic_lab_cases: 'diagnostic_lab_cases',
+  ph_diagnostic_reference_reports: 'diagnostic_reference_reports',
+  ph_diagnostic_review_feedback: 'diagnostic_review_feedback',
+  ph_disease_training_assets: 'disease_training_assets',
+  ph_grower_scout_reports: 'grower_scout_reports',
+  ph_grower_scout_assets: 'grower_scout_assets',
+  ph_shear_list: 'shear_list',
+  ph_production_workflow_rows: 'production_workflow_rows',
+  ph_spread_counts: 'spread_counts',
+  ph_bunch_counts: 'bunch_counts',
+  ph_dock_team_status: 'dock_team_status',
+  ph_dock_item_status: 'dock_item_status',
+  ph_dock_issue_status: 'dock_issue_status',
+  ph_dock_issue_allocations: 'dock_issue_allocations',
+  ph_drive_around_report_files: 'drive_around_report_files',
+  ph_drive_around_report_rows: 'drive_around_report_rows',
+  ph_weather_hourly: 'weather_hourly',
+  ph_weather_daily: 'weather_daily',
+  ph_hold_learning_events: 'hold_learning_events',
+  ph_hold_release_cycles: 'hold_release_cycles',
+  ph_hold_learning_profiles: 'hold_learning_profiles'
 });
 const SITE_SPLIT_LEGACY_BY_TABLE_BASE_ = Object.freeze(Object.keys(SITE_SPLIT_TABLE_BASE_BY_LEGACY_).reduce(function(acc, legacy) {
   acc[SITE_SPLIT_TABLE_BASE_BY_LEGACY_[legacy]] = legacy;
@@ -254,7 +254,8 @@ function resolveSiteSplitTableName_(tableName, siteCode) {
   const safe = String(tableName || '').trim();
   const safeLower = safe.toLowerCase();
   const base = getSiteSplitTableBaseName_(safeLower);
-  if (!base || /^(ph|tx|nc|hl)_/.test(safeLower)) return safe;
+  if (!base || /^(tx|nc|hl)_/.test(safeLower)) return safe;
+  if (/^ph_/.test(safeLower) && !SITE_SPLIT_TABLE_BASE_BY_LEGACY_[safeLower]) return safe;
   return `${normalizeSiteSplitSiteCode_(siteCode).toLowerCase()}_${base}`;
 }
 
@@ -388,15 +389,15 @@ const MASTER_IMPORT_CLEAR_ON_NEW_HOLD_COLUMNS = Object.freeze([
 
 function getAppLiveEventAreaForTable_(tableName) {
   const safeTable = getSiteSplitLegacyTableName_(tableName);
-  if (safeTable === 'v2_master_inventory') return 'inventory';
-  if (safeTable === 'v2_soc_master') return 'docks';
-  if (safeTable === 'v2_reserves') return 'reserves';
+  if (safeTable === 'ph_master_inventory') return 'inventory';
+  if (safeTable === 'ph_soc_master') return 'docks';
+  if (safeTable === 'ph_reserves') return 'reserves';
   if (safeTable === CUSTOMER_REP_MAP_TABLE) return 'customer-rep-map';
-  if (safeTable === 'v2_cav_import') return 'av';
-  if (safeTable === 'v2_disease_training_assets') return 'diagnostics';
-  if (safeTable === DRIVE_AROUND_HISTORY_TABLE || safeTable === DRIVE_AROUND_HISTORY_ROW_TABLE || safeTable === 'v2_hold_release_cycles') return 'weather-hold';
-  if (safeTable === 'v2_sales_office') return 'sales-office';
-  if (safeTable === 'v2_active_request') return 'request';
+  if (safeTable === 'ph_cav_import') return 'av';
+  if (safeTable === 'ph_disease_training_assets') return 'diagnostics';
+  if (safeTable === DRIVE_AROUND_HISTORY_TABLE || safeTable === DRIVE_AROUND_HISTORY_ROW_TABLE || safeTable === 'ph_hold_release_cycles') return 'weather-hold';
+  if (safeTable === 'ph_sales_office') return 'sales-office';
+  if (safeTable === 'ph_active_request') return 'request';
   return '';
 }
 
@@ -2204,7 +2205,7 @@ function getPayloadSelectColumns_(tableName, rawData) {
   if (isMasterInventoryTable_(tableName)) return getMasterPayloadSelectColumns_(rawData);
   if (tableName === CUSTOMER_REP_MAP_TABLE) return getCustomerRepMapSelectColumns_();
   if (tableName === WAREHOUSE_ASSIGNED_ITEMS_TABLE) return getWarehouseAssignedItemsSelectColumns_();
-  if (getSiteSplitLegacyTableName_(tableName) === 'v2_cav_import') return getCavPayloadSelectColumns_();
+  if (getSiteSplitLegacyTableName_(tableName) === 'ph_cav_import') return getCavPayloadSelectColumns_();
   return getStandardPayloadSelectColumns_(rawData);
 }
 
@@ -3268,7 +3269,7 @@ function processSiteSplitMasterSnapshotBatchFolder_(dropFolderId, processedFolde
 
     let anySiteRows = false;
     SITE_SPLIT_SITE_CODES_.forEach(function(siteCode) {
-      const tableName = resolveSiteSplitTableName_('v2_master_inventory', siteCode);
+      const tableName = resolveSiteSplitTableName_('ph_master_inventory', siteCode);
       const siteParsedFiles = parsedFiles
         .map(function(entry) {
           return {
@@ -3617,7 +3618,7 @@ function buildStandardPayload(rawData, tableName, existingRows, syncStartTime, f
   let transIdx = getIdx('TRANSACTIONNUMBER');
   let locIdx = getIdx('LOCATIONCODE'), lotIdx = getIdx('LOTCODE'), priIdx = getIdx('PRIORITY');
   let srcIdx = getIdx('SOURCE'), dItemIdx = getIdx('DESIGITEM');
-  let reserveStableIdIdx = logicalTable === 'v2_reserves' ? findReserveStableRowIdIndex_(cleanHeaders) : -1;
+  let reserveStableIdIdx = logicalTable === 'ph_reserves' ? findReserveStableRowIdIndex_(cleanHeaders) : -1;
   let upserts = [], seenIds = new Set(), idTracker = {};
   let totalRows = 0;
   let existingMap = buildExistingRowMap_(existingRows);
@@ -3630,8 +3631,8 @@ function buildStandardPayload(rawData, tableName, existingRows, syncStartTime, f
     let custVal = custIdx > -1 ? String(row[custIdx] || '').trim() : '';
     let dockVal = dockIdx > -1 ? String(row[dockIdx] || '').trim() : '';
     if (!itemCodeVal || itemCodeVal.toUpperCase() === 'NULL') continue;
-    if (logicalTable === 'v2_soc_master' && (!dockVal || dockVal === '0' || dockVal === '' || !custVal)) continue;
-    if (logicalTable === 'v2_reserves' && !custVal) continue;
+    if (logicalTable === 'ph_soc_master' && (!dockVal || dockVal === '0' || dockVal === '' || !custVal)) continue;
+    if (logicalTable === 'ph_reserves' && !custVal) continue;
 
     totalRows++;
 
@@ -3646,18 +3647,18 @@ function buildStandardPayload(rawData, tableName, existingRows, syncStartTime, f
     let srcVal = srcIdx > -1 ? String(row[srcIdx] || '').trim() : '';
     let dItemVal = dItemIdx > -1 ? String(row[dItemIdx] || '').trim() : '';
     let uniqueId = '';
-    if (logicalTable === 'v2_reserves' && reserveStableIdIdx > -1) {
+    if (logicalTable === 'ph_reserves' && reserveStableIdIdx > -1) {
       uniqueId = String(row[reserveStableIdIdx] || '').trim();
     }
     if (!uniqueId) {
-      let baseId = logicalTable === 'v2_reserves'
+      let baseId = logicalTable === 'ph_reserves'
         ? `${transVal}-${custVal}-${consVal}-${repVal}-${itemCodeVal}-${contSizeVal}-${locVal}-${lotVal}-${srcVal}-${priVal}-${dItemVal}`
         : `${dockVal}-${transVal}-${custVal}-${consVal}-${stopVal}-${itemCodeVal}-${contSizeVal}-${locVal}-${lotVal}-${srcVal}-${priVal}-${dItemVal}`;
       let cleanId = baseId.replace(/[^a-zA-Z0-9-]/g, '_');
       if (idTracker[cleanId] === undefined) idTracker[cleanId] = 0; else idTracker[cleanId]++;
       uniqueId = cleanId;
       if (idTracker[cleanId] > 0) uniqueId += '-' + idTracker[cleanId];
-      if (logicalTable === 'v2_reserves') stats.fallbackIdentityRows++;
+      if (logicalTable === 'ph_reserves') stats.fallbackIdentityRows++;
     }
     if (!uniqueId) {
       stats.skippedRows++;
@@ -4149,7 +4150,7 @@ function syncNotesToSupabase() {
     sheet.getRange(2, 1, updatedSheetData.length, headers.length).setValues(updatedSheetData);
     SpreadsheetApp.flush(); 
   }
-  if (recordsToUpsert.length > 0) { pushToSupabase('v2_av_notes', recordsToUpsert); }
+  if (recordsToUpsert.length > 0) { pushToSupabase('ph_av_notes', recordsToUpsert); }
 }
 
 function jsonOutput_(obj) {
@@ -6031,7 +6032,7 @@ function fetchRequestRowsForEmailFolder_(folderId) {
   if (!safeFolderId) return [];
   const baseFields = '*';
   const fieldsWithCompleter = baseFields + ',completed_by_username,completed_by_display,completed_by_email';
-  const requestTableNames = getRequestEmailTableCandidates_('v2_active_request', 'PH');
+  const requestTableNames = getRequestEmailTableCandidates_('ph_active_request', 'PH');
   const loadRows = function(selectFields, requestTableName) {
     const url = `${SUPABASE_URL}/rest/v1/${requestTableName}?select=${selectFields}&request_folder=eq.${encodeURIComponent(safeFolderId)}`;
     const result = UrlFetchApp.fetch(url, {
@@ -6119,7 +6120,7 @@ function fetchRequestRowsForEmailRequestIds_(requestIds) {
   if (!safeIds.length) return [];
   const baseFields = '*';
   const fieldsWithCompleter = baseFields + ',completed_by_username,completed_by_display,completed_by_email';
-  const requestTableNames = getRequestEmailTableCandidates_('v2_active_request', 'PH');
+  const requestTableNames = getRequestEmailTableCandidates_('ph_active_request', 'PH');
   const buildInFilter = function(ids) {
     return ids.map(function(id) {
       return '"' + String(id || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
@@ -6183,7 +6184,7 @@ function fetchRequestRowsForEmailRequestIds_(requestIds) {
 function fetchRequestHistoryRowsForEmailFolder_(folderId) {
   const safeFolderId = String(folderId || '').trim();
   if (!safeFolderId) return [];
-  const requestHistoryTableNames = getRequestEmailTableCandidates_('v2_request_history', 'PH');
+  const requestHistoryTableNames = getRequestEmailTableCandidates_('ph_request_history', 'PH');
   for (let tableIndex = 0; tableIndex < requestHistoryTableNames.length; tableIndex++) {
     const requestHistoryTableName = requestHistoryTableNames[tableIndex];
     const url = `${SUPABASE_URL}/rest/v1/${requestHistoryTableName}?select=*&request_folder=eq.${encodeURIComponent(safeFolderId)}&order=updated_at.desc`;
@@ -6224,7 +6225,7 @@ function fetchRequestHistoryRowsForEmailFolder_(folderId) {
 function fetchRequestHistoryRowsForEmailRequestIds_(requestIds) {
   const safeIds = normalizeRequestGalleryIdList_(requestIds);
   if (!safeIds.length) return [];
-  const requestHistoryTableNames = getRequestEmailTableCandidates_('v2_request_history', 'PH');
+  const requestHistoryTableNames = getRequestEmailTableCandidates_('ph_request_history', 'PH');
   const buildInFilter = function(ids) {
     return ids.map(function(id) {
       return '"' + String(id || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
@@ -7221,9 +7222,9 @@ function fetchEmailApprovalMasterRow_(uid) {
   const safeUid = String(uid || '').trim();
   if (!safeUid) return null;
   const tables = [];
-  const runtimeTable = getRuntimeSiteSplitTableName_('v2_master_inventory', 'PH');
+  const runtimeTable = getRuntimeSiteSplitTableName_('ph_master_inventory', 'PH');
   if (runtimeTable) tables.push(runtimeTable);
-  if (tables.indexOf('v2_master_inventory') === -1) tables.push('v2_master_inventory');
+  if (tables.indexOf('ph_master_inventory') === -1) tables.push('ph_master_inventory');
   for (let i = 0; i < tables.length; i++) {
     const tableName = tables[i];
     const url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(tableName) + '?select=*&unique_id=eq.' + encodeURIComponent(safeUid) + '&limit=1';
@@ -7244,7 +7245,7 @@ function fetchEmailApprovalMasterRow_(uid) {
 
 function patchEmailApprovalMasterRow_(uid, patch, tableName) {
   const safeUid = String(uid || '').trim();
-  const safeTable = String(tableName || getRuntimeSiteSplitTableName_('v2_master_inventory', 'PH') || 'v2_master_inventory').trim();
+  const safeTable = String(tableName || getRuntimeSiteSplitTableName_('ph_master_inventory', 'PH') || 'ph_master_inventory').trim();
   if (!safeUid || !safeTable) throw new Error('Missing row id for approval update.');
   const url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(safeTable) + '?unique_id=eq.' + encodeURIComponent(safeUid);
   const res = UrlFetchApp.fetch(url, {
@@ -7326,7 +7327,7 @@ function getInventoryTransactionRowUid_(row) {
 }
 
 function getInventoryTransactionRowTable_(row) {
-  return normalizeInventoryTransactionText_(row && row.__approval_table_name || getRuntimeSiteSplitTableName_('v2_master_inventory', 'PH') || 'v2_master_inventory');
+  return normalizeInventoryTransactionText_(row && row.__approval_table_name || getRuntimeSiteSplitTableName_('ph_master_inventory', 'PH') || 'ph_master_inventory');
 }
 
 function cloneInventoryTransactionRowForAudit_(row) {
@@ -7582,9 +7583,9 @@ function getInventoryTransactionSearchTables_(sourceRow) {
   const tables = [];
   const sourceTable = getInventoryTransactionRowTable_(sourceRow);
   if (sourceTable) tables.push(sourceTable);
-  const runtimeTable = getRuntimeSiteSplitTableName_('v2_master_inventory', getSiteSplitSiteFromWarehouse_(getInventoryTransactionRowValue_(sourceRow, ['warehouseid', 'WAREHOUSEID'], '10')));
+  const runtimeTable = getRuntimeSiteSplitTableName_('ph_master_inventory', getSiteSplitSiteFromWarehouse_(getInventoryTransactionRowValue_(sourceRow, ['warehouseid', 'WAREHOUSEID'], '10')));
   if (runtimeTable && tables.indexOf(runtimeTable) === -1) tables.push(runtimeTable);
-  if (tables.indexOf('v2_master_inventory') === -1) tables.push('v2_master_inventory');
+  if (tables.indexOf('ph_master_inventory') === -1) tables.push('ph_master_inventory');
   return tables;
 }
 
@@ -8683,7 +8684,7 @@ function renderApprovalConfirmWebApp_(params) {
 
 function handleEmailApprovalConfirm_(valid, row, params) {
   const nowIso = new Date().toISOString();
-  const tableName = row.__approval_table_name || getRuntimeSiteSplitTableName_('v2_master_inventory', 'PH');
+  const tableName = row.__approval_table_name || getRuntimeSiteSplitTableName_('ph_master_inventory', 'PH');
   if (valid.stage === 'dylan') {
     const patch = {
       app_tab_assignment: getEmailApprovalAssignment_(valid.type, 'jd'),

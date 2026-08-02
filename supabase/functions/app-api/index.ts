@@ -19,146 +19,150 @@ const PHOTO_BUCKETS: Record<string, string> = {
   "flyer-": "flyer_photos",
   default: "flyer_photos",
 };
+const LEGACY_TABLE_ALIASES: Record<string, string> = {
+  v2_cav: "ph_cav_import",
+  ph_cav: "ph_cav_import",
+};
 const READABLE_TABLES = new Set([
-  "v2_master_inventory",
-  "v2_active_request_live_rows",
-  "v2_crop_roll_drive_rows",
-  "v2_crop_roll_open_rows",
-  "v2_crop_roll_runs",
-  "v2_crop_roll_rows",
-  "v2_active_request",
-  "v2_request_history",
-  "v2_sales_credit_requests",
-  "v2_request_email_threads",
-  "v2_reserves",
-  "v2_soc_master",
-  "v2_sales_office",
-  "v2_shear_list",
-  "v2_take_back_queue",
-  "v2_cav",
-  "v2_av_notes",
-  "v2_view_av_hot_price_keys",
-  "v2_dock_team_status",
-  "v2_dock_item_status",
-  "v2_dock_issue_status",
-  "v2_dock_issue_allocations",
-  "v2_app_users",
-  "v2_app_settings",
-  "v2_app_live_events",
-  "v2_push_subscriptions",
-  "v2_inventory_edit_requests",
-  "v2_inventory_edit_request_events",
-  "v2_flyer_folder_rows",
-  "v2_flyer_folder_history",
-  "v2_productivity_history",
-  "v2_ncr_completions",
-  "v2_production_workflow_rows",
-  "v2_spread_counts",
-  "v2_bunch_counts",
-  "v2_ml_image_jobs",
-  "v2_disease_training_assets",
-  "v2_diagnostic_lab_cases",
-  "v2_grower_scout_reports",
-  "v2_grower_scout_assets",
+  "ph_master_inventory",
+  "ph_active_request_live_rows",
+  "ph_crop_roll_drive_rows",
+  "ph_crop_roll_open_rows",
+  "ph_crop_roll_runs",
+  "ph_crop_roll_rows",
+  "ph_active_request",
+  "ph_request_history",
+  "ph_sales_credit_requests",
+  "ph_request_email_threads",
+  "ph_reserves",
+  "ph_soc_master",
+  "ph_sales_office",
+  "ph_shear_list",
+  "ph_take_back_queue",
+  "ph_cav_import",
+  "ph_av_notes",
+  "ph_view_av_hot_price_keys",
+  "ph_dock_team_status",
+  "ph_dock_item_status",
+  "ph_dock_issue_status",
+  "ph_dock_issue_allocations",
+  "ph_app_users",
+  "ph_app_settings",
+  "ph_app_live_events",
+  "ph_push_subscriptions",
+  "ph_inventory_edit_requests",
+  "ph_inventory_edit_request_events",
+  "ph_flyer_folder_rows",
+  "ph_flyer_folder_history",
+  "ph_productivity_history",
+  "ph_ncr_completions",
+  "ph_production_workflow_rows",
+  "ph_spread_counts",
+  "ph_bunch_counts",
+  "ph_ml_image_jobs",
+  "ph_disease_training_assets",
+  "ph_diagnostic_lab_cases",
+  "ph_grower_scout_reports",
+  "ph_grower_scout_assets",
   "marketing_materials",
-  "v2_department_calendar_events",
-  "v2_chat_conversations",
-  "v2_chat_participants",
-  "v2_chat_messages",
-  "v2_walkie_channels",
-  "v2_walkie_channel_members",
-  "v2_walkie_calls",
-  "v2_walkie_call_members",
-  "v2_walkie_signal_events",
-  "v2_weather_hourly",
-  "v2_weather_daily",
-  "v2_hold_learning_events",
-  "v2_hold_learning_profiles",
-  "v2_hold_release_cycles",
-  "v2_warehouse_assigned_items",
-  "v2_hl_po",
+  "ph_department_calendar_events",
+  "ph_chat_conversations",
+  "ph_chat_participants",
+  "ph_chat_messages",
+  "ph_walkie_channels",
+  "ph_walkie_channel_members",
+  "ph_walkie_calls",
+  "ph_walkie_call_members",
+  "ph_walkie_signal_events",
+  "ph_weather_hourly",
+  "ph_weather_daily",
+  "ph_hold_learning_events",
+  "ph_hold_learning_profiles",
+  "ph_hold_release_cycles",
+  "ph_warehouse_assigned_items",
+  "ph_hl_po",
 ]);
 const WRITABLE_TABLES = new Set([
-  "v2_master_inventory",
-  "v2_soc_master",
-  "v2_av_notes",
-  "v2_reserves",
-  "v2_active_request_live_rows",
-  "v2_crop_roll_drive_rows",
-  "v2_crop_roll_runs",
-  "v2_crop_roll_rows",
-  "v2_active_request",
-  "v2_request_history",
-  "v2_sales_credit_requests",
-  "v2_request_email_threads",
-  "v2_sales_office",
-  "v2_shear_list",
-  "v2_take_back_queue",
-  "v2_dock_team_status",
-  "v2_dock_item_status",
-  "v2_dock_issue_status",
-  "v2_dock_issue_allocations",
-  "v2_labor_hours",
-  "v2_app_users",
-  "v2_app_settings",
-  "v2_app_live_events",
-  "v2_push_subscriptions",
-  "v2_inventory_edit_requests",
-  "v2_inventory_edit_request_events",
-  "v2_flyer_folder_rows",
-  "v2_flyer_folder_history",
-  "v2_productivity_history",
-  "v2_ncr_completions",
-  "v2_production_workflow_rows",
-  "v2_spread_counts",
-  "v2_bunch_counts",
-  "v2_ml_image_jobs",
-  "v2_disease_training_assets",
-  "v2_diagnostic_lab_cases",
-  "v2_grower_scout_reports",
-  "v2_grower_scout_assets",
+  "ph_master_inventory",
+  "ph_soc_master",
+  "ph_av_notes",
+  "ph_reserves",
+  "ph_active_request_live_rows",
+  "ph_crop_roll_drive_rows",
+  "ph_crop_roll_runs",
+  "ph_crop_roll_rows",
+  "ph_active_request",
+  "ph_request_history",
+  "ph_sales_credit_requests",
+  "ph_request_email_threads",
+  "ph_sales_office",
+  "ph_shear_list",
+  "ph_take_back_queue",
+  "ph_dock_team_status",
+  "ph_dock_item_status",
+  "ph_dock_issue_status",
+  "ph_dock_issue_allocations",
+  "ph_labor_hours",
+  "ph_app_users",
+  "ph_app_settings",
+  "ph_app_live_events",
+  "ph_push_subscriptions",
+  "ph_inventory_edit_requests",
+  "ph_inventory_edit_request_events",
+  "ph_flyer_folder_rows",
+  "ph_flyer_folder_history",
+  "ph_productivity_history",
+  "ph_ncr_completions",
+  "ph_production_workflow_rows",
+  "ph_spread_counts",
+  "ph_bunch_counts",
+  "ph_ml_image_jobs",
+  "ph_disease_training_assets",
+  "ph_diagnostic_lab_cases",
+  "ph_grower_scout_reports",
+  "ph_grower_scout_assets",
   "marketing_materials",
-  "v2_department_calendar_events",
-  "v2_chat_conversations",
-  "v2_chat_participants",
-  "v2_chat_messages",
-  "v2_walkie_channels",
-  "v2_walkie_channel_members",
-  "v2_walkie_calls",
-  "v2_walkie_call_members",
-  "v2_walkie_signal_events",
+  "ph_department_calendar_events",
+  "ph_chat_conversations",
+  "ph_chat_participants",
+  "ph_chat_messages",
+  "ph_walkie_channels",
+  "ph_walkie_channel_members",
+  "ph_walkie_calls",
+  "ph_walkie_call_members",
+  "ph_walkie_signal_events",
 ]);
 const COMMON_AUTH_WRITE_TABLES = new Set([
-  "v2_push_subscriptions",
-  "v2_app_live_events",
-  "v2_labor_hours",
-  "v2_department_calendar_events",
-  "v2_chat_conversations",
-  "v2_chat_participants",
-  "v2_chat_messages",
-  "v2_walkie_channels",
-  "v2_walkie_channel_members",
-  "v2_walkie_calls",
-  "v2_walkie_call_members",
-  "v2_walkie_signal_events",
+  "ph_push_subscriptions",
+  "ph_app_live_events",
+  "ph_labor_hours",
+  "ph_department_calendar_events",
+  "ph_chat_conversations",
+  "ph_chat_participants",
+  "ph_chat_messages",
+  "ph_walkie_channels",
+  "ph_walkie_channel_members",
+  "ph_walkie_calls",
+  "ph_walkie_call_members",
+  "ph_walkie_signal_events",
 ]);
 const REP_WRITE_TABLES = new Set([
   ...COMMON_AUTH_WRITE_TABLES,
-  "v2_active_request",
-  "v2_request_history",
-  "v2_sales_credit_requests",
-  "v2_request_email_threads",
-  "v2_sales_office",
-  "v2_shear_list",
-  "v2_inventory_edit_requests",
-  "v2_inventory_edit_request_events",
+  "ph_active_request",
+  "ph_request_history",
+  "ph_sales_credit_requests",
+  "ph_request_email_threads",
+  "ph_sales_office",
+  "ph_shear_list",
+  "ph_inventory_edit_requests",
+  "ph_inventory_edit_request_events",
 ]);
 const QC_WRITE_TABLES = new Set([
   ...COMMON_AUTH_WRITE_TABLES,
-  "v2_dock_team_status",
-  "v2_dock_item_status",
-  "v2_dock_issue_status",
-  "v2_dock_issue_allocations",
+  "ph_dock_team_status",
+  "ph_dock_item_status",
+  "ph_dock_issue_status",
+  "ph_dock_issue_allocations",
 ]);
 const MASTER_QC_WRITABLE_FIELDS = new Set(["dock_note"]);
 
@@ -183,6 +187,27 @@ function ensureServerConfig() {
   }
 }
 
+function normalizeTableName(value = "") {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return "";
+  if (LEGACY_TABLE_ALIASES[raw]) return LEGACY_TABLE_ALIASES[raw];
+  if (raw.startsWith("v2_")) return `ph_${raw.slice(3)}`;
+  return raw;
+}
+
+function getLegacyTableName(value = "") {
+  const normalized = normalizeTableName(value);
+  if (!normalized.startsWith("ph_")) return normalized;
+  if (normalized === "ph_cav_import") return "v2_cav_import";
+  return `v2_${normalized.slice(3)}`;
+}
+
+async function responseLooksLikeMissingRelation(response: Response) {
+  if (![400, 404].includes(response.status)) return false;
+  const text = await response.clone().text().catch(() => "");
+  return /42P01|PGRST20[045]|does not exist|Could not find the table|schema cache/i.test(text);
+}
+
 function buildRestHeaders(method = "GET", table = "") {
   const headers: Record<string, string> = {
     apikey: SUPABASE_SERVICE_ROLE_KEY,
@@ -190,7 +215,7 @@ function buildRestHeaders(method = "GET", table = "") {
     "Content-Type": "application/json",
   };
   if (method === "POST") {
-    headers.Prefer = table === "v2_active_request" ? "return=minimal" : "return=minimal,resolution=merge-duplicates";
+    headers.Prefer = table === "ph_active_request" ? "return=minimal" : "return=minimal,resolution=merge-duplicates";
   } else if (method === "PATCH" || method === "DELETE") {
     headers.Prefer = "return=minimal";
   }
@@ -204,16 +229,25 @@ function withSelect(query = "", selectValue = "*") {
 }
 
 async function restRequest(table: string, method = "GET", query = "", body: unknown = null) {
+  const normalizedTable = normalizeTableName(table);
   const querySuffix = String(query || "").trim();
-  const url = `${SUPABASE_URL}/rest/v1/${table}${querySuffix ? `?${querySuffix}` : ""}`;
-  const options: RequestInit = {
-    method,
-    headers: buildRestHeaders(method, table),
+  const request = async (tableName: string) => {
+    const url = `${SUPABASE_URL}/rest/v1/${tableName}${querySuffix ? `?${querySuffix}` : ""}`;
+    const options: RequestInit = {
+      method,
+      headers: buildRestHeaders(method, tableName),
+    };
+    if (body !== null && body !== undefined && method !== "GET") {
+      options.body = JSON.stringify(body);
+    }
+    return await fetch(url, options);
   };
-  if (body !== null && body !== undefined && method !== "GET") {
-    options.body = JSON.stringify(body);
+  const response = await request(normalizedTable);
+  if (!response.ok && normalizedTable.startsWith("ph_") && await responseLooksLikeMissingRelation(response)) {
+    const legacyTable = getLegacyTableName(normalizedTable);
+    if (legacyTable && legacyTable !== normalizedTable) return await request(legacyTable);
   }
-  return await fetch(url, options);
+  return response;
 }
 
 async function readResponsePayload(response: Response) {
@@ -241,18 +275,18 @@ function sanitizeStorageFileName(value = "") {
 
 function hasTableReadAccess(role = "", table = "", username = "") {
   if (!READABLE_TABLES.has(table)) return false;
-  if (table === "v2_hl_po") return normalizeUsername(username) === "dylan_collyge";
+  if (table === "ph_hl_po") return normalizeUsername(username) === "dylan_collyge";
   const access = getRoleAccessState(role);
   if (access.isAdmin) return true;
-  if (table === "v2_app_users") return access.isQc || access.isQcSupervisor || access.isAdmin;
+  if (table === "ph_app_users") return access.isQc || access.isQcSupervisor || access.isAdmin;
   if (access.isRep) {
-    return new Set(["v2_master_inventory", "v2_active_request", "v2_request_history", "v2_sales_credit_requests", "v2_reserves", "v2_soc_master", "v2_sales_office", "v2_cav", "v2_av_notes", "v2_warehouse_assigned_items", "v2_dock_team_status", "v2_dock_item_status"]).has(table);
+    return new Set(["ph_master_inventory", "ph_active_request", "ph_request_history", "ph_sales_credit_requests", "ph_reserves", "ph_soc_master", "ph_sales_office", "ph_cav_import", "ph_av_notes", "ph_warehouse_assigned_items", "ph_dock_team_status", "ph_dock_item_status"]).has(table);
   }
   if (access.isQcSupervisor) {
-    return new Set(["v2_master_inventory", "v2_soc_master", "v2_dock_team_status", "v2_dock_item_status"]).has(table);
+    return new Set(["ph_master_inventory", "ph_soc_master", "ph_dock_team_status", "ph_dock_item_status"]).has(table);
   }
   if (access.isQc) {
-    return new Set(["v2_soc_master", "v2_dock_team_status", "v2_dock_item_status"]).has(table);
+    return new Set(["ph_soc_master", "ph_dock_team_status", "ph_dock_item_status"]).has(table);
   }
   return false;
 }
@@ -262,16 +296,16 @@ function hasTableWriteAccess(role = "", table = "", method = "POST", body: unkno
   const access = getRoleAccessState(role);
   if (access.isAdmin) return true;
   if (COMMON_AUTH_WRITE_TABLES.has(table)) return ["POST", "PATCH", "DELETE"].includes(method);
-  if (table === "v2_push_subscriptions") return method === "POST";
-  if (table === "v2_labor_hours") return method === "POST";
+  if (table === "ph_push_subscriptions") return method === "POST";
+  if (table === "ph_labor_hours") return method === "POST";
   if (access.isRep) {
     return REP_WRITE_TABLES.has(table) && ["POST", "PATCH", "DELETE"].includes(method);
   }
   if (access.isQcSupervisor) {
     if (QC_WRITE_TABLES.has(table) && ["POST", "PATCH", "DELETE"].includes(method)) return true;
-    if (table === "v2_dock_team_status" && method === "POST") return true;
-    if (table === "v2_dock_item_status" && method === "POST") return true;
-    if (table === "v2_master_inventory" && method === "PATCH") {
+    if (table === "ph_dock_team_status" && method === "POST") return true;
+    if (table === "ph_dock_item_status" && method === "POST") return true;
+    if (table === "ph_master_inventory" && method === "PATCH") {
       const payload = body && typeof body === "object" && !Array.isArray(body) ? Object.keys(body as Record<string, unknown>) : [];
       return payload.length > 0 && payload.every((key) => MASTER_QC_WRITABLE_FIELDS.has(String(key || "").trim().toLowerCase()));
     }
@@ -290,7 +324,7 @@ async function handleLogin(payload: Record<string, unknown>) {
   const selectCols = "username,role,password,division,language";
   const normalizedInput = normalizeUsername(username);
   const exactResponse = await restRequest(
-    "v2_app_users",
+    "ph_app_users",
     "GET",
     `select=${selectCols}&username=eq.${encodeURIComponent(normalizedInput)}&limit=1`,
   );
@@ -299,7 +333,7 @@ async function handleLogin(payload: Record<string, unknown>) {
   let rows = Array.isArray(payloadRows) ? payloadRows as Record<string, unknown>[] : [];
   if (!rows.length && normalizedInput) {
     const fallbackResponse = await restRequest(
-      "v2_app_users",
+      "ph_app_users",
       "GET",
       `select=${selectCols}&username=ilike.${encodeURIComponent(normalizedInput)}&limit=3`,
     );
@@ -349,7 +383,7 @@ async function handlePasswordChange(session: Awaited<ReturnType<typeof readAppSe
   if (isForcedPasswordValue(newPassword)) return errorResponse("Choose a password other than the shared starter password.", 400);
 
   const response = await restRequest(
-    "v2_app_users",
+    "ph_app_users",
     "PATCH",
     `username=eq.${encodeURIComponent(session.displayName || session.username)}`,
     { password: newPassword },
@@ -382,7 +416,7 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
   if (!session) return errorResponse("Unauthorized", 401);
   if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
 
-  const table = String(payload.table || "").trim();
+  const table = normalizeTableName(String(payload.table || "").trim());
   const method = String(payload.method || "GET").trim().toUpperCase();
   const body = Object.prototype.hasOwnProperty.call(payload, "body") ? payload.body : null;
   let query = String(payload.query || "").trim();
@@ -394,7 +428,7 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
     return errorResponse("Forbidden", 403);
   }
 
-  if (table === "v2_app_users" && method === "GET") {
+  if (table === "ph_app_users" && method === "GET") {
     query = withSelect(query, "username,role");
   }
 

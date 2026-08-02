@@ -25,23 +25,23 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 LOGGER = logging.getLogger("gnc.supabase_ml_worker")
 DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
-DEFAULT_JOB_TABLE = "v2_ml_image_jobs"
+DEFAULT_JOB_TABLE = "ph_ml_image_jobs"
 DEFAULT_PHOTO_BUCKET = "ml_capture_photos"
-DEFAULT_TRAINING_ASSETS_TABLE = "v2_disease_training_assets"
+DEFAULT_TRAINING_ASSETS_TABLE = "ph_disease_training_assets"
 DEFAULT_TRAINING_ASSETS_BUCKET = "disease_training_assets"
-DEFAULT_LIVE_EVENT_TABLE = "v2_app_live_events"
-DEFAULT_GROWER_SCOUT_REPORTS_TABLE = "v2_grower_scout_reports"
-DEFAULT_GROWER_SCOUT_ASSETS_TABLE = "v2_grower_scout_assets"
+DEFAULT_LIVE_EVENT_TABLE = "ph_app_live_events"
+DEFAULT_GROWER_SCOUT_REPORTS_TABLE = "ph_grower_scout_reports"
+DEFAULT_GROWER_SCOUT_ASSETS_TABLE = "ph_grower_scout_assets"
 DEFAULT_GROWER_SCOUT_AUDIO_BUCKET = "grower_scout_audio"
 DEFAULT_GROWER_SCOUT_PHOTOS_BUCKET = "grower_scout_photos"
 DEFAULT_MODELS_DIR = pathlib.Path("models")
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 ML_SOURCE_TABLE_ALLOWLIST = {
-    "v2_master_inventory",
-    "v2_active_request",
-    "v2_soc_master",
-    "v2_sales_office",
-    "v2_inventory_office",
+    "ph_master_inventory",
+    "ph_active_request",
+    "ph_soc_master",
+    "ph_sales_office",
+    "ph_inventory_office",
 }
 
 
@@ -582,7 +582,7 @@ class InventoryCache:
         limit = 1000
         while True:
             response = (
-                client.table("v2_master_inventory")
+                client.table("ph_master_inventory")
                 .select("*")
                 .order("commonname")
                 .limit(limit)
@@ -624,10 +624,10 @@ class InventoryCache:
                 LOGGER.info("Loaded %s inventory row(s) from Google Drive.", len(entries))
             except Exception as exc:
                 drive_error = exc
-                LOGGER.warning("Could not load inventory from Google Drive; falling back to Supabase v2_master_inventory: %s", exc)
+                LOGGER.warning("Could not load inventory from Google Drive; falling back to Supabase ph_master_inventory: %s", exc)
         if not entries:
             entries = self.load_from_supabase_inventory()
-            LOGGER.info("Loaded %s inventory row(s) from Supabase v2_master_inventory.", len(entries))
+            LOGGER.info("Loaded %s inventory row(s) from Supabase ph_master_inventory.", len(entries))
         if not entries and drive_error:
             raise RuntimeError(f"Inventory loading failed. Drive error: {drive_error}")
         self.matcher = InventoryMatcher(entries)
