@@ -148,6 +148,20 @@ function diagnoseSupabaseRuntime_() {
   };
 }
 
+function setSupabaseServiceRoleKeyForMaintenance(key) {
+  const safeKey = String(key || '').trim();
+  if (!safeKey || safeKey.slice(0, 3) !== 'eyJ' || safeKey.length < 100) {
+    throw new Error('Expected the legacy Supabase service_role JWT key.');
+  }
+  PropertiesService.getScriptProperties().setProperty('SUPABASE_SERVICE_ROLE_KEY', safeKey);
+  return {
+    ok: true,
+    property: 'SUPABASE_SERVICE_ROLE_KEY',
+    keyPrefix: safeKey.slice(0, 3),
+    keyLength: safeKey.length
+  };
+}
+
 const APP_LIVE_EVENTS_TABLE = 'ph_app_live_events';
 const INVENTORY_TRANSACTION_TABLE = 'ph_inventory_transactions';
 const EMIT_APP_LIVE_EVENTS = true;
