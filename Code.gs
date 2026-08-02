@@ -11482,6 +11482,14 @@ function doPost(e) {
       return jsonOutput_(diagnoseSupabaseRuntime_());
     }
 
+    if (payload.type === 'set_supabase_service_role_key') {
+      const requestedBy = String(payload.requested_by || payload.requestedBy || '').trim().toLowerCase();
+      if (requestedBy !== 'dylan_collyge' && requestedBy !== 'dylancollyge@agmetricapp.com') {
+        throw new Error('Supabase key maintenance is restricted to dylan_collyge.');
+      }
+      return jsonOutput_(setSupabaseServiceRoleKeyForMaintenance(payload.key || payload.serviceRoleKey || ''));
+    }
+
     if (payload.type === 'drivearound_name_preview' || payload.type === 'drivearound_name_cleanup') {
       const requestedBy = String(payload.requested_by || payload.requestedBy || '').trim().toLowerCase();
       const allowedRequester = requestedBy === 'dylan_collyge' || requestedBy === 'dylancollyge@agmetricapp.com';
