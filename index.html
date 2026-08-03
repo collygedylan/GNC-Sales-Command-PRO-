@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.03.05';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.03.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -53,7 +53,6 @@
         body.performance-scroll-active .inv-card,
         body.performance-scroll-active .item-row,
         body.performance-scroll-active .request-swipe-row,
-        body.performance-scroll-active .request-swipe-surface,
         body.performance-scroll-active .crop-roll-review-card,
         body.performance-scroll-active .crop-roll-priority-review-row,
         body.performance-scroll-active .manager-module-card,
@@ -345,7 +344,6 @@ body.ios-device .manager-crop-roll-review-filter-shell{
         }
         body.ios-device.performance-scroll-active .app-smart-card img,
         body.ios-device.performance-scroll-active .inv-card img,
-        body.ios-device.performance-scroll-active .request-swipe-surface,
         body.ios-device.performance-scroll-active .bloom-picker-tray-surface{
             will-change:auto !important;
             transform:none !important;
@@ -380,8 +378,7 @@ body.ios-device .manager-crop-roll-review-filter-shell{
         body.ios-device .item-row,
         body.ios-device [data-virtual-row],
         body.ios-device [data-windowed-row],
-        body.ios-device .request-swipe-row,
-        body.ios-device .request-swipe-surface{
+        body.ios-device .request-swipe-row{
             contain:none !important;
             content-visibility:visible !important;
             contain-intrinsic-size:auto !important;
@@ -420,8 +417,7 @@ body.ios-device .manager-crop-roll-review-filter-shell{
         }
         body.ios-device.mobile-text-entry-active .app-smart-card,
         body.ios-device.mobile-text-entry-active .app-card-shell,
-        body.ios-device.mobile-text-entry-active .inv-card,
-        body.ios-device.mobile-text-entry-active .request-swipe-surface{
+        body.ios-device.mobile-text-entry-active .inv-card{
             transform:none !important;
             -webkit-transform:none !important;
         }
@@ -1299,7 +1295,7 @@ body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-
 .request-swipe-surface{position:relative;z-index:2;width:100%;background:#ffffff;border-radius:inherit;padding:0;transition:transform .18s ease;will-change:transform;touch-action:pan-y;-webkit-user-select:none;user-select:none}
 .request-swipe-surface--season{background:linear-gradient(180deg,#ecfdf5 0%,#dcfce7 100%) !important}
         .request-swipe-action{position:absolute;top:0;right:0;bottom:0;width:88px;display:flex;align-items:center;justify-content:center;background:#ffffff;color:#dc2626;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;z-index:1}
-        .request-swipe-row.swipe-open .request-swipe-surface{transform:translateX(-88px)}
+        .request-swipe-row.swipe-open .request-swipe-surface{transform:translateX(-88px);-webkit-transform:translateX(-88px)}
         #request-rep-modal{background:rgba(15,23,42,.58);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
         #request-rep-modal .request-create-panel{max-width:460px;border:1px solid rgba(16,185,129,.22);border-radius:24px;background:linear-gradient(180deg,#ffffff 0%,#f8fffb 100%);box-shadow:0 28px 70px rgba(15,23,42,.24);text-align:left}
         #request-rep-modal h3{color:#007a4d!important;font-weight:900;letter-spacing:-.01em}
@@ -5153,7 +5149,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.03.05').trim() || 'V2026.08.03.05';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.03.06').trim() || 'V2026.08.03.06';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6609,7 +6605,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.03.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.03.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -25447,7 +25443,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.03.05').trim() || 'V2026.08.03.05';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.03.06').trim() || 'V2026.08.03.06';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -95213,6 +95209,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         function createRequestSwipeState() {
             return { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false, pointerId: null, inputType: '' };
         }
+        const REQUEST_SWIPE_OPEN_OFFSET = -88;
+        const REQUEST_SWIPE_OPEN_THRESHOLD = -44;
         let requestSwipeState = createRequestSwipeState();
         let requestSwipeMoveBound = false;
         let requestSwipePointerTouchGuardUntil = 0;
@@ -114096,11 +114094,24 @@ C.14.043 C.15.000
             requestSwipeMoveBound = false;
         }
 
+        function setRequestSwipeSurfaceOffset(surface, offset = 0) {
+            if (!surface || !surface.style) return;
+            const numericOffset = Number(offset) || 0;
+            if (!numericOffset) {
+                surface.style.removeProperty('transform');
+                surface.style.removeProperty('-webkit-transform');
+                return;
+            }
+            const value = `translateX(${numericOffset}px)`;
+            surface.style.setProperty('transform', value, 'important');
+            surface.style.setProperty('-webkit-transform', value, 'important');
+        }
+
         function closeRequestSwipe(row) {
             if (!row) return;
             row.classList.remove('swipe-open');
             const surface = row.querySelector('.request-swipe-surface');
-            if (surface) surface.style.transform = '';
+            setRequestSwipeSurfaceOffset(surface, 0);
             if (requestSwipeState.row === row) {
                 requestSwipeState = createRequestSwipeState();
                 releaseRequestSwipeMoveListener();
@@ -114155,8 +114166,8 @@ C.14.043 C.15.000
                 surface,
                 startX: point.clientX,
                 startY: point.clientY,
-                deltaX: row.classList.contains('swipe-open') ? -96 : 0,
-                startOffset: row.classList.contains('swipe-open') ? -96 : 0,
+                deltaX: row.classList.contains('swipe-open') ? REQUEST_SWIPE_OPEN_OFFSET : 0,
+                startOffset: row.classList.contains('swipe-open') ? REQUEST_SWIPE_OPEN_OFFSET : 0,
                 dragging: true,
                 pointerId: isPointerEvent ? event.pointerId : null,
                 inputType: isPointerEvent ? `pointer-${pointerType || 'unknown'}` : 'touch'
@@ -114178,11 +114189,11 @@ C.14.043 C.15.000
                 closeRequestSwipe(requestSwipeState.row);
                 return;
             }
-            const nextOffset = Math.max(-96, Math.min(0, requestSwipeState.startOffset + dx));
+            const nextOffset = Math.max(REQUEST_SWIPE_OPEN_OFFSET, Math.min(0, requestSwipeState.startOffset + dx));
             if (nextOffset === 0 && dx > 0 && requestSwipeState.startOffset === 0) return;
             cancelPress();
             requestSwipeState.deltaX = nextOffset;
-            requestSwipeState.surface.style.transform = `translateX(${nextOffset}px)`;
+            setRequestSwipeSurfaceOffset(requestSwipeState.surface, nextOffset);
             if (Math.abs(nextOffset) > 8) event.preventDefault();
         }
 
@@ -114195,10 +114206,10 @@ C.14.043 C.15.000
                 return;
             }
             const row = requestSwipeState.row;
-            const shouldOpen = requestSwipeState.deltaX <= -56;
+            const shouldOpen = requestSwipeState.deltaX <= REQUEST_SWIPE_OPEN_THRESHOLD;
             if (shouldOpen) {
                 row.classList.add('swipe-open');
-                if (requestSwipeState.surface) requestSwipeState.surface.style.transform = 'translateX(-96px)';
+                setRequestSwipeSurfaceOffset(requestSwipeState.surface, REQUEST_SWIPE_OPEN_OFFSET);
             } else {
                 closeRequestSwipe(row);
             }
