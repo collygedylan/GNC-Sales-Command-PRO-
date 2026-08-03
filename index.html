@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.03.07';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.03.08';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5149,7 +5149,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.03.07').trim() || 'V2026.08.03.07';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.03.08').trim() || 'V2026.08.03.08';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6605,7 +6605,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.03.07';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.03.08';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -25443,7 +25443,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.03.07').trim() || 'V2026.08.03.07';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.03.08').trim() || 'V2026.08.03.08';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -35239,6 +35239,7 @@ let avTopControlsRenderToken = 0;
         }
 
         const ARGOS_INVENTORY_TRANSACTION_LOT_SEASONS = Object.freeze(['S1', 'F1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
+        const ARGOS_INVENTORY_TRANSACTION_MOVE_SEASON_REQUEST_ACTIONS = Object.freeze(['move_up', 'move_down']);
         const ARGOS_INVENTORY_TRANSACTION_REQUEST_ACTIONS = Object.freeze(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'ncr', 'recount', 'priority_change', 'move_up', 'move_down']);
         const ARGOS_INVENTORY_TRANSACTION_REQUEST_LABELS = Object.freeze({
             hold: 'On Hold',
@@ -35284,26 +35285,87 @@ let avTopControlsRenderToken = 0;
             return Array.from(years).sort((a, b) => Number(a) - Number(b));
         }
 
-        function buildArgosInventoryTransactionLotOptions(item = null) {
-            const options = [];
+        function getArgosInventoryTransactionCurrentSeasonCode() {
+            const configured = typeof getConfiguredCurrentSeasonCode === 'function' ? getConfiguredCurrentSeasonCode() : '';
+            const normalized = typeof normalizeAppCurrentSeasonCode === 'function'
+                ? normalizeAppCurrentSeasonCode(configured)
+                : String(configured || '').trim().toUpperCase().replace(/\s+/g, '');
+            return normalized || 'F1';
+        }
+
+        function getArgosInventoryTransactionLotSeason(lotCode = '') {
+            const match = String(lotCode || '').trim().toUpperCase().match(/(?:^|\.)(S1|F1|U1|U2|U3|X|Y|Z)$/);
+            return match ? match[1] : '';
+        }
+
+        function getArgosInventoryTransactionAllowedLotSeasons(options = {}) {
+            const excludeCurrentSeason = !!(options && options.excludeCurrentSeason);
+            const currentSeason = getArgosInventoryTransactionCurrentSeasonCode();
+            return ARGOS_INVENTORY_TRANSACTION_LOT_SEASONS.filter((season) => !excludeCurrentSeason || season !== currentSeason);
+        }
+
+        function isArgosInventoryTransactionMoveSeasonRequestAction(action = '') {
+            const normalized = normalizeArgosInventoryTransactionRequestAction(action);
+            return ARGOS_INVENTORY_TRANSACTION_MOVE_SEASON_REQUEST_ACTIONS.includes(normalized);
+        }
+
+        function shouldArgosInventoryTransactionExcludeCurrentLotSeason() {
+            const stateAction = normalizeArgosInventoryTransactionAction(argosInventoryTransactionState && argosInventoryTransactionState.action ? argosInventoryTransactionState.action : 'qty');
+            return stateAction === 'reclass' && isArgosInventoryTransactionMoveSeasonRequestAction(getArgosInventoryTransactionRequestAction());
+        }
+
+        function isArgosInventoryTransactionLotAllowedForMode(lotCode = '', options = {}) {
+            if (!(options && options.excludeCurrentSeason)) return true;
+            const season = getArgosInventoryTransactionLotSeason(lotCode);
+            return !season || season !== getArgosInventoryTransactionCurrentSeasonCode();
+        }
+
+        function getArgosInventoryTransactionLotPlaceholder(options = {}) {
+            if (options && options.excludeCurrentSeason) return `Choose season (not ${getArgosInventoryTransactionCurrentSeasonCode()})`;
+            return 'Lot';
+        }
+
+        function getArgosInventoryTransactionMoveSeasonYear() {
+            const configured = typeof getConfiguredCurrentSalesYearCode === 'function' ? getConfiguredCurrentSalesYearCode() : '';
+            const normalized = typeof normalizeAppCurrentSalesYear === 'function'
+                ? normalizeAppCurrentSalesYear(configured)
+                : String(configured || '').replace(/[^\d]/g, '').slice(-2);
+            return normalized || String(new Date().getFullYear()).slice(-2);
+        }
+
+        function getArgosInventoryTransactionLotOptionLabel(lotCode = '', options = {}) {
+            if (options && options.excludeCurrentSeason) {
+                return getArgosInventoryTransactionLotSeason(lotCode) || String(lotCode || '').trim().toUpperCase();
+            }
+            return String(lotCode || '').trim().toUpperCase();
+        }
+
+        function buildArgosInventoryTransactionLotOptions(item = null, options = {}) {
+            const lotOptions = [];
+            const allowedSeasons = getArgosInventoryTransactionAllowedLotSeasons(options);
+            if (options && options.excludeCurrentSeason) {
+                const year = getArgosInventoryTransactionMoveSeasonYear();
+                return allowedSeasons.map((season) => `${year}.${season}`);
+            }
             getArgosInventoryTransactionLotYears(item).forEach((year) => {
-                ARGOS_INVENTORY_TRANSACTION_LOT_SEASONS.forEach((season) => {
-                    options.push(`${year}.${season}`);
+                allowedSeasons.forEach((season) => {
+                    lotOptions.push(`${year}.${season}`);
                 });
             });
             const currentLot = String(getArgosInventoryField(item, ['LOTCODE', 'lotcode'], '') || '').trim().toUpperCase();
-            if (currentLot && !options.includes(currentLot)) options.unshift(currentLot);
-            return options;
+            if (currentLot && isArgosInventoryTransactionLotAllowedForMode(currentLot, options) && !lotOptions.includes(currentLot)) lotOptions.unshift(currentLot);
+            return lotOptions;
         }
 
         function refreshArgosInventoryTransactionLotOptions(item = null) {
             const lotSelect = document.getElementById('argos-inventory-transaction-new-lot');
             if (!lotSelect) return;
             const currentValue = String(lotSelect.value || getArgosInventoryField(item, ['LOTCODE', 'lotcode'], '') || '').trim().toUpperCase();
-            const options = buildArgosInventoryTransactionLotOptions(item);
+            const modeOptions = { excludeCurrentSeason: shouldArgosInventoryTransactionExcludeCurrentLotSeason() };
+            const options = buildArgosInventoryTransactionLotOptions(item, modeOptions);
             lotSelect.innerHTML = [
-                '<option value="">Lot</option>',
-                ...options.map((lotCode) => `<option value="${escapeHtml(lotCode)}">${escapeHtml(lotCode)}</option>`)
+                `<option value="">${escapeHtml(getArgosInventoryTransactionLotPlaceholder(modeOptions))}</option>`,
+                ...options.map((lotCode) => `<option value="${escapeHtml(lotCode)}">${escapeHtml(getArgosInventoryTransactionLotOptionLabel(lotCode, modeOptions))}</option>`)
             ].join('');
             lotSelect.value = currentValue && options.includes(currentValue) ? currentValue : '';
         }
@@ -35479,7 +35541,11 @@ let avTopControlsRenderToken = 0;
             if (qtyInput) qtyInput.value = action === 'qty' ? snapshot.ptrOnHand : '0';
             if (priorityInput) priorityInput.value = normalizeArgosInventoryTransactionPriorityValue(snapshot.priority) || '';
             if (newItemInput) newItemInput.value = snapshot.itemCode || '';
-            if (newLotInput) newLotInput.value = snapshot.lotCode || '';
+            if (newLotInput) {
+                const snapshotLotCode = String(snapshot.lotCode || '').trim().toUpperCase();
+                const hasSnapshotLotOption = Array.from(newLotInput.options || []).some((option) => option.value === snapshotLotCode);
+                newLotInput.value = snapshotLotCode && hasSnapshotLotOption ? snapshotLotCode : '';
+            }
             if (newLocationInput) newLocationInput.value = snapshot.locationCode || '';
             if (desigCustInput) desigCustInput.value = snapshot.desigCust || '';
             if (desigItemInput) desigItemInput.value = snapshot.desigItem || '';
@@ -35540,6 +35606,7 @@ let avTopControlsRenderToken = 0;
             if (advanced) advanced.open = false;
             const apply = document.getElementById('argos-inventory-transaction-apply');
             if (apply) apply.innerHTML = `<i class="ph-bold ph-check mr-1"></i> Apply ${escapeHtml(getArgosInventoryTransactionActionLabel(safeAction))}`;
+            refreshArgosInventoryTransactionLotOptions(argosInventoryTransactionState.item);
             syncArgosInventoryTransactionRequestOnlyMode();
             return false;
         }
@@ -35644,6 +35711,7 @@ let avTopControlsRenderToken = 0;
             const newLotInput = document.getElementById('argos-inventory-transaction-new-lot');
             const newLocationInput = document.getElementById('argos-inventory-transaction-new-location');
             const reasonInput = document.getElementById('argos-inventory-transaction-hold-reason');
+            const needsDestinationSeasonLot = requestOnly && stateAction === 'reclass' && isArgosInventoryTransactionMoveSeasonRequestAction(requestAction);
             if (reasonField) reasonField.classList.toggle('hidden', requestOnly);
             if (sourceField) sourceField.classList.toggle('hidden', requestOnly || isPriorityChange);
             if (qtyField) qtyField.classList.toggle('hidden', requestOnly || isPriorityChange);
@@ -35652,12 +35720,16 @@ let avTopControlsRenderToken = 0;
                 priorityField.classList.add('hidden');
             }
             if (itemField) itemField.hidden = requestOnly || isPriorityChange || stateAction !== 'reclass';
-            if (lotField) lotField.hidden = requestOnly || isPriorityChange || stateAction === 'qty';
+            if (lotField) {
+                lotField.hidden = (requestOnly && !needsDestinationSeasonLot) || isPriorityChange || stateAction === 'qty';
+                const lotLabel = lotField.querySelector('span');
+                if (lotLabel) lotLabel.textContent = needsDestinationSeasonLot ? 'Destination Season' : 'New Lot';
+            }
             if (locationField) locationField.hidden = requestOnly || isPriorityChange || stateAction === 'qty';
             if (qtyInput) qtyInput.required = !requestOnly && !isPriorityChange;
             if (priorityInput) priorityInput.required = false;
             if (newItemInput) newItemInput.required = !requestOnly && !isPriorityChange && stateAction === 'reclass';
-            if (newLotInput) newLotInput.required = !requestOnly && stateAction !== 'qty' && !isPriorityChange;
+            if (newLotInput) newLotInput.required = needsDestinationSeasonLot || (!requestOnly && stateAction !== 'qty' && !isPriorityChange);
             if (newLocationInput) newLocationInput.required = !requestOnly && stateAction !== 'qty' && !isPriorityChange;
             if (reasonInput && (requestOnly || isPriorityChange)) reasonInput.required = false;
             if (advanced) {
@@ -35673,7 +35745,9 @@ let avTopControlsRenderToken = 0;
             }
             if (note && requestOnly) {
                 note.hidden = false;
-                note.textContent = `This opens the ${requestLabel} request and email flow only. It does not write to inventory.`;
+                note.textContent = needsDestinationSeasonLot
+                    ? `Choose the destination season for ${requestLabel}. Current season ${getArgosInventoryTransactionCurrentSeasonCode()} is not available.`
+                    : `This opens the ${requestLabel} request and email flow only. It does not write to inventory.`;
             } else if (note) {
                 note.hidden = true;
                 note.textContent = 'Applies to every current season/current sales year row for this item.';
@@ -35691,6 +35765,11 @@ let avTopControlsRenderToken = 0;
             const reasonInput = document.getElementById('argos-inventory-transaction-hold-reason');
             const note = document.querySelector('[data-argos-hold-field="note"]');
             if (select && select.value !== safeAction) select.value = safeAction;
+            if (argosInventoryTransactionState
+                && isArgosInventoryTransactionMoveSeasonRequestAction(safeAction)
+                && normalizeArgosInventoryTransactionAction(argosInventoryTransactionState.action || 'qty') !== 'reclass') {
+                setArgosInventoryTransactionAction('reclass');
+            }
             syncArgosInventoryTransactionHoldActionPicker(safeAction);
             if (reasonField) reasonField.hidden = safeAction !== 'hold' && safeAction !== 'stop_ship';
             if (note) note.hidden = safeAction === 'none';
@@ -35698,6 +35777,7 @@ let avTopControlsRenderToken = 0;
                 reasonInput.required = safeAction === 'hold' || safeAction === 'stop_ship';
                 if (safeAction !== 'hold' && safeAction !== 'stop_ship') reasonInput.value = '';
             }
+            refreshArgosInventoryTransactionLotOptions(argosInventoryTransactionState && argosInventoryTransactionState.item);
             syncArgosInventoryTransactionRequestOnlyMode();
             return false;
         }
@@ -36136,9 +36216,34 @@ let avTopControlsRenderToken = 0;
                 return false;
             }
             if (!requestAction) return false;
+            const stateAction = normalizeArgosInventoryTransactionAction(state.action || 'qty');
+            const requiresDestinationSeasonLot = stateAction === 'reclass' && isArgosInventoryTransactionMoveSeasonRequestAction(requestAction);
+            const requestLabel = getArgosInventoryTransactionRequestLabel(requestAction);
+            let requestInitialValues = null;
+            if (requiresDestinationSeasonLot) {
+                const destinationLotCode = getArgosInventoryTransactionInputValue('argos-inventory-transaction-new-lot').toUpperCase();
+                const destinationSeason = getArgosInventoryTransactionLotSeason(destinationLotCode);
+                const currentSeason = getArgosInventoryTransactionCurrentSeasonCode();
+                if (!destinationLotCode || !destinationSeason) {
+                    showToast('Choose Season', `Choose a destination season for ${requestLabel}.`, true);
+                    return false;
+                }
+                if (destinationSeason === currentSeason) {
+                    showToast('Choose Different Season', `Current season ${currentSeason} cannot be used for ${requestLabel}.`, true);
+                    return false;
+                }
+                requestInitialValues = {
+                    lotcode: destinationLotCode,
+                    destinationSeason,
+                    moveUpSeason: requestAction === 'move_up' ? destinationSeason : '',
+                    moveDownSeason: requestAction === 'move_down' ? destinationSeason : ''
+                };
+            }
+            const rowFormOptions = requestInitialValues ? { initialValuesByIndex: [requestInitialValues] } : {};
             closeArgosInventoryTransactionModal();
             if (requestAction === 'priority_change') {
                 return openBloomActionRowFormModal([item], {
+                    ...rowFormOptions,
                     action: requestAction,
                     selectionKind: 'inventory',
                     emailOnly: true,
@@ -36151,8 +36256,9 @@ let avTopControlsRenderToken = 0;
                     }
                 });
             }
-            if (requestAction === 'ncr' || requestAction === 'move_up') {
+            if (requestAction === 'ncr' || requestAction === 'move_up' || requestAction === 'move_down') {
                 return openBloomActionRowFormModal([item], {
+                    ...rowFormOptions,
                     action: requestAction,
                     selectionKind: 'inventory',
                     emailOnly: true,
@@ -36167,6 +36273,7 @@ let avTopControlsRenderToken = 0;
                 });
             }
             return openBloomActionRowFormModal([item], {
+                ...rowFormOptions,
                 action: requestAction,
                 selectionKind: 'inventory',
                 emailOnly: true
@@ -54211,8 +54318,10 @@ function toggleDriveQuickRequestItem(domId) {
             type: approvalType,
             ncrQty: String(firstNonEmptyValue(rowOptions.ncrQty, rowOptions.ncr_qty, screenValues.releaseQty, screenValues.release_qty, '') || '').trim(),
             moveUpQty: String(firstNonEmptyValue(rowOptions.moveUpQty, rowOptions.move_up_qty, screenValues.moveUpQty, '') || '').trim(),
+            moveUpSeason: String(firstNonEmptyValue(rowOptions.moveUpSeason, rowOptions.move_up_season, screenValues.moveUpSeason, '') || '').trim(),
             moveDownQty: String(firstNonEmptyValue(rowOptions.moveDownQty, rowOptions.move_down_qty, screenValues.moveDownQty, '') || '').trim(),
             moveDownSeason: String(firstNonEmptyValue(rowOptions.moveDownSeason, rowOptions.move_down_season, screenValues.moveDownSeason, '') || '').trim(),
+            destinationSeason: String(firstNonEmptyValue(rowOptions.destinationSeason, rowOptions.destination_season, screenValues.destinationSeason, '') || '').trim(),
             removeHoldStop: rowOptions.removeHoldStop === true || rowOptions.remove_holdstop === true || rowOptions.remove_holdstopcode === true,
             holdStopCode: String(firstNonEmptyValue(rowOptions.holdStopCode, rowOptions.hold_stop_code, screenValues.holdstopcode, '') || '').trim(),
             holdStopReason: normalizeBloomActionHoldStopReasonValue(firstNonEmptyValue(rowOptions.holdStopReason, rowOptions.holdstopreason, rowOptions.hold_stop_reason, screenValues.holdstopreason, '')),
@@ -54505,12 +54614,20 @@ function toggleDriveQuickRequestItem(domId) {
     }
 
     function getPaperNcrMoveDownSeasonOptions() {
-        return ['U1', 'U2', 'U3', 'X', 'Y', 'Z'];
+        return typeof getBloomActionMoveSeasonOptions === 'function'
+            ? getBloomActionMoveSeasonOptions()
+            : ['S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z'];
     }
 
     function normalizePaperNcrMoveDownSeason(value = '') {
         const normalized = String(value || '').trim().toUpperCase().replace(/\s+/g, '');
-        return getPaperNcrMoveDownSeasonOptions().includes(normalized) ? normalized : 'U1';
+        const options = getPaperNcrMoveDownSeasonOptions();
+        return options.includes(normalized) ? normalized : (options[0] || 'S1');
+    }
+
+    function getPaperNcrDefaultMoveSeason() {
+        const options = getPaperNcrMoveDownSeasonOptions();
+        return options[0] || 'S1';
     }
 
     function normalizePaperNcrPriorityForAction(priority = '', actionType = 'ncr') {
@@ -54528,13 +54645,24 @@ function toggleDriveQuickRequestItem(domId) {
         );
         normalized.priority = normalizePaperNcrPriorityForAction(normalized.priority, actionType);
         const ncrQty = String(firstNonEmptyValue(row && row.ncrQty, row && row.ncr_qty, row && row.releaseQty, '') || '').trim();
+        const moveUpSeason = actionType === 'move-up'
+            ? normalizePaperNcrMoveDownSeason(firstNonEmptyValue(row && row.moveUpSeason, row && row.move_up_season, row && row.destinationSeason, row && row.destination_season, ''))
+            : '';
+        const moveDownSeason = actionType === 'move-down'
+            ? normalizePaperNcrMoveDownSeason(firstNonEmptyValue(row && row.moveDownSeason, row && row.move_down_season, row && row.destinationSeason, row && row.destination_season, ''))
+            : '';
+        const destinationSeason = actionType === 'move-up'
+            ? moveUpSeason
+            : (actionType === 'move-down' ? moveDownSeason : '');
         return {
             ...normalized,
             actionType,
             ncrQty,
             moveUpQty: String(firstNonEmptyValue(row && row.moveUpQty, row && row.move_up_qty, actionType === 'move-up' ? ncrQty : '') || '').trim(),
+            moveUpSeason,
             moveDownQty: String(firstNonEmptyValue(row && row.moveDownQty, row && row.move_down_qty, '') || '').trim(),
-            moveDownSeason: normalizePaperNcrMoveDownSeason(firstNonEmptyValue(row && row.moveDownSeason, row && row.move_down_season, 'U1')),
+            moveDownSeason,
+            destinationSeason,
             ncrNote: String(firstNonEmptyValue(row && row.ncrNote, row && row.ncr_note, row && row.paperNote, '') || '').trim(),
             originalPriority: String(firstNonEmptyValue(row && row.originalPriority, row && row.original_priority, '') || '').trim(),
             originalLocationNoteDate: String(firstNonEmptyValue(row && row.originalLocationNoteDate, row && row.original_location_note_date, '') || '').trim(),
@@ -81207,20 +81335,46 @@ function toggleDriveQuickRequestItem(domId) {
             return '';
         }
 
+        function getBloomActionMoveSeasonOptions() {
+            const configuredOrder = Array.isArray(APP_SEASON_DISPLAY_ORDER) && APP_SEASON_DISPLAY_ORDER.length
+                ? APP_SEASON_DISPLAY_ORDER
+                : ['S1', 'F1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z'];
+            const currentSeason = typeof getConfiguredCurrentSeasonCode === 'function'
+                ? normalizeAppCurrentSeasonCode(getConfiguredCurrentSeasonCode())
+                : 'F1';
+            const seen = new Set();
+            return configuredOrder
+                .map((season) => normalizeAppCurrentSeasonCode(season))
+                .filter((season) => {
+                    if (!season || season === currentSeason || seen.has(season)) return false;
+                    seen.add(season);
+                    return true;
+                });
+        }
+
+        function normalizeBloomActionMoveSeason(value = '') {
+            const raw = normalizeAppCurrentSeasonCode(value);
+            const options = getBloomActionMoveSeasonOptions();
+            if (raw === 'U' && options.includes('U1')) return 'U1';
+            return options.includes(raw) ? raw : (options[0] || 'S1');
+        }
+
+        function getBloomActionMoveLotCode(season = '') {
+            const salesYear = normalizeAppCurrentSalesYear(getConfiguredCurrentSalesYearCode());
+            const safeSeason = normalizeBloomActionMoveSeason(season);
+            return `${salesYear}.${safeSeason}`;
+        }
+
         function getBloomActionMoveDownSeasonOptions() {
-            return ['U1', 'U2', 'U3', 'X', 'Y', 'Z'];
+            return getBloomActionMoveSeasonOptions();
         }
 
         function normalizeBloomActionMoveDownSeason(value = '') {
-            const raw = String(value || '').trim().toUpperCase().replace(/\s+/g, '');
-            if (raw === 'U') return 'U1';
-            return getBloomActionMoveDownSeasonOptions().includes(raw) ? raw : 'U1';
+            return normalizeBloomActionMoveSeason(value);
         }
 
-        function getBloomActionMoveDownLotCode(season = 'U1') {
-            const salesYear = normalizeAppCurrentSalesYear(getConfiguredCurrentSalesYearCode());
-            const safeSeason = normalizeBloomActionMoveDownSeason(season);
-            return `${salesYear}.${safeSeason}`;
+        function getBloomActionMoveDownLotCode(season = '') {
+            return getBloomActionMoveLotCode(season);
         }
 
         function getBloomActionRowMoveDownQtyDefault(item = null) {
@@ -81778,8 +81932,9 @@ function toggleDriveQuickRequestItem(domId) {
             const ptravailable = String(firstNonEmptyValue(screenValues.ptravailable, getBloomActionRowPtrAvailableDefault(item), '') || '').trim();
             const releaseQty = action === 'ncr' ? String(firstNonEmptyValue(screenValues.releaseQty, getBloomActionRowReleaseQtyDefault(item), '') || '').trim() : '';
             const moveUpQty = '';
+            const moveUpSeason = action === 'move_up' ? normalizeBloomActionMoveSeason(firstNonEmptyValue(screenValues.moveUpSeason, screenValues.move_up_season, screenValues.destinationSeason, screenValues.destination_season, '')) : '';
             const moveDownQty = action === 'move_down' ? String(firstNonEmptyValue(screenValues.moveDownQty, getBloomActionRowMoveDownQtyDefault(item), '') || '').trim() : '';
-            const moveDownSeason = action === 'move_down' ? normalizeBloomActionMoveDownSeason(firstNonEmptyValue(screenValues.moveDownSeason, 'U1')) : '';
+            const moveDownSeason = action === 'move_down' ? normalizeBloomActionMoveDownSeason(firstNonEmptyValue(screenValues.moveDownSeason, screenValues.move_down_season, screenValues.destinationSeason, screenValues.destination_season, '')) : '';
             const baseLocationNote = getBloomActionRowBaseLocationNote(item);
             const timestampDate = timestampIso ? new Date(timestampIso) : new Date();
             const timestampLabel = formatBloomActionRowTimestamp(timestampDate);
@@ -81801,7 +81956,13 @@ function toggleDriveQuickRequestItem(domId) {
                     ? firstNonEmptyValue(screenValues.priority, '')
                     : firstNonEmptyValue(screenValues.priority, item && item.PRIORITY, item && item.priority, '') || '').trim(),
                 priBy: String(firstNonEmptyValue(screenValues.priBy, item && item.PRISETBY, item && item.prisetby, item && item.PRIBY, item && item.priby, currentUserLabel, '') || '').trim(),
-                lotcode: String(firstNonEmptyValue(screenValues.lotcode, action === 'move_down' ? getBloomActionMoveDownLotCode(moveDownSeason) : '', getBloomActionRowReadonlyValue(item, 'lotcode'), '') || '').trim(),
+                lotcode: String(firstNonEmptyValue(
+                    screenValues.lotcode,
+                    action === 'move_up' ? getBloomActionMoveLotCode(moveUpSeason) : '',
+                    action === 'move_down' ? getBloomActionMoveDownLotCode(moveDownSeason) : '',
+                    getBloomActionRowReadonlyValue(item, 'lotcode'),
+                    ''
+                ) || '').trim(),
                 locationcode: String(firstNonEmptyValue(screenValues.locationcode, getBloomActionRowReadonlyValue(item, 'locationcode'), '') || '').trim(),
                 source: String(firstNonEmptyValue(screenValues.source, screenValues.sourcecode, getBloomActionRowReadonlyValue(item, 'source'), '') || '').trim(),
                 ptronhand: String(firstNonEmptyValue(screenValues.ptronhand, getBloomActionRowReadonlyValue(item, 'ptronhand'), '') || '').trim(),
@@ -81810,8 +81971,10 @@ function toggleDriveQuickRequestItem(domId) {
                 priorityUpdate: String(firstNonEmptyValue(screenValues.priorityUpdate, item && item.PRIUPDATED, item && item.priupdated, timestampLabel, '') || '').trim(),
                 locationnoteDate: String(firstNonEmptyValue(screenValues.locationnoteDate, item && item.LOCATIONNOTEDATE, item && item.locationnotedate, timestampLabel, '') || '').trim(),
                 locationnote,
+                moveUpSeason,
                 moveDownQty,
                 moveDownSeason,
+                destinationSeason: action === 'move_up' ? moveUpSeason : (action === 'move_down' ? moveDownSeason : ''),
                 locationptn1: String(firstNonEmptyValue(screenValues.locationptn1, getBloomActionRowReadonlyValue(item, 'locationptn1'), '') || '').trim(),
                 locationnoteBase: baseLocationNote,
                 locationnoteAutoLine: action === 'ncr' ? buildBloomActionNcrLocationNoteLine(releaseQty, ptravailable, timestampIso) : '',
@@ -81869,15 +82032,18 @@ function toggleDriveQuickRequestItem(domId) {
             const ptrAvailable = getBloomActionRowStoredValue(savedValues, 'ptravailable', getBloomActionRowPtrAvailableDefault(item));
             const releaseQty = getBloomActionRowStoredValue(savedValues, 'releaseQty', getBloomActionRowReleaseQtyDefault(item));
             const moveUpQty = action === 'move_up' ? getBloomActionRowStoredValue(savedValues, 'moveUpQty', '') : getBloomActionRowStoredValue(savedValues, 'moveUpQty', getBloomActionRowMoveUpQtyDefault(item));
+            const moveUpSeason = normalizeBloomActionMoveSeason(getBloomActionRowStoredValue(savedValues, 'moveUpSeason', getBloomActionRowStoredValue(savedValues, 'destinationSeason', '')));
             const moveDownQty = getBloomActionRowStoredValue(savedValues, 'moveDownQty', getBloomActionRowMoveDownQtyDefault(item));
-            const moveDownSeason = normalizeBloomActionMoveDownSeason(getBloomActionRowStoredValue(savedValues, 'moveDownSeason', 'U1'));
+            const moveDownSeason = normalizeBloomActionMoveDownSeason(getBloomActionRowStoredValue(savedValues, 'moveDownSeason', getBloomActionRowStoredValue(savedValues, 'destinationSeason', '')));
             const holdstop = normalizeBloomActionHoldStopCodeChoice(getBloomActionRowStoredValue(savedValues, 'holdstopcode', getBloomActionRowHoldStopDefault(action, item)), action);
             const holdstopreason = normalizeBloomActionHoldStopReasonValue(getBloomActionRowStoredValue(savedValues, 'holdstopreason', getBloomActionRowCurrentHoldStopReason(item)));
             const isPriorityChangeAction = action === 'priority_change';
             const currentPriority = String(firstNonEmptyValue(item && item.PRIORITY, item && item.priority, '') || '').trim();
             const priority = getBloomActionRowStoredValue(savedValues, 'priority', isPriorityChangeAction ? '' : currentPriority);
             const priBy = getBloomActionRowStoredValue(savedValues, 'priBy', currentUserLabel);
-            const lotcode = getBloomActionRowStoredValue(savedValues, 'lotcode', action === 'move_down' ? getBloomActionMoveDownLotCode(moveDownSeason) : getBloomActionRowReadonlyValue(item, 'lotcode'));
+            const lotcode = getBloomActionRowStoredValue(savedValues, 'lotcode', action === 'move_up'
+                ? getBloomActionMoveLotCode(moveUpSeason)
+                : (action === 'move_down' ? getBloomActionMoveDownLotCode(moveDownSeason) : getBloomActionRowReadonlyValue(item, 'lotcode')));
             const locationcode = getBloomActionRowStoredValue(savedValues, 'locationcode', getBloomActionRowReadonlyValue(item, 'locationcode'));
             const source = getBloomActionRowStoredValue(savedValues, 'source', getBloomActionRowReadonlyValue(item, 'source'));
             const ptronhand = getBloomActionRowStoredValue(savedValues, 'ptronhand', getBloomActionRowReadonlyValue(item, 'ptronhand'));
@@ -81895,12 +82061,12 @@ function toggleDriveQuickRequestItem(domId) {
             const releaseQtyHtml = action === 'ncr'
                 ? `<label class="block"><span class="${labelBase}">Release QTY</span><input data-bloom-action-field="release_qty" data-index="${index}" class="${inputBase}" inputmode="numeric" pattern="[0-9]*" value="${escapeHtml(releaseQty)}" placeholder="Release qty" oninput="handleBloomActionRowQtyInput(${index})"></label>`
                 : '';
+            const moveSeasonOptionsHtml = (selectedSeason) => getBloomActionMoveSeasonOptions().map((season) => `<option value="${escapeHtml(season)}"${season === selectedSeason ? ' selected' : ''}>${escapeHtml(season)}</option>`).join('');
             const moveUpQtyHtml = action === 'move_up'
-                ? `<label class="block"><span class="${labelBase}">Move Up QTY</span><input data-bloom-action-field="move_up_qty" data-index="${index}" class="${inputBase}" inputmode="numeric" pattern="[0-9]*" value="${escapeHtml(moveUpQty)}" placeholder="Move up qty"></label>`
+                ? `<label class="block"><span class="${labelBase}">Move Up QTY</span><input data-bloom-action-field="move_up_qty" data-index="${index}" class="${inputBase}" inputmode="numeric" pattern="[0-9]*" value="${escapeHtml(moveUpQty)}" placeholder="Move up qty"></label><label class="block"><span class="${labelBase}">Move Up Season</span><select data-bloom-action-field="move_up_season" data-index="${index}" class="${inputBase}" onchange="return handleBloomActionMoveSeasonChange(${index}, 'move_up')">${moveSeasonOptionsHtml(moveUpSeason)}</select></label>`
                 : '';
-            const moveDownSeasonOptions = getBloomActionMoveDownSeasonOptions().map((season) => `<option value="${escapeHtml(season)}"${season === moveDownSeason ? ' selected' : ''}>${escapeHtml(season)}</option>`).join('');
             const moveDownHtml = action === 'move_down'
-                ? `<label class="block"><span class="${labelBase}">Move Down QTY</span><input data-bloom-action-field="move_down_qty" data-index="${index}" class="${inputBase}" inputmode="numeric" pattern="[0-9]*" value="${escapeHtml(moveDownQty)}" placeholder="Move down qty"></label><label class="block"><span class="${labelBase}">Move Down Season</span><select data-bloom-action-field="move_down_season" data-index="${index}" class="${inputBase}" onchange="return handleBloomActionMoveDownSeasonChange(${index})">${moveDownSeasonOptions}</select></label>`
+                ? `<label class="block"><span class="${labelBase}">Move Down QTY</span><input data-bloom-action-field="move_down_qty" data-index="${index}" class="${inputBase}" inputmode="numeric" pattern="[0-9]*" value="${escapeHtml(moveDownQty)}" placeholder="Move down qty"></label><label class="block"><span class="${labelBase}">Move Down Season</span><select data-bloom-action-field="move_down_season" data-index="${index}" class="${inputBase}" onchange="return handleBloomActionMoveSeasonChange(${index}, 'move_down')">${moveSeasonOptionsHtml(moveDownSeason)}</select></label>`
                 : '';
             const holdstopOptions = ['', 'S', 'H'].map((option) => `<option value="${escapeHtml(option)}"${option === holdstop ? ' selected' : ''}>${escapeHtml(option || 'Blank')}</option>`).join('');
             const currentSeasonSltsSummary = action === 'ncr' ? getNcrCurrentSeasonSltsSummary(item) : null;
@@ -81993,6 +82159,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const now = new Date();
             const action = String(options.action || bloomEmailPurposeAction || 'general').trim() || 'general';
+            const initialValuesByIndex = Array.isArray(options.initialValuesByIndex) ? options.initialValuesByIndex : [];
             bloomActionRowFormContext = {
                 rows: safeRows.slice(),
                 action,
@@ -82005,7 +82172,10 @@ function toggleDriveQuickRequestItem(domId) {
                 timestampIso: now.toISOString(),
                 timestampLabel: formatBloomActionRowTimestamp(now),
                 currentIndex: 0,
-                valuesByIndex: safeRows.map((item) => getBloomActionRowDefaultValues(item, action, now.toISOString()))
+                valuesByIndex: safeRows.map((item, index) => ({
+                    ...getBloomActionRowDefaultValues(item, action, now.toISOString()),
+                    ...((initialValuesByIndex[index] && typeof initialValuesByIndex[index] === 'object') ? initialValuesByIndex[index] : {})
+                }))
             };
             bloomActionRowFormSubmitting = false;
             const purposeModal = document.getElementById('bloom-email-purpose-modal');
@@ -82051,6 +82221,7 @@ function toggleDriveQuickRequestItem(domId) {
                 ptravailable: getValue('ptravailable'),
                 releaseQty: getValue('release_qty'),
                 moveUpQty: getValue('move_up_qty'),
+                moveUpSeason: getValue('move_up_season'),
                 moveDownQty: getValue('move_down_qty'),
                 moveDownSeason: getValue('move_down_season'),
                 holdstopcode: normalizeBloomActionHoldStopCodeChoice(getValue('holdstopcode')),
@@ -82117,19 +82288,27 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
-        function handleBloomActionMoveDownSeasonChange(index = 0) {
+        function handleBloomActionMoveSeasonChange(index = 0, requestedAction = '') {
             const context = bloomActionRowFormContext || {};
-            if (context.action !== 'move_down') return false;
+            const action = requestedAction || context.action;
+            if (action !== 'move_up' && action !== 'move_down') return false;
             const safeIndex = Number.isFinite(Number(index)) ? Math.max(0, Math.floor(Number(index))) : 0;
             ensureBloomActionRowFormDrafts(context);
             const values = getBloomActionRowFormValues(safeIndex);
-            const season = normalizeBloomActionMoveDownSeason(values.moveDownSeason || 'U1');
-            values.moveDownSeason = season;
-            values.lotcode = getBloomActionMoveDownLotCode(season);
+            const rawSeason = action === 'move_up' ? values.moveUpSeason : values.moveDownSeason;
+            const season = normalizeBloomActionMoveSeason(rawSeason);
+            if (action === 'move_up') values.moveUpSeason = season;
+            if (action === 'move_down') values.moveDownSeason = season;
+            values.destinationSeason = season;
+            values.lotcode = getBloomActionMoveLotCode(season);
             const lotEl = getBloomActionRowFormField(safeIndex, 'lotcode');
             if (lotEl) lotEl.value = values.lotcode;
             context.valuesByIndex[safeIndex] = decorateBloomActionRowFormValuesForDraft(values, context, safeIndex, (context.rows || [])[safeIndex] || null, getBloomActionRowFormDraft(context, safeIndex));
             return false;
+        }
+
+        function handleBloomActionMoveDownSeasonChange(index = 0) {
+            return handleBloomActionMoveSeasonChange(index, 'move_down');
         }
 
         function handleBloomActionHoldStopReasonInput(input = null) {
@@ -82196,6 +82375,14 @@ function toggleDriveQuickRequestItem(domId) {
                         field: 'move_up_qty'
                     };
                 }
+                const selectedMoveUpSeason = normalizeAppCurrentSeasonCode(values.moveUpSeason);
+                if (!getBloomActionMoveSeasonOptions().includes(selectedMoveUpSeason)) {
+                    return {
+                        title: 'Move Up Season',
+                        message: `Select a destination season for row ${index + 1}.`,
+                        field: 'move_up_season'
+                    };
+                }
             }
             if (context.action === 'move_down') {
                 const moveDownQtyNumber = parseAppNumber(values.moveDownQty);
@@ -82206,10 +82393,11 @@ function toggleDriveQuickRequestItem(domId) {
                         field: 'move_down_qty'
                     };
                 }
-                if (!getBloomActionMoveDownSeasonOptions().includes(normalizeBloomActionMoveDownSeason(values.moveDownSeason))) {
+                const selectedMoveDownSeason = normalizeAppCurrentSeasonCode(values.moveDownSeason);
+                if (!getBloomActionMoveDownSeasonOptions().includes(selectedMoveDownSeason)) {
                     return {
                         title: 'Move Down Season',
-                        message: `Select U1, U2, U3, X, Y, or Z for row ${index + 1}.`,
+                        message: `Select a destination season for row ${index + 1}.`,
                         field: 'move_down_season'
                     };
                 }
@@ -82292,10 +82480,11 @@ function toggleDriveQuickRequestItem(domId) {
                 payload.loc_match_qty = releaseQtyNumber !== null ? Math.max(0, Math.floor(releaseQtyNumber)) : String(values.releaseQty || '').trim();
             }
             if (context.action === 'move_up') {
+                payload.lotcode = getBloomActionMoveLotCode(values.moveUpSeason || values.destinationSeason || '');
                 payload.loc_match_qty = moveUpQtyNumber !== null ? Math.max(0, Math.floor(moveUpQtyNumber)) : String(values.moveUpQty || '').trim();
             }
             if (context.action === 'move_down') {
-                payload.lotcode = getBloomActionMoveDownLotCode(values.moveDownSeason || 'U1');
+                payload.lotcode = getBloomActionMoveDownLotCode(values.moveDownSeason || values.destinationSeason || '');
                 if (values.moveDownQty !== '') {
                     payload.loc_match_qty = moveDownQtyNumber !== null ? Math.max(0, Math.floor(moveDownQtyNumber)) : String(values.moveDownQty || '').trim();
                 }
@@ -82343,7 +82532,11 @@ function toggleDriveQuickRequestItem(domId) {
                 ? String(firstNonEmptyValue(values.moveUpQty, payload.loc_match_qty, '') || '').trim()
                 : (action === 'new-crop' ? payload.loc_match_qty : '');
             const moveDownQty = String(firstNonEmptyValue(values.moveDownQty, payload.loc_match_qty, '') || '').trim();
-            const moveDownSeason = normalizeBloomActionMoveDownSeason(values.moveDownSeason || '');
+            const moveUpSeason = formAction === 'move_up' ? normalizeBloomActionMoveSeason(values.moveUpSeason || values.destinationSeason || '') : '';
+            const moveDownSeason = formAction === 'move_down' ? normalizeBloomActionMoveDownSeason(values.moveDownSeason || values.destinationSeason || '') : '';
+            const destinationSeason = formAction === 'move_up'
+                ? moveUpSeason
+                : (formAction === 'move_down' ? moveDownSeason : String(firstNonEmptyValue(values.destinationSeason, '') || '').trim());
             const originalHoldStopCode = String(firstNonEmptyValue(
                 getBloomActionRowCurrentHoldStopFromSource(item),
                 values.originalHoldStop,
@@ -82363,8 +82556,11 @@ function toggleDriveQuickRequestItem(domId) {
                 ptravailable: payload.ptravailable == null ? '' : payload.ptravailable,
                 releaseQty: action === 'new-crop' ? (payload.loc_match_qty == null ? '' : payload.loc_match_qty) : '',
                 moveUpQty: action === 'move-up' ? qtyValue : '',
+                moveUpSeason,
                 moveDownQty,
                 moveDownSeason,
+                destinationSeason,
+                destinationLotcode: firstNonEmptyValue(values.lotcode, payload.lotcode, getBloomActionRowReadonlyValue(item, 'lotcode'), ''),
                 holdstopcode: normalizeBloomActionHoldStopCodeChoice(payload.holdstopcode),
                 holdstopreason: originalHoldStopReason,
                 originalHoldStopCode,
@@ -82400,6 +82596,9 @@ function toggleDriveQuickRequestItem(domId) {
                 recommendationMeta,
                 ncrQty: qtyValue,
                 moveUpQty: action === 'move-up' ? qtyValue : undefined,
+                moveUpSeason: moveUpSeason || undefined,
+                moveDownSeason: formAction === 'move_down' ? moveDownSeason : undefined,
+                destinationSeason: destinationSeason || undefined,
                 removeHoldStop: !String(payload.holdstopcode || '').trim() && hasBlockingHoldStopCodeForAv(values.originalHoldStop || ''),
                 holdStopCode: originalHoldStopCode,
                 holdStopReason: originalHoldStopReason,
@@ -82830,7 +83029,7 @@ function toggleDriveQuickRequestItem(domId) {
                 ncrQty: releaseQty,
                 moveUpQty: rowAction === 'move-up' ? String(firstNonEmptyValue(existingRowOptions && existingRowOptions.moveUpQty, rowOptionsScreenValues.moveUpQty, recommendationQty, '') || '').trim() : '',
                 moveDownQty: rowAction === 'move-down' ? String(firstNonEmptyValue(existingRowOptions && existingRowOptions.moveDownQty, releaseQty, '') || '').trim() : '',
-                moveDownSeason: rowAction === 'move-down' ? normalizePaperNcrMoveDownSeason(existingRowOptions && existingRowOptions.moveDownSeason || 'U1') : 'U1',
+                moveDownSeason: rowAction === 'move-down' ? normalizePaperNcrMoveDownSeason(existingRowOptions && existingRowOptions.moveDownSeason || getPaperNcrDefaultMoveSeason()) : getPaperNcrDefaultMoveSeason(),
                 priority: normalizePaperNcrPriorityForAction(priority, rowAction),
                 locationnoteDate: (rowAction === 'note' || rowAction === 'recount') ? String(firstNonEmptyValue(snapshot.locationnoteDate, '') || '').trim() : noteDate,
                 locationnote: (rowAction === 'note' || rowAction === 'recount' || rowAction === 'move-up') ? currentLocationNote : defaultNote,
@@ -82931,7 +83130,7 @@ function toggleDriveQuickRequestItem(domId) {
             ].map(([value, label]) => `<option value="${escapeHtml(value)}"${value === selected ? ' selected' : ''}>${escapeHtml(label)}</option>`).join('');
         }
 
-        function buildPaperNcrMoveDownSeasonOptionsHtml(selectedSeason = 'U1') {
+        function buildPaperNcrMoveDownSeasonOptionsHtml(selectedSeason = '') {
             const selected = normalizePaperNcrMoveDownSeason(selectedSeason);
             return getPaperNcrMoveDownSeasonOptions()
                 .map((season) => `<option value="${escapeHtml(season)}"${season === selected ? ' selected' : ''}>${escapeHtml(season)}</option>`)
@@ -83176,7 +83375,7 @@ function toggleDriveQuickRequestItem(domId) {
                 }
                 if (actionType === 'move-down') {
                     state.moveDownQty = String(firstNonEmptyValue(normalizedOptions && normalizedOptions.moveDownQty, screenValues.moveDownQty, state.moveDownQty, state.ncrQty, '') || '').trim();
-                    state.moveDownSeason = normalizePaperNcrMoveDownSeason(firstNonEmptyValue(normalizedOptions && normalizedOptions.moveDownSeason, screenValues.moveDownSeason, state.moveDownSeason, 'U1'));
+                    state.moveDownSeason = normalizePaperNcrMoveDownSeason(firstNonEmptyValue(normalizedOptions && normalizedOptions.moveDownSeason, screenValues.moveDownSeason, state.moveDownSeason, getPaperNcrDefaultMoveSeason()));
                     state.priority = '';
                 }
                 if (actionType === 'ncr') {
@@ -83391,7 +83590,7 @@ function toggleDriveQuickRequestItem(domId) {
             state.ncrQty = String(activeRow.ncrQty == null ? '' : activeRow.ncrQty).trim();
             state.moveUpQty = String(firstNonEmptyValue(activeRow.moveUpQty, state.actionType === 'move-up' ? state.ncrQty : '') || '').trim();
             state.moveDownQty = String(activeRow.moveDownQty == null ? '' : activeRow.moveDownQty).trim();
-            state.moveDownSeason = normalizePaperNcrMoveDownSeason(activeRow.moveDownSeason || 'U1');
+            state.moveDownSeason = normalizePaperNcrMoveDownSeason(activeRow.moveDownSeason || getPaperNcrDefaultMoveSeason());
             state.priority = normalizePaperNcrPriorityForAction(activeRow.priority, state.actionType);
             state.locationnoteDate = String(activeRow.locationnoteDate == null ? '' : activeRow.locationnoteDate).trim();
             state.locationnote = String(activeRow.locationnote == null ? '' : activeRow.locationnote).trim();
@@ -83422,7 +83621,7 @@ function toggleDriveQuickRequestItem(domId) {
             const ncrQty = firstNonEmptyValue(rowOptions.ncrQty, rowOptions.releaseQty, screenValues.releaseQty, screenValues.loc_match_qty, sourceRow && sourceRow.LOC_MATCH_QTY, state.ncrQty, '');
             const moveUpQty = firstNonEmptyValue(rowOptions.moveUpQty, screenValues.moveUpQty, rowOptions.recommendationMeta && rowOptions.recommendationMeta.suggestedQty, state.moveUpQty, actionType === 'move-up' ? ncrQty : '');
             const moveDownQty = firstNonEmptyValue(rowOptions.moveDownQty, screenValues.moveDownQty, state.moveDownQty, '');
-            const moveDownSeason = firstNonEmptyValue(rowOptions.moveDownSeason, screenValues.moveDownSeason, state.moveDownSeason, 'U1');
+            const moveDownSeason = firstNonEmptyValue(rowOptions.moveDownSeason, screenValues.moveDownSeason, state.moveDownSeason, getPaperNcrDefaultMoveSeason());
             const priority = firstNonEmptyValue(screenValues.priority, rowOptions.priority, sourceRow && sourceRow.PRIORITY, state.priority, '');
             const noteDate = firstNonEmptyValue(screenValues.locationnoteDate, screenValues.locationnotedate, rowOptions.locationnoteDate, sourceRow && sourceRow.LOCATIONNOTEDATE, state.locationnoteDate, '');
             const locationNote = firstNonEmptyValue(screenValues.locationnote, rowOptions.locationnote, sourceRow && sourceRow.LOCATIONNOTE, state.locationnote, '');
@@ -83801,7 +84000,7 @@ function toggleDriveQuickRequestItem(domId) {
                     ? `<label class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Priority<input type="text" class="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-[12px] font-black text-slate-400" value="" placeholder="Blank for move down" disabled></label>`
                     : `<label class="text-[9px] font-black uppercase tracking-[0.12em] ${priorityIsHot ? 'text-yellow-700' : 'text-slate-500'}">Priority<input data-paper-ncr-row="${rowIndex}" data-paper-ncr-field="priority" type="text" class="${priorityInputClass}" value="${h(state.priority)}" oninput="const hot=this.value.trim()==='1'; this.classList.toggle('bg-yellow-50', hot); this.classList.toggle('border-yellow-300', hot); this.classList.toggle('ring-1', hot); this.classList.toggle('ring-yellow-200', hot);"></label>`;
                 const moveDownHtml = actionType === 'move-down'
-                    ? `<label class="text-[9px] font-black uppercase tracking-[0.12em] text-yellow-700">Move Down Qty<input data-paper-ncr-row="${rowIndex}" data-paper-ncr-field="moveDownQty" type="number" min="0" step="1" inputmode="numeric" class="mt-1 w-full rounded-lg border border-yellow-300 bg-yellow-50 px-2 py-2 text-right text-[12px] font-black text-slate-900 ring-1 ring-yellow-200" value="${h(state.moveDownQty)}" placeholder="Qty"></label><label class="text-[9px] font-black uppercase tracking-[0.12em] text-yellow-700">Move Down Season<select data-paper-ncr-row="${rowIndex}" data-paper-ncr-field="moveDownSeason" class="mt-1 w-full rounded-lg border border-yellow-300 bg-yellow-50 px-2 py-2 text-[12px] font-black text-slate-900 ring-1 ring-yellow-200">${buildPaperNcrMoveDownSeasonOptionsHtml(state.moveDownSeason || 'U1')}</select></label>`
+                    ? `<label class="text-[9px] font-black uppercase tracking-[0.12em] text-yellow-700">Move Down Qty<input data-paper-ncr-row="${rowIndex}" data-paper-ncr-field="moveDownQty" type="number" min="0" step="1" inputmode="numeric" class="mt-1 w-full rounded-lg border border-yellow-300 bg-yellow-50 px-2 py-2 text-right text-[12px] font-black text-slate-900 ring-1 ring-yellow-200" value="${h(state.moveDownQty)}" placeholder="Qty"></label><label class="text-[9px] font-black uppercase tracking-[0.12em] text-yellow-700">Move Down Season<select data-paper-ncr-row="${rowIndex}" data-paper-ncr-field="moveDownSeason" class="mt-1 w-full rounded-lg border border-yellow-300 bg-yellow-50 px-2 py-2 text-[12px] font-black text-slate-900 ring-1 ring-yellow-200">${buildPaperNcrMoveDownSeasonOptionsHtml(state.moveDownSeason || getPaperNcrDefaultMoveSeason())}</select></label>`
                     : '';
                 const primaryQtyField = actionType === 'move-up' ? 'moveUpQty' : 'ncrQty';
                 const primaryQtyLabel = getPaperNcrQuantityLabelForAction(actionType);
@@ -84041,7 +84240,7 @@ function toggleDriveQuickRequestItem(domId) {
             state.checked = true;
             state.actionType = normalizePaperNcrRowAction(actionType);
             if (state.actionType === 'move-down') {
-                state.moveDownSeason = normalizePaperNcrMoveDownSeason(state.moveDownSeason || 'U1');
+                state.moveDownSeason = normalizePaperNcrMoveDownSeason(state.moveDownSeason || getPaperNcrDefaultMoveSeason());
                 state.priority = '';
                 if (availableQty) state.ncrQty = availableQty;
                 if (!String(state.moveDownQty || '').trim()) state.moveDownQty = String(firstNonEmptyValue(availableQty, state.ncrQty, '') || '').trim();
@@ -129720,8 +129919,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             };
             const getMoveActionDestination = (row = {}, actionType = 'ncr') => {
                 const action = normalizePaperNcrRowAction(actionType);
-                if (action === 'move-down') return normalizePaperNcrMoveDownSeason(firstNonEmptyValue(row.moveDownSeason, row.move_down_season, 'U1'));
-                if (action === 'move-up') return normalizeAppCurrentSeasonCode(typeof getConfiguredCurrentSeasonCode === 'function' ? getConfiguredCurrentSeasonCode() : PICK_NOTE_CURRENT_SEASON_CODE);
+                if (action === 'move-down') return normalizePaperNcrMoveDownSeason(firstNonEmptyValue(row.moveDownSeason, row.move_down_season, row.destinationSeason, row.destination_season, getPaperNcrDefaultMoveSeason()));
+                if (action === 'move-up') return normalizePaperNcrMoveDownSeason(firstNonEmptyValue(row.moveUpSeason, row.move_up_season, row.destinationSeason, row.destination_season, getPaperNcrDefaultMoveSeason()));
                 return action === 'ncr' ? '=' : '';
             };
             const onHandMathHtml = (row = {}, actionType = 'ncr') => {
@@ -129873,8 +130072,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             };
             const getActionDestinationText = (row = {}, actionType = 'ncr') => {
                 const action = normalizePaperNcrRowAction(actionType);
-                if (action === 'move-down') return normalizePaperNcrMoveDownSeason(firstNonEmptyValue(row.moveDownSeason, row.move_down_season, 'U1'));
-                if (action === 'move-up') return normalizeAppCurrentSeasonCode(typeof getConfiguredCurrentSeasonCode === 'function' ? getConfiguredCurrentSeasonCode() : PICK_NOTE_CURRENT_SEASON_CODE);
+                if (action === 'move-down') return normalizePaperNcrMoveDownSeason(firstNonEmptyValue(row.moveDownSeason, row.move_down_season, row.destinationSeason, row.destination_season, getPaperNcrDefaultMoveSeason()));
+                if (action === 'move-up') return normalizePaperNcrMoveDownSeason(firstNonEmptyValue(row.moveUpSeason, row.move_up_season, row.destinationSeason, row.destination_season, getPaperNcrDefaultMoveSeason()));
                 return action === 'ncr' ? '=' : '';
             };
             const getOnHandText = (row = {}, actionType = 'ncr') => {
