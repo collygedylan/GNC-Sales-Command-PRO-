@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.03.03';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.03.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5153,7 +5153,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.03.03').trim() || 'V2026.08.03.03';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.03.04').trim() || 'V2026.08.03.04';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6609,7 +6609,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.03.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.03.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -21267,6 +21267,11 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             return allowedValues.includes(normalized) ? normalized : fallback;
         }
 
+        function getActiveEvalSimpleTaskFilterValue() {
+            if (activeTaskView !== EVAL_TASK_ASSIGNMENT || !shouldUseSimplifiedEvalTaskFilters()) return '';
+            return normalizeEvalTaskFilterValue(activeTaskFilter || activeTaskSubview || EVAL_SIMPLE_TASK_DEFAULT_FILTER, { values: EVAL_SIMPLE_TASK_FILTER_VALUES });
+        }
+
         function getEvalSimpleTaskFilterLabel(value = '') {
             const safeValue = normalizeEvalTaskFilterValue(value, { values: EVAL_SIMPLE_TASK_FILTER_VALUES });
             return EVAL_SIMPLE_TASK_FILTER_LABELS[safeValue] || EVAL_SIMPLE_TASK_FILTER_LABELS[EVAL_SIMPLE_TASK_DEFAULT_FILTER];
@@ -25428,7 +25433,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.03.03').trim() || 'V2026.08.03.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.03.04').trim() || 'V2026.08.03.04';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29712,17 +29717,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     queueInteractiveViewRender('av', false, true, wantsFull ? 18 : 8, 220);
                 }
                 if (key === 'avHotPriceKeys') {
-                    const activeEvalSimpleFilter = activeTaskView === EVAL_TASK_ASSIGNMENT && shouldUseSimplifiedEvalTaskFilters()
-                        ? normalizeEvalTaskFilterValue(activeTaskFilter || activeTaskSubview || EVAL_SIMPLE_TASK_DEFAULT_FILTER, { values: EVAL_SIMPLE_TASK_FILTER_VALUES })
-                        : '';
+                    const activeEvalSimpleFilter = getActiveEvalSimpleTaskFilterValue();
                     if (isViewVisible('tasks') && (activeTaskView === 'hot-price' || activeEvalSimpleFilter === 'hot-price' || activeEvalSimpleFilter === 'hot-price-ssn')) {
                         queueInteractiveViewRender('tasks', false, true, wantsFull ? 18 : 8, 220);
                     }
                 }
                 if (key === 'cav' || key === 'cavAvBlankKeys') {
-                    const activeEvalSimpleFilter = activeTaskView === EVAL_TASK_ASSIGNMENT && shouldUseSimplifiedEvalTaskFilters()
-                        ? normalizeEvalTaskFilterValue(activeTaskFilter || activeTaskSubview || EVAL_SIMPLE_TASK_DEFAULT_FILTER, { values: EVAL_SIMPLE_TASK_FILTER_VALUES })
-                        : '';
+                    const activeEvalSimpleFilter = getActiveEvalSimpleTaskFilterValue();
                     if (isViewVisible('tasks') && (activeTaskView === 'av-blanks' || activeEvalSimpleFilter === 'av-blanks')) queueInteractiveViewRender('tasks', false, true, wantsFull ? 18 : 8, 220);
                 }
                 if (key === 'master' && state.fullLoaded && (wantsFull || shouldFetchAllForInitial)) persistCurrentCache(true, 'master-full');
@@ -30012,9 +30013,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const required = [{ key: 'master', mode: 'full' }, { key: 'warehouseAssignedItems', mode: 'full' }];
                 if (isFlyerTaskView) required.push({ key: 'flyerRows', mode: 'full' }, { key: 'flyerHistory', mode: 'full' });
                 const background = [{ key: 'master', mode: 'full' }, { key: 'flyerRows', mode: 'full' }, { key: 'flyerHistory', mode: 'full' }, { key: 'avNotes', mode: 'full' }];
-                const activeEvalSimpleFilter = activeTaskView === EVAL_TASK_ASSIGNMENT && shouldUseSimplifiedEvalTaskFilters()
-                    ? normalizeEvalTaskFilterValue(activeTaskFilter || activeTaskSubview || EVAL_SIMPLE_TASK_DEFAULT_FILTER, { values: EVAL_SIMPLE_TASK_FILTER_VALUES })
-                    : '';
+                const activeEvalSimpleFilter = getActiveEvalSimpleTaskFilterValue();
                 const needsTaskHotPriceKeys = activeTaskView === 'hot-price' || activeEvalSimpleFilter === 'hot-price' || activeEvalSimpleFilter === 'hot-price-ssn';
                 if (needsTaskHotPriceKeys) {
                     required.push({ key: 'avHotPriceKeys', mode: 'full' });
@@ -114260,19 +114259,27 @@ C.14.043 C.15.000
             if (!container.__requestSwipeDelegated) {
                 container.__requestSwipeDelegated = true;
                 container.addEventListener('touchstart', (event) => {
+                    if (event.__requestSwipeHandled) return;
                     if (shouldIgnoreDuplicateRequestTouchEvent()) return;
                     const row = event.target.closest('.request-swipe-row');
-                    if (row) handleRequestSwipeStart(event, row);
+                    if (row) {
+                        event.__requestSwipeHandled = true;
+                        handleRequestSwipeStart(event, row);
+                    }
                 }, { passive: true });
                 container.addEventListener('touchend', handleRequestSwipeTouchEnd, { passive: true });
                 container.addEventListener('touchcancel', handleRequestSwipeTouchEnd, { passive: true });
                 container.addEventListener('pointerdown', (event) => {
                     if (!event) return;
+                    if (event.__requestSwipeHandled) return;
                     const pointerType = String(event.pointerType || '').toLowerCase();
                     if (pointerType && pointerType !== 'mouse' && pointerType !== 'pen' && pointerType !== 'touch') return;
                     if (pointerType !== 'touch' && event.button !== 0) return;
                     const row = event.target.closest('.request-swipe-row');
-                    if (row) handleRequestSwipeStart(event, row);
+                    if (row) {
+                        event.__requestSwipeHandled = true;
+                        handleRequestSwipeStart(event, row);
+                    }
                 }, { passive: true });
                 container.addEventListener('pointermove', (event) => {
                     if (!isRequestSwipePointerActive()) return;
@@ -114343,6 +114350,19 @@ C.14.043 C.15.000
 
                 row.appendChild(action);
                 row.appendChild(surface);
+                row.addEventListener('touchstart', (event) => {
+                    if (event.__requestSwipeHandled || shouldIgnoreDuplicateRequestTouchEvent()) return;
+                    event.__requestSwipeHandled = true;
+                    handleRequestSwipeStart(event, row);
+                }, { passive: true });
+                row.addEventListener('pointerdown', (event) => {
+                    if (!event || event.__requestSwipeHandled) return;
+                    const pointerType = String(event.pointerType || '').toLowerCase();
+                    if (pointerType && pointerType !== 'mouse' && pointerType !== 'pen' && pointerType !== 'touch') return;
+                    if (pointerType !== 'touch' && event.button !== 0) return;
+                    event.__requestSwipeHandled = true;
+                    handleRequestSwipeStart(event, row);
+                }, { passive: true });
             });
         }
         function refreshRequestViewAfterArchive() {

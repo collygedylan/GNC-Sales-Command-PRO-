@@ -19,6 +19,7 @@ const PHOTO_BUCKETS: Record<string, string> = {
   "flyer-": "flyer_photos",
   default: "flyer_photos",
 };
+const REP_ALLOWED_PHOTO_PREFIXES = new Set(["req-", "credit-"]);
 const LEGACY_TABLE_ALIASES: Record<string, string> = {
   v2_cav: "ph_cav_import",
   ph_cav: "ph_cav_import",
@@ -645,7 +646,9 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readAppSessi
 
   const form = await req.formData();
   const prefix = String(form.get("prefix") || "default").trim();
-  if (access.isRep && prefix !== "credit-") return errorResponse("REP users can only upload credit photos.", 403);
+  if (access.isRep && !REP_ALLOWED_PHOTO_PREFIXES.has(prefix)) {
+    return errorResponse("REP users can only upload request or credit photos.", 403);
+  }
   const file = form.get("file");
   if (!(file instanceof File)) return errorResponse("No photo file was provided.", 400);
 
