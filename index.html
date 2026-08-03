@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.02.04';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.02.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5152,7 +5152,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.02.04').trim() || 'V2026.08.02.04';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.02.05').trim() || 'V2026.08.02.05';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6607,7 +6607,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.02.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.02.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24801,7 +24801,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.02.04').trim() || 'V2026.08.02.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.02.05').trim() || 'V2026.08.02.05';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29329,7 +29329,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (viewId === 'production') return { required: [], background: [], label: 'Loading production...' };
             if (viewId === 'production-workflow') return { required: [], background: [{ key: 'master', mode: 'full' }], label: 'Loading production workflow...' };
             if (viewId === 'sales-inventory') return withEvalInventoryEditRequestsForRowView({ required: [], background: [], label: 'Loading inventory...' });
-            if (viewId === 'weather-hold') return withEvalInventoryEditRequestsForRowView({ required: [], background: [], label: 'Loading weather and hold risk...' });
+            if (viewId === 'weather-hold') return withEvalInventoryEditRequestsForRowView({ required: [], background: [], label: 'Loading weather...' });
             if (viewId === 'shear-list') return { required: [], background: [{ key: 'master', mode: 'full' }, { key: 'reserves', mode: 'full' }], label: 'Loading shear list...' };
             if (viewId === 'disease-pest') return { required: [], background: [], label: 'Loading disease and pest management...' };
             if (viewId === 'chat') return { required: [], background: [], label: 'Loading chat...' };
@@ -57667,6 +57667,11 @@ function toggleDriveQuickRequestItem(domId) {
             error: '',
             lastLoadedAt: 0,
             promise: null,
+            riskLoaded: false,
+            riskLoading: false,
+            riskError: '',
+            riskLastLoadedAt: 0,
+            riskPromise: null,
             weatherRows: [],
             dailyWeatherRows: [],
             holdEvents: [],
@@ -61075,7 +61080,6 @@ function toggleDriveQuickRequestItem(domId) {
             const list = Array.from(groups.values());
             list.forEach((group) => {
                 group.sample = group.rows[0] || null;
-                group.recovery = group.sample ? getShearDecisionRecoveryEstimate(group.sample) : { label: 'No learned hold recovery profile yet.' };
             });
             return list.sort((left, right) => {
                 const commonDiff = String(left.commonName || '').localeCompare(String(right.commonName || ''), undefined, { numeric: true, sensitivity: 'base' });
@@ -61119,7 +61123,8 @@ function toggleDriveQuickRequestItem(domId) {
         function renderWeatherHoldInventoryCard(group = null) {
             if (!group) return '';
             const lotChips = typeof renderShearDriveLotPtrChips === 'function' ? renderShearDriveLotPtrChips(group.rows, 6) : '';
-            const recoveryText = getShearRecoveryDisplayText(group.recovery);
+            const recovery = group.sample ? getShearDecisionRecoveryEstimate(group.sample) : { label: 'No learned hold recovery profile yet.' };
+            const recoveryText = getShearRecoveryDisplayText(recovery);
             const safeItemcode = normalizeWeatherHoldItemcode(group.itemCode);
             const openAttrs = safeItemcode
                 ? `onclick="return openWeatherHoldItemMlDetail('${escJsAttrValue(safeItemcode)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();return openWeatherHoldItemMlDetail('${escJsAttrValue(safeItemcode)}')}"`
@@ -61182,6 +61187,21 @@ function toggleDriveQuickRequestItem(domId) {
         function renderWeatherHoldInventoryLookup() {
             if (!canUseWeatherHoldRiskTools()) return '';
             const fullLoaded = ensureWeatherHoldInventoryData();
+            if (!fullLoaded) {
+                return `<section class="space-y-3">
+                    <div class="flex flex-wrap items-end gap-2">
+                        <label class="min-w-[220px] flex-1">
+                            <span class="block text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Drive Mode Hold Risk Lookup</span>
+                            <input id="weather-hold-inventory-search" type="search" class="mt-1 w-full rounded-xl border border-green-200 bg-white px-3 py-3 text-sm font-black text-slate-400 outline-none" value="${escapeHtml(weatherHoldState.inventorySearch || '')}" placeholder="Loading Drive Mode inventory..." autocomplete="off" disabled>
+                        </label>
+                        <label class="min-w-[160px]">
+                            <span class="block text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Contsize</span>
+                            <select class="mt-1 w-full rounded-xl border border-green-200 bg-white px-3 py-3 text-sm font-black text-slate-400 outline-none" disabled><option>Loading</option></select>
+                        </label>
+                    </div>
+                    <div class="rounded-xl border border-sky-100 bg-sky-50 px-3 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-sky-700">Loading Drive Mode lookup in background...</div>
+                </section>`;
+            }
             const rows = getWeatherHoldInventoryFilteredRows();
             const groups = groupWeatherHoldInventoryCards(rows);
             const showingRows = weatherHoldState.inventoryDrillLevel === 'rows' && !!String(weatherHoldState.selectedInventoryItemKey || '').trim();
@@ -61217,34 +61237,73 @@ function toggleDriveQuickRequestItem(domId) {
             </section>`;
         }
 
+        async function loadWeatherHoldRiskData(force = false) {
+            const staleMs = 15 * 60 * 1000;
+            if (!canUseWeatherHoldRiskTools()) {
+                weatherHoldState.holdEvents = [];
+                weatherHoldState.holdProfiles = [];
+                weatherHoldState.holdCycles = [];
+                weatherHoldState.riskLoaded = true;
+                weatherHoldState.riskError = '';
+                return weatherHoldState;
+            }
+            if (!force && weatherHoldState.riskLoaded && (Date.now() - weatherHoldState.riskLastLoadedAt) < staleMs) return weatherHoldState;
+            if (weatherHoldState.riskPromise) return weatherHoldState.riskPromise;
+            weatherHoldState.riskLoading = true;
+            weatherHoldState.riskError = '';
+            weatherHoldState.riskPromise = (async () => {
+                const [holdEvents, holdProfiles, holdCycles] = await Promise.all([
+                    supabaseFetch('ph_hold_learning_events', 'GET', null, 'select=hold_started_on,hold_detected_at,released_on,hold_days,gdd_base_50_to_release,itemcode,commonname,genus,contsize,locationcode,lotcode,season,blockalpha,holdstopreason,hold_reason_category,gdd_base_50_30d,gdd_base_50_season,chill_hours_30d,chill_hours_season,precipitation_in_30d,avg_temperature_f_30d,weather_features_refreshed_at&order=hold_started_on.desc&limit=250'),
+                    supabaseFetch('ph_hold_learning_profiles', 'GET', null, 'select=itemcode,commonname,genus,contsize,hold_reason_category,sample_count,first_hold_on,last_hold_on,avg_gdd_base_50_30d,median_gdd_base_50_30d,avg_chill_hours_30d,avg_precipitation_in_30d,avg_temperature_f_30d,release_sample_count,avg_gdd_base_50_to_release,median_gdd_base_50_to_release,avg_days_to_release,updated_at&order=updated_at.desc&limit=2500'),
+                    supabaseFetch('ph_hold_release_cycles', 'GET', null, 'select=itemcode,commonname,genus,contsize,locationcode,lotcode,season,blockalpha,holdstopreason,hold_reason_category,hold_started_on,hold_released_on,hold_days,gdd_base_50_to_release,start_file_name,release_file_name&order=hold_started_on.desc&limit=250')
+                ]);
+                weatherHoldState.holdEvents = Array.isArray(holdEvents) ? holdEvents : [];
+                weatherHoldState.holdProfiles = Array.isArray(holdProfiles) ? holdProfiles : [];
+                weatherHoldState.holdCycles = Array.isArray(holdCycles) ? holdCycles : [];
+                weatherHoldState.riskLoaded = true;
+                weatherHoldState.riskLastLoadedAt = Date.now();
+                return weatherHoldState;
+            })().catch((error) => {
+                weatherHoldState.riskError = error && error.message ? error.message : 'Hold risk learning could not load.';
+                weatherHoldState.riskLoaded = true;
+                return weatherHoldState;
+            }).finally(() => {
+                weatherHoldState.riskLoading = false;
+                weatherHoldState.riskPromise = null;
+            });
+            return weatherHoldState.riskPromise;
+        }
+
+        function queueWeatherHoldRiskRefresh(force = false) {
+            if (!canUseWeatherHoldRiskTools()) return;
+            loadWeatherHoldRiskData(force).then(() => {
+                if (isViewVisible('weather-hold')) renderWeatherHold();
+            }).catch(() => {
+                if (isViewVisible('weather-hold')) renderWeatherHold();
+            });
+        }
+
         async function loadWeatherHoldData(force = false) {
             const staleMs = 15 * 60 * 1000;
-            if (!force && weatherHoldState.loaded && (Date.now() - weatherHoldState.lastLoadedAt) < staleMs) return weatherHoldState;
+            if (!force && weatherHoldState.loaded && (Date.now() - weatherHoldState.lastLoadedAt) < staleMs) {
+                if (canUseWeatherHoldRiskTools() && !weatherHoldState.riskLoaded && !weatherHoldState.riskLoading) queueWeatherHoldRiskRefresh(false);
+                return weatherHoldState;
+            }
             if (weatherHoldState.promise && !force) return weatherHoldState.promise;
             weatherHoldState.loading = true;
             weatherHoldState.error = '';
             const weatherCutoff = new Date(Date.now() - (45 * 24 * 60 * 60 * 1000)).toISOString();
             const dailyCutoff = new Date(Date.now() - (45 * 24 * 60 * 60 * 1000)).toISOString().slice(0, 10);
             weatherHoldState.promise = (async () => {
-                const weatherRequests = [
+                const [weatherRows, dailyWeatherRows] = await Promise.all([
                     supabaseFetch('ph_weather_hourly', 'GET', null, `select=observed_at,local_time,temperature_f,relative_humidity,precipitation_in,wind_speed_mph,wind_direction_deg,gdd_base_50,chill_hours&station_key=eq.park_hill_ok&observed_at=gte.${encodeURIComponent(weatherCutoff)}&order=observed_at.desc&limit=1200`),
                     supabaseFetch('ph_weather_daily', 'GET', null, `select=date,temperature_high_f,temperature_low_f,daily_gdd_base_50,precipitation_in,wind_speed_mph,wind_direction_deg&station_key=eq.park_hill_ok&date=gte.${encodeURIComponent(dailyCutoff)}&order=date.desc&limit=80`)
-                ];
-                const riskRequests = canUseWeatherHoldRiskTools()
-                    ? [
-                        supabaseFetch('ph_hold_learning_events', 'GET', null, 'select=hold_started_on,hold_detected_at,released_on,hold_days,gdd_base_50_to_release,itemcode,commonname,genus,contsize,locationcode,lotcode,season,blockalpha,holdstopreason,hold_reason_category,gdd_base_50_30d,gdd_base_50_season,chill_hours_30d,chill_hours_season,precipitation_in_30d,avg_temperature_f_30d,weather_features_refreshed_at&order=hold_started_on.desc&limit=250'),
-                        supabaseFetch('ph_hold_learning_profiles', 'GET', null, 'select=itemcode,commonname,genus,contsize,hold_reason_category,sample_count,first_hold_on,last_hold_on,avg_gdd_base_50_30d,median_gdd_base_50_30d,avg_chill_hours_30d,avg_precipitation_in_30d,avg_temperature_f_30d,release_sample_count,avg_gdd_base_50_to_release,median_gdd_base_50_to_release,avg_days_to_release,updated_at&order=updated_at.desc&limit=10000'),
-                        supabaseFetch('ph_hold_release_cycles', 'GET', null, 'select=itemcode,commonname,genus,contsize,locationcode,lotcode,season,blockalpha,holdstopreason,hold_reason_category,hold_started_on,hold_released_on,hold_days,gdd_base_50_to_release,start_file_name,release_file_name&order=hold_started_on.desc&limit=250')
-                    ]
-                    : [Promise.resolve([]), Promise.resolve([]), Promise.resolve([])];
-                const [weatherRows, dailyWeatherRows, holdEvents, holdProfiles, holdCycles] = await Promise.all(weatherRequests.concat(riskRequests));
+                ]);
                 weatherHoldState.weatherRows = Array.isArray(weatherRows) ? weatherRows : [];
                 weatherHoldState.dailyWeatherRows = Array.isArray(dailyWeatherRows) ? dailyWeatherRows : [];
-                weatherHoldState.holdEvents = Array.isArray(holdEvents) ? holdEvents : [];
-                weatherHoldState.holdProfiles = Array.isArray(holdProfiles) ? holdProfiles : [];
-                weatherHoldState.holdCycles = Array.isArray(holdCycles) ? holdCycles : [];
                 weatherHoldState.loaded = true;
                 weatherHoldState.lastLoadedAt = Date.now();
+                queueWeatherHoldRiskRefresh(force);
                 return weatherHoldState;
             })().catch((error) => {
                 weatherHoldState.error = error && error.message ? error.message : 'Weather hold data could not load.';
@@ -61257,18 +61316,37 @@ function toggleDriveQuickRequestItem(domId) {
             return weatherHoldState.promise;
         }
 
+        function renderWeatherHoldRiskLoadStatus() {
+            if (!canUseWeatherHoldRiskTools()) return '';
+            if (weatherHoldState.riskLoading && !weatherHoldState.riskLoaded) {
+                return '<div class="rounded-xl border border-sky-100 bg-sky-50 px-3 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-sky-700">Loading hold risk learning in background...</div>';
+            }
+            if (weatherHoldState.riskError) {
+                return `<div class="rounded-xl border border-amber-100 bg-amber-50 px-3 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-amber-700">Hold risk learning could not load. Weather is ready. <button type="button" class="ml-2 rounded-lg border border-amber-200 bg-white px-2 py-1 text-[10px] font-black text-amber-700" onclick="return reloadWeatherHoldRiskData()">Retry Hold Risk</button></div>`;
+            }
+            return '';
+        }
+
+        function reloadWeatherHoldRiskData() {
+            weatherHoldState.riskLoaded = false;
+            weatherHoldState.riskError = '';
+            queueWeatherHoldRiskRefresh(true);
+            if (isViewVisible('weather-hold')) renderWeatherHold();
+            return false;
+        }
+
         function renderWeatherHold() {
             const container = document.getElementById('weather-hold-content');
             if (!container) return;
             if (!weatherHoldState.loaded && !weatherHoldState.loading) {
-                setContainerHtml(container, '<div class="p-4 space-y-3"><div class="skeleton h-24 w-full rounded-xl"></div><div class="skeleton h-24 w-full rounded-xl"></div><div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">Loading weather and hold risk...</div></div>');
+                setContainerHtml(container, '<div class="p-4 space-y-3"><div class="skeleton h-24 w-full rounded-xl"></div><div class="skeleton h-24 w-full rounded-xl"></div><div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">Loading weather...</div></div>');
                 loadWeatherHoldData(false).then(() => {
                     if (isViewVisible('weather-hold')) renderWeatherHold();
                 });
                 return;
             }
             if (weatherHoldState.loading && !weatherHoldState.loaded) {
-                setContainerHtml(container, '<div class="p-4 space-y-3"><div class="skeleton h-24 w-full rounded-xl"></div><div class="skeleton h-24 w-full rounded-xl"></div><div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">Loading weather and hold risk...</div></div>');
+                setContainerHtml(container, '<div class="p-4 space-y-3"><div class="skeleton h-24 w-full rounded-xl"></div><div class="skeleton h-24 w-full rounded-xl"></div><div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">Loading weather...</div></div>');
                 return;
             }
             if (weatherHoldState.error) {
@@ -61300,15 +61378,17 @@ function toggleDriveQuickRequestItem(domId) {
                 renderWeatherHoldMetric('Avg Temp', `${formatWeatherHoldNumber(avg30, 1)} F`, 'Last 30 days')
             ].join('') : '';
             const currentWeatherHtml = `<section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-sky-700">Current Weather</div><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">${currentMetricHtml}${dylanOnlyMetricHtml}</div></section>`;
-            const riskHtml = canUseWeatherHoldRiskTools() ? renderWeatherHoldInventoryLookup() : '';
+            const riskHtml = canUseWeatherHoldRiskTools() ? `${renderWeatherHoldRiskLoadStatus()}${renderWeatherHoldInventoryLookup()}` : '';
             setContainerHtml(container, `<div class="space-y-5">${currentWeatherHtml}${riskHtml}</div>`);
         }
 
         function reloadWeatherHoldData() {
             weatherHoldState.loaded = false;
             weatherHoldState.error = '';
+            weatherHoldState.riskLoaded = false;
+            weatherHoldState.riskError = '';
             const container = document.getElementById('weather-hold-content');
-            if (container) setContainerHtml(container, '<div class="p-4 space-y-3"><div class="skeleton h-24 w-full rounded-xl"></div><div class="skeleton h-24 w-full rounded-xl"></div><div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">Refreshing weather and hold risk...</div></div>');
+            if (container) setContainerHtml(container, '<div class="p-4 space-y-3"><div class="skeleton h-24 w-full rounded-xl"></div><div class="skeleton h-24 w-full rounded-xl"></div><div class="text-center text-xs font-bold text-gray-400 uppercase tracking-wider pt-2">Refreshing weather...</div></div>');
             loadWeatherHoldData(true).then(() => {
                 if (isViewVisible('weather-hold')) renderWeatherHold();
             });
@@ -62624,7 +62704,7 @@ function toggleDriveQuickRequestItem(domId) {
                     releaseSampleCount: 0,
                     reason: targetReason,
                     forecast: null,
-                    label: weatherHoldState.loading ? 'Loading learned hold recovery...' : 'No itemcode hold recovery profile yet.'
+                    label: weatherHoldState.riskLoading ? 'Loading learned hold recovery...' : 'No itemcode hold recovery profile yet.'
                 };
             }
             const gdd = getShearDecisionNumber(firstNonEmptyValue(
@@ -62880,6 +62960,8 @@ function toggleDriveQuickRequestItem(domId) {
                     const modal = document.getElementById('shear-list-modal');
                     if (modal && !modal.classList.contains('hidden')) renderShearListModalRows();
                 }).catch(() => {});
+            } else if (typeof queueWeatherHoldRiskRefresh === 'function' && canUseWeatherHoldRiskTools() && !weatherHoldState.riskLoaded && !weatherHoldState.riskLoading) {
+                queueWeatherHoldRiskRefresh(false);
             }
             (Array.isArray(items) ? items : []).forEach((item) => {
                 const baseUid = buildShearListSourceUid(item);
@@ -63006,6 +63088,8 @@ function toggleDriveQuickRequestItem(domId) {
                 loadWeatherHoldData(false).then(() => {
                     if (isViewVisible('shear-list') && shearListState.activeTab === 'drive') renderShearList();
                 }).catch(() => {});
+            } else if (typeof queueWeatherHoldRiskRefresh === 'function' && canUseWeatherHoldRiskTools() && !weatherHoldState.riskLoaded && !weatherHoldState.riskLoading) {
+                queueWeatherHoldRiskRefresh(false);
             }
             if (typeof loadDatasetTargetsWithLimit === 'function') {
                 const targets = [];
