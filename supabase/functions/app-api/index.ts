@@ -81,6 +81,7 @@ const READABLE_TABLES = new Set([
   "ph_hold_release_cycles",
   "ph_hold_stop_itemcode_snapshots",
   "ph_hold_stop_itemcode_cycles",
+  "ph_hold_stop_itemcode_summaries",
   "ph_warehouse_assigned_items",
   "ph_hl_po",
 ]);

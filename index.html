@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.02.05';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.02.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5152,7 +5152,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.02.05').trim() || 'V2026.08.02.05';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.02.06').trim() || 'V2026.08.02.06';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6607,7 +6607,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.02.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.02.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24801,7 +24801,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.02.05').trim() || 'V2026.08.02.05';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.02.06').trim() || 'V2026.08.02.06';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -57677,12 +57677,15 @@ function toggleDriveQuickRequestItem(domId) {
             holdEvents: [],
             holdProfiles: [],
             holdCycles: [],
+            holdSummaries: [],
             holdProfileVisibleCount: 24,
             itemMlDetailItemcode: '',
             itemMlDetailLoading: false,
             itemMlDetailError: '',
+            itemMlDetailSummary: null,
             itemMlDetailProfiles: [],
             itemMlDetailCycles: [],
+            itemMlDetailCycleFallback: false,
             itemMlDetailJobs: [],
             itemMlDetailAssets: [],
             inventorySearch: '',
@@ -60626,6 +60629,85 @@ function toggleDriveQuickRequestItem(domId) {
                 ));
         }
 
+        function getWeatherHoldSummaryValue(row = null, fields = [], fallback = '') {
+            const keys = Array.isArray(fields) ? fields : [fields];
+            const values = [];
+            keys.forEach((key) => {
+                const safeKey = String(key || '').trim();
+                if (!safeKey) return;
+                values.push(row && row[safeKey]);
+                values.push(row && row[safeKey.toUpperCase()]);
+            });
+            return firstNonEmptyValue(...values, fallback);
+        }
+
+        function getWeatherHoldItemSummary(itemcode = '') {
+            const safeItemcode = normalizeWeatherHoldItemcode(itemcode);
+            if (!safeItemcode) return null;
+            return (Array.isArray(weatherHoldState.holdSummaries) ? weatherHoldState.holdSummaries : [])
+                .find((row) => normalizeWeatherHoldItemcode(getWeatherHoldSummaryValue(row, 'itemcode', '')) === safeItemcode) || null;
+        }
+
+        function getWeatherHoldBlockedCode(value = '') {
+            const text = String(value || '').trim().toUpperCase();
+            if (!text) return '';
+            if (text.indexOf('S') !== -1) return 'S';
+            if (text.indexOf('H') !== -1) return 'H';
+            return '';
+        }
+
+        function getWeatherHoldCurrentStatusForItem(item = null, summary = null) {
+            const rowCode = getWeatherHoldBlockedCode(firstNonEmptyValue(item && item.HOLDSTOPCODE, item && item.holdstopcode, ''));
+            const summaryCode = getWeatherHoldBlockedCode(getWeatherHoldSummaryValue(summary, 'current_blocked_code', ''));
+            const isSummaryBlocked = String(getWeatherHoldSummaryValue(summary, 'current_is_blocked', '')).toLowerCase() === 'true'
+                || Number(getWeatherHoldSummaryValue(summary, 'current_blocked_rows', 0)) > 0;
+            const code = rowCode || (isSummaryBlocked ? summaryCode : '');
+            return {
+                isBlocked: !!code,
+                code,
+                reason: String(firstNonEmptyValue(
+                    item && item.HOLDSTOPREASON,
+                    item && item.holdstopreason,
+                    getWeatherHoldSummaryValue(summary, 'current_holdstopreason', ''),
+                    getWeatherHoldSummaryValue(summary, 'open_episode_reason', ''),
+                    ''
+                ) || '').trim()
+            };
+        }
+
+        function buildWeatherHoldClearSummaryLabel(summary = null) {
+            const totalCycles = Number(getWeatherHoldSummaryValue(summary, 'total_cycle_count', 0)) || 0;
+            const releasedCycles = Number(getWeatherHoldSummaryValue(summary, 'released_cycle_count', 0)) || 0;
+            const lastRelease = String(getWeatherHoldSummaryValue(summary, 'last_release_date', '') || '').trim();
+            const days = getShearDecisionNumber(getWeatherHoldSummaryValue(summary, ['median_days_to_release', 'avg_days_to_release'], NaN), NaN);
+            const gdd = getShearDecisionNumber(getWeatherHoldSummaryValue(summary, ['median_gdd_base_50_to_release', 'avg_gdd_base_50_to_release'], NaN), NaN);
+            const parts = ['Current Status: Clear'];
+            if (totalCycles) parts.push(`Historical H/S Episodes ${formatWeatherHoldInteger(totalCycles)}`);
+            if (lastRelease) parts.push(`Last Released ${formatWeatherHoldDate(lastRelease)}`);
+            const recoveryParts = [];
+            if (Number.isFinite(days)) recoveryParts.push(`${formatWeatherHoldNumber(days, 1)} days`);
+            if (Number.isFinite(gdd)) recoveryParts.push(`${formatWeatherHoldInteger(gdd)} GDD`);
+            if (recoveryParts.length) parts.push(`Avg Recovery When Blocked ${recoveryParts.join(' / ')}`);
+            if (!totalCycles && !recoveryParts.length) parts.push('No exact itemcode H/S history yet');
+            if (releasedCycles && releasedCycles !== totalCycles) parts.push(`${formatWeatherHoldInteger(releasedCycles)} released`);
+            return parts.join(' | ');
+        }
+
+        function buildWeatherHoldBlockedSummaryLabel(summary = null, status = {}) {
+            const code = String(status && status.code || getWeatherHoldSummaryValue(summary, 'current_blocked_code', 'H/S') || 'H/S').trim().toUpperCase();
+            const reason = String(firstNonEmptyValue(status && status.reason, getWeatherHoldSummaryValue(summary, 'current_holdstopreason', ''), getWeatherHoldSummaryValue(summary, 'open_episode_reason', ''), '') || '').trim();
+            const blockedSince = String(getWeatherHoldSummaryValue(summary, ['open_episode_start_date', 'last_episode_start_date'], '') || '').trim();
+            const gdd = getShearDecisionNumber(getWeatherHoldSummaryValue(summary, ['median_gdd_base_50_to_release', 'avg_gdd_base_50_to_release'], NaN), NaN);
+            const forecast = getShearDecisionFutureReleaseEstimate(gdd);
+            const cycles = Number(getWeatherHoldSummaryValue(summary, 'released_cycle_count', 0)) || 0;
+            const parts = [`Current Status: ${code}`];
+            if (reason) parts.push(`Reason ${reason}`);
+            if (blockedSince) parts.push(`Blocked Since ${formatWeatherHoldDate(blockedSince)}`);
+            if (forecast && forecast.date) parts.push(`${forecast.extrapolated ? 'Estimated' : 'Forecast'} Release ${formatWeatherHoldDate(forecast.date)}`);
+            if (cycles) parts.push(`${formatWeatherHoldInteger(cycles)} release cycles`);
+            return parts.join(' | ');
+        }
+
         function getWeatherHoldItemProfileCards() {
             const groups = new Map();
             (Array.isArray(weatherHoldState.holdProfiles) ? weatherHoldState.holdProfiles : []).forEach((row) => {
@@ -60740,8 +60822,6 @@ function toggleDriveQuickRequestItem(domId) {
             if (!row) return '';
             const reason = String(firstNonEmptyValue(row.hold_reason_category, row.HOLD_REASON_CATEGORY, 'unknown') || 'unknown').trim();
             const releaseGdd = getWeatherHoldProfileNumber(row, ['median_gdd_base_50_to_release', 'avg_gdd_base_50_to_release'], NaN);
-            const forecast = getShearDecisionFutureReleaseEstimate(releaseGdd);
-            const forecastLabel = forecast && forecast.date ? `${forecast.extrapolated ? 'Estimated' : 'Forecast'} ${formatWeatherHoldDate(forecast.date)}` : '-';
             return `<div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -60755,7 +60835,7 @@ function toggleDriveQuickRequestItem(domId) {
                     ${renderWeatherHoldItemDetailMetric('GDD Before Hold', formatWeatherHoldInteger(getWeatherHoldProfileNumber(row, ['median_gdd_base_50_30d', 'avg_gdd_base_50_30d'], NaN)), 'blue')}
                     ${renderWeatherHoldItemDetailMetric('GDD To Release', formatWeatherHoldInteger(releaseGdd), 'rose')}
                     ${renderWeatherHoldItemDetailMetric('Avg Days', formatWeatherHoldNumber(getWeatherHoldProfileNumber(row, 'avg_days_to_release', NaN), 1), 'slate')}
-                    ${renderWeatherHoldItemDetailMetric('Off Hold Date', forecastLabel, 'amber')}
+                    ${renderWeatherHoldItemDetailMetric('Samples', formatWeatherHoldInteger(getWeatherHoldProfileNumber(row, 'release_sample_count', 0)), 'amber')}
                 </div>
                 <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
                     <span class="rounded-full bg-slate-100 px-2.5 py-1">First ${escapeHtml(formatWeatherHoldDate(getWeatherHoldProfileDate(row, 'first_hold_on')))}</span>
@@ -60856,15 +60936,22 @@ function toggleDriveQuickRequestItem(domId) {
         function renderWeatherHoldItemMlDetail() {
             const itemcode = normalizeWeatherHoldItemcode(weatherHoldState.itemMlDetailItemcode);
             const group = getWeatherHoldItemCardForCode(itemcode);
+            const summary = weatherHoldState.itemMlDetailSummary || getWeatherHoldItemSummary(itemcode) || null;
             const profiles = (Array.isArray(weatherHoldState.itemMlDetailProfiles) && weatherHoldState.itemMlDetailProfiles.length) ? weatherHoldState.itemMlDetailProfiles : getWeatherHoldItemProfiles(itemcode);
             const cycles = (Array.isArray(weatherHoldState.itemMlDetailCycles) && weatherHoldState.itemMlDetailCycles.length) ? weatherHoldState.itemMlDetailCycles : getWeatherHoldItemCycles(itemcode);
             const jobs = (Array.isArray(weatherHoldState.itemMlDetailJobs) ? weatherHoldState.itemMlDetailJobs : []).map((row, idx) => normalizeMlImageJobRow(row, idx)).filter(Boolean);
             const assets = Array.isArray(weatherHoldState.itemMlDetailAssets) ? weatherHoldState.itemMlDetailAssets : [];
             const holdSampleTotal = profiles.reduce((total, row) => total + Math.max(0, Math.round(getWeatherHoldProfileNumber(row, 'sample_count', 0))), 0);
             const releaseSampleTotal = profiles.reduce((total, row) => total + Math.max(0, Math.round(getWeatherHoldProfileNumber(row, 'release_sample_count', 0))), 0);
+            const summaryTotalCycles = Math.max(0, Math.round(Number(getWeatherHoldSummaryValue(summary, 'total_cycle_count', 0)) || 0));
+            const summaryReleasedCycles = Math.max(0, Math.round(Number(getWeatherHoldSummaryValue(summary, 'released_cycle_count', 0)) || 0));
+            const summaryOpenCycles = Math.max(0, Math.round(Number(getWeatherHoldSummaryValue(summary, 'open_cycle_count', 0)) || 0));
+            const currentStatus = getWeatherHoldCurrentStatusForItem(null, summary);
+            const currentStatusLabel = currentStatus.isBlocked ? currentStatus.code : 'Clear';
             const titleEl = document.getElementById('weather-hold-item-modal-title');
             const metaEl = document.getElementById('weather-hold-item-modal-meta');
-            if (titleEl) titleEl.innerText = group ? `${group.commonname || group.genus || 'Itemcode'} ${Array.from(group.contsizes || [])[0] || ''}`.trim() : itemcode;
+            const summaryTitle = [getWeatherHoldSummaryValue(summary, 'commonname', ''), getWeatherHoldSummaryValue(summary, 'contsize', '')].map((value) => String(value || '').trim()).filter(Boolean).join(' ');
+            if (titleEl) titleEl.innerText = group ? `${group.commonname || group.genus || 'Itemcode'} ${Array.from(group.contsizes || [])[0] || ''}`.trim() : (summaryTitle || itemcode);
             if (metaEl) metaEl.innerText = itemcode ? `ITEM ${itemcode}` : '';
             if (weatherHoldState.itemMlDetailLoading) {
                 setWeatherHoldItemModalHtml('<div class="space-y-3"><div class="skeleton h-24 w-full rounded-xl"></div><div class="skeleton h-24 w-full rounded-xl"></div><div class="text-center text-xs font-black uppercase tracking-[0.14em] text-slate-400">Loading itemcode ML detail...</div></div>');
@@ -60875,17 +60962,25 @@ function toggleDriveQuickRequestItem(domId) {
                 return false;
             }
             const summaryHtml = `<section class="grid grid-cols-2 gap-2 md:grid-cols-5">
-                ${renderWeatherHoldItemDetailMetric('Profiles', String(profiles.length), 'green')}
-                ${renderWeatherHoldItemDetailMetric('Hold Samples', formatWeatherHoldInteger(holdSampleTotal || (group && group.holdSamples)), 'blue')}
-                ${renderWeatherHoldItemDetailMetric('Release Cycles', formatWeatherHoldInteger(releaseSampleTotal || (group && group.releaseSamples)), 'rose')}
+                ${renderWeatherHoldItemDetailMetric('Current Status', currentStatusLabel, currentStatus.isBlocked ? 'rose' : 'green')}
+                ${renderWeatherHoldItemDetailMetric('H/S Episodes', formatWeatherHoldInteger(summaryTotalCycles || cycles.length), 'blue')}
+                ${renderWeatherHoldItemDetailMetric('Released', formatWeatherHoldInteger(summaryReleasedCycles || releaseSampleTotal || (group && group.releaseSamples)), 'rose')}
+                ${renderWeatherHoldItemDetailMetric('Open', formatWeatherHoldInteger(summaryOpenCycles), 'amber')}
                 ${renderWeatherHoldItemDetailMetric('ML Jobs', String(jobs.length), 'slate')}
-                ${renderWeatherHoldItemDetailMetric('ML References', String(assets.length), 'amber')}
             </section>`;
+            const statusText = currentStatus.isBlocked ? buildWeatherHoldBlockedSummaryLabel(summary, currentStatus) : buildWeatherHoldClearSummaryLabel(summary);
+            const statusHtml = `<section class="rounded-2xl border ${currentStatus.isBlocked ? 'border-rose-100 bg-rose-50 text-rose-800' : 'border-emerald-100 bg-emerald-50 text-emerald-800'} p-4 text-[12px] font-black uppercase tracking-[0.12em]">${escapeHtml(statusText)}</section>`;
+            const historyFileCount = Number(getWeatherHoldSummaryValue(summary, 'history_file_count', 0)) || 0;
+            const parsedHistoryFileCount = Number(getWeatherHoldSummaryValue(summary, 'parsed_history_file_count', 0)) || 0;
+            const coverageHtml = historyFileCount && parsedHistoryFileCount < historyFileCount
+                ? `<section class="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-[11px] font-black uppercase tracking-[0.12em] text-amber-800">History backfill in progress: ${escapeHtml(formatWeatherHoldInteger(parsedHistoryFileCount))} of ${escapeHtml(formatWeatherHoldInteger(historyFileCount))} DriveAround files loaded into learning.</section>`
+                : '';
             const profileHtml = profiles.length ? profiles.map(renderWeatherHoldProfileDetailCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No itemcode hold learning profile yet.</div>';
             const cycleHtml = cycles.length ? cycles.slice(0, 20).map(renderWeatherHoldReleaseCycleDetailCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No itemcode hold/stop episodes yet.</div>';
             const jobHtml = jobs.length ? jobs.slice(0, 20).map(renderWeatherHoldMlJobDetailCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No ML image jobs stored for this itemcode yet.</div>';
             const assetHtml = assets.length ? assets.slice(0, 20).map(renderWeatherHoldTrainingAssetDetailCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No ML learning references stored for this itemcode yet.</div>';
-            setWeatherHoldItemModalHtml(`<div class="space-y-5">${summaryHtml}<section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Hold Learning By Itemcode</div>${profileHtml}</section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-rose-700">Hold / Stop Episodes For Itemcode</div>${cycleHtml}</section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-blue-700">ML Image Jobs For Itemcode</div>${jobHtml}</section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-700">ML Learning References For Itemcode</div>${assetHtml}</section></div>`);
+            const cycleHeading = weatherHoldState.itemMlDetailCycleFallback ? 'Legacy Location/Lot Episodes (Fallback)' : 'Itemcode H/S Episode Timeline';
+            setWeatherHoldItemModalHtml(`<div class="space-y-5">${summaryHtml}${statusHtml}${coverageHtml}<section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-rose-700">${cycleHeading}</div>${cycleHtml}</section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Hold Learning By Exact Itemcode</div>${profileHtml}</section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-blue-700">ML Image Jobs For Itemcode</div>${jobHtml}</section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-700">ML Learning References For Itemcode</div>${assetHtml}</section></div>`);
             return false;
         }
 
@@ -60900,22 +60995,27 @@ function toggleDriveQuickRequestItem(domId) {
             weatherHoldState.itemMlDetailItemcode = safeItemcode;
             weatherHoldState.itemMlDetailLoading = true;
             weatherHoldState.itemMlDetailError = '';
+            weatherHoldState.itemMlDetailSummary = null;
             weatherHoldState.itemMlDetailProfiles = [];
             weatherHoldState.itemMlDetailCycles = [];
+            weatherHoldState.itemMlDetailCycleFallback = false;
             weatherHoldState.itemMlDetailJobs = [];
             weatherHoldState.itemMlDetailAssets = [];
             const modal = document.getElementById('weather-hold-item-modal');
             if (modal) modal.classList.remove('hidden');
             renderWeatherHoldItemMlDetail();
             try {
-                const [profiles, itemcodeCycles, fallbackCycles, jobs, assets] = await Promise.all([
+                const [summaries, profiles, itemcodeCycles, fallbackCycles, jobs, assets] = await Promise.all([
+                    supabaseFetch('ph_hold_stop_itemcode_summaries', 'GET', null, `select=*&itemcode=eq.${encodeURIComponent(safeItemcode)}&limit=1`).catch(() => []),
                     supabaseFetch('ph_hold_learning_profiles', 'GET', null, `select=*&itemcode=eq.${encodeURIComponent(safeItemcode)}&order=updated_at.desc&limit=120`),
                     supabaseFetch('ph_hold_stop_itemcode_cycles', 'GET', null, `select=*&itemcode=eq.${encodeURIComponent(safeItemcode)}&order=episode_start_date.desc&limit=120`).catch(() => []),
                     supabaseFetch('ph_hold_release_cycles', 'GET', null, `select=*&itemcode=eq.${encodeURIComponent(safeItemcode)}&order=hold_started_on.desc&limit=120`),
                     supabaseFetch(ML_IMAGE_JOBS_TABLE, 'GET', null, `select=*&itemcode=eq.${encodeURIComponent(safeItemcode)}&order=updated_at.desc&limit=120`),
                     supabaseFetch(DISEASE_TRAINING_ASSETS_TABLE, 'GET', null, `select=*&itemcode=eq.${encodeURIComponent(safeItemcode)}&order=updated_at.desc&limit=120`)
                 ]);
+                weatherHoldState.itemMlDetailSummary = Array.isArray(summaries) && summaries.length ? summaries[0] : null;
                 weatherHoldState.itemMlDetailProfiles = Array.isArray(profiles) ? profiles : [];
+                weatherHoldState.itemMlDetailCycleFallback = !(Array.isArray(itemcodeCycles) && itemcodeCycles.length) && Array.isArray(fallbackCycles) && fallbackCycles.length > 0;
                 weatherHoldState.itemMlDetailCycles = Array.isArray(itemcodeCycles) && itemcodeCycles.length ? itemcodeCycles : (Array.isArray(fallbackCycles) ? fallbackCycles : []);
                 weatherHoldState.itemMlDetailJobs = Array.isArray(jobs) ? jobs : [];
                 weatherHoldState.itemMlDetailAssets = Array.isArray(assets) ? assets : [];
@@ -60945,8 +61045,10 @@ function toggleDriveQuickRequestItem(domId) {
             weatherHoldState.itemMlDetailItemcode = '';
             weatherHoldState.itemMlDetailLoading = false;
             weatherHoldState.itemMlDetailError = '';
+            weatherHoldState.itemMlDetailSummary = null;
             weatherHoldState.itemMlDetailProfiles = [];
             weatherHoldState.itemMlDetailCycles = [];
+            weatherHoldState.itemMlDetailCycleFallback = false;
             weatherHoldState.itemMlDetailJobs = [];
             weatherHoldState.itemMlDetailAssets = [];
             setWeatherHoldItemModalHtml('');
@@ -61243,6 +61345,7 @@ function toggleDriveQuickRequestItem(domId) {
                 weatherHoldState.holdEvents = [];
                 weatherHoldState.holdProfiles = [];
                 weatherHoldState.holdCycles = [];
+                weatherHoldState.holdSummaries = [];
                 weatherHoldState.riskLoaded = true;
                 weatherHoldState.riskError = '';
                 return weatherHoldState;
@@ -61252,14 +61355,14 @@ function toggleDriveQuickRequestItem(domId) {
             weatherHoldState.riskLoading = true;
             weatherHoldState.riskError = '';
             weatherHoldState.riskPromise = (async () => {
-                const [holdEvents, holdProfiles, holdCycles] = await Promise.all([
-                    supabaseFetch('ph_hold_learning_events', 'GET', null, 'select=hold_started_on,hold_detected_at,released_on,hold_days,gdd_base_50_to_release,itemcode,commonname,genus,contsize,locationcode,lotcode,season,blockalpha,holdstopreason,hold_reason_category,gdd_base_50_30d,gdd_base_50_season,chill_hours_30d,chill_hours_season,precipitation_in_30d,avg_temperature_f_30d,weather_features_refreshed_at&order=hold_started_on.desc&limit=250'),
-                    supabaseFetch('ph_hold_learning_profiles', 'GET', null, 'select=itemcode,commonname,genus,contsize,hold_reason_category,sample_count,first_hold_on,last_hold_on,avg_gdd_base_50_30d,median_gdd_base_50_30d,avg_chill_hours_30d,avg_precipitation_in_30d,avg_temperature_f_30d,release_sample_count,avg_gdd_base_50_to_release,median_gdd_base_50_to_release,avg_days_to_release,updated_at&order=updated_at.desc&limit=2500'),
-                    supabaseFetch('ph_hold_release_cycles', 'GET', null, 'select=itemcode,commonname,genus,contsize,locationcode,lotcode,season,blockalpha,holdstopreason,hold_reason_category,hold_started_on,hold_released_on,hold_days,gdd_base_50_to_release,start_file_name,release_file_name&order=hold_started_on.desc&limit=250')
+                const [holdSummaries, holdProfiles] = await Promise.all([
+                    supabaseFetch('ph_hold_stop_itemcode_summaries', 'GET', null, 'select=itemcode,commonname,genus,contsize,current_rows,current_blocked_rows,current_h_rows,current_s_rows,current_is_blocked,current_blocked_code,current_holdstopreason,current_reason_category,total_cycle_count,released_cycle_count,open_cycle_count,hold_sample_count,profile_count,first_episode_start_date,last_episode_start_date,last_release_date,open_episode_start_date,open_episode_file_name,open_episode_reason,primary_reason_category,avg_days_to_release,median_days_to_release,avg_gdd_base_50_to_release,median_gdd_base_50_to_release,history_file_count,parsed_history_file_count,parsed_history_first_file_date,parsed_history_last_file_date,rows_file_count,row_history_first_file_date,row_history_last_file_date,updated_at&order=total_cycle_count.desc&limit=5000'),
+                    supabaseFetch('ph_hold_learning_profiles', 'GET', null, 'select=itemcode,commonname,genus,contsize,hold_reason_category,sample_count,first_hold_on,last_hold_on,release_sample_count,avg_gdd_base_50_to_release,median_gdd_base_50_to_release,avg_days_to_release,updated_at&order=updated_at.desc&limit=1200').catch(() => [])
                 ]);
-                weatherHoldState.holdEvents = Array.isArray(holdEvents) ? holdEvents : [];
+                weatherHoldState.holdEvents = [];
                 weatherHoldState.holdProfiles = Array.isArray(holdProfiles) ? holdProfiles : [];
-                weatherHoldState.holdCycles = Array.isArray(holdCycles) ? holdCycles : [];
+                weatherHoldState.holdCycles = [];
+                weatherHoldState.holdSummaries = Array.isArray(holdSummaries) ? holdSummaries : [];
                 weatherHoldState.riskLoaded = true;
                 weatherHoldState.riskLastLoadedAt = Date.now();
                 return weatherHoldState;
@@ -62657,6 +62760,39 @@ function toggleDriveQuickRequestItem(domId) {
             const targetCont = getShearListCompareKey(firstNonEmptyValue(item && item.CONTSIZE, item && item.contsize, ''));
             const targetGenus = getShearListCompareKey(firstNonEmptyValue(item && item.GENUS, item && item.genus, ''));
             const targetReason = getHoldLearningProfileReason(item);
+            const summary = getWeatherHoldItemSummary(firstNonEmptyValue(item && item.ITEMCODE, item && item.itemcode, ''));
+            const currentStatus = getWeatherHoldCurrentStatusForItem(item, summary);
+            if (summary) {
+                const days = getShearDecisionNumber(getWeatherHoldSummaryValue(summary, ['median_days_to_release', 'avg_days_to_release'], NaN), NaN);
+                const gdd = getShearDecisionNumber(getWeatherHoldSummaryValue(summary, ['median_gdd_base_50_to_release', 'avg_gdd_base_50_to_release'], NaN), NaN);
+                const holdSampleCount = Math.max(0, Math.round(Number(getWeatherHoldSummaryValue(summary, 'hold_sample_count', 0)) || 0));
+                const releaseSampleCount = Math.max(0, Math.round(Number(getWeatherHoldSummaryValue(summary, 'released_cycle_count', 0)) || 0));
+                const totalCycleCount = Math.max(0, Math.round(Number(getWeatherHoldSummaryValue(summary, 'total_cycle_count', 0)) || 0));
+                const forecast = currentStatus.isBlocked && Number.isFinite(gdd) ? getShearDecisionFutureReleaseEstimate(gdd) : null;
+                const label = currentStatus.isBlocked
+                    ? buildWeatherHoldBlockedSummaryLabel(summary, currentStatus)
+                    : buildWeatherHoldClearSummaryLabel(summary);
+                return {
+                    ready: !!(totalCycleCount || holdSampleCount || releaseSampleCount),
+                    days,
+                    gdd,
+                    sampleCount: holdSampleCount,
+                    releaseSampleCount,
+                    totalCycleCount,
+                    reason: getShearListCompareKey(firstNonEmptyValue(
+                        getWeatherHoldSummaryValue(summary, 'current_reason_category', ''),
+                        getWeatherHoldSummaryValue(summary, 'primary_reason_category', ''),
+                        targetReason
+                    )),
+                    currentIsBlocked: currentStatus.isBlocked,
+                    currentStatus: currentStatus.code || 'clear',
+                    forecast,
+                    itemcode: getWeatherHoldSummaryValue(summary, 'itemcode', targetItemCode),
+                    summary,
+                    matchType: 'exact_itemcode',
+                    label
+                };
+            }
             const matchedProfiles = profiles
                 .map((profile) => {
                     const itemCode = getShearListCompareKey(firstNonEmptyValue(profile && profile.itemcode, profile && profile.ITEMCODE, ''));
@@ -62696,6 +62832,9 @@ function toggleDriveQuickRequestItem(domId) {
                 .sort((left, right) => right.score - left.score);
             const matched = matchedProfiles[0] ? matchedProfiles[0].profile : null;
             if (!matched) {
+                const noProfileLabel = currentStatus.isBlocked
+                    ? [`Current Status: ${currentStatus.code || 'H/S'}`, currentStatus.reason ? `Reason ${currentStatus.reason}` : '', 'No exact itemcode recovery profile yet'].filter(Boolean).join(' | ')
+                    : (weatherHoldState.riskLoading ? 'Loading itemcode H/S history...' : 'Current Status: Clear | No exact itemcode H/S history yet');
                 return {
                     ready: false,
                     days: NaN,
@@ -62703,8 +62842,10 @@ function toggleDriveQuickRequestItem(domId) {
                     sampleCount: 0,
                     releaseSampleCount: 0,
                     reason: targetReason,
+                    currentIsBlocked: currentStatus.isBlocked,
+                    currentStatus: currentStatus.code || 'clear',
                     forecast: null,
-                    label: weatherHoldState.riskLoading ? 'Loading learned hold recovery...' : 'No itemcode hold recovery profile yet.'
+                    label: noProfileLabel
                 };
             }
             const gdd = getShearDecisionNumber(firstNonEmptyValue(
@@ -62733,13 +62874,19 @@ function toggleDriveQuickRequestItem(domId) {
                 matched.RELEASE_SAMPLE_COUNT,
                 0
             ), 0)));
-            const forecast = getShearDecisionFutureReleaseEstimate(gdd);
+            const forecast = currentStatus.isBlocked && Number.isFinite(gdd) ? getShearDecisionFutureReleaseEstimate(gdd) : null;
             const reason = getShearListCompareKey(firstNonEmptyValue(matched.hold_reason_category, matched.HOLD_REASON_CATEGORY, targetReason));
             const reasonLabel = getHoldRecoveryReasonLabel(reason);
             const parts = [];
-            if (Number.isFinite(days)) parts.push(`avg ${formatShearDecisionNumber(days, 1)} days on hold`);
-            if (Number.isFinite(gdd)) parts.push(`${formatShearDecisionNumber(gdd, 0)} GDD to release`);
-            if (forecast && forecast.date) parts.push(`${forecast.extrapolated ? 'est' : 'forecast'} off hold ${formatWeatherHoldDate(forecast.date)}`);
+            parts.push(currentStatus.isBlocked ? `Current Status: ${currentStatus.code || 'H/S'}` : 'Current Status: Clear');
+            if (currentStatus.reason) parts.push(`Reason ${currentStatus.reason}`);
+            if (Number.isFinite(days) || Number.isFinite(gdd)) {
+                const recoveryParts = [];
+                if (Number.isFinite(days)) recoveryParts.push(`${formatShearDecisionNumber(days, 1)} days`);
+                if (Number.isFinite(gdd)) recoveryParts.push(`${formatShearDecisionNumber(gdd, 0)} GDD`);
+                parts.push(`${currentStatus.isBlocked ? 'Forecast Basis' : 'Avg Recovery When Blocked'} ${recoveryParts.join(' / ')}`);
+            }
+            if (forecast && forecast.date) parts.push(`${forecast.extrapolated ? 'estimated' : 'forecast'} release ${formatWeatherHoldDate(forecast.date)}`);
             if (releaseSampleCount) parts.push(`${releaseSampleCount} cycles`);
             return {
                 ready: true,
@@ -62748,9 +62895,12 @@ function toggleDriveQuickRequestItem(domId) {
                 sampleCount: holdSampleCount,
                 releaseSampleCount,
                 reason,
+                currentIsBlocked: currentStatus.isBlocked,
+                currentStatus: currentStatus.code || 'clear',
                 forecast,
                 itemcode: firstNonEmptyValue(matched.itemcode, matched.ITEMCODE, ''),
-                label: parts.length ? `Learned ${reasonLabel} recovery: ${parts.join(' | ')}` : 'Learned hold recovery profile found.'
+                matchType: targetItemCode ? 'exact_itemcode_profile' : 'fallback_profile',
+                label: parts.length ? `Fallback ${reasonLabel} profile: ${parts.join(' | ')}` : 'Fallback hold recovery profile found.'
             };
         }
 
@@ -62785,7 +62935,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getShearRecoveryDisplayText(recovery = null) {
             if (!recovery || typeof recovery !== 'object') return 'Learned hold recovery: not loaded yet';
-            if (recovery.label && (recovery.forecast || recovery.releaseSampleCount || recovery.reason)) return String(recovery.label);
+            if (recovery.label) return String(recovery.label);
             const parts = [];
             if (Number.isFinite(Number(recovery.days))) parts.push(`avg ${formatShearDecisionNumber(Number(recovery.days), 1)} days on hold`);
             if (Number.isFinite(Number(recovery.gdd))) parts.push(`${formatShearDecisionNumber(Number(recovery.gdd), 0)} GDD to release`);

@@ -111,12 +111,15 @@ const INVENTORY_TRANSACTION_TABLE = 'ph_inventory_transactions';
 const EMIT_APP_LIVE_EVENTS = true;
 const DRIVE_AROUND_HISTORY_TABLE = 'ph_drive_around_report_files';
 const DRIVE_AROUND_HISTORY_ROW_TABLE = 'ph_drive_around_report_rows';
+const HOLD_STOP_ITEMCODE_SUMMARY_TABLE = 'ph_hold_stop_itemcode_summaries';
+const HOLD_STOP_LEARNING_REFRESH_RPC = 'v2_refresh_hold_learning_from_drive_around_rows';
 const DRIVE_AROUND_HISTORY_FOLDER_ID = '1hswTWk4GooXIAXFmfdx9I6IyqLJ1LqSA';
 const DRIVE_AROUND_HISTORY_MAX_FILES_PER_RUN = 2500;
-const DRIVE_AROUND_HISTORY_MAX_PARSED_FILES_PER_RUN = 75;
+const DRIVE_AROUND_HISTORY_MAX_PARSED_FILES_PER_RUN = 5;
 const DRIVE_AROUND_HISTORY_PENDING_FETCH_LIMIT = 1000;
 const DRIVE_AROUND_HISTORY_WORKSPACE_RUN_BUDGET_MS = 27 * 60 * 1000;
-const DRIVE_AROUND_HISTORY_FLUSH_ROW_THRESHOLD = 50000;
+const DRIVE_AROUND_HISTORY_BACKFILL_RUN_BUDGET_MS = 4 * 60 * 1000;
+const DRIVE_AROUND_HISTORY_FLUSH_ROW_THRESHOLD = 10000;
 const DRIVE_AROUND_HISTORY_SUPPORTED_EXTENSIONS = Object.freeze(['.csv', '.xls', '.xlsx']);
 const DRIVE_AROUND_CANONICAL_TIMEZONE = 'America/Chicago';
 const DRIVE_AROUND_CANONICAL_PREVIEW_LIMIT = 1000;
@@ -240,7 +243,10 @@ const SITE_SPLIT_TABLE_BASE_BY_LEGACY_ = Object.freeze({
   ph_weather_daily: 'weather_daily',
   ph_hold_learning_events: 'hold_learning_events',
   ph_hold_release_cycles: 'hold_release_cycles',
-  ph_hold_learning_profiles: 'hold_learning_profiles'
+  ph_hold_learning_profiles: 'hold_learning_profiles',
+  ph_hold_stop_itemcode_snapshots: 'hold_stop_itemcode_snapshots',
+  ph_hold_stop_itemcode_cycles: 'hold_stop_itemcode_cycles',
+  ph_hold_stop_itemcode_summaries: 'hold_stop_itemcode_summaries'
 });
 const SITE_SPLIT_LEGACY_BY_TABLE_BASE_ = Object.freeze(Object.keys(SITE_SPLIT_TABLE_BASE_BY_LEGACY_).reduce(function(acc, legacy) {
   acc[SITE_SPLIT_TABLE_BASE_BY_LEGACY_[legacy]] = legacy;
@@ -436,7 +442,7 @@ function getAppLiveEventAreaForTable_(tableName) {
   if (safeTable === CUSTOMER_REP_MAP_TABLE) return 'customer-rep-map';
   if (safeTable === 'ph_cav_import') return 'av';
   if (safeTable === 'ph_disease_training_assets') return 'diagnostics';
-  if (safeTable === DRIVE_AROUND_HISTORY_TABLE || safeTable === DRIVE_AROUND_HISTORY_ROW_TABLE || safeTable === 'ph_hold_release_cycles') return 'weather-hold';
+  if (safeTable === DRIVE_AROUND_HISTORY_TABLE || safeTable === DRIVE_AROUND_HISTORY_ROW_TABLE || safeTable === 'ph_hold_release_cycles' || safeTable === HOLD_STOP_ITEMCODE_SUMMARY_TABLE) return 'weather-hold';
   if (safeTable === 'ph_sales_office') return 'sales-office';
   if (safeTable === 'ph_active_request') return 'request';
   return '';
@@ -1505,7 +1511,7 @@ function fetchPendingDriveAroundHistoryManifestRows_(limit) {
   const query = [
     'select=file_id,file_name,report_date,drive_modified_time,row_count,hold_row_count,status,error_message,raw',
     'status=in.(indexed,failed)',
-    'order=file_name.desc',
+    'order=report_date.asc,canonical_sequence.asc,file_name.asc',
     `limit=${safeLimit}`
   ].join('&');
   const url = `${SUPABASE_URL}/rest/v1/${DRIVE_AROUND_HISTORY_TABLE}?${query}`;
@@ -1575,6 +1581,7 @@ function classifyDriveAroundHoldReason_(reason) {
   const text = String(reason || '').toLowerCase();
   if (/(aphid|mite|scale|thrip|snail|caterpillar|insect|bug|pest|borer|beetle)/.test(text)) return 'pest';
   if (/(fung|disease|leaf spot|phytophthora|rhizoctonia|botrytis|canker|mildew|rot|rust|anthracnose|blight|phomopsis|sclerotinia)/.test(text)) return 'fungal_disease';
+  if (/(size|sizing|spec|height|too small|too short|too tall|caliper|under[ -]?size|undersized|not ready|not saleable|not ready to ship)/.test(text)) return 'size';
   if (/(leaf quality|leaf|foliar|chlorosis|yellow|necrosis|spotting|burn)/.test(text)) return 'leaf_quality';
   if (/(shear|sheared|trim|cutback|cut back|prune|pruned)/.test(text)) return 'sheared';
   if (/(freeze|frost|cold|heat|hail|weather|wind|drought|wet)/.test(text)) return 'weather_stress';
@@ -1705,15 +1712,15 @@ function flushDriveAroundHistoryState_(state, force) {
   const manifestCount = Array.isArray(state.manifestRows) ? state.manifestRows.length : 0;
   const snapshotCount = Array.isArray(state.snapshotRows) ? state.snapshotRows.length : 0;
   if (!force && !manifestCount && !snapshotCount) return;
-  if (manifestCount) {
-    pushToSupabase(DRIVE_AROUND_HISTORY_TABLE, state.manifestRows);
-    state.manifestUpsertCount += manifestCount;
-    state.manifestRows = [];
-  }
   if (snapshotCount) {
     pushToSupabase(DRIVE_AROUND_HISTORY_ROW_TABLE, state.snapshotRows);
     state.snapshotUpsertCount += snapshotCount;
     state.snapshotRows = [];
+  }
+  if (manifestCount) {
+    pushToSupabase(DRIVE_AROUND_HISTORY_TABLE, state.manifestRows);
+    state.manifestUpsertCount += manifestCount;
+    state.manifestRows = [];
   }
   if (manifestCount || snapshotCount) {
     console.log(`[DRIVE AROUND HISTORY] Flushed ${manifestCount} manifest row${manifestCount === 1 ? '' : 's'} and ${snapshotCount} row snapshot${snapshotCount === 1 ? '' : 's'} to Supabase.`);
@@ -1738,7 +1745,8 @@ function parseDriveAroundHistoryFileIntoState_(file, folderPath, seedManifestRow
     const snapshotRows = buildDriveAroundHistorySnapshotRows_(file, rawData, manifestRow, state.nowIso);
     manifestRow.row_count = snapshotRows.length;
     manifestRow.hold_row_count = snapshotRows.filter(function(row) {
-      return String(row && row.holdstopcode || '').trim().toUpperCase() === 'H';
+      const code = String(row && row.holdstopcode || '').trim().toUpperCase();
+      return code === 'H' || code === 'S';
     }).length;
     manifestRow.status = snapshotRows.length ? 'row_indexed' : 'empty';
     manifestRow.error_message = null;
@@ -1971,7 +1979,7 @@ function startDriveAroundHistoryBackfill() {
 }
 
 function runDriveAroundHistoryBackfillChunk_() {
-  const lock = LockService.getScriptLock();
+  const lock = LockService.getUserLock();
   if (!lock.tryLock(1000)) {
     scheduleDriveAroundHistoryBackfillTrigger_();
     console.log('[DRIVE AROUND HISTORY] Backfill already running. Keeping the recurring trigger active.');
@@ -1981,7 +1989,8 @@ function runDriveAroundHistoryBackfillChunk_() {
     const result = syncDriveAroundHistoricalFileIndex_({
       parseRows: true,
       pendingOnly: true,
-      maxParsedFiles: DRIVE_AROUND_HISTORY_MAX_PARSED_FILES_PER_RUN
+      maxParsedFiles: DRIVE_AROUND_HISTORY_MAX_PARSED_FILES_PER_RUN,
+      runBudgetMs: DRIVE_AROUND_HISTORY_BACKFILL_RUN_BUDGET_MS
     });
     if (Number(result && result.remainingUnparsed || 0) > 0) {
       scheduleDriveAroundHistoryBackfillTrigger_();
@@ -1989,6 +1998,7 @@ function runDriveAroundHistoryBackfillChunk_() {
     } else {
       removeDriveAroundHistoryBackfillTrigger_();
       console.log('[DRIVE AROUND HISTORY] Backfill complete. All indexed files that could be parsed have row snapshots.');
+      result.learningRefresh = refreshHoldStopItemcodeLearningAfterHistory_('drive_around_history_backfill_complete');
     }
     return result;
   } finally {
@@ -3068,6 +3078,59 @@ function fetchSupabaseRowCount(tableName) {
     statusCode: code,
     error: ''
   };
+}
+
+function callSupabaseRpc_(functionName, payload) {
+  const safeFunctionName = String(functionName || '').trim();
+  if (!safeFunctionName) throw new Error('Missing Supabase RPC function name.');
+  const url = `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(safeFunctionName)}`;
+  const res = UrlFetchApp.fetch(url, {
+    method: 'post',
+    headers: getSupabaseHeaders_({
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    }),
+    payload: JSON.stringify(payload || {}),
+    muteHttpExceptions: true
+  });
+  const code = res.getResponseCode();
+  const body = res.getContentText() || '';
+  if (code < 200 || code >= 300) {
+    throw new Error(`Supabase RPC ${safeFunctionName} failed (${code}): ${body}`);
+  }
+  if (!body) return null;
+  try {
+    return JSON.parse(body);
+  } catch (err) {
+    return body;
+  }
+}
+
+function refreshHoldStopItemcodeLearningAfterHistory_(reason) {
+  const started = new Date();
+  try {
+    const result = callSupabaseRpc_(HOLD_STOP_LEARNING_REFRESH_RPC, { p_limit: 100000 });
+    const summary = {
+      success: true,
+      reason: String(reason || 'drive_around_history_backfill'),
+      result: result,
+      elapsedMs: new Date().getTime() - started.getTime()
+    };
+    emitTableSyncLiveEvent_(HOLD_STOP_ITEMCODE_SUMMARY_TABLE, summary);
+    console.log(`[HOLD STOP LEARNING] Refreshed itemcode H/S summaries after ${summary.reason} in ${summary.elapsedMs}ms.`);
+    return summary;
+  } catch (error) {
+    const message = error && error.message ? error.message : String(error);
+    const summary = {
+      success: false,
+      reason: String(reason || 'drive_around_history_backfill'),
+      error: message,
+      elapsedMs: new Date().getTime() - started.getTime()
+    };
+    emitTableSyncLiveEvent_(HOLD_STOP_ITEMCODE_SUMMARY_TABLE, summary);
+    console.error(`[HOLD STOP LEARNING] Refresh failed after ${summary.reason}: ${message}`);
+    return summary;
+  }
 }
 
 function clearSupabaseSnapshotTable(tableName) {
@@ -11430,7 +11493,25 @@ function doPost(e) {
         : previewNormalizeDriveAroundProcessedNames(limit || DRIVE_AROUND_CANONICAL_PREVIEW_LIMIT);
       return jsonOutput_(result);
     }
-    
+
+    if (payload.type === 'drivearound_history_backfill') {
+      const requestedBy = String(payload.requested_by || payload.requestedBy || '').trim().toLowerCase();
+      const allowedRequester = requestedBy === 'dylan_collyge' || requestedBy === 'dylancollyge@agmetricapp.com';
+      if (!allowedRequester) {
+        throw new Error('DriveAround history backfill is restricted to dylan_collyge.');
+      }
+      const runInline = payload.run_inline === true || payload.runInline === true;
+      if (runInline) return jsonOutput_(startDriveAroundHistoryBackfill());
+      removeDriveAroundHistoryBackfillTrigger_();
+      scheduleDriveAroundHistoryBackfillTrigger_();
+      return jsonOutput_({
+        ok: true,
+        status: 'queued',
+        message: 'DriveAround history backfill trigger queued.',
+        maxParsedFilesPerRun: DRIVE_AROUND_HISTORY_MAX_PARSED_FILES_PER_RUN
+      });
+    }
+
     if (payload.type === 'manual_run') {
       cleanupRequestGalleryPropertyCache_();
       const runInline = payload.run_inline === true || payload.runInline === true || payload.fast === true;
