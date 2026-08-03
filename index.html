@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.03.02';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.03.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5153,7 +5153,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.03.02').trim() || 'V2026.08.03.02';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.03.03').trim() || 'V2026.08.03.03';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -5407,6 +5407,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div id="tab-req-suspend-tag" class="task-tab hidden" onclick="setReqTab('suspend-tag')">Suspend Tag</div>
                         <div id="tab-req-moves" class="task-tab hidden" onclick="setReqTab('moves')">Location Move</div>
                         <div id="tab-req-recount" class="task-tab hidden" onclick="setReqTab('recount')">Recount</div>
+                        <div id="tab-req-av-check" class="task-tab hidden" onclick="setReqTab('av-check')">AV Check</div>
                         <div id="tab-req-shear-list" class="task-tab hidden" onclick="setReqTab('shear-list')">Shear List</div>
                     </div>
                     <div id="request-dylan-filter-panel" class="hidden mb-3"></div>
@@ -6608,7 +6609,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.03.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.03.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8753,6 +8754,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (safeTable === 'ph_active_request') return 'request';
             if (safeTable === REQUEST_HISTORY_TABLE) return 'request';
             if (safeTable === 'ph_inventory_edit_requests') return 'request';
+            if (safeTable === AV_OPTION_EVAL_REQUESTS_TABLE) return 'request';
             if (safeTable === 'ph_crop_roll_drive_rows' || safeTable === 'ph_crop_roll_open_rows' || safeTable === 'ph_crop_roll_rows') return 'crop-roll';
             if (safeTable === 'ph_sales_office') return 'sales-office';
             if (safeTable === 'ph_take_back_queue') return 'take-back';
@@ -8782,6 +8784,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (safeTable === 'ph_crop_roll_rows') return 'row_id';
             if (safeTable === 'ph_labor_hours') return 'id';
             if (safeTable === 'ph_inventory_edit_requests') return 'id';
+            if (safeTable === AV_OPTION_EVAL_REQUESTS_TABLE) return 'id';
             return 'unique_id';
         }
 
@@ -8864,6 +8867,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (!safeTable || safeMethod === 'GET' || safeTable === APP_LIVE_EVENTS_TABLE) return false;
             const area = getAppLiveEventAreaForTable(safeTable);
             if (!area) return false;
+            if (safeTable === AV_OPTION_EVAL_REQUESTS_TABLE) {
+                avOptionEvalRequestsLoaded = false;
+                markViewDirty('request');
+            }
             const rowIds = normalizeAppLiveEventRowIds([
                 ...extractAppLiveEventRowIdsFromBody(body),
                 ...extractAppLiveEventRowIdsFromQuery(query)
@@ -19988,6 +19995,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             bindFastInvokeById('tab-req-suspend-tag', 'setReqTab', ['suspend-tag'], 'Suspend Tag');
             bindFastInvokeById('tab-req-moves', 'setReqTab', ['moves'], 'Location Move');
             bindFastInvokeById('tab-req-recount', 'setReqTab', ['recount'], 'Recount');
+            bindFastInvokeById('tab-req-av-check', 'setReqTab', ['av-check'], 'AV Check');
             bindFastInvokeById('tab-req-shear-list', 'setReqTab', ['shear-list'], 'Shear List');
             bindFastInvokeById('dock-mode-btn-docks', 'setDockViewMode', ['docks'], 'Docks');
             bindFastInvokeById('dock-mode-btn-mistakes', 'setDockViewMode', ['mistakes'], 'Mistake');
@@ -21083,7 +21091,7 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             let lastError = null;
             for (let attempt = 0; attempt <= retries; attempt += 1) {
                 try {
-                    return await supabaseFetch(table, method, body, query, { timeoutMs });
+                    return await supabaseFetch(table, method, body, query, { ...opts, timeoutMs });
                 } catch (error) {
                     lastError = error;
                     if (attempt >= retries || !isRetryableSupabaseWriteError(error)) throw error;
@@ -24375,7 +24383,7 @@ let taskCustomerOutreachOpen=false; let taskCustomerOutreachSelectedRowIds=new S
         let taskTeamSelectorCacheKey=''; let taskTeamSelectorCacheHtml=''; let taskTeamSelectorEmptyHtml='';
 
         let lowStockViewLevel=0; let selectedLowStockName=null; let selectedLowStockSize=null; let reviewViewLevel=0; let selectedReviewItemCode=null; let selectedReviewCommonName=null; let selectedReviewContSize=null; let moveUpViewLevel=0; let selectedMoveUpItemCode=null; let selectedMoveUpCommonName=null; let selectedMoveUpContSize=null;
-        let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let activeLocationMoveQueDetailUid=''; let activeShearQueDetailId=''; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let tempReqAppendToExistingFolder=false; let tempExistingReqCustomerSearch=""; let tempExistingReqSelectedCustomer=""; let tempExistingReqConsigneeSearch=""; let tempExistingReqSelectedConsignee=""; let tempExistingReqFolderSearch=""; let tempRequestEmailChainSelectedEmails=new Set(); let tempRequestEmailChainRecipientByEmail=new Map(); let previousReqStep=""; let pendingRequestOverQtyResolution=null; let requestQtyStepDomIds=[]; let requestQtyStepIndex=0; let requestQtyStepItemsData={}; let requestQtyEmailStepActive=false; let requestItemCodeOptionState={ key:'', rows:[], loading:false, loaded:false, error:'' }; let requestAvOptionsDropdownOpen=false; let driveQuickRequestItems=new Set(); let driveReturnedSelectionToolbarQueued=false; let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
+        let requestViewLevel=0; let reservesViewLevel=0; let reportViewLevel=0; let activeReqTab="pending"; let activeLocationMoveQueDetailUid=''; let activeShearQueDetailId=''; let activeAvOptionEvalDetailId=''; let selectedReqRep=null; let selectedReqRepStatus=null; let selectedReqFolder=null; let tempSelectedReqRep=""; let tempReqFolder=null; let tempReqCust=null; let tempReqAppendToExistingFolder=false; let tempExistingReqCustomerSearch=""; let tempExistingReqSelectedCustomer=""; let tempExistingReqConsigneeSearch=""; let tempExistingReqSelectedConsignee=""; let tempExistingReqFolderSearch=""; let tempRequestEmailChainSelectedEmails=new Set(); let tempRequestEmailChainRecipientByEmail=new Map(); let previousReqStep=""; let pendingRequestOverQtyResolution=null; let requestQtyStepDomIds=[]; let requestQtyStepIndex=0; let requestQtyStepItemsData={}; let requestQtyEmailStepActive=false; let requestItemCodeOptionState={ key:'', rows:[], loading:false, loaded:false, error:'' }; let requestAvOptionsDropdownOpen=false; let avOptionEvalRequests=[]; let avOptionEvalRequestsLoaded=false; let avOptionEvalRequestsLoading=false; let avOptionEvalRequestsError=''; let avOptionEvalStatusFilter='open'; let avOptionEvalUserFilter='all'; let avOptionEvalModalState={ open:false, optionUid:'', sourceUid:'', assignedto:'', instructions:'' }; let driveQuickRequestItems=new Set(); let driveReturnedSelectionToolbarQueued=false; let driveQuickRequestFlow=false; let driveQuickAssignFlow=false;
 let selectedReqRepView=null; let selectedReqCustView=null; let selectedReqConsigneeView=null; let selectedReqFolderView=null; let selectedReqStatus='Pending'; let requestFolderSearchTerm=''; let requestRepSearchTerm=''; let requestCustomerSearchTerm=''; let requestConsigneeSearchTerm=''; let requestFolderDateFilter=''; let requestConsigneeDrillMode='request'; let salesCreditSelectedRequestUid=''; let salesCreditSelectedFiles=[]; let salesCreditSubmitting=false; let requestDylanFilterMode='all'; let requestDylanFilterValue=''; let requestDylanSalesRepValue=''; let requestDylanLocationValue=''; let requestDylanFilterMenuOpen=''; let requestSuspendTagDockFilter='all'; let requestSuspendTagAssignedToFilter='all'; let requestSuspendTagCommonNameSearchTerm=''; let hiddenCompletedDockSuspendDcRequestMirrorIds=new Set(); let requestDylanPendingEntriesCacheKey=''; let requestDylanPendingEntriesCache=[]; let lastRequestHeaderSearchMode='';
 
         function invalidateRequestViewResolvedCaches() {
@@ -24676,6 +24684,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const INVENTORY_EDIT_REQUESTS_TABLE = 'ph_inventory_edit_requests';
         const INVENTORY_EDIT_REQUEST_EVENTS_TABLE = 'ph_inventory_edit_request_events';
         const INVENTORY_EDIT_MOCK_SUPERVISOR_USERS = Object.freeze(new Set(['dylan_collyge', 'jd_jones', 'megan_kelly']));
+        const AV_OPTION_EVAL_REQUESTS_TABLE = 'ph_av_option_eval_requests';
+        const AV_OPTION_EVAL_MANAGER_USERS = Object.freeze(new Set(['dylan_collyge', 'jd_jones', 'megan_kelly']));
+        const AV_OPTION_EVAL_REQUEST_SELECT_FIELDS = 'id,unique_id,status,assignedto,instructions,selected_row_snapshot,original_row_snapshot,itemcode,commonname,contsize,locationcode,lotcode,priority,ptronhand,ptravailable,s_lts,source,selected_photo_link,selected_photo_name,selected_spec,selected_caliper,selected_av_note,original_itemcode,original_commonname,original_contsize,original_locationcode,original_lotcode,original_priority,original_ptronhand,original_ptravailable,original_s_lts,original_source,original_photo_link,original_photo_name,original_spec,original_caliper,original_av_note,result_photo_link,result_photo_name,result_spec,result_caliper,result_loc_match_percent,result_pick_note,result_comments,result_av_note,created_by,created_by_display,completed_by,completed_by_display,completed_at,updated_by,updated_by_display,created_at,updated_at';
         const SHEAR_MOVE_TEST_STORAGE_KEY = 'gnc_shear_u1_move_test_v1';
         const SHEAR_MOVE_TEST_SUPERVISOR_USERS = Object.freeze(new Set(['sam_eden', 'sam_edon', 'sam_edan', 'dylan_collyge', 'jd_jones', 'megan_kelly']));
 
@@ -24706,6 +24717,621 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 .map((value) => normalizeEvalAccessUserKey(value))
                 .filter(Boolean);
             return candidates.some((key) => EVAL_TASK_ASSIGNER_USERS.has(key));
+        }
+
+        function normalizeAvOptionEvalUser(value = '') {
+            return normalizeEvalAssignableUser(value) || normalizeEvalAccessUserKey(value);
+        }
+
+        function getAvOptionEvalActorKey() {
+            return normalizeAvOptionEvalUser(currentUser || currentUserDisplay || '');
+        }
+
+        function isAvOptionEvalManagerUser(userOverride = '') {
+            const candidates = [userOverride, currentUser, currentUserDisplay]
+                .map((value) => normalizeAvOptionEvalUser(value))
+                .filter(Boolean);
+            return candidates.some((key) => AV_OPTION_EVAL_MANAGER_USERS.has(key)) || isPrivilegedManagerUser(userOverride);
+        }
+
+        function canCreateAvOptionEvalRequest() {
+            return !!currentUser;
+        }
+
+        function normalizeAvOptionEvalStatus(value = 'open') {
+            const status = String(value || 'open').trim().toLowerCase().replace(/\s+/g, '_');
+            return ['open', 'in_progress', 'complete', 'cancelled'].includes(status) ? status : 'open';
+        }
+
+        function getAvOptionEvalStatusLabel(value = 'open') {
+            const status = normalizeAvOptionEvalStatus(value);
+            if (status === 'in_progress') return 'In Progress';
+            if (status === 'complete') return 'Complete';
+            if (status === 'cancelled') return 'Cancelled';
+            return 'Open';
+        }
+
+        function getAvOptionEvalUserOptions() {
+            const optionsByUser = new Map();
+            const addUser = (value = '', label = '') => {
+                const user = normalizeAvOptionEvalUser(value);
+                if (!user || user === 'all') return;
+                if (!optionsByUser.has(user)) optionsByUser.set(user, String(label || value || user).trim() || user);
+            };
+            try { getEvalAssignableUserList().forEach((user) => addUser(user, user)); } catch (error) {}
+            try {
+                getEvalTaskViewerUserOptions(fullInventory).forEach((option) => {
+                    if (option && option.value !== 'all') addUser(option.value, option.label || option.value);
+                });
+            } catch (error) {}
+            AV_OPTION_EVAL_MANAGER_USERS.forEach((user) => addUser(user, user));
+            (Array.isArray(avOptionEvalRequests) ? avOptionEvalRequests : []).forEach((row) => addUser(firstNonEmptyValue(row && row.assignedto, row && row.ASSIGNEDTO, '')));
+            return Array.from(optionsByUser.entries())
+                .map(([value, label]) => ({ value, label }))
+                .sort((left, right) => String(left.label || left.value).localeCompare(String(right.label || right.value), undefined, { sensitivity: 'base' }));
+        }
+
+        function getAvOptionEvalUserLabel(value = '') {
+            const normalized = normalizeAvOptionEvalUser(value);
+            if (!normalized) return '';
+            const option = getAvOptionEvalUserOptions().find((entry) => entry.value === normalized);
+            return option ? option.label : normalized;
+        }
+
+        function getDefaultAvOptionEvalAssignee() {
+            const actor = getAvOptionEvalActorKey();
+            const options = getAvOptionEvalUserOptions();
+            if (options.some((option) => option.value === actor)) return actor;
+            return options[0] ? options[0].value : actor;
+        }
+
+        function toAvOptionEvalNumber(value = null) {
+            const raw = String(value == null ? '' : value).replace(/,/g, '').trim();
+            if (raw === '') return null;
+            const numeric = Number(raw);
+            return Number.isFinite(numeric) ? numeric : null;
+        }
+
+        function coerceAvOptionEvalObject(value = null) {
+            if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+            if (typeof value === 'string' && value.trim()) {
+                try {
+                    const parsed = JSON.parse(value);
+                    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+                } catch (error) {}
+            }
+            return {};
+        }
+
+        function buildAvOptionEvalSnapshot(row = null) {
+            const source = row && typeof row === 'object' ? Object.assign({}, row) : {};
+            try { normalizeRowPhotoFields(source); } catch (error) {}
+            const photoLink = String(firstNonEmptyValue(
+                getSharedAppPhotoLinkCsv(source, { respectRetention: false }),
+                source.PHOTO_LINK,
+                source.photo_link,
+                source.ROW_PHOTO_LINK,
+                source.row_photo_link,
+                ''
+            ) || '').trim();
+            const photoName = String(firstNonEmptyValue(
+                getSharedAppPhotoName(source),
+                source.PHOTO_NAME,
+                source.photo_name,
+                source.ROW_PHOTO_NAME,
+                source.row_photo_name,
+                ''
+            ) || '').trim();
+            return {
+                itemcode: String(firstNonEmptyValue(source.ITEMCODE, source.itemcode, source.ITEM_CODE, source.item_code, '') || '').trim(),
+                commonname: String(firstNonEmptyValue(source.COMMONNAME, source.commonname, source.COMMON_NAME, source.common_name, '') || '').trim(),
+                contsize: String(firstNonEmptyValue(source.CONTSIZE, source.contsize, source.CONT_SIZE, source.cont_size, '') || '').trim(),
+                locationcode: String(firstNonEmptyValue(source.LOCATIONCODE, source.locationcode, source.LOCATION_CODE, source.location_code, '') || '').trim(),
+                lotcode: String(firstNonEmptyValue(source.LOTCODE, source.lotcode, source.LOT_CODE, source.lot_code, '') || '').trim(),
+                priority: String(firstNonEmptyValue(source.PRIORITY, source.priority, '') || '').trim(),
+                ptronhand: toAvOptionEvalNumber(firstNonEmptyValue(source.PTRONHAND, source.ptronhand, source.ONHAND, source.onhand, '')),
+                ptravailable: toAvOptionEvalNumber(firstNonEmptyValue(source.PTRAVAILABLE, source.ptravailable, source.AVAILABLE, source.available, '')),
+                s_lts: toAvOptionEvalNumber(firstNonEmptyValue(source.S_LTS, source.s_lts, source.OPEN_STOCK, source.open_stock, '')),
+                source: String(firstNonEmptyValue(source.SOURCE, source.source, '') || '').trim(),
+                photo_link: photoLink,
+                photo_name: photoName,
+                spec: String(firstNonEmptyValue(source.SPEC, source.spec, source.AV_SPEC, source.av_spec, '') || '').trim(),
+                caliper: String(firstNonEmptyValue(source.CALIPER, source.caliper, source.AV_CALIPER, source.av_caliper, '') || '').trim(),
+                av_note: String(firstNonEmptyValue(source.AV_NOTE, source.av_note, source.SALESNOTE, source.salesnote, source.SALES_NOTE, source.sales_note, '') || '').trim()
+            };
+        }
+
+        function getAvOptionEvalRequestId(row = null) {
+            return String(firstNonEmptyValue(row && row.id, row && row.ID, row && row.unique_id, row && row.UNIQUE_ID, '') || '').trim();
+        }
+
+        function normalizeAvOptionEvalRequestRow(row = null) {
+            if (!row || typeof row !== 'object') return null;
+            row.status = normalizeAvOptionEvalStatus(firstNonEmptyValue(row.status, row.STATUS, 'open'));
+            row.assignedto = normalizeAvOptionEvalUser(firstNonEmptyValue(row.assignedto, row.ASSIGNEDTO, ''));
+            row.created_by = normalizeAvOptionEvalUser(firstNonEmptyValue(row.created_by, row.CREATED_BY, ''));
+            return row;
+        }
+
+        function getAvOptionEvalOptionUid(row = null, index = 0) {
+            const directId = String(getRequestItemCodeOptionMasterId(row) || '').trim();
+            if (directId) return directId;
+            if (row && typeof row === 'object' && row.DOM_ID) return String(row.DOM_ID || '').trim();
+            return `reqopt_${Math.max(0, Number(index) || 0)}`;
+        }
+
+        function findRequestItemCodeOptionRowByUid(uid = '', item = activeItem) {
+            const safeUid = String(uid || '').trim();
+            if (!safeUid) return null;
+            return getRequestItemCodeOptionRows(item).find((row, index) => getAvOptionEvalOptionUid(row, index) === safeUid) || null;
+        }
+
+        async function loadAvOptionEvalRequests(force = false) {
+            if (avOptionEvalRequestsLoaded && !force) return avOptionEvalRequests;
+            if (avOptionEvalRequestsLoading && loadAvOptionEvalRequests._promise) return loadAvOptionEvalRequests._promise;
+            avOptionEvalRequestsLoading = true;
+            avOptionEvalRequestsError = '';
+            loadAvOptionEvalRequests._promise = runAppApiSupabaseWrite(
+                AV_OPTION_EVAL_REQUESTS_TABLE,
+                'GET',
+                null,
+                `select=${AV_OPTION_EVAL_REQUEST_SELECT_FIELDS}&order=created_at.desc&limit=750`,
+                { timeoutMs: 22000 }
+            ).then((rows) => {
+                avOptionEvalRequests = (Array.isArray(rows) ? rows : []).map(normalizeAvOptionEvalRequestRow).filter(Boolean);
+                avOptionEvalRequestsLoaded = true;
+                avOptionEvalRequestsError = '';
+                return avOptionEvalRequests;
+            }).catch((error) => {
+                avOptionEvalRequestsError = String(error && error.message ? error.message : error || 'Could not load AV Check rows.');
+                throw error;
+            }).finally(() => {
+                avOptionEvalRequestsLoading = false;
+                loadAvOptionEvalRequests._promise = null;
+            });
+            return loadAvOptionEvalRequests._promise;
+        }
+
+        function getVisibleAvOptionEvalRequests() {
+            const rows = Array.isArray(avOptionEvalRequests) ? avOptionEvalRequests : [];
+            const actor = getAvOptionEvalActorKey();
+            const manager = isAvOptionEvalManagerUser();
+            const statusFilter = String(avOptionEvalStatusFilter || 'open').trim().toLowerCase();
+            const userFilter = normalizeAvOptionEvalUser(avOptionEvalUserFilter);
+            return rows.filter((row) => {
+                if (!row) return false;
+                const assignedto = normalizeAvOptionEvalUser(firstNonEmptyValue(row.assignedto, row.ASSIGNEDTO, ''));
+                const createdBy = normalizeAvOptionEvalUser(firstNonEmptyValue(row.created_by, row.CREATED_BY, ''));
+                if (!manager && assignedto !== actor && createdBy !== actor) return false;
+                if (manager && userFilter && userFilter !== 'all' && assignedto !== userFilter) return false;
+                const status = normalizeAvOptionEvalStatus(firstNonEmptyValue(row.status, row.STATUS, 'open'));
+                if (statusFilter === 'all') return true;
+                if (statusFilter === 'complete') return status === 'complete';
+                if (statusFilter === 'cancelled') return status === 'cancelled';
+                return status === 'open' || status === 'in_progress';
+            });
+        }
+
+        function getAvOptionEvalRequestById(id = '') {
+            const safeId = String(id || '').trim();
+            if (!safeId) return null;
+            return (Array.isArray(avOptionEvalRequests) ? avOptionEvalRequests : []).find((row) => getAvOptionEvalRequestId(row) === safeId) || null;
+        }
+
+        function formatAvOptionEvalDate(value = '') {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+            const date = new Date(raw);
+            return Number.isNaN(date.getTime()) ? raw : date.toLocaleString();
+        }
+
+        function renderAvOptionEvalMetric(label = '', value = '') {
+            const text = value == null || value === '' ? '-' : String(value);
+            return `<div class="rounded-xl border border-emerald-100 bg-white px-3 py-2 text-center">
+                <div class="text-[9px] font-black uppercase tracking-[0.14em] text-[#007a4d]">${escapeShareHtml(label)}</div>
+                <div class="mt-1 text-lg font-black text-slate-900">${escapeShareHtml(text)}</div>
+            </div>`;
+        }
+
+        function renderAvOptionEvalPhotoStrip(photoCsv = '', label = 'Photos') {
+            const urls = getPhotoUrlList(String(photoCsv || '').trim()).slice(0, 8);
+            if (!urls.length) {
+                return `<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[12px] font-bold text-slate-400">No ${escapeShareHtml(label).toLowerCase()} yet.</div>`;
+            }
+            return `<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">${urls.map((url, index) => {
+                const directUrl = getDirectImageUrl(url, `av-check-${index}`);
+                return `<button type="button" class="aspect-square overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-sm" onclick="openPhotoModal('${escJsAttrValue(urls.join(','))}', '${escJsAttrValue(label)}'); return false;"><img src="${escapeShareHtml(directUrl)}" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover"></button>`;
+            }).join('')}</div>`;
+        }
+
+        function renderAvOptionEvalRequestQueue(rows = getVisibleAvOptionEvalRequests()) {
+            const manager = isAvOptionEvalManagerUser();
+            const statusTabs = [
+                { value: 'open', label: 'Open' },
+                { value: 'complete', label: 'Complete' },
+                { value: 'all', label: 'All' }
+            ].map((entry) => {
+                const active = String(avOptionEvalStatusFilter || 'open') === entry.value;
+                return `<button type="button" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] active:scale-95 ${active ? 'border-[#007a4d] bg-[#007a4d] text-white' : 'border-emerald-200 bg-white text-[#007a4d]'}" onclick="return setAvOptionEvalStatusFilter('${escJsAttrValue(entry.value)}')">${escapeShareHtml(entry.label)}</button>`;
+            }).join('');
+            const userFilterHtml = manager ? `<select class="input-field !mb-0 !min-h-[44px] !py-2 text-[12px] font-black uppercase tracking-[0.1em]" onchange="return setAvOptionEvalUserFilter(this.value)">
+                <option value="all"${normalizeAvOptionEvalUser(avOptionEvalUserFilter) === 'all' ? ' selected' : ''}>All Evaluators</option>
+                ${getAvOptionEvalUserOptions().map((option) => `<option value="${esc(option.value)}"${normalizeAvOptionEvalUser(avOptionEvalUserFilter) === option.value ? ' selected' : ''}>${escapeShareHtml(option.label)}</option>`).join('')}
+            </select>` : '';
+            const chromeHtml = `<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex flex-wrap gap-2">${statusTabs}</div>
+                ${userFilterHtml ? `<div class="min-w-[180px]">${userFilterHtml}</div>` : ''}
+            </div>`;
+            if (avOptionEvalRequestsLoading && !avOptionEvalRequestsLoaded) {
+                return `${chromeHtml}<div class="rounded-2xl border border-dashed border-emerald-200 bg-white p-8 text-center text-[12px] font-black uppercase tracking-[0.14em] text-slate-400">Loading AV Check rows...</div>`;
+            }
+            if (avOptionEvalRequestsError) {
+                return `${chromeHtml}<div class="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-center"><div class="text-lg font-black text-amber-900">Could not load AV Check.</div><div class="mt-2 text-sm font-semibold text-amber-800">${escapeShareHtml(avOptionEvalRequestsError)}</div><button type="button" class="mt-4 rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white" onclick="return retryLoadAvOptionEvalRequests()">Retry</button></div>`;
+            }
+            if (!rows.length) {
+                return `${chromeHtml}<div class="rounded-2xl border border-dashed border-emerald-200 bg-white p-8 text-center"><div class="mx-auto mb-3 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">AV Check</div><div class="font-black text-slate-900">No AV Check rows.</div><div class="mt-2 text-sm font-semibold text-slate-500">Rows sent from AV Options will appear here for the assigned evaluator.</div></div>`;
+            }
+            return `${chromeHtml}<div class="request-card-list request-card-list--spaced">${rows.map((row) => {
+                const id = getAvOptionEvalRequestId(row);
+                const selected = coerceAvOptionEvalObject(firstNonEmptyValue(row.selected_row_snapshot, row.SELECTED_ROW_SNAPSHOT, {}));
+                const status = normalizeAvOptionEvalStatus(firstNonEmptyValue(row.status, row.STATUS, 'open'));
+                const assignedLabel = getAvOptionEvalUserLabel(firstNonEmptyValue(row.assignedto, row.ASSIGNEDTO, ''));
+                const instructions = String(firstNonEmptyValue(row.instructions, row.INSTRUCTIONS, '') || '').trim();
+                const commonname = String(firstNonEmptyValue(row.commonname, row.COMMONNAME, selected.commonname, 'AV Check') || 'AV Check');
+                const itemcode = String(firstNonEmptyValue(row.itemcode, row.ITEMCODE, selected.itemcode, '') || '');
+                const contsize = String(firstNonEmptyValue(row.contsize, row.CONTSIZE, selected.contsize, '') || '');
+                const loc = String(firstNonEmptyValue(row.locationcode, row.LOCATIONCODE, selected.locationcode, '') || '');
+                const lot = String(firstNonEmptyValue(row.lotcode, row.LOTCODE, selected.lotcode, '') || '');
+                const qty = firstNonEmptyValue(row.ptravailable, row.PTRAVAILABLE, selected.ptravailable, row.ptronhand, row.PTRONHAND, selected.ptronhand, '-');
+                const photoCsv = String(firstNonEmptyValue(row.selected_photo_link, row.SELECTED_PHOTO_LINK, selected.photo_link, '') || '').trim();
+                const firstPhoto = getPhotoUrlList(photoCsv)[0] || '';
+                const dateLabel = formatAvOptionEvalDate(firstNonEmptyValue(row.created_at, row.CREATED_AT, ''));
+                const statusClass = status === 'complete' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-blue-200 bg-blue-50 text-blue-700';
+                return `<button type="button" class="request-folder-card request-folder-card--av-check w-full text-left active:scale-[0.99]" onclick="return openAvOptionEvalRequestDetail('${escJsAttrValue(id)}')">
+                    <div class="flex items-start gap-3">
+                        <div class="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                            ${firstPhoto ? `<img src="${escapeShareHtml(getDirectImageUrl(firstPhoto, 'thumb'))}" alt="" loading="lazy" decoding="async" class="h-full w-full object-cover">` : `<div class="grid h-full w-full place-items-center text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">No Photo</div>`}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-[10px] font-black uppercase tracking-[0.14em] text-blue-700">Instructions</div>
+                            <div class="mt-1 line-clamp-2 text-base font-black text-slate-900">${escapeShareHtml(instructions || 'No instructions')}</div>
+                            <div class="mt-2 text-sm font-black text-[#007a4d]">${escapeShareHtml(commonname)}</div>
+                            <div class="mt-1 text-[11px] font-black uppercase tracking-[0.1em] text-slate-500">${escapeShareHtml([itemcode, contsize, loc ? `Loc ${loc}` : '', lot ? `Lot ${lot}` : ''].filter(Boolean).join(' | '))}</div>
+                        </div>
+                        <div class="shrink-0 text-right">
+                            <span class="inline-flex rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] ${statusClass}">${escapeShareHtml(getAvOptionEvalStatusLabel(status))}</span>
+                            <div class="mt-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Qty ${escapeShareHtml(qty)}</div>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">
+                        <span class="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700">Assigned ${escapeShareHtml(assignedLabel || '-')}</span>
+                        ${dateLabel ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-slate-500">${escapeShareHtml(dateLabel)}</span>` : ''}
+                    </div>
+                </button>`;
+            }).join('')}</div>`;
+        }
+
+        function setAvOptionEvalStatusFilter(value = 'open') {
+            avOptionEvalStatusFilter = String(value || 'open').trim().toLowerCase();
+            if (isViewVisible('request') && activeReqTab === 'av-check') renderRequest();
+            return false;
+        }
+
+        function setAvOptionEvalUserFilter(value = 'all') {
+            avOptionEvalUserFilter = normalizeAvOptionEvalUser(value) || 'all';
+            if (isViewVisible('request') && activeReqTab === 'av-check') renderRequest();
+            return false;
+        }
+
+        function retryLoadAvOptionEvalRequests() {
+            loadAvOptionEvalRequests(true).then(() => {
+                if (isViewVisible('request') && activeReqTab === 'av-check') renderRequest();
+            }).catch(() => {
+                if (isViewVisible('request') && activeReqTab === 'av-check') renderRequest();
+            });
+            return false;
+        }
+
+        function openAvOptionEvalRequestDetail(id = '') {
+            activeAvOptionEvalDetailId = String(id || '').trim();
+            if (isViewVisible('request') && activeReqTab === 'av-check') renderRequest();
+            return false;
+        }
+
+        function backToAvOptionEvalQueue() {
+            activeAvOptionEvalDetailId = '';
+            if (isViewVisible('request') && activeReqTab === 'av-check') renderRequest();
+            return false;
+        }
+
+        function renderAvOptionEvalRequestDetailPage(row = null) {
+            if (!row) return `<div class="p-8 text-center text-gray-400">AV Check row not found.</div>`;
+            const selected = coerceAvOptionEvalObject(firstNonEmptyValue(row.selected_row_snapshot, row.SELECTED_ROW_SNAPSHOT, {}));
+            const original = coerceAvOptionEvalObject(firstNonEmptyValue(row.original_row_snapshot, row.ORIGINAL_ROW_SNAPSHOT, {}));
+            const status = normalizeAvOptionEvalStatus(firstNonEmptyValue(row.status, row.STATUS, 'open'));
+            const commonname = String(firstNonEmptyValue(row.commonname, row.COMMONNAME, selected.commonname, 'AV Check') || 'AV Check');
+            const itemcode = String(firstNonEmptyValue(row.itemcode, row.ITEMCODE, selected.itemcode, '') || '');
+            const contsize = String(firstNonEmptyValue(row.contsize, row.CONTSIZE, selected.contsize, '') || '');
+            const loc = String(firstNonEmptyValue(row.locationcode, row.LOCATIONCODE, selected.locationcode, '') || '');
+            const lot = String(firstNonEmptyValue(row.lotcode, row.LOTCODE, selected.lotcode, '') || '');
+            const originalLoc = String(firstNonEmptyValue(row.original_locationcode, row.ORIGINAL_LOCATIONCODE, original.locationcode, '') || '');
+            const instructions = String(firstNonEmptyValue(row.instructions, row.INSTRUCTIONS, '') || '').trim();
+            const assignedLabel = getAvOptionEvalUserLabel(firstNonEmptyValue(row.assignedto, row.ASSIGNEDTO, ''));
+            const selectedPhotoCsv = String(firstNonEmptyValue(row.selected_photo_link, row.SELECTED_PHOTO_LINK, selected.photo_link, '') || '').trim();
+            const resultPhotoCsv = String(firstNonEmptyValue(row.result_photo_link, row.RESULT_PHOTO_LINK, '') || '').trim();
+            return `<div class="space-y-4 pb-24">
+                <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 active:scale-95" onclick="return backToAvOptionEvalQueue()"><i class="ph-bold ph-arrow-left"></i> Back To AV Check</button>
+                <div class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">AV Check Detail</div>
+                            <div class="mt-1 text-2xl font-black text-slate-900">${escapeShareHtml(commonname)}</div>
+                            <div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">${escapeShareHtml([itemcode, contsize, loc ? `Loc ${loc}` : '', lot ? `Lot ${lot}` : ''].filter(Boolean).join(' | '))}</div>
+                        </div>
+                        <div class="text-right text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">
+                            <div>${escapeShareHtml(getAvOptionEvalStatusLabel(status))}</div>
+                            <div class="mt-1">Assigned ${escapeShareHtml(assignedLabel || '-')}</div>
+                        </div>
+                    </div>
+                    <div class="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-3">
+                        <div class="text-[10px] font-black uppercase tracking-[0.14em] text-blue-700">Instructions</div>
+                        <div class="mt-1 whitespace-pre-wrap text-base font-black text-slate-900">${escapeShareHtml(instructions || 'No instructions')}</div>
+                    </div>
+                    <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        ${renderAvOptionEvalMetric('Selected Loc', loc || '-')}
+                        ${renderAvOptionEvalMetric('Original Loc', originalLoc || '-')}
+                        ${renderAvOptionEvalMetric('Available', firstNonEmptyValue(row.ptravailable, selected.ptravailable, '-'))}
+                        ${renderAvOptionEvalMetric('Open Stock', firstNonEmptyValue(row.s_lts, selected.s_lts, '-'))}
+                    </div>
+                </div>
+                <div class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm">
+                    <div class="mb-3 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Selected Option Photos</div>
+                    ${renderAvOptionEvalPhotoStrip(selectedPhotoCsv, 'Selected Option Photos')}
+                </div>
+                <div class="rounded-2xl border border-blue-200 bg-white p-4 shadow-sm">
+                    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.14em] text-blue-700">Evaluator Results</div>
+                            <div class="mt-1 text-sm font-bold text-slate-500">Save notes here only. Inventory is not changed.</div>
+                        </div>
+                        <label class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-blue-700 active:scale-95">
+                            <i class="ph-bold ph-camera text-base"></i><span>Add Photos</span>
+                            <input id="av-check-photo-input" type="file" accept="image/*" capture="environment" multiple class="hidden">
+                        </label>
+                    </div>
+                    ${resultPhotoCsv ? `<div class="mb-4">${renderAvOptionEvalPhotoStrip(resultPhotoCsv, 'Evaluator Photos')}</div>` : ''}
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Spec
+                            <input id="av-check-result-spec" class="input-field !mb-0 mt-1" value="${esc(firstNonEmptyValue(row.result_spec, row.RESULT_SPEC, ''))}" placeholder="e.g. 14-16&quot; H">
+                        </label>
+                        <label class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Caliper
+                            <input id="av-check-result-caliper" class="input-field !mb-0 mt-1" value="${esc(firstNonEmptyValue(row.result_caliper, row.RESULT_CALIPER, ''))}" placeholder="Optional">
+                        </label>
+                        <label class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Loc Match %
+                            <input id="av-check-result-loc-match" class="input-field !mb-0 mt-1" inputmode="numeric" value="${esc(firstNonEmptyValue(row.result_loc_match_percent, row.RESULT_LOC_MATCH_PERCENT, ''))}" placeholder="0-100">
+                        </label>
+                        <label class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">AV Note
+                            <input id="av-check-result-av-note" class="input-field !mb-0 mt-1" value="${esc(firstNonEmptyValue(row.result_av_note, row.RESULT_AV_NOTE, selected.av_note, ''))}" placeholder="AV note">
+                        </label>
+                    </div>
+                    <label class="mt-3 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Pick Note
+                        <textarea id="av-check-result-pick-note" class="input-field !mb-0 mt-1 min-h-[82px]" placeholder="Pick note">${esc(firstNonEmptyValue(row.result_pick_note, row.RESULT_PICK_NOTE, ''))}</textarea>
+                    </label>
+                    <label class="mt-3 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Comments
+                        <textarea id="av-check-result-comments" class="input-field !mb-0 mt-1 min-h-[96px]" placeholder="Evaluator comments">${esc(firstNonEmptyValue(row.result_comments, row.RESULT_COMMENTS, ''))}</textarea>
+                    </label>
+                    <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <button type="button" class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-blue-700 active:scale-95" onclick="return saveAvOptionEvalRequestDetail(false)">Save Draft</button>
+                        <button type="button" class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="return saveAvOptionEvalRequestDetail(true)">Mark Done</button>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        async function saveAvOptionEvalRequestDetail(markComplete = false) {
+            const id = String(activeAvOptionEvalDetailId || '').trim();
+            const row = getAvOptionEvalRequestById(id);
+            if (!id || !row) {
+                showToast('Not Found', 'Open an AV Check row first.', true);
+                return false;
+            }
+            const readValue = (idValue) => {
+                const el = document.getElementById(idValue);
+                return el ? String(el.value || '').trim() : '';
+            };
+            const fileInput = document.getElementById('av-check-photo-input');
+            const files = fileInput && fileInput.files ? Array.from(fileInput.files) : [];
+            const uploadedLinks = [];
+            const uploadedNames = [];
+            if (files.length) {
+                showToast('Uploading Photos', `Uploading ${files.length} photo${files.length === 1 ? '' : 's'}...`, false);
+                for (let index = 0; index < files.length; index += 1) {
+                    const file = files[index];
+                    const name = `av-check-${id}-${Date.now()}-${index + 1}.${String(file.name || 'jpg').split('.').pop() || 'jpg'}`;
+                    const upload = await uploadPhotoViaAppApi('req-', file, name, file.type || 'image/jpeg', { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
+                    uploadedLinks.push(upload.publicUrl);
+                    uploadedNames.push(name);
+                }
+            }
+            const currentLinks = String(firstNonEmptyValue(row.result_photo_link, row.RESULT_PHOTO_LINK, '') || '').trim();
+            const currentNames = String(firstNonEmptyValue(row.result_photo_name, row.RESULT_PHOTO_NAME, '') || '').trim();
+            const locMatchRaw = readValue('av-check-result-loc-match');
+            const payload = {
+                status: markComplete ? 'complete' : 'in_progress',
+                result_photo_link: mergePhotoCsvList([currentLinks, uploadedLinks.join(',')]),
+                result_photo_name: mergePhotoCsvList([currentNames, uploadedNames.join(',')]),
+                result_spec: readValue('av-check-result-spec'),
+                result_caliper: readValue('av-check-result-caliper'),
+                result_loc_match_percent: locMatchRaw === '' ? null : toAvOptionEvalNumber(locMatchRaw),
+                result_pick_note: readValue('av-check-result-pick-note'),
+                result_comments: readValue('av-check-result-comments'),
+                result_av_note: readValue('av-check-result-av-note')
+            };
+            try {
+                await runDetailWriteWithRetry(AV_OPTION_EVAL_REQUESTS_TABLE, 'PATCH', payload, `id=eq.${encodeURIComponent(id)}`, {
+                    timeoutMs: Math.max(90000, SUPABASE_WRITE_TIMEOUT_MS),
+                    retries: 1,
+                    noDirectSupabaseFallback: true
+                });
+                Object.assign(row, payload, { updated_at: new Date().toISOString() });
+                queueAppLiveEventForWrite(AV_OPTION_EVAL_REQUESTS_TABLE, 'PATCH', payload, `id=eq.${encodeURIComponent(id)}`);
+                await loadAvOptionEvalRequests(true).catch(() => {});
+                markViewDirty('request');
+                updateFooterRequestBadge();
+                showToast(markComplete ? 'AV Check Complete' : 'AV Check Saved', markComplete ? 'Evaluator results were saved and the row is complete.' : 'Evaluator results were saved.');
+                if (markComplete) activeAvOptionEvalDetailId = '';
+                if (isViewVisible('request') && activeReqTab === 'av-check') renderRequest();
+            } catch (error) {
+                console.error('AV Check save failed', error);
+                showToast('Could Not Save', String(error && error.message ? error.message : error || 'AV Check was not saved.'), true);
+            }
+            return false;
+        }
+
+        function ensureAvOptionEvalModalRoot() {
+            let root = document.getElementById('av-option-eval-modal-root');
+            if (!root) {
+                root = document.createElement('div');
+                root.id = 'av-option-eval-modal-root';
+                document.body.appendChild(root);
+            }
+            return root;
+        }
+
+        function closeAvOptionEvalRequestModal() {
+            avOptionEvalModalState = { open:false, optionUid:'', sourceUid:'', assignedto:'', instructions:'' };
+            const root = document.getElementById('av-option-eval-modal-root');
+            if (root) root.innerHTML = '';
+            return false;
+        }
+
+        function openAvOptionEvalRequestModal(uid = '') {
+            if (!canCreateAvOptionEvalRequest()) {
+                showToast('Restricted', 'You must be logged in to send an AV Check.', true);
+                return false;
+            }
+            const optionRow = findRequestItemCodeOptionRowByUid(uid, activeItem);
+            if (!optionRow || !activeItem) {
+                showToast('Not Found', 'That AV option is no longer loaded.', true);
+                return false;
+            }
+            const selected = buildAvOptionEvalSnapshot(optionRow);
+            const assignee = avOptionEvalModalState.assignedto || getDefaultAvOptionEvalAssignee();
+            avOptionEvalModalState = {
+                open: true,
+                optionUid: String(uid || '').trim(),
+                sourceUid: String(firstNonEmptyValue(activeItem && activeItem.UNIQUE_ID, activeItem && activeItem.unique_id, '') || '').trim(),
+                assignedto: assignee,
+                instructions: avOptionEvalModalState.instructions || ''
+            };
+            const optionHtml = getAvOptionEvalUserOptions().map((option) => `<option value="${esc(option.value)}"${option.value === assignee ? ' selected' : ''}>${escapeShareHtml(option.label)}</option>`).join('');
+            const root = ensureAvOptionEvalModalRoot();
+            root.innerHTML = `<div class="fixed inset-0 z-[2200] flex items-end justify-center bg-slate-950/45 p-3 sm:items-center" onclick="if(event.target===this) closeAvOptionEvalRequestModal()">
+                <div class="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-emerald-100 bg-white p-5 shadow-2xl">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"><i class="ph-bold ph-clipboard-text text-sm"></i><span>Send To Eval</span></div>
+                            <div class="mt-3 text-2xl font-black text-slate-900">Create AV Check</div>
+                            <div class="mt-1 text-sm font-bold text-slate-500">This sends the selected location to an evaluator. It will not update inventory.</div>
+                        </div>
+                        <button type="button" class="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-2xl text-slate-500 shadow-sm" onclick="return closeAvOptionEvalRequestModal()"><i class="ph-bold ph-x"></i></button>
+                    </div>
+                    <div class="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-3">
+                        <div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Selected Option</div>
+                        <div class="mt-1 text-xl font-black text-slate-900">${escapeShareHtml(selected.commonname || 'AV Option')}</div>
+                        <div class="mt-1 text-[11px] font-black uppercase tracking-[0.12em] text-slate-600">${escapeShareHtml([selected.itemcode, selected.contsize, selected.locationcode ? `Loc ${selected.locationcode}` : '', selected.lotcode ? `Lot ${selected.lotcode}` : ''].filter(Boolean).join(' | '))}</div>
+                        <div class="mt-3 grid grid-cols-3 gap-2">${renderAvOptionEvalMetric('Available', selected.ptravailable == null ? '-' : selected.ptravailable)}${renderAvOptionEvalMetric('On Hand', selected.ptronhand == null ? '-' : selected.ptronhand)}${renderAvOptionEvalMetric('Open Stock', selected.s_lts == null ? '-' : selected.s_lts)}</div>
+                    </div>
+                    <label class="mt-4 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Evaluator
+                        <select id="av-option-eval-assignedto" class="input-field !mb-0 mt-1">${optionHtml}</select>
+                    </label>
+                    <label class="mt-3 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Instructions
+                        <textarea id="av-option-eval-instructions" class="input-field !mb-0 mt-1 min-h-[120px]" placeholder="Tell the evaluator what to check.">${esc(avOptionEvalModalState.instructions || '')}</textarea>
+                    </label>
+                    <div class="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 active:scale-95" onclick="return closeAvOptionEvalRequestModal()">Cancel</button>
+                        <button type="button" class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm active:scale-95" onclick="return submitAvOptionEvalRequest()">Submit AV Check</button>
+                    </div>
+                </div>
+            </div>`;
+            return false;
+        }
+
+        async function submitAvOptionEvalRequest() {
+            const optionRow = findRequestItemCodeOptionRowByUid(avOptionEvalModalState.optionUid, activeItem);
+            if (!optionRow || !activeItem) {
+                showToast('Not Found', 'That AV option is no longer loaded.', true);
+                return false;
+            }
+            const assignedEl = document.getElementById('av-option-eval-assignedto');
+            const instructionsEl = document.getElementById('av-option-eval-instructions');
+            const assignedto = normalizeAvOptionEvalUser(assignedEl ? assignedEl.value : '');
+            const instructions = String(instructionsEl ? instructionsEl.value : '').trim();
+            if (!assignedto) {
+                showToast('Choose Evaluator', 'Select who should check this row.', true);
+                return false;
+            }
+            if (!instructions) {
+                showToast('Instructions Needed', 'Enter instructions for the evaluator.', true);
+                return false;
+            }
+            const selected = buildAvOptionEvalSnapshot(optionRow);
+            const original = buildAvOptionEvalSnapshot(activeItem);
+            const payload = {
+                status: 'open',
+                assignedto,
+                instructions,
+                selected_row_snapshot: selected,
+                original_row_snapshot: original,
+                itemcode: selected.itemcode,
+                commonname: selected.commonname,
+                contsize: selected.contsize,
+                locationcode: selected.locationcode,
+                lotcode: selected.lotcode,
+                priority: selected.priority,
+                ptronhand: selected.ptronhand,
+                ptravailable: selected.ptravailable,
+                s_lts: selected.s_lts,
+                source: selected.source,
+                selected_photo_link: selected.photo_link,
+                selected_photo_name: selected.photo_name,
+                selected_spec: selected.spec,
+                selected_caliper: selected.caliper,
+                selected_av_note: selected.av_note,
+                original_itemcode: original.itemcode,
+                original_commonname: original.commonname,
+                original_contsize: original.contsize,
+                original_locationcode: original.locationcode,
+                original_lotcode: original.lotcode,
+                original_priority: original.priority,
+                original_ptronhand: original.ptronhand,
+                original_ptravailable: original.ptravailable,
+                original_s_lts: original.s_lts,
+                original_source: original.source,
+                original_photo_link: original.photo_link,
+                original_photo_name: original.photo_name,
+                original_spec: original.spec,
+                original_caliper: original.caliper,
+                original_av_note: original.av_note
+            };
+            try {
+                showToast('Sending AV Check', `Sending to ${getAvOptionEvalUserLabel(assignedto) || assignedto}.`, false);
+                await runDetailWriteWithRetry(AV_OPTION_EVAL_REQUESTS_TABLE, 'POST', payload, '', {
+                    timeoutMs: Math.max(30000, SUPABASE_WRITE_TIMEOUT_MS),
+                    retries: 1,
+                    noDirectSupabaseFallback: true
+                });
+                queueAppLiveEventForWrite(AV_OPTION_EVAL_REQUESTS_TABLE, 'POST', payload, '');
+                closeAvOptionEvalRequestModal();
+                await loadAvOptionEvalRequests(true).catch(() => {});
+                markViewDirty('request');
+                updateFooterRequestBadge();
+                showToast('AV Check Sent', `Assigned to ${getAvOptionEvalUserLabel(assignedto) || assignedto}.`);
+            } catch (error) {
+                console.error('AV Check submit failed', error);
+                showToast('Could Not Send', String(error && error.message ? error.message : error || 'AV Check was not sent.'), true);
+            }
+            return false;
         }
 
         function canUseGroupedBloomNcr(userOverride = '') {
@@ -24802,7 +25428,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.03.02').trim() || 'V2026.08.03.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.03.03').trim() || 'V2026.08.03.03';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27425,12 +28051,17 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return canCurrentUserViewDockSuspendDcRequests();
         }
 
+        function canSeeAvOptionEvalRequestTab(access = getRoleAccessState()) {
+            return !!currentUser && canAccessView('request');
+        }
+
         const REQUEST_TAB_LABELS = Object.freeze({
             pending: 'Request',
             reps: 'Sales Reps',
             'suspend-tag': 'Suspend Tag',
             moves: 'Location Move',
             recount: 'Recount',
+            'av-check': 'AV Check',
             'shear-list': 'Shear List'
         });
 
@@ -27441,6 +28072,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 'suspend-tag': 0,
                 moves: 0,
                 recount: 0,
+                'av-check': 0,
                 'shear-list': 0
             };
             try {
@@ -27481,6 +28113,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 counts.recount = 0;
             }
             try {
+                counts['av-check'] = getVisibleAvOptionEvalRequests().filter((row) => {
+                    const status = normalizeAvOptionEvalStatus(firstNonEmptyValue(row && row.status, row && row.STATUS, 'open'));
+                    return status === 'open' || status === 'in_progress';
+                }).length;
+            } catch (error) {
+                counts['av-check'] = 0;
+            }
+            try {
                 counts['shear-list'] = getVisibleShearMoveTestRequestRecords().length;
             } catch (error) {
                 counts['shear-list'] = 0;
@@ -27490,7 +28130,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function getRequestQueueAlertCount() {
             const counts = getRequestTabQueueCounts();
-            return ['pending', 'suspend-tag', 'moves', 'recount', 'shear-list']
+            return ['pending', 'suspend-tag', 'moves', 'recount', 'av-check', 'shear-list']
                 .reduce((total, key) => total + Math.max(0, Number(counts[key]) || 0), 0);
         }
 
@@ -27521,11 +28161,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (requested === 'suspend-tag' && canSeeSuspendTagRequestTab(access)) return 'suspend-tag';
             if (requested === 'moves' && canSeeMovesRequestTab(access)) return 'moves';
             if (requested === 'recount' && canSeeRecountRequestTab(access)) return 'recount';
+            if (requested === 'av-check' && canSeeAvOptionEvalRequestTab(access)) return 'av-check';
             if (requested === 'shear-list' && canSeeShearListRequestTab(access)) return 'shear-list';
             if (requested === 'reps' && canSeeRegularRequestTabs(access)) return 'reps';
             if (requested === 'pending' && canSeeRegularRequestTabs(access)) return 'pending';
             if (canSeeMovesRequestTab(access)) return 'moves';
             if (canSeeRecountRequestTab(access)) return 'recount';
+            if (canSeeAvOptionEvalRequestTab(access)) return 'av-check';
             if (canSeeShearListRequestTab(access)) return 'shear-list';
             return 'pending';
         }
@@ -27538,24 +28180,28 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const suspendTagTab = document.getElementById('tab-req-suspend-tag');
             const movesTab = document.getElementById('tab-req-moves');
             const recountTab = document.getElementById('tab-req-recount');
+            const avCheckTab = document.getElementById('tab-req-av-check');
             const shearListTab = document.getElementById('tab-req-shear-list');
             const showRegularTabs = canSeeRegularRequestTabs(access);
             const showRepFolderTab = showRegularTabs && !isRestrictedEvalUser(access);
             const showSuspendTagTab = canSeeSuspendTagRequestTab(access);
             const showMovesTab = canSeeMovesRequestTab(access);
             const showRecountTab = canSeeRecountRequestTab(access);
+            const showAvCheckTab = canSeeAvOptionEvalRequestTab(access);
             const showShearListTab = canSeeShearListRequestTab(access);
             if (pendingTab) pendingTab.classList.toggle('hidden', !showRegularTabs);
             if (repsTab) repsTab.classList.toggle('hidden', !showRepFolderTab);
             if (suspendTagTab) suspendTagTab.classList.toggle('hidden', !showSuspendTagTab);
             if (movesTab) movesTab.classList.toggle('hidden', !showMovesTab);
             if (recountTab) recountTab.classList.toggle('hidden', !showRecountTab);
+            if (avCheckTab) avCheckTab.classList.toggle('hidden', !showAvCheckTab);
             if (shearListTab) shearListTab.classList.toggle('hidden', !showShearListTab);
             if (pendingTab) pendingTab.classList.toggle('active', activeReqTab === 'pending');
             if (repsTab) repsTab.classList.toggle('active', activeReqTab === 'reps');
             if (suspendTagTab) suspendTagTab.classList.toggle('active', activeReqTab === 'suspend-tag');
             if (movesTab) movesTab.classList.toggle('active', activeReqTab === 'moves');
             if (recountTab) recountTab.classList.toggle('active', activeReqTab === 'recount');
+            if (avCheckTab) avCheckTab.classList.toggle('active', activeReqTab === 'av-check');
             if (shearListTab) shearListTab.classList.toggle('active', activeReqTab === 'shear-list');
             updateRequestTabButtonLabels();
         }
@@ -27563,6 +28209,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function forcePendingRequestRoot(options = {}) {
             const safeOptions = options && typeof options === 'object' ? options : {};
             activeReqTab = 'pending';
+            activeAvOptionEvalDetailId = '';
             selectedReqStatus = 'Pending';
             requestViewLevel = 0;
             selectedReqFolder = null;
@@ -66053,6 +66700,7 @@ function toggleDriveQuickRequestItem(domId) {
                 activeReqTab = nextTab;
                 activeLocationMoveQueDetailUid = '';
                 activeShearQueDetailId = '';
+                activeAvOptionEvalDetailId = '';
                 syncRequestTabButtons();
                 requestViewLevel = 0;
                 selectedReqFolder = null;
@@ -87674,6 +88322,10 @@ function toggleDriveQuickRequestItem(domId) {
                 const optionRow = row && typeof row === 'object' ? row : {};
                 if (!optionRow.DOM_ID) optionRow.DOM_ID = `reqopt_${uid || index}`;
                 normalizeRowPhotoFields(optionRow);
+                const evalUid = getAvOptionEvalOptionUid(optionRow, index);
+                const sendToEvalHtml = canCreateAvOptionEvalRequest()
+                    ? `<button type="button" class="mb-2 inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700 shadow-sm active:scale-95" onclick="event.stopPropagation(); return openAvOptionEvalRequestModal('${escJsAttrValue(evalUid)}')"><i class="ph-bold ph-clipboard-text text-sm"></i><span>Send To Eval</span></button>`
+                    : '';
                 const selectText = selectable ? 'Select Option' : (canAddOptions ? 'Unavailable Option' : 'AV Option');
                 const selectControlHtml = canAddOptions
                     ? `<label class="request-av-option-selectbar" onclick="event.stopPropagation();">
@@ -87687,6 +88339,7 @@ function toggleDriveQuickRequestItem(domId) {
                     </div>`;
                 return `<div class="request-av-option-full-card ${selectable || !canAddOptions ? '' : 'is-disabled'}" data-request-itemcode-option-card="${esc(uid)}">
                     ${selectControlHtml}
+                    ${sendToEvalHtml}
                     <div class="mb-2 flex flex-wrap gap-1.5">${getRequestItemCodeOptionHoldBadgeHtml(optionRow)}${getRequestItemCodeOptionValidBadgeHtml(optionRow)}</div>
                     <div class="request-av-option-card-shell">${generateCard(optionRow, 'drive')}</div>
                 </div>`;
@@ -94190,6 +94843,45 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const reconciledRequestState = reconcileRequestDrillState(filteredRequestItems);
             if (reconciledRequestState.changed) syncRequestHeaderSearchChrome({ forceHeader: true });
             let items = reconciledRequestState.items;
+
+            if (activeReqTab === 'av-check') {
+                const crumbText = `AV Check${requestFilterSuffix}`;
+                if (!avOptionEvalRequestsLoaded && !avOptionEvalRequestsLoading) {
+                    loadAvOptionEvalRequests(false).then(() => {
+                        if (isViewVisible('request') && activeReqTab === 'av-check') renderRequest();
+                    }).catch((error) => {
+                        console.warn('AV Check load failed', error);
+                        if (isViewVisible('request') && activeReqTab === 'av-check') renderRequest();
+                    });
+                }
+                const activeDetailId = String(activeAvOptionEvalDetailId || '').trim();
+                if (activeDetailId) {
+                    const detailRow = getAvOptionEvalRequestById(activeDetailId);
+                    if (detailRow) {
+                        const filterPanel = document.getElementById('request-dylan-filter-panel');
+                        if (filterPanel) {
+                            filterPanel.innerHTML = '';
+                            filterPanel.classList.add('hidden');
+                        }
+                        const detailHtml = renderAvOptionEvalRequestDetailPage(detailRow);
+                        applyRequestRenderMarkup(container, crumb, 'AV Check Detail', detailHtml, `request:av-check:detail:${activeDetailId}:${firstNonEmptyValue(detailRow.updated_at, detailRow.UPDATED_AT, '')}`);
+                        return;
+                    }
+                    if (avOptionEvalRequestsLoaded) activeAvOptionEvalDetailId = '';
+                }
+                const rows = getVisibleAvOptionEvalRequests();
+                const html = renderAvOptionEvalRequestQueue(rows);
+                const renderKey = [
+                    'request:av-check',
+                    avOptionEvalStatusFilter,
+                    avOptionEvalUserFilter,
+                    avOptionEvalRequestsLoading ? 'loading' : 'ready',
+                    avOptionEvalRequestsError,
+                    rows.map((row) => [getAvOptionEvalRequestId(row), row.status, row.assignedto, row.updated_at, row.completed_at].join(':')).join('|')
+                ].join('::');
+                applyRequestRenderMarkup(container, crumb, crumbText, html, renderKey);
+                return;
+            }
 
             if (activeReqTab === 'recount') {
                 const crumbText = 'Recount';

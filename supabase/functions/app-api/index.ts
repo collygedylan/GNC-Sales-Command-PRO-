@@ -23,6 +23,62 @@ const LEGACY_TABLE_ALIASES: Record<string, string> = {
   v2_cav: "ph_cav_import",
   ph_cav: "ph_cav_import",
 };
+const AV_OPTION_EVAL_REQUESTS_TABLE = "ph_av_option_eval_requests";
+const AV_OPTION_EVAL_MANAGER_USERS = new Set(["dylan_collyge", "jd_jones", "megan_kelly"]);
+const AV_OPTION_EVAL_STATUS_VALUES = new Set(["open", "in_progress", "complete", "cancelled"]);
+const AV_OPTION_EVAL_INSERT_FIELDS = new Set([
+  "status",
+  "assignedto",
+  "instructions",
+  "selected_row_snapshot",
+  "original_row_snapshot",
+  "itemcode",
+  "commonname",
+  "contsize",
+  "locationcode",
+  "lotcode",
+  "priority",
+  "ptronhand",
+  "ptravailable",
+  "s_lts",
+  "source",
+  "selected_photo_link",
+  "selected_photo_name",
+  "selected_spec",
+  "selected_caliper",
+  "selected_av_note",
+  "original_itemcode",
+  "original_commonname",
+  "original_contsize",
+  "original_locationcode",
+  "original_lotcode",
+  "original_priority",
+  "original_ptronhand",
+  "original_ptravailable",
+  "original_s_lts",
+  "original_source",
+  "original_photo_link",
+  "original_photo_name",
+  "original_spec",
+  "original_caliper",
+  "original_av_note",
+]);
+const AV_OPTION_EVAL_EVALUATOR_UPDATE_FIELDS = new Set([
+  "status",
+  "result_photo_link",
+  "result_photo_name",
+  "result_spec",
+  "result_caliper",
+  "result_loc_match_percent",
+  "result_pick_note",
+  "result_comments",
+  "result_av_note",
+]);
+const AV_OPTION_EVAL_MANAGER_UPDATE_FIELDS = new Set([
+  ...AV_OPTION_EVAL_EVALUATOR_UPDATE_FIELDS,
+  "assignedto",
+  "instructions",
+]);
 const READABLE_TABLES = new Set([
   "ph_master_inventory",
   "ph_active_request_live_rows",
@@ -84,6 +140,7 @@ const READABLE_TABLES = new Set([
   "ph_hold_stop_itemcode_summaries",
   "ph_warehouse_assigned_items",
   "ph_hl_po",
+  AV_OPTION_EVAL_REQUESTS_TABLE,
 ]);
 const WRITABLE_TABLES = new Set([
   "ph_master_inventory",
@@ -134,6 +191,7 @@ const WRITABLE_TABLES = new Set([
   "ph_walkie_calls",
   "ph_walkie_call_members",
   "ph_walkie_signal_events",
+  AV_OPTION_EVAL_REQUESTS_TABLE,
 ]);
 const COMMON_AUTH_WRITE_TABLES = new Set([
   "ph_push_subscriptions",
@@ -289,6 +347,7 @@ function sanitizeStorageFileName(value = "") {
 function hasTableReadAccess(role = "", table = "", username = "") {
   if (!READABLE_TABLES.has(table)) return false;
   if (table === "ph_hl_po") return normalizeUsername(username) === "dylan_collyge";
+  if (table === AV_OPTION_EVAL_REQUESTS_TABLE) return true;
   const access = getRoleAccessState(role);
   if (access.isAdmin) return true;
   if (COMMON_AUTH_READ_TABLES.has(table)) return true;
@@ -307,6 +366,7 @@ function hasTableReadAccess(role = "", table = "", username = "") {
 
 function hasTableWriteAccess(role = "", table = "", method = "POST", body: unknown = null) {
   if (!WRITABLE_TABLES.has(table)) return false;
+  if (table === AV_OPTION_EVAL_REQUESTS_TABLE) return ["POST", "PATCH", "DELETE"].includes(method);
   const access = getRoleAccessState(role);
   if (access.isAdmin) return true;
   if (COMMON_AUTH_WRITE_TABLES.has(table)) return ["POST", "PATCH", "DELETE"].includes(method);
@@ -328,6 +388,123 @@ function hasTableWriteAccess(role = "", table = "", method = "POST", body: unkno
     return QC_WRITE_TABLES.has(table) && ["POST", "PATCH", "DELETE"].includes(method);
   }
   return false;
+}
+
+function getSessionUserKey(session: Awaited<ReturnType<typeof readAppSessionFromRequest>>) {
+  if (!session) return "";
+  return normalizeUsername(session.username || session.displayName || "");
+}
+
+function getSessionDisplayName(session: Awaited<ReturnType<typeof readAppSessionFromRequest>>) {
+  if (!session) return "";
+  return String(session.displayName || session.username || "").trim();
+}
+
+function isAvOptionEvalManager(session: Awaited<ReturnType<typeof readAppSessionFromRequest>>) {
+  return AV_OPTION_EVAL_MANAGER_USERS.has(getSessionUserKey(session));
+}
+
+function cleanNullableText(value: unknown, maxLength = 1000) {
+  const text = String(value ?? "").trim();
+  return text ? text.slice(0, maxLength) : null;
+}
+
+function normalizeAvOptionEvalStatus(value: unknown, fallback = "open") {
+  const status = String(value ?? "").trim().toLowerCase().replace(/\s+/g, "_");
+  return AV_OPTION_EVAL_STATUS_VALUES.has(status) ? status : fallback;
+}
+
+function filterPayloadFields(body: unknown, allowedFields: Set<string>) {
+  const rows = Array.isArray(body) ? body : [body];
+  return rows.map((row) => {
+    const source = row && typeof row === "object" && !Array.isArray(row) ? row as Record<string, unknown> : {};
+    const next: Record<string, unknown> = {};
+    Object.entries(source).forEach(([key, value]) => {
+      const safeKey = String(key || "").trim();
+      if (allowedFields.has(safeKey)) next[safeKey] = value;
+    });
+    return next;
+  });
+}
+
+function appendQueryFilter(query = "", key = "", value = "") {
+  const safeKey = String(key || "").trim();
+  if (!safeKey) return query;
+  const safeValue = String(value || "").trim();
+  const next = `${encodeURIComponent(safeKey)}=${encodeURIComponent(safeValue)}`;
+  return query ? `${query}&${next}` : next;
+}
+
+function prepareAvOptionEvalDbRequest(
+  session: Awaited<ReturnType<typeof readAppSessionFromRequest>>,
+  method = "GET",
+  query = "",
+  body: unknown = null,
+) {
+  const actor = getSessionUserKey(session);
+  const actorDisplay = getSessionDisplayName(session) || actor;
+  const manager = isAvOptionEvalManager(session);
+  if (!actor) return { error: errorResponse("Unauthorized", 401), query, body };
+
+  if (method === "GET") {
+    if (manager) return { query, body };
+    return {
+      query: appendQueryFilter(query, "or", `(assignedto.eq.${actor},created_by.eq.${actor})`),
+      body,
+    };
+  }
+
+  if (method === "DELETE" && !manager) {
+    return { error: errorResponse("Forbidden", 403), query, body };
+  }
+
+  if (method === "POST") {
+    const filteredRows = filterPayloadFields(body, AV_OPTION_EVAL_INSERT_FIELDS).map((row) => {
+      const assignedto = normalizeUsername(row.assignedto);
+      const instructions = cleanNullableText(row.instructions, 3000);
+      row.status = normalizeAvOptionEvalStatus(row.status, "open");
+      row.assignedto = assignedto;
+      row.instructions = instructions;
+      row.created_by = actor;
+      row.created_by_display = actorDisplay;
+      row.updated_by = actor;
+      row.updated_by_display = actorDisplay;
+      return row;
+    });
+    const invalidRow = filteredRows.find((row) => !row.assignedto || !row.instructions);
+    if (invalidRow) {
+      return { error: errorResponse("Assigned evaluator and instructions are required.", 400), query, body };
+    }
+    return { query, body: Array.isArray(body) ? filteredRows : filteredRows[0] };
+  }
+
+  if (method === "PATCH") {
+    const allowedFields = manager ? AV_OPTION_EVAL_MANAGER_UPDATE_FIELDS : AV_OPTION_EVAL_EVALUATOR_UPDATE_FIELDS;
+    const filteredRows = filterPayloadFields(body, allowedFields).map((row) => {
+      if (Object.prototype.hasOwnProperty.call(row, "assignedto")) {
+        row.assignedto = normalizeUsername(row.assignedto);
+      }
+      if (Object.prototype.hasOwnProperty.call(row, "instructions")) {
+        row.instructions = cleanNullableText(row.instructions, 3000);
+      }
+      if (Object.prototype.hasOwnProperty.call(row, "status")) {
+        row.status = normalizeAvOptionEvalStatus(row.status, "open");
+      }
+      const status = String(row.status || "").trim().toLowerCase();
+      if (status === "complete") {
+        row.completed_by = actor;
+        row.completed_by_display = actorDisplay;
+        row.completed_at = new Date().toISOString();
+      }
+      row.updated_by = actor;
+      row.updated_by_display = actorDisplay;
+      return row;
+    });
+    const scopedQuery = manager ? query : appendQueryFilter(query, "assignedto", `eq.${actor}`);
+    return { query: scopedQuery, body: Array.isArray(body) ? filteredRows : filteredRows[0] };
+  }
+
+  return { query, body };
 }
 
 async function handleLogin(payload: Record<string, unknown>) {
@@ -432,18 +609,25 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
 
   const table = normalizeTableName(String(payload.table || "").trim());
   const method = String(payload.method || "GET").trim().toUpperCase();
-  const body = Object.prototype.hasOwnProperty.call(payload, "body") ? payload.body : null;
+  let body = Object.prototype.hasOwnProperty.call(payload, "body") ? payload.body : null;
   let query = String(payload.query || "").trim();
 
   if (!["GET", "POST", "PATCH", "DELETE"].includes(method)) return errorResponse("Unsupported method.", 400);
   if (method === "GET") {
-  if (!hasTableReadAccess(session.role, table, session.username)) return errorResponse("Forbidden", 403);
+    if (!hasTableReadAccess(session.role, table, session.username)) return errorResponse("Forbidden", 403);
   } else if (!hasTableWriteAccess(session.role, table, method, body)) {
     return errorResponse("Forbidden", 403);
   }
 
   if (table === "ph_app_users" && method === "GET") {
     query = withSelect(query, "username,role");
+  }
+
+  if (table === AV_OPTION_EVAL_REQUESTS_TABLE) {
+    const prepared = prepareAvOptionEvalDbRequest(session, method, query, body);
+    if (prepared.error) return prepared.error;
+    query = prepared.query;
+    body = prepared.body;
   }
 
   const response = await restRequest(table, method, query, body);
