@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.03.04';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.03.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5153,7 +5153,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.03.04').trim() || 'V2026.08.03.04';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.03.05').trim() || 'V2026.08.03.05';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6609,7 +6609,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.03.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.03.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -20924,7 +20924,19 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             }
         }
 
+        function hasDirectSupabaseWriteFallbackConfigured() {
+            return !!(SUPABASE_KEY && window.supabase);
+        }
+
+        function clearAppApiWriteProxyUnavailable() {
+            try { sessionStorage.removeItem(APP_API_DB_WRITE_PROXY_UNAVAILABLE_STORAGE_KEY); } catch (error) {}
+        }
+
         function markAppApiWriteProxyUnavailable(error = null) {
+            if (!hasDirectSupabaseWriteFallbackConfigured()) {
+                clearAppApiWriteProxyUnavailable();
+                return;
+            }
             const until = Date.now() + Math.max(15000, Number(APP_API_DB_WRITE_PROXY_COOLDOWN_MS) || 120000);
             try { sessionStorage.setItem(APP_API_DB_WRITE_PROXY_UNAVAILABLE_STORAGE_KEY, String(until)); } catch (storageError) {}
             if (!appApiWriteProxyFallbackWarningShown) {
@@ -20943,8 +20955,9 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
             const safeTable = String(table || '').trim();
             if (!APP_API_DB_WRITE_PROXY_ENABLED || !safeTable || !isSupabaseWriteMethod(method)) return false;
             if (opts.directSupabase === true || opts.disableAppApiWriteProxy === true) return false;
-            if (navigator.onLine === false) return false;
-            if (isAppApiWriteProxyTemporarilyUnavailable()) return false;
+            const hasDirectFallback = hasDirectSupabaseWriteFallbackConfigured();
+            if (hasDirectFallback && navigator.onLine === false) return false;
+            if (hasDirectFallback && isAppApiWriteProxyTemporarilyUnavailable()) return false;
             return true;
         }
 
@@ -22695,7 +22708,8 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
 
         async function uploadPhotoViaAppApi(prefix = 'default', blob = null, fileName = 'photo.jpg', contentType = 'image/jpeg', options = {}) {
             if (!blob) throw new Error('Missing photo file.');
-            if (!APP_API_DB_WRITE_PROXY_ENABLED || navigator.onLine === false || isAppApiWriteProxyTemporarilyUnavailable()) {
+            const hasDirectFallback = hasDirectSupabaseWriteFallbackConfigured();
+            if (!APP_API_DB_WRITE_PROXY_ENABLED || (hasDirectFallback && (navigator.onLine === false || isAppApiWriteProxyTemporarilyUnavailable()))) {
                 throw new Error('Secure photo upload proxy unavailable.');
             }
             const hasSession = await ensureAppApiWriteProxySession();
@@ -25433,7 +25447,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.03.04').trim() || 'V2026.08.03.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.03.05').trim() || 'V2026.08.03.05';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -53816,12 +53830,10 @@ function toggleDriveQuickRequestItem(domId) {
             if (isHoldReleaseCandidateRow(sourceItem)) return false;
             const salesYear = getNcrReleaseSalesYearNumber(item, sourceItem);
             const seasonCode = getNcrSeasonCode(sourceItem);
-            const allowPhotoMatchReleasePrompt = !!safeOptions.allowDriveReleaseQtyPrompt
-                && hasNcrReleasePromptEvidenceForSave(item, prefix, sourceItem);
             if (isNcrNewCropReleaseSeasonCode(seasonCode)) {
                 const uid = getNcrSourceUniqueId(sourceItem);
                 if (uid && isNcrCompletedUid(uid)) return false;
-                return isNcrSalesYearAboveReleaseCutoff(salesYear) || allowPhotoMatchReleasePrompt;
+                return isNcrSalesYearAboveReleaseCutoff(salesYear);
             }
             if (isNcrMoveUpSeasonCode(seasonCode)) return isNcrSalesYearAtOrBelowReleaseCutoff(salesYear);
             return false;
