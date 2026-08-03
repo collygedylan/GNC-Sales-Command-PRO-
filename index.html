@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.03.01';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.03.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1295,9 +1295,8 @@ body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-
         #view-wrapper{width:var(--shell-width);max-width:var(--shell-width);min-width:0;overflow-x:clip;overflow-y:visible;margin:0 auto}#view-wrapper > div{width:100%;max-width:var(--content-width);margin:0 auto}
         .sticky-search{position:-webkit-sticky;position:sticky;top:0;z-index:35;background:var(--sticky-chrome-bg);padding-top:0;padding-bottom:.45rem;box-shadow:none;transform:none;-webkit-transform:none;backface-visibility:visible;margin-bottom:0 !important}
 .request-swipe-row{display:block !important;padding:0 !important;position:relative;overflow:hidden;background:#ffffff !important;touch-action:pan-y;overscroll-behavior-x:contain;-webkit-user-select:none;user-select:none}
-.request-swipe-row{display:block !important;padding:0 !important;position:relative;overflow:hidden;background:#ffffff !important;touch-action:pan-y;overscroll-behavior-x:contain;-webkit-user-select:none;user-select:none}
 .request-swipe-row--season{background:linear-gradient(180deg,#ecfdf5 0%,#dcfce7 100%) !important;border-color:#007a4d !important}
-.request-swipe-surface{position:relative;z-index:2;width:100%;background:#ffffff;border-radius:inherit;padding:0;transition:transform .18s ease;will-change:transform}
+.request-swipe-surface{position:relative;z-index:2;width:100%;background:#ffffff;border-radius:inherit;padding:0;transition:transform .18s ease;will-change:transform;touch-action:pan-y;-webkit-user-select:none;user-select:none}
 .request-swipe-surface--season{background:linear-gradient(180deg,#ecfdf5 0%,#dcfce7 100%) !important}
         .request-swipe-action{position:absolute;top:0;right:0;bottom:0;width:88px;display:flex;align-items:center;justify-content:center;background:#ffffff;color:#dc2626;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;z-index:1}
         .request-swipe-row.swipe-open .request-swipe-surface{transform:translateX(-88px)}
@@ -5154,7 +5153,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.03.01').trim() || 'V2026.08.03.01';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.03.02').trim() || 'V2026.08.03.02';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6609,7 +6608,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.03.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.03.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24409,7 +24408,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const SALES_CREDIT_REVIEW_USERS = new Set(['dylan_collyge', 'jd_jones']);
         const REQUEST_REP_ENABLED_TOKENS = new Set(['alyssa_beitz','alyssa beitz','alyssabeitz','tony_bono','tony bono','tonybono','kayla_knepp','kayla knepp','kaylaknepp']);
         const REQUEST_GLOBAL_ACCESS_TOKENS = new Set(['kayla_knepp','kayla knepp','kaylaknepp']);
-        const REQUEST_ROW_ARCHIVE_USERS = new Set(['kayla_knepp','kayla knepp','kaylaknepp']);
+        const REQUEST_ROW_ARCHIVE_USERS = new Set(['kayla_knepp','kayla knepp','kaylaknepp','kayla','knepp','kayla_knepp@greenleafnursery.com','kayla.knepp@greenleafnursery.com']);
         const ABBEY_BURKA_REQUEST_VIEWERS = new Set([...PRIVILEGED_MANAGER_USER_KEYS, 'kayla_knepp', 'kayla knepp', 'kaylaknepp']);
         const REQUEST_NA_CUSTOMER_NAME = 'N/A';
         const REQUEST_NA_CONSIGNEE_NAME = 'N/A';
@@ -24803,7 +24802,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.03.01').trim() || 'V2026.08.03.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.03.02').trim() || 'V2026.08.03.02';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -94508,8 +94507,12 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 }
             }
         }
-        let requestSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false, pointerId: null };
+        function createRequestSwipeState() {
+            return { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false, pointerId: null, inputType: '' };
+        }
+        let requestSwipeState = createRequestSwipeState();
         let requestSwipeMoveBound = false;
+        let requestSwipePointerTouchGuardUntil = 0;
         let flyerSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false };
         let flyerSwipeMoveBound = false;
         let pullRefreshState = { active: false, armed: false, refreshing: false, startX: 0, startY: 0, distance: 0 };
@@ -113396,7 +113399,7 @@ C.14.043 C.15.000
             const surface = row.querySelector('.request-swipe-surface');
             if (surface) surface.style.transform = '';
             if (requestSwipeState.row === row) {
-                requestSwipeState = { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false, pointerId: null };
+                requestSwipeState = createRequestSwipeState();
                 releaseRequestSwipeMoveListener();
             }
         }
@@ -113412,12 +113415,17 @@ C.14.043 C.15.000
         function getRequestSwipePoint(event = null) {
             if (!event) return null;
             if (event.touches && event.touches.length === 1) return event.touches[0];
+            if (event.changedTouches && event.changedTouches.length === 1) return event.changedTouches[0];
             if (typeof event.clientX === 'number' && typeof event.clientY === 'number') return event;
             return null;
         }
 
         function isRequestSwipePointerActive() {
             return requestSwipeState && requestSwipeState.pointerId !== null && requestSwipeState.pointerId !== undefined;
+        }
+
+        function shouldIgnoreDuplicateRequestTouchEvent() {
+            return Date.now() < requestSwipePointerTouchGuardUntil;
         }
 
         function findRequestInventoryRowByUniqueId(uid = '') {
@@ -113433,6 +113441,12 @@ C.14.043 C.15.000
             const point = getRequestSwipePoint(event);
             if (!surface || !point) return;
             closeAllRequestSwipes(row);
+            const pointerType = String(event && event.pointerType || '').toLowerCase();
+            const isPointerEvent = !!(event && event.pointerId !== undefined);
+            if (isPointerEvent && pointerType === 'touch') requestSwipePointerTouchGuardUntil = Date.now() + 650;
+            if (isPointerEvent && typeof row.setPointerCapture === 'function') {
+                try { row.setPointerCapture(event.pointerId); } catch (error) {}
+            }
             requestSwipeState = {
                 row,
                 surface,
@@ -113441,7 +113455,8 @@ C.14.043 C.15.000
                 deltaX: row.classList.contains('swipe-open') ? -96 : 0,
                 startOffset: row.classList.contains('swipe-open') ? -96 : 0,
                 dragging: true,
-                pointerId: event && event.pointerId !== undefined ? event.pointerId : null
+                pointerId: isPointerEvent ? event.pointerId : null,
+                inputType: isPointerEvent ? `pointer-${pointerType || 'unknown'}` : 'touch'
             };
             ensureRequestSwipeMoveListener();
         }
@@ -113469,7 +113484,9 @@ C.14.043 C.15.000
         }
 
         function handleRequestSwipeEnd(event) {
-            if (isRequestSwipePointerActive() && event && event.pointerId !== undefined && event.pointerId !== requestSwipeState.pointerId) return;
+            if (isRequestSwipePointerActive()) {
+                if (!event || event.pointerId === undefined || event.pointerId !== requestSwipeState.pointerId) return;
+            }
             if (!requestSwipeState.row) {
                 releaseRequestSwipeMoveListener();
                 return;
@@ -113484,6 +113501,11 @@ C.14.043 C.15.000
             }
             requestSwipeState.dragging = false;
             releaseRequestSwipeMoveListener();
+        }
+
+        function handleRequestSwipeTouchEnd(event) {
+            if (isRequestSwipePointerActive()) return;
+            handleRequestSwipeEnd(event);
         }
 
         function resolveRequestSwipeUidFromRow(row = null) {
@@ -113546,14 +113568,17 @@ C.14.043 C.15.000
             if (!container.__requestSwipeDelegated) {
                 container.__requestSwipeDelegated = true;
                 container.addEventListener('touchstart', (event) => {
+                    if (shouldIgnoreDuplicateRequestTouchEvent()) return;
                     const row = event.target.closest('.request-swipe-row');
                     if (row) handleRequestSwipeStart(event, row);
                 }, { passive: true });
-                container.addEventListener('touchend', handleRequestSwipeEnd, { passive: true });
-                container.addEventListener('touchcancel', handleRequestSwipeEnd, { passive: true });
+                container.addEventListener('touchend', handleRequestSwipeTouchEnd, { passive: true });
+                container.addEventListener('touchcancel', handleRequestSwipeTouchEnd, { passive: true });
                 container.addEventListener('pointerdown', (event) => {
-                    if (!event || (event.pointerType !== 'mouse' && event.pointerType !== 'pen')) return;
-                    if (event.button !== 0) return;
+                    if (!event) return;
+                    const pointerType = String(event.pointerType || '').toLowerCase();
+                    if (pointerType && pointerType !== 'mouse' && pointerType !== 'pen' && pointerType !== 'touch') return;
+                    if (pointerType !== 'touch' && event.button !== 0) return;
                     const row = event.target.closest('.request-swipe-row');
                     if (row) handleRequestSwipeStart(event, row);
                 }, { passive: true });
@@ -113584,12 +113609,32 @@ C.14.043 C.15.000
                 row.classList.add('request-swipe-row');
                 const isSeasonSwipeRow = row.classList.contains('app-smart-card--season');
                 if (isSeasonSwipeRow) row.classList.add('request-swipe-row--season');
-                ['ontouchstart', 'ontouchmove', 'ontouchend', 'ontouchcancel'].forEach((attr) => row.removeAttribute(attr));
+                [
+                    'onpointerdown',
+                    'onpointermove',
+                    'onpointercancel',
+                    'onpointerleave',
+                    'onpointerup',
+                    'ontouchstart',
+                    'ontouchmove',
+                    'ontouchend',
+                    'ontouchcancel',
+                    'onclick',
+                    'onkeydown'
+                ].forEach((attr) => row.removeAttribute(attr));
 
                 const surface = document.createElement('div');
                 surface.className = 'request-swipe-surface';
                 if (isSeasonSwipeRow) surface.classList.add('request-swipe-surface--season');
+                surface.setAttribute('role', 'button');
+                surface.setAttribute('tabindex', '0');
+                surface.setAttribute('aria-label', row.getAttribute('aria-label') || 'Open request row');
                 surface.addEventListener('click', (event) => openRequestSwipeRowDetail(row, event));
+                surface.addEventListener('keydown', (event) => {
+                    const key = String(event && event.key || '').trim();
+                    if (key !== 'Enter' && key !== ' ') return true;
+                    return openRequestSwipeRowDetail(row, event);
+                });
                 while (row.firstChild) {
                     surface.appendChild(row.firstChild);
                 }
