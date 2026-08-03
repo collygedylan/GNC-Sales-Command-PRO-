@@ -353,8 +353,8 @@ function hasTableReadAccess(role = "", table = "", username = "") {
   const access = getRoleAccessState(role);
   if (access.isAdmin) return true;
   if (COMMON_AUTH_READ_TABLES.has(table)) return true;
-  if (table === "ph_app_users") return access.isQc || access.isQcSupervisor || access.isAdmin;
-  if (access.isRep) {
+  if (table === "ph_app_users") return access.isQc || access.isQcSupervisor || access.isAdmin || access.isSalesAssistant;
+  if (access.isRepLike) {
     return new Set(["ph_master_inventory", "ph_active_request", "ph_active_request_live_rows", "ph_customer_consignee_sales_reps", "ph_request_history", "ph_sales_credit_requests", "ph_reserves", "ph_soc_master", "ph_sales_office", "ph_cav_import", "ph_av_notes", "ph_warehouse_assigned_items", "ph_dock_team_status", "ph_dock_item_status"]).has(table);
   }
   if (access.isQcSupervisor) {
@@ -374,7 +374,7 @@ function hasTableWriteAccess(role = "", table = "", method = "POST", body: unkno
   if (COMMON_AUTH_WRITE_TABLES.has(table)) return ["POST", "PATCH", "DELETE"].includes(method);
   if (table === "ph_push_subscriptions") return method === "POST";
   if (table === "ph_labor_hours") return method === "POST";
-  if (access.isRep) {
+  if (access.isRepLike) {
     return REP_WRITE_TABLES.has(table) && ["POST", "PATCH", "DELETE"].includes(method);
   }
   if (access.isQcSupervisor) {
@@ -622,7 +622,15 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
   }
 
   if (table === "ph_app_users" && method === "GET") {
+    const access = getRoleAccessState(session.role);
     query = withSelect(query, "username,role");
+    if (access.isSalesAssistant && !access.isAdmin) {
+      const params = new URLSearchParams(query);
+      params.set("role", "in.(REP,Rep,rep)");
+      params.set("order", "username.asc");
+      params.set("limit", "1000");
+      query = params.toString();
+    }
   }
 
   if (table === AV_OPTION_EVAL_REQUESTS_TABLE) {
@@ -647,7 +655,7 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readAppSessi
 
   const form = await req.formData();
   const prefix = String(form.get("prefix") || "default").trim();
-  if (access.isRep && !REP_ALLOWED_PHOTO_PREFIXES.has(prefix)) {
+  if (access.isRepLike && !REP_ALLOWED_PHOTO_PREFIXES.has(prefix)) {
     return errorResponse("REP users can only upload request or credit photos.", 403);
   }
   const file = form.get("file");

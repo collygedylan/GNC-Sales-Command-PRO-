@@ -13148,17 +13148,17 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function shouldHideU3InventoryRowForRep(row = null, access = getRoleAccessState()) {
-            return !!(row && access && access.isRep && !access.isAdmin && getRepRestrictedInventorySeasonValue(row) === 'U3');
+            return !!(row && access && access.isRepLike && !access.isAdmin && getRepRestrictedInventorySeasonValue(row) === 'U3');
         }
 
         function applyRepU3VisibilityScope(items = [], access = getRoleAccessState()) {
             const rows = Array.isArray(items) ? items : [];
-            if (!(access && access.isRep && !access.isAdmin)) return rows;
+            if (!(access && access.isRepLike && !access.isAdmin)) return rows;
             return rows.filter((row) => !shouldHideU3InventoryRowForRep(row, access));
         }
 
         function getRepU3VisibilityScopeKey(access = getRoleAccessState()) {
-            return access && access.isRep && !access.isAdmin ? 'rep-no-u3' : 'all-seasons';
+            return access && access.isRepLike && !access.isAdmin ? 'rep-no-u3' : 'all-seasons';
         }
 
         const FLYER_SHADOW_FIELD_MAP = Object.freeze({
@@ -24450,6 +24450,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     };
                 })
         );
+        let requestModalRepUserOptions = [];
+        let requestModalRepUserOptionsLoading = false;
+        let requestModalRepUserOptionsReady = false;
+        let requestModalRepUserOptionsError = '';
+        let requestModalRepUserOptionsLoadPromise = null;
         let requestModalCustomerOptionsCacheKey = '';
         let requestModalCustomerOptionsByRepCache = new Map();
         let requestModalCustomerOptionsLoading = false;
@@ -27251,6 +27256,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 AV_NOTE: String(firstNonEmptyValue(source.AV_NOTE, source.av_note, '') || '').trim(),
                 REQ_PHOTO_LINK: photoLink,
                 REQ_PHOTO_NAME: photoName,
+                REQUEST_CREATED_BY_USERNAME: String(firstNonEmptyValue(source.REQUEST_CREATED_BY_USERNAME, source.request_created_by_username, '') || '').trim(),
+                REQUEST_CREATED_BY_DISPLAY: String(firstNonEmptyValue(source.REQUEST_CREATED_BY_DISPLAY, source.request_created_by_display, '') || '').trim(),
+                REQUEST_CREATED_BY_EMAIL: String(firstNonEmptyValue(source.REQUEST_CREATED_BY_EMAIL, source.request_created_by_email, '') || '').trim(),
+                REQUEST_SELECTED_REP_USERNAME: String(firstNonEmptyValue(source.REQUEST_SELECTED_REP_USERNAME, source.request_selected_rep_username, '') || '').trim(),
+                REQUEST_SELECTED_REP_DISPLAY: String(firstNonEmptyValue(source.REQUEST_SELECTED_REP_DISPLAY, source.request_selected_rep_display, '') || '').trim(),
+                REQUEST_SELECTED_REP_EMAIL: String(firstNonEmptyValue(source.REQUEST_SELECTED_REP_EMAIL, source.request_selected_rep_email, '') || '').trim(),
                 COMPLETED_BY_USERNAME: String(firstNonEmptyValue(source.COMPLETED_BY_USERNAME, source.completed_by_username, source.REQUEST_COMPLETED_BY_USERNAME, '') || '').trim(),
                 COMPLETED_BY_DISPLAY: String(firstNonEmptyValue(source.COMPLETED_BY_DISPLAY, source.completed_by_display, source.COMPLETED_BY, source.completed_by, source.REQUEST_COMPLETED_BY_DISPLAY, '') || '').trim(),
                 COMPLETED_BY_EMAIL: String(firstNonEmptyValue(source.COMPLETED_BY_EMAIL, source.completed_by_email, source.REQUEST_COMPLETED_BY_EMAIL, '') || '').trim(),
@@ -27309,6 +27320,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 season: snapshot.SEASON || null,
                 photo_link: snapshot.REQ_PHOTO_LINK || null,
                 photo_name: snapshot.REQ_PHOTO_NAME || null,
+                request_created_by_username: snapshot.REQUEST_CREATED_BY_USERNAME || null,
+                request_created_by_display: snapshot.REQUEST_CREATED_BY_DISPLAY || null,
+                request_created_by_email: snapshot.REQUEST_CREATED_BY_EMAIL || null,
+                request_selected_rep_username: snapshot.REQUEST_SELECTED_REP_USERNAME || null,
+                request_selected_rep_display: snapshot.REQUEST_SELECTED_REP_DISPLAY || null,
+                request_selected_rep_email: snapshot.REQUEST_SELECTED_REP_EMAIL || null,
                 snapshot,
                 last_event: String(eventName || 'snapshot').trim() || 'snapshot',
                 created_by_username: currentUser || null,
@@ -27359,6 +27376,18 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             item.AV_NOTE = String(firstNonEmptyValue(rawRow.AV_NOTE, rawRow.av_note, snapshot.AV_NOTE, '') || '').trim();
             item.REQ_PHOTO_LINK = String(firstNonEmptyValue(rawRow.PHOTO_LINK, rawRow.photo_link, rawRow.REQ_PHOTO_LINK, rawRow.req_photo_link, snapshot.REQ_PHOTO_LINK, '') || '').trim();
             item.REQ_PHOTO_NAME = String(firstNonEmptyValue(rawRow.PHOTO_NAME, rawRow.photo_name, rawRow.REQ_PHOTO_NAME, rawRow.req_photo_name, snapshot.REQ_PHOTO_NAME, '') || '').trim();
+            item.REQUEST_CREATED_BY_USERNAME = String(firstNonEmptyValue(rawRow.REQUEST_CREATED_BY_USERNAME, rawRow.request_created_by_username, snapshot.REQUEST_CREATED_BY_USERNAME, snapshot.request_created_by_username, '') || '').trim();
+            item.request_created_by_username = item.REQUEST_CREATED_BY_USERNAME;
+            item.REQUEST_CREATED_BY_DISPLAY = String(firstNonEmptyValue(rawRow.REQUEST_CREATED_BY_DISPLAY, rawRow.request_created_by_display, snapshot.REQUEST_CREATED_BY_DISPLAY, snapshot.request_created_by_display, '') || '').trim();
+            item.request_created_by_display = item.REQUEST_CREATED_BY_DISPLAY;
+            item.REQUEST_CREATED_BY_EMAIL = String(firstNonEmptyValue(rawRow.REQUEST_CREATED_BY_EMAIL, rawRow.request_created_by_email, snapshot.REQUEST_CREATED_BY_EMAIL, snapshot.request_created_by_email, '') || '').trim();
+            item.request_created_by_email = item.REQUEST_CREATED_BY_EMAIL;
+            item.REQUEST_SELECTED_REP_USERNAME = String(firstNonEmptyValue(rawRow.REQUEST_SELECTED_REP_USERNAME, rawRow.request_selected_rep_username, snapshot.REQUEST_SELECTED_REP_USERNAME, snapshot.request_selected_rep_username, '') || '').trim();
+            item.request_selected_rep_username = item.REQUEST_SELECTED_REP_USERNAME;
+            item.REQUEST_SELECTED_REP_DISPLAY = String(firstNonEmptyValue(rawRow.REQUEST_SELECTED_REP_DISPLAY, rawRow.request_selected_rep_display, snapshot.REQUEST_SELECTED_REP_DISPLAY, snapshot.request_selected_rep_display, '') || '').trim();
+            item.request_selected_rep_display = item.REQUEST_SELECTED_REP_DISPLAY;
+            item.REQUEST_SELECTED_REP_EMAIL = String(firstNonEmptyValue(rawRow.REQUEST_SELECTED_REP_EMAIL, rawRow.request_selected_rep_email, snapshot.REQUEST_SELECTED_REP_EMAIL, snapshot.request_selected_rep_email, '') || '').trim();
+            item.request_selected_rep_email = item.REQUEST_SELECTED_REP_EMAIL;
             item.COMPLETED_BY_USERNAME = String(firstNonEmptyValue(rawRow.COMPLETED_BY_USERNAME, rawRow.completed_by_username, snapshot.COMPLETED_BY_USERNAME, snapshot.completed_by_username, '') || '').trim();
             item.completed_by_username = item.COMPLETED_BY_USERNAME;
             item.COMPLETED_BY_DISPLAY = String(firstNonEmptyValue(rawRow.COMPLETED_BY_DISPLAY, rawRow.completed_by_display, rawRow.COMPLETED_BY, rawRow.completed_by, snapshot.COMPLETED_BY_DISPLAY, snapshot.completed_by_display, '') || '').trim();
@@ -33594,7 +33623,7 @@ let avTopControlsRenderToken = 0;
 
         function canViewDriveCustomerConsigneeRows() {
             const access = getRoleAccessState();
-            return canUseCustomerConsigneeOutreach() || !!(access && access.isRep);
+            return canUseCustomerConsigneeOutreach() || !!(access && access.isRepLike);
         }
 
         function canViewDashboardSyncStatus() {
@@ -33635,7 +33664,7 @@ let avTopControlsRenderToken = 0;
             const safeSourceView = String(sourceView || '').trim().toLowerCase();
             if (safeSourceView !== 'drive') return true;
             const access = getRoleAccessState(roleOverride, userOverride);
-            if (!access || access.isAdmin || !access.isRep) return true;
+            if (!access || access.isAdmin || !access.isRepLike) return true;
             if (isAlwaysDriveCardOptionsUser(userOverride, displayOverride)) return true;
             return isWarehouseAssignedDriveCardForCurrentUser(item, userOverride, displayOverride);
         }
@@ -33654,7 +33683,7 @@ let avTopControlsRenderToken = 0;
         }
 
         function isRepReadOnlyUser() {
-            return !!getRoleAccessState().isRep;
+            return !!getRoleAccessState().isRepLike;
         }
 
         function canRepEditDetailPrefix(prefix = '') {
@@ -41395,11 +41424,100 @@ function toggleDriveQuickRequestItem(domId) {
             if (custInput) custInput.placeholder = tempRequestCustomerSelectedCustomerKey ? 'Search consignee...' : 'Search customer...';
         }
 
+        function buildRequestModalRepOption(label = '', meta = null) {
+            const safeLabel = String(label || '').trim();
+            if (!safeLabel) return null;
+            const token = normalizeRepMatchToken(safeLabel);
+            return {
+                label: safeLabel,
+                token,
+                collapsedToken: token.replace(/\s+/g, ''),
+                ...(meta && typeof meta === 'object' ? meta : {})
+            };
+        }
+
+        function isRequestRepRoleValue(role = '') {
+            return normalizeRoleAccessToken(role) === 'REP';
+        }
+
+        function normalizeRequestRepUserOption(row = null) {
+            if (!row || typeof row !== 'object') return null;
+            if (!isRequestRepRoleValue(firstNonEmptyValue(row.role, row.ROLE, ''))) return null;
+            const username = normalizePushUsername(firstNonEmptyValue(row.username, row.USERNAME, ''));
+            if (!username) return null;
+            const displayName = String(firstNonEmptyValue(row.display_name, row.displayName, row.name, '') || '').trim();
+            const label = resolveStaticRequestRepLabel(username) || normalizeRepDisplayOrder(displayName || username.replace(/_/g, ' '));
+            return buildRequestModalRepOption(label, {
+                username,
+                role: String(firstNonEmptyValue(row.role, row.ROLE, 'REP') || 'REP').trim()
+            });
+        }
+
+        function resolveStaticRequestRepLabel(value = '') {
+            const rawValue = String(value || '').trim();
+            if (!rawValue) return '';
+            const lookupTokens = getRepNameLookupTokens(rawValue.replace(/_/g, ' '));
+            const matchedOption = REQUEST_MODAL_REP_OPTIONS.find((option) => lookupTokens.has(option.token) || lookupTokens.has(option.collapsedToken));
+            return matchedOption ? matchedOption.label : '';
+        }
+
+        function mergeRequestModalRepOptions() {
+            const optionMap = new Map();
+            Array.from(arguments).forEach((options) => {
+                (Array.isArray(options) ? options : []).forEach((option) => {
+                    if (!option || !option.label) return;
+                    const key = option.token || normalizeRepMatchToken(option.label);
+                    const collapsedKey = option.collapsedToken || key.replace(/\s+/g, '');
+                    const mapKey = collapsedKey || key;
+                    if (mapKey && !optionMap.has(mapKey)) optionMap.set(mapKey, buildRequestModalRepOption(option.label, option));
+                });
+            });
+            return Array.from(optionMap.values()).filter(Boolean).sort((a, b) => String(a.label || '').localeCompare(String(b.label || '')));
+        }
+
+        function getAllRequestModalRepOptions() {
+            return mergeRequestModalRepOptions(REQUEST_MODAL_REP_OPTIONS, requestModalRepUserOptions);
+        }
+
+        function isCsrRequestAssistantUser() {
+            const access = getRoleAccessState();
+            return !!(access && access.isSalesAssistant && !access.isAdmin);
+        }
+
+        async function ensureRequestRepUserOptionsReady(force = false) {
+            if (!isCsrRequestAssistantUser() && !force) return requestModalRepUserOptions;
+            if (!force && requestModalRepUserOptionsReady && Array.isArray(requestModalRepUserOptions) && requestModalRepUserOptions.length) {
+                return requestModalRepUserOptions;
+            }
+            if (!force && requestModalRepUserOptionsLoadPromise) return requestModalRepUserOptionsLoadPromise;
+            requestModalRepUserOptionsLoading = true;
+            requestModalRepUserOptionsError = '';
+            requestModalRepUserOptionsLoadPromise = supabaseFetch('ph_app_users', 'GET', null, 'select=username,role&role=in.(REP,Rep,rep)&order=username.asc&limit=1000')
+                .then((rows) => {
+                    const options = mergeRequestModalRepOptions((Array.isArray(rows) ? rows : []).map(normalizeRequestRepUserOption).filter(Boolean));
+                    requestModalRepUserOptions = options;
+                    requestModalRepUserOptionsReady = true;
+                    requestModalRepUserOptionsError = options.length ? '' : 'No active REP users were found.';
+                    return options;
+                })
+                .catch((error) => {
+                    requestModalRepUserOptions = [];
+                    requestModalRepUserOptionsReady = false;
+                    requestModalRepUserOptionsError = 'Could not load active REP users. CSR request submit is blocked until the list loads.';
+                    throw error;
+                })
+                .finally(() => {
+                    requestModalRepUserOptionsLoading = false;
+                    requestModalRepUserOptionsLoadPromise = null;
+                });
+            return requestModalRepUserOptionsLoadPromise;
+        }
+
         function resolveCanonicalRequestRepName(repName = '') {
             const rawValue = String(repName || '').trim();
             if (!rawValue) return '';
             const lookupTokens = getRepNameLookupTokens(rawValue);
-            const matchedOption = REQUEST_MODAL_REP_OPTIONS.find((option) => lookupTokens.has(option.token) || lookupTokens.has(option.collapsedToken));
+            const matchedOption = getAllRequestModalRepOptions().find((option) => lookupTokens.has(option.token) || lookupTokens.has(option.collapsedToken));
             return matchedOption ? matchedOption.label : normalizeRepDisplayOrder(rawValue);
         }
 
@@ -41408,7 +41526,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!canonical) return false;
             const token = normalizeRepMatchToken(canonical);
             const collapsedToken = token.replace(/\s+/g, '');
-            return REQUEST_MODAL_REP_OPTIONS.some((option) => option.token === token || option.collapsedToken === collapsedToken);
+            return getAllRequestModalRepOptions().some((option) => option.token === token || option.collapsedToken === collapsedToken);
         }
 
         function getRequestModalCustomerOptionsCacheSignature() {
@@ -41719,6 +41837,7 @@ function toggleDriveQuickRequestItem(domId) {
             requestModalCustomerOptionsError = '';
             buildRequestModalCustomerOptionsCache(true);
             const customerOptionsPromise = ensureRequestModalCustomerOptionsReady();
+            const repOptionsPromise = isCsrRequestAssistantUser() ? ensureRequestRepUserOptionsReady() : null;
             if (repPickerLocked) {
                 renderExistingRequestFolderPicker();
                 if (customerOptionsPromise && typeof customerOptionsPromise.then === 'function') {
@@ -41726,6 +41845,9 @@ function toggleDriveQuickRequestItem(domId) {
                 }
             } else {
                 scheduleRequestModalSearchRender('rep', '', () => filterRepList(''), { force: true, skipDebounce: true });
+                if (repOptionsPromise && typeof repOptionsPromise.then === 'function') {
+                    repOptionsPromise.then(() => scheduleRequestModalSearchRender('rep', '', () => filterRepList(''), { force: true, skipDebounce: true })).catch(() => scheduleRequestModalSearchRender('rep', '', () => filterRepList(''), { force: true, skipDebounce: true }));
+                }
             }
         }
 
@@ -48703,7 +48825,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (!item) return false;
             const normalizedStage = stage === 'inspector' ? 'inspector' : 'checker';
             const access = getRoleAccessState();
-            if (access.isRep) return false;
+            if (access.isRepLike) return false;
             const progress = getDockItemProgress(item.UNIQUE_ID);
             const queueStage = getDockRowQueueStage(item);
             if (normalizedStage === 'checker') {
@@ -48845,6 +48967,8 @@ function toggleDriveQuickRequestItem(domId) {
             const isQcSupervisor = normalizedRole.includes('QCSUPERVISOR') || normalizedRole.includes('QCSUP') || roleDisplay.includes('QC SUPERVISOR');
             const isQc = !isQcSupervisor && (normalizedRole === 'QC' || normalizedRole.startsWith('QC'));
             const isCsr = normalizedRole === 'CSR' || normalizedRole.includes('CSR');
+            const isSalesAssistant = isCsr;
+            const isRepLike = isRep || isSalesRole || isSalesAssistant;
             const isForeman = compactRole === 'FOREMAN' || compactRole.includes('FOREMAN');
             const isGrower = compactRole === 'GROWER' || compactRole.includes('GROWER');
             const isTakeBackRole = compactRole === 'TAKEBACK' || compactRole === 'TAKEBACKUSER' || compactRole.includes('TAKEBACK');
@@ -48853,9 +48977,9 @@ function toggleDriveQuickRequestItem(domId) {
             const isPrivilegedManager = isPrivilegedManagerUser(userOverride);
             const isEvalAdminOverride = isEval && isEvalAdminOverrideUser(userOverride);
             const isRequestRepScopedUser = canUseRequestRepScopedAccess();
-            const isKnownLimitedRole = isRep || isSalesRole || isRequestRepScopedUser || isQcSupervisor || isQc || isForeman || isGrower || isTakeBackRole || isEval || isDivision;
+            const isKnownLimitedRole = isRepLike || isRequestRepScopedUser || isQcSupervisor || isQc || isForeman || isGrower || isTakeBackRole || isEval || isDivision;
             const hasRoleAdminAccess = normalizedRole.includes('ADMIN') || normalizedRole.includes('MANAGER');
-            const isAdmin = isPrivilegedManager || isEvalAdminOverride || (hasRoleAdminAccess && (!isEval || isEvalAdminOverride)) || isCsr || (!isKnownLimitedRole);
+            const isAdmin = isPrivilegedManager || isEvalAdminOverride || (hasRoleAdminAccess && (!isEval || isEvalAdminOverride)) || (!isKnownLimitedRole);
             const isTakeBackOnly = isTakeBackRole && !isAdmin;
             const allowedViews = new Set(['home']);
             if (isTakeBackOnly) {
@@ -48877,7 +49001,7 @@ function toggleDriveQuickRequestItem(domId) {
                 allowedViews.add('communication');
                 allowedViews.add('department-calendar');
                 allowedViews.add('chat');
-                if (!isRep && !isSalesRole) {
+                if (!isRepLike) {
                     allowedViews.add('take-back');
                     allowedViews.add('production');
                     allowedViews.add('production-workflow');
@@ -48887,7 +49011,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (isAdmin) {
                 ROLE_ACCESS_VIEWS.forEach(viewId => allowedViews.add(viewId));
-            } else if (isRep || isSalesRole) {
+            } else if (isRepLike) {
                 ['drive', 'sales', 'av', 'docks', 'request', 'tasks', 'weather-hold', 'communication', 'department-calendar', 'chat', 'sales-office', 'office'].forEach(viewId => allowedViews.add(viewId));
             } else if (isQcSupervisor) {
                 ['qc', 'drive', 'docks'].forEach(viewId => allowedViews.add(viewId));
@@ -48904,7 +49028,7 @@ function toggleDriveQuickRequestItem(domId) {
                 allowedViews.add('shear-list');
             }
             if (isStrictDylanCollygeUser()) allowedViews.add('disease-pest');
-            return { isAdmin, isRep, isSalesRole, isQcSupervisor, isQc, isCsr, isForeman, isGrower, isEval, isDivision, isPrivilegedManager, isEvalAdminOverride, isTakeBackOnly, isRequestRepScopedUser, allowedViews };
+            return { isAdmin, isRep, isSalesRole, isSalesAssistant, isRepLike, isQcSupervisor, isQc, isCsr, isForeman, isGrower, isEval, isDivision, isPrivilegedManager, isEvalAdminOverride, isTakeBackOnly, isRequestRepScopedUser, allowedViews };
         }
 
         function canAccessView(viewId) {
@@ -49083,7 +49207,7 @@ function toggleDriveQuickRequestItem(domId) {
             document.querySelectorAll('.role-access').forEach(el => {
                 const isAllowed =
                     (access.isAdmin && el.classList.contains('role-admin')) ||
-                    (access.isRep && el.classList.contains('role-rep')) ||
+                    (access.isRepLike && el.classList.contains('role-rep')) ||
                     (access.isRequestRepScopedUser && el.classList.contains('role-request-enabled')) ||
                     (access.isGrower && el.classList.contains('role-grower')) ||
                     (access.isQcSupervisor && el.classList.contains('role-qc-supervisor')) ||
@@ -59264,7 +59388,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function shouldUseRepSalesHomeHub() {
             const access = getRoleAccessState();
-            return !!(access && access.isRep && !access.isAdmin);
+            return !!(access && access.isRepLike && !access.isAdmin);
         }
 
         function renderSalesHubCardMarkup(card = {}) {
@@ -59455,7 +59579,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function canUseNotOnInventoryModule() {
             const access = getRoleAccessState();
-            if (access && access.isRep && !access.isAdmin) return false;
+            if (access && access.isRepLike && !access.isAdmin) return false;
             return !!(canAccessView('sales-inventory') || canAccessView('drive') || (access && (access.isAdmin || access.isEval)));
         }
 
@@ -66682,7 +66806,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function shouldUseRepAvOpenDataset() {
             const access = getRoleAccessState();
-            return !!(access && access.isRep && !access.isAdmin);
+            return !!(access && access.isRepLike && !access.isAdmin);
         }
 
         function shouldPrepareAvRepCustomerFilterData() {
@@ -67595,6 +67719,81 @@ function toggleDriveQuickRequestItem(domId) {
             return String(firstNonEmptyValue(source && source.messageId, source && source.message_id, source && source.messageID, source && source.gmailMessageId, '')).trim();
         }
 
+        const REQUEST_CREATOR_AUDIT_FIELDS = Object.freeze([
+            'request_created_by_username',
+            'request_created_by_display',
+            'request_created_by_email',
+            'request_selected_rep_username',
+            'request_selected_rep_display',
+            'request_selected_rep_email'
+        ]);
+
+        function buildRequestCreatorAuditInfo(selectedRepName = '') {
+            const creatorUsername = normalizePushUsername(firstNonEmptyValue(currentUser, currentUserDisplay, ''));
+            const creatorDisplay = String(firstNonEmptyValue(currentUserDisplay, currentUser, creatorUsername, '') || '').trim();
+            const creatorEmail = normalizeRequestEmailAddress(resolveRequestRecipientEmail(firstNonEmptyValue(currentUser, currentUserDisplay, creatorUsername, '')));
+            const selectedRepDisplay = resolveCanonicalRequestRepName(selectedRepName) || String(selectedRepName || '').trim();
+            const selectedRepUsername = normalizePushUsername(selectedRepDisplay);
+            const selectedRepEmail = normalizeRequestEmailAddress(resolveRequestRecipientEmail(selectedRepDisplay));
+            return {
+                creatorUsername,
+                creatorDisplay,
+                creatorEmail,
+                selectedRepUsername,
+                selectedRepDisplay,
+                selectedRepEmail,
+                isSalesAssistant: isCsrRequestAssistantUser()
+            };
+        }
+
+        function getRequestCreatorExtraRecipientEmails(auditInfo = null) {
+            if (!auditInfo || !auditInfo.isSalesAssistant) return [];
+            const creatorEmail = normalizeRequestEmailAddress(auditInfo.creatorEmail);
+            const repEmail = normalizeRequestEmailAddress(auditInfo.selectedRepEmail);
+            return creatorEmail && creatorEmail !== repEmail ? [creatorEmail] : [];
+        }
+
+        function applyRequestCreatorAuditFields(payload = null, auditInfo = null) {
+            if (!payload || typeof payload !== 'object' || !auditInfo) return payload;
+            payload.request_created_by_username = auditInfo.creatorUsername || null;
+            payload.request_created_by_display = auditInfo.creatorDisplay || null;
+            payload.request_created_by_email = auditInfo.creatorEmail || null;
+            payload.request_selected_rep_username = auditInfo.selectedRepUsername || null;
+            payload.request_selected_rep_display = auditInfo.selectedRepDisplay || null;
+            payload.request_selected_rep_email = auditInfo.selectedRepEmail || null;
+            return payload;
+        }
+
+        function applyRequestCreatorAuditAliases(row = null, auditInfo = null) {
+            if (!row || typeof row !== 'object' || !auditInfo) return row;
+            row.REQUEST_CREATED_BY_USERNAME = auditInfo.creatorUsername || '';
+            row.request_created_by_username = auditInfo.creatorUsername || '';
+            row.REQUEST_CREATED_BY_DISPLAY = auditInfo.creatorDisplay || '';
+            row.request_created_by_display = auditInfo.creatorDisplay || '';
+            row.REQUEST_CREATED_BY_EMAIL = auditInfo.creatorEmail || '';
+            row.request_created_by_email = auditInfo.creatorEmail || '';
+            row.REQUEST_SELECTED_REP_USERNAME = auditInfo.selectedRepUsername || '';
+            row.request_selected_rep_username = auditInfo.selectedRepUsername || '';
+            row.REQUEST_SELECTED_REP_DISPLAY = auditInfo.selectedRepDisplay || '';
+            row.request_selected_rep_display = auditInfo.selectedRepDisplay || '';
+            row.REQUEST_SELECTED_REP_EMAIL = auditInfo.selectedRepEmail || '';
+            row.request_selected_rep_email = auditInfo.selectedRepEmail || '';
+            return row;
+        }
+
+        function isRequestAuditColumnMissingError(error = null) {
+            const message = String(error && error.message ? error.message : error || '').toLowerCase();
+            return REQUEST_CREATOR_AUDIT_FIELDS.some((field) => message.includes(field)) && (message.includes('column') || message.includes('schema cache') || message.includes('could not find') || message.includes('pgrst204') || message.includes('42703'));
+        }
+
+        function stripRequestAuditFields(payload = null) {
+            if (!payload || typeof payload !== 'object') return payload;
+            REQUEST_CREATOR_AUDIT_FIELDS.forEach((field) => {
+                delete payload[field];
+            });
+            return payload;
+        }
+
         function buildRequestEmailRecipients(repName = '', details = null) {
             const safeDetails = details || {};
             const repEmail = normalizeRequestEmailAddress(firstNonEmptyValue(safeDetails.repEmail, resolveRequestRecipientEmail(repName), ''));
@@ -67604,6 +67803,9 @@ function toggleDriveQuickRequestItem(domId) {
                 safeDetails.emailChainRecipientEmails,
                 safeDetails.extraRecipientEmails,
                 safeDetails.additionalRecipientEmails,
+                safeDetails.requestCreatedByEmail,
+                safeDetails.requestCreatorEmail,
+                safeDetails.creatorEmail,
                 emailChainRecipients.map((rep) => firstNonEmptyValue(rep && rep.email, rep && rep.address, ''))
             ]);
             const recipientEmails = dedupeRequestEmailRecipients([...REQUEST_EMAIL_INTERNAL_RECIPIENTS, repEmail, ...linkedRepEmails, ...extraRecipientEmails]);
@@ -68350,6 +68552,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function getDefaultRequestRepName() {
             const access = getRoleAccessState();
+            if (access.isSalesAssistant) return '';
             if (!access.isRep && !access.isRequestRepScopedUser) return '';
             if (canUseGlobalRequestAccess()) return '';
             const rawUser = String(currentUser || currentUserDisplay || '').trim();
@@ -68381,6 +68584,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function getAllowedRequestModalRepOptions() {
+            if (isCsrRequestAssistantUser()) return Array.isArray(requestModalRepUserOptions) ? requestModalRepUserOptions : [];
             if (!isRequestRepPickerLockedForCurrentUser()) return REQUEST_MODAL_REP_OPTIONS;
             const lockedRepName = getLockedRequestRepNameForCurrentUser();
             if (!lockedRepName) return [];
@@ -68400,6 +68604,18 @@ function toggleDriveQuickRequestItem(domId) {
 
         function resolveRequestRepSelectionForCurrentUser(repName = '', options = {}) {
             const requestedRepName = resolveCanonicalRequestRepName(repName);
+            if (isCsrRequestAssistantUser()) {
+                if (!requestModalRepUserOptionsReady || !Array.isArray(requestModalRepUserOptions) || !requestModalRepUserOptions.length) {
+                    if (options && options.showToast) showToast('Rep List Required', requestModalRepUserOptionsError || 'Active REP users are still loading. Try again in a moment.', true);
+                    return '';
+                }
+                const matchedRep = requestModalRepUserOptions.find((option) => requestedRepName && doesRequestRepMatchValue(option.label, requestedRepName));
+                if (!matchedRep) {
+                    if (options && options.showToast) showToast('Select REP', 'CSR users must choose an active REP from the list.', true);
+                    return '';
+                }
+                return matchedRep.label;
+            }
             if (!isRequestRepPickerLockedForCurrentUser()) return requestedRepName;
             const lockedRepName = getLockedRequestRepNameForCurrentUser();
             if (!lockedRepName) return '';
@@ -69266,7 +69482,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
         function isAdminAvReserveDetailTabsEnabled() {
             const access = getRoleAccessState();
-            return !!(access.isAdmin || access.isRep);
+            return !!(access.isAdmin || access.isRepLike);
         }
 
         function getSelectedAvReserveLocationRows() {
@@ -70169,7 +70385,7 @@ function toggleDriveQuickRequestItem(domId) {
         function getAvRepCustomerOptions() {
             if (!shouldShowRepAvCustomerFilter()) return [];
             const access = getRoleAccessState();
-            const isRepScoped = !!(access && access.isRep && !access.isAdmin);
+            const isRepScoped = !!(access && access.isRepLike && !access.isAdmin);
             const repName = getCurrentAvRepName();
             if (isRepScoped && !repName) return [];
             const optionMap = new Map();
@@ -78619,7 +78835,7 @@ function toggleDriveQuickRequestItem(domId) {
                     canUseBloomOrders: false
                 };
             }
-            if (access.isRep) {
+            if (access.isRepLike) {
                 return {
                     showCopy: true,
                     showEmail: true,
@@ -78631,25 +78847,6 @@ function toggleDriveQuickRequestItem(domId) {
                     showMove: canUseMoveQueue,
                     showFlyer: canUseFlyerFromBloom,
                     showTakeBack: false,
-                    showEndCap: false,
-                    showShear: false,
-                    showBloomOrder: canUseBloomOrders,
-                    canUseInventoryActions,
-                    canUseBloomOrders
-                };
-            }
-            if (access.isCsr) {
-                return {
-                    showCopy: true,
-                    showEmail: true,
-                    showText: false,
-                    showAssign: false,
-                    showEvalTask: false,
-                    showNcr: false,
-                    showRequest: canUseInventoryActions,
-                    showMove: false,
-                    showFlyer: canUseFlyerFromBloom,
-                    showTakeBack: canUseInventoryActions,
                     showEndCap: false,
                     showShear: false,
                     showBloomOrder: canUseBloomOrders,
@@ -84960,11 +85157,6 @@ function toggleDriveQuickRequestItem(domId) {
                 showToast('Bloom Picker Empty', 'Add one or more rows to Bloom Picker first.', true);
                 return false;
             }
-            const access = getRoleAccessState();
-            if (access.isCsr && action === 'text') {
-                showToast('Restricted', 'CSR users can use Copy or Email from Bloom Picker.', true);
-                return false;
-            }
             const selectionKind = getBloomDirectShareSelectionKind(items);
             if (selectionKind === 'mixed') {
                 showToast('Share One Type', 'Share one row type at a time from Bloom Picker.', true);
@@ -87786,7 +87978,7 @@ function toggleDriveQuickRequestItem(domId) {
         function canAddRequestItemCodeOptions() {
             if (!canEditRowDetails('req-')) return false;
             const access = getRoleAccessState();
-            return !(access && access.isRep && !access.isAdmin);
+            return !(access && access.isRepLike && !access.isAdmin);
         }
 
         function canFetchRequestItemCodeOptionsFromSupabase() {
@@ -90705,7 +90897,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function shouldForceSalesOfficeOrdersOnly(access = getRoleAccessState()) {
-            return !!(access && (access.isRep || (access.isEval && !access.isAdmin)));
+            return !!(access && (access.isRepLike || (access.isEval && !access.isAdmin)));
         }
 
         function openSalesOfficeView() {
@@ -91698,7 +91890,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 updateSalesOfficeExportButton(getSalesOfficeOrderRowsForCurrentFolder(items).length);
                 if (!items.length && !requestItems.length) {
                     const renderKey = buildSalesOfficeRenderKey('orders', disabledCrumbText, []);
-                    applySalesOfficeRenderMarkup(container, crumb, disabledCrumbText, `<div class="p-8 text-center text-gray-400">${access.isRep ? 'No Bloom Picker orders or request folders assigned to you yet.' : 'No Bloom Picker orders or request folders have been submitted yet.'}</div>`, renderKey + '::empty');
+                    applySalesOfficeRenderMarkup(container, crumb, disabledCrumbText, `<div class="p-8 text-center text-gray-400">${access.isRepLike ? 'No Bloom Picker orders or request folders assigned to you yet.' : 'No Bloom Picker orders or request folders have been submitted yet.'}</div>`, renderKey + '::empty');
                     return;
                 }
                 if (salesOfficeOrderDrillLevel === 'rep') {
@@ -91863,6 +92055,41 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return !isAbbeyBurkaRequestItem(item) || canCurrentUserViewAbbeyBurkaRequests();
         }
 
+        function doesCurrentUserMatchRequestCreatorValue(value = '') {
+            const raw = String(value || '').trim();
+            if (!raw) return false;
+            const tokens = getRequestRepScopedIdentityTokens();
+            const normalized = normalizeRepMatchToken(raw);
+            const pushUsername = normalizePushUsername(raw);
+            const emailUser = raw.includes('@') ? normalizePushUsername(raw.split('@')[0] || '') : '';
+            return [
+                raw.toLowerCase(),
+                raw.toLowerCase().replace(/_/g, ' '),
+                normalized,
+                normalized.replace(/\s+/g, ''),
+                pushUsername,
+                emailUser
+            ].filter(Boolean).some((candidate) => tokens.has(candidate));
+        }
+
+        function doesCurrentUserOwnCreatedRequestItem(item = null) {
+            if (!item || typeof item !== 'object') return false;
+            return [
+                item.REQUEST_CREATED_BY_USERNAME,
+                item.request_created_by_username,
+                item.REQUEST_CREATED_BY_DISPLAY,
+                item.request_created_by_display,
+                item.REQUEST_CREATED_BY_EMAIL,
+                item.request_created_by_email,
+                item.CREATED_BY_USERNAME,
+                item.created_by_username,
+                item.CREATED_BY_DISPLAY,
+                item.created_by_display,
+                item.CREATED_BY_EMAIL,
+                item.created_by_email
+            ].some((value) => doesCurrentUserMatchRequestCreatorValue(value));
+        }
+
         function parseRequestCustomerFolderParts(value = '', item = null) {
             const clean = (entry = '') => String(entry || '').trim();
             const rawValue = clean(value || firstNonEmptyValue(item && item.REQ_CUSTOMER, item && item.req_customer, ''));
@@ -91965,6 +92192,17 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         function canCurrentUserSeeRequestRepFolder(repName = '') {
             const roleAccess = getRoleAccessState();
             const hasGlobalRequestAccess = canUseGlobalRequestAccess();
+            const isCsrScopedUser = !!(roleAccess.isSalesAssistant && !roleAccess.isAdmin && !hasGlobalRequestAccess);
+            if (isCsrScopedUser) {
+                const canonical = resolveCanonicalRequestRepName(repName) || String(repName || '').trim();
+                if (!canonical) return false;
+                return (Array.isArray(requestsInventory) ? requestsInventory : []).some((item) => (
+                    item &&
+                    !item.REQ_ARCHIVED &&
+                    doesCurrentUserOwnCreatedRequestItem(item) &&
+                    doesRequestRepMatchValue(getRequestAssignedRep(item), canonical)
+                ));
+            }
             const isRequestScopedUser = !!((roleAccess.isRep || roleAccess.isRequestRepScopedUser) && !hasGlobalRequestAccess);
             return !isRequestScopedUser || doesCurrentUserMatchRepName(repName);
         }
@@ -92890,8 +93128,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const roleAccess = getRoleAccessState();
             const hasGlobalRequestAccess = canUseGlobalRequestAccess();
             const isRestrictedEvalRequestUser = isRestrictedEvalUser(roleAccess);
+            const isCsrScopedRequestUser = !!(roleAccess.isSalesAssistant && !roleAccess.isAdmin && !hasGlobalRequestAccess);
             const isRequestScopedUser = !!((roleAccess.isRep || roleAccess.isRequestRepScopedUser) && !hasGlobalRequestAccess);
-            const requestScopeMode = isRestrictedEvalRequestUser ? 'eval-assigned' : (isRequestScopedUser ? 'rep' : 'all');
+            const requestScopeMode = isRestrictedEvalRequestUser ? 'eval-assigned' : (isCsrScopedRequestUser ? 'csr-created' : (isRequestScopedUser ? 'rep' : 'all'));
             const canUseCache = items === requestsInventory;
             const includeDockSuspendMirrorRows = canUseCache && canCurrentUserViewDockSuspendDcRequests();
             const cacheKey = canUseCache ? [
@@ -92911,6 +93150,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             let nextItems = sourceItems.filter(isRequestVisibleForCurrentUser);
             if (isRestrictedEvalRequestUser) {
                 nextItems = nextItems.filter((item) => canRestrictedEvalUserViewRequestItem(item, currentUser, currentUserDisplay));
+            } else if (isCsrScopedRequestUser) {
+                nextItems = nextItems.filter((item) => doesCurrentUserOwnCreatedRequestItem(item));
             } else if (isRequestScopedUser) {
                 nextItems = nextItems.filter(item => doesCurrentUserMatchRepName(getRequestAssignedRep(item)));
             }
@@ -96998,7 +97239,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const actorKey = getCropRollActorKey();
             if (!actorKey) return false;
             const access = getRoleAccessState();
-            return !(access && (access.isRep || access.isSalesRole));
+            return !(access && (access.isRepLike || access.isSalesRole));
         }
 
         function canManageCropRoll() {
@@ -116966,17 +117207,13 @@ C.14.043 C.15.000
                 showToast('Restricted', 'Foreman users can only send Bloom Picker rows to Take Back or Location Move.', true);
                 return;
             }
-            if (access.isCsr && action === 'text') {
-                showToast('Restricted', 'CSR users can use Copy or Email from Bloom Picker.', true);
-                return;
-            }
-            if (access.isRep && action === 'take_back') {
+            if (access.isRepLike && action === 'take_back') {
                 showToast('Restricted', 'Sales reps do not have Take Back access.', true);
                 return;
             }
             const canUseFlyerFromBloom = canUseDriveQuickRequest() && items.some((item) => item && !isRequestLikeItem(item) && !isDockLikeItem(item) && !isSalesOfficeLikeItem(item));
-            if ((access.isRep || access.isCsr) && (action === 'assign' || action === 'eval_task' || (action === 'ncr' && !canUseNcrFromBloom) || action === 'endcap' || action === 'shear' || (action === 'flyer' && !canUseFlyerFromBloom))) {
-                showToast('Restricted', access.isRep ? 'REP users can only Copy, Email, Text, Request, Location Move, and Submit Order from Bloom Picker.' : 'CSR users can only Copy, Email, Request, Location Move, Submit Order, and Take Back from Bloom Picker.', true);
+            if (access.isRepLike && (action === 'assign' || action === 'eval_task' || (action === 'ncr' && !canUseNcrFromBloom) || action === 'endcap' || action === 'shear' || (action === 'flyer' && !canUseFlyerFromBloom))) {
+                showToast('Restricted', 'REP and CSR users can only Copy, Email, Text, Request, Location Move, and Submit Order from Bloom Picker.', true);
                 return;
             }
             if (action === 'assign' && !access.isAdmin) {
@@ -117361,6 +117598,19 @@ C.14.043 C.15.000
             const customBtn = document.getElementById('custom-rep-btn');
             if (!container || !customBtn) return;
             const repPickerLocked = isRequestRepPickerLockedForCurrentUser();
+            const csrPicker = isCsrRequestAssistantUser();
+            if (csrPicker && !requestModalRepUserOptionsReady) {
+                customBtn.classList.add('hidden');
+                container.innerHTML = `<div class="request-empty-state">${esc(requestModalRepUserOptionsLoading ? 'Loading active REP users...' : (requestModalRepUserOptionsError || 'Active REP users are not loaded yet.'))}</div>`;
+                if (!requestModalRepUserOptionsLoading) {
+                    ensureRequestRepUserOptionsReady().then(() => {
+                        scheduleRequestModalSearchRender('rep', rawVal, () => filterRepList(rawVal), { force: true, skipDebounce: true });
+                    }).catch(() => {
+                        scheduleRequestModalSearchRender('rep', rawVal, () => filterRepList(rawVal), { force: true, skipDebounce: true });
+                    });
+                }
+                return;
+            }
             const allowedRepOptions = getAllowedRequestModalRepOptions();
             let exactMatch = false;
             const filteredOptions = allowedRepOptions.filter((option) => {
@@ -117373,8 +117623,10 @@ C.14.043 C.15.000
             }).join('');
             container.innerHTML = html || (repPickerLocked
                 ? `<div class="request-empty-state">Requests are locked to ${esc(getLockedRequestRepNameForCurrentUser() || 'your login')}.</div>`
-                : `<div class="request-empty-state">No matching sales reps found. Type above to use a custom name.</div>`);
-            if (!repPickerLocked && val.length > 0 && !exactMatch) {
+                : (csrPicker
+                    ? `<div class="request-empty-state">No matching active REP users found.</div>`
+                    : `<div class="request-empty-state">No matching sales reps found. Type above to use a custom name.</div>`));
+            if (!repPickerLocked && !csrPicker && val.length > 0 && !exactMatch) {
                 customBtn.classList.remove('hidden');
                 customBtn.querySelector('span').innerText = rawVal.trim();
             } else {
@@ -118735,8 +118987,13 @@ C.14.043 C.15.000
             const requestedBy = resolveRequestRepSelectionForCurrentUser(String(tempSelectedReqRep || getDefaultRequestRepName() || '').trim(), { showToast: false });
             if (requestedBy) tempSelectedReqRep = requestedBy;
             syncRequestEmailChainSelectionFromInputs();
+            const requestCreatorAudit = requestedBy ? buildRequestCreatorAuditInfo(requestedBy) : null;
+            const requestCreatorExtraEmails = getRequestCreatorExtraRecipientEmails(requestCreatorAudit);
             const emailChainRecipients = canUseRequestEmailChainPicker() ? getRequestEmailChainSelectedRecipients() : [];
-            const emailChainRecipientEmails = dedupeRequestEmailRecipients(emailChainRecipients.map((rep) => rep && rep.email));
+            const emailChainRecipientEmails = dedupeRequestEmailRecipients([
+                emailChainRecipients.map((rep) => rep && rep.email),
+                requestCreatorExtraEmails
+            ]);
             const overrideEntries = Array.isArray(resolvedRequestEntriesOverride) ? resolvedRequestEntriesOverride.filter((entry) => entry && entry.item) : null;
             const sourceDomIds = overrideEntries ? overrideEntries.map((entry) => String(entry.domId || (entry.item && entry.item.DOM_ID) || '').trim()).filter(Boolean) : getRequestSourceDomIds();
             const requestSourceEntries = overrideEntries || sourceDomIds.map((domId) => {
@@ -118828,6 +119085,7 @@ C.14.043 C.15.000
                         app_tab_assignment:sourceAppTabAssignment||null,
                         master_app_tab_assignment:sourceAppTabAssignment||null
                     };
+                    applyRequestCreatorAuditFields(newReq, requestCreatorAudit);
                     if (autoCompleteUser) {
                         newReq.completed_by_username = autoCompleteUser.username || currentUser || null;
                         newReq.completed_by_display = autoCompleteUser.display || currentUserDisplay || currentUser || null;
@@ -118847,6 +119105,7 @@ C.14.043 C.15.000
                     clone.master_app_tab_assignment=sourceAppTabAssignment;
                     clone.APP_TAB_ASSIGNMENT=sourceAppTabAssignment || clone.APP_TAB_ASSIGNMENT || '';
                     clone.app_tab_assignment=clone.APP_TAB_ASSIGNMENT;
+                    applyRequestCreatorAuditAliases(clone, requestCreatorAudit);
                     clone.REQUESTED_BY=requestedBy;
                     clone.SALESREPNAME=requestedBy;
                     clone.SALESREP=requestedBy;
@@ -118960,11 +119219,12 @@ C.14.043 C.15.000
                     const payloadId = String(payload.unique_id || '').trim();
                     if (!payloadId) continue;
                     let didSave = false;
-                    for (let attempt = 0; attempt < 2 && !didSave; attempt++) {
+                    for (let attempt = 0; attempt < 3 && !didSave; attempt++) {
                         try {
                             await supabaseFetch('ph_active_request', 'POST', payload);
                             didSave = true;
                         } catch (err) {
+                            let strippedMissingOptionalColumn = false;
                             if (payload && payload.request_note !== undefined && isRequestNoteColumnMissingError(err)) {
                                 const fallbackRequestNote = String(payload.request_note || '').trim();
                                 if (fallbackRequestNote && !String(payload.req_comments || '').trim()) {
@@ -118979,10 +119239,16 @@ C.14.043 C.15.000
                                 }
                                 console.warn('request_note column is not installed on ph_active_request; saving request note in legacy req_comments fallback. Run request_note_migration.sql to persist request notes cleanly.', err);
                                 delete payload.request_note;
-                                if (attempt === 0) {
-                                    await new Promise((resolve) => setTimeout(resolve, 250));
-                                    continue;
-                                }
+                                strippedMissingOptionalColumn = true;
+                            }
+                            if (payload && isRequestAuditColumnMissingError(err)) {
+                                console.warn('CSR request audit columns are not installed on ph_active_request; retrying without audit fields.', err);
+                                stripRequestAuditFields(payload);
+                                strippedMissingOptionalColumn = true;
+                            }
+                            if (strippedMissingOptionalColumn && attempt < 2) {
+                                await new Promise((resolve) => setTimeout(resolve, 250));
+                                continue;
                             }
                             if (!firstError) firstError = err;
                             const confirmedIds = await confirmRequestInsertIds([payloadId]);
@@ -119061,7 +119327,14 @@ C.14.043 C.15.000
                     requestFolderLabel: requestFolderMeta.requestIdLabel,
                     emailChainRecipients,
                     emailChainRecipientEmails,
-                    extraRecipientEmails: emailChainRecipientEmails
+                    extraRecipientEmails: emailChainRecipientEmails,
+                    requestCreator: requestCreatorAudit,
+                    requestCreatedByUsername: requestCreatorAudit && requestCreatorAudit.creatorUsername,
+                    requestCreatedByDisplay: requestCreatorAudit && requestCreatorAudit.creatorDisplay,
+                    requestCreatedByEmail: requestCreatorAudit && requestCreatorAudit.creatorEmail,
+                    requestSelectedRepUsername: requestCreatorAudit && requestCreatorAudit.selectedRepUsername,
+                    requestSelectedRepDisplay: requestCreatorAudit && requestCreatorAudit.selectedRepDisplay,
+                    requestSelectedRepEmail: requestCreatorAudit && requestCreatorAudit.selectedRepEmail
                 };
                 const localFolderItems = getActiveRequestFolderItems(folderId);
                 const savedAutoCompleteItems = getSavedRequestItems(autoCompleteSavedIds).filter((item) => item && isRequestComplete(item));
@@ -119081,7 +119354,14 @@ C.14.043 C.15.000
                     completedByUsers: completionUser ? [completionUser] : [],
                     emailChainRecipients,
                     emailChainRecipientEmails,
-                    extraRecipientEmails: emailChainRecipientEmails
+                    extraRecipientEmails: emailChainRecipientEmails,
+                    requestCreator: requestCreatorAudit,
+                    requestCreatedByUsername: requestCreatorAudit && requestCreatorAudit.creatorUsername,
+                    requestCreatedByDisplay: requestCreatorAudit && requestCreatorAudit.creatorDisplay,
+                    requestCreatedByEmail: requestCreatorAudit && requestCreatorAudit.creatorEmail,
+                    requestSelectedRepUsername: requestCreatorAudit && requestCreatorAudit.selectedRepUsername,
+                    requestSelectedRepDisplay: requestCreatorAudit && requestCreatorAudit.selectedRepDisplay,
+                    requestSelectedRepEmail: requestCreatorAudit && requestCreatorAudit.selectedRepEmail
                 } : null;
                 const summaryItemsCount = allSavedNotificationItems.length || savedRequestIds.length;
                 const completionItemsCount = completionNotificationItems.length || autoCompleteSavedIds.length || savedCount;
@@ -131131,7 +131411,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             let rows = (Array.isArray(requestHistoryInventory) ? requestHistoryInventory : [])
                 .filter((row) => row && row.REQUEST_HISTORY);
             const hasGlobalRequestAccess = canUseGlobalRequestAccess();
-            if (safeRole === 'SALESREP' && !hasGlobalRequestAccess) {
+            const access = getRoleAccessState();
+            if (access && access.isSalesAssistant && !access.isAdmin && !hasGlobalRequestAccess) {
+                rows = rows.filter((row) => doesCurrentUserOwnCreatedRequestItem(row));
+            } else if ((safeRole === 'SALESREP' || (access && access.isRep && !access.isAdmin)) && !hasGlobalRequestAccess) {
                 rows = rows.filter((row) => doesCurrentUserMatchRepName(getRequestAssignedRep(row)));
             }
             const repTerm = normalizeRepMatchToken(requestHistoryReportSalesRepSearchTerm);

@@ -52,18 +52,20 @@ export function getRoleAccessState(role = "") {
     roleDisplay.includes("QC SUPERVISOR");
   const isQc = !isQcSupervisor && (normalizedRole === "QC" || normalizedRole.startsWith("QC"));
   const isCsr = normalizedRole === "CSR" || normalizedRole.includes("CSR");
-  const isAdmin = normalizedRole.includes("ADMIN") || normalizedRole.includes("MANAGER") || isCsr || (!isRep && !isQcSupervisor && !isQc);
+  const isSalesAssistant = isCsr;
+  const isRepLike = isRep || isSalesAssistant;
+  const isAdmin = normalizedRole.includes("ADMIN") || normalizedRole.includes("MANAGER") || (!isRepLike && !isQcSupervisor && !isQc);
   const allowedViews = new Set<string>(["home", "chat"]);
   if (isAdmin) {
     ["drive", "tasks", "docks", "av", "request", "reserves", "sales-office", "reports", "hours", "low-stock", "review", "chat"].forEach((viewId) => allowedViews.add(viewId));
-  } else if (isRep) {
+  } else if (isRepLike) {
     ["av", "docks", "request", "sales-office"].forEach((viewId) => allowedViews.add(viewId));
   } else if (isQcSupervisor) {
     ["drive", "docks"].forEach((viewId) => allowedViews.add(viewId));
   } else if (isQc) {
     ["docks"].forEach((viewId) => allowedViews.add(viewId));
   }
-  return { isAdmin, isRep, isQcSupervisor, isQc, allowedViews };
+  return { isAdmin, isRep, isSalesAssistant, isRepLike, isQcSupervisor, isQc, allowedViews };
 }
 
 function getSessionSecret() {
