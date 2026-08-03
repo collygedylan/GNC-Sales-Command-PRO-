@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.02.06';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.03.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2142,14 +2142,16 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
         body.detail-field-active #global-action-bar{opacity:0;pointer-events:none;transform:translateY(120%);transition:transform .18s ease,opacity .18s ease}
         body.detail-field-active #main-scroll-area{padding-bottom:calc(4rem + var(--detail-keyboard-height, 0px) + env(safe-area-inset-bottom));scroll-padding-bottom:calc(5rem + var(--detail-keyboard-height, 0px) + env(safe-area-inset-bottom))}
         body.measurement-keyboard-open #main-scroll-area{padding-bottom:calc(5rem + var(--detail-keyboard-height, 0px) + env(safe-area-inset-bottom));scroll-padding-bottom:calc(6rem + var(--detail-keyboard-height, 0px) + env(safe-area-inset-bottom))}
-        #detail-measurement-keyboard{max-height:min(46vh,320px);overflow-y:auto;overscroll-behavior:contain;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-overflow-scrolling:touch}
+        #detail-measurement-keyboard{max-height:min(56vh,420px);overflow-y:auto;overscroll-behavior:contain;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-overflow-scrolling:touch}
         #detail-measurement-keyboard button{touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
-        body.ios-device #detail-measurement-keyboard{max-height:min(46vh,360px);overflow-y:auto;padding-top:8px!important;padding-bottom:max(10px, env(safe-area-inset-bottom))!important;transform:translate3d(0,0,0);-webkit-transform:translate3d(0,0,0);backface-visibility:hidden;-webkit-backface-visibility:hidden}
+        #detail-measurement-keyboard .detail-keyboard-space{margin-bottom:10px}
+        #detail-measurement-keyboard .detail-keyboard-footer{padding-bottom:6px}
+        body.ios-device #detail-measurement-keyboard{max-height:min(58vh,430px);overflow-y:auto;padding-top:8px!important;padding-bottom:max(16px, env(safe-area-inset-bottom))!important;transform:translate3d(0,0,0);-webkit-transform:translate3d(0,0,0);backface-visibility:hidden;-webkit-backface-visibility:hidden}
         body.ios-device #detail-measurement-keyboard .detail-keyboard-shell{max-width:min(430px,100%)}
         body.ios-device #detail-measurement-keyboard .detail-keyboard-header{margin-bottom:3px!important}
         body.ios-device #detail-measurement-keyboard .detail-keyboard-btn{min-height:36px!important;border-radius:18px!important;font-size:19px!important}
-        body.ios-device #detail-measurement-keyboard .detail-keyboard-space{min-height:44px!important;margin-top:8px!important}
-        body.ios-device #detail-measurement-keyboard .detail-keyboard-footer{margin-top:6px!important;padding-left:12px!important;padding-right:12px!important;padding-bottom:6px!important}
+        body.ios-device #detail-measurement-keyboard .detail-keyboard-space{min-height:48px!important;margin-top:8px!important;margin-bottom:12px!important}
+        body.ios-device #detail-measurement-keyboard .detail-keyboard-footer{margin-top:6px!important;padding-left:12px!important;padding-right:12px!important;padding-bottom:8px!important}
         body.ios-device #detail-measurement-keyboard .detail-keyboard-choice{min-height:34px!important}
         #view-detail input.detail-measurement-input-active{border-color:#007a4d!important;box-shadow:0 0 0 3px rgba(0,122,77,.16),inset 0 1px 0 rgba(255,255,255,.8)!important;caret-color:#007a4d!important;cursor:text!important;-webkit-user-select:text!important;user-select:text!important}
         #view-login,#view-change-password{pointer-events:auto;isolation:isolate}
@@ -5152,7 +5154,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.02.06').trim() || 'V2026.08.02.06';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.03.01').trim() || 'V2026.08.03.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6607,7 +6609,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.02.06';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.03.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24801,7 +24803,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.02.06').trim() || 'V2026.08.02.06';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.03.01').trim() || 'V2026.08.03.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -44135,7 +44137,10 @@ function toggleDriveQuickRequestItem(domId) {
 
         function isHotPriceTaskContext(tab = activeTaskTab, subview = activeTaskSubview, item = null) {
             const safeView = normalizeTaskViewValue(tab || activeTaskView || activeTaskTab);
-            const simpleFilter = normalizeEvalTaskFilterValue(firstNonEmptyValue(subview, activeTaskFilter, activeTaskSubview, activeEvalSimpleFilter, ''), { values: EVAL_SIMPLE_TASK_FILTER_VALUES });
+            const currentSimpleFilter = activeTaskView === EVAL_TASK_ASSIGNMENT && shouldUseSimplifiedEvalTaskFilters()
+                ? normalizeEvalTaskFilterValue(activeTaskFilter || activeTaskSubview || EVAL_SIMPLE_TASK_DEFAULT_FILTER, { values: EVAL_SIMPLE_TASK_FILTER_VALUES })
+                : '';
+            const simpleFilter = normalizeEvalTaskFilterValue(firstNonEmptyValue(subview, activeTaskFilter, activeTaskSubview, currentSimpleFilter, ''), { values: EVAL_SIMPLE_TASK_FILTER_VALUES });
             if (safeView === 'hot-price') return true;
             if (safeView === EVAL_TASK_ASSIGNMENT && (simpleFilter === 'hot-price' || simpleFilter === 'hot-price-ssn')) return true;
             return getNormalizedAvHotPrice(firstNonEmptyValue(item && item.CAV_HOT_PRICE, item && item.HOT_PRICE, item && item.HOTPRICE, item && item.hot_price, '')) !== '';
@@ -87378,6 +87383,22 @@ function toggleDriveQuickRequestItem(domId) {
                 });
         }
 
+        async function fetchRequestItemCodeOptionRowsFromSupabase(querySuffix = '', options = {}) {
+            const safeOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const pageSize = Math.max(25, Math.min(100, Number(safeOptions.pageSize) || 100));
+            const maxRows = Math.max(pageSize, Number(safeOptions.maxRows) || 1200);
+            const rows = [];
+            for (let offset = 0; offset < maxRows; offset += pageSize) {
+                const page = await fetchMasterInitialRowsPage(querySuffix, pageSize, offset);
+                const pageRows = Array.isArray(page) ? page : [];
+                if (!pageRows.length) break;
+                rows.push(...pageRows);
+                if (pageRows.length < pageSize) break;
+                if (offset + pageSize < maxRows) await yieldToUiFrame();
+            }
+            return rows;
+        }
+
         async function loadRequestItemCodeOptions(item = activeItem, stateKey = '') {
             const state = ensureRequestItemCodeOptionState(item);
             const safeStateKey = String(stateKey || state.key || '').trim();
@@ -87392,12 +87413,20 @@ function toggleDriveQuickRequestItem(domId) {
                 renderRequestMatchingInventoryOptions(item, activeDetailSourceView || lastView || '', { skipLoad: true });
             }
             try {
-                const rawRows = await fetchMasterInitialRowsPage(`&itemcode=eq.${encodeURIComponent(itemCode)}`, 500, 0);
+                const rawRows = [];
+                let primaryLookupError = null;
+                try {
+                    const itemRows = await fetchRequestItemCodeOptionRowsFromSupabase(`&itemcode=eq.${encodeURIComponent(itemCode)}`, { pageSize: 100, maxRows: 2500 });
+                    rawRows.push(...itemRows);
+                } catch (lookupError) {
+                    primaryLookupError = lookupError;
+                    console.warn('Request AV option itemcode lookup failed', lookupError);
+                }
                 const commonNamePattern = getRequestItemCodeOptionCommonNameSearchPattern(item);
                 const contSize = String(firstNonEmptyValue(item && item.CONTSIZE, item && item.contsize, item && item.ITEMSPEC, item && item.itemspec, '') || '').trim();
                 if (commonNamePattern && contSize) {
                     try {
-                        const plantRows = await fetchMasterInitialRowsPage(`&commonname=ilike.${encodeURIComponent(commonNamePattern)}&contsize=eq.${encodeURIComponent(contSize)}`, 500, 0);
+                        const plantRows = await fetchRequestItemCodeOptionRowsFromSupabase(`&commonname=ilike.${encodeURIComponent(commonNamePattern)}&contsize=eq.${encodeURIComponent(contSize)}`, { pageSize: 100, maxRows: 1200 });
                         rawRows.push(...(Array.isArray(plantRows) ? plantRows : []));
                     } catch (fallbackError) {
                         console.warn('Request AV option plant/size lookup failed', fallbackError);
@@ -87410,9 +87439,12 @@ function toggleDriveQuickRequestItem(domId) {
                     return buildSearchIndex(normalizeRowPhotoFields(row));
                 });
                 state.loaded = true;
+                state.error = primaryLookupError && !rawRows.length && !getRequestItemCodeOptionRows(item).length
+                    ? 'Could not load AV options right now.'
+                    : '';
             } catch (error) {
                 if (requestItemCodeOptionState.key === safeStateKey) {
-                    state.error = 'Could not load all AV options.';
+                    state.error = getRequestItemCodeOptionRows(item).length ? '' : 'Could not load AV options right now.';
                     state.loaded = true;
                 }
             } finally {
