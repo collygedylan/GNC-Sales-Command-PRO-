@@ -88,6 +88,7 @@ const READABLE_TABLES = new Set([
   "ph_crop_roll_runs",
   "ph_crop_roll_rows",
   "ph_active_request",
+  "ph_customer_consignee_sales_reps",
   "ph_request_history",
   "ph_sales_credit_requests",
   "ph_request_email_threads",
@@ -354,7 +355,7 @@ function hasTableReadAccess(role = "", table = "", username = "") {
   if (COMMON_AUTH_READ_TABLES.has(table)) return true;
   if (table === "ph_app_users") return access.isQc || access.isQcSupervisor || access.isAdmin;
   if (access.isRep) {
-    return new Set(["ph_master_inventory", "ph_active_request", "ph_request_history", "ph_sales_credit_requests", "ph_reserves", "ph_soc_master", "ph_sales_office", "ph_cav_import", "ph_av_notes", "ph_warehouse_assigned_items", "ph_dock_team_status", "ph_dock_item_status"]).has(table);
+    return new Set(["ph_master_inventory", "ph_active_request", "ph_active_request_live_rows", "ph_customer_consignee_sales_reps", "ph_request_history", "ph_sales_credit_requests", "ph_reserves", "ph_soc_master", "ph_sales_office", "ph_cav_import", "ph_av_notes", "ph_warehouse_assigned_items", "ph_dock_team_status", "ph_dock_item_status"]).has(table);
   }
   if (access.isQcSupervisor) {
     return new Set(["ph_master_inventory", "ph_soc_master", "ph_dock_team_status", "ph_dock_item_status"]).has(table);
