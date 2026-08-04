@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.03.09';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.03.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5149,7 +5149,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.03.09').trim() || 'V2026.08.03.09';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.03.10').trim() || 'V2026.08.03.10';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6605,7 +6605,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.03.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.03.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6642,7 +6642,7 @@ const REQUEST_QUEUE_VISIBLE_POLL_FLOOR_MS = 650;
         const REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS = 850;
 const REQUEST_RECOUNT_SOURCE_REFRESH_MS = 2500;
 const REQUEST_SHEAR_LIST_STALE_MS = 1200;
-const REQUEST_LIVE_QUEUE_TABS = new Set(['pending', 'suspend-tag', 'moves', 'recount', 'shear-list']);
+const REQUEST_LIVE_QUEUE_TABS = new Set(['pending', 'suspend-tag', 'moves', 'recount', 'av-check', 'shear-list', 'shear-test']);
 const FOREGROUND_INVENTORY_POLL_MS = 30000;
 const FOREGROUND_INVENTORY_FULL_MAX_AGE_MS = 30000;
 const FOREGROUND_INVENTORY_INITIAL_MAX_AGE_MS = 15000;
@@ -6688,7 +6688,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             drive: { realtimeTables: [WAREHOUSE_ASSIGNED_ITEMS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'crop-roll': { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             tasks: { realtimeTables: ['ph_master_inventory', 'ph_active_request', 'ph_sales_office', FLYER_FOLDER_ROWS_TABLE, FLYER_FOLDER_HISTORY_TABLE, ML_IMAGE_JOBS_TABLE, WAREHOUSE_ASSIGNED_ITEMS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
-            request: { realtimeTables: ['ph_active_request', REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE], pollMs: REQUEST_VISIBLE_POLL_MS },
+            request: { realtimeTables: ['ph_active_request', REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE, 'ph_inventory_edit_requests', 'ph_av_option_eval_requests', SHEAR_LIST_TABLE, 'ph_sales_office', 'ph_master_inventory', 'ph_soc_master'], pollMs: REQUEST_VISIBLE_POLL_MS },
             'sales-office': { realtimeTables: ['ph_sales_office'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             moves: { realtimeTables: ['ph_sales_office'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'take-back': { realtimeTables: ['ph_take_back_queue'], pollMs: 'visible-default' },
@@ -15232,6 +15232,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (tableName === REQUEST_HISTORY_TABLE) return ['requestHistory'];
             if (tableName === SALES_CREDIT_REQUESTS_TABLE) return ['salesCredits'];
             if (tableName === 'ph_inventory_edit_requests') return ['inventoryEditRequests'];
+            if (tableName === 'ph_av_option_eval_requests') return ['avOptionEvalRequests'];
             if (tableName === 'ph_reserves') return ['reserves'];
             if (tableName === 'ph_soc_master') return ['soc'];
             if (tableName === 'ph_sales_office') return ['salesOffice'];
@@ -15807,6 +15808,15 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }
             if (tableSet.has(SALES_CREDIT_REQUESTS_TABLE)) {
                 changedDatasetKeys.add('salesCredits');
+            }
+            if (tableSet.has('ph_inventory_edit_requests')) {
+                changedDatasetKeys.add('inventoryEditRequests');
+                changedDatasetKeys.add('requests');
+            }
+            if (tableSet.has('ph_av_option_eval_requests')) {
+                avOptionEvalRequestsLoaded = false;
+                changedDatasetKeys.add('avOptionEvalRequests');
+                changedDatasetKeys.add('requests');
             }
             if (tableSet.has('ph_reserves')) {
                 syncRealtimeReserveRows();
@@ -16411,6 +16421,13 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     const creditRow = normalizeSalesCreditRequestRow(payload.new || nextRow);
                     if (creditRow) changed = upsertRealtimeRow(salesCreditRequestsInventory, creditRow, tableName);
                 }
+            } else if (tableName === 'ph_inventory_edit_requests') {
+                changed = true;
+                queueDatasetLoad('inventoryEditRequests', 'full', 0);
+            } else if (tableName === 'ph_av_option_eval_requests') {
+                avOptionEvalRequestsLoaded = false;
+                avOptionEvalRequestsError = '';
+                changed = true;
             } else if (tableName === 'ph_reserves') {
                 changed = eventType === 'DELETE'
                     ? removeRealtimeRow(reservesInventory, uniqueId)
@@ -16533,6 +16550,17 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 triggerRequestRealtimeUiRefresh(0);
             } else if (tableName === SALES_CREDIT_REQUESTS_TABLE) {
                 invalidateResolvedViewStateCaches();
+                triggerRequestRealtimeUiRefresh(0);
+            } else if (tableName === 'ph_inventory_edit_requests') {
+                invalidateResolvedViewStateCaches();
+                markViewDirty('request');
+                queueDatasetLoad('inventoryEditRequests', 'full', 0);
+                if (isViewVisible('request') && activeReqTab === 'shear-test') {
+                    scheduleRequestRender(0, REQUEST_REALTIME_UI_DELAY_MS, true);
+                }
+            } else if (tableName === 'ph_av_option_eval_requests') {
+                invalidateResolvedViewStateCaches();
+                avOptionEvalRequestsLoaded = false;
                 triggerRequestRealtimeUiRefresh(0);
             } else if (tableName === 'ph_soc_master') {
                 invalidateResolvedViewStateCaches();
@@ -17174,7 +17202,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                                 updateSyncDiagnostics('queued');
                             }
                             if (tableName === 'ph_active_request') syncAlwaysOnRequestData(0, { minIntervalMs: 0 });
-                            if (tableName === SHEAR_LIST_TABLE || tableName === 'ph_sales_office' || tableName === 'ph_master_inventory' || tableName === 'ph_soc_master') {
+                            if (tableName === SHEAR_LIST_TABLE || tableName === 'ph_inventory_edit_requests' || tableName === 'ph_av_option_eval_requests' || tableName === 'ph_sales_office' || tableName === 'ph_master_inventory' || tableName === 'ph_soc_master') {
                                 refreshActiveRequestQueueSideData('realtime-subscribed', {
                                     force: true,
                                     allowWhileInteractive: true,
@@ -17185,7 +17213,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                         }
                         if (channelStatus === 'TIMED_OUT' || channelStatus === 'CHANNEL_ERROR' || channelStatus === 'CLOSED') {
                             if (tableName === 'ph_active_request') syncAlwaysOnRequestData(140, { minIntervalMs: 0 });
-                            if (tableName === SHEAR_LIST_TABLE || tableName === 'ph_sales_office' || tableName === 'ph_master_inventory' || tableName === 'ph_soc_master') {
+                            if (tableName === SHEAR_LIST_TABLE || tableName === 'ph_inventory_edit_requests' || tableName === 'ph_av_option_eval_requests' || tableName === 'ph_sales_office' || tableName === 'ph_master_inventory' || tableName === 'ph_soc_master') {
                                 refreshActiveRequestQueueSideData('realtime-recovery', {
                                     allowWhileInteractive: true,
                                     minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
@@ -24865,6 +24893,16 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return String(firstNonEmptyValue(row && row.id, row && row.ID, row && row.unique_id, row && row.UNIQUE_ID, '') || '').trim();
         }
 
+        function buildAvOptionEvalQueueSignature(rows = avOptionEvalRequests) {
+            return (Array.isArray(rows) ? rows : []).map((row) => [
+                getAvOptionEvalRequestId(row),
+                normalizeAvOptionEvalStatus(firstNonEmptyValue(row && row.status, row && row.STATUS, 'open')),
+                normalizeAvOptionEvalUser(firstNonEmptyValue(row && row.assignedto, row && row.ASSIGNEDTO, '')),
+                firstNonEmptyValue(row && row.updated_at, row && row.UPDATED_AT, ''),
+                firstNonEmptyValue(row && row.completed_at, row && row.COMPLETED_AT, '')
+            ].join(':')).join('|');
+        }
+
         function normalizeAvOptionEvalRequestRow(row = null) {
             if (!row || typeof row !== 'object') return null;
             row.status = normalizeAvOptionEvalStatus(firstNonEmptyValue(row.status, row.STATUS, 'open'));
@@ -25448,7 +25486,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.03.09').trim() || 'V2026.08.03.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.03.10').trim() || 'V2026.08.03.10';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -52727,6 +52765,9 @@ function toggleDriveQuickRequestItem(domId) {
                 affectedViews.push('tasks');
             }
             if (changedSet.has('salesCredits') && !affectedViews.includes('request')) {
+                affectedViews.push('request');
+            }
+            if ((changedSet.has('inventoryEditRequests') || changedSet.has('avOptionEvalRequests')) && !affectedViews.includes('request')) {
                 affectedViews.push('request');
             }
             if (activeReqTab === 'recount' && (changedSet.has('master') || changedSet.has('salesOffice')) && !affectedViews.includes('request')) {
@@ -95885,6 +95926,16 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                         changed = buildShearListOpenRowsSignature() !== beforeSignature || changed;
                     }
                 }
+                if (safeTab === 'av-check' && typeof loadAvOptionEvalRequests === 'function') {
+                    const beforeSignature = buildAvOptionEvalQueueSignature();
+                    if (force || !avOptionEvalRequestsLoaded) {
+                        await loadAvOptionEvalRequests(true);
+                        changed = buildAvOptionEvalQueueSignature() !== beforeSignature || changed;
+                    }
+                }
+                if (safeTab === 'shear-test' && (force || shouldRefreshQueueDataset('inventoryEditRequests', REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS))) {
+                    targets.push({ key: 'inventoryEditRequests', mode: 'full' });
+                }
                 if (targets.length) {
                     await loadDatasetTargetsWithLimit(targets, {
                         force: true,
@@ -114646,15 +114697,24 @@ C.14.043 C.15.000
                 return;
             }
             const row = requestSwipeState.row;
-            const shouldOpen = requestSwipeState.deltaX <= REQUEST_SWIPE_OPEN_THRESHOLD;
-            if (shouldOpen) {
-                row.classList.add('swipe-open');
-                setRequestSwipeSurfaceOffset(requestSwipeState.surface, REQUEST_SWIPE_OPEN_OFFSET);
-            } else {
-                closeRequestSwipe(row);
-            }
+            const shouldArchive = requestSwipeState.deltaX <= REQUEST_SWIPE_OPEN_THRESHOLD;
             requestSwipeState.dragging = false;
             releaseRequestSwipeMoveListener();
+            closeRequestSwipe(row);
+            if (shouldArchive) {
+                const requestUid = resolveRequestSwipeUidFromRow(row);
+                requestSwipePointerTouchGuardUntil = Date.now() + 450;
+                if (event) {
+                    if (typeof event.preventDefault === 'function') event.preventDefault();
+                    if (typeof event.stopPropagation === 'function') event.stopPropagation();
+                }
+                if (requestUid) {
+                    setTimeout(() => archiveRequestRow(requestUid), 0);
+                } else {
+                    showToast('Remove Failed', 'That request row could not be found. Refreshing Que now.', true);
+                    triggerRequestRealtimeUiRefresh(0);
+                }
+            }
         }
 
         function handleRequestSwipeTouchEnd(event) {
@@ -117046,9 +117106,7 @@ C.14.043 C.15.000
                     }
                 }
                 const nestedDockActionPressAttrs = 'data-fast-press-ignore onpointerdown="return stopNestedCardActionPress(event)" ontouchstart="return stopNestedCardActionPress(event)" onmousedown="return stopNestedCardActionPress(event)"';
-                const requestRemoveButtonHtml = canCurrentUserArchiveRequestRow(item)
-                    ? `<button type="button" ${nestedDockActionPressAttrs} class="mt-3 min-h-[42px] w-full rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-red-700 shadow-sm active:scale-95" onclick="event.preventDefault(); event.stopPropagation(); return archiveRequestRow('${safeUidJs}')"><i class="ph-bold ph-trash mr-1 text-base align-middle"></i> Remove From View</button>`
-                    : '';
+                const requestRemoveButtonHtml = '';
                 const dockSuspendTagActionHtml = isDockSuspendDcRequestMirrorRow(item) && activeReqTab === 'suspend-tag' && !requestDone
                     ? `<div class="mt-3 grid grid-cols-1 gap-2 border-t border-red-100 pt-3 sm:grid-cols-2"><button type="button" ${nestedDockActionPressAttrs} class="min-h-[44px] rounded-xl bg-[#007a4d] px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="return handleDockSuspendDcDonePress(event, '${safeUidJs}', this)"><i class="ph-bold ph-check-circle mr-1 text-base align-middle"></i> Done</button><button type="button" ${nestedDockActionPressAttrs} class="min-h-[44px] rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-amber-700 shadow-sm active:scale-95" onclick="return handleDockSuspendDcEmailPress(event, '${safeUidJs}', this)"><i class="ph-bold ph-envelope-simple mr-1 text-base align-middle"></i> Email</button></div>`
                     : '';
