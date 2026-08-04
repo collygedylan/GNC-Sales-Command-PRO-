@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.04.01';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.04.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5149,7 +5149,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.04.01').trim() || 'V2026.08.04.01';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.04.02').trim() || 'V2026.08.04.02';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6605,7 +6605,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.04.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.04.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -25508,7 +25508,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.04.01').trim() || 'V2026.08.04.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.04.02').trim() || 'V2026.08.04.02';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -61649,6 +61649,120 @@ function toggleDriveQuickRequestItem(domId) {
             };
         }
 
+        function getWeatherHoldCycleValue(row = null, fields = [], fallback = '') {
+            const keys = Array.isArray(fields) ? fields : [fields];
+            const values = [];
+            keys.forEach((key) => {
+                const safeKey = String(key || '').trim();
+                if (!safeKey) return;
+                values.push(row && row[safeKey]);
+                values.push(row && row[safeKey.toUpperCase()]);
+            });
+            return firstNonEmptyValue(...values, fallback);
+        }
+
+        function getWeatherHoldCycleNumber(row = null, fields = [], fallback = NaN) {
+            return getWeatherHoldNumber(getWeatherHoldCycleValue(row, fields, fallback), fallback);
+        }
+
+        function getWeatherHoldCycleDate(row = null, fields = []) {
+            return String(getWeatherHoldCycleValue(row, fields, '') || '').trim();
+        }
+
+        function getWeatherHoldCycleReasons(row = null) {
+            const direct = String(getWeatherHoldCycleValue(row, ['holdstopreason', 'HOLDSTOPREASON'], '') || '').trim();
+            const reasonArray = Array.isArray(row && row.holdstopreasons) ? row.holdstopreasons : (Array.isArray(row && row.HOLDSTOPREASONS) ? row.HOLDSTOPREASONS : []);
+            const values = [];
+            if (direct) values.push(direct);
+            reasonArray.forEach((value) => {
+                const text = String(value || '').trim();
+                if (text) values.push(text);
+            });
+            return Array.from(new Set(values));
+        }
+
+        function getWeatherHoldCycleReasonCategory(row = null, fallbackReason = '') {
+            const rawReason = getWeatherHoldCycleReasons(row).join(' | ') || String(fallbackReason || '').trim();
+            const classifiedRaw = classifyHoldReasonForApp(rawReason);
+            if (classifiedRaw && classifiedRaw !== 'unknown') return classifiedRaw;
+            return classifyHoldReasonForApp(getWeatherHoldCycleValue(row, ['hold_reason_category', 'HOLD_REASON_CATEGORY'], rawReason));
+        }
+
+        function getWeatherHoldCycleReleaseDate(row = null) {
+            return getWeatherHoldCycleDate(row, ['episode_release_date', 'hold_released_on']);
+        }
+
+        function getWeatherHoldCycleStartDate(row = null) {
+            return getWeatherHoldCycleDate(row, ['episode_start_date', 'hold_started_on']);
+        }
+
+        function getWeatherHoldReleasedCycles(cycles = [], reasonCategory = '') {
+            const targetReason = String(reasonCategory || '').trim().toLowerCase();
+            return (Array.isArray(cycles) ? cycles : []).filter((row) => {
+                if (!getWeatherHoldCycleReleaseDate(row)) return false;
+                const gdd = getWeatherHoldCycleNumber(row, ['gdd_base_50_to_release', 'GDD_BASE_50_TO_RELEASE'], NaN);
+                if (!Number.isFinite(gdd)) return false;
+                if (!targetReason) return true;
+                return getWeatherHoldCycleReasonCategory(row) === targetReason;
+            });
+        }
+
+        function getWeatherHoldMedianValue(values = []) {
+            const numbers = (Array.isArray(values) ? values : []).map((value) => Number(value)).filter(Number.isFinite).sort((left, right) => left - right);
+            if (!numbers.length) return NaN;
+            const middle = Math.floor(numbers.length / 2);
+            return numbers.length % 2 ? numbers[middle] : (numbers[middle - 1] + numbers[middle]) / 2;
+        }
+
+        function sumWeatherHoldDailyGddBetween(startExclusive = '', endInclusive = '') {
+            const start = String(startExclusive || '').trim();
+            const end = String(endInclusive || '').trim();
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) return NaN;
+            return (weatherHoldState.dailyWeatherRows || []).reduce((total, row) => {
+                const date = String(firstNonEmptyValue(row && row.date, row && row.DATE, '') || '').trim();
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date <= start || date > end) return total;
+                const gdd = getWeatherHoldNumber(firstNonEmptyValue(row && row.daily_gdd_base_50, row && row.DAILY_GDD_BASE_50, row && row.gdd_base_50, row && row.GDD_BASE_50, 0), 0);
+                return total + Math.max(0, Number.isFinite(gdd) ? gdd : 0);
+            }, 0);
+        }
+
+        function getWeatherHoldBlockedForecastDetails(summary = null, status = {}, cycles = []) {
+            const blockedSince = String(getWeatherHoldSummaryValue(summary, ['open_episode_start_date', 'last_episode_start_date'], '') || '').trim();
+            const today = getLocalIsoDateForHoldForecast();
+            const reasonText = String(firstNonEmptyValue(status && status.reason, getWeatherHoldSummaryValue(summary, 'current_holdstopreason', ''), getWeatherHoldSummaryValue(summary, 'open_episode_reason', ''), '') || '').trim();
+            const reasonCategory = classifyHoldReasonForApp(firstNonEmptyValue(reasonText, getWeatherHoldSummaryValue(summary, 'current_reason_category', ''), getWeatherHoldSummaryValue(summary, 'primary_reason_category', '')));
+            const exactCycles = Array.isArray(cycles) ? cycles : [];
+            let basisCycles = getWeatherHoldReleasedCycles(exactCycles, reasonCategory);
+            let basisLabel = reasonCategory && reasonCategory !== 'unknown' ? `${getHoldRecoveryReasonLabel(reasonCategory)} cleared events` : 'matching cleared events';
+            if (!basisCycles.length && exactCycles.length) {
+                basisCycles = getWeatherHoldReleasedCycles(exactCycles, '');
+                basisLabel = 'all exact itemcode cleared events';
+            }
+
+            let targetGdd = getWeatherHoldMedianValue(basisCycles.map((row) => getWeatherHoldCycleNumber(row, ['gdd_base_50_to_release', 'GDD_BASE_50_TO_RELEASE'], NaN)));
+            let targetDays = getWeatherHoldMedianValue(basisCycles.map((row) => getWeatherHoldCycleNumber(row, ['days_blocked', 'DAYS_BLOCKED', 'hold_days', 'HOLD_DAYS'], NaN)));
+            let basisCount = basisCycles.length;
+
+            if (!basisCount) {
+                targetGdd = getShearDecisionNumber(getWeatherHoldSummaryValue(summary, ['median_gdd_base_50_to_release', 'avg_gdd_base_50_to_release'], NaN), NaN);
+                targetDays = getShearDecisionNumber(getWeatherHoldSummaryValue(summary, ['median_days_to_release', 'avg_days_to_release'], NaN), NaN);
+                basisCount = Math.max(0, Math.round(Number(getWeatherHoldSummaryValue(summary, 'released_cycle_count', 0)) || 0));
+                basisLabel = basisCount ? 'summary cleared events' : '';
+            }
+
+            const gddSince = blockedSince ? sumWeatherHoldDailyGddBetween(blockedSince, today) : NaN;
+            const remainingGdd = Number.isFinite(targetGdd)
+                ? Math.max(0, targetGdd - (Number.isFinite(gddSince) ? gddSince : 0))
+                : NaN;
+            let forecast = null;
+            if (Number.isFinite(remainingGdd)) {
+                forecast = remainingGdd <= 0
+                    ? { date: today, days: 0, gdd: Number.isFinite(gddSince) ? gddSince : targetGdd, extrapolated: false, targetMet: true }
+                    : getShearDecisionFutureReleaseEstimate(remainingGdd);
+            }
+            return { blockedSince, reasonText, reasonCategory, targetGdd, targetDays, gddSince, remainingGdd, forecast, basisCount, basisLabel };
+        }
+
         function buildWeatherHoldClearSummaryLabel(summary = null) {
             const totalCycles = Number(getWeatherHoldSummaryValue(summary, 'total_cycle_count', 0)) || 0;
             const releasedCycles = Number(getWeatherHoldSummaryValue(summary, 'released_cycle_count', 0)) || 0;
@@ -61656,29 +61770,32 @@ function toggleDriveQuickRequestItem(domId) {
             const days = getShearDecisionNumber(getWeatherHoldSummaryValue(summary, ['median_days_to_release', 'avg_days_to_release'], NaN), NaN);
             const gdd = getShearDecisionNumber(getWeatherHoldSummaryValue(summary, ['median_gdd_base_50_to_release', 'avg_gdd_base_50_to_release'], NaN), NaN);
             const parts = ['Current Status: Clear'];
-            if (totalCycles) parts.push(`Historical H/S Episodes ${formatWeatherHoldInteger(totalCycles)}`);
-            if (lastRelease) parts.push(`Last Released ${formatWeatherHoldDate(lastRelease)}`);
+            if (totalCycles) parts.push(`Historical H/S Events ${formatWeatherHoldInteger(totalCycles)}`);
+            if (lastRelease) parts.push(`Last Cleared ${formatWeatherHoldDate(lastRelease)}`);
             const recoveryParts = [];
             if (Number.isFinite(days)) recoveryParts.push(`${formatWeatherHoldNumber(days, 1)} days`);
             if (Number.isFinite(gdd)) recoveryParts.push(`${formatWeatherHoldInteger(gdd)} GDD`);
-            if (recoveryParts.length) parts.push(`Avg Recovery When Blocked ${recoveryParts.join(' / ')}`);
+            if (recoveryParts.length) parts.push(`Avg Clear When Blocked ${recoveryParts.join(' / ')}`);
             if (!totalCycles && !recoveryParts.length) parts.push('No exact itemcode H/S history yet');
-            if (releasedCycles && releasedCycles !== totalCycles) parts.push(`${formatWeatherHoldInteger(releasedCycles)} released`);
+            if (releasedCycles && releasedCycles !== totalCycles) parts.push(`${formatWeatherHoldInteger(releasedCycles)} cleared`);
             return parts.join(' | ');
         }
 
-        function buildWeatherHoldBlockedSummaryLabel(summary = null, status = {}) {
+        function buildWeatherHoldBlockedSummaryLabel(summary = null, status = {}, cycles = []) {
             const code = String(status && status.code || getWeatherHoldSummaryValue(summary, 'current_blocked_code', 'H/S') || 'H/S').trim().toUpperCase();
             const reason = String(firstNonEmptyValue(status && status.reason, getWeatherHoldSummaryValue(summary, 'current_holdstopreason', ''), getWeatherHoldSummaryValue(summary, 'open_episode_reason', ''), '') || '').trim();
-            const blockedSince = String(getWeatherHoldSummaryValue(summary, ['open_episode_start_date', 'last_episode_start_date'], '') || '').trim();
-            const gdd = getShearDecisionNumber(getWeatherHoldSummaryValue(summary, ['median_gdd_base_50_to_release', 'avg_gdd_base_50_to_release'], NaN), NaN);
-            const forecast = getShearDecisionFutureReleaseEstimate(gdd);
-            const cycles = Number(getWeatherHoldSummaryValue(summary, 'released_cycle_count', 0)) || 0;
+            const details = getWeatherHoldBlockedForecastDetails(summary, status, cycles);
+            const releasedEvents = Number(getWeatherHoldSummaryValue(summary, 'released_cycle_count', 0)) || 0;
             const parts = [`Current Status: ${code}`];
             if (reason) parts.push(`Reason ${reason}`);
-            if (blockedSince) parts.push(`Blocked Since ${formatWeatherHoldDate(blockedSince)}`);
-            if (forecast && forecast.date) parts.push(`${forecast.extrapolated ? 'Estimated' : 'Forecast'} Release ${formatWeatherHoldDate(forecast.date)}`);
-            if (cycles) parts.push(`${formatWeatherHoldInteger(cycles)} release cycles`);
+            if (details.blockedSince) parts.push(`Blocked Since ${formatWeatherHoldDate(details.blockedSince)}`);
+            if (Number.isFinite(details.gddSince)) parts.push(`GDD Since Hold ${formatWeatherHoldInteger(details.gddSince)}`);
+            if (Number.isFinite(details.remainingGdd)) parts.push(`GDD Remaining ${formatWeatherHoldInteger(details.remainingGdd)}`);
+            if (details.forecast && details.forecast.date) parts.push(`${details.forecast.extrapolated ? 'Estimated' : 'Forecast'} Clear ${formatWeatherHoldDate(details.forecast.date)}`);
+            if (!details.forecast && !details.basisCount) parts.push('Not enough cleared history to forecast');
+            if (!details.forecast && details.basisCount && !Number.isFinite(details.targetGdd)) parts.push('Cleared history has no GDD yet');
+            if (details.basisCount) parts.push(`Based on ${formatWeatherHoldInteger(details.basisCount)} ${details.basisLabel || 'cleared events'}`);
+            if (releasedEvents) parts.push(`${formatWeatherHoldInteger(releasedEvents)} cleared events`);
             return parts.join(' | ');
         }
 
@@ -61751,14 +61868,14 @@ function toggleDriveQuickRequestItem(domId) {
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                         <div class="font-black text-slate-900 leading-tight break-words">${escapeHtml(title || group.itemcode)}</div>
-                        <div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Item ${escapeHtml(group.itemcode)} | ${escapeHtml(reasonText)} | ${escapeHtml(String(group.holdSamples || 0))} hold samples | ${escapeHtml(String(group.releaseSamples || 0))} release cycles</div>
+                        <div class="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">Item ${escapeHtml(group.itemcode)} | ${escapeHtml(reasonText)} | ${escapeHtml(String(group.holdSamples || 0))} blocked obs | ${escapeHtml(String(group.releaseSamples || 0))} cleared events</div>
                     </div>
                     <div class="shrink-0 text-right text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeHtml(formatWeatherHoldDate(group.lastHoldOn))}</div>
                 </div>
                 <div class="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
                     <div class="rounded-xl bg-emerald-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">GDD 30</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldInteger(weatherGdd))}</div></div>
-                    <div class="rounded-xl bg-rose-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">GDD Off H</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldInteger(releaseGdd))}</div></div>
-                    <div class="rounded-xl bg-slate-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Days Off H</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldNumber(releaseDays, 1))}</div></div>
+                    <div class="rounded-xl bg-rose-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">GDD Clear</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldInteger(releaseGdd))}</div></div>
+                    <div class="rounded-xl bg-slate-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">Days Clear</div><div class="text-sm font-black text-slate-900">${escapeHtml(formatWeatherHoldNumber(releaseDays, 1))}</div></div>
                     <div class="rounded-xl bg-blue-50 p-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">ML Detail</div><div class="text-sm font-black text-blue-700">Open</div></div>
                 </div>
             </button>`;
@@ -61802,14 +61919,14 @@ function toggleDriveQuickRequestItem(domId) {
                         <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">${escapeHtml(getHoldRecoveryReasonLabel(reason))} Learning</div>
                         <div class="mt-1 text-base font-black text-slate-900">${escapeHtml(String(firstNonEmptyValue(row.commonname, row.COMMONNAME, 'Hold profile') || 'Hold profile'))} ${escapeHtml(String(firstNonEmptyValue(row.contsize, row.CONTSIZE, '') || ''))}</div>
                     </div>
-                    <div class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${escapeHtml(String(getWeatherHoldProfileNumber(row, 'release_sample_count', 0)))} cycles</div>
+                    <div class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${escapeHtml(String(getWeatherHoldProfileNumber(row, 'release_sample_count', 0)))} cleared events</div>
                 </div>
                 <div class="mt-3 grid grid-cols-2 gap-2 md:grid-cols-5">
-                    ${renderWeatherHoldItemDetailMetric('Hold Samples', formatWeatherHoldInteger(getWeatherHoldProfileNumber(row, 'sample_count', NaN)), 'green')}
+                    ${renderWeatherHoldItemDetailMetric('Blocked File Obs', formatWeatherHoldInteger(getWeatherHoldProfileNumber(row, 'sample_count', NaN)), 'green')}
                     ${renderWeatherHoldItemDetailMetric('GDD Before Hold', formatWeatherHoldInteger(getWeatherHoldProfileNumber(row, ['median_gdd_base_50_30d', 'avg_gdd_base_50_30d'], NaN)), 'blue')}
-                    ${renderWeatherHoldItemDetailMetric('GDD To Release', formatWeatherHoldInteger(releaseGdd), 'rose')}
+                    ${renderWeatherHoldItemDetailMetric('GDD To Clear', formatWeatherHoldInteger(releaseGdd), 'rose')}
                     ${renderWeatherHoldItemDetailMetric('Avg Days', formatWeatherHoldNumber(getWeatherHoldProfileNumber(row, 'avg_days_to_release', NaN), 1), 'slate')}
-                    ${renderWeatherHoldItemDetailMetric('Samples', formatWeatherHoldInteger(getWeatherHoldProfileNumber(row, 'release_sample_count', 0)), 'amber')}
+                    ${renderWeatherHoldItemDetailMetric('Cleared Events', formatWeatherHoldInteger(getWeatherHoldProfileNumber(row, 'release_sample_count', 0)), 'amber')}
                 </div>
                 <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
                     <span class="rounded-full bg-slate-100 px-2.5 py-1">First ${escapeHtml(formatWeatherHoldDate(getWeatherHoldProfileDate(row, 'first_hold_on')))}</span>
@@ -61845,13 +61962,88 @@ function toggleDriveQuickRequestItem(domId) {
                     <div class="min-w-0"><div class="font-black text-slate-900">${escapeHtml(label || firstNonEmptyValue(row.itemcode, row.ITEMCODE, 'Hold/stop episode'))}</div><div class="mt-1 text-[11px] font-bold text-slate-500">${escapeHtml(meta)}</div></div>
                     <span class="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-rose-700">${escapeHtml(getHoldRecoveryReasonLabel(firstNonEmptyValue(row.hold_reason_category, row.HOLD_REASON_CATEGORY, 'unknown') || 'unknown'))}</span>
                 </div>
-                <div class="mt-3 rounded-xl bg-slate-50 p-3 text-[12px] font-bold text-slate-700">${escapeHtml(reasonText || 'No hold reason listed')}</div>
+                <div class="mt-3 rounded-xl bg-slate-50 p-3 text-[12px] font-bold text-slate-700"><span class="font-black text-slate-500">Learning event reason:</span> ${escapeHtml(reasonText || 'No hold reason listed')}</div>
                 <div class="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">
                     <span class="rounded-full bg-rose-50 px-2.5 py-1 text-rose-700">${escapeHtml(code)} ${escapeHtml(formatWeatherHoldDate(startDate))}</span>
-                    <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">${releaseDate ? `Off ${escapeHtml(code)} ${escapeHtml(formatWeatherHoldDate(releaseDate))}` : `Still ${escapeHtml(code)}`}</span>
-                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">GDD ${escapeHtml(formatWeatherHoldInteger(gdd))}</span>
+                    <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">${releaseDate ? `Clear ${escapeHtml(formatWeatherHoldDate(releaseDate))}` : `Still ${escapeHtml(code)}`}</span>
+                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">GDD To Clear ${escapeHtml(formatWeatherHoldInteger(gdd))}</span>
                     <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">Days ${escapeHtml(String(days || 0))}</span>
                 </div>
+            </div>`;
+        }
+
+        function buildWeatherHoldReasonSummaries(cycles = [], status = {}) {
+            const groups = new Map();
+            (Array.isArray(cycles) ? cycles : []).forEach((row) => {
+                const category = getWeatherHoldCycleReasonCategory(row, status && status.reason);
+                const key = category || 'unknown';
+                if (!groups.has(key)) {
+                    groups.set(key, {
+                        category: key,
+                        observations: 0,
+                        events: 0,
+                        cleared: 0,
+                        open: 0,
+                        reasons: new Set(),
+                        days: [],
+                        gdd: [],
+                        firstStart: '',
+                        lastStart: '',
+                        lastRelease: ''
+                    });
+                }
+                const group = groups.get(key);
+                const startDate = getWeatherHoldCycleStartDate(row);
+                const releaseDate = getWeatherHoldCycleReleaseDate(row);
+                const snapshotCount = Math.max(1, Math.round(getWeatherHoldCycleNumber(row, ['snapshot_count', 'SNAPSHOT_COUNT'], 1)));
+                group.observations += snapshotCount;
+                group.events += 1;
+                if (releaseDate) group.cleared += 1;
+                else group.open += 1;
+                getWeatherHoldCycleReasons(row).forEach((reason) => group.reasons.add(reason));
+                const days = getWeatherHoldCycleNumber(row, ['days_blocked', 'DAYS_BLOCKED', 'hold_days', 'HOLD_DAYS'], NaN);
+                const gdd = getWeatherHoldCycleNumber(row, ['gdd_base_50_to_release', 'GDD_BASE_50_TO_RELEASE'], NaN);
+                if (releaseDate && Number.isFinite(days)) group.days.push(days);
+                if (releaseDate && Number.isFinite(gdd)) group.gdd.push(gdd);
+                if (startDate && (!group.firstStart || Date.parse(startDate) < Date.parse(group.firstStart))) group.firstStart = startDate;
+                if (startDate && (!group.lastStart || compareWeatherHoldDateDesc(group.lastStart, startDate) > 0)) group.lastStart = startDate;
+                if (releaseDate && (!group.lastRelease || compareWeatherHoldDateDesc(group.lastRelease, releaseDate) > 0)) group.lastRelease = releaseDate;
+            });
+            const currentCategory = classifyHoldReasonForApp(status && status.reason || '');
+            return Array.from(groups.values()).sort((left, right) => {
+                if (left.category === currentCategory && right.category !== currentCategory) return -1;
+                if (right.category === currentCategory && left.category !== currentCategory) return 1;
+                const openDiff = right.open - left.open;
+                if (openDiff) return openDiff;
+                const eventDiff = right.events - left.events;
+                if (eventDiff) return eventDiff;
+                return getHoldRecoveryReasonLabel(left.category).localeCompare(getHoldRecoveryReasonLabel(right.category));
+            });
+        }
+
+        function renderWeatherHoldReasonSummaryCard(group = null) {
+            if (!group) return '';
+            const medianDays = getWeatherHoldMedianValue(group.days);
+            const medianGdd = getWeatherHoldMedianValue(group.gdd);
+            const reasonExamples = Array.from(group.reasons || []).slice(0, 8);
+            const reasonHtml = reasonExamples.length
+                ? `<div class="mt-3 flex flex-wrap gap-2">${reasonExamples.map((reason) => `<span class="rounded-full bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-600">${escapeHtml(reason)}</span>`).join('')}</div>`
+                : '<div class="mt-3 rounded-xl bg-white px-3 py-2 text-[11px] font-bold text-slate-400">No raw holdstopreason stored for this group.</div>';
+            return `<div class="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 shadow-sm">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">${escapeHtml(getHoldRecoveryReasonLabel(group.category))} Event Summary</div>
+                        <div class="mt-1 text-sm font-black text-slate-900">${escapeHtml(String(group.observations || 0))} blocked file observations across ${escapeHtml(String(group.events || 0))} H/S events</div>
+                    </div>
+                    <div class="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${escapeHtml(String(group.cleared || 0))} cleared</div>
+                </div>
+                <div class="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+                    ${renderWeatherHoldItemDetailMetric('Open Events', formatWeatherHoldInteger(group.open || 0), group.open ? 'amber' : 'slate')}
+                    ${renderWeatherHoldItemDetailMetric('Median Days', formatWeatherHoldNumber(medianDays, 1), 'slate')}
+                    ${renderWeatherHoldItemDetailMetric('Median GDD Clear', formatWeatherHoldInteger(medianGdd), 'rose')}
+                    ${renderWeatherHoldItemDetailMetric('Last Cleared', formatWeatherHoldDate(group.lastRelease), 'green')}
+                </div>
+                ${reasonHtml}
             </div>`;
         }
 
@@ -61921,6 +62113,10 @@ function toggleDriveQuickRequestItem(domId) {
             const summaryReleasedCycles = Math.max(0, Math.round(Number(getWeatherHoldSummaryValue(summary, 'released_cycle_count', 0)) || 0));
             const summaryOpenCycles = Math.max(0, Math.round(Number(getWeatherHoldSummaryValue(summary, 'open_cycle_count', 0)) || 0));
             const currentStatus = getWeatherHoldCurrentStatusForItem(null, summary);
+            const cycleObservationTotal = cycles.reduce((total, row) => total + Math.max(1, Math.round(getWeatherHoldCycleNumber(row, ['snapshot_count', 'SNAPSHOT_COUNT'], 1))), 0);
+            const blockedObservationTotal = cycleObservationTotal || Math.max(0, Math.round(Number(getWeatherHoldSummaryValue(summary, 'hold_sample_count', 0)) || 0)) || holdSampleTotal;
+            const cycleReleasedTotal = cycles.filter((row) => !!getWeatherHoldCycleReleaseDate(row)).length;
+            const cycleOpenTotal = cycles.filter((row) => !getWeatherHoldCycleReleaseDate(row)).length;
             const currentStatusLabel = currentStatus.isBlocked ? currentStatus.code : 'Clear';
             const titleEl = document.getElementById('weather-hold-item-modal-title');
             const metaEl = document.getElementById('weather-hold-item-modal-meta');
@@ -61937,24 +62133,27 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const summaryHtml = `<section class="grid grid-cols-2 gap-2 md:grid-cols-5">
                 ${renderWeatherHoldItemDetailMetric('Current Status', currentStatusLabel, currentStatus.isBlocked ? 'rose' : 'green')}
-                ${renderWeatherHoldItemDetailMetric('H/S Episodes', formatWeatherHoldInteger(summaryTotalCycles || cycles.length), 'blue')}
-                ${renderWeatherHoldItemDetailMetric('Released', formatWeatherHoldInteger(summaryReleasedCycles || releaseSampleTotal || (group && group.releaseSamples)), 'rose')}
-                ${renderWeatherHoldItemDetailMetric('Open', formatWeatherHoldInteger(summaryOpenCycles), 'amber')}
-                ${renderWeatherHoldItemDetailMetric('ML Jobs', String(jobs.length), 'slate')}
+                ${renderWeatherHoldItemDetailMetric('H/S Events', formatWeatherHoldInteger(summaryTotalCycles || cycles.length), 'blue')}
+                ${renderWeatherHoldItemDetailMetric('Cleared Events', formatWeatherHoldInteger(summaryReleasedCycles || cycleReleasedTotal || releaseSampleTotal || (group && group.releaseSamples)), 'rose')}
+                ${renderWeatherHoldItemDetailMetric('Open Events', formatWeatherHoldInteger(summaryOpenCycles || cycleOpenTotal), 'amber')}
+                ${renderWeatherHoldItemDetailMetric('Blocked File Obs', formatWeatherHoldInteger(blockedObservationTotal), 'slate')}
             </section>`;
-            const statusText = currentStatus.isBlocked ? buildWeatherHoldBlockedSummaryLabel(summary, currentStatus) : buildWeatherHoldClearSummaryLabel(summary);
+            const statusText = currentStatus.isBlocked ? buildWeatherHoldBlockedSummaryLabel(summary, currentStatus, cycles) : buildWeatherHoldClearSummaryLabel(summary);
             const statusHtml = `<section class="rounded-2xl border ${currentStatus.isBlocked ? 'border-rose-100 bg-rose-50 text-rose-800' : 'border-emerald-100 bg-emerald-50 text-emerald-800'} p-4 text-[12px] font-black uppercase tracking-[0.12em]">${escapeHtml(statusText)}</section>`;
             const historyFileCount = Number(getWeatherHoldSummaryValue(summary, 'history_file_count', 0)) || 0;
             const parsedHistoryFileCount = Number(getWeatherHoldSummaryValue(summary, 'parsed_history_file_count', 0)) || 0;
             const coverageHtml = historyFileCount && parsedHistoryFileCount < historyFileCount
                 ? `<section class="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-[11px] font-black uppercase tracking-[0.12em] text-amber-800">History backfill in progress: ${escapeHtml(formatWeatherHoldInteger(parsedHistoryFileCount))} of ${escapeHtml(formatWeatherHoldInteger(historyFileCount))} DriveAround files loaded into learning.</section>`
                 : '';
-            const profileHtml = profiles.length ? profiles.map(renderWeatherHoldProfileDetailCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No itemcode hold learning profile yet.</div>';
-            const cycleHtml = cycles.length ? cycles.slice(0, 20).map(renderWeatherHoldReleaseCycleDetailCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No itemcode hold/stop episodes yet.</div>';
+            const cycleHtml = cycles.length ? cycles.slice(0, 20).map(renderWeatherHoldReleaseCycleDetailCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No itemcode H/S events yet.</div>';
+            const reasonSummaries = buildWeatherHoldReasonSummaries(cycles, currentStatus);
+            const reasonSummaryHtml = reasonSummaries.length
+                ? reasonSummaries.map(renderWeatherHoldReasonSummaryCard).join('')
+                : (profiles.length ? profiles.map(renderWeatherHoldProfileDetailCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No exact itemcode reason summary yet.</div>');
             const jobHtml = jobs.length ? jobs.slice(0, 20).map(renderWeatherHoldMlJobDetailCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No ML image jobs stored for this itemcode yet.</div>';
             const assetHtml = assets.length ? assets.slice(0, 20).map(renderWeatherHoldTrainingAssetDetailCard).join('') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">No ML learning references stored for this itemcode yet.</div>';
-            const cycleHeading = weatherHoldState.itemMlDetailCycleFallback ? 'Legacy Location/Lot Episodes (Fallback)' : 'Itemcode H/S Episode Timeline';
-            setWeatherHoldItemModalHtml(`<div class="space-y-5">${summaryHtml}${statusHtml}${coverageHtml}<section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-rose-700">${cycleHeading}</div>${cycleHtml}</section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Hold Learning By Exact Itemcode</div>${profileHtml}</section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-blue-700">ML Image Jobs For Itemcode</div>${jobHtml}</section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-700">ML Learning References For Itemcode</div>${assetHtml}</section></div>`);
+            const cycleHeading = weatherHoldState.itemMlDetailCycleFallback ? 'Legacy Location/Lot Events (Fallback)' : 'Itemcode H/S Event Timeline';
+            setWeatherHoldItemModalHtml(`<div class="space-y-5">${summaryHtml}${statusHtml}${coverageHtml}<section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-rose-700">${cycleHeading}</div>${cycleHtml}</section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Reason Summary From Exact Itemcode Events</div>${reasonSummaryHtml}</section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-blue-700">ML Image Jobs For Itemcode (${escapeHtml(String(jobs.length))})</div>${jobHtml}</section><section class="space-y-3"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-700">ML Learning References For Itemcode</div>${assetHtml}</section></div>`);
             return false;
         }
 
@@ -63648,13 +63847,19 @@ function toggleDriveQuickRequestItem(domId) {
 
         function classifyHoldReasonForApp(value = '') {
             const text = String(value || '').trim().toLowerCase();
-            if (!text) return 'sheared';
+            if (!text) return 'unknown';
+            if (/(stop[ -]?ship|stopship|stop shipment|do not ship|don'?t ship)/.test(text)) return 'stop_ship';
+            if (/^(size|sizxe|sizing|spec|height|tops?|tips?|head size|caliper|thin|not ready|overrides?|no overrides?)/.test(text)) return 'size';
+            if (/^(root|roots|rooted|not rooted|root ball|top ball|not can full|can full)/.test(text)) return 'roots';
+            if (/^(leaf[_ -]?quality|leaf|foliar|chlorosis|yellow|necrosis|spotting|burn|quailty)/.test(text)) return 'leaf_quality';
+            if (/^(shear|sheared|shape sheared|trim|cutback|cut back|prune|pruned)/.test(text)) return 'sheared';
             if (/(aphid|mite|scale|thrip|snail|caterpillar|insect|bug|pest|borer|beetle)/.test(text)) return 'pest';
             if (/(fung|disease|leaf spot|phytophthora|rhizoctonia|botrytis|canker|mildew|rot|rust|anthracnose|blight|phomopsis|sclerotinia)/.test(text)) return 'fungal_disease';
-            if (/(size|sizing|spec|height|too small|too short|too tall|caliper|under[ -]?size|undersized|not ready|not saleable|not ready to ship)/.test(text)) return 'size';
-            if (/(leaf quality|leaf|foliar|chlorosis|yellow|necrosis|spotting|burn)/.test(text)) return 'leaf_quality';
+            if (/(size|sizing|spec|height|too small|too short|too tall|caliper|under[ -]?size|undersized|not ready|not saleable|not ready to ship|thin body|thin|tops?|tips?|head size|branching)/.test(text)) return 'size';
+            if (/(root|roots|rooted|not rooted|root ball|can full|ball small)/.test(text)) return 'roots';
+            if (/(leaf[_ -]?quality|leaf|foliar|chlorosis|yellow|necrosis|spotting|burn|quailty)/.test(text)) return 'leaf_quality';
             if (/(shear|sheared|trim|cutback|cut back|prune|pruned)/.test(text)) return 'sheared';
-            if (/(freeze|frost|cold|heat|hail|weather|wind|drought|wet)/.test(text)) return 'weather_stress';
+            if (/(freeze|frost|cold|heat|hail|weather[_ -]?stress|weather|wind|drought|wet)/.test(text)) return 'weather_stress';
             return 'other';
         }
 
@@ -63664,6 +63869,8 @@ function toggleDriveQuickRequestItem(domId) {
                 sheared: 'shear',
                 leaf_quality: 'leaf quality',
                 size: 'size',
+                roots: 'roots',
+                stop_ship: 'stop ship',
                 pest: 'pest',
                 fungal_disease: 'fungal disease',
                 weather_stress: 'weather stress',
@@ -63742,9 +63949,10 @@ function toggleDriveQuickRequestItem(domId) {
                 const holdSampleCount = Math.max(0, Math.round(Number(getWeatherHoldSummaryValue(summary, 'hold_sample_count', 0)) || 0));
                 const releaseSampleCount = Math.max(0, Math.round(Number(getWeatherHoldSummaryValue(summary, 'released_cycle_count', 0)) || 0));
                 const totalCycleCount = Math.max(0, Math.round(Number(getWeatherHoldSummaryValue(summary, 'total_cycle_count', 0)) || 0));
-                const forecast = currentStatus.isBlocked && Number.isFinite(gdd) ? getShearDecisionFutureReleaseEstimate(gdd) : null;
+                const forecastDetails = currentStatus.isBlocked ? getWeatherHoldBlockedForecastDetails(summary, currentStatus, []) : null;
+                const forecast = forecastDetails && forecastDetails.forecast ? forecastDetails.forecast : null;
                 const label = currentStatus.isBlocked
-                    ? buildWeatherHoldBlockedSummaryLabel(summary, currentStatus)
+                    ? buildWeatherHoldBlockedSummaryLabel(summary, currentStatus, [])
                     : buildWeatherHoldClearSummaryLabel(summary);
                 return {
                     ready: !!(totalCycleCount || holdSampleCount || releaseSampleCount),
@@ -63858,10 +64066,10 @@ function toggleDriveQuickRequestItem(domId) {
                 const recoveryParts = [];
                 if (Number.isFinite(days)) recoveryParts.push(`${formatShearDecisionNumber(days, 1)} days`);
                 if (Number.isFinite(gdd)) recoveryParts.push(`${formatShearDecisionNumber(gdd, 0)} GDD`);
-                parts.push(`${currentStatus.isBlocked ? 'Forecast Basis' : 'Avg Recovery When Blocked'} ${recoveryParts.join(' / ')}`);
+                parts.push(`${currentStatus.isBlocked ? 'Forecast Basis' : 'Avg Clear When Blocked'} ${recoveryParts.join(' / ')}`);
             }
-            if (forecast && forecast.date) parts.push(`${forecast.extrapolated ? 'estimated' : 'forecast'} release ${formatWeatherHoldDate(forecast.date)}`);
-            if (releaseSampleCount) parts.push(`${releaseSampleCount} cycles`);
+            if (forecast && forecast.date) parts.push(`${forecast.extrapolated ? 'estimated' : 'forecast'} clear ${formatWeatherHoldDate(forecast.date)}`);
+            if (releaseSampleCount) parts.push(`${releaseSampleCount} cleared events`);
             return {
                 ready: true,
                 days,
@@ -63912,9 +64120,9 @@ function toggleDriveQuickRequestItem(domId) {
             if (recovery.label) return String(recovery.label);
             const parts = [];
             if (Number.isFinite(Number(recovery.days))) parts.push(`avg ${formatShearDecisionNumber(Number(recovery.days), 1)} days on hold`);
-            if (Number.isFinite(Number(recovery.gdd))) parts.push(`${formatShearDecisionNumber(Number(recovery.gdd), 0)} GDD to release`);
-            if (recovery.forecast && recovery.forecast.date) parts.push(`est off hold ${formatWeatherHoldDate(recovery.forecast.date)}`);
-            if (Number(recovery.releaseSampleCount || recovery.sampleCount || 0) > 0) parts.push(`${formatShearDecisionNumber(Number(recovery.releaseSampleCount || recovery.sampleCount), 0)} cycles`);
+            if (Number.isFinite(Number(recovery.gdd))) parts.push(`${formatShearDecisionNumber(Number(recovery.gdd), 0)} GDD to clear`);
+            if (recovery.currentIsBlocked && recovery.forecast && recovery.forecast.date) parts.push(`est clear ${formatWeatherHoldDate(recovery.forecast.date)}`);
+            if (Number(recovery.releaseSampleCount || recovery.sampleCount || 0) > 0) parts.push(`${formatShearDecisionNumber(Number(recovery.releaseSampleCount || recovery.sampleCount), 0)} cleared events`);
             if (parts.length) return `Learned ${getHoldRecoveryReasonLabel(recovery.reason)} recovery: ${parts.join(' | ')}`;
             return String(recovery.label || 'Learned hold recovery: no profile yet');
         }
