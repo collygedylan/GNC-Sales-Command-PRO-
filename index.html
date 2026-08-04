@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.03.10';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.04.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5149,7 +5149,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.03.10').trim() || 'V2026.08.03.10';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.04.01').trim() || 'V2026.08.04.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6605,7 +6605,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.03.10';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.04.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -6622,12 +6622,28 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const APP_SHELL_RUNTIME_BOOTED_AT = Date.now();
         const DB_NAME="GNC_DDC_DB_V2"; const STORE_NAME="inventory_cache";
         const IOS_DEVICE_REGEX = /iPad|iPhone|iPod/;
-        const supabaseClient = (window.supabase && SUPABASE_KEY)
-            ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-                auth: { persistSession: false, autoRefreshToken: false },
-                realtime: { params: { eventsPerSecond: 8 } }
-            })
-            : null;
+        let supabaseClient = null;
+        function getSupabaseBrowserClient() {
+            if (supabaseClient && supabaseClient.storage) return supabaseClient;
+            if (!SUPABASE_KEY || !window.supabase || typeof window.supabase.createClient !== 'function') return null;
+            try {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+                    auth: { persistSession: false, autoRefreshToken: false },
+                    realtime: { params: { eventsPerSecond: 8 } }
+                });
+                return supabaseClient;
+            } catch (error) {
+                console.warn('Supabase browser client initialization failed.', error);
+                supabaseClient = null;
+                return null;
+            }
+        }
+        function getSupabaseStorageClient(errorMessage = 'Supabase storage is unavailable.') {
+            const client = getSupabaseBrowserClient();
+            if (!client || !client.storage) throw new Error(errorMessage);
+            return client.storage;
+        }
+        getSupabaseBrowserClient();
 const QUOTA_SAFE_REALTIME_MODE = true;
 const QUOTA_SAFE_VISIBLE_POLL_STANDALONE_MS = 240000;
 const QUOTA_SAFE_VISIBLE_POLL_BROWSER_MS = 360000;
@@ -17109,7 +17125,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             queueVisibleDatasetCatchup(180);
         }
         function shouldUseRealtime() {
-            return 'WebSocket' in window && navigator.onLine !== false;
+            return 'WebSocket' in window && navigator.onLine !== false && !!getSupabaseBrowserClient();
         }
 
         function getRealtimeTablesForView(viewId) {
@@ -17173,9 +17189,15 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             realtimeStartupUntil = Date.now() + REALTIME_STARTUP_GRACE_MS;
             liveSyncMode = 'queued';
             updateSyncDiagnostics('queued');
+            const realtimeClient = getSupabaseBrowserClient();
+            if (!realtimeClient) {
+                realtimeStartupUntil = 0;
+                startFallbackSync(getFallbackSyncInterval(), tableList);
+                return;
+            }
             const createRealtimeChannel = (tableName, area = '') => {
                 const safeArea = String(area || '').trim();
-                const channel = supabaseClient
+                const channel = realtimeClient
                     .channel(buildRealtimeChannelName(tableName, safeArea))
                     .on('postgres_changes', buildRealtimeChangeOptions(tableName, safeArea), (payload) => {
                         queueRealtimeChange(tableName, payload);
@@ -20949,7 +20971,7 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
         }
 
         function hasDirectSupabaseWriteFallbackConfigured() {
-            return !!(SUPABASE_KEY && window.supabase);
+            return !!getSupabaseBrowserClient();
         }
 
         function clearAppApiWriteProxyUnavailable() {
@@ -25486,7 +25508,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.03.10').trim() || 'V2026.08.03.10';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.04.01').trim() || 'V2026.08.04.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -27812,7 +27834,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 filePath = String(apiUpload.filePath || filePath).trim() || filePath;
                 publicUrl = String(apiUpload.publicUrl || '').trim();
             } catch (secureUploadError) {
-                if (!supabaseClient || !supabaseClient.storage) {
+                const fallbackStorageClient = getSupabaseBrowserClient();
+                if (!fallbackStorageClient || !fallbackStorageClient.storage) {
                     throw (secureUploadError instanceof Error ? secureUploadError : new Error('Secure credit photo upload proxy unavailable.'));
                 }
                 if (!appApiPhotoUploadFallbackWarningShown) {
@@ -27820,7 +27843,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     console.warn('Secure credit photo upload proxy unavailable; using direct Storage fallback.', secureUploadError);
                 }
                 const uploadResult = await withTimeout(
-                    supabaseClient.storage.from(bucketName).upload(filePath, file, {
+                    fallbackStorageClient.storage.from(bucketName).upload(filePath, file, {
                         contentType,
                         cacheControl: '31536000',
                         upsert: true
@@ -27830,7 +27853,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 );
                 const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
                 if (uploadError) throw uploadError;
-                const { data: publicUrlData } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
+                const { data: publicUrlData } = fallbackStorageClient.storage.from(bucketName).getPublicUrl(filePath);
                 publicUrl = String(publicUrlData && publicUrlData.publicUrl || '').trim();
             }
             if (!publicUrl) throw new Error('Credit photo upload did not return a public URL.');
@@ -49933,7 +49956,7 @@ function toggleDriveQuickRequestItem(domId) {
             const fileName = `${safeUser}-${Date.now()}-${generateChatUuid().slice(0, 8)}.${extension}`;
             const filePath = `${fileDate}/${safeConversationId}/${safeTitle}/${fileName}`;
             const uploadResult = await withTimeout(
-                supabaseClient.storage.from(CHAT_VOICE_BUCKET).upload(filePath, blob, {
+                getSupabaseStorageClient().from(CHAT_VOICE_BUCKET).upload(filePath, blob, {
                     contentType: blob.type || 'audio/webm',
                     upsert: false
                 }),
@@ -49942,7 +49965,7 @@ function toggleDriveQuickRequestItem(domId) {
             );
             const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
             if (uploadError) throw uploadError;
-            const { data: publicUrlData } = supabaseClient.storage.from(CHAT_VOICE_BUCKET).getPublicUrl(filePath);
+            const { data: publicUrlData } = getSupabaseStorageClient().from(CHAT_VOICE_BUCKET).getPublicUrl(filePath);
             return {
                 audioUrl: String(publicUrlData && publicUrlData.publicUrl || '').trim(),
                 storagePath: filePath
@@ -53643,7 +53666,7 @@ function toggleDriveQuickRequestItem(domId) {
                 });
                 const filePath = `${NCR_PHOTO_PATH_PREFIX}/${new Date().toISOString().split('T')[0]}/${fileName}`;
                 const uploadResult = await withTimeout(
-                    supabaseClient.storage.from(NCR_PHOTO_BUCKET).upload(filePath, entry.file, {
+                    getSupabaseStorageClient().from(NCR_PHOTO_BUCKET).upload(filePath, entry.file, {
                         contentType: entry.mimeType || entry.file.type || 'application/octet-stream',
                         upsert: true
                     }),
@@ -53652,7 +53675,7 @@ function toggleDriveQuickRequestItem(domId) {
                 );
                 const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
                 if (uploadError) throw uploadError;
-                const { data: publicUrlData } = supabaseClient.storage.from(NCR_PHOTO_BUCKET).getPublicUrl(filePath);
+                const { data: publicUrlData } = getSupabaseStorageClient().from(NCR_PHOTO_BUCKET).getPublicUrl(filePath);
                 const publicUrl = String(publicUrlData && publicUrlData.publicUrl || '').trim();
                 if (!publicUrl) throw new Error('Could not resolve NCR photo URL.');
                 entry.uploadedUrl = publicUrl;
@@ -60339,7 +60362,7 @@ function toggleDriveQuickRequestItem(domId) {
                 });
                 const filePath = `not-on-inventory/${new Date().toISOString().split('T')[0]}/${fileName}`;
                 const uploadResult = await withTimeout(
-                    supabaseClient.storage.from(NCR_PHOTO_BUCKET).upload(filePath, entry.file, {
+                    getSupabaseStorageClient().from(NCR_PHOTO_BUCKET).upload(filePath, entry.file, {
                         contentType: entry.mimeType || entry.file.type || 'application/octet-stream',
                         upsert: true
                     }),
@@ -60348,7 +60371,7 @@ function toggleDriveQuickRequestItem(domId) {
                 );
                 const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
                 if (uploadError) throw uploadError;
-                const { data: publicUrlData } = supabaseClient.storage.from(NCR_PHOTO_BUCKET).getPublicUrl(filePath);
+                const { data: publicUrlData } = getSupabaseStorageClient().from(NCR_PHOTO_BUCKET).getPublicUrl(filePath);
                 const publicUrl = String(publicUrlData && publicUrlData.publicUrl || '').trim();
                 if (!publicUrl) throw new Error('Could not resolve Not On Inventory photo URL.');
                 entry.uploadedUrl = publicUrl;
@@ -74160,7 +74183,7 @@ function toggleDriveQuickRequestItem(domId) {
             const uploadPreparedBlob = async (blob, fileName, contentType) => {
                 const filePath = `${new Date().toISOString().split('T')[0]}/issues/${fileName}`;
                 const uploadResult = await withTimeout(
-                    supabaseClient.storage.from(bucketName).upload(filePath, blob, {
+                    getSupabaseStorageClient().from(bucketName).upload(filePath, blob, {
                         contentType: contentType || 'image/jpeg',
                         cacheControl: '31536000',
                         upsert: true
@@ -74170,7 +74193,7 @@ function toggleDriveQuickRequestItem(domId) {
                 );
                 const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
                 if (uploadError) throw uploadError;
-                const { data: publicUrlData } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
+                const { data: publicUrlData } = getSupabaseStorageClient().from(bucketName).getPublicUrl(filePath);
                 return { publicUrl: publicUrlData.publicUrl, fileName };
             };
             let canvas = null;
@@ -108959,9 +108982,10 @@ C.14.043 C.15.000
             if (imageUrl) return imageUrl;
             const imagePath = String(firstNonEmptyValue(row && row.IMAGE_PATH, row && row.image_path, '')).trim();
             const imageBucket = String(firstNonEmptyValue(row && row.IMAGE_BUCKET, row && row.image_bucket, ML_CAPTURE_PHOTO_BUCKET)).trim() || ML_CAPTURE_PHOTO_BUCKET;
-            if (!imagePath || !supabaseClient || !supabaseClient.storage) return '';
+            const storageClient = getSupabaseBrowserClient();
+            if (!imagePath || !storageClient || !storageClient.storage) return '';
             try {
-                const { data } = supabaseClient.storage.from(imageBucket).getPublicUrl(imagePath);
+                const { data } = storageClient.storage.from(imageBucket).getPublicUrl(imagePath);
                 return data && data.publicUrl ? data.publicUrl : '';
             } catch (error) {
                 return '';
@@ -109442,7 +109466,7 @@ C.14.043 C.15.000
 
         async function uploadGrowerScoutBlob(bucket, blob, filePath, contentType = '') {
             const uploadResult = await withTimeout(
-                supabaseClient.storage.from(bucket).upload(filePath, blob, {
+                getSupabaseStorageClient().from(bucket).upload(filePath, blob, {
                     contentType: contentType || blob.type || 'application/octet-stream',
                     cacheControl: '31536000',
                     upsert: true
@@ -109451,7 +109475,7 @@ C.14.043 C.15.000
                 'Grower scout upload'
             );
             if (uploadResult && uploadResult.error) throw uploadResult.error;
-            const { data: publicUrlData } = supabaseClient.storage.from(bucket).getPublicUrl(filePath);
+            const { data: publicUrlData } = getSupabaseStorageClient().from(bucket).getPublicUrl(filePath);
             return String(publicUrlData && publicUrlData.publicUrl || '').trim();
         }
 
@@ -110178,13 +110202,13 @@ C.14.043 C.15.000
                 const uniqueId = `ml_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
                 const clean = (value) => String(value || 'capture').replace(/[^a-zA-Z0-9_-]+/g, '').slice(0, 48) || 'capture';
                 const filePath = `${new Date().toISOString().split('T')[0]}/${clean(currentUser)}-${uniqueId}.jpg`;
-                const uploadResult = await withTimeout(supabaseClient.storage.from(ML_CAPTURE_PHOTO_BUCKET).upload(filePath, blob, {
+                const uploadResult = await withTimeout(getSupabaseStorageClient().from(ML_CAPTURE_PHOTO_BUCKET).upload(filePath, blob, {
                     contentType: 'image/jpeg',
                     cacheControl: '31536000',
                     upsert: true
                 }), SUPABASE_UPLOAD_TIMEOUT_MS, 'ML photo upload');
                 if (uploadResult && uploadResult.error) throw uploadResult.error;
-                const { data: publicUrlData } = supabaseClient.storage.from(ML_CAPTURE_PHOTO_BUCKET).getPublicUrl(filePath);
+                const { data: publicUrlData } = getSupabaseStorageClient().from(ML_CAPTURE_PHOTO_BUCKET).getPublicUrl(filePath);
                 const payload = {
                     unique_id: uniqueId,
                     status: 'pending_ml',
@@ -110839,13 +110863,13 @@ C.14.043 C.15.000
             const ext = pathlibSafeExtension(file.name, file.type, 'jpg');
             const safeName = sanitizeDiagnosticCaseSegment(file.name.replace(/\.[^.]+$/, ''), 'LAB-REPORT');
             const filePath = `${new Date().toISOString().slice(0, 10)}/${caseId}/${safeName}-${Date.now()}.${ext}`;
-            const uploadResult = await withTimeout(supabaseClient.storage.from(DIAGNOSTIC_LAB_REPORT_BUCKET).upload(filePath, file, {
+            const uploadResult = await withTimeout(getSupabaseStorageClient().from(DIAGNOSTIC_LAB_REPORT_BUCKET).upload(filePath, file, {
                 cacheControl: '3600',
                 upsert: true,
                 contentType: file.type || undefined
             }), SUPABASE_UPLOAD_TIMEOUT_MS, 'diagnostic lab report upload');
             if (uploadResult.error) throw uploadResult.error;
-            const { data: publicUrlData } = supabaseClient.storage.from(DIAGNOSTIC_LAB_REPORT_BUCKET).getPublicUrl(filePath);
+            const { data: publicUrlData } = getSupabaseStorageClient().from(DIAGNOSTIC_LAB_REPORT_BUCKET).getPublicUrl(filePath);
             const publicUrl = publicUrlData && publicUrlData.publicUrl ? publicUrlData.publicUrl : '';
             const payload = {
                 status: 'approved',
@@ -133130,13 +133154,13 @@ ${folderNote ? `Folder Note: ${folderNote}
             const cleanFormat = format === 'jpeg' || format === 'jpg' ? 'jpg' : 'png';
             const datePath = new Date().toISOString().slice(0, 10);
             const filePath = `${datePath}/${uniqueId}.${cleanFormat}`;
-            const uploadResult = await withTimeout(supabaseClient.storage.from(MARKETING_MATERIALS_BUCKET).upload(filePath, blob, {
+            const uploadResult = await withTimeout(getSupabaseStorageClient().from(MARKETING_MATERIALS_BUCKET).upload(filePath, blob, {
                 contentType: blob.type || (cleanFormat === 'jpg' ? 'image/jpeg' : 'image/png'),
                 cacheControl: '31536000',
                 upsert: true
             }), SUPABASE_UPLOAD_TIMEOUT_MS, 'Marketing material upload');
             if (uploadResult && uploadResult.error) throw uploadResult.error;
-            const { data: publicUrlData } = supabaseClient.storage.from(MARKETING_MATERIALS_BUCKET).getPublicUrl(filePath);
+            const { data: publicUrlData } = getSupabaseStorageClient().from(MARKETING_MATERIALS_BUCKET).getPublicUrl(filePath);
             const publicUrl = String(publicUrlData && publicUrlData.publicUrl || '').trim();
             if (!publicUrl) throw new Error('Could not resolve the marketing material URL.');
             const designJson = advertisementCanvas ? advertisementCanvas.toJSON(ADVERTISEMENT_CUSTOM_PROPS) : {};
@@ -138181,7 +138205,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 filePath = String(apiUpload.filePath || filePath).trim() || filePath;
                                 publicUrl = String(apiUpload.publicUrl || '').trim();
                             } catch (secureUploadError) {
-                                if (!supabaseClient || !supabaseClient.storage) {
+                                const fallbackStorageClient = getSupabaseBrowserClient();
+                                if (!fallbackStorageClient || !fallbackStorageClient.storage) {
                                     throw (secureUploadError instanceof Error ? secureUploadError : new Error('Secure photo upload proxy unavailable.'));
                                 }
                                 if (!appApiPhotoUploadFallbackWarningShown) {
@@ -138189,7 +138214,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                                     console.warn('Secure photo upload proxy unavailable; using direct Storage fallback for this browser session.', secureUploadError);
                                 }
                                 const uploadResult = await withTimeout(
-                                    supabaseClient.storage.from(bucketName).upload(filePath, blob, {
+                                    fallbackStorageClient.storage.from(bucketName).upload(filePath, blob, {
                                         contentType: contentType || 'image/jpeg',
                                         cacheControl: '31536000',
                                         upsert: true
@@ -138199,7 +138224,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 );
                                 const uploadError = uploadResult && uploadResult.error ? uploadResult.error : null;
                                 if (uploadError) throw uploadError;
-                                const { data: publicUrlData } = supabaseClient.storage.from(bucketName).getPublicUrl(filePath);
+                                const { data: publicUrlData } = fallbackStorageClient.storage.from(bucketName).getPublicUrl(filePath);
                                 publicUrl = publicUrlData.publicUrl;
                             }
                             if (!publicUrl) throw new Error('Photo upload did not return a public URL.');
