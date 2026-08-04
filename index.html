@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.04.04';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.04.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5149,7 +5149,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.04.04').trim() || 'V2026.08.04.04';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.04.05').trim() || 'V2026.08.04.05';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -5909,6 +5909,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div id="tab-drive-loc" class="task-tab" onclick="setDriveTab('loc')">LOCATION</div>
                         <div id="tab-drive-card" class="task-tab" onclick="setDriveTab('card')">CARD</div>
                         <div id="tab-drive-hold" class="task-tab" onclick="setDriveTab('hold')">REPORTS</div>
+                        <div id="tab-drive-season-sales-notes" class="task-tab" onclick="setDriveTab('season-sales-notes')">SEASON SALES NOTES</div>
                     </div>
                     <div class="flex overflow-x-auto scrollbar-none gap-2 mb-3 pb-1" id="drive-season-filters"></div>
                     <div id="drive-plant-filters" class="hidden mb-3"></div>
@@ -6605,7 +6606,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.04.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.04.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -20053,7 +20054,8 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             bindFastInvokeById('tab-drive-name', 'setDriveTab', ['name'], 'COMMONNAME');
             bindFastInvokeById('tab-drive-loc', 'setDriveTab', ['loc'], 'LOCATION');
             bindFastInvokeById('tab-drive-card', 'setDriveTab', ['card'], 'CARD');
-bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
+            bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
+            bindFastInvokeById('tab-drive-season-sales-notes', 'setDriveTab', ['season-sales-notes'], 'Season Sales Notes');
             bindFastInvokeById('tab-review-name', 'setReviewBrowseMode', ['item'], 'COMMONNAME');
             bindFastInvokeById('tab-review-loc', 'setReviewBrowseMode', ['block'], 'LOCATION');
             bindFastInvokeById('tab-review-card', 'setReviewBrowseMode', ['card'], 'CARD');
@@ -24436,7 +24438,7 @@ let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprova
         const MOVES_UNIVERSAL_SEASONS = new Set(['U1', 'U2', 'U3']);
         const MOVES_PAIR_LOTCODES = new Set(['26.S1', '27.F1']);
 let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveSeason=null; let selectedDriveProgram=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let selectedDriveLocationCodes=new Set(); let driveLocationSearchTerm=''; let driveLocationFilterOpen=false; let selectedDriveLotCodes=new Set(); let driveLotSearchTerm=''; let driveLotFilterOpen=false; let drivePlantFilterItemsCache=[]; let drivePlantFilterGenusOptions=[]; let drivePlantFilterContSizeOptions=[]; let drivePlantFilterLocationOptions=[]; let drivePlantFilterLotOptions=[]; let driveGenusSelectionMode='all'; let driveContSizeSelectionMode='all'; let driveLocationSelectionMode='all'; let driveLotSelectionMode='all'; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; let driveSeasonSearchTerm=''; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); const AV_FILTER_SEASON_OPTIONS=Object.freeze(["F1","S1","U1","U2"]); const CAV_AV_BLANK_KEYS_QUERY=`select=*&order=itemcode.asc`; const DRIVE_DRILL_ALL_VALUE='__ALL__'; const DRIVE_DRILL_ALL_LABEL='ALL'; const DRIVE_ITEM_PROGRAM_OPTIONS=Object.freeze([{ value:'q1', label:'Q1', suffix:'1' }, { value:'promo', label:'PROMO', suffix:'2' }]); let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS); let driveResolvedCardStateKey=''; let driveResolvedCardStateCache=null; let driveVisibleItemsStateCacheKey=''; let driveVisibleItemsStateCache=null; let driveDrillGroupStateCache=new Map(); let driveSearchRequiresManualSelection=false; let driveSearchDebounceTimer=null; let driveSearchRequestToken=0;
-        let driveColumnFilters={}; let driveColumnFilterDrafts={}; let driveColumnFilterSelectedHeaders=new Set(); let driveColumnFilterDropdownOpen=false; let driveColumnFilterStep='select'; let driveColumnFilterFieldKey=''; let driveColumnFilterMode='values'; let driveColumnFilterValueSearchTerm=''; let driveColumnFilterFieldSearchTerm=''; let driveColumnFilterHeaderFieldsCache=[];
+        let driveColumnFilters={}; let driveColumnFilterDrafts={}; let driveColumnFilterSelectedHeaders=new Set(); let driveColumnFilterDropdownOpen=false; let driveColumnFilterStep='select'; let driveColumnFilterFieldKey=''; let driveColumnFilterMode='values'; let driveColumnFilterValueSearchTerm=''; let driveColumnFilterFieldSearchTerm=''; let driveColumnFilterHeaderFieldsCache=[]; let driveStandardColumnFilters={}; let driveSeasonSalesNoteColumnFilters={};
         let drivePlantFilterStateCacheKey=''; let drivePlantFilterStateCache=null;
 
 const DEFAULT_TASK_VIEW="av-blanks"; const DEFAULT_TASK_FILTER="all";
@@ -25547,7 +25549,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.04.04').trim() || 'V2026.08.04.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.04.05').trim() || 'V2026.08.04.05';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -33104,6 +33106,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return !!findSeasonSalesNoteMasterCandidateForCard(item);
         }
 
+        function isDriveSeasonSalesNotesRow(item = null) {
+            if (!item) return false;
+            if (resolveProductivityOriginKind(item) === 'season_sales_note') return true;
+            return isSeasonSalesNoteCardItem(item);
+        }
+
         function findRequestRowByUniqueId(uid) {
             const normalizedUid = String(uid || '').trim();
             if (!normalizedUid) return null;
@@ -39634,7 +39642,7 @@ return false;
             const masterState = getDatasetState('master');
             return [
                 activeDriveMode,
-                activeDriveTab === 'hold' ? `reports:${normalizeDriveHoldStopReportMode(activeDriveHoldStopReport)}:${normalizeDriveOpenStockReportSeasonInput(driveOpenStockReportSeason)}:${normalizeDriveOpenStockReportSalesYearInput(driveOpenStockReportSalesYear)}:${normalizeDriveOpenStockReportMaxSLtsInput(driveOpenStockReportMaxSLts)}` : 'standard-tab',
+                activeDriveTab === 'hold' ? `reports:${normalizeDriveHoldStopReportMode(activeDriveHoldStopReport)}:${normalizeDriveOpenStockReportSeasonInput(driveOpenStockReportSeason)}:${normalizeDriveOpenStockReportSalesYearInput(driveOpenStockReportSalesYear)}:${normalizeDriveOpenStockReportMaxSLtsInput(driveOpenStockReportMaxSLts)}` : (activeDriveTab === 'season-sales-notes' ? 'season-sales-notes' : 'standard-tab'),
                 getRoleAccessState().isForeman ? 'foreman-priority-only' : 'all-priority',
                 getRepU3VisibilityScopeKey(),
                 [...driveSelectedSeasons].sort().join('|'),
@@ -39704,6 +39712,8 @@ return false;
                 }
                 if (activeDriveTab === 'hold') {
                     baseItems = baseItems.filter((i) => isDriveHoldStopReportRow(i, activeDriveHoldStopReport));
+                } else if (activeDriveTab === 'season-sales-notes') {
+                    baseItems = baseItems.filter((i) => isDriveSeasonSalesNotesRow(i));
                 } else if (driveQuickHoldStopOnly) {
                     baseItems = baseItems.filter((i) => isDriveHoldStopCodeRow(i));
                 }
@@ -66784,6 +66794,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (tab === 'name') return 'Common Name';
             if (tab === 'loc') return 'Location';
             if (tab === 'hold') return 'Reports';
+            if (tab === 'season-sales-notes') return 'Season Sales Notes';
             return 'Cards';
         }
 
@@ -66792,12 +66803,39 @@ function toggleDriveQuickRequestItem(domId) {
                 name: document.getElementById('tab-drive-name'),
                 loc: document.getElementById('tab-drive-loc'),
                 card: document.getElementById('tab-drive-card'),
-                hold: document.getElementById('tab-drive-hold')
+                hold: document.getElementById('tab-drive-hold'),
+                'season-sales-notes': document.getElementById('tab-drive-season-sales-notes')
             };
             Object.entries(tabMap).forEach(([key, el]) => {
                 if (!el) return;
                 el.classList.toggle('active', activeDriveTab === key);
             });
+        }
+
+        function resetDriveColumnFilterUiState() {
+            driveColumnFilterDrafts = {};
+            driveColumnFilterSelectedHeaders = new Set();
+            driveColumnFilterDropdownOpen = false;
+            driveColumnFilterStep = 'select';
+            driveColumnFilterFieldKey = '';
+            driveColumnFilterMode = 'values';
+            driveColumnFilterValueSearchTerm = '';
+            driveColumnFilterFieldSearchTerm = '';
+            driveColumnFilterHeaderFieldsCache = [];
+        }
+
+        function applyDriveTabColumnFilterScope(previousTab = '', nextTab = '') {
+            const wasSeasonSalesNotes = String(previousTab || '').trim() === 'season-sales-notes';
+            const isSeasonSalesNotes = String(nextTab || '').trim() === 'season-sales-notes';
+            if (wasSeasonSalesNotes === isSeasonSalesNotes) return;
+            if (wasSeasonSalesNotes) {
+                driveSeasonSalesNoteColumnFilters = cloneDriveColumnFilters(driveColumnFilters);
+                driveColumnFilters = cloneDriveColumnFilters(driveStandardColumnFilters);
+            } else {
+                driveStandardColumnFilters = cloneDriveColumnFilters(driveColumnFilters);
+                driveColumnFilters = cloneDriveColumnFilters(driveSeasonSalesNoteColumnFilters);
+            }
+            resetDriveColumnFilterUiState();
         }
 
         function resetDriveDrillSelectionState() {
@@ -66979,6 +67017,8 @@ function toggleDriveQuickRequestItem(domId) {
             driveColumnFilterValueSearchTerm = '';
             driveColumnFilterFieldSearchTerm = '';
             driveColumnFilterHeaderFieldsCache = [];
+            driveStandardColumnFilters = {};
+            driveSeasonSalesNoteColumnFilters = {};
             drivePlantFilterItemsCache = [];
             drivePlantFilterGenusOptions = [];
             drivePlantFilterContSizeOptions = [];
@@ -66998,10 +67038,11 @@ function toggleDriveQuickRequestItem(domId) {
             closeDriveQuickFiltersModal();
             lastViewSwitchAt = Date.now();
             cancelDriveSearchRenderWork();
-            const nextTab = ['name', 'loc', 'card', 'hold'].includes(String(tab || '').trim()) ? String(tab || '').trim() : 'card';
+            const nextTab = ['name', 'loc', 'card', 'hold', 'season-sales-notes'].includes(String(tab || '').trim()) ? String(tab || '').trim() : 'card';
             const preserveNameDrillSelection = shouldPreserveDriveNameDrillSelectionForCard(nextTab);
             return runDirectTrackedNavigation('drive', `drive-tab:${nextTab}`, () => {
                 const previousTab = activeDriveTab;
+                applyDriveTabColumnFilterScope(previousTab, nextTab);
                 activeDriveTab = nextTab;
                 if (nextTab === 'hold' && previousTab !== 'hold') activeDriveHoldStopReport = 'hold-stop';
                 driveQuickRequestCardMode = nextTab === 'card';
@@ -67079,6 +67120,8 @@ function toggleDriveQuickRequestItem(domId) {
             document.getElementById('drive-search').value = ""; document.getElementById('drive-search-clear').classList.add('hidden');
             setDriveSearchManualSelectionLock(false);
             driveSelectedSeasons = new Set(DRIVE_SEASON_OPTIONS);
+            driveStandardColumnFilters = {};
+            driveSeasonSalesNoteColumnFilters = {};
             driveQuickHoldStopOnly = false;
             invalidateDriveResolvedCardState();
             if (shouldRender) scheduleDriveRender();
@@ -121407,7 +121450,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             'drive:loc:blocks',
             'drive:loc:locations',
             'drive-loc-card',
-            'drive-hold-card'
+            'drive-hold-card',
+            'drive-season-sales-notes-card'
         ]);
 
         function getDriveDrillSelectionStateKey() {
@@ -122122,10 +122166,20 @@ ${folderNote ? `Folder Note: ${folderNote}
             const key = safeLabel.toUpperCase();
             if (key && !headers.some((entry) => entry.key === key)) headers.push({ key, label: safeLabel });
             return headers;
-        }, []));
+        }, []).concat([{ key: 'ASSIGNEDTO', label: 'Assigned To' }]));
         const DRIVE_COLUMN_FILTER_ALLOWED_HEADER_KEYS = new Set(DRIVE_COLUMN_FILTER_ALLOWED_HEADERS.map((entry) => entry.key));
         const DRIVE_COLUMN_FILTER_ALLOWED_LABEL_BY_KEY = new Map(DRIVE_COLUMN_FILTER_ALLOWED_HEADERS.map((entry) => [entry.key, entry.label]));
         const DRIVE_COLUMN_FILTER_COMMON_HEADERS = Object.freeze(DRIVE_COLUMN_FILTER_ALLOWED_HEADERS.map((entry) => entry.key));
+        const DRIVE_COLUMN_FILTER_LABEL_OVERRIDES = Object.freeze({
+            ITEMCODE: 'Item Code',
+            COMMONNAME: 'Common Name',
+            CONTSIZE: 'Cont Size',
+            LOCATIONCODE: 'Location',
+            LOTCODE: 'Lot',
+            PRIORITY: 'Priority',
+            SALESNOTE: 'Sales Note',
+            ASSIGNEDTO: 'Assigned To'
+        });
         const DRIVE_COLUMN_FILTER_MODES = Object.freeze([
             { value: 'values', label: 'Values' },
             { value: 'contains', label: 'Contains' },
@@ -122144,7 +122198,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function formatDriveColumnHeaderLabel(key = '') {
             const normalized = normalizeDriveColumnFilterKey(key);
-            return DRIVE_COLUMN_FILTER_ALLOWED_LABEL_BY_KEY.get(normalized) || normalized.replace(/_/g, ' ');
+            return DRIVE_COLUMN_FILTER_LABEL_OVERRIDES[normalized] || DRIVE_COLUMN_FILTER_ALLOWED_LABEL_BY_KEY.get(normalized) || normalized.replace(/_/g, ' ');
         }
 
         function getDriveColumnFilterModeConfig(mode = '') {
@@ -122177,18 +122231,21 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function getDriveColumnFilterFields(items = []) {
             const fieldsByKey = new Map();
+            const exposeAssignedTo = activeDriveTab === 'season-sales-notes';
             (Array.isArray(items) ? items : []).forEach((item) => {
                 if (!item || typeof item !== 'object') return;
                 Object.keys(item).forEach((rawKey) => {
                     const key = normalizeDriveColumnFilterKey(rawKey);
+                    if (key === 'ASSIGNEDTO' && !exposeAssignedTo) return;
                     if (!key || fieldsByKey.has(key) || !DRIVE_COLUMN_FILTER_ALLOWED_HEADER_KEYS.has(key)) return;
                     fieldsByKey.set(key, { key, sourceKey: rawKey, label: formatDriveColumnHeaderLabel(key) });
                 });
             });
+            if (exposeAssignedTo && !fieldsByKey.has('ASSIGNEDTO')) fieldsByKey.set('ASSIGNEDTO', { key: 'ASSIGNEDTO', sourceKey: 'ASSIGNEDTO', label: 'Assigned To' });
             const priorityIndex = new Map(DRIVE_COLUMN_FILTER_COMMON_HEADERS.map((key, index) => [key, index]));
             return DRIVE_COLUMN_FILTER_ALLOWED_HEADERS
                 .filter((entry) => fieldsByKey.has(entry.key))
-                .map((entry) => Object.assign({}, fieldsByKey.get(entry.key), { label: entry.label }))
+                .map((entry) => Object.assign({}, fieldsByKey.get(entry.key), { label: formatDriveColumnHeaderLabel(entry.key) }))
                 .sort((a, b) => {
                 const aPriority = priorityIndex.has(a.key) ? priorityIndex.get(a.key) : 9999;
                 const bPriority = priorityIndex.has(b.key) ? priorityIndex.get(b.key) : 9999;
@@ -122259,6 +122316,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                     return getDrivePlantContSize(item);
                 case 'ITEMCODE':
                     return firstNonEmptyValue(item.ITEMCODE, item.itemcode, '');
+                case 'ASSIGNEDTO':
+                    return getMasterAssignedToValue(item);
                 case 'LOCATIONCODE':
                     return getDrivePlantLocationCode(item);
                 case 'LOTCODE':
@@ -122531,6 +122590,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (safeTab === 'loc') return 'Location';
             if (safeTab === 'hold') return 'Reports';
             if (safeTab === 'card') return 'Card';
+            if (safeTab === 'season-sales-notes') return 'Season Sales Notes';
             return 'Drive Mode';
         }
 
@@ -122562,6 +122622,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                     scopeLabel: `${driveModeLabel} > ${reportContext.reportLabel}${evalScope}`,
                     rows: reportContext.rows || []
                 };
+            }
+            if (tab === 'season-sales-notes') {
+                scopeParts.push('Season Sales Notes');
+                rows = sortDriveCardItems(sourceRows);
+                return { driveViewState, driveModeLabel, tab, tabLabel, scopeLabel: scopeParts.join(' > '), rows };
             }
             const forceTopLevelSearchResults = shouldLockDriveSearchToTopLevel();
             if (tab === 'loc') {
@@ -123855,6 +123920,11 @@ ${folderNote ? `Folder Note: ${folderNote}
             driveLotSearchTerm = '';
             driveLotFilterOpen = false;
             driveColumnFilters = {};
+            if (activeDriveTab === 'season-sales-notes') {
+                driveSeasonSalesNoteColumnFilters = {};
+            } else {
+                driveStandardColumnFilters = {};
+            }
             driveColumnFilterDrafts = {};
             driveColumnFilterSelectedHeaders = new Set();
             driveColumnFilterDropdownOpen = false;
@@ -125137,6 +125207,11 @@ ${folderNote ? `Folder Note: ${folderNote}
             driveColumnFilterValueSearchTerm = '';
             driveColumnFilterFieldSearchTerm = '';
             driveColumnFilterHeaderFieldsCache = [];
+            if (activeDriveTab === 'season-sales-notes') {
+                driveSeasonSalesNoteColumnFilters = {};
+            } else {
+                driveStandardColumnFilters = {};
+            }
             drivePlantFilterItemsCache = [];
             setDriveSearchManualSelectionLock(shouldDriveSearchLockForCurrentTab());
             invalidateDriveResolvedCardState();
@@ -125326,6 +125401,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true });
             });
         }
+
+        function getDriveCardStatusClass(item = null, fallbackClass = 'status-blue') {
+            return isDriveSeasonSalesNotesRow(item) ? 'status-orange' : fallbackClass;
+        }
+
         function buildDriveItemRenderSignature(item) {
             if (!item) return '';
             const clean = (value = '') => String(value == null ? '' : value).trim();
@@ -125600,12 +125680,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 syncDriveCrumb(crumb, crumbText);
                 if (container.dataset && container.dataset.driveRenderKey === renderKey) return true;
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                renderMarkupChunkedByKey('drive-quick-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', 'status-blue'), {
+                renderMarkupChunkedByKey('drive-quick-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), {
                     approxCardHeight: 310
                 });
                 return true;
             }
-            const html = finalItems.map((item) => generateCard(item, 'drive', 'status-blue')).join('');
+            const html = finalItems.map((item) => generateCard(item, 'drive', getDriveCardStatusClass(item))).join('');
             applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey);
             return true;
         }
@@ -125761,12 +125841,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 syncDriveCrumb(crumb, crumbText);
                 if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                renderMarkupChunkedByKey('drive-name-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', 'status-blue'), {
+                renderMarkupChunkedByKey('drive-name-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), {
                     approxCardHeight: 310
                 });
                 return;
             }
-            applyDriveRenderMarkup(container, crumb, crumbText, finalItems.map((item) => generateCard(item, 'drive', 'status-blue')).join(''), renderKey);
+            applyDriveRenderMarkup(container, crumb, crumbText, finalItems.map((item) => generateCard(item, 'drive', getDriveCardStatusClass(item))).join(''), renderKey);
         }
 
         function renderDriveLocationDrill(container, crumb, driveModeLabel = '', viewStateOverride = null) {
@@ -125852,12 +125932,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 syncDriveCrumb(crumb, crumbText);
                 if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                renderMarkupChunkedByKey('drive-loc-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', 'status-blue'), {
+                renderMarkupChunkedByKey('drive-loc-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), {
                     approxCardHeight: 310
                 });
                 return;
             }
-            applyDriveRenderMarkup(container, crumb, crumbText, finalItems.map((item) => generateCard(item, 'drive', 'status-blue')).join(''), renderKey);
+            applyDriveRenderMarkup(container, crumb, crumbText, finalItems.map((item) => generateCard(item, 'drive', getDriveCardStatusClass(item))).join(''), renderKey);
         }
 
         function renderDriveHoldStopCodeView(container, crumb, driveModeLabel = '', viewStateOverride = null) {
@@ -125890,13 +125970,38 @@ ${folderNote ? `Folder Note: ${folderNote}
                 syncDriveCrumb(crumb, crumbText);
                 if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                renderMarkupChunkedByKey('drive-hold-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', 'status-yellow'), {
+                renderMarkupChunkedByKey('drive-hold-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item, 'status-yellow')), {
                     approxCardHeight: 310,
                     prefixHtml: reportTabsHtml
                 });
                 return;
             }
-            applyDriveRenderMarkup(container, crumb, crumbText, reportTabsHtml + finalItems.map((item) => generateCard(item, 'drive', 'status-yellow')).join(''), renderKey);
+            applyDriveRenderMarkup(container, crumb, crumbText, reportTabsHtml + finalItems.map((item) => generateCard(item, 'drive', getDriveCardStatusClass(item, 'status-yellow'))).join(''), renderKey);
+        }
+
+        function renderDriveSeasonSalesNotesView(container, crumb, driveModeLabel = '', viewStateOverride = null) {
+            const resolvedDriveModeLabel = String(driveModeLabel || DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode');
+            const driveViewState = viewStateOverride && typeof viewStateOverride === 'object'
+                ? viewStateOverride
+                : buildDriveVisibleItemsState();
+            const { visibleItems, resolvedStateKey } = driveViewState;
+            const finalItems = sortDriveCardItems(Array.isArray(visibleItems) ? visibleItems : []);
+            const crumbText = `${resolvedDriveModeLabel} > Season Sales Notes (${finalItems.length} items)`;
+            const renderKey = buildDriveRenderKey('drive:season-sales-notes', crumbText, finalItems);
+            if (!finalItems.length) {
+                applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No Season Sales Notes rows match the current Drive filters.</div>`, `drive:season-sales-notes:empty:${resolvedStateKey || ''}`);
+                return;
+            }
+            if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
+                syncDriveCrumb(crumb, crumbText);
+                if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
+                if (container.dataset) container.dataset.driveRenderKey = renderKey;
+                renderMarkupChunkedByKey('drive-season-sales-notes-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), {
+                    approxCardHeight: 310
+                });
+                return;
+            }
+            applyDriveRenderMarkup(container, crumb, crumbText, finalItems.map((item) => generateCard(item, 'drive', getDriveCardStatusClass(item))).join(''), renderKey);
         }
 
         function renderDrive() {
@@ -125938,6 +126043,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 syncControls();
                 return;
             }
+            if (activeDriveTab === 'season-sales-notes') {
+                renderDriveQuickRequestBar([]);
+                renderDriveSeasonSalesNotesView(container, crumb, driveModeLabel, driveViewState);
+                syncControls();
+                return;
+            }
             const { finalItems, crumbText, renderKey } = buildDriveResolvedCardState(driveModeLabel, driveViewState);
             renderDriveQuickRequestBar(finalItems);
             if (finalItems.length === 0) {
@@ -125955,13 +126066,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                     return;
                 }
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                renderMarkupChunkedByKey('drive-main-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', 'status-blue'), {
+                renderMarkupChunkedByKey('drive-main-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), {
                     approxCardHeight: 310
                 });
                 syncControls();
                 return;
             }
-            const html = finalItems.map((item) => generateCard(item, 'drive', 'status-blue')).join('');
+            const html = finalItems.map((item) => generateCard(item, 'drive', getDriveCardStatusClass(item))).join('');
             applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey);
             syncControls();
         }
