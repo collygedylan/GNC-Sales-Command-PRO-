@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.04.03';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.04.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5149,7 +5149,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.04.03').trim() || 'V2026.08.04.03';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.04.04').trim() || 'V2026.08.04.04';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6605,7 +6605,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.04.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.04.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -21017,8 +21017,23 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
         async function ensureAppApiWriteProxySession() {
             if (getCurrentAppSessionToken()) return true;
             if (typeof ensureLeafAssistantSession !== 'function') return false;
-            const sessionResult = await ensureLeafAssistantSession(false).catch(() => null);
-            return !!(sessionResult && sessionResult.ok && getCurrentAppSessionToken());
+            if (window.__gncAppApiSessionBootstrapPromise) {
+                const existingResult = await window.__gncAppApiSessionBootstrapPromise.catch(() => null);
+                return !!(existingResult && existingResult.ok && getCurrentAppSessionToken());
+            }
+            window.__gncAppApiSessionBootstrapPromise = (async () => {
+                let sessionResult = await ensureLeafAssistantSession(false).catch(() => null);
+                if (sessionResult && sessionResult.ok && getCurrentAppSessionToken()) return sessionResult;
+                sessionResult = await ensureLeafAssistantSession(true).catch(() => null);
+                if (sessionResult && sessionResult.ok && getCurrentAppSessionToken()) return sessionResult;
+                return sessionResult || { ok: false };
+            })();
+            try {
+                const result = await window.__gncAppApiSessionBootstrapPromise;
+                return !!(result && result.ok && getCurrentAppSessionToken());
+            } finally {
+                window.__gncAppApiSessionBootstrapPromise = null;
+            }
         }
 
         async function runAppApiSupabaseWrite(table, method = 'POST', body = null, query = '', requestOptions = {}) {
@@ -22795,8 +22810,30 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
                 if (existingToken) return { ok: true, token: existingToken, source: 'cached-session' };
             }
             if (navigator.onLine === false) return { ok: false, reason: 'offline', message: 'Leaf is unavailable offline right now.' };
-            const username = String(currentUser || normalizeSessionIdentity(localStorage.getItem('gnc_user_v3')) || '').trim();
-            const password = String(localStorage.getItem('gnc_pin_v3') || '').trim();
+            const recoveryCredentials = typeof getSavedLoginCredentialsForPasswordRecovery === 'function'
+                ? getSavedLoginCredentialsForPasswordRecovery()
+                : null;
+            const restoreRecord = typeof getPersistedSessionRestoreRecord === 'function'
+                ? getPersistedSessionRestoreRecord()
+                : null;
+            const verifiedRecord = typeof readVerifiedLoginRecord === 'function'
+                ? readVerifiedLoginRecord()
+                : null;
+            const username = normalizeSessionIdentity(firstNonEmptyValue(
+                currentUser,
+                recoveryCredentials && recoveryCredentials.username,
+                restoreRecord && restoreRecord.username,
+                verifiedRecord && verifiedRecord.username,
+                localStorage.getItem('gnc_user_v3'),
+                ''
+            ));
+            const password = String(firstNonEmptyValue(
+                localStorage.getItem('gnc_pin_v3'),
+                recoveryCredentials && recoveryCredentials.password,
+                restoreRecord && restoreRecord.password,
+                verifiedRecord && verifiedRecord.password,
+                ''
+            ) || '').trim();
             if (!username || !password) {
                 return { ok: false, reason: 'missing-credentials', message: 'Leaf could not find your saved login for session verification. Please sign in again.' };
             }
@@ -22816,7 +22853,8 @@ bindFastInvokeById('tab-drive-hold', 'setDriveTab', ['hold'], 'Reports');
                         expiresAt: Number(payload.session.expiresAt || 0),
                         username: String(firstNonEmptyValue(payload.session.username, username) || '').trim(),
                         displayName: String(firstNonEmptyValue(payload.session.displayName, currentUserDisplay, username) || '').trim(),
-                        role: String(firstNonEmptyValue(payload.session.role, currentRole) || '').trim()
+                        role: String(firstNonEmptyValue(payload.session.role, currentRole) || '').trim(),
+                        mustChangePassword: payload.session.mustChangePassword === true
                     });
                     return { ok: true, token: getCurrentAppSessionToken(), source: 'bootstrap' };
                 }
@@ -25509,7 +25547,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.04.03').trim() || 'V2026.08.04.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.04.04').trim() || 'V2026.08.04.04';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 

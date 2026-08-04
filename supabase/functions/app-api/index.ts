@@ -80,6 +80,20 @@ const AV_OPTION_EVAL_MANAGER_UPDATE_FIELDS = new Set([
   "assignedto",
   "instructions",
 ]);
+
+function normalizeLoginPasswordForComparison(value = "") {
+  return String(value || "").trim().replace(/\s+/g, "").toUpperCase();
+}
+
+function doesLoginPasswordMatch(dbPassword = "", inputPassword = "") {
+  const stored = String(dbPassword || "").trim();
+  const entered = String(inputPassword || "").trim();
+  if (!stored || !entered) return false;
+  if (stored === entered) return true;
+  if (!isForcedPasswordValue(stored)) return false;
+  return normalizeLoginPasswordForComparison(stored) === normalizeLoginPasswordForComparison(entered);
+}
+
 const READABLE_TABLES = new Set([
   "ph_master_inventory",
   "ph_active_request_live_rows",
@@ -537,7 +551,7 @@ async function handleLogin(payload: Record<string, unknown>) {
   const matchedUser = rows.find((row) => {
     const dbUsername = String(row.username || row.USERNAME || "").trim();
     const dbPassword = String(row.password || row.PASSWORD || "").trim();
-    return dbPassword === password && normalizeUsername(dbUsername) === normalizedInput;
+    return doesLoginPasswordMatch(dbPassword, password) && normalizeUsername(dbUsername) === normalizedInput;
   }) || null;
 
   if (!matchedUser) return jsonResponse({ ok: false, reason: "mismatch" }, 200);
@@ -546,7 +560,8 @@ async function handleLogin(payload: Record<string, unknown>) {
   const role = String(matchedUser.role || matchedUser.ROLE || "User").trim() || "User";
   const division = String(matchedUser.division || matchedUser.DIVISION || "10").trim() || "10";
   const language = String(matchedUser.language || matchedUser.LANGUAGE || "English").trim() || "English";
-  const mustChangePassword = isForcedPasswordValue(password);
+  const matchedDbPassword = String(matchedUser.password || matchedUser.PASSWORD || "").trim();
+  const mustChangePassword = isForcedPasswordValue(matchedDbPassword) || isForcedPasswordValue(password);
   const session = await createAppSession({
     username: dbUsername,
     displayName: dbUsername,
