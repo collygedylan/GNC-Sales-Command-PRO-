@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.03.08';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.03.09';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5149,7 +5149,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.03.08').trim() || 'V2026.08.03.08';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.03.09').trim() || 'V2026.08.03.09';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6605,7 +6605,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.03.08';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.03.09';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -25448,7 +25448,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.03.08').trim() || 'V2026.08.03.08';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.03.09').trim() || 'V2026.08.03.09';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -138485,6 +138485,23 @@ ${folderNote ? `Folder Note: ${folderNote}
                 })();
                 return latestShellCheckPromise;
             };
+            const scheduleShellMaintenance = (reason = 'shell-maintenance', options = {}) => {
+                const force = options && options.force === true;
+                const requestedDelay = Number(options && options.delayMs);
+                const touchDelay = (typeof isTouchConstrainedDevice === 'function' && isTouchConstrainedDevice()) ? 900 : 320;
+                const delayMs = Number.isFinite(requestedDelay) ? Math.max(0, requestedDelay) : touchDelay;
+                const run = () => {
+                    updateShellRegistration(reason).catch(() => {});
+                    checkLatestShellAndReload(reason, force).catch(() => {});
+                };
+                setTimeout(() => {
+                    if (typeof requestIdleCallback === 'function' && !document.hidden) {
+                        requestIdleCallback(run, { timeout: 1400 });
+                        return;
+                    }
+                    run();
+                }, delayMs);
+            };
             navigator.serviceWorker.register('./sw.js?v=' + encodeURIComponent(shellBuild), { scope: './', updateViaCache: 'none' }).then(async (reg) => {
                 console.log('Service Worker Registered');
                 try { await updateShellRegistration('startup-register'); } catch (error) {}
@@ -138542,23 +138559,17 @@ ${folderNote ? `Folder Note: ${folderNote}
                             checkLatestShellAndReload('interval-resume', false).catch(() => {});
                         }, 1000 * 60 * 5);
                     }
-                    if (window.__swReg) {
-                        updateShellRegistration('visibility-visible').catch(() => {});
-                    }
-                    checkLatestShellAndReload('visibility-visible', true).catch(() => {});
+                    if (window.__swReg) scheduleShellMaintenance('visibility-visible', { force: true });
                 }
             }, { passive: true });
             window.addEventListener('pageshow', () => {
-                updateShellRegistration('pageshow').catch(() => {});
-                checkLatestShellAndReload('pageshow', true).catch(() => {});
+                scheduleShellMaintenance('pageshow', { force: true, delayMs: 420 });
             }, { passive: true });
             window.addEventListener('online', () => {
-                updateShellRegistration('online').catch(() => {});
-                checkLatestShellAndReload('online', true).catch(() => {});
+                scheduleShellMaintenance('online', { force: true, delayMs: 420 });
             }, { passive: true });
             window.addEventListener('focus', () => {
-                updateShellRegistration('focus').catch(() => {});
-                checkLatestShellAndReload('focus', false).catch(() => {});
+                scheduleShellMaintenance('focus', { force: false, delayMs: 650 });
             }, { passive: true });
             window.addEventListener('pagehide', () => {
                 if (window.handleWalkieAppHidden) window.handleWalkieAppHidden().catch(() => {});

@@ -2,10 +2,12 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.08.03.08';
+const APP_SHELL_BUILD = 'V2026.08.03.09';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
+const INSTALL_ASSET_TIMEOUT_MS = 8500;
+const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 const CACHE_NAME = 'ag-data-v4.3-rebuild-' + APP_SHELL_BUILD;
 const ASSETS_TO_CACHE = [
   APP_SHELL_URL,
@@ -46,6 +48,21 @@ function getRequestedShellBuild(request) {
   return normalizeShellBuild(requestUrl.searchParams.get(APP_SHELL_QUERY_PARAM) || '');
 }
 
+async function fetchWithTimeout(request, options = {}, timeoutMs = INSTALL_ASSET_TIMEOUT_MS) {
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timeoutId = controller ? setTimeout(() => {
+    try { controller.abort(); } catch (error) {}
+  }, Math.max(1000, Number(timeoutMs) || INSTALL_ASSET_TIMEOUT_MS)) : null;
+  try {
+    return await fetch(request, {
+      ...options,
+      signal: controller ? controller.signal : options.signal
+    });
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 async function cacheShellResponse(cache, requestedShellUrl, networkResponse) {
   if (!cache || !requestedShellUrl || !networkResponse || networkResponse.status !== 200) return;
   const responseClone = networkResponse.clone();
@@ -79,13 +96,14 @@ async function cacheShellInstallAsset(cache, asset) {
   if (!cache || !asset) return;
   try {
     if (String(asset).startsWith('./')) {
-      const response = await fetch(asset, { cache: 'reload', credentials: 'same-origin' });
+      const response = await fetchWithTimeout(asset, { cache: 'reload', credentials: 'same-origin' }, INSTALL_ASSET_TIMEOUT_MS);
       if (response && response.status === 200) {
         await cache.put(asset, response);
       }
       return;
     }
-    await cache.add(asset);
+    const response = await fetchWithTimeout(asset, { cache: 'reload', mode: 'no-cors' }, INSTALL_REMOTE_ASSET_TIMEOUT_MS);
+    if (response) await cache.put(asset, response);
   } catch (error) {}
 }
 
@@ -170,6 +188,10 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(keys.map((key) => key !== CACHE_NAME ? caches.delete(key) : Promise.resolve())))
+      .then(() => {
+        if (!self.registration || !self.registration.navigationPreload) return Promise.resolve();
+        return self.registration.navigationPreload.enable().catch(() => {});
+      })
       .then(() => self.clients.claim())
       .then(() => broadcastShellVersion('GNC_SHELL_ACTIVATED'))
       .then(() => navigateStaleShellClients('activate'))
@@ -207,7 +229,13 @@ self.addEventListener('fetch', (event) => {
           : event.request;
         const cache = await caches.open(CACHE_NAME).catch(() => null);
         const cachedShellFallback = await getCachedShellFallback(cache, currentShellUrl, event.request);
-        const navigationNetwork = fetch(primaryShellUrl, { cache: 'no-store', credentials: 'same-origin' })
+        const preloadedNavigation = event.preloadResponse
+          ? event.preloadResponse.catch(() => null)
+          : Promise.resolve(null);
+        const navigationNetwork = preloadedNavigation.then((preloadedResponse) => {
+          if (preloadedResponse && preloadedResponse.status === 200 && !isStaleShellNavigation) return preloadedResponse;
+          return fetch(primaryShellUrl, { cache: 'no-store', credentials: 'same-origin' });
+        })
           .then(async (networkResponse) => {
             if (networkResponse && networkResponse.status === 200) {
               await cacheShellResponse(cache, currentShellUrl, networkResponse);
