@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.04.02';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.04.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5149,7 +5149,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.04.02').trim() || 'V2026.08.04.02';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.04.03').trim() || 'V2026.08.04.03';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6605,7 +6605,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.04.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.04.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24127,7 +24127,7 @@ let emailRecipientOpenGroupByContext={ bloom: '', av: '', drive: '', advertiseme
         let detailRequestSourceDomIds=[];
         let avRuleColumnsReady=null; let avRuleColumnsProbePromise=null; let avRuleSchemaWarningShown=false; let avRuleCleanupInFlight=new Set(); let flyerShadowColumnsReady=null; let flyerShadowColumnsProbePromise=null; let flyerShadowSchemaWarningShown=false; let flyerFolderRowsSchemaReady=null; let flyerFolderRowsSchemaPromise=null; let flyerFolderRowsSchemaWarningShown=false; let requestHistorySchemaReady=null; let requestHistorySchemaWarningShown=false; let flyerFolderHistorySchemaReady=null; let flyerFolderHistorySchemaWarningShown=false; let requestCompletionUserColumnsReady=null; let requestCompletionUserColumnsProbePromise=null; let requestCompletionUserSchemaWarningShown=false; let evalTaskColumnsReady=null; let evalTaskColumnsProbePromise=null; let evalTaskSchemaWarningShown=false; let ncrApprovalRequesterColumnsReady=null; let ncrApprovalRequesterColumnsProbePromise=null; let ncrApprovalRequesterSchemaWarningShown=false;
         let activeSalesOfficeTab='season'; let salesOfficeOrderDrillLevel='rep'; let salesOfficeOrderSelectedRepKey=''; let salesOfficeOrderSelectedCustomerKey=''; let salesOfficeOrderSelectedRepTab='orders'; let salesOfficeOrderColumnsReady=null; let salesOfficeOrderSchemaPromise=null; let salesOfficeOrderSchemaWarningShown=false;
-let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprovalDetailId=''; let activeProductivityTeamTab='inventory'; let selectedProductivityUser=''; let productivityDateStart=''; let productivityDateEnd=''; let productivityViewMode='cards'; let productivityHistoryByUser=new Map(); let productivityHistoryLoadState=new Map(); let productivityHistorySchemaReady=null; let productivityHistorySchemaPromise=null; let productivityHistorySchemaWarningShown=false; let productivityHistoryBackfillPromise=null; let productivityUserDirectoryState={ rows: [], loading: false, loaded: false, error: '', promise: null }; let inventoryTransactionHistoryState={ rows: [], loading: false, loaded: false, error: '', promise: null, action: 'all', search: '', dateStart: '', dateEnd: '' };
+let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprovalDetailId=''; let activeProductivityTeamTab='inventory'; let selectedProductivityUser=''; let productivityDateStart=''; let productivityDateEnd=''; let productivityViewMode='cards'; let productivityHistoryByUser=new Map(); let productivityHistoryLoadState=new Map(); let productivityHistorySchemaReady=null; let productivityHistorySchemaPromise=null; let productivityHistorySchemaWarningShown=false; let productivityHistoryBackfillPromise=null; let productivityUserDirectoryState={ rows: [], loading: false, loaded: false, error: '', promise: null }; let inventoryTransactionHistoryState={ rows: [], loading: false, loaded: false, error: '', promise: null, action: 'all', search: '', dateStart: '', dateEnd: '' }; let managerAssignedItemsAssignedToFilter='all';
 
         function isLagSensitiveDetailPrefix(prefix) {
             return prefix === 'global-' || prefix === 'ssn-' || prefix === 'lsn-' || prefix === 'na-' || prefix === 'req-' || prefix === 'dock-' || prefix === 'flyer-';
@@ -24557,6 +24557,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const MANAGER_APPROVAL_TAB_VALUES = Object.freeze([SHEAR_APPROVAL_VIEW, NCR_APPROVAL_NEW_CROP_VIEW, NOT_ON_INVENTORY_APPROVAL_VIEW]);
         const TASK_DIAGNOSTICS_VIEW = 'diagnostics-review';
         const INVENTORY_TRANSACTION_HISTORY_VIEW = 'inventory-transaction-history';
+        const MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW = 'assigned-items-export';
         const INVENTORY_TRANSACTION_AUDIT_TABLE = 'ph_inventory_transactions';
         const NCR_APPROVAL_ASSIGNMENTS = Object.freeze({
             'new-crop:dylan': 'ncr_approval_new_crop_dylan',
@@ -25508,7 +25509,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.04.02').trim() || 'V2026.08.04.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.04.03').trim() || 'V2026.08.04.03';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -108761,6 +108762,7 @@ C.14.043 C.15.000
             else if (requestedTab === 'moves' && canAccessView('moves')) nextTab = 'moves';
             else if (requestedTab === APP_SEASON_SETTINGS_VIEW && canManageCurrentSeasonSettings()) nextTab = APP_SEASON_SETTINGS_VIEW;
             else if (requestedTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW && canManageAvBlanksPhotoBypassSettings()) nextTab = AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW;
+            else if (requestedTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && canViewAssignedItemsExport()) nextTab = MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW;
             else if (isManagerApprovalTab(requestedTab) && canUseManagerApprovalTab(requestedTab)) nextTab = requestedTab;
             activeHomeTab = nextTab;
             if (nextTab !== SHEAR_APPROVAL_VIEW) activeShearApprovalDetailId = '';
@@ -108794,6 +108796,9 @@ C.14.043 C.15.000
                 ensureDatasetLoaded('master', 'full').then(() => scheduleManagersRender(true)).catch(() => {});
                 if (isNcrApprovalTaskView(nextTab)) scheduleNcrApprovalTaskRowsRefresh(nextTab, { force: true });
                 if (isNotOnInventoryApprovalTaskView(nextTab)) scheduleNotOnInventoryApprovalTaskRowsRefresh(nextTab, { force: true });
+            }
+            if (nextTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) {
+                ensureDatasetLoaded('warehouseAssignedItems', 'full').then(() => scheduleManagersRender(true)).catch(() => {});
             }
             renderHomeOrManagersNow(true);
             return false;
@@ -112267,6 +112272,227 @@ C.14.043 C.15.000
             </div>`;
         }
 
+        function canViewAssignedItemsExport(userOverride = '') {
+            return isPrivilegedManagerUser(userOverride);
+        }
+
+        function getManagerAssignedItemsExportRows() {
+            return (Array.isArray(warehouseAssignedItemsInventory) ? warehouseAssignedItemsInventory : [])
+                .map((row, idx) => normalizeWarehouseAssignedItemRow(Object.assign({}, row), idx))
+                .filter(Boolean)
+                .sort((a, b) => {
+                    const assignedCompare = String(a.ASSIGNEDTO || '').localeCompare(String(b.ASSIGNEDTO || ''), undefined, { numeric: true });
+                    if (assignedCompare !== 0) return assignedCompare;
+                    const nameCompare = String(a.COMMONNAME || '').localeCompare(String(b.COMMONNAME || ''), undefined, { numeric: true });
+                    if (nameCompare !== 0) return nameCompare;
+                    const sizeCompare = String(a.CONTSIZE || '').localeCompare(String(b.CONTSIZE || ''), undefined, { numeric: true });
+                    if (sizeCompare !== 0) return sizeCompare;
+                    const itemCompare = String(a.ITEMCODE || '').localeCompare(String(b.ITEMCODE || ''), undefined, { numeric: true });
+                    if (itemCompare !== 0) return itemCompare;
+                    return String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true });
+                });
+        }
+
+        function getManagerAssignedItemsAssigneeOptions(rows = null) {
+            const sourceRows = Array.isArray(rows) ? rows : getManagerAssignedItemsExportRows();
+            const byUser = new Map();
+            sourceRows.forEach((row) => {
+                const key = normalizeEvalAssignableUser(row && row.ASSIGNEDTO);
+                if (!key) return;
+                const current = byUser.get(key) || { key, label: row.ASSIGNEDTO || key, count: 0 };
+                current.count += 1;
+                if (String(row.ASSIGNEDTO || '').length > String(current.label || '').length) current.label = row.ASSIGNEDTO;
+                byUser.set(key, current);
+            });
+            return Array.from(byUser.values()).sort((a, b) => String(a.label || '').localeCompare(String(b.label || ''), undefined, { numeric: true }));
+        }
+
+        function getManagerAssignedItemsActiveAssigneeKey() {
+            const key = normalizeEvalAssignableUser(managerAssignedItemsAssignedToFilter);
+            return key && key !== 'all' ? key : 'all';
+        }
+
+        function getManagerAssignedItemsActiveAssigneeLabel(rows = null) {
+            const activeKey = getManagerAssignedItemsActiveAssigneeKey();
+            if (activeKey === 'all') return 'All AssignedTo';
+            const match = getManagerAssignedItemsAssigneeOptions(rows).find((option) => option.key === activeKey);
+            return match ? match.label : activeKey;
+        }
+
+        function getFilteredManagerAssignedItemsExportRows(rows = null) {
+            const sourceRows = Array.isArray(rows) ? rows : getManagerAssignedItemsExportRows();
+            const activeKey = getManagerAssignedItemsActiveAssigneeKey();
+            return sourceRows.filter((row) => {
+                if (activeKey !== 'all' && normalizeEvalAssignableUser(row && row.ASSIGNEDTO) !== activeKey) return false;
+                return managerTextMatchesSearch([
+                    row.ASSIGNEDTO,
+                    row.WAREHOUSEI,
+                    row.ITEMCODE,
+                    row.CONTSIZE,
+                    row.COMMONNAME,
+                    row.LOCATIONCODE,
+                    row.SOURCE,
+                    row.GENUSNAME
+                ]);
+            });
+        }
+
+        function getManagerAssignedItemsExportColumns() {
+            return [
+                { label: 'AssignedTo', value: (row) => row.ASSIGNEDTO || '' },
+                { label: 'WAREHOUSEI', value: (row) => row.WAREHOUSEI || '' },
+                { label: 'ITEMCODE', value: (row) => row.ITEMCODE || '' },
+                { label: 'CONTSIZE', value: (row) => row.CONTSIZE || '' },
+                { label: 'COMMONNAME', value: (row) => row.COMMONNAME || '' },
+                { label: 'LOCATIONCODE', value: (row) => row.LOCATIONCODE || '' },
+                { label: 'SOURCE', value: (row) => row.SOURCE || '' },
+                { label: 'GENUSNAME', value: (row) => row.GENUSNAME || '' }
+            ];
+        }
+
+        function getManagerAssignedItemsExportMetaRows(rows = []) {
+            const exportedAt = new Date().toLocaleString();
+            return [
+                ['Export', 'AssignedTo Warehouse Items'],
+                ['AssignedTo Filter', getManagerAssignedItemsActiveAssigneeLabel()],
+                ['Search', managersSearchTerm || 'All'],
+                ['Rows', String(Array.isArray(rows) ? rows.length : 0)],
+                ['Exported By', currentUser || ''],
+                ['Exported At', exportedAt]
+            ];
+        }
+
+        function setManagerAssignedItemsAssigneeFilter(value = 'all') {
+            managerAssignedItemsAssignedToFilter = value || 'all';
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        async function refreshManagerAssignedItemsExport() {
+            if (!canViewAssignedItemsExport()) return false;
+            try {
+                await ensureDatasetLoaded('warehouseAssignedItems', 'full', { force: true, preserveRequestedMode: true });
+                scheduleManagersRender(true);
+                showToast('Assigned Items Refreshed', 'Loaded the latest AssignedTo rows.');
+            } catch (error) {
+                showToast('Refresh Failed', String(error && error.message || 'Could not refresh AssignedTo rows.'), true);
+            }
+            return false;
+        }
+
+        async function exportManagerAssignedItemsToExcel() {
+            if (!canViewAssignedItemsExport()) return false;
+            try {
+                await ensureDatasetLoaded('warehouseAssignedItems', 'full', { preserveRequestedMode: true });
+            } catch (error) {
+                showToast('Export Failed', String(error && error.message || 'Could not load AssignedTo rows.'), true);
+                return false;
+            }
+            const allRows = getManagerAssignedItemsExportRows();
+            const rows = getFilteredManagerAssignedItemsExportRows(allRows);
+            if (!rows.length) {
+                showToast('No Rows', 'No AssignedTo rows match the current filters.', true);
+                return false;
+            }
+            const assigneeLabel = getManagerAssignedItemsActiveAssigneeLabel(allRows);
+            downloadExcelWorkbook(
+                getManagerAssignedItemsExportColumns(),
+                rows,
+                `AssignedTo Export - ${assigneeLabel}`,
+                managersSearchTerm || '',
+                'assignedto-export',
+                getManagerAssignedItemsExportMetaRows(rows),
+                { filenameBase: `AssignedTo Export ${assigneeLabel}`, freezeHeaderRow: true, includeAutoFilter: true }
+            );
+            showToast('Export Ready', `Downloading ${rows.length} AssignedTo row${rows.length === 1 ? '' : 's'} as Excel.`);
+            return false;
+        }
+
+        function renderManagerAssignedItemsPreviewTable(rows = []) {
+            if (!rows.length) {
+                return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No AssignedTo rows match the current filters.</div>';
+            }
+            const previewRows = rows.slice(0, 100);
+            const body = previewRows.map((row) => `<tr class="border-b border-slate-100">
+                <td class="px-3 py-2 font-black text-slate-900">${escapeHtml(row.ASSIGNEDTO || '-')}</td>
+                <td class="px-3 py-2">${escapeHtml(row.WAREHOUSEI || '-')}</td>
+                <td class="px-3 py-2 font-black text-[#1d4ed8]">${escapeHtml(row.ITEMCODE || '-')}</td>
+                <td class="px-3 py-2">${escapeHtml(row.CONTSIZE || '-')}</td>
+                <td class="px-3 py-2">${escapeHtml(row.COMMONNAME || '-')}</td>
+                <td class="px-3 py-2">${escapeHtml(row.LOCATIONCODE || '-')}</td>
+                <td class="px-3 py-2">${escapeHtml(row.SOURCE || '-')}</td>
+                <td class="px-3 py-2">${escapeHtml(row.GENUSNAME || '-')}</td>
+            </tr>`).join('');
+            const capped = rows.length > previewRows.length
+                ? `<div class="mt-3 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-amber-700">Showing first 100 of ${rows.length}. Export includes all filtered rows.</div>`
+                : '';
+            return `<div class="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-left text-xs font-bold text-slate-600">
+                        <thead class="bg-emerald-50 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">
+                            <tr>
+                                <th class="px-3 py-3">AssignedTo</th>
+                                <th class="px-3 py-3">WAREHOUSEI</th>
+                                <th class="px-3 py-3">ITEMCODE</th>
+                                <th class="px-3 py-3">CONTSIZE</th>
+                                <th class="px-3 py-3">COMMONNAME</th>
+                                <th class="px-3 py-3">LOCATIONCODE</th>
+                                <th class="px-3 py-3">SOURCE</th>
+                                <th class="px-3 py-3">GENUSNAME</th>
+                            </tr>
+                        </thead>
+                        <tbody>${body}</tbody>
+                    </table>
+                </div>
+            </div>${capped}`;
+        }
+
+        function renderManagerAssignedItemsExportPanel() {
+            if (!canViewAssignedItemsExport()) {
+                return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">AssignedTo export is available to managers only.</div>';
+            }
+            if (!isDatasetLoaded('warehouseAssignedItems', 'full')) {
+                ensureDatasetLoaded('warehouseAssignedItems', 'full').then(() => scheduleManagersRender(true)).catch(() => scheduleManagersRender(true));
+                return '<div class="rounded-2xl border border-emerald-100 bg-white/80 p-8 text-center text-sm font-black uppercase tracking-[0.14em] text-slate-400">Loading AssignedTo rows...</div>';
+            }
+            const allRows = getManagerAssignedItemsExportRows();
+            const filteredRows = getFilteredManagerAssignedItemsExportRows(allRows);
+            const assignees = getManagerAssignedItemsAssigneeOptions(allRows);
+            const activeKey = getManagerAssignedItemsActiveAssigneeKey();
+            const optionHtml = [`<option value="all" ${activeKey === 'all' ? 'selected' : ''}>All AssignedTo (${allRows.length})</option>`]
+                .concat(assignees.map((option) => `<option value="${escapeHtml(option.key)}" ${option.key === activeKey ? 'selected' : ''}>${escapeHtml(option.label)} (${option.count})</option>`))
+                .join('');
+            const activeLabel = getManagerAssignedItemsActiveAssigneeLabel(allRows);
+            return `<div class="space-y-4">
+                <div class="rounded-2xl border border-emerald-100 bg-white/90 p-4 shadow-sm">
+                    <div class="grid gap-3 lg:grid-cols-[minmax(220px,360px)_auto_auto] lg:items-end">
+                        <label class="block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">AssignedTo
+                            <select class="mt-1 w-full rounded-xl border border-emerald-100 bg-white px-3 py-3 text-sm font-black text-slate-900 outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100" onchange="setManagerAssignedItemsAssigneeFilter(this.value)">
+                                ${optionHtml}
+                            </select>
+                        </label>
+                        <button type="button" class="rounded-xl border border-emerald-100 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-[#007a4d] shadow-sm transition hover:bg-emerald-50" onclick="return refreshManagerAssignedItemsExport()"><i class="ph ph-arrow-clockwise mr-2"></i>Refresh</button>
+                        <button type="button" class="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-[#1d4ed8] shadow-sm transition hover:bg-blue-100" onclick="return exportManagerAssignedItemsToExcel()"><i class="ph ph-download-simple mr-2"></i>Export Excel</button>
+                    </div>
+                    <div class="mt-4 grid gap-3 md:grid-cols-3">
+                        <div class="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                            <div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Visible Rows</div>
+                            <div class="text-2xl font-black text-slate-900">${filteredRows.length}</div>
+                        </div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                            <div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Total Rows</div>
+                            <div class="text-2xl font-black text-slate-900">${allRows.length}</div>
+                        </div>
+                        <div class="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
+                            <div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#1d4ed8]">Filter</div>
+                            <div class="truncate text-lg font-black text-slate-900">${escapeHtml(activeLabel)}</div>
+                        </div>
+                    </div>
+                </div>
+                ${renderManagerAssignedItemsPreviewTable(filteredRows)}
+            </div>`;
+        }
+
         function getManagersToolAccess() {
             const canViewShearApprovals = canUseInventoryChecksApprovalView();
             const canViewNcrApprovals = canUseNcrApprovalTaskView();
@@ -112280,7 +112506,8 @@ C.14.043 C.15.000
                 canViewCropRoll: canViewCropRollHome(),
                 canManageSeasonSettings: canManageCurrentSeasonSettings(),
                 canManageAvBlanksPhotoBypass: canManageAvBlanksPhotoBypassSettings(),
-                canViewInventoryTransactions: canViewInventoryTransactionHistory()
+                canViewInventoryTransactions: canViewInventoryTransactionHistory(),
+                canViewAssignedItemsExport: canViewAssignedItemsExport()
             };
         }
 
@@ -112292,6 +112519,7 @@ C.14.043 C.15.000
             if (access.canManageSeasonSettings) return APP_SEASON_SETTINGS_VIEW;
             if (access.canManageAvBlanksPhotoBypass) return AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW;
             if (access.canViewInventoryTransactions) return INVENTORY_TRANSACTION_HISTORY_VIEW;
+            if (access.canViewAssignedItemsExport) return MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW;
             if (access.canViewProductivity) return 'productivity';
             return '';
         }
@@ -112304,6 +112532,7 @@ C.14.043 C.15.000
             if (access.canManageSeasonSettings) tabs.push({ id: APP_SEASON_SETTINGS_VIEW, label: 'Season' });
             if (access.canManageAvBlanksPhotoBypass) tabs.push({ id: AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW, label: 'AV Blanks' });
             if (access.canViewInventoryTransactions) tabs.push({ id: INVENTORY_TRANSACTION_HISTORY_VIEW, label: 'Transaction History' });
+            if (access.canViewAssignedItemsExport) tabs.push({ id: MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW, label: 'Assigned Items' });
             return tabs;
         }
 
@@ -112333,6 +112562,7 @@ C.14.043 C.15.000
             if (safeTab === APP_SEASON_SETTINGS_VIEW) return { label: 'Season', description: 'Set the current and next sales season logic.', icon: 'ph-calendar-check' };
             if (safeTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW) return { label: 'AV Blanks', description: 'Allow selected users to finish AV Blanks with AV Note only.', icon: 'ph-note-pencil' };
             if (safeTab === INVENTORY_TRANSACTION_HISTORY_VIEW) return { label: 'Transaction History', description: 'Look up who made QTY, Transfer, and Reclass changes.', icon: 'ph-clock-counter-clockwise' };
+            if (safeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) return { label: 'Assigned Items', description: 'Export warehouse assigned item rows by AssignedTo.', icon: 'ph-user-list' };
             if (safeTab === 'productivity') return { label: 'Productivity', description: 'Review completed work by user and date.', icon: 'ph-chart-line-up' };
             if (safeTab === SHEAR_APPROVAL_VIEW) return { label: 'Shear Approvals', description: 'Approve explicit Add To Shear List requests before they enter Que.', icon: 'ph-scissors' };
             if (safeTab === NCR_APPROVAL_NEW_CROP_VIEW) return { label: 'NCR Approvals', description: 'Approve future season new crop release rows.', icon: 'ph-seal-check' };
@@ -114478,6 +114708,7 @@ C.14.043 C.15.000
             else if (activeHomeTab === APP_SEASON_SETTINGS_VIEW) html += renderCurrentSeasonSettingsPanel();
             else if (activeHomeTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW) html += renderAvBlanksPhotoBypassSettingsPanel();
             else if (activeHomeTab === INVENTORY_TRANSACTION_HISTORY_VIEW) html += renderInventoryTransactionHistoryPanel();
+            else if (activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) html += renderManagerAssignedItemsExportPanel();
             else if (isManagerApprovalTab(activeHomeTab)) html += renderManagerApprovalPanel(activeHomeTab);
             else html = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No manager tools are available for this login.</div>';
             container.innerHTML = html;
