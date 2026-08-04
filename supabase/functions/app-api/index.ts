@@ -224,6 +224,7 @@ const COMMON_AUTH_WRITE_TABLES = new Set([
   "ph_walkie_signal_events",
 ]);
 const COMMON_AUTH_READ_TABLES = new Set([
+  "ph_app_live_events",
   "ph_chat_conversations",
   "ph_chat_participants",
   "ph_chat_messages",
@@ -232,6 +233,28 @@ const COMMON_AUTH_READ_TABLES = new Set([
   "ph_walkie_calls",
   "ph_walkie_call_members",
   "ph_walkie_signal_events",
+]);
+const REP_READ_TABLES = new Set([
+  ...COMMON_AUTH_READ_TABLES,
+  "ph_master_inventory",
+  "ph_active_request",
+  "ph_active_request_live_rows",
+  "ph_customer_consignee_sales_reps",
+  "ph_request_history",
+  "ph_sales_credit_requests",
+  "ph_request_email_threads",
+  "ph_reserves",
+  "ph_soc_master",
+  "ph_sales_office",
+  "ph_cav_import",
+  "ph_av_notes",
+  "ph_warehouse_assigned_items",
+  "ph_dock_team_status",
+  "ph_dock_item_status",
+  "ph_inventory_edit_requests",
+  "ph_inventory_edit_request_events",
+  "ph_shear_list",
+  AV_OPTION_EVAL_REQUESTS_TABLE,
 ]);
 const REP_WRITE_TABLES = new Set([
   ...COMMON_AUTH_WRITE_TABLES,
@@ -369,7 +392,7 @@ function hasTableReadAccess(role = "", table = "", username = "") {
   if (COMMON_AUTH_READ_TABLES.has(table)) return true;
   if (table === "ph_app_users") return access.isQc || access.isQcSupervisor || access.isAdmin || access.isSalesAssistant;
   if (access.isRepLike) {
-    return new Set(["ph_master_inventory", "ph_active_request", "ph_active_request_live_rows", "ph_customer_consignee_sales_reps", "ph_request_history", "ph_sales_credit_requests", "ph_reserves", "ph_soc_master", "ph_sales_office", "ph_cav_import", "ph_av_notes", "ph_warehouse_assigned_items", "ph_dock_team_status", "ph_dock_item_status"]).has(table);
+    return REP_READ_TABLES.has(table);
   }
   if (access.isQcSupervisor) {
     return new Set(["ph_master_inventory", "ph_soc_master", "ph_dock_team_status", "ph_dock_item_status"]).has(table);
