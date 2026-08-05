@@ -24483,7 +24483,7 @@ const AV_PHOTO_VIEW_OPTIONS = Object.freeze([
 ]);
 let activeAVTab='open'; let activeAvOpenTab='name'; let activeAvHotPriceTab='all'; let avOpenLevel=0; let selectedAvOpenName=null; let selectedAvOpenSize=null; let selectedAvOpenSeason=null; let selectedAvOpenLot=null; let avResLevel=0; let selectedAvResRep=null; let selectedAvResDriveUid=null; let selectedAvResItemCode=null; let selectedAvResName=null; let selectedAvResSize=null; let selectedAvResCustomerKey=null; let activeAvReserveMode='all'; let activeAvReserveDetailTab='customer'; let selectedAvReserveDetailCustomerKey=null;
 let activeAvSalesBucket='current'; let activeAvPhotoMode='all'; let selectedAvSeasons=new Set(AV_FILTER_SEASON_OPTIONS); let avSeasonDefaultsInitialized=false; let avSourceDropdownOpen=false; let avSeasonDropdownOpen=false; let avGenusFilterOpen=false; let avContSizeFilterOpen=false; let avHoldDropdownOpen=false; let avPhotoDropdownOpen=false; let avSalesRepDropdownOpen=false; let avRepCustomerDropdownOpen=false; let avColumnFilterDropdownOpen=false; let avSeasonSearchTerm=''; let selectedAvGenusNames=new Set(); let avGenusSearchTerm=''; let avGenusSelectionMode='all'; let selectedAvContSizes=new Set(); let avContSizeSearchTerm=''; let avContSizeSelectionMode='all'; let selectedAvSalesRepName=''; let avSalesRepSearchTerm=''; let selectedAvRepCustomerKey=''; let avRepCustomerSearchTerm=''; let avHoldFilterMode='all'; let avHoldStopOnly=false; let avColumnFilters={}; let avColumnFilterDrafts={}; let avColumnFilterSelectedHeaders=new Set(); let avColumnFilterStep='select'; let avColumnFilterFieldKey=''; let avColumnFilterMode='values'; let avColumnFilterValueSearchTerm=''; let avColumnFilterFieldSearchTerm=''; let avColumnFilterHeaderFieldsCache=[]; let avFilterItemsCache=[]; let avFilterGenusOptions=[]; let avFilterContSizeOptions=[]; let avPhotoOutreachMinSLts=''; let avPhotoOutreachSelectedRepKeys=new Set(); let avPhotoOutreachRepStateKey=''; let avPhotoOutreachSendBusy=false;
-let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKeys=new Set(); let driveCustomerOutreachSelectedSourceRowIds=new Set(); let driveCustomerOutreachStateKey=''; let driveCustomerOutreachRecipientMode='selected'; let driveCustomerOutreachSelectedAllRepKeys=new Set(); let driveCustomerOutreachAllRepStateKey=''; let driveCustomerOutreachSendBusy=false; let dockSuspendTagPhotoSpecEmailBusy=false; let driveCustomerOutreachReserveRows=[]; let driveCustomerOutreachReserveRowsKey=''; let driveCustomerOutreachReserveRowsLoadedKey=''; let driveCustomerOutreachReserveRowsLoading=false; let driveCustomerOutreachReserveRowsError=''; let driveCustomerOutreachReserveFetchToken=0;
+let driveCustomerOutreachOpen=false; let driveCustomerOutreachSelectedCustomerKeys=new Set(); let driveCustomerOutreachSelectedSourceRowIds=new Set(); let driveCustomerOutreachStateKey=''; let driveCustomerOutreachRecipientMode='selected'; let driveCustomerOutreachSelectedAllRepKeys=new Set(); let driveCustomerOutreachAllRepStateKey=''; let driveCustomerOutreachSendBusy=false; let dockSuspendTagPhotoSpecEmailBusy=false; let dockSuspendTagPhotoSpecAutoPromptKeys=new Set(); let driveCustomerOutreachReserveRows=[]; let driveCustomerOutreachReserveRowsKey=''; let driveCustomerOutreachReserveRowsLoadedKey=''; let driveCustomerOutreachReserveRowsLoading=false; let driveCustomerOutreachReserveRowsError=''; let driveCustomerOutreachReserveFetchToken=0;
 let taskCustomerOutreachOpen=false; let taskCustomerOutreachSelectedRowIds=new Set(); let taskCustomerOutreachStateKey=''; let taskCustomerOutreachSendBusy=false;
         let taskTeamSelectorCacheKey=''; let taskTeamSelectorCacheHtml=''; let taskTeamSelectorEmptyHtml='';
 
@@ -136198,56 +136198,107 @@ ${folderNote ? `Folder Note: ${folderNote}
             </div>`;
         }
 
-        function getDockSuspendTagPhotoSpecDefaultRecipients(baseRow = null) {
-            const repName = getDockSuspendDcRequestSalesRepName(baseRow);
-            const repEmail = normalizeRequestEmailAddress(resolveRequestRecipientEmail(repName));
-            return dedupeRequestEmailRecipients(repEmail ? [repEmail] : []);
+        const DOCK_SUSPEND_TAG_PHOTO_SPEC_INTERNAL_RECIPIENT_USERS = Object.freeze([
+            'dylan_collyge',
+            'megan_kelly',
+            'dan_mccuistion',
+            'mitch_kaiser'
+        ]);
+
+        function getCurrentSubmitterRecipientNames() {
+            return [
+                typeof currentUser !== 'undefined' ? currentUser : '',
+                typeof currentUserDisplay !== 'undefined' ? currentUserDisplay : ''
+            ].map((value) => String(value || '').trim()).filter(Boolean);
         }
 
-        async function sendDockSuspendDcPhotoSpecEmail(uniqueId = '', button = null) {
+        function resolveDockSuspendTagPhotoSpecRecipientEmail(value = '') {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+            return normalizeRequestEmailAddress(resolveRequestRecipientEmail(raw) || raw);
+        }
+
+        function getDockSuspendTagPhotoSpecRecipientInfo(baseRow = null) {
+            const repName = getDockSuspendDcRequestSalesRepName(baseRow);
+            const repEmail = resolveDockSuspendTagPhotoSpecRecipientEmail(repName);
+            const recipientEmails = dedupeRequestEmailRecipients([
+                ...getCurrentSubmitterRecipientNames(),
+                repName,
+                ...DOCK_SUSPEND_TAG_PHOTO_SPEC_INTERNAL_RECIPIENT_USERS
+            ].map(resolveDockSuspendTagPhotoSpecRecipientEmail).filter(Boolean));
+            return { repName, repEmail, recipientEmails };
+        }
+
+        function getDockSuspendTagPhotoSpecDefaultRecipients(baseRow = null) {
+            return getDockSuspendTagPhotoSpecRecipientInfo(baseRow).recipientEmails;
+        }
+
+        async function sendDockSuspendDcPhotoSpecEmail(uniqueId = '', button = null, options = {}) {
             if (dockSuspendTagPhotoSpecEmailBusy) {
                 showToast('Sending', 'Suspend Tag photo/spec email is already sending.', true);
                 return false;
             }
             const uid = String(uniqueId || '').trim();
-            const mirrorRow = findDockSuspendDcRequestMirrorRowByUniqueId(uid)
+            const sendOptions = options && typeof options === 'object' ? options : {};
+            const optionBaseRow = sendOptions.baseRow || null;
+            const mirrorRow = (optionBaseRow && isDockSuspendDcRequestMirrorRow(optionBaseRow) ? optionBaseRow : null)
+                || findDockSuspendDcRequestMirrorRowByUniqueId(uid)
                 || (activeItem && isDockSuspendDcRequestMirrorRow(activeItem) ? activeItem : null);
-            const baseRow = getDockSuspendDcRequestBaseRow(mirrorRow) || mirrorRow;
+            const baseRow = optionBaseRow || getDockSuspendDcRequestBaseRow(mirrorRow) || mirrorRow;
             if (!baseRow) {
                 showToast('Missing Row', 'That Suspend Tag row could not be found.', true);
                 return false;
             }
-            try {
-                const optionState = ensureRequestItemCodeOptionState(baseRow);
-                await loadRequestItemCodeOptions(baseRow, optionState.key);
-            } catch (optionLoadError) {
-                console.warn('Suspend Tag AV option refresh failed before email; using cached rows.', optionLoadError);
+            if (!sendOptions.skipOptionRefresh) {
+                try {
+                    const optionState = ensureRequestItemCodeOptionState(baseRow);
+                    await loadRequestItemCodeOptions(baseRow, optionState.key);
+                } catch (optionLoadError) {
+                    console.warn('Suspend Tag AV option refresh failed before email; using cached rows.', optionLoadError);
+                }
             }
-            const rows = getDockSuspendTagPhotoSpecRows(baseRow);
+            const rows = Array.isArray(sendOptions.rows) ? sendOptions.rows.filter(Boolean) : getDockSuspendTagPhotoSpecRows(baseRow);
             if (!rows.length) {
                 showToast('No Rows', 'No Suspend Tag rows were found for this dock/drop item.', true);
                 return false;
             }
-            const selection = await openGroupedBloomNcrRecipientModal(rows, getDockSuspendTagPhotoSpecDefaultRecipients(baseRow), {
-                brandLabel: 'GNC PH Suspend Tag',
-                title: 'Choose Rows & Recipients',
-                enableRowSelection: true,
-                returnSelection: true,
-                rowSelectionTitle: 'Suspend Tag Rows To Send'
-            });
-            if (!selection) return false;
-            const selectedRows = Array.isArray(selection.rows) ? selection.rows.filter(Boolean) : [];
-            if (!selectedRows.length) {
-                showToast('Select Rows', 'Choose at least one Suspend Tag row to email.', true);
-                return false;
+            const recipientInfo = getDockSuspendTagPhotoSpecRecipientInfo(baseRow);
+            let selectedRows = [];
+            let recipientEmails = [];
+            if (sendOptions.autoSend) {
+                selectedRows = rows.filter((row) => hasDriveCustomerOutreachPhotoSpec(row));
+                if (!selectedRows.length) {
+                    showToast('No Send Data', 'No ready Suspend Tag photo/spec rows were found to email.', true);
+                    return false;
+                }
+                if (!recipientInfo.repEmail) {
+                    showToast('Sales Rep Email Missing', 'Suspend Tag data saved, but the sales rep email could not be resolved.', true);
+                    return false;
+                }
+                recipientEmails = recipientInfo.recipientEmails;
+            } else {
+                const selection = await openGroupedBloomNcrRecipientModal(rows, recipientInfo.recipientEmails, {
+                    brandLabel: 'GNC PH Suspend Tag',
+                    title: 'Choose Rows & Recipients',
+                    enableRowSelection: true,
+                    returnSelection: true,
+                    rowSelectionTitle: 'Suspend Tag Rows To Send'
+                });
+                if (!selection) return false;
+                selectedRows = Array.isArray(selection.rows) ? selection.rows.filter(Boolean) : [];
+                if (!selectedRows.length) {
+                    showToast('Select Rows', 'Choose at least one Suspend Tag row to email.', true);
+                    return false;
+                }
+                recipientEmails = dedupeRequestEmailRecipients(selection.recipientEmails || []);
             }
-            const recipientEmails = dedupeRequestEmailRecipients(selection.recipientEmails || []);
             if (!recipientEmails.length) {
                 showToast('Select Recipients', 'Pick at least one recipient before sending.', true);
                 return false;
             }
             const parts = getDockSuspendDcRequestGroupParts(baseRow);
-            const repName = getDockSuspendDcRequestSalesRepName(baseRow);
+            const repName = recipientInfo.repName || getDockSuspendDcRequestSalesRepName(baseRow);
+            const repEmail = recipientInfo.repEmail || resolveDockSuspendTagPhotoSpecRecipientEmail(repName);
             const customerLabel = getDockSuspendDcRequestCompletionCustomerLabel(parts, baseRow);
             const commonName = String(firstNonEmptyValue(baseRow.COMMONNAME, baseRow.commonname, 'Suspend Tag') || 'Suspend Tag').trim();
             const itemCode = getItemInquiryItemCode(baseRow);
@@ -136271,11 +136322,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 emailDisplayName: 'GNC PH Suspend Tag',
                 audienceLabel: repName || 'Selected Recipients',
                 subject,
-                sendToAllSalesReps: true,
-                repName: '',
-                salesRepName: '',
-                repEmail: '',
-                salesRepEmail: '',
+                sendToAllSalesReps: false,
+                repName,
+                salesRepName: repName,
+                repEmail,
+                salesRepEmail: repEmail,
                 recipientEmails,
                 emailRecipients: recipientEmails,
                 recipients: recipientEmails.map((email) => ({ email, role: 'selected' })),
@@ -136508,6 +136559,100 @@ ${folderNote ? `Folder Note: ${folderNote}
                 showToast('Inventory Sync Warning', 'Suspend Tag saved, but the linked inventory row did not update in every view.', true);
             }
             return result;
+        }
+
+        function getDockSuspendTagPhotoSpecReadyRows(rows = []) {
+            return (Array.isArray(rows) ? rows : []).filter((row) => row && hasDriveCustomerOutreachPhotoSpec(row));
+        }
+
+        function getDockSuspendTagPhotoSpecPromptRowId(row = null) {
+            return String(firstNonEmptyValue(
+                row && row.SOURCE_UNIQUE_ID,
+                row && row.DOCK_SUSPEND_SOURCE_UID,
+                row && row.UNIQUE_ID,
+                row && row.unique_id,
+                row && row.DOM_ID,
+                getDockSuspendTagPhotoSpecIdentityKey(row),
+                getItemInquiryRowKey(row),
+                ''
+            ) || '').trim();
+        }
+
+        function getDockSuspendTagPhotoSpecPromptKey(baseRow = null, readyRows = [], allRows = []) {
+            const parts = getDockSuspendDcRequestGroupParts(baseRow);
+            const itemCode = getItemInquiryItemCode(baseRow);
+            const repName = getDockSuspendDcRequestSalesRepName(baseRow);
+            const rowIds = readyRows
+                .map((row) => getDockSuspendTagPhotoSpecPromptRowId(row))
+                .filter(Boolean)
+                .sort()
+                .join(',');
+            return [repName, parts.customer, parts.consignee, parts.dock, parts.drop, itemCode, readyRows.length, allRows.length, rowIds].join('|');
+        }
+
+        function syncSuspendTagSeasonSalesOfficeAfterSave(mirrorRow = null, sourceRow = null) {
+            const linkedMaster = getDockSuspendDcRequestLinkedMasterRow(mirrorRow, sourceRow);
+            const baseRow = linkedMaster || sourceRow || mirrorRow;
+            const itemCode = getMasterItemCodeKey(baseRow) || getItemInquiryItemCode(baseRow);
+            if (!itemCode) return [];
+            const candidates = [linkedMaster, sourceRow, mirrorRow].filter(Boolean);
+            const shouldSync = candidates.some((row) => {
+                if (!row) return false;
+                if (isSeasonSalesNoteCardItem(row)) return true;
+                const assignment = firstNonEmptyValue(
+                    row.APP_TAB_ASSIGNMENT,
+                    row.app_tab_assignment,
+                    row.MASTER_APP_TAB_ASSIGNMENT,
+                    row.master_app_tab_assignment,
+                    ''
+                );
+                return isCurrentSeasonSalesNotesAssignmentRow(row, assignment);
+            });
+            if (!shouldSync) return [];
+            const remoteOps = syncSeasonSalesOfficeStateForItemCodes([itemCode], {
+                preserveAssignments: true,
+                reason: 'suspend-tag-data-save'
+            });
+            remoteOps.forEach((op) => Promise.resolve(op).catch((error) => console.warn('Suspend Tag Sales Office sync failed', error)));
+            return remoteOps;
+        }
+
+        async function maybePromptDockSuspendTagPhotoSpecSendAfterSave(mirrorRow = null, sourceRow = null) {
+            const baseRow = sourceRow || getDockSuspendDcRequestBaseRow(mirrorRow) || mirrorRow;
+            if (!baseRow) return false;
+            const allRows = getDockSuspendTagPhotoSpecRows(baseRow);
+            const readyRows = getDockSuspendTagPhotoSpecReadyRows(allRows);
+            if (!readyRows.length) return false;
+            const promptKey = getDockSuspendTagPhotoSpecPromptKey(baseRow, readyRows, allRows);
+            if (dockSuspendTagPhotoSpecAutoPromptKeys.has(promptKey)) return false;
+            const recipientInfo = getDockSuspendTagPhotoSpecRecipientInfo(baseRow);
+            if (!recipientInfo.repEmail) {
+                dockSuspendTagPhotoSpecAutoPromptKeys.add(promptKey);
+                showToast('Sales Rep Email Missing', 'Suspend Tag data saved, but the sales rep email could not be resolved.', true);
+                return true;
+            }
+            const pendingCount = Math.max(0, allRows.length - readyRows.length);
+            if (pendingCount > 0) {
+                showToast('Saved', `Suspend Tag data saved. ${pendingCount} AV option row${pendingCount === 1 ? '' : 's'} still need photos/specs before sending to the sales rep.`);
+                return true;
+            }
+            const rowText = `${readyRows.length} ready row${readyRows.length === 1 ? '' : 's'}`;
+            const confirmed = await showAppConfirm(
+                `Suspend Tag data saved. Send ${rowText} to the sales rep now?`,
+                { title: 'Send To Sales Rep?', confirmLabel: 'Yes', cancelLabel: 'No' }
+            );
+            dockSuspendTagPhotoSpecAutoPromptKeys.add(promptKey);
+            if (!confirmed) {
+                showToast('Saved', 'Suspend Tag data saved. No sales-rep email sent.');
+                return true;
+            }
+            await sendDockSuspendDcPhotoSpecEmail('', null, {
+                baseRow,
+                rows: readyRows,
+                autoSend: true,
+                skipOptionRefresh: true
+            });
+            return true;
         }
 
         async function confirmDockSuspendDcRequestMarkDone(mirrorRow = null, btnComp = null) {
@@ -136954,6 +137099,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
                 });
                 await syncDockSuspendDcRequestMasterFromSave(mirrorRow, sourceRow, values, reqPhotoLink, reqPhotoName, shouldCompleteSuspendTag ? completedAt : '');
+                syncSuspendTagSeasonSalesOfficeAfterSave(mirrorRow, sourceRow);
                 queueAppLiveEventForWrite('ph_soc_master', 'UPDATE', [{ unique_id: sourceUid }], '');
                 if (shouldCompleteSuspendTag) {
                     if (btnComp) btnComp.innerText = 'MARK DONE';
@@ -136963,7 +137109,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (!isSilentAutoSave) scheduleDockSuspendDcRequestPostSavePrompts(mirrorRow, sourceRow);
                 } else if (isReviewSave) {
                     if (btnComp) btnComp.innerText = 'MARK DONE';
-                    showToast('Saved', 'Suspend Tag data saved. Review AV Rows or use the card Done button when it is fully handled.');
+                    if (!isSilentAutoSave) {
+                        const prompted = await maybePromptDockSuspendTagPhotoSpecSendAfterSave(mirrorRow, sourceRow);
+                        if (!prompted) {
+                            showToast('Saved', 'Suspend Tag data saved. Review AV Rows or use the card Done button when it is fully handled.');
+                        }
+                    }
                 } else if (!isSilentAutoSave) {
                     showToast('Saved', 'Dock request updated.');
                 }
