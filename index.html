@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.04.05';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.05.01';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5149,7 +5149,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.04.05').trim() || 'V2026.08.04.05';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.05.01').trim() || 'V2026.08.05.01';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6606,7 +6606,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.04.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.05.01';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24505,6 +24505,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let manualSyncStatusPollTimer = null;
         let manualSyncStatusPollInFlight = false;
         let lastManualSyncStatusCheckedAt = 0;
+        let lastManualSyncStaleSweepAt = 0;
         let manualSyncPostRefreshInFlight = false;
         let dashboardSyncMetadataSummaries = [];
         let dashboardSyncMetadataFetchedAt = 0;
@@ -25549,7 +25550,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.04.05').trim() || 'V2026.08.04.05';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.05.01').trim() || 'V2026.08.05.01';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -26419,12 +26420,27 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return Number.isFinite(ms) ? ms : 0;
         }
 
+        function addManualSyncClientTimestampFallback(status) {
+            const state = normalizeManualSyncStatusPayload(status);
+            if (!state.active) return state;
+            const hasServerTimestamp = !!(getManualSyncStatusTimestampMs(state.startedAt) || getManualSyncStatusTimestampMs(state.updatedAt));
+            if (hasServerTimestamp) return state;
+            const nowIso = new Date().toISOString();
+            return {
+                ...state,
+                startedAt: nowIso,
+                updatedAt: nowIso,
+                message: state.message || 'Manual sync is running.'
+            };
+        }
+
         function isManualSyncStatusClientStale(status = manualSyncStatusState) {
             const state = normalizeManualSyncStatusPayload(status);
             if (!state.active) return false;
             const now = Date.now();
             const startedAtMs = getManualSyncStatusTimestampMs(state.startedAt || state.updatedAt);
             const updatedAtMs = getManualSyncStatusTimestampMs(state.updatedAt || state.startedAt);
+            if (startedAtMs <= 0 && updatedAtMs <= 0) return true;
             if (state.currentStage === 'queued') return startedAtMs > 0 && (now - startedAtMs) > MANUAL_SYNC_QUEUED_STALE_MS;
             return updatedAtMs > 0 && (now - updatedAtMs) > MANUAL_SYNC_ACTIVE_STALE_MS;
         }
@@ -26450,6 +26466,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!isManualSyncStatusClientStale(manualSyncStatusState)) return false;
             manualSyncStatusState = markManualSyncStatusClientStale(manualSyncStatusState);
             clearManualSyncStatusPoll();
+            requestManualSyncServerStaleSweep();
             return true;
         }
 
@@ -26519,6 +26536,23 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return normalizeManualSyncStatusPayload(responseData);
         }
 
+        function requestManualSyncServerStaleSweep() {
+            if (!currentUser || navigator.onLine === false) return;
+            const now = Date.now();
+            if (lastManualSyncStaleSweepAt && (now - lastManualSyncStaleSweepAt) < 30000) return;
+            lastManualSyncStaleSweepAt = now;
+            postGoogleScriptJsonPayload({ type: 'manual_clear_stale_status' }, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Manual Sync Stale Sweep')
+                .then((responseData) => {
+                    const next = normalizeManualSyncStatusPayload(responseData);
+                    if (!next.active) {
+                        applyManualSyncStatus(next, { suppressToast: true, skipPollSchedule: true });
+                    }
+                })
+                .catch((error) => {
+                    console.warn('Could not sweep stale manual sync status.', error);
+                });
+        }
+
         function scheduleManualSyncStatusPoll(delayMs = MANUAL_SYNC_STATUS_POLL_MS) {
             clearManualSyncStatusPoll();
             if (!currentUser || navigator.onLine === false) return;
@@ -26570,9 +26604,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function applyManualSyncStatus(status = null, options = {}) {
             const opts = options || {};
             const previous = normalizeManualSyncStatusPayload(manualSyncStatusState);
-            let next = normalizeManualSyncStatusPayload(status);
+            let next = addManualSyncClientTimestampFallback(status);
             if (isManualSyncStatusClientStale(next)) {
                 next = markManualSyncStatusClientStale(next);
+                requestManualSyncServerStaleSweep();
             }
             const wasActive = !!previous.active;
             const isActive = !!next.active;
@@ -26663,6 +26698,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     requested_by: currentUserDisplay || currentUser || 'Unknown',
                     requested_at: new Date().toISOString()
                 };
+                const queuedAt = new Date().toISOString();
                 applyManualSyncStatus({
                     active: true,
                     runId: '',
@@ -26670,6 +26706,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     stageIndex: 0,
                     currentStage: 'queued',
                     currentStageLabel: 'Starting',
+                    startedAt: queuedAt,
+                    updatedAt: queuedAt,
                     message: 'Running sync now...'
                 }, { delayMs: 1800, suppressToast: true });
                 const responseData = await postGoogleScriptJsonPayload(payload, MANUAL_SYNC_SCRIPT_TIMEOUT_MS, 'Manual Sync');
@@ -26679,15 +26717,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     throw new Error(responseMessage || `Manual sync failed (${responseData.status || 0})`);
                 }
                 if (responseStatus === 'busy') {
-                    applyManualSyncStatus({
+                    const busyStatus = Object.assign({}, responseData || {}, {
                         active: true,
-                        runId: String(firstNonEmptyValue(responseData && responseData.runId, '')).trim(),
-                        currentStage: String(firstNonEmptyValue(responseData && responseData.currentStage, '')).trim(),
-                        currentStageLabel: String(firstNonEmptyValue(responseData && responseData.currentStageLabel, responseData && responseData.currentStage, '')).trim(),
-                        message: responseMessage || 'A manual sync is already running.'
-                    }, { delayMs: 500, suppressToast: true });
+                        message: responseMessage || (responseData && responseData.message) || 'A manual sync is already running.'
+                    });
+                    applyManualSyncStatus(busyStatus, { delayMs: 500, suppressToast: true });
                     showToast('Sync Already Running', responseMessage || 'A manual sync is already running.', false);
                 } else if (responseStatus === 'queued') {
+                    const startedAt = String(firstNonEmptyValue(responseData && responseData.startedAt, responseData && responseData.started_at, new Date().toISOString())).trim();
                     applyManualSyncStatus({
                         active: true,
                         runId: String(firstNonEmptyValue(responseData && responseData.runId, '')).trim(),
@@ -26695,6 +26732,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         stageIndex: 0,
                         currentStage: 'queued',
                         currentStageLabel: 'Queued',
+                        startedAt,
+                        updatedAt: String(firstNonEmptyValue(responseData && responseData.updatedAt, responseData && responseData.updated_at, startedAt)).trim(),
                         message: responseMessage || 'Manual sync queued.'
                     }, { delayMs: 700, suppressToast: true });
                     showToast('Started', responseMessage || 'Google Apps Script queued successfully.');
@@ -26704,11 +26743,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         showToast('Sync Complete', finalStatus.message || 'Manual sync complete.');
                     }
                 } else {
+                    const sentAt = new Date().toISOString();
                     applyManualSyncStatus({
                         active: true,
                         runId: String(firstNonEmptyValue(responseData && responseData.runId, '')).trim(),
                         currentStage: 'queued',
                         currentStageLabel: 'Queued',
+                        startedAt: sentAt,
+                        updatedAt: sentAt,
                         message: responseMessage || 'Manual sync request sent.'
                     }, { delayMs: 700, suppressToast: true });
                     showToast('Started', responseMessage || 'Google Apps Script request sent.');

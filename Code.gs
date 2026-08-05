@@ -589,6 +589,7 @@ function isManualSyncStatusStale_(status, nowMs) {
   const currentStage = String(status.currentStage || status.current_stage || '').trim().toLowerCase();
   const startedAtMs = parseManualSyncTimestampMs_(status.startedAt || status.started_at || status.updatedAt || status.updated_at);
   const updatedAtMs = parseManualSyncTimestampMs_(status.updatedAt || status.updated_at || status.startedAt || status.started_at);
+  if (startedAtMs <= 0 && updatedAtMs <= 0) return true;
   if (currentStage === 'queued') return startedAtMs > 0 && (now - startedAtMs) > MANUAL_SYNC_QUEUED_STALE_MS;
   return updatedAtMs > 0 && (now - updatedAtMs) > MANUAL_SYNC_ACTIVE_STALE_MS;
 }
@@ -706,15 +707,23 @@ function queueManualSyncRequest_(options) {
     }
     if (existing && existing.active) {
       console.warn(`[MANUAL SYNC][${existing.runId || 'active'}] A manual sync is already running.`);
-      return {
+      return Object.assign({}, existing, {
+        ok: true,
         status: 'busy',
+        active: true,
         runId: existing.runId || '',
         currentStage: existing.currentStage || '',
         currentStageLabel: existing.currentStageLabel || '',
         stageOrder: Array.isArray(existing.stageOrder) ? existing.stageOrder : [],
         stageIndex: Number(existing.stageIndex || 0),
-        message: existing.message || 'A manual sync is already running.'
-      };
+        completedStages: Array.isArray(existing.completedStages) ? existing.completedStages : [],
+        stageResults: Array.isArray(existing.stageResults) ? existing.stageResults : [],
+        startedAt: existing.startedAt || existing.started_at || '',
+        updatedAt: existing.updatedAt || existing.updated_at || existing.startedAt || existing.started_at || new Date().toISOString(),
+        finishedAt: existing.finishedAt || existing.finished_at || '',
+        message: existing.message || 'A manual sync is already running.',
+        error: existing.error || ''
+      });
     }
 
     const stageOrder = getManualSyncStageOrder_(options && options.job);
@@ -11542,6 +11551,28 @@ function doPost(e) {
         currentStage: '',
         currentStageLabel: '',
         message: 'Manual sync status cleared.'
+      });
+    }
+
+    if (payload.type === 'manual_clear_stale_status') {
+      cleanupRequestGalleryPropertyCache_();
+      const existing = loadManualSyncStatus_();
+      const status = getManualSyncStatusForClient_();
+      if (existing && existing.active && (!status || status.active === false)) {
+        return jsonOutput_(status || {
+          ok: true,
+          active: false,
+          currentStage: 'stale_failed',
+          currentStageLabel: 'Timed Out',
+          message: 'Stale manual sync status cleared.'
+        });
+      }
+      return jsonOutput_(status || {
+        ok: true,
+        active: false,
+        currentStage: '',
+        currentStageLabel: '',
+        message: 'No stale manual sync status found.'
       });
     }
 
