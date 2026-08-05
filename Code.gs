@@ -368,8 +368,18 @@ const EMAIL_APPROVAL_TOKEN_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const EMAIL_APPROVAL_USER_EMAILS_ = Object.freeze({
   dylan_collyge: 'dylan_collyge@greenleafnursery.com',
   jd_jones: 'jd_jones@greenleafnursery.com',
-  megan_kelly: 'megan_kelly@greenleafnursery.com'
+  megan_kelly: 'megan_kelly@greenleafnursery.com',
+  mitch_kaiser: 'mitch_kaiser@greenleafnursery.com',
+  sharon_combs: 'sharon_combs@greenleafnursery.com',
+  sunday_ellis: 'sunday_ellis@greenleafnursery.com'
 });
+const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
+  EMAIL_APPROVAL_USER_EMAILS_.sunday_ellis,
+  EMAIL_APPROVAL_USER_EMAILS_.sharon_combs,
+  EMAIL_APPROVAL_USER_EMAILS_.mitch_kaiser,
+  EMAIL_APPROVAL_USER_EMAILS_.jd_jones,
+  EMAIL_APPROVAL_USER_EMAILS_.megan_kelly
+]);
 const EMAIL_APPROVAL_ASSIGNMENTS_ = Object.freeze({
   'new-crop:dylan': 'ncr_approval_new_crop_dylan',
   'new-crop:jd': 'ncr_approval_new_crop_jd',
@@ -5726,6 +5736,20 @@ function resolveRequestRecipientEmail_(repName, fallbackEmail) {
     dylan: 'dylan_collyge@greenleafnursery.com',
     dylancollyge: 'dylan_collyge@greenleafnursery.com',
     dylan_collyge: 'dylan_collyge@greenleafnursery.com',
+    megan: 'megan_kelly@greenleafnursery.com',
+    megankelly: 'megan_kelly@greenleafnursery.com',
+    megan_kelly: 'megan_kelly@greenleafnursery.com',
+    sunday: 'sunday_ellis@greenleafnursery.com',
+    sundayellis: 'sunday_ellis@greenleafnursery.com',
+    sunday_ellis: 'sunday_ellis@greenleafnursery.com',
+    sharon: 'sharon_combs@greenleafnursery.com',
+    sharoncombs: 'sharon_combs@greenleafnursery.com',
+    sharon_combs: 'sharon_combs@greenleafnursery.com',
+    mitch: 'mitch_kaiser@greenleafnursery.com',
+    mitchkaiser: 'mitch_kaiser@greenleafnursery.com',
+    mitch_kaiser: 'mitch_kaiser@greenleafnursery.com',
+    mitchkasier: 'mitch_kaiser@greenleafnursery.com',
+    mitch_kasier: 'mitch_kaiser@greenleafnursery.com',
     kayla: 'kayla_knepp@greenleafnursery.com',
     kaylaknepp: 'kayla_knepp@greenleafnursery.com',
     kayla_knepp: 'kayla_knepp@greenleafnursery.com',
@@ -6265,6 +6289,7 @@ function getEvalTaskCompletionSummary_(payload) {
 
 function collectRequestRecipients_(payload) {
   const emailType = String(payload && payload.emailType || '').trim().toLowerCase();
+  const emailSubType = String(payload && (payload.emailSubType || payload.email_sub_type) || '').trim().toLowerCase();
   const sendToAllSalesReps = payload && (payload.sendToAllSalesReps === true || emailType === 'drive_shift_report');
   const repName = emailType === 'drive_shift_report'
     ? ''
@@ -6273,6 +6298,24 @@ function collectRequestRecipients_(payload) {
   const approvalStage = String(payload && (payload.approvalStage || payload.approval_stage) || '').trim().toLowerCase();
   const approvalType = String(payload && (payload.approvalType || payload.approval_type) || '').trim().toLowerCase().replace(/_/g, '-');
   const requestedByEmail = normalizeEmailAddress_(payload && (payload.requestedByEmail || payload.requested_by_email) || '');
+  const isInventoryTransactionReportEmail = emailType === 'bloom_purpose_report' || (
+    emailType === 'drive_customer_outreach' &&
+    ['grouped_bloom_ncr', 'paper_ncr_item_inquiry', 'suspend_tag_photo_spec'].indexOf(emailSubType) !== -1
+  );
+  const inventoryTransactionFallbackRecipients = isInventoryTransactionReportEmail
+    ? dedupeEmailAddresses_([
+        INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_,
+        requestedByEmail,
+        resolveRequestRecipientEmail_(firstNonEmptyRequestValue_(
+          payload && payload.requestedBy,
+          payload && payload.requestedByDisplay,
+          payload && payload.submittedBy,
+          payload && payload.completedBy,
+          payload && payload.createdBy,
+          ''
+        ), '')
+      ])
+    : [];
   const explicitApprovalRecipients = dedupeEmailAddresses_([
     payload && payload.recipientEmails,
     payload && payload.emailRecipients,
@@ -6289,7 +6332,8 @@ function collectRequestRecipients_(payload) {
       payload.recipientEmails,
       payload.emailRecipients,
       payload.internalRecipients,
-      payload.recipients
+      payload.recipients,
+      inventoryTransactionFallbackRecipients
     ]);
     return {
       repEmail: repEmail,
@@ -6342,7 +6386,8 @@ function collectRequestRecipients_(payload) {
     repEmail,
     approvalFallbackRecipients,
     bloomCropUpdateInternalRecipients,
-    driveShiftFallbackRecipients
+    driveShiftFallbackRecipients,
+    inventoryTransactionFallbackRecipients
   ]);
 
   return {
@@ -8452,16 +8497,19 @@ function getInventoryTransactionEmailActionLabel_(action) {
 
 function getInventoryTransactionEmailRecipients_(payload, actorEmail) {
   const safePayload = payload && typeof payload === 'object' ? payload : {};
-  const explicit = dedupeEmailAddresses_([
+  return dedupeEmailAddresses_([
     safePayload.recipientEmails,
     safePayload.emailRecipients,
     safePayload.internalRecipients,
-    safePayload.recipients
-  ]);
-  if (explicit.length) return explicit;
-  return dedupeEmailAddresses_([
+    safePayload.recipients,
+    safePayload.requestedByEmail,
+    safePayload.requested_by_email,
+    safePayload.submittedByEmail,
+    safePayload.submitted_by_email,
+    safePayload.completedByEmail,
+    safePayload.completed_by_email,
     actorEmail,
-    EMAIL_APPROVAL_USER_EMAILS_.dylan_collyge || 'dylan_collyge@greenleafnursery.com'
+    INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_
   ]);
 }
 

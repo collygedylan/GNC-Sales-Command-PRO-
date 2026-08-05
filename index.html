@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.05.02';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.05.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5149,7 +5149,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.05.02').trim() || 'V2026.08.05.02';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.05.03').trim() || 'V2026.08.05.03';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6606,7 +6606,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.05.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.05.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24567,6 +24567,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_HISTORY_SELECT_FIELDS = '*';
         const REQUEST_LIVE_SIGNATURE_SELECT_FIELDS = 'unique_id,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,date_completed,req_match,req_spec,req_caliper,desired_spec,desired_caliper,req_pic_note,request_note,req_comments,av_note,req_photo_link,req_photo_name,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by';
         const REQUEST_EMAIL_INTERNAL_RECIPIENTS = Object.freeze(['dylan_collyge@greenleafnursery.com', 'jd_jones@greenleafnursery.com', 'megan_kelly@greenleafnursery.com']);
+        const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_USERS = Object.freeze(['sunday_ellis', 'sharon_combs', 'mitch_kaiser', 'jd_jones', 'megan_kelly']);
         const REQUEST_EMAIL_LINKED_REP_RECIPIENTS = Object.freeze({
             mollydixon: ['abbey_burka@greenleafnursery.com'],
             molly_dixon: ['abbey_burka@greenleafnursery.com'],
@@ -25550,7 +25551,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.05.02').trim() || 'V2026.08.05.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.05.03').trim() || 'V2026.08.05.03';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -35977,9 +35978,17 @@ let avTopControlsRenderToken = 0;
             return dedupeRequestEmailRecipients(parts);
         }
 
+        function getInventoryTransactionRequiredRecipientEmails() {
+            return dedupeRequestEmailRecipients(
+                INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_USERS
+                    .map((username) => resolveRequestRecipientEmail(username))
+                    .filter(Boolean)
+            );
+        }
+
         function getDefaultArgosInventoryTransactionRecipients(payload = null) {
             const actorEmail = String(firstNonEmptyValue(payload && payload.actor && payload.actor.email, getArgosInventoryTransactionActorEmail(), '') || '').trim();
-            const recipients = [];
+            const recipients = getInventoryTransactionRequiredRecipientEmails();
             if (actorEmail) recipients.push(actorEmail);
             if (!isArgosInventoryTransactionDylanActor() || !actorEmail) recipients.push('dylan_collyge@greenleafnursery.com');
             return dedupeRequestEmailRecipients(recipients);
@@ -35997,6 +36006,10 @@ let avTopControlsRenderToken = 0;
                 safePayload.dylanRecipientOverride = true;
                 safePayload.recipientOverrideAppliedBy = 'dylan_collyge';
             }
+            recipients = dedupeRequestEmailRecipients([
+                ...recipients,
+                ...getDefaultArgosInventoryTransactionRecipients(safePayload)
+            ]);
             safePayload.recipientEmails = recipients;
             safePayload.emailRecipients = recipients;
             safePayload.recipients = recipients.map((email) => ({ email, role: 'selected' }));
@@ -36109,15 +36122,17 @@ let avTopControlsRenderToken = 0;
         async function collectArgosInventoryPriorityChangeReportOptions(payload = null) {
             const reportRow = buildArgosInventoryPriorityChangeReportRow(payload);
             const defaultRecipientEmails = dedupeRequestEmailRecipients([
-                ...getNcrApprovalFirstStageEmails(),
-                ...getNcrApprovalJdStageEmails(),
+                ...getInventoryTransactionRequiredRecipientEmails(),
                 resolveRequestRecipientEmail(currentUser || currentUserDisplay || '')
             ]);
             const selectedEmails = await openGroupedBloomNcrRecipientModal([reportRow], defaultRecipientEmails, {
                 brandLabel: 'GNC PH Priority Change',
                 title: 'Select Priority Change Recipients'
             });
-            const recipientEmails = dedupeRequestEmailRecipients(selectedEmails || []);
+            const recipientEmails = dedupeRequestEmailRecipients([
+                ...(selectedEmails || []),
+                ...defaultRecipientEmails
+            ]);
             if (!recipientEmails.length) return null;
             return { reportRow, recipientEmails };
         }
@@ -36195,15 +36210,17 @@ let avTopControlsRenderToken = 0;
             if (requestedPriority === null || !requestedPriority) throw new Error('Enter the requested priority before sending the report.');
             const reportRow = buildArgosInventoryPriorityChangeReportRowFromForm(sourceRow, rowOptions, 0);
             const defaultRecipientEmails = dedupeRequestEmailRecipients([
-                ...getNcrApprovalFirstStageEmails(),
-                ...getNcrApprovalJdStageEmails(),
+                ...getInventoryTransactionRequiredRecipientEmails(),
                 resolveRequestRecipientEmail(currentUser || currentUserDisplay || '')
             ]);
             const recipientEmails = await openGroupedBloomNcrRecipientModal([reportRow], defaultRecipientEmails, {
                 brandLabel: 'GNC PH Priority Change',
                 title: 'Select Priority Change Recipients'
             });
-            const safeRecipients = dedupeRequestEmailRecipients(recipientEmails || []);
+            const safeRecipients = dedupeRequestEmailRecipients([
+                ...(recipientEmails || []),
+                ...defaultRecipientEmails
+            ]);
             if (!safeRecipients.length) return false;
             const reportPayload = {
                 type: 'inventory_priority_change_report',
@@ -36965,15 +36982,17 @@ let avTopControlsRenderToken = 0;
                 return false;
             }
             const defaultRecipientEmails = dedupeRequestEmailRecipients([
-                ...getNcrApprovalFirstStageEmails(),
-                ...getNcrApprovalJdStageEmails(),
+                ...getInventoryTransactionRequiredRecipientEmails(),
                 resolveRequestRecipientEmail(currentUser || currentUserDisplay || '')
             ]);
             const recipientEmails = await openGroupedBloomNcrRecipientModal([item], defaultRecipientEmails, {
                 brandLabel: 'GNC PH Multi Action',
                 title: 'Select Multi Action Recipients'
             });
-            const safeRecipients = dedupeRequestEmailRecipients(recipientEmails || []);
+            const safeRecipients = dedupeRequestEmailRecipients([
+                ...(recipientEmails || []),
+                ...defaultRecipientEmails
+            ]);
             if (!safeRecipients.length) return false;
             inventoryMultiActionEmailSending = true;
             syncInventoryMultiActionEmailModalUi();
@@ -56492,7 +56511,13 @@ function toggleDriveQuickRequestItem(domId) {
                     ? [...firstStageEmails, ...jdStageEmails]
                     : [...firstStageEmails, ...jdStageEmails]);
             if (requestedByEmail) targetRecipients.push(requestedByEmail);
-            const recipientEmails = dedupeRequestEmailRecipients(targetRecipients);
+            const inventoryTransactionRecipients = (safeOptions.emailOnly === true || safeOptions.reportOnly === true || safeOptions.reportStyle === true || safeOptions.selectionKind === 'inventory')
+                ? getInventoryTransactionRequiredRecipientEmails()
+                : [];
+            const recipientEmails = dedupeRequestEmailRecipients([
+                ...targetRecipients,
+                ...inventoryTransactionRecipients
+            ]);
             const photoUrls = normalizeNcrEmailPhotoUrls(safeOptions.photoUrls || getNcrApprovalPhotoUrls(item));
             const recommendationMeta = normalizeApprovalRecommendationMeta(safeOptions.recommendationMeta || safeOptions.approvalRecommendation || getApprovalRecommendationMetaFromItem(item), { type: safeType });
             const managerDecision = normalizeApprovalManagerDecision(safeOptions.managerDecision || null);
@@ -57255,7 +57280,14 @@ function toggleDriveQuickRequestItem(domId) {
                 ? [...firstStageEmails, ...jdStageEmails, requestedByEmail]
                 : [...firstStageEmails, requestedByEmail];
             const selectedRecipientEmails = normalizeApprovalExtraRecipientEmails(firstNonEmptyValue(safeOptions.recipientEmails, safeOptions.emailRecipients, safeOptions.recipients, []));
-            const recipientEmails = dedupeRequestEmailRecipients(selectedRecipientEmails.length ? [...selectedRecipientEmails, requestedByEmail] : recipientTargets);
+            const inventoryTransactionRecipients = (safeOptions.emailOnly === true || safeOptions.reportOnly === true || safeOptions.reportStyle === true || safeOptions.selectionKind === 'inventory')
+                ? getInventoryTransactionRequiredRecipientEmails()
+                : [];
+            const recipientEmails = dedupeRequestEmailRecipients([
+                ...(selectedRecipientEmails.length ? selectedRecipientEmails : recipientTargets),
+                requestedByEmail,
+                ...inventoryTransactionRecipients
+            ]);
             const requestRows = [];
             const requestItems = [];
             const allPhotoUrls = [];
@@ -67416,7 +67448,18 @@ function toggleDriveQuickRequestItem(domId) {
                 'abbey_burka': 'abbey_burka@greenleafnursery.com',
                 'molly': 'molly_dixon@greenleafnursery.com',
                 'mollydixon': 'molly_dixon@greenleafnursery.com',
-                'molly_dixon': 'molly_dixon@greenleafnursery.com'
+                'molly_dixon': 'molly_dixon@greenleafnursery.com',
+                'sunday': 'sunday_ellis@greenleafnursery.com',
+                'sundayellis': 'sunday_ellis@greenleafnursery.com',
+                'sunday_ellis': 'sunday_ellis@greenleafnursery.com',
+                'sharon': 'sharon_combs@greenleafnursery.com',
+                'sharoncombs': 'sharon_combs@greenleafnursery.com',
+                'sharon_combs': 'sharon_combs@greenleafnursery.com',
+                'mitch': 'mitch_kaiser@greenleafnursery.com',
+                'mitchkaiser': 'mitch_kaiser@greenleafnursery.com',
+                'mitch_kaiser': 'mitch_kaiser@greenleafnursery.com',
+                'mitchkasier': 'mitch_kaiser@greenleafnursery.com',
+                'mitch_kasier': 'mitch_kaiser@greenleafnursery.com'
             };
             if (aliasMap[compact]) return aliasMap[compact];
             if (aliasMap[underscored]) return aliasMap[underscored];
@@ -67847,7 +67890,17 @@ function toggleDriveQuickRequestItem(domId) {
 
         function dedupeRequestEmailRecipients(recipients = []) {
             const seen = new Set();
-            return (Array.isArray(recipients) ? recipients : []).map((value) => {
+            const flatRecipients = [];
+            const pushRecipientValue = (value) => {
+                if (Array.isArray(value)) {
+                    value.forEach(pushRecipientValue);
+                    return;
+                }
+                if (value == null || value === '') return;
+                flatRecipients.push(value);
+            };
+            (Array.isArray(recipients) ? recipients : [recipients]).forEach(pushRecipientValue);
+            return flatRecipients.map((value) => {
                 if (typeof value === 'string') return normalizeRequestEmailAddress(value);
                 return normalizeRequestEmailAddress(firstNonEmptyValue(value && value.email, value && value.address, ''));
             }).filter((email) => {
@@ -82776,15 +82829,21 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function resolveBloomActionRowFormRecipientEmails(context = {}, rows = [], action = 'general', existingEmails = []) {
-            const recipientEmails = dedupeRequestEmailRecipients(existingEmails || []);
-            if (!isBloomEmailPurposeRecipientRequired(action) || recipientEmails.length) return recipientEmails;
+            const optionRecipientEmails = dedupeRequestEmailRecipients(Array.isArray(existingEmails) ? existingEmails : [existingEmails].filter(Boolean));
             const defaultRecipientEmails = dedupeRequestEmailRecipients([
-                ...getNcrApprovalFirstStageEmails(),
-                ...getNcrApprovalJdStageEmails(),
+                ...getInventoryTransactionRequiredRecipientEmails(),
                 resolveRequestRecipientEmail(currentUser || currentUserDisplay || '')
             ]);
+            const recipientEmails = dedupeRequestEmailRecipients([
+                ...optionRecipientEmails,
+                ...defaultRecipientEmails
+            ]);
+            if (!isBloomEmailPurposeRecipientRequired(action) || optionRecipientEmails.length) return recipientEmails;
             const selectedEmails = await openGroupedBloomNcrRecipientModal(rows, defaultRecipientEmails);
-            return dedupeRequestEmailRecipients(selectedEmails || []);
+            return dedupeRequestEmailRecipients([
+                ...(selectedEmails || []),
+                ...defaultRecipientEmails
+            ]);
         }
 
         function getBloomActionRowFormField(index = 0, field = '') {
@@ -85198,8 +85257,7 @@ function toggleDriveQuickRequestItem(domId) {
             const actionLabel = getPaperNcrRowActionLabel(actionType);
             if (!rows.length) throw new Error('No selected rows to email.');
             const defaultRecipientEmails = dedupeRequestEmailRecipients([
-                ...getNcrApprovalFirstStageEmails(),
-                ...getNcrApprovalJdStageEmails(),
+                ...getInventoryTransactionRequiredRecipientEmails(),
                 resolveRequestRecipientEmail(currentUser || currentUserDisplay || '')
             ]);
             const optionRecipientEmails = dedupeRequestEmailRecipients([
@@ -85215,9 +85273,13 @@ function toggleDriveQuickRequestItem(domId) {
                 brandLabel: `GNC PH ${actionLabel}`,
                 title: `Select ${actionLabel} Email Recipients`
             };
-            const safeRecipients = (safeOptions.skipRecipientModal === true || safeOptions.recipientModalCompleted === true) && optionRecipientEmails.length
+            const selectedRecipientEmails = (safeOptions.skipRecipientModal === true || safeOptions.recipientModalCompleted === true) && optionRecipientEmails.length
                 ? optionRecipientEmails
                 : await openGroupedBloomNcrRecipientModal(rows, optionRecipientEmails.length ? optionRecipientEmails : defaultRecipientEmails, recipientModalOptions);
+            const safeRecipients = dedupeRequestEmailRecipients([
+                ...(selectedRecipientEmails || []),
+                ...defaultRecipientEmails
+            ]);
             if (!safeRecipients || !safeRecipients.length) return false;
             const pkg = buildPaperNcrPackageFromBloomActionRows(rows, {
                 ...safeOptions,
@@ -85246,14 +85308,21 @@ function toggleDriveQuickRequestItem(domId) {
                 return sendPaperInquiryActionReportEmailOnly(rows, safeOptions);
             }
             const defaultRecipientEmails = dedupeRequestEmailRecipients([
-                ...getNcrApprovalFirstStageEmails(),
-                ...getNcrApprovalJdStageEmails(),
+                ...getInventoryTransactionRequiredRecipientEmails(),
                 resolveRequestRecipientEmail(currentUser || currentUserDisplay || '')
             ]);
-            const optionRecipientEmails = dedupeRequestEmailRecipients(safeOptions.recipientEmails || safeOptions.emailRecipients || []);
-            const safeRecipients = safeOptions.skipRecipientModal === true && optionRecipientEmails.length
+            const optionRecipientEmails = dedupeRequestEmailRecipients([
+                ...(Array.isArray(safeOptions.recipientEmails) ? safeOptions.recipientEmails : [safeOptions.recipientEmails].filter(Boolean)),
+                ...(Array.isArray(safeOptions.emailRecipients) ? safeOptions.emailRecipients : [safeOptions.emailRecipients].filter(Boolean)),
+                ...(Array.isArray(safeOptions.recipients) ? safeOptions.recipients : [safeOptions.recipients].filter(Boolean))
+            ]);
+            const selectedRecipientEmails = safeOptions.skipRecipientModal === true && optionRecipientEmails.length
                 ? optionRecipientEmails
                 : await openGroupedBloomNcrRecipientModal(rows, optionRecipientEmails.length ? optionRecipientEmails : defaultRecipientEmails);
+            const safeRecipients = dedupeRequestEmailRecipients([
+                ...(selectedRecipientEmails || []),
+                ...defaultRecipientEmails
+            ]);
             if (!safeRecipients || !safeRecipients.length) return false;
             const title = getBloomPurposeReportTitle(action);
             const subject = buildBloomPurposeEmailSubject(action, rows);
@@ -117912,15 +117981,23 @@ C.14.043 C.15.000
                 email: resolveRequestRecipientEmail(currentUser || currentUserDisplay || '')
             };
             const defaultRecipientEmails = dedupeRequestEmailRecipients([
-                ...getNcrApprovalFirstStageEmails(),
-                ...getNcrApprovalJdStageEmails(),
-                requester && requester.email
+                ...getInventoryTransactionRequiredRecipientEmails(),
+                requester && requester.email,
+                resolveRequestRecipientEmail(currentUser || currentUserDisplay || '')
             ]);
-            const optionRecipientEmails = dedupeRequestEmailRecipients(safeOptions.recipientEmails || safeOptions.emailRecipients || []);
+            const optionRecipientEmails = dedupeRequestEmailRecipients([
+                safeOptions.recipientEmails,
+                safeOptions.emailRecipients,
+                safeOptions.recipients
+            ]);
             const selectedRecipientEmails = safeOptions.skipRecipientModal === true && optionRecipientEmails.length
                 ? optionRecipientEmails
                 : await openGroupedBloomNcrRecipientModal(safeRows, optionRecipientEmails.length ? optionRecipientEmails : defaultRecipientEmails);
-            if (!selectedRecipientEmails || !selectedRecipientEmails.length) return false;
+            const safeRecipientEmails = dedupeRequestEmailRecipients([
+                selectedRecipientEmails,
+                defaultRecipientEmails
+            ]);
+            if (!safeRecipientEmails.length) return false;
             const plural = safeRows.length === 1 ? 'row' : 'rows';
             showToast('Sending...', `Sending ${safeRows.length} ${typeLabel} ${plural} by email.`, false);
             try {
@@ -117931,7 +118008,7 @@ C.14.043 C.15.000
                     requestedByDisplay: firstNonEmptyValue(safeOptions.requestedByDisplay, requester && requester.display, currentUserDisplay, ''),
                     approvalMessage: String(safeOptions.approvalMessage || '').trim(),
                     rowOptionsByUid: safeOptions.rowOptionsByUid || null,
-                    recipientEmails: selectedRecipientEmails,
+                    recipientEmails: safeRecipientEmails,
                     reportStyle: true,
                     emailOnly: true
                 });
