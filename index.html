@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.06.02';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.06.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5242,7 +5242,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.06.02').trim() || 'V2026.08.06.02';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.06.03').trim() || 'V2026.08.06.03';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6700,7 +6700,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.06.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.06.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24694,6 +24694,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const TASK_DIAGNOSTICS_VIEW = 'diagnostics-review';
         const INVENTORY_TRANSACTION_HISTORY_VIEW = 'inventory-transaction-history';
         const MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW = 'assigned-items-export';
+        const MANAGER_SHORTAGE_CANCEL_VIEW = 'shortage-cancel';
         const INVENTORY_TRANSACTION_AUDIT_TABLE = 'ph_inventory_transactions';
         const NCR_APPROVAL_ASSIGNMENTS = Object.freeze({
             'new-crop:dylan': 'ncr_approval_new_crop_dylan',
@@ -25645,7 +25646,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.06.02').trim() || 'V2026.08.06.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.06.03').trim() || 'V2026.08.06.03';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -52988,6 +52989,9 @@ function toggleDriveQuickRequestItem(domId) {
             }
             if (activeReqTab === 'suspend-tag' && changedSet.has('soc') && !affectedViews.includes('request')) {
                 affectedViews.push('request');
+            }
+            if (changedSet.has('soc') && activeHomeTab === MANAGER_SHORTAGE_CANCEL_VIEW && !affectedViews.includes('managers')) {
+                affectedViews.push('managers');
             }
             if ((changedSet.has('flyerRows') || changedSet.has('flyerHistory')) && !affectedViews.includes('tasks')) {
                 affectedViews.push('tasks');
@@ -109035,6 +109039,7 @@ C.14.043 C.15.000
             else if (requestedTab === APP_SEASON_SETTINGS_VIEW && canManageCurrentSeasonSettings()) nextTab = APP_SEASON_SETTINGS_VIEW;
             else if (requestedTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW && canManageAvBlanksPhotoBypassSettings()) nextTab = AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW;
             else if (requestedTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && canViewAssignedItemsExport()) nextTab = MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW;
+            else if (requestedTab === MANAGER_SHORTAGE_CANCEL_VIEW && canViewManagerShortageCancel()) nextTab = MANAGER_SHORTAGE_CANCEL_VIEW;
             else if (isManagerApprovalTab(requestedTab) && canUseManagerApprovalTab(requestedTab)) nextTab = requestedTab;
             activeHomeTab = nextTab;
             if (nextTab !== SHEAR_APPROVAL_VIEW) activeShearApprovalDetailId = '';
@@ -109071,6 +109076,9 @@ C.14.043 C.15.000
             }
             if (nextTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) {
                 ensureDatasetLoaded('warehouseAssignedItems', 'full').then(() => scheduleManagersRender(true)).catch(() => {});
+            }
+            if (nextTab === MANAGER_SHORTAGE_CANCEL_VIEW) {
+                ensureDatasetLoaded('soc', 'full').then(() => scheduleManagersRender(true)).catch(() => {});
             }
             renderHomeOrManagersNow(true);
             return false;
@@ -112765,6 +112773,255 @@ C.14.043 C.15.000
             </div>`;
         }
 
+        function canViewManagerShortageCancel(userOverride = '') {
+            return normalizeUsernameValue(userOverride || currentUser || '') === 'dylan_collyge';
+        }
+
+        function getSocRawFieldValue(row = null, keys = []) {
+            if (!row || typeof row !== 'object') return '';
+            for (const key of keys) {
+                if (!key || !Object.prototype.hasOwnProperty.call(row, key)) continue;
+                const value = row[key];
+                if (value === null || value === undefined) continue;
+                if (typeof value === 'string' && !value.trim()) continue;
+                return value;
+            }
+            return '';
+        }
+
+        function getSocItemcodeValue(row = null) {
+            return getSocRawFieldValue(row, ['ITEMCODE', 'itemcode', 'ITEM_CODE', 'item_code', 'ITEM', 'item']);
+        }
+
+        function getSocCommonNameValue(row = null) {
+            return getSocRawFieldValue(row, ['COMMONNAME', 'commonname', 'COMMON_NAME', 'common_name', 'DESCRIPTION', 'description']);
+        }
+
+        function getSocContSizeValue(row = null) {
+            return getSocRawFieldValue(row, ['CONTSIZE', 'contsize', 'CONT_SIZE', 'cont_size']);
+        }
+
+        function getSocCustomerNameValue(row = null) {
+            return getSocRawFieldValue(row, ['CUSTOMERNAME', 'customername', 'CUSTOMER_NAME', 'customer_name', 'CUSTOMER', 'customer']);
+        }
+
+        function getSocConsigneeNameValue(row = null) {
+            return getSocRawFieldValue(row, ['CONSIGNEENAME', 'consigneename', 'CONSIGNEE_NAME', 'consignee_name', 'CONSIGNEE', 'consignee']);
+        }
+
+        function getSocLotCodeValue(row = null) {
+            return getSocRawFieldValue(row, ['LOTCODE', 'lotcode', 'LOT_CODE', 'lot_code']);
+        }
+
+        function getSocLocationCodeValue(row = null) {
+            return getSocRawFieldValue(row, ['LOCATIONCODE', 'locationcode', 'LOCATION_CODE', 'location_code', 'LOC', 'loc']);
+        }
+
+        function getSocQuantityOrderedValue(row = null) {
+            return getSocRawFieldValue(row, ['QUANTITYORDERED', 'quantityordered', 'QUANTITY_ORDERED', 'quantity_ordered', 'QTYORDERED', 'qtyordered', 'QTY_ORDERED', 'qty_ordered', 'ORDERED', 'ordered']);
+        }
+
+        function getSocQuantityShippedValue(row = null) {
+            return getSocRawFieldValue(row, ['QUANTITYSHIPPED', 'quantityshipped', 'QUANTITY_SHIPPED', 'quantity_shipped', 'QTYSHIPPED', 'qtyshipped', 'QTY_SHIPPED', 'qty_shipped', 'SHIPPED', 'shipped']);
+        }
+
+        function hasPresentSocValue(value = null) {
+            return value !== null && value !== undefined && String(value).trim() !== '';
+        }
+
+        function getSocQuantityMismatch(row = null) {
+            const orderedRaw = getSocQuantityOrderedValue(row);
+            const shippedRaw = getSocQuantityShippedValue(row);
+            if (!hasPresentSocValue(orderedRaw) || !hasPresentSocValue(shippedRaw)) return null;
+            const orderedNum = parseAppNumber(orderedRaw);
+            const shippedNum = parseAppNumber(shippedRaw);
+            if (orderedNum !== null && shippedNum !== null) {
+                const diff = orderedNum - shippedNum;
+                if (Math.abs(diff) < 0.000001) return null;
+                return { orderedRaw, shippedRaw, orderedNum, shippedNum, diff, numeric: true };
+            }
+            const orderedText = String(orderedRaw).trim();
+            const shippedText = String(shippedRaw).trim();
+            if (orderedText === shippedText) return null;
+            return { orderedRaw, shippedRaw, orderedNum, shippedNum, diff: null, numeric: false };
+        }
+
+        function isShortageCancelSocRow(row = null) {
+            return !!getSocQuantityMismatch(row);
+        }
+
+        function formatShortageCancelQuantity(value = null) {
+            const num = typeof value === 'number' ? value : parseAppNumber(value);
+            if (num !== null) return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
+            const text = String(value == null ? '' : value).trim();
+            return text || '-';
+        }
+
+        function formatShortageCancelDifference(mismatch = null) {
+            if (!mismatch || !mismatch.numeric) return '-';
+            const diff = mismatch.orderedNum - mismatch.shippedNum;
+            const label = diff > 0 ? 'Short' : 'Over';
+            return `${formatShortageCancelQuantity(Math.abs(diff))} ${label}`;
+        }
+
+        function getManagerShortageCancelRows() {
+            return (Array.isArray(socInventory) ? socInventory : [])
+                .map((row, index) => {
+                    const copy = Object.assign({ _shortageCancelIndex: index }, row || {});
+                    try { normalizeSocDockRowAliases(copy); } catch (_) {}
+                    return copy;
+                })
+                .filter(isShortageCancelSocRow)
+                .sort((a, b) => {
+                    const buildKey = (row) => [
+                        getSocCustomerNameValue(row),
+                        getSocConsigneeNameValue(row),
+                        getSocCommonNameValue(row),
+                        getSocItemcodeValue(row),
+                        getSocLocationCodeValue(row),
+                        getSocLotCodeValue(row)
+                    ].map((value) => String(value || '').trim().toLowerCase()).join('|');
+                    return buildKey(a).localeCompare(buildKey(b), undefined, { numeric: true, sensitivity: 'base' });
+                });
+        }
+
+        function getFilteredManagerShortageCancelRows(rows = null) {
+            const sourceRows = Array.isArray(rows) ? rows : getManagerShortageCancelRows();
+            return sourceRows.filter((row) => {
+                const mismatch = getSocQuantityMismatch(row);
+                return managerTextMatchesSearch([
+                    getSocItemcodeValue(row),
+                    getSocCommonNameValue(row),
+                    getSocContSizeValue(row),
+                    getSocCustomerNameValue(row),
+                    getSocConsigneeNameValue(row),
+                    getSocQuantityOrderedValue(row),
+                    getSocQuantityShippedValue(row),
+                    mismatch ? formatShortageCancelDifference(mismatch) : '',
+                    getSocLotCodeValue(row),
+                    getSocLocationCodeValue(row)
+                ]);
+            });
+        }
+
+        function renderManagerShortageCancelCard(row = null) {
+            const mismatch = getSocQuantityMismatch(row);
+            if (!mismatch) return '';
+            const itemCode = String(getSocItemcodeValue(row) || '-');
+            const commonName = String(getSocCommonNameValue(row) || 'SOC Row');
+            const contSize = String(getSocContSizeValue(row) || '');
+            const customer = String(getSocCustomerNameValue(row) || '').trim();
+            const consignee = String(getSocConsigneeNameValue(row) || '').trim();
+            const customerLabel = [customer, consignee].filter(Boolean).join(' | ') || '-';
+            const lot = String(getSocLotCodeValue(row) || '').trim();
+            const loc = String(getSocLocationCodeValue(row) || '').trim();
+            const orderedLabel = formatShortageCancelQuantity(mismatch.orderedRaw);
+            const shippedLabel = formatShortageCancelQuantity(mismatch.shippedRaw);
+            const diffLabel = formatShortageCancelDifference(mismatch);
+            const chips = [
+                contSize ? `<span class="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[#1d4ed8]">${escapeHtml(contSize)}</span>` : '',
+                itemCode ? `<span class="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[#007a4d]">${escapeHtml(itemCode)}</span>` : '',
+                lot ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">Lot ${escapeHtml(lot)}</span>` : '',
+                loc ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600">Loc ${escapeHtml(loc)}</span>` : ''
+            ].filter(Boolean).join('');
+            return `<div class="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="min-w-0 flex-1">
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">Shortage / Cancel</div>
+                        <div class="mt-1 text-xl font-black leading-tight text-slate-900">${escapeHtml(commonName)}</div>
+                        <div class="mt-2 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.12em]">${chips || `<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-500">${escapeHtml(itemCode)}</span>`}</div>
+                    </div>
+                    <div class="min-w-[8rem] rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-right">
+                        <div class="text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Difference</div>
+                        <div class="mt-1 text-lg font-black text-slate-900">${escapeHtml(diffLabel)}</div>
+                    </div>
+                </div>
+                <div class="mt-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-700">${escapeHtml(customerLabel)}</div>
+                <div class="mt-3 grid gap-2 sm:grid-cols-3">
+                    <div class="rounded-xl border border-blue-100 bg-blue-50 px-3 py-3">
+                        <div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#1d4ed8]">Quantity Ordered</div>
+                        <div class="mt-1 text-2xl font-black text-slate-900">${escapeHtml(orderedLabel)}</div>
+                    </div>
+                    <div class="rounded-xl border border-rose-100 bg-rose-50 px-3 py-3">
+                        <div class="text-[10px] font-black uppercase tracking-[0.14em] text-rose-600">Quantity Shipped</div>
+                        <div class="mt-1 text-2xl font-black text-slate-900">${escapeHtml(shippedLabel)}</div>
+                    </div>
+                    <div class="rounded-xl border border-amber-100 bg-amber-50 px-3 py-3">
+                        <div class="text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Shortage / Over</div>
+                        <div class="mt-1 text-2xl font-black text-slate-900">${escapeHtml(diffLabel)}</div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        async function refreshManagerShortageCancelRows() {
+            if (!canViewManagerShortageCancel()) return false;
+            try {
+                await ensureDatasetLoaded('soc', 'full', { force: true, preserveRequestedMode: true });
+                scheduleManagersRender(true);
+                showToast('Shortage/Cancel Refreshed', 'Loaded the latest SOC shortage/cancel rows.');
+            } catch (error) {
+                showToast('Refresh Failed', String(error && error.message || 'Could not refresh SOC rows.'), true);
+            }
+            return false;
+        }
+
+        function renderManagerShortageCancelPanel() {
+            if (!canViewManagerShortageCancel()) {
+                return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">Shortage/Cancel is available to Dylan only.</div>';
+            }
+            if (!isDatasetLoaded('soc', 'full') && getDatasetRenderRowCount('soc') <= 0) {
+                ensureDatasetLoaded('soc', 'full').then(() => scheduleManagersRender(true)).catch(() => scheduleManagersRender(true));
+                return '<div class="rounded-2xl border border-emerald-100 bg-white/80 p-8 text-center text-sm font-black uppercase tracking-[0.14em] text-slate-400">Loading Shortage/Cancel rows...</div>';
+            }
+            const allRows = getManagerShortageCancelRows();
+            const filteredRows = getFilteredManagerShortageCancelRows(allRows);
+            const orderedTotal = filteredRows.reduce((sum, row) => {
+                const mismatch = getSocQuantityMismatch(row);
+                return sum + (mismatch && mismatch.orderedNum !== null ? mismatch.orderedNum : 0);
+            }, 0);
+            const shippedTotal = filteredRows.reduce((sum, row) => {
+                const mismatch = getSocQuantityMismatch(row);
+                return sum + (mismatch && mismatch.shippedNum !== null ? mismatch.shippedNum : 0);
+            }, 0);
+            const diffTotal = orderedTotal - shippedTotal;
+            const netDiffLabel = Math.abs(diffTotal) < 0.000001 ? 'Net' : (diffTotal > 0 ? 'Short' : 'Over');
+            const cardsHtml = filteredRows.length
+                ? filteredRows.map(renderManagerShortageCancelCard).join('')
+                : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No Shortage/Cancel rows match the current search.</div>';
+            return `<div class="space-y-4">
+                <div class="rounded-2xl border border-amber-100 bg-white/90 p-4 shadow-sm">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">Dylan Only</div>
+                            <div class="mt-1 text-xl font-black text-slate-900">Shortage/Cancel</div>
+                            <div class="mt-1 text-[12px] font-semibold text-slate-500">SOC rows where ordered and shipped quantities are both present and do not match.</div>
+                        </div>
+                        <button type="button" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-amber-800 shadow-sm transition hover:bg-amber-100 active:scale-95" onclick="return refreshManagerShortageCancelRows()"><i class="ph ph-arrow-clockwise mr-2"></i>Refresh</button>
+                    </div>
+                    <div class="mt-4 grid gap-3 md:grid-cols-4">
+                        <div class="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                            <div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Visible Rows</div>
+                            <div class="text-2xl font-black text-slate-900">${filteredRows.length}</div>
+                        </div>
+                        <div class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                            <div class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Total Mismatches</div>
+                            <div class="text-2xl font-black text-slate-900">${allRows.length}</div>
+                        </div>
+                        <div class="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
+                            <div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#1d4ed8]">Ordered / Shipped</div>
+                            <div class="text-lg font-black text-slate-900">${escapeHtml(formatShortageCancelQuantity(orderedTotal))} / ${escapeHtml(formatShortageCancelQuantity(shippedTotal))}</div>
+                        </div>
+                        <div class="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3">
+                            <div class="text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">Net Difference</div>
+                            <div class="text-lg font-black text-slate-900">${escapeHtml(formatShortageCancelQuantity(Math.abs(diffTotal)))} ${netDiffLabel}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="space-y-3">${cardsHtml}</div>
+            </div>`;
+        }
+
         function getManagersToolAccess() {
             const canViewShearApprovals = canUseInventoryChecksApprovalView();
             const canViewNcrApprovals = canUseNcrApprovalTaskView();
@@ -112779,7 +113036,8 @@ C.14.043 C.15.000
                 canManageSeasonSettings: canManageCurrentSeasonSettings(),
                 canManageAvBlanksPhotoBypass: canManageAvBlanksPhotoBypassSettings(),
                 canViewInventoryTransactions: canViewInventoryTransactionHistory(),
-                canViewAssignedItemsExport: canViewAssignedItemsExport()
+                canViewAssignedItemsExport: canViewAssignedItemsExport(),
+                canViewShortageCancel: canViewManagerShortageCancel()
             };
         }
 
@@ -112792,6 +113050,7 @@ C.14.043 C.15.000
             if (access.canManageAvBlanksPhotoBypass) return AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW;
             if (access.canViewInventoryTransactions) return INVENTORY_TRANSACTION_HISTORY_VIEW;
             if (access.canViewAssignedItemsExport) return MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW;
+            if (access.canViewShortageCancel) return MANAGER_SHORTAGE_CANCEL_VIEW;
             if (access.canViewProductivity) return 'productivity';
             return '';
         }
@@ -112805,6 +113064,7 @@ C.14.043 C.15.000
             if (access.canManageAvBlanksPhotoBypass) tabs.push({ id: AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW, label: 'AV Blanks' });
             if (access.canViewInventoryTransactions) tabs.push({ id: INVENTORY_TRANSACTION_HISTORY_VIEW, label: 'Transaction History' });
             if (access.canViewAssignedItemsExport) tabs.push({ id: MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW, label: 'Assigned Items' });
+            if (access.canViewShortageCancel) tabs.push({ id: MANAGER_SHORTAGE_CANCEL_VIEW, label: 'Shortage/Cancel' });
             return tabs;
         }
 
@@ -112835,6 +113095,7 @@ C.14.043 C.15.000
             if (safeTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW) return { label: 'AV Blanks', description: 'Allow selected users to finish AV Blanks with AV Note only.', icon: 'ph-note-pencil' };
             if (safeTab === INVENTORY_TRANSACTION_HISTORY_VIEW) return { label: 'Transaction History', description: 'Look up who made QTY, Transfer, and Reclass changes.', icon: 'ph-clock-counter-clockwise' };
             if (safeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) return { label: 'Assigned Items', description: 'Export warehouse assigned item rows by AssignedTo.', icon: 'ph-user-list' };
+            if (safeTab === MANAGER_SHORTAGE_CANCEL_VIEW) return { label: 'Shortage/Cancel', description: 'Review SOC rows where ordered and shipped quantities do not match.', icon: 'ph-warning-circle' };
             if (safeTab === 'productivity') return { label: 'Productivity', description: 'Review completed work by user and date.', icon: 'ph-chart-line-up' };
             if (safeTab === SHEAR_APPROVAL_VIEW) return { label: 'Shear Approvals', description: 'Approve explicit Add To Shear List requests before they enter Que.', icon: 'ph-scissors' };
             if (safeTab === NCR_APPROVAL_NEW_CROP_VIEW) return { label: 'NCR Approvals', description: 'Approve future season new crop release rows.', icon: 'ph-seal-check' };
@@ -114981,6 +115242,7 @@ C.14.043 C.15.000
             else if (activeHomeTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW) html += renderAvBlanksPhotoBypassSettingsPanel();
             else if (activeHomeTab === INVENTORY_TRANSACTION_HISTORY_VIEW) html += renderInventoryTransactionHistoryPanel();
             else if (activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) html += renderManagerAssignedItemsExportPanel();
+            else if (activeHomeTab === MANAGER_SHORTAGE_CANCEL_VIEW) html += renderManagerShortageCancelPanel();
             else if (isManagerApprovalTab(activeHomeTab)) html += renderManagerApprovalPanel(activeHomeTab);
             else html = '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No manager tools are available for this login.</div>';
             container.innerHTML = html;
