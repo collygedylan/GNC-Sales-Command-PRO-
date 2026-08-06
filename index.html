@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.06.01';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.06.02';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5242,7 +5242,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.06.01').trim() || 'V2026.08.06.01';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.06.02').trim() || 'V2026.08.06.02';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -5471,6 +5471,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="detail-tabs mb-4">
                         <div class="detail-tab report-tab active border-[#007a4d] text-[#007a4d]" onclick="setReportTab('ALL')" id="rtab-ALL">Summary</div>
                         <div class="detail-tab report-tab" onclick="setReportTab('REQUEST_HISTORY')" id="rtab-REQUEST_HISTORY">Request History</div>
+                        <div class="detail-tab report-tab" onclick="setReportTab('NON_SALEABLE_BUCKETS')" id="rtab-NON_SALEABLE_BUCKETS">Non Saleable Buckets</div>
                         <div class="detail-tab report-tab" onclick="setReportTab('S1')" id="rtab-S1">S1</div>
                         <div class="detail-tab report-tab" onclick="setReportTab('F1')" id="rtab-F1">F1</div>
                         <div class="detail-tab report-tab" onclick="setReportTab('U1')" id="rtab-U1">U1</div>
@@ -6699,7 +6700,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.06.01';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.06.02';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -20129,7 +20130,7 @@ bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             bindFastInvokeById('tab-av-reserves', 'setAVTab', ['reserves'], 'My Reserves');
             bindFastInvokeById('tab-av-secondary-all', 'setAvSecondaryTab', ['all'], 'ALL Open Stock');
             bindFastInvokeById('tab-av-secondary-photos', 'setAvSecondaryTab', ['photos'], 'Photos');
-            ['ALL','S1','F1','U1','U2','U3','X','Y','Z'].forEach((tabId) => bindFastInvokeById(`rtab-${tabId}`, 'setReportTab', [tabId], `Report ${tabId}`));
+            ['ALL','REQUEST_HISTORY','NON_SALEABLE_BUCKETS','S1','F1','U1','U2','U3','X','Y','Z'].forEach((tabId) => bindFastInvokeById(`rtab-${tabId}`, 'setReportTab', [tabId], `Report ${tabId}`));
             bindFastInvokeById('tab-req-pending', 'setReqTab', ['pending'], 'Request');
             bindFastInvokeById('tab-req-reps', 'setReqTab', ['reps'], 'Sales Reps');
             bindFastInvokeById('tab-req-suspend-tag', 'setReqTab', ['suspend-tag'], 'Suspend Tag');
@@ -25644,7 +25645,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.06.01').trim() || 'V2026.08.06.01';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.06.02').trim() || 'V2026.08.06.02';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -132474,6 +132475,256 @@ ${folderNote ? `Folder Note: ${folderNote}
             setContainerHtmlWithSignature(container, html, reportRenderKey);
         }
 
+        const NON_SALEABLE_BUCKET_STATIC_SEASONS = Object.freeze(['U1', 'U2', 'U3', 'X']);
+        const NON_SALEABLE_BUCKET_SEASONS = Object.freeze(['S1', 'F1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
+
+        function normalizeNonSaleableSeasonCode(value = '') {
+            const text = String(value == null ? '' : value).trim().toUpperCase();
+            if (!text) return '';
+            const exact = NON_SALEABLE_BUCKET_SEASONS.find((season) => text === season);
+            if (exact) return exact;
+            const match = text.match(/\b(S1|F1|U1|U2|U3|X|Y|Z)\b/i);
+            return match ? String(match[1] || '').toUpperCase() : '';
+        }
+
+        function parseNonSaleableLotSeason(lotCode = '') {
+            const text = String(lotCode == null ? '' : lotCode).trim().toUpperCase();
+            if (!text) return { season: '', salesYear: null };
+            const yearAndSeason = text.match(/(?:^|[^A-Z0-9])(\d{2})\s*[.\-]?\s*(S1|F1|U1|U2|U3|X|Y|Z)(?:[^A-Z0-9]|$)/i);
+            if (yearAndSeason) {
+                return {
+                    salesYear: parseAppNumber(yearAndSeason[1]),
+                    season: normalizeNonSaleableSeasonCode(yearAndSeason[2])
+                };
+            }
+            return { season: normalizeNonSaleableSeasonCode(text), salesYear: null };
+        }
+
+        function getNonSaleableRowLotCode(row = null) {
+            return String(firstNonEmptyValue(
+                row && row.LOTCODE,
+                row && row.lotcode,
+                row && row.LOT_CODE,
+                row && row.lot_code,
+                ''
+            ) || '').trim();
+        }
+
+        function getNonSaleableRowSeasonCode(row = null) {
+            const directSeason = normalizeNonSaleableSeasonCode(firstNonEmptyValue(
+                row && row.SEASON,
+                row && row.season,
+                row && row.SEASONCODE,
+                row && row.seasoncode,
+                row && row.SALESSEASON,
+                row && row.salesseason,
+                row && row.SALES_SEASON,
+                row && row.sales_season,
+                ''
+            ));
+            if (directSeason) return directSeason;
+            return parseNonSaleableLotSeason(getNonSaleableRowLotCode(row)).season;
+        }
+
+        function getNonSaleableRowSalesYear(row = null) {
+            const directValue = firstNonEmptyValue(
+                row && row.SALESYEAR,
+                row && row.salesyear,
+                row && row.SALES_YEAR,
+                row && row.sales_year,
+                row && row.SALEYEAR,
+                row && row.saleyear,
+                row && row.YEAR,
+                row && row.year,
+                ''
+            );
+            const directNumber = parseAppNumber(directValue);
+            if (directNumber !== null) return directNumber;
+            return parseNonSaleableLotSeason(getNonSaleableRowLotCode(row)).salesYear;
+        }
+
+        function getNonSaleableBucketTargets() {
+            const next = getConfiguredNextSaleSeasonTarget();
+            const staticTargets = NON_SALEABLE_BUCKET_STATIC_SEASONS.map((season, index) => ({
+                key: `SEASON:${season}`,
+                label: season,
+                season,
+                salesYear: null,
+                sortRank: index,
+                isNext: false
+            }));
+            return staticTargets.concat([{
+                key: `NEXT:${next.key}`,
+                label: `Next Season ${next.season} SY${next.salesYear}`,
+                season: next.season,
+                salesYear: next.salesYear,
+                sortRank: staticTargets.length,
+                isNext: true
+            }]);
+        }
+
+        function getNonSaleableBucketForRow(row = null, targets = getNonSaleableBucketTargets()) {
+            const season = getNonSaleableRowSeasonCode(row);
+            if (!season) return '';
+            if (NON_SALEABLE_BUCKET_STATIC_SEASONS.includes(season)) return `SEASON:${season}`;
+            const salesYear = getNonSaleableRowSalesYear(row);
+            const nextTarget = targets.find((target) => target.isNext);
+            if (nextTarget && season === nextTarget.season && salesYear === nextTarget.salesYear) {
+                return nextTarget.key;
+            }
+            return '';
+        }
+
+        function getNonSaleableNumber(row = null, ...keys) {
+            const values = keys.map((key) => row && row[key]);
+            const parsed = parseAppNumber(firstNonEmptyValue(...values, ''));
+            return parsed === null ? 0 : parsed;
+        }
+
+        function formatNonSaleableNumber(value) {
+            const parsed = parseAppNumber(value);
+            return parsed === null ? '-' : parsed.toLocaleString();
+        }
+
+        function getNonSaleableBucketRows() {
+            const targets = getNonSaleableBucketTargets();
+            const targetByKey = new Map(targets.map((target) => [target.key, target]));
+            const rows = (Array.isArray(fullInventory) ? fullInventory : []).reduce((acc, row) => {
+                const bucketKey = getNonSaleableBucketForRow(row, targets);
+                if (!bucketKey) return acc;
+                const target = targetByKey.get(bucketKey);
+                acc.push(Object.assign({}, row, {
+                    __NON_SALEABLE_BUCKET_KEY: bucketKey,
+                    __NON_SALEABLE_BUCKET_LABEL: target ? target.label : bucketKey,
+                    __NON_SALEABLE_BUCKET_SORT: target ? target.sortRank : 99,
+                    __NON_SALEABLE_SEASON: getNonSaleableRowSeasonCode(row),
+                    __NON_SALEABLE_SALESYEAR: getNonSaleableRowSalesYear(row)
+                }));
+                return acc;
+            }, []);
+            rows.sort((a, b) => {
+                const bucketDelta = (a.__NON_SALEABLE_BUCKET_SORT || 0) - (b.__NON_SALEABLE_BUCKET_SORT || 0);
+                if (bucketDelta) return bucketDelta;
+                return [
+                    'COMMONNAME',
+                    'CONTSIZE',
+                    'ITEMCODE',
+                    'LOCATIONCODE',
+                    'LOTCODE'
+                ].reduce((result, key) => result || String(a[key] || '').localeCompare(String(b[key] || ''), undefined, { numeric: true, sensitivity: 'base' }), 0);
+            });
+            return { rows, targets, targetByKey };
+        }
+
+        function getNonSaleableBucketsExportColumns() {
+            return [
+                { label: 'Bucket', value: (row) => row.__NON_SALEABLE_BUCKET_LABEL || '' },
+                { label: 'Season', value: (row) => row.__NON_SALEABLE_SEASON || '' },
+                { label: 'Sales Year', value: (row) => row.__NON_SALEABLE_SALESYEAR == null ? '' : row.__NON_SALEABLE_SALESYEAR },
+                { label: 'Common Name', value: (row) => row.COMMONNAME || '' },
+                { label: 'Cont Size', value: (row) => row.CONTSIZE || '' },
+                { label: 'Item Code', value: (row) => row.ITEMCODE || '' },
+                { label: 'Location', value: (row) => row.LOCATIONCODE || '' },
+                { label: 'Lot', value: (row) => row.LOTCODE || '' },
+                { label: 'Priority', value: (row) => row.PRIORITY || '' },
+                { label: 'Available', value: (row) => firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, '') },
+                { label: 'On Hand', value: (row) => firstNonEmptyValue(row.PTRONHAND, row.ptronhand, '') },
+                { label: 'Open Stock', value: (row) => firstNonEmptyValue(row.S_LTS, row.s_lts, row.SLTS, '') },
+                { label: 'Source', value: (row) => row.SOURCE || '' },
+                { label: 'Genus', value: (row) => row.GENUS || row.GENUSNAME || '' },
+                { label: 'Sales Note', value: (row) => firstNonEmptyValue(row.SALES_NOTE, row.sales_note, row.SALESNOTE, '') },
+                { label: 'Hold/Stop Code', value: (row) => firstNonEmptyValue(row.HOLDSTOPCODE, row.HOLSTOPCODE, '') },
+                { label: 'Hold/Stop Reason', value: (row) => firstNonEmptyValue(row.HOLDSTOPREASON, row.HSREASONBEGIN, '') }
+            ];
+        }
+
+        function buildNonSaleableBucketsMetaRows(rows = [], targets = []) {
+            const nextTarget = targets.find((target) => target.isNext) || getConfiguredNextSaleSeasonTarget();
+            return [
+                ['Report', 'Non Saleable Buckets'],
+                ['Current Season', getConfiguredCurrentSeasonCode()],
+                ['Current Sales Year', String(getConfiguredCurrentSalesYearCode())],
+                ['Next Season Bucket', nextTarget && nextTarget.isNext ? `${nextTarget.season} SY${nextTarget.salesYear}` : `${nextTarget.season || ''} SY${nextTarget.salesYear || ''}`],
+                ['Included Buckets', targets.map((target) => target.label).join(', ')],
+                ['Rows Exported', String(rows.length)],
+                ['Generated At', new Date().toLocaleString()]
+            ];
+        }
+
+        function exportNonSaleableBucketsReportToExcel() {
+            const { rows, targets } = getNonSaleableBucketRows();
+            if (!rows.length) {
+                showToast('No Rows', 'No Non Saleable Bucket rows are available to export.', true);
+                return false;
+            }
+            downloadExcelWorkbook(
+                getNonSaleableBucketsExportColumns(),
+                rows,
+                'Non Saleable Buckets',
+                '',
+                'non-saleable-buckets',
+                buildNonSaleableBucketsMetaRows(rows, targets),
+                { filenameBase: 'Non Saleable Buckets', worksheetName: 'Non Saleable' }
+            );
+            showToast('Export Ready', `Downloading ${rows.length.toLocaleString()} Non Saleable Bucket row${rows.length === 1 ? '' : 's'} as Excel.`);
+            return false;
+        }
+
+        function renderNonSaleableBucketsReportCard(row = null) {
+            const salesYear = row && row.__NON_SALEABLE_SALESYEAR != null ? `SY${row.__NON_SALEABLE_SALESYEAR}` : 'SY -';
+            const season = row && row.__NON_SALEABLE_SEASON ? row.__NON_SALEABLE_SEASON : '-';
+            const salesNote = String(firstNonEmptyValue(row && row.SALES_NOTE, row && row.sales_note, row && row.SALESNOTE, '') || '').trim();
+            const holdCode = String(firstNonEmptyValue(row && row.HOLDSTOPCODE, row && row.HOLSTOPCODE, '') || '').trim();
+            const holdReason = String(firstNonEmptyValue(row && row.HOLDSTOPREASON, row && row.HSREASONBEGIN, '') || '').trim();
+            const chips = [
+                `Item ${row && row.ITEMCODE ? row.ITEMCODE : '-'}`,
+                `Size ${row && row.CONTSIZE ? row.CONTSIZE : '-'}`,
+                `Loc ${row && row.LOCATIONCODE ? row.LOCATIONCODE : '-'}`,
+                `Lot ${row && row.LOTCODE ? row.LOTCODE : '-'}`,
+                `Pri ${row && row.PRIORITY ? row.PRIORITY : '-'}`,
+                `${season} ${salesYear}`
+            ].map((label) => `<span class="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-orange-700">${esc(label)}</span>`).join('');
+            const metrics = [
+                ['Available', formatNonSaleableNumber(firstNonEmptyValue(row && row.PTRAVAILABLE, row && row.ptravailable, ''))],
+                ['On Hand', formatNonSaleableNumber(firstNonEmptyValue(row && row.PTRONHAND, row && row.ptronhand, ''))],
+                ['Open Stock', formatNonSaleableNumber(firstNonEmptyValue(row && row.S_LTS, row && row.s_lts, row && row.SLTS, ''))]
+            ].map(([label, value]) => `<div class="rounded-xl border border-slate-100 bg-white px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">${label}</div><div class="mt-1 text-lg font-black text-slate-900">${esc(value)}</div></div>`).join('');
+            const noteHtml = salesNote || holdCode || holdReason
+                ? `<div class="mt-3 rounded-xl border border-orange-100 bg-orange-50 px-3 py-2 text-[12px] font-bold text-orange-900">${salesNote ? `Sales Note: ${esc(salesNote)}` : ''}${salesNote && (holdCode || holdReason) ? '<br>' : ''}${holdCode || holdReason ? `Hold/Stop: ${esc(holdCode || '-')} ${holdReason ? `- ${esc(holdReason)}` : ''}` : ''}</div>`
+                : '';
+            return `<div class="rounded-2xl border border-orange-200 bg-white p-4 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-orange-600">${esc(row && row.__NON_SALEABLE_BUCKET_LABEL ? row.__NON_SALEABLE_BUCKET_LABEL : 'Non Saleable')}</div><div class="mt-1 text-xl font-black leading-tight text-slate-900">${esc(row && row.COMMONNAME ? row.COMMONNAME : 'Unknown')}</div><div class="mt-2 flex flex-wrap gap-2">${chips}</div></div><div class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${esc(row && row.SOURCE ? row.SOURCE : 'Source -')}</div></div><div class="mt-3 grid grid-cols-3 gap-2">${metrics}</div>${noteHtml}</div>`;
+        }
+
+        function renderNonSaleableBucketsReport(container, crumb, reportRenderKey = '') {
+            const { rows, targets } = getNonSaleableBucketRows();
+            const nextTarget = targets.find((target) => target.isNext);
+            const groupedRows = targets.map((target) => ({
+                target,
+                rows: rows.filter((row) => row.__NON_SALEABLE_BUCKET_KEY === target.key)
+            }));
+            const summaryCards = targets.map((target) => {
+                const bucketRows = rows.filter((row) => row.__NON_SALEABLE_BUCKET_KEY === target.key);
+                const available = bucketRows.reduce((sum, row) => sum + getNonSaleableNumber(row, 'PTRAVAILABLE', 'ptravailable'), 0);
+                return `<div class="rounded-2xl border border-orange-100 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-orange-600">${esc(target.label)}</div><div class="mt-1 text-2xl font-black text-slate-900">${bucketRows.length.toLocaleString()}</div><div class="mt-1 text-[11px] font-bold text-slate-500">Available ${available.toLocaleString()}</div></div>`;
+            }).join('');
+            const sectionHtml = groupedRows.map(({ target, rows: bucketRows }) => {
+                const bucketHeader = `<div class="mb-3 mt-5 flex flex-wrap items-center justify-between gap-2"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-orange-600">${esc(target.label)}</div><div class="mt-1 text-sm font-bold text-slate-500">${bucketRows.length.toLocaleString()} row${bucketRows.length === 1 ? '' : 's'}${target.isNext ? ` from ${esc(target.season)} salesyear ${esc(String(target.salesYear))}` : ''}</div></div></div>`;
+                const cards = bucketRows.length
+                    ? `<div class="grid gap-3 lg:grid-cols-2">${bucketRows.map(renderNonSaleableBucketsReportCard).join('')}</div>`
+                    : `<div class="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm font-bold text-slate-400">No rows in this bucket.</div>`;
+                return `${bucketHeader}${cards}`;
+            }).join('');
+            const crumbText = `Non Saleable Buckets (${rows.length.toLocaleString()} rows)`;
+            if (crumb) crumb.innerText = crumbText;
+            const intro = `<div class="rounded-2xl border border-orange-100 bg-orange-50 p-4 text-sm font-bold text-orange-900"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-orange-600">Non Saleable Buckets</div><div class="mt-1">Showing U1, U2, U3, X, plus next season ${esc(nextTarget ? nextTarget.season : '-')} salesyear ${esc(nextTarget ? String(nextTarget.salesYear) : '-')}. Next season follows the Manager Season setting automatically.</div></div>`;
+            const exportHtml = `<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div class="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">${rows.length.toLocaleString()} row${rows.length === 1 ? '' : 's'}</div><button type="button" class="rounded-2xl border border-green-200 bg-[#007a4d] px-5 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-sm ${rows.length ? '' : 'opacity-50 pointer-events-none'}" onclick="return exportNonSaleableBucketsReportToExcel()"><i class="ph-bold ph-download-simple mr-1"></i> Export Excel (${rows.length.toLocaleString()})</button></div>`;
+            const html = `<div class="space-y-4">${intro}${exportHtml}<div class="grid grid-cols-2 gap-3 lg:grid-cols-5">${summaryCards}</div>${rows.length ? sectionHtml : `<div class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm font-bold text-slate-400">No Non Saleable Bucket rows found for the current season setup.</div>`}</div>`;
+            reportsSummaryCacheKey = reportRenderKey;
+            reportsSummaryCacheHtml = html;
+            reportsSummaryCacheCrumb = crumbText;
+            setContainerHtmlWithSignature(container, html, reportRenderKey);
+        }
+
         function renderReports() {
             if (ensureViewDataForRender('reports')) return;
             const container = document.getElementById('reports-content');
@@ -132491,6 +132742,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 requestHistoryReportSelectedCustomerConsignee,
                 requestHistoryReportDateStart,
                 requestHistoryReportDateEnd,
+                getConfiguredCurrentSeasonCode(),
+                getConfiguredCurrentSalesYearCode(),
+                JSON.stringify(getConfiguredNextSaleSeasonTarget() || {}),
                 getDatasetLoadSignature('master'),
                 getDatasetLoadSignature('requests'),
                 getDatasetLoadSignature('requestHistory'),
@@ -132504,6 +132758,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             if (activeReportTab === 'REQUEST_HISTORY') {
                 renderRequestHistoryReport(container, crumb, reportRenderKey);
+                return;
+            }
+            if (activeReportTab === 'NON_SALEABLE_BUCKETS') {
+                renderNonSaleableBucketsReport(container, crumb, reportRenderKey);
                 return;
             }
 
