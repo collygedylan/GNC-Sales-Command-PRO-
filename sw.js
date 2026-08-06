@@ -2,13 +2,15 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.08.05.03';
+const APP_SHELL_BUILD = 'V2026.08.06.04';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 const CACHE_NAME = 'ag-data-v4.3-rebuild-' + APP_SHELL_BUILD;
+const IMAGE_CACHE_NAME = 'ag-data-runtime-images-v1';
+const IMAGE_CACHE_MAX_ENTRIES = 1200;
 const ASSETS_TO_CACHE = [
   APP_SHELL_URL,
   './manifest.json',
@@ -131,6 +133,48 @@ function shouldRuntimeCacheRequest(request, response) {
   return RUNTIME_CACHE_EXTENSION_REGEX.test(requestUrl.pathname);
 }
 
+function isRuntimeImageRequest(request) {
+  const requestUrl = getRequestUrl(request);
+  if (!requestUrl) return false;
+  if (request && request.destination === 'image') return true;
+  if (/\.(?:png|jpg|jpeg|webp|gif|avif|svg)(?:$|[?#])/i.test(requestUrl.href)) return true;
+  if (/\/storage\/v1\/(?:render\/image|object)\/public\//i.test(requestUrl.pathname)) return true;
+  if (/drive\.google\.com$/i.test(requestUrl.hostname) && /\/(?:thumbnail|uc)$/i.test(requestUrl.pathname)) return true;
+  if (/googleusercontent\.com$/i.test(requestUrl.hostname)) return true;
+  return false;
+}
+
+async function pruneRuntimeImageCache(cache) {
+  if (!cache) return;
+  try {
+    const keys = await cache.keys();
+    const overflow = keys.length - IMAGE_CACHE_MAX_ENTRIES;
+    if (overflow <= 0) return;
+    await Promise.all(keys.slice(0, overflow).map((key) => cache.delete(key).catch(() => false)));
+  } catch (error) {}
+}
+
+async function handleRuntimeImageRequest(event) {
+  const cachedResponse = await caches.match(event.request, { ignoreVary: true }).catch(() => null);
+  if (cachedResponse) return cachedResponse;
+  const networkResponse = await fetch(event.request).catch(() => null);
+  if (networkResponse) {
+    if (networkResponse.ok || networkResponse.type === 'opaque') {
+      const responseClone = networkResponse.clone();
+      event.waitUntil(
+        caches.open(IMAGE_CACHE_NAME)
+          .then(async (cache) => {
+            await cache.put(event.request, responseClone).catch(() => {});
+            await pruneRuntimeImageCache(cache);
+          })
+          .catch(() => {})
+      );
+    }
+    return networkResponse;
+  }
+  return caches.match(event.request).then((fallback) => fallback || Response.error());
+}
+
 async function broadcastShellVersion(type = 'GNC_SHELL_VERSION') {
   try {
     const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
@@ -187,7 +231,10 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.map((key) => key !== CACHE_NAME ? caches.delete(key) : Promise.resolve())))
+      .then((keys) => {
+        const keepCacheNames = new Set([CACHE_NAME, IMAGE_CACHE_NAME]);
+        return Promise.all(keys.map((key) => keepCacheNames.has(key) ? Promise.resolve() : caches.delete(key)));
+      })
       .then(() => {
         if (!self.registration || !self.registration.navigationPreload) return Promise.resolve();
         return self.registration.navigationPreload.enable().catch(() => {});
@@ -283,6 +330,10 @@ self.addEventListener('fetch', (event) => {
         return Response.error();
       })()
     );
+    return;
+  }
+  if (isRuntimeImageRequest(event.request)) {
+    event.respondWith(handleRuntimeImageRequest(event));
     return;
   }
   event.respondWith(

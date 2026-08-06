@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.06.03';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.06.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5242,7 +5242,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.06.03').trim() || 'V2026.08.06.03';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.06.04').trim() || 'V2026.08.06.04';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6700,7 +6700,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.06.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.06.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -25646,7 +25646,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.06.03').trim() || 'V2026.08.06.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.06.04').trim() || 'V2026.08.06.04';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -33292,10 +33292,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return match && match[1] ? match[1] : '';
         }
         const THUMBNAIL_PRESET_WIDTHS = Object.freeze({
-            'card-corner': 168,
-            'card-inline': 224,
-            'card-feature': 384,
-            'gallery-tile': 320,
+            'thumb': 144,
+            'card-thumb': 144,
+            'card-corner': 128,
+            'card-inline': 180,
+            'card-feature': 320,
+            'detail-hero': 640,
+            'gallery-tile': 260,
             'modal-display': 960
         });
         function getThumbnailBaseWidth(sizeOrPreset = 'card-inline') {
@@ -33304,10 +33307,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (presetWidth) return presetWidth;
             }
             const numericWidth = Number(sizeOrPreset);
-            return Math.max(160, Math.min(1600, Number.isFinite(numericWidth) && numericWidth > 0 ? numericWidth : THUMBNAIL_PRESET_WIDTHS['card-inline']));
+            return Math.max(120, Math.min(1100, Number.isFinite(numericWidth) && numericWidth > 0 ? numericWidth : THUMBNAIL_PRESET_WIDTHS['card-inline']));
         }
         function applySizedImageUrl(url = '', thumbWidth = 0) {
-            const requestedWidth = Math.max(160, Math.min(4096, Number(thumbWidth) || 0));
+            const requestedWidth = Math.max(120, Math.min(1600, Number(thumbWidth) || 0));
             let nextUrl = String(url || '').trim();
             if (!nextUrl || !requestedWidth) return nextUrl;
             if (/[?&]sz=w\d+/i.test(nextUrl)) {
@@ -33320,11 +33323,62 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             return nextUrl.replace(/[?&]$/, '');
         }
+        const SUPABASE_STORAGE_TRANSFORM_PARAMS = new Set(['width', 'height', 'resize', 'quality', 'format']);
+        function isSupabaseStorageHost(hostname = '') {
+            return /\.supabase\.co$/i.test(String(hostname || ''));
+        }
+        function buildSupabaseStorageThumbnailUrl(rawUrl = '', thumbWidth = 0) {
+            const safeWidth = Math.max(120, Math.min(1100, Math.round(Number(thumbWidth) || 0)));
+            if (!safeWidth) return '';
+            try {
+                const url = new URL(String(rawUrl || ''), window.location.href);
+                if (!isSupabaseStorageHost(url.hostname)) return '';
+                const objectPrefix = '/storage/v1/object/public/';
+                const renderPrefix = '/storage/v1/render/image/public/';
+                let publicPath = '';
+                if (url.pathname.startsWith(objectPrefix)) {
+                    publicPath = url.pathname.slice(objectPrefix.length);
+                } else if (url.pathname.startsWith(renderPrefix)) {
+                    publicPath = url.pathname.slice(renderPrefix.length);
+                } else {
+                    return '';
+                }
+                if (!publicPath) return '';
+                const nextUrl = new URL(url.href);
+                nextUrl.pathname = renderPrefix + publicPath;
+                SUPABASE_STORAGE_TRANSFORM_PARAMS.forEach((key) => nextUrl.searchParams.delete(key));
+                nextUrl.searchParams.set('width', String(safeWidth));
+                nextUrl.searchParams.set('quality', '62');
+                nextUrl.searchParams.set('resize', 'contain');
+                return nextUrl.href;
+            } catch (error) {
+                return '';
+            }
+        }
+        function getSupabaseStorageOriginalUrl(rawUrl = '') {
+            try {
+                const url = new URL(String(rawUrl || ''), window.location.href);
+                if (!isSupabaseStorageHost(url.hostname)) return '';
+                const renderPrefix = '/storage/v1/render/image/public/';
+                const objectPrefix = '/storage/v1/object/public/';
+                if (!url.pathname.startsWith(renderPrefix)) return '';
+                const publicPath = url.pathname.slice(renderPrefix.length);
+                if (!publicPath) return '';
+                const nextUrl = new URL(url.href);
+                nextUrl.pathname = objectPrefix + publicPath;
+                SUPABASE_STORAGE_TRANSFORM_PARAMS.forEach((key) => nextUrl.searchParams.delete(key));
+                return nextUrl.href;
+            } catch (error) {
+                return '';
+            }
+        }
         function getDirectImageUrl(url, sizeOrPreset = 'card-inline') {
             if(!url)return"";
             const baseWidth = getThumbnailBaseWidth(sizeOrPreset);
             const deviceScale = Math.max(1, Math.min(2, Number(window.devicePixelRatio) || 1));
-            const thumbWidth = Math.max(220, Math.min(1280, Math.round(baseWidth * deviceScale)));
+            const thumbWidth = Math.max(140, Math.min(960, Math.round(baseWidth * deviceScale)));
+            const supabaseThumbUrl = buildSupabaseStorageThumbnailUrl(String(url), thumbWidth);
+            if (supabaseThumbUrl) return supabaseThumbUrl;
             const driveId = getDriveImageId(url);
             if(driveId){ return `https://drive.google.com/thumbnail?id=${driveId}&sz=w${thumbWidth}`; }
             return applySizedImageUrl(String(url), thumbWidth);
@@ -33333,6 +33387,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!url) return '';
             const driveId = getDriveImageId(url);
             if (driveId) return `https://drive.google.com/uc?export=view&id=${driveId}`;
+            const supabaseOriginalUrl = getSupabaseStorageOriginalUrl(url);
+            if (supabaseOriginalUrl) return supabaseOriginalUrl;
             return String(url).replace(/([?&])sz=w\d+/i, '$1').replace(/[?&]$/, '');
         }
         function getPhotoUrlList(urlStr='') {
@@ -33350,7 +33406,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 .filter(Boolean);
         }
 
-        const DEFERRED_CARD_PHOTO_ROOT_MARGIN = '1800px 0px 2200px 0px';
+        const DEFERRED_CARD_PHOTO_ROOT_MARGIN = '420px 0px 640px 0px';
         let deferredCardPhotoObserver = null;
         let deferredCardPhotoObserverRootMargin = '';
         let deferredCardPhotoHydrationFrame = 0;
@@ -33415,6 +33471,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!cleanSrc) return '';
             const driveId = getDriveImageId(cleanSrc);
             if (driveId) return `https://drive.google.com/uc?export=view&id=${driveId}`;
+            const supabaseOriginalUrl = getSupabaseStorageOriginalUrl(cleanSrc);
+            if (supabaseOriginalUrl) return supabaseOriginalUrl;
             if (/[?&]sz=w\d+/i.test(cleanSrc) || /=w\d+(-h\d+)?/i.test(cleanSrc) || /=s\d+/i.test(cleanSrc)) {
                 return getExpandedImageUrl(cleanSrc);
             }
@@ -33448,7 +33506,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 && typeof getIsAvPhotoSubview === 'function'
                 && getIsAvPhotoSubview();
             if (avPhotoFeedVisible) {
-                return isTouchConstrainedDevice() ? '2600px 0px 3600px 0px' : '3200px 0px 4600px 0px';
+                return isTouchConstrainedDevice() ? '900px 0px 1200px 0px' : '1100px 0px 1400px 0px';
             }
             return DEFERRED_CARD_PHOTO_ROOT_MARGIN;
         }
