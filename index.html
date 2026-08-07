@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.07.04';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.07.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -2644,6 +2644,16 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
             overscroll-behavior:contain !important;
             touch-action:auto !important;
         }
+        #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel [data-role="body"]{
+            display:flex !important;
+            flex-direction:column !important;
+            flex:1 1 auto !important;
+            min-height:0 !important;
+            max-height:none !important;
+            overflow:hidden !important;
+            overscroll-behavior:contain !important;
+            touch-action:auto !important;
+        }
         #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel .excel-filter-search-wrap,
         #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel .excel-filter-footer{
             flex:0 0 auto !important;
@@ -2657,7 +2667,7 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
         }
         #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel .excel-filter-options{
             flex:1 1 auto !important;
-            min-height:7rem !important;
+            min-height:0 !important;
             max-height:none !important;
             overflow-x:hidden !important;
             overflow-y:auto !important;
@@ -2978,6 +2988,31 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
                 -webkit-overflow-scrolling:touch !important;
                 touch-action:pan-y !important;
             }
+            #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel{
+                display:flex !important;
+                flex-direction:column !important;
+                overflow:hidden !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel [data-role="body"]{
+                display:flex !important;
+                flex-direction:column !important;
+                flex:1 1 auto !important;
+                min-height:0 !important;
+                max-height:none !important;
+                overflow:hidden !important;
+                overscroll-behavior:contain !important;
+                touch-action:auto !important;
+            }
+            #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel .excel-filter-options{
+                flex:1 1 auto !important;
+                min-height:0 !important;
+                max-height:none !important;
+                overflow-x:hidden !important;
+                overflow-y:auto !important;
+                overscroll-behavior:contain !important;
+                -webkit-overflow-scrolling:touch !important;
+                touch-action:pan-y !important;
+            }
         }
         @media (max-width:720px),(pointer:coarse){
             body.viewport-compact .excel-filter-panel.excel-filter-panel--viewport-safe,
@@ -3125,12 +3160,25 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
             overscroll-behavior:contain !important;
             touch-action:auto !important;
         }
+        body.mobile-excel-filter-panel-open #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe [data-role="body"],
+        body.viewport-compact #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe [data-role="body"],
+        body.ios-device #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe [data-role="body"]{
+            display:flex !important;
+            flex-direction:column !important;
+            flex:1 1 auto !important;
+            min-height:0 !important;
+            max-height:none !important;
+            overflow:hidden !important;
+            overscroll-behavior:contain !important;
+            touch-action:auto !important;
+        }
         body.mobile-excel-filter-panel-open #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-options,
         body.viewport-compact #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-options,
         body.ios-device #view-av #av-top-filters.av-top-inline .task-top-control-panel.excel-filter-panel.excel-filter-panel--viewport-safe .excel-filter-options{
             flex:1 1 auto !important;
             min-height:0 !important;
             max-height:none !important;
+            overflow-x:hidden !important;
             overflow-y:auto !important;
             -webkit-overflow-scrolling:touch !important;
             overscroll-behavior:contain !important;
@@ -5242,7 +5290,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.07.04').trim() || 'V2026.08.07.04';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.07.05').trim() || 'V2026.08.07.05';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6700,7 +6748,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.07.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.07.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -25649,7 +25697,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.07.04').trim() || 'V2026.08.07.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.07.05').trim() || 'V2026.08.07.05';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
