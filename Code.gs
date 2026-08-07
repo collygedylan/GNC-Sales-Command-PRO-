@@ -6290,8 +6290,8 @@ function getEvalTaskCompletionSummary_(payload) {
 function collectRequestRecipients_(payload) {
   const emailType = String(payload && payload.emailType || '').trim().toLowerCase();
   const emailSubType = String(payload && (payload.emailSubType || payload.email_sub_type) || '').trim().toLowerCase();
-  const sendToAllSalesReps = payload && (payload.sendToAllSalesReps === true || emailType === 'drive_shift_report');
-  const repName = emailType === 'drive_shift_report'
+  const sendToAllSalesReps = payload && (payload.sendToAllSalesReps === true || emailType === 'drive_shift_report' || emailType === 'block_clearing_email');
+  const repName = (emailType === 'drive_shift_report' || emailType === 'block_clearing_email')
     ? ''
     : String(payload.repName || payload.salesRepName || payload.requestedBy || '').trim();
   const repEmail = sendToAllSalesReps ? '' : normalizeEmailAddress_(resolveRequestRecipientEmail_(repName, payload.repEmail || payload.salesRepEmail || ''));
@@ -6345,6 +6345,7 @@ function collectRequestRecipients_(payload) {
   const approvalFallbackRecipients = [];
   const bloomCropUpdateInternalRecipients = [];
   const driveShiftFallbackRecipients = [];
+  const blockClearingFallbackRecipients = [];
   if ((emailType === 'ncr_approval' || emailType === 'hold_release_request') && !hasExplicitApprovalRecipients) {
     if (approvalStage === 'jd') {
       approvalFallbackRecipients.push('dylan_collyge@greenleafnursery.com', 'megan_kelly@greenleafnursery.com', 'jd_jones@greenleafnursery.com');
@@ -6363,6 +6364,9 @@ function collectRequestRecipients_(payload) {
   }
   if (emailType === 'drive_shift_report') {
     driveShiftFallbackRecipients.push('dylan_collyge@greenleafnursery.com');
+  }
+  if (emailType === 'block_clearing_email' && requestedByEmail) {
+    blockClearingFallbackRecipients.push(requestedByEmail);
   }
   const recipients = dedupeEmailAddresses_([
     payload.recipientEmails,
@@ -6387,6 +6391,7 @@ function collectRequestRecipients_(payload) {
     approvalFallbackRecipients,
     bloomCropUpdateInternalRecipients,
     driveShiftFallbackRecipients,
+    blockClearingFallbackRecipients,
     inventoryTransactionFallbackRecipients
   ]);
 
@@ -6569,6 +6574,8 @@ function buildRequestEmailSubject_(payload) {
       ? 'GNC PH Crop Update'
     : safeType === 'drive_shift_report'
       ? 'GNC PH Shift'
+    : safeType === 'block_clearing_email'
+      ? 'GNC PH Block Clearing'
     : buildDefaultRequestEmailSubject_(payload);
 }
 
@@ -10374,6 +10381,46 @@ function buildRequestEmailMessage_(payload) {
     };
   }
 
+  if (emailType === 'block_clearing_email') {
+    const brandLabelPlain = String(payload.brandLabel || payload.fromName || payload.emailDisplayName || 'GNC PH Block Clearing').trim() || 'GNC PH Block Clearing';
+    const brandLabel = escapeEmailHtml_(brandLabelPlain);
+    const requestedBy = String(payload.requestedByDisplay || payload.requestedBy || payload.sender || '').trim();
+    const requestedByHtml = requestedBy ? '<p><strong>Sent By:</strong> ' + escapeEmailHtml_(requestedBy) + '</p>' : '';
+    const blockAlpha = firstNonEmptyRequestValue_(payload.blockalpha, payload.blockAlpha, payload.BLOCKALPHA, '');
+    const locationCode = firstNonEmptyRequestValue_(payload.locationcode, payload.locationCode, payload.LOCATIONCODE, '');
+    const rowCount = Number(payload.itemsCount || payload.rowCount || 0) || 0;
+    const groupCount = Number(payload.groupCount || (Array.isArray(payload.groupedInstructions) ? payload.groupedInstructions.length : 0) || 0) || 0;
+    const attachmentName = firstNonEmptyRequestValue_(
+      payload.shiftReportWorkbookFilename,
+      payload.shiftReportAttachment && (payload.shiftReportAttachment.filename || payload.shiftReportAttachment.fileName || payload.shiftReportAttachment.name),
+      'Block Clearing.xlsx'
+    );
+    const summaryText = [
+      brandLabelPlain,
+      requestedBy ? 'Sent By: ' + requestedBy : '',
+      blockAlpha ? 'Block: ' + blockAlpha : '',
+      locationCode ? 'Location: ' + locationCode : '',
+      'Rows: ' + String(rowCount),
+      'Itemcode Groups: ' + String(groupCount),
+      'Excel workbook attached: ' + attachmentName,
+      itemsText
+    ].filter(Boolean).join('\n\n');
+    const summaryHtml = [
+      '<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">',
+      '<h2 style="color: #007a4d; margin: 0 0 8px;">' + brandLabel + '</h2>',
+      requestedByHtml,
+      '<p><strong>Block:</strong> ' + escapeEmailHtml_(blockAlpha || '-') + '<br><strong>Location:</strong> ' + escapeEmailHtml_(locationCode || '-') + '<br><strong>Rows:</strong> ' + escapeEmailHtml_(rowCount) + '<br><strong>Itemcode Groups:</strong> ' + escapeEmailHtml_(groupCount) + '</p>',
+      '<p style="padding:12px 14px; border-radius:10px; background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8;"><strong>Excel file:</strong> ' + escapeEmailHtml_(attachmentName) + ' is attached.</p>',
+      itemsHtml || '<p style="font-size: 12px; color: #777;">No Block Clearing row details were provided.</p>',
+      '</div>'
+    ].join('');
+    return {
+      subject: subject,
+      textBody: summaryText,
+      htmlBody: buildPhoneSizedEmailHtml_(summaryHtml)
+    };
+  }
+
   if (emailType === 'drive_shift_report') {
     const brandLabelPlain = String(payload.brandLabel || payload.fromName || payload.emailDisplayName || 'GNC PH Shift').trim() || 'GNC PH Shift';
     const brandLabel = escapeEmailHtml_(brandLabelPlain);
@@ -10986,8 +11033,8 @@ function sendRequestEmailWithFallback_(payload) {
       };
     }
   }
-  if (safeType === 'drive_shift_report') {
-    const driveShiftName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || 'GNC PH Shift').trim() || 'GNC PH Shift';
+  if (safeType === 'drive_shift_report' || safeType === 'block_clearing_email') {
+    const driveShiftName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || (safeType === 'block_clearing_email' ? 'GNC PH Block Clearing' : 'GNC PH Shift')).trim() || 'GNC PH Shift';
     const attachments = buildDriveShiftReportAttachments_(payload);
     const options = {
       htmlBody: message.htmlBody,
@@ -11003,13 +11050,13 @@ function sendRequestEmailWithFallback_(payload) {
         mode: attachments.length ? 'gmailapp_named_attachment' : 'gmailapp_named'
       };
     } catch (error) {
-      console.error('Drive shift report email send failed', error);
+      console.error((safeType === 'block_clearing_email' ? 'Block Clearing' : 'Drive shift report') + ' email send failed', error);
       return {
         ok: false,
         status: 500,
         recipients: recipients.toArray,
         mode: 'gmailapp_error',
-        message: error && error.message ? error.message : 'Drive shift report email send failed.'
+        message: error && error.message ? error.message : (safeType === 'block_clearing_email' ? 'Block Clearing email send failed.' : 'Drive shift report email send failed.')
       };
     }
   }
@@ -11652,7 +11699,7 @@ function doPost(e) {
     }
     
     if (payload.type === "email") {
-    if (payload.emailType === "new_request" || payload.emailType === "request_complete" || payload.emailType === "ncr_complete" || payload.emailType === "ncr_approval" || payload.emailType === "hold_release_request" || payload.emailType === "drive_customer_outreach" || payload.emailType === "bloom_crop_update" || payload.emailType === "bloom_purpose_report" || payload.emailType === "drive_shift_report") {
+    if (payload.emailType === "new_request" || payload.emailType === "request_complete" || payload.emailType === "ncr_complete" || payload.emailType === "ncr_approval" || payload.emailType === "hold_release_request" || payload.emailType === "drive_customer_outreach" || payload.emailType === "bloom_crop_update" || payload.emailType === "bloom_purpose_report" || payload.emailType === "drive_shift_report" || payload.emailType === "block_clearing_email") {
       const emailType = String(payload.emailType || '').trim().toLowerCase();
       const shouldQueueDelayedReply = emailType === 'request_complete' && Math.max(0, Number(payload.delayMs) || 0) > 0;
       if (shouldQueueDelayedReply) {
