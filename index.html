@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.07.02';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.07.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5242,7 +5242,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.07.02').trim() || 'V2026.08.07.02';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.07.03').trim() || 'V2026.08.07.03';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6700,7 +6700,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.07.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.07.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24697,7 +24697,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW = 'assigned-items-export';
         const MANAGER_SHORTAGE_CANCEL_VIEW = 'shortage-cancel';
         const MANAGER_BLOCK_CLEARING_VIEW = 'block-clearing';
-        const MANAGER_BLOCK_CLEARING_LONG_PRESS_MS = 520;
+        const MANAGER_BLOCK_CLEARING_LONG_PRESS_MS = 360;
         const INVENTORY_TRANSACTION_AUDIT_TABLE = 'ph_inventory_transactions';
         const NCR_APPROVAL_ASSIGNMENTS = Object.freeze({
             'new-crop:dylan': 'ncr_approval_new_crop_dylan',
@@ -25649,7 +25649,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.07.02').trim() || 'V2026.08.07.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.07.03').trim() || 'V2026.08.07.03';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -113374,6 +113374,74 @@ C.14.043 C.15.000
             clearManagerBlockClearingLongPress();
         }
 
+        function getManagerBlockClearingSelectedCount() {
+            return managerBlockClearingSelectedIds instanceof Set ? managerBlockClearingSelectedIds.size : 0;
+        }
+
+        function getManagerBlockClearingRowDomId(uid = '') {
+            const raw = String(uid || '').trim();
+            let hash = 2166136261;
+            if (typeof updateRenderSignatureHash === 'function') {
+                hash = updateRenderSignatureHash(hash, raw);
+            } else {
+                for (let i = 0; i < raw.length; i += 1) {
+                    hash ^= raw.charCodeAt(i);
+                    hash = Math.imul(hash, 16777619) >>> 0;
+                }
+            }
+            return `bc_row_${(hash >>> 0).toString(16)}`;
+        }
+
+        function syncManagerBlockClearingRowSelectionDom(uid = '') {
+            const safeUid = String(uid || '').trim();
+            if (!safeUid) return false;
+            const selected = managerBlockClearingSelectedIds instanceof Set && managerBlockClearingSelectedIds.has(safeUid);
+            const domId = getManagerBlockClearingRowDomId(safeUid);
+            const card = document.getElementById(`block-clearing-row-${domId}`);
+            const marker = document.getElementById(`block-clearing-row-marker-${domId}`);
+            const icon = document.getElementById(`block-clearing-row-icon-${domId}`);
+            if (card) {
+                card.dataset.selected = selected ? '1' : '0';
+                card.classList.toggle('border-[#007a4d]', selected);
+                card.classList.toggle('bg-emerald-50', selected);
+                card.classList.toggle('border-emerald-100', !selected);
+                card.classList.toggle('bg-white', !selected);
+            }
+            if (marker) {
+                marker.classList.toggle('border-[#007a4d]', selected);
+                marker.classList.toggle('bg-[#007a4d]', selected);
+                marker.classList.toggle('text-white', selected);
+                marker.classList.toggle('border-slate-200', !selected);
+                marker.classList.toggle('bg-white', !selected);
+                marker.classList.toggle('text-slate-300', !selected);
+            }
+            if (icon) {
+                icon.classList.toggle('ph-check', selected);
+                icon.classList.toggle('ph-circle', !selected);
+            }
+            return false;
+        }
+
+        function syncManagerBlockClearingSelectionUi(changedUid = '') {
+            const selectedCount = getManagerBlockClearingSelectedCount();
+            if (changedUid) syncManagerBlockClearingRowSelectionDom(changedUid);
+            document.querySelectorAll('[data-block-clearing-selected-count]').forEach((el) => {
+                el.textContent = `${selectedCount} selected`;
+            });
+            const summary = document.getElementById('block-clearing-location-count');
+            if (summary) {
+                const countLabel = summary.dataset.countLabel || '';
+                summary.textContent = [countLabel, `${selectedCount} selected`].filter(Boolean).join(' | ');
+            }
+            const controls = document.getElementById('block-clearing-selection-controls');
+            if (controls) {
+                const showControls = managerBlockClearingSelectionMode && selectedCount > 0;
+                controls.classList.toggle('hidden', !showControls);
+                controls.classList.toggle('flex', showControls);
+            }
+            return false;
+        }
+
         function selectManagerBlockClearingBlock(blockValue = '') {
             managerBlockClearingSelectedBlock = normalizeMovesDrillValue(blockValue);
             managerBlockClearingSelectedLocation = null;
@@ -113429,7 +113497,10 @@ C.14.043 C.15.000
                 managerBlockClearingSuppressClickUid = safeUid;
                 managerBlockClearingSelectionMode = true;
                 managerBlockClearingSelectedIds.add(safeUid);
-                scheduleManagersRender(true);
+                syncManagerBlockClearingSelectionUi(safeUid);
+                setTimeout(() => {
+                    if (managerBlockClearingSuppressClickUid === safeUid) managerBlockClearingSuppressClickUid = '';
+                }, Math.max(3000, MANAGER_BLOCK_CLEARING_LONG_PRESS_MS + 1800));
             }, MANAGER_BLOCK_CLEARING_LONG_PRESS_MS);
             return true;
         }
@@ -113448,7 +113519,8 @@ C.14.043 C.15.000
             else managerBlockClearingSelectedIds.delete(safeUid);
             managerBlockClearingSelectionMode = managerBlockClearingSelectedIds.size > 0;
             if (!managerBlockClearingSelectionMode) managerBlockClearingInstructionsByItemcode = new Map();
-            scheduleManagersRender(true);
+            if (managerBlockClearingSelectionMode) syncManagerBlockClearingSelectionUi(safeUid);
+            else scheduleManagersRender(true);
             return false;
         }
 
@@ -113879,6 +113951,7 @@ C.14.043 C.15.000
         function renderManagerBlockClearingRowCard(row = null) {
             const cache = getManagerBlockClearingCache();
             const uid = cache.byRow.get(row) || getManagerBlockClearingRowId(row);
+            const rowDomId = getManagerBlockClearingRowDomId(uid);
             const selected = managerBlockClearingSelectedIds instanceof Set && managerBlockClearingSelectedIds.has(uid);
             const common = getManagerBlockClearingCommonName(row);
             const size = getManagerBlockClearingContSize(row);
@@ -113893,9 +113966,9 @@ C.14.043 C.15.000
                 source ? `<span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">${escapeHtml(source)}</span>` : '',
                 priority ? `<span class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-700">Priority ${escapeHtml(priority)}</span>` : ''
             ].filter(Boolean).join('');
-            return `<div role="button" tabindex="0" class="rounded-2xl border ${selected ? 'border-[#007a4d] bg-emerald-50' : 'border-emerald-100 bg-white'} p-4 shadow-sm active:scale-[0.99]" style="touch-action: manipulation; user-select: none; -webkit-user-select: none;" onpointerdown="return startManagerBlockClearingLongPress(event, '${escJsAttrValue(uid)}')" onpointerup="return clearManagerBlockClearingLongPress()" onpointercancel="return clearManagerBlockClearingLongPress()" onpointerleave="return clearManagerBlockClearingLongPress()" oncontextmenu="return preventManagerBlockClearingContextMenu(event)" onclick="return handleManagerBlockClearingRowClick('${escJsAttrValue(uid)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();return handleManagerBlockClearingRowClick('${escJsAttrValue(uid)}');}">
+            return `<div id="block-clearing-row-${rowDomId}" data-selected="${selected ? '1' : '0'}" role="button" tabindex="0" class="rounded-2xl border ${selected ? 'border-[#007a4d] bg-emerald-50' : 'border-emerald-100 bg-white'} p-4 shadow-sm active:scale-[0.99]" style="touch-action: manipulation; user-select: none; -webkit-user-select: none;" onpointerdown="return startManagerBlockClearingLongPress(event, '${escJsAttrValue(uid)}')" onpointerup="return clearManagerBlockClearingLongPress()" onpointercancel="return clearManagerBlockClearingLongPress()" onpointerleave="return clearManagerBlockClearingLongPress()" oncontextmenu="return preventManagerBlockClearingContextMenu(event)" onclick="return handleManagerBlockClearingRowClick('${escJsAttrValue(uid)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();return handleManagerBlockClearingRowClick('${escJsAttrValue(uid)}');}">
                 <div class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3">
-                    <span class="mt-1 flex h-7 w-7 items-center justify-center rounded-full border ${selected ? 'border-[#007a4d] bg-[#007a4d] text-white' : 'border-slate-200 bg-white text-slate-300'}"><i class="ph-bold ${selected ? 'ph-check' : 'ph-circle'} text-sm"></i></span>
+                    <span id="block-clearing-row-marker-${rowDomId}" class="mt-1 flex h-7 w-7 items-center justify-center rounded-full border ${selected ? 'border-[#007a4d] bg-[#007a4d] text-white' : 'border-slate-200 bg-white text-slate-300'}"><i id="block-clearing-row-icon-${rowDomId}" class="ph-bold ${selected ? 'ph-check' : 'ph-circle'} text-sm"></i></span>
                     <div class="min-w-0">
                         <div class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
                             <span class="min-w-0 flex-1 truncate text-xl font-black leading-tight text-slate-900">${escapeHtml(common)}</span>
@@ -113910,13 +113983,23 @@ C.14.043 C.15.000
             </div>`;
         }
 
-        function renderManagerBlockClearingActionBar(selectedCount = 0) {
-            if (!managerBlockClearingSelectionMode || selectedCount <= 0) return '';
-            return `<div class="sticky top-[4.75rem] z-50 rounded-2xl border border-emerald-200 bg-emerald-50/95 p-3 shadow-lg backdrop-blur">
-                <div class="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
-                    <div class="min-w-0 text-[12px] font-black uppercase tracking-[0.12em] text-[#007a4d]">${selectedCount} selected</div>
-                    <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-95" onclick="return cancelManagerBlockClearingWorkflow()">Cancel</button>
-                    <button type="button" class="rounded-xl bg-[#007a4d] px-5 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="return finishManagerBlockClearingSelection()">Done</button>
+        function renderManagerBlockClearingLocationStickyHeader(countLabel = '', selectedCount = 0) {
+            const safeBlock = normalizeMovesDrillValue(managerBlockClearingSelectedBlock);
+            const safeLocation = normalizeMovesLocationValue(managerBlockClearingSelectedLocation);
+            const showControls = managerBlockClearingSelectionMode && selectedCount > 0;
+            return `<div class="sticky top-[4.75rem] z-50 rounded-xl border border-emerald-200 bg-white/95 px-2.5 py-2 shadow-md backdrop-blur">
+                <div class="flex items-center gap-2">
+                    <button type="button" aria-label="Back to locations" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-green-200 bg-white text-[#007a4d] shadow-sm active:scale-95" onclick="return backManagerBlockClearing()"><i class="ph-bold ph-arrow-left text-lg"></i></button>
+                    <div class="min-w-0 flex-1">
+                        <div class="text-[9px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Block / Location</div>
+                        <div class="truncate text-base font-black leading-tight text-slate-900">${escapeHtml(safeBlock)} / ${escapeHtml(safeLocation)}</div>
+                        <div id="block-clearing-location-count" data-count-label="${escJsAttrValue(countLabel)}" class="truncate text-[10px] font-bold uppercase tracking-[0.1em] text-emerald-700">${escapeHtml(countLabel)} | ${selectedCount} selected</div>
+                    </div>
+                    <div id="block-clearing-selection-controls" class="${showControls ? 'flex' : 'hidden'} shrink-0 items-center gap-1.5">
+                        <span data-block-clearing-selected-count class="hidden rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-[#007a4d] sm:inline-flex">${selectedCount} selected</span>
+                        <button type="button" class="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[9px] font-black uppercase tracking-[0.1em] text-slate-600 shadow-sm active:scale-95" onclick="return cancelManagerBlockClearingWorkflow()">Cancel</button>
+                        <button type="button" class="rounded-lg bg-[#007a4d] px-3 py-2 text-[9px] font-black uppercase tracking-[0.1em] text-white shadow-sm active:scale-95" onclick="return finishManagerBlockClearingSelection()">Done</button>
+                    </div>
                 </div>
             </div>`;
         }
@@ -114023,13 +114106,7 @@ C.14.043 C.15.000
             const searchActive = !!getManagersSearchTokens().length;
             const countLabel = searchActive ? `${rows.length} shown of ${allRows.length}` : `${rows.length} row${rows.length === 1 ? '' : 's'}`;
             return `<div class="space-y-4">
-                <button type="button" class="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return backManagerBlockClearing()"><i class="ph-bold ph-arrow-left text-base"></i>Locations</button>
-                <div class="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-                    <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Block / Location</div>
-                    <div class="mt-1 text-xl font-black text-slate-900">${escapeHtml(normalizeMovesDrillValue(managerBlockClearingSelectedBlock))} / ${escapeHtml(normalizeMovesLocationValue(managerBlockClearingSelectedLocation))}</div>
-                    <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-700">${escapeHtml(countLabel)} | ${selectedCount} selected</div>
-                </div>
-                ${renderManagerBlockClearingActionBar(selectedCount)}
+                ${renderManagerBlockClearingLocationStickyHeader(countLabel, selectedCount)}
                 <div class="space-y-3">${cards}</div>
             </div>`;
         }
