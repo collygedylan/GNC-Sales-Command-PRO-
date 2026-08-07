@@ -4758,6 +4758,85 @@ function scheduleDelayedRequestEmailTrigger_(jobs) {
     .create();
 }
 
+function getRequestCompleteEmailSnapshotComments_(item) {
+  const snapshot = parseRequestRowSnapshot_(item);
+  return firstNonEmptyRequestValue_(
+    item && item.comments,
+    item && item.req_comments,
+    item && item.request_comments,
+    item && item.REQ_COMMENTS,
+    item && item.REQUEST_COMMENTS,
+    item && item.COMMENTS,
+    snapshot && snapshot.comments,
+    snapshot && snapshot.req_comments,
+    snapshot && snapshot.request_comments,
+    snapshot && snapshot.REQ_COMMENTS,
+    snapshot && snapshot.REQUEST_COMMENTS,
+    snapshot && snapshot.COMMENTS,
+    item && item.sales_note,
+    item && item.SALES_NOTE,
+    item && item.SALESNOTE,
+    snapshot && snapshot.sales_note,
+    snapshot && snapshot.SALES_NOTE,
+    snapshot && snapshot.SALESNOTE,
+    ''
+  );
+}
+
+function cloneRequestCompleteEmailPayloadItemSnapshot_(item) {
+  if (!item || typeof item !== 'object') return null;
+  const snapshot = parseRequestRowSnapshot_(item);
+  const id = String(firstNonEmptyRequestValue_(item.unique_id, item.UNIQUE_ID, snapshot.unique_id, snapshot.UNIQUE_ID, '') || '').trim();
+  const comments = String(getRequestCompleteEmailSnapshotComments_(item) || '').trim();
+  const row = {
+    unique_id: id,
+    UNIQUE_ID: id,
+    request_folder: firstNonEmptyRequestValue_(item.request_folder, item.REQUEST_FOLDER, item.folder, snapshot.request_folder, snapshot.REQUEST_FOLDER, ''),
+    REQUEST_FOLDER: firstNonEmptyRequestValue_(item.REQUEST_FOLDER, item.request_folder, item.folder, snapshot.REQUEST_FOLDER, snapshot.request_folder, ''),
+    request_note: firstNonEmptyRequestValue_(item.request_note, item.REQUEST_NOTE, item.req_note, item.REQ_NOTE, snapshot.request_note, snapshot.REQUEST_NOTE, snapshot.req_note, snapshot.REQ_NOTE, ''),
+    REQUEST_NOTE: firstNonEmptyRequestValue_(item.REQUEST_NOTE, item.request_note, item.REQ_NOTE, item.req_note, snapshot.REQUEST_NOTE, snapshot.request_note, snapshot.REQ_NOTE, snapshot.req_note, '')
+  };
+  if (comments) {
+    row.comments = comments;
+    row.req_comments = comments;
+    row.request_comments = comments;
+    row.REQ_COMMENTS = comments;
+    row.REQUEST_COMMENTS = comments;
+    row.REQ_COMMENTS_USER_ENTERED = true;
+    row.req_comments_user_entered = true;
+  }
+  Object.keys(row).forEach(function(key) {
+    if (row[key] == null || String(row[key]).trim() === '') delete row[key];
+  });
+  return row.unique_id || row.comments || row.request_note ? row : null;
+}
+
+function overlayRequestCompleteEmailPayloadSnapshots_(rows, snapshots) {
+  const safeRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
+  const safeSnapshots = Array.isArray(snapshots) ? snapshots.filter(Boolean) : [];
+  if (!safeRows.length || !safeSnapshots.length) return safeRows;
+  const snapshotById = {};
+  safeSnapshots.forEach(function(snapshot) {
+    const id = String(firstNonEmptyRequestValue_(snapshot && snapshot.unique_id, snapshot && snapshot.UNIQUE_ID, '') || '').trim();
+    if (id) snapshotById[id] = snapshot;
+  });
+  return safeRows.map(function(row) {
+    const id = String(firstNonEmptyRequestValue_(row && row.unique_id, row && row.UNIQUE_ID, '') || '').trim();
+    const snapshot = id ? snapshotById[id] : null;
+    if (!snapshot) return row;
+    const comments = String(getRequestCompleteEmailSnapshotComments_(snapshot) || '').trim();
+    if (!comments) return row;
+    row.comments = comments;
+    row.req_comments = comments;
+    row.request_comments = comments;
+    row.REQ_COMMENTS = comments;
+    row.REQUEST_COMMENTS = comments;
+    row.REQ_COMMENTS_USER_ENTERED = true;
+    row.req_comments_user_entered = true;
+    return row;
+  });
+}
+
 function enqueueDelayedRequestEmail_(payload) {
   const safePayload = payload && typeof payload === 'object' ? JSON.parse(JSON.stringify(payload)) : {};
   const threadId = String(safePayload.threadId || '').trim();
@@ -4771,6 +4850,9 @@ function enqueueDelayedRequestEmail_(payload) {
     };
   }
   const delayMs = Math.max(DELAYED_REQUEST_EMAIL_MIN_DELAY_MS, Number(safePayload.delayMs) || 0);
+  const queuedRequestItems = getRequestEmailPayloadItems_(safePayload)
+    .map(cloneRequestCompleteEmailPayloadItemSnapshot_)
+    .filter(Boolean);
   const requestIds = Array.isArray(safePayload.requestIds)
     ? safePayload.requestIds.map(function(id) { return String(id || '').trim(); }).filter(Boolean)
     : [];
@@ -4783,7 +4865,8 @@ function enqueueDelayedRequestEmail_(payload) {
   }
   delete safePayload.delayMs;
   delete safePayload.queueDelivery;
-  delete safePayload.requestItems;
+  if (queuedRequestItems.length) safePayload.requestItems = queuedRequestItems;
+  else delete safePayload.requestItems;
   delete safePayload.formattedItemsHtml;
   delete safePayload.formattedItemsText;
   const queue = loadDelayedRequestEmailQueue_();
@@ -5623,7 +5706,7 @@ function buildRequestItemFieldRowsText_(item) {
     ['AV Note', firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, '')],
     ['Reserve', firstNonEmptyRequestValue_(item && item.reserve, item && item.req_reserve, item && item.REQ_RESERVE, '')],
     ['Pick Note', firstNonEmptyRequestValue_(item && item.pick_note, item && item.pick, item && item.req_pick, item && item.req_pic_note, item && item.REQ_PICK, item && item.REQ_PIC_NOTE, item && item.PICK, '')],
-    ['Comments', firstNonEmptyRequestValue_(item && item.comments, item && item.req_comments, item && item.request_comments, item && item.REQ_COMMENTS, item && item.REQUEST_COMMENTS, item && item.COMMENTS, item && item.SALES_NOTE, item && item.SALESNOTE, '')]
+    ['Comments', getRequestCompleteEmailSnapshotComments_(item)]
   ];
   const ncrCurrentSeasonSltsField = getRequestNcrCurrentSeasonSltsEmailField_(item);
   if (ncrCurrentSeasonSltsField) fields.splice(7, 0, ncrCurrentSeasonSltsField);
@@ -5667,7 +5750,7 @@ function buildRequestItemFieldRowsHtml_(item) {
     ['AV Note', firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, '')],
     ['Reserve', firstNonEmptyRequestValue_(item && item.reserve, item && item.req_reserve, item && item.REQ_RESERVE, '')],
     ['Pick Note', firstNonEmptyRequestValue_(item && item.pick_note, item && item.pick, item && item.req_pick, item && item.req_pic_note, item && item.REQ_PICK, item && item.REQ_PIC_NOTE, item && item.PICK, '')],
-    ['Comments', firstNonEmptyRequestValue_(item && item.comments, item && item.req_comments, item && item.request_comments, item && item.REQ_COMMENTS, item && item.REQUEST_COMMENTS, item && item.COMMENTS, item && item.SALES_NOTE, item && item.SALESNOTE, '')]
+    ['Comments', getRequestCompleteEmailSnapshotComments_(item)]
   ];
   const ncrCurrentSeasonSltsField = getRequestNcrCurrentSeasonSltsEmailField_(item);
   if (ncrCurrentSeasonSltsField) fields.splice(7, 0, ncrCurrentSeasonSltsField);
@@ -6963,6 +7046,15 @@ function buildRequestEmailItemsFromRows_(rows, payload) {
         snapshot.photos
       ]).join(',')
     };
+    if (emailItem.comments) {
+      emailItem.req_comments = emailItem.comments;
+      emailItem.request_comments = emailItem.comments;
+      emailItem.REQ_COMMENTS = emailItem.comments;
+      emailItem.REQUEST_COMMENTS = emailItem.comments;
+      emailItem.COMMENTS = emailItem.comments;
+      emailItem.REQ_COMMENTS_USER_ENTERED = true;
+      emailItem.req_comments_user_entered = true;
+    }
     emailItem.pick_note = getRequestPickNoteWithOverSeasonRule_(emailItem, emailItem.pick_note);
     return emailItem;
   }).filter(function(item) {
@@ -7023,9 +7115,18 @@ function hydrateRequestCompletePayload_(payload) {
   const folderId = String(firstNonEmptyRequestValue_(safePayload.requestFolder, safePayload.folderId, '')).trim();
   const requestIds = normalizeRequestIdList_(safePayload.requestIds);
   const existingItems = getRequestEmailPayloadItems_(safePayload);
-  const folderRows = mergeRequestEmailRows_(
-    fetchRequestRowsForEmailFolder_(folderId),
-    fetchRequestHistoryRowsForEmailFolder_(folderId)
+  const existingItemSnapshots = existingItems
+    .map(cloneRequestCompleteEmailPayloadItemSnapshot_)
+    .filter(Boolean);
+  const folderRows = overlayRequestCompleteEmailPayloadSnapshots_(
+    mergeRequestEmailRows_(
+      mergeRequestEmailRows_(
+        fetchRequestRowsForEmailFolder_(folderId),
+        fetchRequestHistoryRowsForEmailFolder_(folderId)
+      ),
+      existingItemSnapshots
+    ),
+    existingItemSnapshots
   );
   let rows = folderRows.filter(function(row) {
     const rowId = String(firstNonEmptyRequestValue_(row && row.unique_id, row && row.UNIQUE_ID, '')).trim();
@@ -7033,12 +7134,19 @@ function hydrateRequestCompletePayload_(payload) {
     return !requestIds.length || requestIds.indexOf(rowId) !== -1;
   });
   if (!rows.length && requestIds.length) {
-    rows = mergeRequestEmailRows_(
-      fetchRequestRowsForEmailRequestIds_(requestIds),
-      fetchRequestHistoryRowsForEmailRequestIds_(requestIds)
+    rows = overlayRequestCompleteEmailPayloadSnapshots_(
+      mergeRequestEmailRows_(
+        mergeRequestEmailRows_(
+          fetchRequestRowsForEmailRequestIds_(requestIds),
+          fetchRequestHistoryRowsForEmailRequestIds_(requestIds)
+        ),
+        existingItemSnapshots
+      ),
+      existingItemSnapshots
     );
     if (!rows.length && folderRows.length) rows = folderRows;
   }
+  rows = overlayRequestCompleteEmailPayloadSnapshots_(rows, existingItemSnapshots);
   if (requestIds.length) {
     const orderMap = new Map(requestIds.map(function(id, index) { return [id, index]; }));
     rows.sort(function(a, b) {
@@ -9428,6 +9536,7 @@ function buildRequestGalleryRowsHtml_(items) {
       ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
       ['LOC PHOTO MATCH', getRequestLocPhotoMatchEmailValue_(item)],
       ['AV Note', firstNonEmptyRequestValue_(item && item.av_note, item && item.AV_NOTE, '')],
+      ['Comments', getRequestCompleteEmailSnapshotComments_(item)],
       ['Photos', photoCount ? String(photoCount) : '0']
     ].filter(function(field) {
       return String(field[1] || '').trim() !== '';
