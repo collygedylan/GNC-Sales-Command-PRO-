@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.07.03';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.07.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5242,7 +5242,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.07.03').trim() || 'V2026.08.07.03';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.07.04').trim() || 'V2026.08.07.04';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6700,7 +6700,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.07.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.07.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24510,7 +24510,7 @@ let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprova
         let activeDriveMode='ok'; let activeDriveTab='name'; let activeDriveHoldStopReport='hold-stop'; let driveReportEvalUserFilter='all'; let driveOpenStockReportSeason='S1'; let driveOpenStockReportSalesYear='26'; let driveOpenStockReportMaxSLts='0'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
         let activeMovesTab='main'; let activeInventoryOfficeApprovalType='move-up'; let activeInventoryOfficeCropRollView='sy-27'; let movesRecordsCacheKey=''; let movesRecordsCache=[]; let movesViewLevel=0; let selectedMovesBlock=null; let selectedMovesLocation=null;
         let managerMovePlannerLevel=0; let managerMoveSelectedBlock=null; let managerMoveSelectedLocation=null; let managerMoveDestinationStage='select'; let managerMoveSelectedSourceIds=new Set(); let managerMoveDestinationBySourceId=new Map(); let managerMoveItemDestinationByItemKey=new Map(); let managerMoveReviewerUsers=new Set(); let managerMoveReviewerSearchTerm=''; let managerMoveManualLocationBySourceId=new Map(); let managerMoveDestinationExpandedBySourceId=new Set(); let managerMoveInstructionText=''; let managerMoveSubmitting=false; let managerMovePlannerCacheKey=''; let managerMovePlannerCache=null; let managerMoveCardSearchTerm=''; let managerMoveCardSelectedCommonName=''; let managerMoveCardSelectedContSize=''; let managerMoveCardSelectedSalesYear='';
-        let managerBlockClearingLevel=0; let managerBlockClearingSelectedBlock=null; let managerBlockClearingSelectedLocation=null; let managerBlockClearingSelectionMode=false; let managerBlockClearingInstructionMode=false; let managerBlockClearingSelectedIds=new Set(); let managerBlockClearingInstructionsByItemcode=new Map(); let managerBlockClearingLongPressTimer=null; let managerBlockClearingLongPressUid=''; let managerBlockClearingSuppressClickUid=''; let managerBlockClearingEmailSending=false; let managerBlockClearingCacheKey=''; let managerBlockClearingCache=null;
+        let managerBlockClearingLevel=0; let managerBlockClearingSelectedBlock=null; let managerBlockClearingSelectedLocation=null; let managerBlockClearingSelectionMode=false; let managerBlockClearingInstructionMode=false; let managerBlockClearingSelectedIds=new Set(); let managerBlockClearingInstructionsByItemcode=new Map(); let managerBlockClearingReportTitle=''; let managerBlockClearingLongPressTimer=null; let managerBlockClearingLongPressUid=''; let managerBlockClearingSuppressClickUid=''; let managerBlockClearingEmailSending=false; let managerBlockClearingCacheKey=''; let managerBlockClearingCache=null;
         let selectedLocationMoveItems=[]; let selectedLocationMoveDestinationBySourceId=new Map();
         const MOVES_COMPLETED_STORAGE_PREFIX = 'gnc_moves_completed_v1';
         const MOVES_ACTUAL_MOVED_STORAGE_PREFIX = 'gnc_moves_actual_moved_v1';
@@ -25649,7 +25649,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.07.03').trim() || 'V2026.08.07.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.07.04').trim() || 'V2026.08.07.04';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -113370,7 +113370,10 @@ C.14.043 C.15.000
             managerBlockClearingSelectionMode = false;
             managerBlockClearingInstructionMode = false;
             managerBlockClearingSelectedIds = new Set();
-            if (clearInstructions) managerBlockClearingInstructionsByItemcode = new Map();
+            if (clearInstructions) {
+                managerBlockClearingInstructionsByItemcode = new Map();
+                managerBlockClearingReportTitle = '';
+            }
             clearManagerBlockClearingLongPress();
         }
 
@@ -113542,6 +113545,9 @@ C.14.043 C.15.000
             }
             managerBlockClearingInstructionMode = true;
             managerBlockClearingSelectionMode = false;
+            if (!String(managerBlockClearingReportTitle || '').trim()) {
+                managerBlockClearingReportTitle = getDefaultManagerBlockClearingTitle();
+            }
             scheduleManagersRender(true);
             return false;
         }
@@ -113591,6 +113597,22 @@ C.14.043 C.15.000
             return String(managerBlockClearingInstructionsByItemcode.get(key) || '').trim();
         }
 
+        function getDefaultManagerBlockClearingTitle(blockalpha = managerBlockClearingSelectedBlock, locationcode = managerBlockClearingSelectedLocation) {
+            const safeBlock = normalizeMovesDrillValue(blockalpha);
+            const safeLocation = normalizeMovesLocationValue(locationcode);
+            return `Block Clearing ${safeBlock} ${safeLocation}`.replace(/\s+/g, ' ').trim();
+        }
+
+        function getManagerBlockClearingReportTitle(blockalpha = managerBlockClearingSelectedBlock, locationcode = managerBlockClearingSelectedLocation) {
+            return String(managerBlockClearingReportTitle || '').trim() || getDefaultManagerBlockClearingTitle(blockalpha, locationcode);
+        }
+
+        function setManagerBlockClearingReportTitle(value = '') {
+            managerBlockClearingReportTitle = String(value || '');
+            syncManagerBlockClearingInstructionUi();
+            return false;
+        }
+
         function getManagerBlockClearingEncodedKey(itemcode = '') {
             return encodeURIComponent(String(itemcode || ''));
         }
@@ -113617,14 +113639,21 @@ C.14.043 C.15.000
             return !!list.length && list.every((group) => getManagerBlockClearingInstruction(group.key));
         }
 
+        function isManagerBlockClearingReadyToEmail(groups = null) {
+            return !!String(managerBlockClearingReportTitle || '').trim() && areManagerBlockClearingInstructionsComplete(groups);
+        }
+
         function syncManagerBlockClearingInstructionUi() {
             const groups = buildManagerBlockClearingGroups();
             groups.forEach((group) => {
                 const card = document.getElementById(`block-clearing-instruction-card-${getManagerBlockClearingGroupDomId(group.key)}`);
                 if (card) card.classList.toggle('border-red-200', !getManagerBlockClearingInstruction(group.key));
             });
+            const titleInput = document.getElementById('block-clearing-report-title');
+            const hasTitle = !!String(managerBlockClearingReportTitle || '').trim();
+            if (titleInput) titleInput.classList.toggle('border-red-200', !hasTitle);
             const sendBtn = document.getElementById('block-clearing-email-send-btn');
-            const complete = areManagerBlockClearingInstructionsComplete(groups) && !managerBlockClearingEmailSending;
+            const complete = isManagerBlockClearingReadyToEmail(groups) && !managerBlockClearingEmailSending;
             if (sendBtn) {
                 sendBtn.disabled = !complete;
                 sendBtn.classList.toggle('pointer-events-none', !complete);
@@ -113682,7 +113711,8 @@ C.14.043 C.15.000
             }));
             const blockalpha = normalizeMovesDrillValue(managerBlockClearingSelectedBlock);
             const locationcode = normalizeMovesLocationValue(managerBlockClearingSelectedLocation);
-            return { rows, groups, detailRows, instructionRows, blockalpha, locationcode };
+            const title = getManagerBlockClearingReportTitle(blockalpha, locationcode);
+            return { rows, groups, detailRows, instructionRows, blockalpha, locationcode, title };
         }
 
         function getManagerBlockClearingDetailColumns() {
@@ -113732,14 +113762,15 @@ C.14.043 C.15.000
 
         function buildManagerBlockClearingFilename(context = null) {
             const safeContext = context || buildManagerBlockClearingEmailContext();
-            const base = sanitizeExcelWorkbookFileBase(`Block Clearing ${safeContext.blockalpha || ''} ${safeContext.locationcode || ''} ${getManagerBlockClearingDateStamp()}`, 'Block Clearing');
+            const base = sanitizeExcelWorkbookFileBase(String(firstNonEmptyValue(safeContext.title, getManagerBlockClearingReportTitle(safeContext.blockalpha, safeContext.locationcode), 'Block Clearing') || 'Block Clearing').trim(), 'Block Clearing');
             return `${base}.xlsx`;
         }
 
         async function buildManagerBlockClearingExcelAttachment(context = null) {
             const safeContext = context || buildManagerBlockClearingEmailContext();
-            const title = `Block Clearing ${safeContext.blockalpha} ${safeContext.locationcode}`;
+            const title = String(firstNonEmptyValue(safeContext.title, getManagerBlockClearingReportTitle(safeContext.blockalpha, safeContext.locationcode), 'Block Clearing') || 'Block Clearing').trim();
             const metaRows = [
+                ['Title', title],
                 ['Block Alpha', safeContext.blockalpha],
                 ['Location Code', safeContext.locationcode],
                 ['Selected Rows', String(safeContext.detailRows.length)],
@@ -113779,7 +113810,7 @@ C.14.043 C.15.000
             const safeContext = context || buildManagerBlockClearingEmailContext();
             const groupLines = safeContext.instructionRows.map((group) => `${group.ITEMCODE || '(blank itemcode)'} | ${group.ROW_COUNT} row${group.ROW_COUNT === 1 ? '' : 's'} | ${group.LOCATIONS || '-'} | ${group.INSTRUCTION}`);
             return [
-                `Block Clearing ${safeContext.blockalpha} ${safeContext.locationcode}`,
+                String(firstNonEmptyValue(safeContext.title, 'Block Clearing') || 'Block Clearing').trim(),
                 `Rows: ${safeContext.detailRows.length}`,
                 `Itemcode groups: ${safeContext.instructionRows.length}`,
                 '',
@@ -113789,6 +113820,7 @@ C.14.043 C.15.000
 
         function buildManagerBlockClearingEmailHtml(context = null) {
             const safeContext = context || buildManagerBlockClearingEmailContext();
+            const title = String(firstNonEmptyValue(safeContext.title, 'Block Clearing') || 'Block Clearing').trim();
             const rowsHtml = safeContext.instructionRows.map((group) => `<tr>
                 <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:800;">${escapeHtml(group.ITEMCODE || '(blank)')}</td>
                 <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${escapeHtml(group.COMMONNAME || '')}</td>
@@ -113797,7 +113829,7 @@ C.14.043 C.15.000
                 <td style="padding:8px;border-bottom:1px solid #e5e7eb;white-space:pre-wrap;">${escapeHtml(group.INSTRUCTION || '')}</td>
             </tr>`).join('');
             return `<div style="font-family:Arial,sans-serif;color:#111827;">
-                <h2 style="margin:0 0 8px;color:#007a4d;">Block Clearing</h2>
+                <h2 style="margin:0 0 8px;color:#007a4d;">${escapeHtml(title)}</h2>
                 <p style="margin:0 0 12px;"><strong>Block:</strong> ${escapeHtml(safeContext.blockalpha)}<br><strong>Location:</strong> ${escapeHtml(safeContext.locationcode)}<br><strong>Rows:</strong> ${escapeHtml(safeContext.detailRows.length)}<br><strong>Itemcode Groups:</strong> ${escapeHtml(safeContext.instructionRows.length)}</p>
                 <p style="margin:0 0 14px;">The Excel workbook is attached.</p>
                 <table style="border-collapse:collapse;width:100%;max-width:920px;">
@@ -113817,8 +113849,19 @@ C.14.043 C.15.000
             return normalizeRequestEmailAddress(firstNonEmptyValue(
                 resolveRequestRecipientEmail(currentUser || currentUserDisplay || ''),
                 getGreenleafEmailForUsername(currentUser || currentUserDisplay || ''),
+                canViewManagerBlockClearing() ? 'dylan_collyge@greenleafnursery.com' : '',
                 ''
             ));
+        }
+
+        function isManagerBlockClearingEmailCompatibilityError(error = null) {
+            const message = String(error && error.message ? error.message : error || '').toLowerCase();
+            return !!message && (
+                message.includes('unsupported email type')
+                || message.includes('missing recipient')
+                || message.includes('unsupported request email type')
+                || message.includes('no valid request email recipients')
+            );
         }
 
         async function sendManagerBlockClearingEmail(button = null) {
@@ -113830,6 +113873,12 @@ C.14.043 C.15.000
             }
             if (!areManagerBlockClearingInstructionsComplete(context.groups)) {
                 showToast('Instructions Required', 'Enter instructions for every itemcode group.', true);
+                syncManagerBlockClearingInstructionUi();
+                return false;
+            }
+            const title = String(context.title || '').trim();
+            if (!title) {
+                showToast('Title Required', 'Enter a file title before sending.', true);
                 syncManagerBlockClearingInstructionUi();
                 return false;
             }
@@ -113856,13 +113905,19 @@ C.14.043 C.15.000
             showToast('Sending...', 'Preparing Block Clearing Excel email.', false);
             try {
                 const attachment = await buildManagerBlockClearingExcelAttachment(context);
-                const subject = `Block Clearing ${context.blockalpha} ${context.locationcode} - ${context.detailRows.length} Row${context.detailRows.length === 1 ? '' : 's'}`;
+                const subject = title;
                 const payload = {
                     type: 'email',
                     action: 'block_clearing_email',
-                    emailType: 'block_clearing_email',
+                    emailType: 'drive_shift_report',
+                    emailSubType: 'block_clearing_email',
+                    email_sub_type: 'block_clearing_email',
+                    blockClearingEmail: true,
                     subject,
-                    brandLabel: 'GNC PH Block Clearing',
+                    blockClearingTitle: title,
+                    reportTitle: title,
+                    workbookTitle: title,
+                    brandLabel: title,
                     fromName: 'GNC PH Block Clearing',
                     sourceLabel: 'Managers > Block Clearing',
                     itemsCount: context.detailRows.length,
@@ -113876,6 +113931,7 @@ C.14.043 C.15.000
                     recipientEmails,
                     emailRecipients: recipientEmails,
                     internalRecipients: recipientEmails,
+                    dylanEmail: 'dylan_collyge@greenleafnursery.com',
                     recipients: recipientEmails.map((email) => ({ email, role: email === senderEmail ? 'sender-copy' : 'selected-user' })),
                     sender: senderEmail,
                     requestedByEmail: senderEmail,
@@ -113905,8 +113961,34 @@ C.14.043 C.15.000
                     exportedBy: String(firstNonEmptyValue(currentUserDisplay, currentUser, '') || '').trim(),
                     exportedAt: new Date().toISOString()
                 };
-                await postGoogleScriptEmailPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Block Clearing Email');
-                showToast('Email Sent', `Block Clearing Excel sent to ${recipientEmails.length} recipient${recipientEmails.length === 1 ? '' : 's'}.`);
+                let sentWithExcel = true;
+                let responseData = await postGoogleScriptJsonPayload(payload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Block Clearing Email');
+                if (!responseData || responseData.ok === false) {
+                    const firstError = new Error(String(firstNonEmptyValue(responseData && responseData.message, responseData && responseData.error, 'Could not send Block Clearing email.')));
+                    if (!isManagerBlockClearingEmailCompatibilityError(firstError)) throw firstError;
+                    sentWithExcel = false;
+                    const fallbackPayload = {
+                        ...payload,
+                        emailType: 'drive_customer_outreach',
+                        hideItemHeader: true,
+                        shiftReportFormat: 'report',
+                        shiftReportAttachment: null,
+                        shiftReportAttachments: [],
+                        attachments: [],
+                        formattedItemsHtml: [
+                            '<p style="padding:12px 14px;border-radius:10px;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;"><strong>Note:</strong> The email endpoint needs the current Code.gs to attach the Excel workbook. Row details are included below.</p>',
+                            buildManagerBlockClearingEmailHtml(context)
+                        ].join(''),
+                        formattedItemsText: buildManagerBlockClearingEmailText(context)
+                    };
+                    responseData = await postGoogleScriptJsonPayload(fallbackPayload, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, 'Block Clearing Email Fallback');
+                    if (!responseData || responseData.ok === false) {
+                        throw new Error(String(firstNonEmptyValue(responseData && responseData.message, responseData && responseData.error, 'Could not send Block Clearing email.')));
+                    }
+                }
+                showToast('Email Sent', sentWithExcel
+                    ? `Block Clearing Excel sent to ${recipientEmails.length} recipient${recipientEmails.length === 1 ? '' : 's'}.`
+                    : `Block Clearing email sent to ${recipientEmails.length} recipient${recipientEmails.length === 1 ? '' : 's'} without the Excel attachment.`);
                 cancelManagerBlockClearingWorkflow();
             } catch (error) {
                 showToast('Email Error', getFriendlyBackendErrorMessage(error, 'Could not send Block Clearing email.'), true);
@@ -114038,7 +114120,8 @@ C.14.043 C.15.000
                     <div class="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">${detailRows}</div>
                 </div>`;
             }).join('');
-            const ready = areManagerBlockClearingInstructionsComplete(context.groups);
+            const ready = isManagerBlockClearingReadyToEmail(context.groups);
+            const title = String(managerBlockClearingReportTitle || '').trim();
             return `<div class="space-y-4">
                 <button type="button" class="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return backManagerBlockClearing()"><i class="ph-bold ph-arrow-left text-base"></i>Rows</button>
                 <div class="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
@@ -114046,6 +114129,10 @@ C.14.043 C.15.000
                     <div class="mt-1 text-xl font-black text-slate-900">${escapeHtml(context.blockalpha)} / ${escapeHtml(context.locationcode)}</div>
                     <div id="block-clearing-instruction-count" class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-700">${context.groups.filter((group) => getManagerBlockClearingInstruction(group.key)).length}/${context.groups.length} ready</div>
                 </div>
+                <label class="block rounded-2xl border ${title ? 'border-emerald-100' : 'border-red-200'} bg-white p-4 shadow-sm">
+                    <span class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Email Subject / File Name</span>
+                    <input id="block-clearing-report-title" type="text" class="mt-2 w-full rounded-xl border ${title ? 'border-emerald-100' : 'border-red-200'} bg-white px-3 py-3 text-base font-black text-slate-900 outline-none focus:border-[#007a4d] focus:ring-2 focus:ring-emerald-100" value="${escapeHtml(title)}" placeholder="${escapeHtml(getDefaultManagerBlockClearingTitle(context.blockalpha, context.locationcode))}" oninput="return setManagerBlockClearingReportTitle(this.value)" />
+                </label>
                 <div class="space-y-3">${groupCards}</div>
                 <div class="sticky bottom-20 z-50 grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur">
                     <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-4 text-[11px] font-black uppercase tracking-[0.12em] text-slate-600 shadow-sm active:scale-95" onclick="return cancelManagerBlockClearingWorkflow()">Cancel</button>

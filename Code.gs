@@ -6290,8 +6290,9 @@ function getEvalTaskCompletionSummary_(payload) {
 function collectRequestRecipients_(payload) {
   const emailType = String(payload && payload.emailType || '').trim().toLowerCase();
   const emailSubType = String(payload && (payload.emailSubType || payload.email_sub_type) || '').trim().toLowerCase();
-  const sendToAllSalesReps = payload && (payload.sendToAllSalesReps === true || emailType === 'drive_shift_report' || emailType === 'block_clearing_email');
-  const repName = (emailType === 'drive_shift_report' || emailType === 'block_clearing_email')
+  const isBlockClearingEmail = emailType === 'block_clearing_email' || emailSubType === 'block_clearing_email' || (payload && payload.blockClearingEmail === true);
+  const sendToAllSalesReps = payload && (payload.sendToAllSalesReps === true || emailType === 'drive_shift_report' || isBlockClearingEmail);
+  const repName = (emailType === 'drive_shift_report' || isBlockClearingEmail)
     ? ''
     : String(payload.repName || payload.salesRepName || payload.requestedBy || '').trim();
   const repEmail = sendToAllSalesReps ? '' : normalizeEmailAddress_(resolveRequestRecipientEmail_(repName, payload.repEmail || payload.salesRepEmail || ''));
@@ -6365,7 +6366,7 @@ function collectRequestRecipients_(payload) {
   if (emailType === 'drive_shift_report') {
     driveShiftFallbackRecipients.push('dylan_collyge@greenleafnursery.com');
   }
-  if (emailType === 'block_clearing_email' && requestedByEmail) {
+  if (isBlockClearingEmail && requestedByEmail) {
     blockClearingFallbackRecipients.push(requestedByEmail);
   }
   const recipients = dedupeEmailAddresses_([
@@ -10052,6 +10053,7 @@ function buildAdvertisementEmailHeroText_(payload) {
 function buildRequestEmailMessage_(payload) {
   const emailType = String(payload.emailType || '').trim().toLowerCase();
   const emailSubType = String(payload.emailSubType || payload.email_sub_type || '').trim().toLowerCase();
+  const isBlockClearingEmail = emailType === 'block_clearing_email' || emailSubType === 'block_clearing_email' || (payload && payload.blockClearingEmail === true);
   const isApprovalEmail = emailType === 'ncr_approval' || emailType === 'hold_release_request';
   const isDriveShiftReportEmail = emailType === 'drive_shift_report';
   const isGroupedBloomNcrEmail = emailType === 'drive_customer_outreach' && emailSubType === 'grouped_bloom_ncr';
@@ -10381,8 +10383,8 @@ function buildRequestEmailMessage_(payload) {
     };
   }
 
-  if (emailType === 'block_clearing_email') {
-    const brandLabelPlain = String(payload.brandLabel || payload.fromName || payload.emailDisplayName || 'GNC PH Block Clearing').trim() || 'GNC PH Block Clearing';
+  if (isBlockClearingEmail) {
+    const brandLabelPlain = String(payload.blockClearingTitle || payload.reportTitle || payload.workbookTitle || payload.brandLabel || payload.subject || payload.fromName || payload.emailDisplayName || 'GNC PH Block Clearing').trim() || 'GNC PH Block Clearing';
     const brandLabel = escapeEmailHtml_(brandLabelPlain);
     const requestedBy = String(payload.requestedByDisplay || payload.requestedBy || payload.sender || '').trim();
     const requestedByHtml = requestedBy ? '<p><strong>Sent By:</strong> ' + escapeEmailHtml_(requestedBy) + '</p>' : '';
@@ -11034,7 +11036,8 @@ function sendRequestEmailWithFallback_(payload) {
     }
   }
   if (safeType === 'drive_shift_report' || safeType === 'block_clearing_email') {
-    const driveShiftName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || (safeType === 'block_clearing_email' ? 'GNC PH Block Clearing' : 'GNC PH Shift')).trim() || 'GNC PH Shift';
+    const isBlockClearingEmail = safeType === 'block_clearing_email' || String(payload.emailSubType || payload.email_sub_type || '').trim().toLowerCase() === 'block_clearing_email' || payload.blockClearingEmail === true;
+    const driveShiftName = String(payload.fromName || payload.emailDisplayName || (isBlockClearingEmail ? 'GNC PH Block Clearing' : payload.brandLabel) || (isBlockClearingEmail ? 'GNC PH Block Clearing' : 'GNC PH Shift')).trim() || 'GNC PH Shift';
     const attachments = buildDriveShiftReportAttachments_(payload);
     const options = {
       htmlBody: message.htmlBody,
@@ -11050,13 +11053,13 @@ function sendRequestEmailWithFallback_(payload) {
         mode: attachments.length ? 'gmailapp_named_attachment' : 'gmailapp_named'
       };
     } catch (error) {
-      console.error((safeType === 'block_clearing_email' ? 'Block Clearing' : 'Drive shift report') + ' email send failed', error);
+      console.error((isBlockClearingEmail ? 'Block Clearing' : 'Drive shift report') + ' email send failed', error);
       return {
         ok: false,
         status: 500,
         recipients: recipients.toArray,
         mode: 'gmailapp_error',
-        message: error && error.message ? error.message : (safeType === 'block_clearing_email' ? 'Block Clearing email send failed.' : 'Drive shift report email send failed.')
+        message: error && error.message ? error.message : (isBlockClearingEmail ? 'Block Clearing email send failed.' : 'Drive shift report email send failed.')
       };
     }
   }
