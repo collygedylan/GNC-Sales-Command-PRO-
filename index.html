@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.07.06';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.07.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5290,7 +5290,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.07.06').trim() || 'V2026.08.07.06';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.07.07').trim() || 'V2026.08.07.07';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6748,7 +6748,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.07.06';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.07.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -25697,7 +25697,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.07.06').trim() || 'V2026.08.07.06';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.07.07').trim() || 'V2026.08.07.07';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -89195,6 +89195,44 @@ function toggleDriveQuickRequestItem(domId) {
                 });
         }
 
+        function isDriveNegativeSltsAvOptionsContext(detailSourceView = '') {
+            const source = String(detailSourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
+            const mode = typeof normalizeDriveHoldStopReportMode === 'function'
+                ? normalizeDriveHoldStopReportMode(activeDriveHoldStopReport)
+                : String(activeDriveHoldStopReport || '').trim().toLowerCase().replace(/[\s_]+/g, '-');
+            const driveSource = source === 'drive' || source === 'drive-mode' || source === 'drive-report' || source.startsWith('drive-');
+            return driveSource && mode === 'negative-slts';
+        }
+
+        function getDriveNegativeSltsCurrentSeasonContext() {
+            const season = typeof getConfiguredCurrentSeasonCode === 'function' ? getConfiguredCurrentSeasonCode() : '';
+            const salesYear = typeof getConfiguredCurrentSalesYearCode === 'function' ? getConfiguredCurrentSalesYearCode() : '';
+            return {
+                season: typeof normalizeNcrSeasonCode === 'function' ? normalizeNcrSeasonCode(season) : String(season || '').trim().toUpperCase(),
+                salesYear: typeof normalizeNcrSalesYearValue === 'function' ? normalizeNcrSalesYearValue(salesYear) : String(salesYear || '').trim()
+            };
+        }
+
+        function isCurrentConfiguredSeasonSalesYearRow(item = null) {
+            const context = getDriveNegativeSltsCurrentSeasonContext();
+            if (!context.season || !context.salesYear) return false;
+            const rowSeason = typeof getDriveReportSeasonValue === 'function'
+                ? getDriveReportSeasonValue(item)
+                : firstNonEmptyValue(item && item.SEASON, item && item.season, item && item.SEASON_CODE, item && item.seasoncode, '');
+            const rowSalesYear = typeof getDriveReportSalesYearValue === 'function'
+                ? getDriveReportSalesYearValue(item)
+                : firstNonEmptyValue(item && item.SALESYEAR, item && item.SALEYEAR, item && item.salesyear, item && item.saleyear, '');
+            const normalizedSeason = typeof normalizeNcrSeasonCode === 'function' ? normalizeNcrSeasonCode(rowSeason) : String(rowSeason || '').trim().toUpperCase();
+            const normalizedSalesYear = typeof normalizeNcrSalesYearValue === 'function' ? normalizeNcrSalesYearValue(rowSalesYear) : String(rowSalesYear || '').trim();
+            return normalizedSeason === context.season && String(normalizedSalesYear) === String(context.salesYear);
+        }
+
+        function filterDriveNegativeSltsAvOptionRows(rows = [], detailSourceView = '') {
+            const sourceRows = Array.isArray(rows) ? rows : [];
+            if (!isDriveNegativeSltsAvOptionsContext(detailSourceView)) return sourceRows;
+            return sourceRows.filter((row) => !isCurrentConfiguredSeasonSalesYearRow(row));
+        }
+
         async function fetchRequestItemCodeOptionRowsFromSupabase(querySuffix = '', options = {}) {
             const safeOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const pageSize = Math.max(25, Math.min(100, Number(safeOptions.pageSize) || 100));
@@ -89464,7 +89502,9 @@ function toggleDriveQuickRequestItem(domId) {
             }
             const state = ensureRequestItemCodeOptionState(item);
             if (!options || options.skipLoad !== true) loadRequestItemCodeOptions(item, state.key).catch(() => {});
-            const rows = getRequestItemCodeOptionRows(item);
+            const allRows = getRequestItemCodeOptionRows(item);
+            const rows = filterDriveNegativeSltsAvOptionRows(allRows, safeSourceView);
+            const hiddenCurrentSeasonRows = Math.max(0, allRows.length - rows.length);
             const visibleRows = rows.slice(0, 80);
             const itemCode = getRequestItemCodeOptionItemCode(item);
             const isOpen = requestAvOptionsDropdownOpen === true;
@@ -89476,6 +89516,12 @@ function toggleDriveQuickRequestItem(domId) {
             const formatPtr = (value) => Number.isFinite(Number(value)) ? Number(value).toLocaleString('en-US') : '0';
             const loadingHtml = state.loading ? `<div class="mt-2 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-700">Checking AV options...</div>` : '';
             const errorHtml = state.error ? `<div class="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800">${escapeShareHtml(state.error)}</div>` : '';
+            const hiddenCurrentSeasonHtml = hiddenCurrentSeasonRows
+                ? `<div class="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-amber-800">${escapeShareHtml(String(hiddenCurrentSeasonRows))} current season row${hiddenCurrentSeasonRows === 1 ? '' : 's'} hidden in Negative SLTS.</div>`
+                : '';
+            const emptyRowsMessage = hiddenCurrentSeasonRows
+                ? 'No AV options outside current season for this itemcode.'
+                : 'No AV options found for this itemcode.';
             const rowsHtml = visibleRows.length ? visibleRows.map((row, index) => {
                 const uid = getRequestItemCodeOptionMasterId(row);
                 const location = String(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, 'No Loc') || 'No Loc');
@@ -89508,7 +89554,7 @@ function toggleDriveQuickRequestItem(domId) {
                     <div class="mb-2 flex flex-wrap gap-1.5">${getRequestItemCodeOptionHoldBadgeHtml(optionRow)}${getRequestItemCodeOptionValidBadgeHtml(optionRow)}</div>
                     <div class="request-av-option-card-shell">${generateCard(optionRow, 'drive')}</div>
                 </div>`;
-            }).join('') : `<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[12px] font-bold text-slate-400">${state.loading ? 'Loading AV options...' : 'No AV options found for this itemcode.'}</div>`;
+            }).join('') : `<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[12px] font-bold text-slate-400">${state.loading ? 'Loading AV options...' : escapeShareHtml(emptyRowsMessage)}</div>`;
             const moreCount = Math.max(0, rows.length - visibleRows.length);
             const addOptionsLabel = isDockSuspendDcRequestMirrorRow(item) ? 'Add To Suspend Tag' : 'Add Selected Options';
             const addButtonHtml = canAddOptions && selectableRowCount ? `<button type="button" class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="return addSelectedRequestItemCodeOptions()">${escapeShareHtml(addOptionsLabel)}</button>` : '';
@@ -89524,7 +89570,7 @@ function toggleDriveQuickRequestItem(domId) {
                     </span>
                     <span class="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">${isOpen ? 'Hide' : 'Show'}<i class="ph-bold ${isOpen ? 'ph-caret-up' : 'ph-caret-down'} text-sm"></i></span>
                 </button>
-                ${loadingHtml}${errorHtml}
+                ${loadingHtml}${errorHtml}${hiddenCurrentSeasonHtml}
                 ${isOpen ? `${addButtonHtml ? `<div class="mt-3 flex justify-end">${addButtonHtml}</div>` : ''}<div class="mt-3 space-y-2">${rowsHtml}</div>${moreCount ? `<div class="mt-2 text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${escapeShareHtml(String(moreCount))} more not shown</div>` : ''}` : ''}
             </div>`;
             panel.classList.remove('hidden');
@@ -89540,7 +89586,8 @@ function toggleDriveQuickRequestItem(domId) {
                 .map((input) => String(input.value || '').trim())
                 .filter(Boolean));
             if (!selectedIds.size) return [];
-            return getRequestItemCodeOptionRows(item).filter((row) => selectedIds.has(getRequestItemCodeOptionMasterId(row)));
+            return filterDriveNegativeSltsAvOptionRows(getRequestItemCodeOptionRows(item), activeDetailSourceView || lastView || '')
+                .filter((row) => selectedIds.has(getRequestItemCodeOptionMasterId(row)));
         }
 
         function addSelectedRequestItemCodeOptions() {
