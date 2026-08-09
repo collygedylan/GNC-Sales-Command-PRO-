@@ -136,10 +136,6 @@ const HL_PO_PARSED_SOURCE_FOLDER_ID = '1681oPSyfz7mURdywOKH_9FQNnBQmmSWO';
 const HL_PO_PARSED_PROCESSED_FOLDER_ID = '13jQ37aqokXgzZ2z3VOOdCANdW5lQPgv2';
 const HL_PO_PARSED_EXPECTED_SOURCE_ROW_COUNT = 247;
 const HL_PO_PARSED_TIMEZONE = 'America/Chicago';
-const HL_PO_VIEW_TABLE = 'ph_view_po_27f1_hl';
-const HL_PO_VIEW_INVENTORY_TABLE = 'ph_master_inventory';
-const HL_PO_VIEW_SOC_TABLE = 'ph_soc_master';
-const HL_PO_VIEW_PO_TABLE = HL_PO_PARSED_TABLE;
 
 const FOLDERS = {
   MASTER_DROP: '1MWLYsQJ41bZVcg1SzDIw93uNmQpzPn48',
@@ -210,7 +206,6 @@ function runWarehouseAssignedItemsOnly() { return syncWarehouseAssignedItemsShee
 function runCavOnly() { return processLatestFileOnlyFolder(FOLDERS.CAV_DROP, FOLDERS.CAV_PROCESSED, getRuntimeSiteSplitTableName_('ph_cav_import', 'PH'), buildCavPayload, { deltaMode: true }); }
 function runDiseaseDriveToSupabaseSyncOnly() { return runDiseaseDriveToSupabaseSync(); }
 function runHlPoParsedOnly() { return syncHlPoParsedFolder_(FOLDERS.HL_PO_PARSED_DROP, FOLDERS.HL_PO_PARSED_PROCESSED, HL_PO_PARSED_TABLE); }
-function runHlPoViewOnly() { return syncHlPoQuantitySummaryView_(); }
 
 const SITE_SPLIT_SITE_CODES_ = Object.freeze(['PH', 'TX', 'NC', 'HL']);
 const SITE_SPLIT_SITE_BY_WAREHOUSE_ = Object.freeze({
@@ -341,7 +336,7 @@ function isSiteSplitPhysicalTable_(tableName) {
 
 const MANUAL_SYNC_STATUS_KEY = 'MANUAL_SYNC_STATUS';
 const MANUAL_SYNC_TRIGGER_HANDLER = 'runQueuedManualSyncStage_';
-const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'customer_rep_map', 'warehouse_assigned_items', 'cav', 'disease', 'hl_po_parsed', 'hl_po_view']);
+const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'customer_rep_map', 'warehouse_assigned_items', 'cav', 'disease', 'hl_po_parsed']);
 const MANUAL_SYNC_EXECUTION_BUDGET_MS = 285000;
 const MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS = 120000;
 const MANUAL_SYNC_QUEUED_STALE_MS = 5 * 60 * 1000;
@@ -461,7 +456,6 @@ function getAppLiveEventAreaForTable_(tableName) {
   const safeTable = getSiteSplitLegacyTableName_(tableName);
   if (safeTable === 'ph_master_inventory') return 'inventory';
   if (safeTable === 'ph_soc_master') return 'docks';
-  if (safeTable === HL_PO_VIEW_TABLE) return 'inventory';
   if (safeTable === 'ph_reserves') return 'reserves';
   if (safeTable === CUSTOMER_REP_MAP_TABLE) return 'customer-rep-map';
   if (safeTable === 'ph_cav_import') return 'av';
@@ -548,8 +542,7 @@ const MANUAL_SYNC_STAGE_DEFINITIONS = Object.freeze({
   warehouse_assigned_items: { label: 'Warehouse Assigned Items', run: runWarehouseAssignedItemsOnly },
   cav: { label: 'CAV', run: runCavOnly },
   disease: { label: 'Disease Lab Assets', run: runDiseaseDriveToSupabaseSyncOnly },
-  hl_po_parsed: { label: 'HL PO Parsed', run: runHlPoParsedOnly },
-  hl_po_view: { label: 'HL PO Quantity Summary', run: runHlPoViewOnly }
+  hl_po_parsed: { label: 'HL PO Parsed', run: runHlPoParsedOnly }
 });
 
 function runDriveSocReservesSequence() {
@@ -673,8 +666,6 @@ function getManualSyncStageOrder_(jobName) {
   if (normalized === 'cav') return ['cav'];
   if (normalized === 'disease' || normalized === 'lab' || normalized === 'lab_reports') return ['disease'];
   if (normalized === 'hl_po_parsed' || normalized === 'hlpo_parsed' || normalized === 'hl_po_import' || normalized === 'hl_po_upload') return ['hl_po_parsed'];
-  if (normalized === 'hl_po_view' || normalized === 'hlpo_view' || normalized === 'hl_po_quantity_summary' || normalized === 'quantity_summary') return ['hl_po_view'];
-  if (normalized === 'hl_po' || normalized === 'hlpo') return ['hl_po_parsed', 'hl_po_view'];
   return MANUAL_SYNC_STAGE_ORDER_DEFAULT.slice();
 }
 
@@ -884,7 +875,6 @@ function runQueuedManualSyncStage_(options) {
         failedFiles: failedFiles,
         failedFileNames: failedFileNames,
         failedFileErrors: failedFileErrors,
-        summary: String(stageResult.summary || '').trim(),
         error: String(stageResult.error || '').trim(),
         completedAt: completedAt
       });
@@ -903,9 +893,9 @@ function runQueuedManualSyncStage_(options) {
       const hasMoreStages = status.stageIndex < stageOrder.length;
       const nextStageKey = hasMoreStages ? stageOrder[status.stageIndex] : '';
       const nextStageDef = nextStageKey ? MANUAL_SYNC_STAGE_DEFINITIONS[nextStageKey] : null;
-      const fileSummary = String(stageResult.summary || '').trim() || (filesProcessed > 0
+      const fileSummary = filesProcessed > 0
         ? `${filesProcessed} file${filesProcessed === 1 ? '' : 's'} processed`
-        : 'no files found');
+        : 'no files found';
       const tempSummary = tempFilesRemoved > 0
         ? `, ${tempFilesRemoved} temp file${tempFilesRemoved === 1 ? '' : 's'} cleared`
         : '';
@@ -5004,453 +4994,6 @@ function syncHlPoParsedFolder_(sourceFolderId, processedFolderId, tableName) {
     deleteCount: 0,
     totalRows: totalRows,
     runId: runId
-  };
-}
-
-const HL_PO_VIEW_INVENTORY_COLUMNS = Object.freeze([
-  'unique_id',
-  'itemcode',
-  'commonname',
-  'contsize',
-  'locationcode',
-  'priority',
-  'lotcode',
-  'holdstopcode',
-  'holdstopreason',
-  'ptronhand'
-]);
-
-const HL_PO_VIEW_SOC_COLUMNS = Object.freeze([
-  'unique_id',
-  'itemcode',
-  'commonname',
-  'salesrepid',
-  'salesrepname',
-  'customername',
-  'consigneename',
-  'consigneestate',
-  'stopnumber',
-  'quantityordered',
-  'requestdate',
-  'stagename',
-  'step',
-  'dock'
-]);
-
-const HL_PO_VIEW_PO_COLUMNS = Object.freeze([
-  'row_index',
-  'item_code',
-  'lot',
-  'lot_pend_rec',
-  'po_remain'
-]);
-
-const HL_PO_VIEW_INSERT_CHUNK_SIZE = 500;
-const HL_PO_VIEW_ALLOWED_SEASONS = Object.freeze({
-  F1: true,
-  U1: true,
-  U2: true,
-  S1: true
-});
-
-function fetchSupabaseRowsAsArray_(tableName, selectColumns, options) {
-  const safeTableName = String(tableName || '').trim();
-  if (!safeTableName) throw new Error('Missing Supabase table name.');
-
-  const fetchOptions = options || {};
-  const safeSelect = normalizeSupabaseSelectColumns_(selectColumns);
-  const limit = Math.max(1, Number(fetchOptions.pageSize) || SUPABASE_FETCH_PAGE_SIZE);
-  const orderBy = String(fetchOptions.orderBy || '').trim();
-  const rows = [];
-  let offset = 0;
-
-  while (true) {
-    const queryParts = [
-      'select=' + safeSelect,
-      'limit=' + limit,
-      'offset=' + offset
-    ];
-    if (orderBy) queryParts.push('order=' + encodeURIComponent(orderBy));
-
-    const url = `${SUPABASE_URL}/rest/v1/${safeTableName}?${queryParts.join('&')}`;
-    const response = withRetry_(
-      `Supabase row fetch for ${safeTableName} at offset ${offset}`,
-      SUPABASE_FETCH_RETRY_COUNT,
-      SUPABASE_FETCH_RETRY_DELAY_MS,
-      function() {
-        return UrlFetchApp.fetch(url, {
-          method: 'get',
-          headers: getSupabaseHeaders_(),
-          muteHttpExceptions: true
-        });
-      },
-      shouldRetrySupabaseRead_
-    );
-
-    const code = response.getResponseCode();
-    if (code !== 200 && code !== 206) {
-      throw new Error(`Supabase fetch failed for ${safeTableName} (${code}): ${response.getContentText()}`);
-    }
-
-    const batch = JSON.parse(response.getContentText() || '[]');
-    if (!Array.isArray(batch) || batch.length === 0) break;
-
-    rows.push.apply(rows, batch);
-    if (batch.length < limit) break;
-    offset += batch.length;
-  }
-
-  return rows;
-}
-
-function normalizeHlPoViewText_(value) {
-  if (value == null) return null;
-  const text = String(value).replace(/\u00a0/g, ' ').trim();
-  if (!text || text.toUpperCase() === 'NULL') return null;
-  return text;
-}
-
-function parseHlPoViewNumericValue_(value, columnName) {
-  if (value == null || value === '') return null;
-  if (typeof value === 'number') return isNaN(value) ? null : value;
-
-  const rawText = String(value).replace(/\u00a0/g, ' ').trim();
-  if (!rawText || rawText.toUpperCase() === 'NULL' || rawText === '-' || rawText === '--') return null;
-
-  let cleaned = rawText.replace(/[$,%]/g, '').replace(/,/g, '').trim();
-  if (/^\([0-9.]+\)$/.test(cleaned)) cleaned = '-' + cleaned.slice(1, -1);
-
-  const numericValue = Number(cleaned);
-  if (isNaN(numericValue)) {
-    throw new Error(`Invalid numeric value for ${columnName}: "${rawText}".`);
-  }
-  return numericValue;
-}
-
-function isHlPoViewLotAllowed_(lotCode) {
-  const safeLotCode = String(lotCode || '').trim().toUpperCase();
-  const match = safeLotCode.match(/^(\d+)\.([A-Z0-9]+)/);
-  if (!match) return false;
-
-  const year = parseInt(match[1], 10);
-  const season = String(match[2] || '').trim().toUpperCase();
-  return !isNaN(year) && year <= 27 && !!HL_PO_VIEW_ALLOWED_SEASONS[season];
-}
-
-function buildHlPoViewPoMaps_(poRows) {
-  const validPoItemCodes = {};
-  const poMap = {};
-
-  (poRows || []).forEach(function(row) {
-    const itemCode = normalizeHlPoViewText_(row && row.item_code);
-    if (!itemCode) return;
-
-    const lotCode = normalizeHlPoViewText_(row && row.lot);
-    validPoItemCodes[itemCode] = true;
-    if (!lotCode) return;
-
-    poMap[itemCode + '_' + lotCode] = {
-      lot_pend_rec: parseHlPoViewNumericValue_(row && row.lot_pend_rec, 'lot_pend_rec'),
-      po_remain: parseHlPoViewNumericValue_(row && row.po_remain, 'po_remain')
-    };
-  });
-
-  return {
-    validPoItemCodes: validPoItemCodes,
-    poMap: poMap
-  };
-}
-
-function buildHlPoViewSocMaps_(socRows) {
-  const socTotals = {};
-  const socMap = {};
-
-  (socRows || []).forEach(function(row) {
-    const itemCode = normalizeHlPoViewText_(row && row.itemcode);
-    if (!itemCode) return;
-
-    const stageName = normalizeHlPoViewText_(row && row.stagename) || '';
-    const stageUpper = stageName.toUpperCase();
-    if (stageUpper.indexOf('SHIPPED') !== -1 || stageUpper.indexOf('COMPLETED') !== -1) return;
-
-    const quantityOrdered = parseHlPoViewNumericValue_(row && row.quantityordered, 'quantityordered');
-    socTotals[itemCode] = (socTotals[itemCode] || 0) + (quantityOrdered == null ? 0 : quantityOrdered);
-
-    if (!socMap[itemCode]) socMap[itemCode] = [];
-    socMap[itemCode].push({
-      commonname: normalizeHlPoViewText_(row && row.commonname),
-      salesrepid: normalizeHlPoViewText_(row && row.salesrepid),
-      salesrepname: normalizeHlPoViewText_(row && row.salesrepname),
-      customername: normalizeHlPoViewText_(row && row.customername),
-      consigneename: normalizeHlPoViewText_(row && row.consigneename),
-      consigneestate: normalizeHlPoViewText_(row && row.consigneestate),
-      stopnumber: normalizeHlPoViewText_(row && row.stopnumber),
-      quantityordered: quantityOrdered,
-      requestdate: normalizeHlPoViewText_(row && row.requestdate),
-      stagename: stageName || null,
-      step: normalizeHlPoViewText_(row && row.step),
-      dock: normalizeHlPoViewText_(row && row.dock)
-    });
-  });
-
-  return {
-    socTotals: socTotals,
-    socMap: socMap
-  };
-}
-
-function buildHlPoViewInventoryMap_(inventoryRows) {
-  const daMap = {};
-
-  (inventoryRows || []).forEach(function(row) {
-    const itemCode = normalizeHlPoViewText_(row && row.itemcode);
-    const lotCode = normalizeHlPoViewText_(row && row.lotcode);
-    const locationCode = normalizeHlPoViewText_(row && row.locationcode) || '';
-    if (!itemCode || !isHlPoViewLotAllowed_(lotCode)) return;
-
-    if (!daMap[itemCode]) daMap[itemCode] = {};
-    const groupKey = itemCode + '|' + lotCode + '|' + locationCode;
-    if (!daMap[itemCode][groupKey]) {
-      daMap[itemCode][groupKey] = {
-        itemcode: itemCode,
-        commonname: normalizeHlPoViewText_(row && row.commonname),
-        contsize: normalizeHlPoViewText_(row && row.contsize),
-        locationcode: locationCode || null,
-        priority: normalizeHlPoViewText_(row && row.priority),
-        lotcode: lotCode,
-        holdstopcode: normalizeHlPoViewText_(row && row.holdstopcode),
-        holdstopreason: normalizeHlPoViewText_(row && row.holdstopreason),
-        ptronhand: 0,
-        ptronhandHasValue: false
-      };
-    }
-
-    const ptrOnHand = parseHlPoViewNumericValue_(row && row.ptronhand, 'ptronhand');
-    if (ptrOnHand != null) {
-      daMap[itemCode][groupKey].ptronhand += ptrOnHand;
-      daMap[itemCode][groupKey].ptronhandHasValue = true;
-    }
-  });
-
-  return daMap;
-}
-
-function getHlPoViewInventoryRowsForItem_(inventoryGroupMap) {
-  return Object.keys(inventoryGroupMap || {}).map(function(groupKey) {
-    return inventoryGroupMap[groupKey];
-  }).sort(function(a, b) {
-    const lotCompare = String(a && a.lotcode || '').localeCompare(String(b && b.lotcode || ''));
-    if (lotCompare !== 0) return lotCompare;
-    return String(a && a.locationcode || '').localeCompare(String(b && b.locationcode || ''));
-  });
-}
-
-function buildHlPoViewRows_(inventoryRows, socRows, poRows, runId, builtAt) {
-  const poMaps = buildHlPoViewPoMaps_(poRows);
-  const socMaps = buildHlPoViewSocMaps_(socRows);
-  const daMap = buildHlPoViewInventoryMap_(inventoryRows);
-  const outputRows = [];
-
-  Object.keys(daMap).filter(function(itemCode) {
-    return poMaps.validPoItemCodes[itemCode] === true;
-  }).sort().forEach(function(itemCode) {
-    const daRows = getHlPoViewInventoryRowsForItem_(daMap[itemCode]);
-    const socRowsForItem = socMaps.socMap[itemCode] || [];
-    const totalPtrInfo = daRows.reduce(function(total, row) {
-      if (row && row.ptronhandHasValue) {
-        total.sum += Number(row.ptronhand) || 0;
-        total.hasValue = true;
-      }
-      return total;
-    }, { sum: 0, hasValue: false });
-
-    const totalQuantityOrdered = Object.prototype.hasOwnProperty.call(socMaps.socTotals, itemCode)
-      ? socMaps.socTotals[itemCode]
-      : 0;
-    const maxRows = Math.max(daRows.length, socRowsForItem.length);
-
-    for (let rowOffset = 0; rowOffset < maxRows; rowOffset++) {
-      const daRow = daRows[rowOffset] || {};
-      const socRow = socRowsForItem[rowOffset] || {};
-      const poRow = daRow.lotcode ? (poMaps.poMap[itemCode + '_' + daRow.lotcode] || {}) : {};
-
-      outputRows.push({
-        run_id: runId,
-        row_index: outputRows.length + 1,
-        itemcode: itemCode,
-        commonname: daRow.commonname || socRow.commonname || null,
-        contsize: daRow.contsize || null,
-        locationcode: daRow.locationcode || null,
-        priority: daRow.priority || null,
-        lotcode: daRow.lotcode || null,
-        holdstopcode: daRow.holdstopcode || null,
-        holdstopreason: daRow.holdstopreason || null,
-        total_quantity_ordered: rowOffset === 0 ? totalQuantityOrdered : null,
-        ptronhand: daRow.ptronhandHasValue ? daRow.ptronhand : null,
-        total_ptronhand: rowOffset === 0 && totalPtrInfo.hasValue ? totalPtrInfo.sum : null,
-        lot_pend_rec: Object.prototype.hasOwnProperty.call(poRow, 'lot_pend_rec') ? poRow.lot_pend_rec : null,
-        salesrepid: socRow.salesrepid || null,
-        salesrepname: socRow.salesrepname || null,
-        customername: socRow.customername || null,
-        consigneename: socRow.consigneename || null,
-        consigneestate: socRow.consigneestate || null,
-        stopnumber: socRow.stopnumber || null,
-        quantityordered: Object.prototype.hasOwnProperty.call(socRow, 'quantityordered') ? socRow.quantityordered : null,
-        requestdate: socRow.requestdate || null,
-        stagename: socRow.stagename || null,
-        step: socRow.step || null,
-        dock: socRow.dock || null,
-        po_remain: Object.prototype.hasOwnProperty.call(poRow, 'po_remain') ? poRow.po_remain : null,
-        built_at: builtAt
-      });
-    }
-  });
-
-  return outputRows;
-}
-
-function upsertHlPoViewRows_(tableName, rows) {
-  const safeTableName = String(tableName || HL_PO_VIEW_TABLE).trim();
-  const payloadRows = Array.isArray(rows) ? rows : [];
-  if (!payloadRows.length) return 0;
-
-  const requests = [];
-  for (let i = 0; i < payloadRows.length; i += HL_PO_VIEW_INSERT_CHUNK_SIZE) {
-    const chunk = normalizeSupabaseUpsertChunk(payloadRows.slice(i, i + HL_PO_VIEW_INSERT_CHUNK_SIZE));
-    requests.push({
-      url: `${SUPABASE_URL}/rest/v1/${safeTableName}?on_conflict=run_id,row_index`,
-      method: 'post',
-      headers: getSupabaseHeaders_({
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates,return=minimal'
-      }),
-      payload: JSON.stringify(chunk),
-      muteHttpExceptions: true
-    });
-  }
-
-  const responses = executeFetchAllBatches(requests, SUPABASE_UPSERT_FETCH_BATCH_SIZE);
-  responses.forEach(function(response) {
-    const code = response.getResponseCode();
-    if (code !== 200 && code !== 201 && code !== 204) {
-      throw new Error(`Supabase HL PO Quantity Summary upload failed (${code}): ${response.getContentText()}`);
-    }
-  });
-
-  return payloadRows.length;
-}
-
-function deleteHlPoViewRowsByFilter_(tableName, filterQuery, label) {
-  const safeTableName = String(tableName || HL_PO_VIEW_TABLE).trim();
-  const safeFilterQuery = String(filterQuery || '').trim();
-  if (!safeTableName || !safeFilterQuery) throw new Error('Missing HL PO Quantity Summary delete filter.');
-
-  const response = UrlFetchApp.fetch(`${SUPABASE_URL}/rest/v1/${safeTableName}?${safeFilterQuery}`, {
-    method: 'delete',
-    headers: getSupabaseHeaders_({
-      'Prefer': 'return=minimal,count=exact'
-    }),
-    muteHttpExceptions: true
-  });
-
-  const code = response.getResponseCode();
-  if (code !== 200 && code !== 204) {
-    throw new Error(`${label || 'HL PO Quantity Summary cleanup'} failed (${code}): ${response.getContentText()}`);
-  }
-
-  const deletedCount = getSupabaseContentRangeCount(response.getHeaders());
-  return deletedCount == null ? 0 : deletedCount;
-}
-
-function deleteHlPoViewRowsByRun_(tableName, runId) {
-  return deleteHlPoViewRowsByFilter_(
-    tableName,
-    'run_id=eq.' + encodeURIComponent(String(runId || '')),
-    'HL PO Quantity Summary run cleanup'
-  );
-}
-
-function deleteHlPoViewRowsExceptRun_(tableName, runId) {
-  return deleteHlPoViewRowsByFilter_(
-    tableName,
-    'run_id=neq.' + encodeURIComponent(String(runId || '')),
-    'HL PO Quantity Summary old snapshot cleanup'
-  );
-}
-
-function syncHlPoQuantitySummaryView_() {
-  const tableName = HL_PO_VIEW_TABLE;
-  const runId = Utilities.getUuid();
-  const builtAt = new Date().toISOString();
-  const startedMs = Date.now();
-  let uploadedRows = 0;
-  let deletedRows = 0;
-
-  console.log(`[HL PO VIEW] Building ${tableName} from ${HL_PO_VIEW_INVENTORY_TABLE}, ${HL_PO_VIEW_SOC_TABLE}, and ${HL_PO_VIEW_PO_TABLE}.`);
-
-  const inventoryRows = fetchSupabaseRowsAsArray_(HL_PO_VIEW_INVENTORY_TABLE, HL_PO_VIEW_INVENTORY_COLUMNS, {
-    pageSize: SUPABASE_MASTER_FETCH_PAGE_SIZE,
-    orderBy: 'itemcode.asc,lotcode.asc,locationcode.asc,unique_id.asc'
-  });
-  const socRows = fetchSupabaseRowsAsArray_(HL_PO_VIEW_SOC_TABLE, HL_PO_VIEW_SOC_COLUMNS, {
-    orderBy: 'unique_id.asc'
-  });
-  const poRows = fetchSupabaseRowsAsArray_(HL_PO_VIEW_PO_TABLE, HL_PO_VIEW_PO_COLUMNS, {
-    orderBy: 'item_code.asc,lot.asc,row_index.asc'
-  });
-
-  if (!inventoryRows.length) throw new Error(`${HL_PO_VIEW_INVENTORY_TABLE} has no rows for HL PO Quantity Summary.`);
-  if (!poRows.length) throw new Error(`${HL_PO_VIEW_PO_TABLE} has no rows for HL PO Quantity Summary.`);
-
-  const outputRows = buildHlPoViewRows_(inventoryRows, socRows, poRows, runId, builtAt);
-  if (!outputRows.length) {
-    throw new Error(`No HL PO Quantity Summary rows were built from ${HL_PO_VIEW_INVENTORY_TABLE}, ${HL_PO_VIEW_SOC_TABLE}, and ${HL_PO_VIEW_PO_TABLE}.`);
-  }
-
-  try {
-    deleteHlPoViewRowsByRun_(tableName, runId);
-    uploadedRows = upsertHlPoViewRows_(tableName, outputRows);
-    deletedRows = deleteHlPoViewRowsExceptRun_(tableName, runId);
-  } catch (err) {
-    try {
-      deleteHlPoViewRowsByRun_(tableName, runId);
-    } catch (cleanupErr) {
-      console.warn(`[HL PO VIEW] Could not clean up partial run ${runId}: ${cleanupErr && cleanupErr.message ? cleanupErr.message : cleanupErr}`);
-    }
-    throw err;
-  }
-
-  const elapsedMs = Date.now() - startedMs;
-  console.log(
-    `[HL PO VIEW] Refreshed ${tableName}: ${uploadedRows} row${uploadedRows === 1 ? '' : 's'} uploaded` +
-    ` | ${deletedRows} old row${deletedRows === 1 ? '' : 's'} removed` +
-    ` | source rows inventory=${inventoryRows.length}, soc=${socRows.length}, po=${poRows.length}` +
-    ` | run=${runId} | ${elapsedMs}ms.`
-  );
-
-  emitTableSyncLiveEvent_(tableName, {
-    filesProcessed: 0,
-    upsertCount: uploadedRows,
-    deleteCount: deletedRows,
-    totalRows: outputRows.length,
-    runId: runId
-  });
-
-  return {
-    tableName: tableName,
-    filesProcessed: 0,
-    tempFilesRemoved: 0,
-    failedFiles: 0,
-    upsertCount: uploadedRows,
-    deleteCount: deletedRows,
-    totalRows: outputRows.length,
-    runId: runId,
-    sourceRows: {
-      inventory: inventoryRows.length,
-      soc: socRows.length,
-      po: poRows.length
-    },
-    summary: `${uploadedRows} Quantity Summary row${uploadedRows === 1 ? '' : 's'} built`
   };
 }
 
