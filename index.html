@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.09';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5392,7 +5392,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.09').trim() || 'V2026.08.09.09';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.10').trim() || 'V2026.08.09.10';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -5492,10 +5492,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                             <div id="home-dashboard-grid" class="grid grid-cols-2 gap-3 mb-8">
                                 <div id="home-tile-drive" onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-qc-supervisor hidden"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
-                                <div id="home-tile-crop-roll" onclick="switchView('crop-roll')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden" data-role-gated="true"><i class="ph-bold ph-plant text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Crop Roll</span></div>
                                 <div id="home-tile-tasks" onclick="switchView('tasks')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
                                 <div id="home-tile-docks" onclick="switchView('docks')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
-                                <div id="home-tile-take-back" onclick="switchView('take-back')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access" data-role-gated="true" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-arrow-u-up-left text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Take Back</span></div>
                                 <div id="home-tile-av" onclick="switchView('av')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
                                 <div id="home-tile-request" onclick="switchView('request')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-list-checks text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Que</span></div>
                                 <div id="home-tile-communication" onclick="switchView('communication')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-chat-circle-dots text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Communication</span></div>
@@ -5504,18 +5502,12 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div id="home-tile-managers" onclick="switchView('managers')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-users-three text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Managers</span></div>
                                 <div id="home-tile-building" onclick="switchView('building')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-hammer text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Building</span></div>
                                 <div id="home-tile-qc" onclick="switchView('qc')" class="bg-white border-2 border-orange-600 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-shield-check text-3xl text-orange-700"></i><span class="font-bold text-sm text-orange-700 uppercase tracking-wide">QC</span></div>
-                                <div id="home-tile-reserves" onclick="switchView('reserves')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-bookmark-simple text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reserves</span></div>
                                 <div id="home-tile-office" onclick="switchView('office')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep hidden"><i class="ph-bold ph-buildings text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Office</span></div>
-                                <div id="home-tile-po-management" onclick="switchView('po-management')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-file-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">PO Managment</span></div>
                                 <div id="home-tile-sales-inventory" onclick="openInventoryHubView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-storefront text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Inventory</span></div>
-                                <div id="home-tile-84rd" onclick="open84RdInventoryView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-map-trifold text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">84 R.D</span></div>
                                 <div id="home-tile-production" onclick="switchView('production')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-plant text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Production</span></div>
-                                <div id="home-tile-disease-pest" onclick="switchView('disease-pest')" class="bg-white border-2 border-red-600 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-bug text-3xl text-red-700"></i><span class="font-bold text-sm text-red-700 uppercase tracking-wide">Disease &amp; Pest</span></div>
-                                <div id="home-tile-sales-office" onclick="openSalesOfficeView()" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-briefcase text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales Office</span></div>
                                 <div id="home-tile-moves" onclick="openMovesView()" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-map-pin-line text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Location Move</span></div>
                                 <div id="home-tile-inventory-office" onclick="openInventoryOfficeView()" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-warehouse text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Inventory Office</span></div>
                                 <div id="home-tile-reports" onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
-                                <div id="home-tile-hours" onclick="switchView('hours')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-clock text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Labor Hours</span></div>
                                 <div id="home-tile-review" onclick="switchView('review')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">New Crop Release</span></div>
                                 <div id="home-tile-move-up" onclick="switchView('move-up')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-arrow-up text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Move Up</span></div>
                                 <div id="home-tile-advertisement" onclick="switchView('advertisement')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-megaphone text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Advertisement</span></div>
@@ -5694,9 +5686,9 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Pending requests</div>
                         </button>
                         <button type="button" id="sales-open-bloom-orders" class="rounded-2xl border border-purple-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openSalesOfficeView()">
-                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-purple-700"><i class="ph-bold ph-handbag text-2xl"></i></div>
-                            <div class="text-lg font-black text-slate-900">Bloom Picker Orders</div>
-                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Order review</div>
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-purple-700"><i class="ph-bold ph-briefcase text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Sales Office</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Bloom Picker orders</div>
                         </button>
                         <button type="button" id="sales-open-tasks" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('tasks')">
                             <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-clipboard-text text-2xl"></i></div>
@@ -5886,6 +5878,16 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div class="text-lg font-black text-slate-900">Take Back</div>
                             <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Open take backs</div>
                         </button>
+                        <button type="button" id="production-open-84rd" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return open84RdInventoryView()">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-map-trifold text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">84 R.D</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Production inventory</div>
+                        </button>
+                        <button type="button" id="production-open-disease-pest" class="rounded-2xl border border-red-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('disease-pest')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-700"><i class="ph-bold ph-bug text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Disease &amp; Pest</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Scouting and notes</div>
+                        </button>
                         <button type="button" id="production-open-tasks" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('tasks')">
                             <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-clipboard-text text-2xl"></i></div>
                             <div class="text-lg font-black text-slate-900">Task</div>
@@ -5955,6 +5957,16 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-700"><i class="ph-bold ph-steering-wheel text-2xl"></i></div>
                                 <div class="text-lg font-black text-slate-900">Drive Mode</div>
                                 <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Field inventory rows</div>
+                            </button>
+                            <button type="button" id="inventory-open-crop-roll" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('crop-roll')">
+                                <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-plant text-2xl"></i></div>
+                                <div class="text-lg font-black text-slate-900">Crop Roll</div>
+                                <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Inventory roll rows</div>
+                            </button>
+                            <button type="button" id="inventory-open-po-management" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('po-management')">
+                                <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-file-text text-2xl"></i></div>
+                                <div class="text-lg font-black text-slate-900">PO Management</div>
+                                <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">HL PO summary</div>
                             </button>
                             <button type="button" id="inventory-open-request" class="rounded-2xl border border-orange-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('request')">
                                 <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-700"><i class="ph-bold ph-list-checks text-2xl"></i></div>
@@ -6871,7 +6883,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -20297,10 +20309,8 @@ bindFastInvokeById('drawer-drive-btn', 'openDrawerView', ['drive'], 'Drive Mode'
             bindFastInvokeById('drawer-advertisement-btn', 'openDrawerView', ['advertisement'], 'Advertisement');
             bindFastInvokeById('drawer-logout-btn', 'logoutFromDrawer', [], 'Log Out');
             bindFastInvokeById('home-tile-drive', 'switchView', ['drive'], 'Drive Mode');
-            bindFastInvokeById('home-tile-crop-roll', 'switchView', ['crop-roll'], 'Crop Roll');
             bindFastInvokeById('home-tile-tasks', 'switchView', ['tasks'], 'Tasks');
             bindFastInvokeById('home-tile-docks', 'switchView', ['docks'], 'Docks');
-            bindFastInvokeById('home-tile-take-back', 'switchView', ['take-back'], 'Take Back');
             bindFastInvokeById('home-tile-av', 'switchView', ['av'], 'AV');
             bindFastInvokeById('home-tile-request', 'switchView', ['request'], 'Que');
 bindFastInvokeById('home-tile-communication', 'switchView', ['communication'], 'Communication');
@@ -20309,18 +20319,12 @@ bindFastInvokeById('home-tile-sales', 'switchView', ['sales'], 'Sales');
 bindFastInvokeById('home-tile-managers', 'switchView', ['managers'], 'Managers');
 bindFastInvokeById('home-tile-building', 'switchView', ['building'], 'Building');
 bindFastInvokeById('home-tile-qc', 'switchView', ['qc'], 'QC');
-bindFastInvokeById('home-tile-reserves', 'switchView', ['reserves'], 'Reserves');
             bindFastInvokeById('home-tile-office', 'switchView', ['office'], 'Office');
-            bindFastInvokeById('home-tile-po-management', 'switchView', ['po-management'], 'PO Managment');
             bindFastInvokeById('home-tile-sales-inventory', 'openInventoryHubView', [], 'Inventory');
-            bindFastInvokeById('home-tile-84rd', 'open84RdInventoryView', [], '84 R.D');
             bindFastInvokeById('home-tile-production', 'switchView', ['production'], 'Production');
-            bindFastInvokeById('home-tile-disease-pest', 'switchView', ['disease-pest'], 'Disease & Pest Management');
-            bindFastInvokeById('home-tile-sales-office', 'openSalesOfficeView', [], 'Sales Office');
             bindFastInvokeById('home-tile-moves', 'openMovesView', [], 'Location Move');
             bindFastInvokeById('home-tile-inventory-office', 'openInventoryOfficeView', [], 'Inventory Office');
             bindFastInvokeById('home-tile-reports', 'switchView', ['reports'], 'Reports');
-            bindFastInvokeById('home-tile-hours', 'switchView', ['hours'], 'Labor Hours');
             bindFastInvokeById('home-tile-review', 'switchView', ['review'], 'New Crop Release');
             bindFastInvokeById('home-tile-move-up', 'switchView', ['move-up'], 'Move Up');
             bindFastInvokeById('home-tile-advertisement', 'switchView', ['advertisement'], 'Advertisement');
@@ -20331,8 +20335,14 @@ bindFastInvokeById('footer-request-btn', 'switchView', ['request'], 'Que');
 bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 'Communication');
 bindFastInvokeById('footer-walkie-btn', 'switchView', ['walkie'], 'Walkie');
 bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
+            bindFastInvokeById('sales-open-bloom-orders', 'openSalesOfficeView', [], 'Sales Office');
+            bindFastInvokeById('production-open-take-back', 'switchView', ['take-back'], 'Take Back');
+            bindFastInvokeById('production-open-84rd', 'open84RdInventoryView', [], '84 R.D');
+            bindFastInvokeById('production-open-disease-pest', 'switchView', ['disease-pest'], 'Disease & Pest Management');
             bindFastInvokeById('inventory-open-tasks', 'switchView', ['tasks'], 'Task');
             bindFastInvokeById('inventory-open-drive', 'switchView', ['drive'], 'Drive Mode');
+            bindFastInvokeById('inventory-open-crop-roll', 'switchView', ['crop-roll'], 'Crop Roll');
+            bindFastInvokeById('inventory-open-po-management', 'switchView', ['po-management'], 'PO Management');
             bindFastInvokeById('inventory-open-request', 'switchView', ['request'], 'Que');
             bindFastInvokeById('inventory-open-inventory-office', 'openInventoryOfficeView', [], 'Inventory Office');
             bindFastInvokeById('inventory-open-docks', 'switchView', ['docks'], 'Docks');
@@ -25871,7 +25881,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.09').trim() || 'V2026.08.09.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.10').trim() || 'V2026.08.09.10';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -49428,8 +49438,8 @@ function toggleDriveQuickRequestItem(domId) {
             drive: ['drawer-drive-btn', 'home-tile-drive'],
             tasks: ['drawer-tasks-btn', 'home-tile-tasks'],
             docks: ['drawer-docks-btn', 'home-tile-docks'],
-            'crop-roll': ['drawer-crop-roll-btn', 'home-tile-crop-roll'],
-            'take-back': ['drawer-take-back-btn', 'home-tile-take-back'],
+            'crop-roll': ['drawer-crop-roll-btn'],
+            'take-back': ['drawer-take-back-btn'],
             production: ['drawer-production-btn', 'home-tile-production'],
             'production-workflow': [],
             'shear-list': [],
@@ -49439,21 +49449,21 @@ function toggleDriveQuickRequestItem(domId) {
             qc: ['drawer-qc-btn', 'home-tile-qc'],
             av: ['drawer-av-btn', 'home-tile-av'],
             request: ['drawer-request-btn', 'home-tile-request', 'footer-request-btn'],
-            reserves: ['drawer-reserves-btn', 'home-tile-reserves'],
+            reserves: ['drawer-reserves-btn'],
             office: ['drawer-office-btn', 'home-tile-office'],
-            'po-management': ['home-tile-po-management'],
-            'sales-inventory': ['drawer-sales-inventory-btn', 'home-tile-sales-inventory', 'home-tile-84rd'],
-            'sales-office': ['drawer-sales-office-btn', 'home-tile-sales-office'],
+            'po-management': [],
+            'sales-inventory': ['drawer-sales-inventory-btn', 'home-tile-sales-inventory'],
+            'sales-office': ['drawer-sales-office-btn'],
             moves: ['drawer-moves-btn', 'home-tile-inventory-office'],
             'weather-hold': [],
             reports: ['drawer-reports-btn', 'home-tile-reports'],
-            hours: ['drawer-hours-btn', 'home-tile-hours'],
+            hours: ['drawer-hours-btn'],
             'low-stock': ['drawer-low-stock-btn'],
             review: ['drawer-review-btn'],
             'move-up': ['drawer-move-up-btn'],
             advertisement: ['drawer-advertisement-btn', 'home-tile-advertisement'],
             diagnostics: ['drawer-diagnostics-btn'],
-            'disease-pest': ['drawer-disease-pest-btn', 'home-tile-disease-pest'],
+            'disease-pest': ['drawer-disease-pest-btn'],
             grower: ['drawer-grower-btn'],
             'pest-management': ['drawer-pest-management-btn'],
             communication: ['drawer-communication-btn', 'home-tile-communication', 'footer-communication-btn'],
@@ -49785,7 +49795,7 @@ function toggleDriveQuickRequestItem(domId) {
                 ROLE_VIEW_ELEMENT_IDS[viewId].forEach((elementId) => {
                     const el = document.getElementById(elementId);
                     if (!el) return;
-                    const hideElement = isEvalInventoryUser && (elementId === 'drawer-sales-inventory-btn' || elementId === 'home-tile-sales-inventory' || elementId === 'home-tile-84rd');
+                    const hideElement = isEvalInventoryUser && (elementId === 'drawer-sales-inventory-btn' || elementId === 'home-tile-sales-inventory');
                     el.classList.toggle('hidden', !isAllowed || hideElement);
                     el.style.display = '';
                     if (!isAllowed || hideElement) el.classList.remove('active');
@@ -59981,8 +59991,7 @@ function toggleDriveQuickRequestItem(domId) {
                 { id: 'home-sales-open-docks', view: 'docks', icon: 'ph-truck', title: 'Docks' },
                 { id: 'home-sales-open-communication', view: 'communication', icon: 'ph-chat-circle-dots', title: 'Communication' },
                 { id: 'home-sales-open-request', view: 'request', icon: 'ph-chat-circle-text', title: 'Request' },
-                { id: 'home-sales-open-weather-hold', view: 'weather-hold', icon: 'ph-cloud-sun', title: 'Weather & Hold Risk' },
-                { id: 'home-sales-open-bloom-orders', view: 'sales-office', action: 'return openSalesOfficeView()', icon: 'ph-handbag', title: 'Bloom Picker Orders' }
+                { id: 'home-sales-open-weather-hold', view: 'weather-hold', icon: 'ph-cloud-sun', title: 'Weather & Hold Risk' }
             ];
             const cardsHtml = cards.map(renderRepHomeDashboardTileMarkup).filter(Boolean).join('');
             return cardsHtml
@@ -60030,9 +60039,13 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function renderProductionHub() {
+            const access = getRoleAccessState();
+            const isEvalInventoryUser = !!(access && access.isEval && !access.isAdmin);
             const visibleCount = [
                 setHubButtonVisibility('production-open-grower', canAccessView('grower')),
                 setHubButtonVisibility('production-open-take-back', canAccessView('take-back')),
+                setHubButtonVisibility('production-open-84rd', canAccessView('sales-inventory') && !isEvalInventoryUser),
+                setHubButtonVisibility('production-open-disease-pest', canAccessView('disease-pest')),
                 setHubButtonVisibility('production-open-tasks', canAccessView('tasks')),
                 setHubButtonVisibility('production-open-propagation', canAccessView('production')),
                 setHubButtonVisibility('production-open-planting', canAccessView('production')),
@@ -61930,6 +61943,8 @@ function toggleDriveQuickRequestItem(domId) {
             const visibleCount = [
                 setHubButtonVisibility('inventory-open-tasks', canAccessView('tasks')),
                 setHubButtonVisibility('inventory-open-drive', canAccessView('drive')),
+                setHubButtonVisibility('inventory-open-crop-roll', canAccessView('crop-roll')),
+                setHubButtonVisibility('inventory-open-po-management', canAccessView('po-management')),
                 setHubButtonVisibility('inventory-open-request', canAccessView('request')),
                 setHubButtonVisibility('inventory-open-inventory-office', canAccessView('moves')),
                 setHubButtonVisibility('inventory-open-docks', canAccessView('docks')),
@@ -109872,6 +109887,12 @@ C.14.043 C.15.000
                 switchView('crop-roll');
                 return false;
             }
+            if (requestedTab === 'hours' && canAccessView('hours')) {
+                activeHomeTab = 'dashboard';
+                selectedProductivityUser = '';
+                switchView('hours');
+                return false;
+            }
             const previousTab = activeHomeTab;
             let nextTab = 'dashboard';
             if (requestedTab === 'productivity' && canViewProductivityHome()) nextTab = 'productivity';
@@ -114892,7 +114913,8 @@ C.14.043 C.15.000
                 canViewInventoryTransactions: canViewInventoryTransactionHistory(),
                 canViewAssignedItemsExport: canViewAssignedItemsExport(),
                 canViewShortageCancel: canViewManagerShortageCancel(),
-                canViewBlockClearing: canViewManagerBlockClearing()
+                canViewBlockClearing: canViewManagerBlockClearing(),
+                canViewLaborHours: canAccessView('hours')
             };
         }
 
@@ -114922,6 +114944,7 @@ C.14.043 C.15.000
             if (access.canViewAssignedItemsExport) tabs.push({ id: MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW, label: 'Assigned Items' });
             if (access.canViewShortageCancel) tabs.push({ id: MANAGER_SHORTAGE_CANCEL_VIEW, label: 'Shortage/Cancel' });
             if (access.canViewBlockClearing) tabs.push({ id: MANAGER_BLOCK_CLEARING_VIEW, label: 'Block Clearing' });
+            if (access.canViewLaborHours) tabs.push({ id: 'hours', label: 'Labor Hours' });
             return tabs;
         }
 
@@ -114954,6 +114977,7 @@ C.14.043 C.15.000
             if (safeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) return { label: 'Assigned Items', description: 'Export warehouse assigned item rows by AssignedTo.', icon: 'ph-user-list' };
             if (safeTab === MANAGER_SHORTAGE_CANCEL_VIEW) return { label: 'Shortage/Cancel', description: 'Review SOC rows where ordered and shipped quantities do not match.', icon: 'ph-warning-circle' };
             if (safeTab === MANAGER_BLOCK_CLEARING_VIEW) return { label: 'Block Clearing', description: 'Email grouped clearing instructions from Drive Mode rows.', icon: 'ph-broom' };
+            if (safeTab === 'hours') return { label: 'Labor Hours', description: 'Open the labor-hours entry form.', icon: 'ph-clock' };
             if (safeTab === 'productivity') return { label: 'Productivity', description: 'Review completed work by user and date.', icon: 'ph-chart-line-up' };
             if (safeTab === SHEAR_APPROVAL_VIEW) return { label: 'Shear Approvals', description: 'Approve explicit Add To Shear List requests before they enter Que.', icon: 'ph-scissors' };
             if (safeTab === NCR_APPROVAL_NEW_CROP_VIEW) return { label: 'NCR Approvals', description: 'Approve future season new crop release rows.', icon: 'ph-seal-check' };
