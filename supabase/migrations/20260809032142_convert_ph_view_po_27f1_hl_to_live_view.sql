@@ -162,8 +162,10 @@ left join soc_detail soc
   on soc.itemcode = nullif(btrim(p.item_code), '')
  and soc.item_row_number = p.item_row_number;
 
+revoke all on table public.ph_view_po_27f1_hl from public;
 revoke all on table public.ph_view_po_27f1_hl from anon;
 revoke all on table public.ph_view_po_27f1_hl from authenticated;
+revoke all on table public.ph_view_po_27f1_hl from service_role;
 grant select on table public.ph_view_po_27f1_hl to service_role;
 
 notify pgrst, 'reload schema';
