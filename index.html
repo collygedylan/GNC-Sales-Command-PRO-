@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.06';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1488,7 +1488,7 @@ body.ios-device .home-dashboard-sticky{transition:none!important;backdrop-filter
         #view-docks .freeze-panel > #docks-crumb.amazon-crumb{margin:.12rem 0 .72rem .12rem !important}
         #view-docks #docks-content{position:relative;z-index:1;padding-top:.5rem;overflow:visible}
         #view-docks #docks-content > :first-child{margin-top:0 !important}
-        .fixed-filter-rail{position:fixed !important;top:var(--fixed-filter-top,0px);left:50%;transform:translateX(-50%);z-index:68;width:min(var(--content-max-width),calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2));box-sizing:border-box;padding:.08rem 0 .22rem;margin:0;background:var(--sticky-chrome-bg);border-bottom:1px solid #d1fae5;box-shadow:0 12px 24px rgba(15,23,42,.08);overflow:visible}
+        .fixed-filter-rail{position:fixed !important;top:var(--fixed-filter-top,0px);left:0;right:0;transform:none;-webkit-transform:none;z-index:68;width:min(var(--content-max-width),calc(100vw - (var(--shell-gutter) * 2)));max-width:calc(100vw - (var(--shell-gutter) * 2));box-sizing:border-box;padding:.08rem 0 .22rem;margin:0 auto;background:var(--sticky-chrome-bg);border-bottom:1px solid #d1fae5;box-shadow:0 12px 24px rgba(15,23,42,.08);overflow:visible}
         .fixed-filter-rail::before{content:"";position:absolute;left:calc(var(--shell-gutter) * -1);right:calc(var(--shell-gutter) * -1);top:0;bottom:0;background:var(--sticky-chrome-bg);pointer-events:none;z-index:-1}
         .fixed-filter-spacer{height:var(--fixed-filter-space,0px);min-height:var(--fixed-filter-space,0px);pointer-events:none;flex:0 0 auto}
         body.mobile-text-entry-active:not(.mobile-filter-entry-active) .fixed-filter-rail,
@@ -4436,13 +4436,13 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         #view-wrapper .task-controls-sticky.fixed-filter-rail{
             position:fixed !important;
             top:var(--fixed-filter-top,0px) !important;
-            left:50% !important;
-            right:auto !important;
-            transform:translateX(-50%) !important;
-            -webkit-transform:translateX(-50%) !important;
+            left:0 !important;
+            right:0 !important;
+            transform:none !important;
+            -webkit-transform:none !important;
             width:min(var(--content-max-width),calc(100vw - (var(--shell-gutter) * 2))) !important;
             max-width:calc(100vw - (var(--shell-gutter) * 2)) !important;
-            margin:0 !important;
+            margin:0 auto !important;
             z-index:calc(var(--module-filter-sticky-z,74) + 6) !important;
             overflow:visible !important;
             box-shadow:0 12px 24px rgba(15,23,42,.08) !important;
@@ -4454,6 +4454,70 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             display:block !important;
             top:0 !important;
             bottom:0 !important;
+        }
+        body.mobile-excel-filter-panel-open #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel:not(.hidden),
+        body.viewport-compact #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel:not(.hidden),
+        body.ios-device #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel:not(.hidden){
+            position:fixed !important;
+            left:var(--filter-panel-fixed-left,var(--shell-gutter,12px)) !important;
+            right:var(--filter-panel-fixed-right,var(--shell-gutter,12px)) !important;
+            top:var(--filter-panel-fixed-top,calc(var(--fixed-filter-top,0px) + 5.25rem)) !important;
+            bottom:var(--filter-panel-fixed-bottom,calc(var(--footer-nav-reserve,78px) + env(safe-area-inset-bottom) + .65rem)) !important;
+            width:auto !important;
+            min-width:0 !important;
+            max-width:none !important;
+            height:auto !important;
+            min-height:0 !important;
+            max-height:none !important;
+            margin:0 !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            display:flex !important;
+            flex-direction:column !important;
+            overflow:hidden !important;
+            z-index:26000 !important;
+            box-shadow:0 18px 42px rgba(15,23,42,.24) !important;
+            overscroll-behavior:contain !important;
+            touch-action:auto !important;
+        }
+        body.mobile-excel-filter-panel-open #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel.hidden,
+        body.viewport-compact #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel.hidden,
+        body.ios-device #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel.hidden{
+            display:none !important;
+        }
+        body.mobile-excel-filter-panel-open #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel .excel-filter-options,
+        body.viewport-compact #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel .excel-filter-options,
+        body.ios-device #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel .excel-filter-options,
+        body.mobile-excel-filter-panel-open #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel [data-role="body"],
+        body.viewport-compact #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel [data-role="body"],
+        body.ios-device #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel [data-role="body"]{
+            display:flex !important;
+            flex-direction:column !important;
+            flex:1 1 auto !important;
+            min-height:0 !important;
+            max-height:none !important;
+            overflow-x:hidden !important;
+            overflow-y:auto !important;
+            overscroll-behavior:contain !important;
+            -webkit-overflow-scrolling:touch !important;
+            touch-action:pan-y !important;
+        }
+        body.mobile-excel-filter-panel-open #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel .excel-filter-search-wrap,
+        body.viewport-compact #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel .excel-filter-search-wrap,
+        body.ios-device #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel .excel-filter-search-wrap,
+        body.mobile-excel-filter-panel-open #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel .excel-filter-footer,
+        body.viewport-compact #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel .excel-filter-footer,
+        body.ios-device #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel .excel-filter-footer{
+            flex:0 0 auto !important;
+        }
+        body.mobile-excel-filter-panel-open #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel .excel-filter-footer,
+        body.viewport-compact #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel .excel-filter-footer,
+        body.ios-device #view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel .excel-filter-footer{
+            position:sticky !important;
+            bottom:0 !important;
+            z-index:2 !important;
+            background:rgba(255,255,255,.98) !important;
+            box-shadow:0 -8px 18px rgba(15,23,42,.06) !important;
         }
         html.outdoor-mode #view-av .av-primary-tabs-sticky,
         body.outdoor-mode #view-av .av-primary-tabs-sticky,
@@ -5315,7 +5379,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.06').trim() || 'V2026.08.09.06';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.07').trim() || 'V2026.08.09.07';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6794,7 +6858,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.06';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9587,6 +9651,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                     || target.classList.contains('av-filter-shell')
                     || target.classList.contains('crop-roll-filter-shell')
                     || target.classList.contains('manager-crop-roll-review-filter-shell')
+                    || target.classList.contains('fixed-filter-rail')
                     || target.classList.contains('mobile-excel-filter-panel-open')
                 )) return true;
                 if (target === document.body || target === document.documentElement) {
@@ -9822,13 +9887,13 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             railEl.style.setProperty('--fixed-filter-top', safeTop);
             railEl.style.setProperty('position', 'fixed', 'important');
             railEl.style.setProperty('top', safeTop, 'important');
-            railEl.style.setProperty('left', '50%', 'important');
-            railEl.style.setProperty('right', 'auto', 'important');
-            railEl.style.setProperty('transform', 'translateX(-50%)', 'important');
-            railEl.style.setProperty('-webkit-transform', 'translateX(-50%)', 'important');
+            railEl.style.setProperty('left', '0', 'important');
+            railEl.style.setProperty('right', '0', 'important');
+            railEl.style.setProperty('transform', 'none', 'important');
+            railEl.style.setProperty('-webkit-transform', 'none', 'important');
             railEl.style.setProperty('width', 'min(var(--content-max-width),calc(100vw - (var(--shell-gutter) * 2)))', 'important');
             railEl.style.setProperty('max-width', 'calc(100vw - (var(--shell-gutter) * 2))', 'important');
-            railEl.style.setProperty('margin', '0', 'important');
+            railEl.style.setProperty('margin', '0 auto', 'important');
             railEl.style.setProperty('z-index', 'calc(var(--module-filter-sticky-z,74) + 6)', 'important');
             railEl.style.setProperty('overflow', 'visible', 'important');
             railEl.style.setProperty('box-shadow', '0 12px 24px rgba(15,23,42,.08)', 'important');
@@ -9866,6 +9931,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const space = `${Math.max(0, height + 12)}px`;
             rail.style.setProperty('--fixed-filter-space', space);
             if (spacer) applyFixedFilterSpacerInlineStyle(spacer, space);
+            if (rail.querySelector && rail.querySelector('.excel-filter-panel:not(.hidden)')) {
+                scheduleMobileExcelFilterViewportSync('fixed-filter-rail');
+            }
         }
 
         function syncFixedFilterRails(globalSearchRow) {
@@ -25790,7 +25858,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.06').trim() || 'V2026.08.09.06';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.07').trim() || 'V2026.08.09.07';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
