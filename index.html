@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.02';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5290,7 +5290,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.02').trim() || 'V2026.08.09.02';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.03').trim() || 'V2026.08.09.03';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -6007,16 +6007,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div class="min-w-0 flex-1">
                                 <div id="po-management-crumb" class="text-xs font-bold text-[#007a4d] uppercase tracking-[0.16em] mb-2">PO Managment</div>
                                 <div class="flex items-center gap-2">
-                                    <button type="button" id="po-management-back-btn" class="hidden flex h-9 w-9 items-center justify-center rounded-xl border border-green-200 bg-white text-[#007a4d] shadow-sm active:scale-95" onclick="return setPoManagementSection('home')" aria-label="Back"><i class="ph-bold ph-arrow-left text-lg"></i></button>
+                                    <button type="button" id="po-management-back-btn" class="hidden flex h-9 w-9 items-center justify-center rounded-xl border border-green-200 bg-white text-[#007a4d] shadow-sm active:scale-95" onclick="return goBackPoManagementDrilldown()" aria-label="Back"><i class="ph-bold ph-arrow-left text-lg"></i></button>
                                     <div id="po-management-title" class="text-xl font-black text-slate-900 truncate">PO Managment</div>
                                     <div id="po-management-row-pill" class="hidden rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d]"></div>
                                 </div>
                             </div>
-                            <button type="button" id="po-management-refresh-btn" class="hidden inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-green-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="return reloadPoManagementData()"><i class="ph-bold ph-arrows-clockwise text-base"></i><span>Refresh</span></button>
-                        </div>
-                        <div id="po-management-season-tabs" class="hidden flex gap-2 overflow-x-auto scrollbar-none pb-3">
-                            <button type="button" id="po-management-season-27f1" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] shadow-sm" onclick="return setPoManagementSeason('27F1')">27F1</button>
-                            <button type="button" id="po-management-season-27s1" class="rounded-full border px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] shadow-sm" onclick="return setPoManagementSeason('27S1')">27S1</button>
                         </div>
                         <div id="po-management-search-wrap" class="relative hidden">
                             <input id="po-management-search" type="text" class="input-field w-full !mb-0 border-green-200 bg-green-50/40 pr-10 focus:border-[#007a4d]" placeholder="Search item, lot, customer, location..." oninput="return setPoManagementSearch(this.value)" onkeydown="dismissSearchKeyboard(event)" autocomplete="off">
@@ -6774,7 +6769,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -25725,7 +25720,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.02').trim() || 'V2026.08.09.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.03').trim() || 'V2026.08.09.03';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -61989,7 +61984,7 @@ function toggleDriveQuickRequestItem(domId) {
             poManagementState.loaded = false;
             poManagementState.error = '';
             poManagementState.visibleCount = 300;
-            poManagementState.section = 'hl-po';
+            poManagementState.section = 'season';
             poManagementState.season = '27F1';
             loadPoManagementData(true);
             renderPoManagement();
@@ -62012,7 +62007,7 @@ function toggleDriveQuickRequestItem(domId) {
         function isPoManagement27F1Visible() {
             return !!(
                 isViewVisible('po-management')
-                && normalizePoManagementSection(poManagementState.section) === 'hl-po'
+                && normalizePoManagementSection(poManagementState.section) === 'season'
                 && normalizePoManagementSeason(poManagementState.season) === '27F1'
             );
         }
@@ -62023,6 +62018,8 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function forceLoadPoManagement27F1() {
+            poManagementState.section = 'season';
+            poManagementState.season = '27F1';
             invalidatePoManagementData();
             loadPoManagementData(true);
             renderPoManagement();
@@ -62041,7 +62038,8 @@ function toggleDriveQuickRequestItem(domId) {
 
         function normalizePoManagementSection(value = '') {
             const safeValue = normalizePoManagementText(value).toLowerCase();
-            return safeValue === 'hl-po' ? 'hl-po' : 'home';
+            if (safeValue === 'hl-po' || safeValue === 'season') return safeValue;
+            return 'home';
         }
 
         function normalizePoManagementSeason(value = '') {
@@ -62051,7 +62049,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function setPoManagementSection(value = 'home') {
             poManagementState.section = normalizePoManagementSection(value);
-            if (poManagementState.section === 'home') {
+            if (poManagementState.section !== 'season') {
                 poManagementState.search = '';
                 poManagementState.visibleCount = 300;
             }
@@ -62059,16 +62057,23 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
+        function goBackPoManagementDrilldown() {
+            const section = normalizePoManagementSection(poManagementState.section);
+            if (section === 'season') return setPoManagementSection('hl-po');
+            if (section === 'hl-po') return setPoManagementSection('home');
+            return false;
+        }
+
         function openPoManagementHlPo() {
             poManagementState.section = 'hl-po';
-            poManagementState.season = normalizePoManagementSeason(poManagementState.season);
-            if (poManagementState.season === '27F1') return forceLoadPoManagement27F1();
+            poManagementState.search = '';
+            poManagementState.visibleCount = 300;
             renderPoManagement();
             return false;
         }
 
         function setPoManagementSeason(value = '27F1') {
-            poManagementState.section = 'hl-po';
+            poManagementState.section = 'season';
             poManagementState.season = normalizePoManagementSeason(value);
             poManagementState.search = '';
             poManagementState.visibleCount = 300;
@@ -62123,44 +62128,31 @@ function toggleDriveQuickRequestItem(domId) {
         function syncPoManagementChrome() {
             const section = normalizePoManagementSection(poManagementState.section);
             const season = normalizePoManagementSeason(poManagementState.season);
-            const inHlPo = section === 'hl-po';
-            const in27F1 = inHlPo && season === '27F1';
+            const inHlPo = section === 'hl-po' || section === 'season';
+            const inSeason = section === 'season';
+            const in27F1 = inSeason && season === '27F1';
             const crumb = document.getElementById('po-management-crumb');
             const title = document.getElementById('po-management-title');
             const backBtn = document.getElementById('po-management-back-btn');
-            const tabs = document.getElementById('po-management-season-tabs');
             const searchWrap = document.getElementById('po-management-search-wrap');
-            const refreshBtn = document.getElementById('po-management-refresh-btn');
             const pill = document.getElementById('po-management-row-pill');
-            const tab27F1 = document.getElementById('po-management-season-27f1');
-            const tab27S1 = document.getElementById('po-management-season-27s1');
             if (crumb) crumb.textContent = inHlPo ? 'PO Managment / HL PO' : 'PO Managment';
-            if (title) title.textContent = inHlPo ? `HL PO ${season}` : 'PO Managment';
+            if (title) title.textContent = inSeason ? `HL PO ${season}` : (section === 'hl-po' ? 'HL PO' : 'PO Managment');
             if (backBtn) backBtn.classList.toggle('hidden', !inHlPo);
-            if (tabs) tabs.classList.toggle('hidden', !inHlPo);
             if (searchWrap) searchWrap.classList.toggle('hidden', !in27F1);
-            if (refreshBtn) refreshBtn.classList.toggle('hidden', !in27F1);
             if (pill && !in27F1) pill.classList.add('hidden');
-            [
-                [tab27F1, season === '27F1'],
-                [tab27S1, season === '27S1']
-            ].forEach(([button, active]) => {
-                if (!button) return;
-                button.classList.toggle('bg-[#007a4d]', active);
-                button.classList.toggle('text-white', active);
-                button.classList.toggle('border-[#007a4d]', active);
-                button.classList.toggle('bg-white', !active);
-                button.classList.toggle('text-[#007a4d]', !active);
-                button.classList.toggle('border-green-200', !active);
-            });
         }
 
         function renderPoManagementHub() {
-            return `<div id="po-management-hub-grid" class="grid gap-3 md:grid-cols-2"><button type="button" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openPoManagementHlPo()"><div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-file-text text-2xl"></i></div><div class="text-lg font-black text-slate-900">HL PO</div><div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">27F1 / 27S1</div></button></div>`;
+            return `<div id="po-management-hub-grid" class="grid gap-3 md:grid-cols-2"><button type="button" class="drill-item rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openPoManagementHlPo()"><span class="min-w-0"><span class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-file-text text-2xl"></i></span><span class="block text-lg font-black text-slate-900">HL PO</span></span><i class="ph-bold ph-caret-right text-slate-300"></i></button></div>`;
+        }
+
+        function renderPoManagementSeasonHub() {
+            return `<div id="po-management-season-grid" class="grid gap-3 md:grid-cols-2"><button type="button" class="drill-item rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return setPoManagementSeason('27F1')"><span class="min-w-0"><span class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-table text-2xl"></i></span><span class="block text-lg font-black text-slate-900">27F1</span></span><i class="ph-bold ph-caret-right text-slate-300"></i></button><button type="button" class="drill-item rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return setPoManagementSeason('27S1')"><span class="min-w-0"><span class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-table text-2xl"></i></span><span class="block text-lg font-black text-slate-900">27S1</span></span><i class="ph-bold ph-caret-right text-slate-300"></i></button></div>`;
         }
 
         function renderPoManagement27S1() {
-            return `<div class="rounded-xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No 27S1 PO table connected.</div>`;
+            return `<div class="min-h-[220px]"></div>`;
         }
 
         function renderPoManagement() {
@@ -62171,8 +62163,13 @@ function toggleDriveQuickRequestItem(domId) {
             syncPoManagementChrome();
             const searchInput = document.getElementById('po-management-search');
             if (searchInput && searchInput.value !== poManagementState.search) searchInput.value = poManagementState.search;
-            if (poManagementState.section !== 'hl-po') {
+            if (poManagementState.section === 'home') {
                 setContainerHtml(container, renderPoManagementHub());
+                setContainerUiState(container, 'content');
+                return;
+            }
+            if (poManagementState.section === 'hl-po') {
+                setContainerHtml(container, renderPoManagementSeasonHub());
                 setContainerUiState(container, 'content');
                 return;
             }
