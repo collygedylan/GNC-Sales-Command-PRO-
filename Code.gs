@@ -131,6 +131,10 @@ const GOOGLE_SHEETS_MIME_TYPE = 'application/vnd.google-apps.spreadsheet';
 const WAREHOUSE_ASSIGNED_ITEMS_TABLE = 'ph_warehouse_assigned_items';
 const WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID = '1gZ2qeKnsOdEYKMMxXerUUTU5Fq7aeeNz9yVOxKK76OQ';
 const WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID = '1zDQbk9alVLqd6rW0O9QbJa9ZN6hax5P2';
+const HL_PO_PARSED_TABLE = 'ph_27f1_hl_po';
+const HL_PO_PARSED_SOURCE_FOLDER_ID = '1681oPSyfz7mURdywOKH_9FQNnBQmmSWO';
+const HL_PO_PARSED_PROCESSED_FOLDER_ID = '13jQ37aqokXgzZ2z3VOOdCANdW5lQPgv2';
+const HL_PO_PARSED_TIMEZONE = 'America/Chicago';
 
 const FOLDERS = {
   MASTER_DROP: '1MWLYsQJ41bZVcg1SzDIw93uNmQpzPn48',
@@ -144,6 +148,8 @@ const FOLDERS = {
   CAV_DROP: '1K-y4thhw_iu2UEEZGRc39LzlpUZtcOBZ',
   CAV_PROCESSED: '1reWKO3GzeFhwsy_ot7Sjb2RPiFs448A5',
   WAREHOUSE_ASSIGNED_ITEMS_SOURCE: WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID,
+  HL_PO_PARSED_DROP: HL_PO_PARSED_SOURCE_FOLDER_ID,
+  HL_PO_PARSED_PROCESSED: HL_PO_PARSED_PROCESSED_FOLDER_ID,
   DISEASE_ROOT: '1SpE0YA8Otu6otpjJULoJClBqk31Dv1wJ'
 };
 
@@ -198,6 +204,7 @@ function runCustomerRepMapOnly() { return processLatestFileOnlyFolder(FOLDERS.CU
 function runWarehouseAssignedItemsOnly() { return syncWarehouseAssignedItemsSheet_(WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID, FOLDERS.WAREHOUSE_ASSIGNED_ITEMS_SOURCE, WAREHOUSE_ASSIGNED_ITEMS_TABLE); }
 function runCavOnly() { return processLatestFileOnlyFolder(FOLDERS.CAV_DROP, FOLDERS.CAV_PROCESSED, getRuntimeSiteSplitTableName_('ph_cav_import', 'PH'), buildCavPayload, { deltaMode: true }); }
 function runDiseaseDriveToSupabaseSyncOnly() { return runDiseaseDriveToSupabaseSync(); }
+function runHlPoParsedOnly() { return syncHlPoParsedFolder_(FOLDERS.HL_PO_PARSED_DROP, FOLDERS.HL_PO_PARSED_PROCESSED, HL_PO_PARSED_TABLE); }
 
 const SITE_SPLIT_SITE_CODES_ = Object.freeze(['PH', 'TX', 'NC', 'HL']);
 const SITE_SPLIT_SITE_BY_WAREHOUSE_ = Object.freeze({
@@ -328,7 +335,7 @@ function isSiteSplitPhysicalTable_(tableName) {
 
 const MANUAL_SYNC_STATUS_KEY = 'MANUAL_SYNC_STATUS';
 const MANUAL_SYNC_TRIGGER_HANDLER = 'runQueuedManualSyncStage_';
-const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'customer_rep_map', 'warehouse_assigned_items', 'cav', 'disease']);
+const MANUAL_SYNC_STAGE_ORDER_DEFAULT = Object.freeze(['drive', 'soc', 'reserves', 'customer_rep_map', 'warehouse_assigned_items', 'cav', 'disease', 'hl_po_parsed']);
 const MANUAL_SYNC_EXECUTION_BUDGET_MS = 285000;
 const MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS = 120000;
 const MANUAL_SYNC_QUEUED_STALE_MS = 5 * 60 * 1000;
@@ -533,7 +540,8 @@ const MANUAL_SYNC_STAGE_DEFINITIONS = Object.freeze({
   customer_rep_map: { label: 'Customer Rep Map', run: runCustomerRepMapOnly },
   warehouse_assigned_items: { label: 'Warehouse Assigned Items', run: runWarehouseAssignedItemsOnly },
   cav: { label: 'CAV', run: runCavOnly },
-  disease: { label: 'Disease Lab Assets', run: runDiseaseDriveToSupabaseSyncOnly }
+  disease: { label: 'Disease Lab Assets', run: runDiseaseDriveToSupabaseSyncOnly },
+  hl_po_parsed: { label: 'HL PO Parsed', run: runHlPoParsedOnly }
 });
 
 function runDriveSocReservesSequence() {
@@ -656,6 +664,7 @@ function getManualSyncStageOrder_(jobName) {
   if (normalized === 'warehouse_assigned_items' || normalized === 'warehouse_assignments' || normalized === 'assigned_items') return ['warehouse_assigned_items'];
   if (normalized === 'cav') return ['cav'];
   if (normalized === 'disease' || normalized === 'lab' || normalized === 'lab_reports') return ['disease'];
+  if (normalized === 'hl_po_parsed' || normalized === 'hlpo_parsed' || normalized === 'hl_po_import' || normalized === 'hl_po_upload') return ['hl_po_parsed'];
   return MANUAL_SYNC_STAGE_ORDER_DEFAULT.slice();
 }
 
@@ -4624,6 +4633,350 @@ function extractDataFromFile(file, folderId, options) {
   } finally {
     cleanupTempGoogleSheet_(tempSheetId, originalFileName);
   }
+}
+
+const HL_PO_PARSED_REQUIRED_COLUMNS = Object.freeze([
+  'item_code',
+  'lot',
+  'size',
+  'common_name',
+  'po_ordered',
+  'genus',
+  'po_comments',
+  'lot_pend_rec',
+  'seas_on_hand',
+  'po_received',
+  'po_remain'
+]);
+
+const HL_PO_PARSED_HEADER_ALIASES = Object.freeze({
+  item_code: ['item_code', 'item code', 'itemcode', 'item'],
+  lot: ['lot', 'lot code', 'lotcode'],
+  size: ['size', 'container size', 'cont size', 'contsize', 'printed container code', 'printedcontainercode'],
+  common_name: ['common_name', 'common name', 'commonname'],
+  po_ordered: ['po_ordered', 'po ordered', 'poordered'],
+  genus: ['genus', 'genus name', 'genusname'],
+  po_comments: ['po_comments', 'po comments', 'p o comments', 'po comment', 'comments', 'comment'],
+  lot_pend_rec: ['lot_pend_rec', 'lot pend rec', 'lot pend received', 'lot pending rec', 'lotpendrec'],
+  seas_on_hand: ['seas_on_hand', 'seas on hand', 'season on hand', 'season oh', 'season onhand', 'seasonoh'],
+  po_received: ['po_received', 'po received', 'poreceived'],
+  po_remain: ['po_remain', 'po remain', 'po remaining', 'poremain']
+});
+
+const HL_PO_PARSED_NUMERIC_COLUMNS = Object.freeze({
+  po_ordered: true,
+  lot_pend_rec: true,
+  seas_on_hand: true,
+  po_received: true,
+  po_remain: true
+});
+
+function normalizeHlPoHeaderKey_(value) {
+  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function buildHlPoHeaderAliasMap_() {
+  const aliasMap = {};
+  Object.keys(HL_PO_PARSED_HEADER_ALIASES).forEach(function(columnName) {
+    (HL_PO_PARSED_HEADER_ALIASES[columnName] || []).forEach(function(alias) {
+      const key = normalizeHlPoHeaderKey_(alias);
+      if (key) aliasMap[key] = columnName;
+    });
+  });
+  return aliasMap;
+}
+
+const HL_PO_PARSED_HEADER_ALIAS_MAP = Object.freeze(buildHlPoHeaderAliasMap_());
+
+function getHlPoHeaderMatch_(row) {
+  const indexByColumn = {};
+  (row || []).forEach(function(header, index) {
+    const columnName = HL_PO_PARSED_HEADER_ALIAS_MAP[normalizeHlPoHeaderKey_(header)];
+    if (columnName && indexByColumn[columnName] == null) indexByColumn[columnName] = index;
+  });
+  const missing = HL_PO_PARSED_REQUIRED_COLUMNS.filter(function(columnName) {
+    return indexByColumn[columnName] == null;
+  });
+  return missing.length ? null : indexByColumn;
+}
+
+function findHlPoHeaderRow_(values) {
+  const scanLimit = Math.min(75, Array.isArray(values) ? values.length : 0);
+  for (let r = 0; r < scanLimit; r++) {
+    const row = values[r] || [];
+    const match = getHlPoHeaderMatch_(row);
+    if (match) return { rowIndex: r, indexByColumn: match };
+  }
+  return null;
+}
+
+function formatHlPoRequiredHeaderList_() {
+  return HL_PO_PARSED_REQUIRED_COLUMNS.join(', ');
+}
+
+function isHlPoParsedFileSupported_(file) {
+  const fileName = String(file.getName() || '').toLowerCase();
+  const mime = String(file.getMimeType() || '').toLowerCase();
+  return mime === String(MimeType.CSV).toLowerCase() ||
+    fileName.endsWith('.csv') ||
+    mime === GOOGLE_SHEETS_MIME_TYPE ||
+    isExcelLikeFile_(mime, fileName);
+}
+
+function extractHlPoParsedSheet_(file, folderId) {
+  const fileName = String(file.getName() || '').trim();
+  const normalizedFileName = fileName.toLowerCase();
+  const mime = String(file.getMimeType() || '').trim();
+  let tempSheetId = '';
+
+  try {
+    if (mime === MimeType.CSV || normalizedFileName.endsWith('.csv')) {
+      const csvValues = Utilities.parseCsv(file.getBlob().getDataAsString());
+      const csvHeaderMatch = findHlPoHeaderRow_(csvValues);
+      if (!csvHeaderMatch) {
+        throw new Error(`No required HL PO header row found in ${fileName}. Required headers: ${formatHlPoRequiredHeaderList_()}.`);
+      }
+      return {
+        values: csvValues,
+        sourceSheetName: 'CSV',
+        headerRowIndex: csvHeaderMatch.rowIndex,
+        indexByColumn: csvHeaderMatch.indexByColumn
+      };
+    }
+
+    let sheetId = file.getId();
+    if (isExcelLikeFile_(mime, normalizedFileName)) {
+      tempSheetId = createTempGoogleSheetFromExcel_(file, folderId);
+      sheetId = tempSheetId;
+    }
+
+    const ss = tempSheetId
+      ? openSpreadsheetWithRetry_(sheetId, fileName)
+      : SpreadsheetApp.openById(sheetId);
+    const sheets = ss.getSheets();
+    if (!sheets || !sheets.length) throw new Error(`No sheets found in ${fileName}.`);
+
+    for (let i = 0; i < sheets.length; i++) {
+      const sheet = sheets[i];
+      const values = sheet.getDataRange().getValues();
+      const headerMatch = findHlPoHeaderRow_(values);
+      if (headerMatch) {
+        return {
+          values: values,
+          sourceSheetName: sheet.getName(),
+          headerRowIndex: headerMatch.rowIndex,
+          indexByColumn: headerMatch.indexByColumn
+        };
+      }
+    }
+
+    throw new Error(`No sheet/tab in ${fileName} has all required HL PO headers: ${formatHlPoRequiredHeaderList_()}.`);
+  } finally {
+    cleanupTempGoogleSheet_(tempSheetId, fileName);
+  }
+}
+
+function parseHlPoReportDate_(file) {
+  const fileName = String(file.getName() || '');
+  const match = fileName.match(/(20\d{2}-\d{2}-\d{2})/);
+  if (match) return match[1];
+  return Utilities.formatDate(file.getDateCreated(), HL_PO_PARSED_TIMEZONE, 'yyyy-MM-dd');
+}
+
+function getHlPoCellValue_(row, indexByColumn, columnName) {
+  const index = indexByColumn[columnName];
+  return index == null ? null : row[index];
+}
+
+function normalizeHlPoTextValue_(value) {
+  if (value == null) return null;
+  const text = String(value).replace(/\u00a0/g, ' ').trim();
+  if (!text || text.toUpperCase() === 'NULL') return null;
+  return text;
+}
+
+function parseHlPoNumericValue_(value, columnName, rowNumber, fileName) {
+  if (value == null || value === '') return null;
+  if (typeof value === 'number') return isNaN(value) ? null : value;
+  const rawText = String(value).replace(/\u00a0/g, ' ').trim();
+  if (!rawText || rawText.toUpperCase() === 'NULL' || rawText === '-' || rawText === '--') return null;
+  let cleaned = rawText.replace(/[$,%]/g, '').replace(/,/g, '').trim();
+  if (/^\([0-9.]+\)$/.test(cleaned)) cleaned = '-' + cleaned.slice(1, -1);
+  const numericValue = Number(cleaned);
+  if (isNaN(numericValue)) {
+    throw new Error(`Invalid numeric value for ${columnName} at row ${rowNumber} in ${fileName}: "${rawText}".`);
+  }
+  return numericValue;
+}
+
+function isHlPoParsedDataRowBlank_(row, indexByColumn) {
+  return HL_PO_PARSED_REQUIRED_COLUMNS.every(function(columnName) {
+    const value = getHlPoCellValue_(row, indexByColumn, columnName);
+    return value == null || String(value).replace(/\u00a0/g, ' ').trim() === '';
+  });
+}
+
+function buildHlPoParsedRows_(file, sheetData, runId, importedAt) {
+  const fileName = String(file.getName() || '').trim();
+  const fileId = String(file.getId() || '').trim();
+  const reportDate = parseHlPoReportDate_(file);
+  const rows = [];
+
+  for (let r = sheetData.headerRowIndex + 1; r < sheetData.values.length; r++) {
+    const row = sheetData.values[r] || [];
+    const rowNumber = r + 1;
+    if (isHlPoParsedDataRowBlank_(row, sheetData.indexByColumn)) continue;
+
+    const parsedRow = {
+      source_file_id: fileId,
+      source_file_name: fileName,
+      source_sheet_name: sheetData.sourceSheetName,
+      report_date: reportDate,
+      run_id: runId,
+      row_index: rowNumber,
+      imported_at: importedAt
+    };
+
+    HL_PO_PARSED_REQUIRED_COLUMNS.forEach(function(columnName) {
+      const value = getHlPoCellValue_(row, sheetData.indexByColumn, columnName);
+      parsedRow[columnName] = HL_PO_PARSED_NUMERIC_COLUMNS[columnName]
+        ? parseHlPoNumericValue_(value, columnName, rowNumber, fileName)
+        : normalizeHlPoTextValue_(value);
+    });
+
+    rows.push(parsedRow);
+  }
+
+  return rows;
+}
+
+function upsertHlPoParsedRows_(tableName, rows) {
+  const payloadRows = Array.isArray(rows) ? rows : [];
+  if (!payloadRows.length) return 0;
+
+  const chunkSize = 500;
+  const requests = [];
+  for (let i = 0; i < payloadRows.length; i += chunkSize) {
+    const chunk = normalizeSupabaseUpsertChunk(payloadRows.slice(i, i + chunkSize));
+    requests.push({
+      url: `${SUPABASE_URL}/rest/v1/${tableName}?on_conflict=source_file_id,row_index`,
+      method: 'post',
+      headers: getSupabaseHeaders_({
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      }),
+      payload: JSON.stringify(chunk),
+      muteHttpExceptions: true
+    });
+  }
+
+  const responses = executeFetchAllBatches(requests, SUPABASE_UPSERT_FETCH_BATCH_SIZE);
+  responses.forEach(function(response) {
+    const code = response.getResponseCode();
+    if (code !== 200 && code !== 201 && code !== 204) {
+      throw new Error(`Supabase HL PO upload failed (${code}): ${response.getContentText()}`);
+    }
+  });
+
+  return payloadRows.length;
+}
+
+function syncHlPoParsedFolder_(sourceFolderId, processedFolderId, tableName) {
+  const safeTableName = String(tableName || HL_PO_PARSED_TABLE).trim();
+  const sourceFolder = getDriveFolderByIdWithRetry_(sourceFolderId, `${safeTableName} source folder`);
+  const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, `${safeTableName} processed folder`);
+  const files = listDriveFilesWithRetry_(sourceFolder, `${safeTableName} source folder`);
+  const pendingFiles = [];
+  const failedFiles = [];
+  let tempFilesRemoved = 0;
+  let unsupportedFiles = 0;
+  let filesProcessed = 0;
+  let upsertCount = 0;
+  let totalRows = 0;
+  const runId = Utilities.getUuid();
+
+  while (files.hasNext()) {
+    const file = files.next();
+    const fileName = String(file.getName() || '').trim();
+    if (fileName.startsWith('TEMP_')) {
+      tempFilesRemoved++;
+      trashDriveFileWithRetry_(file, `${safeTableName} temp file ${fileName}`);
+      continue;
+    }
+    if (!isHlPoParsedFileSupported_(file)) {
+      unsupportedFiles++;
+      console.log(`[HL PO] Skipping unsupported file in source folder: ${fileName}`);
+      continue;
+    }
+    pendingFiles.push(file);
+  }
+
+  pendingFiles.sort(function(a, b) {
+    const timeDiff = a.getDateCreated().getTime() - b.getDateCreated().getTime();
+    if (timeDiff !== 0) return timeDiff;
+    return String(a.getName() || '').localeCompare(String(b.getName() || ''));
+  });
+
+  pendingFiles.forEach(function(file) {
+    const fileName = String(file.getName() || '').trim();
+    console.log(`[HL PO] Processing ${fileName} -> ${safeTableName}`);
+    try {
+      const importedAt = new Date().toISOString();
+      const sheetData = extractHlPoParsedSheet_(file, sourceFolderId);
+      const rows = buildHlPoParsedRows_(file, sheetData, runId, importedAt);
+      if (!rows.length) {
+        throw new Error(`No importable HL PO rows found in ${fileName} on sheet ${sheetData.sourceSheetName}.`);
+      }
+      const uploadedRows = upsertHlPoParsedRows_(safeTableName, rows);
+      moveDriveFileToFolderWithRetry_(file, processedFolder, `${safeTableName} processed file ${fileName}`);
+      filesProcessed++;
+      upsertCount += uploadedRows;
+      totalRows += rows.length;
+      console.log(`[HL PO] Uploaded ${uploadedRows} row${uploadedRows === 1 ? '' : 's'} from ${fileName}; moved to processed.`);
+    } catch (err) {
+      const errorMessage = err && err.message ? err.message : String(err);
+      failedFiles.push({ name: fileName, error: errorMessage });
+      console.error(`[HL PO] Failed ${fileName}: ${err && err.stack ? err.stack : errorMessage}`);
+      console.warn(`[HL PO] Keeping ${fileName} in source folder for correction/retry.`);
+    }
+  });
+
+  if (!pendingFiles.length) {
+    console.log(`[HL PO] No supported pending files found for ${safeTableName}.`);
+  }
+
+  console.log(
+    `[HL PO] Done: ${filesProcessed} file${filesProcessed === 1 ? '' : 's'} processed` +
+    ` | ${upsertCount} row${upsertCount === 1 ? '' : 's'} uploaded` +
+    `${failedFiles.length ? ` | ${failedFiles.length} failed file${failedFiles.length === 1 ? '' : 's'} left in source` : ''}` +
+    `${unsupportedFiles ? ` | ${unsupportedFiles} unsupported file${unsupportedFiles === 1 ? '' : 's'} skipped` : ''}` +
+    `${tempFilesRemoved ? ` | ${tempFilesRemoved} temp file${tempFilesRemoved === 1 ? '' : 's'} cleared` : ''}.`
+  );
+
+  if (filesProcessed > 0) {
+    emitTableSyncLiveEvent_(safeTableName, {
+      filesProcessed: filesProcessed,
+      tempFilesRemoved: tempFilesRemoved,
+      upsertCount: upsertCount,
+      deleteCount: 0,
+      totalRows: totalRows,
+      runId: runId
+    });
+  }
+
+  return {
+    tableName: safeTableName,
+    filesProcessed: filesProcessed,
+    tempFilesRemoved: tempFilesRemoved,
+    unsupportedFiles: unsupportedFiles,
+    failedFiles: failedFiles.length,
+    failedFileNames: failedFiles.map(function(entry) { return entry.name; }),
+    failedFileErrors: failedFiles,
+    upsertCount: upsertCount,
+    deleteCount: 0,
+    totalRows: totalRows,
+    runId: runId
+  };
 }
 
 function syncNotesToSupabase() {
