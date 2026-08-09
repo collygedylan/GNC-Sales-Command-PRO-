@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.08.07.06';
+const APP_SHELL_BUILD = 'V2026.08.09.18';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
@@ -20,7 +20,6 @@ const ASSETS_TO_CACHE = [
   './ag-data-solutions-icon-v20260708023-180.png',
   './ag-data-solutions-icon-v20260708023-192.png',
   './ag-data-solutions-icon-v20260708023-512.png',
-  './Greenleaf Logo.png',
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/@phosphor-icons/web',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
