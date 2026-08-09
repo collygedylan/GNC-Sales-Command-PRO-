@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.16';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.17';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4749,6 +4749,27 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.viewport-phone .excel-filter-option{
             min-height:2.16rem !important;
         }
+        @media (min-width:768px) and (min-height:760px){
+            body.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #main-scroll-area{
+                overflow-y:hidden !important;
+                overscroll-behavior-y:none !important;
+                padding-bottom:calc(.25rem + env(safe-area-inset-bottom)) !important;
+                scroll-padding-bottom:0 !important;
+            }
+            body.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-wrapper,
+            body.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-home:not(.hidden),
+            body.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #home-dashboard-content{
+                min-height:0 !important;
+                overflow:hidden !important;
+            }
+            body.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-home:not(.hidden){
+                display:flex !important;
+                flex-direction:column !important;
+            }
+            body.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #home-dashboard-sticky{
+                flex:0 0 auto !important;
+            }
+        }
         #view-home .home-dashboard-sticky{
             margin:-.32rem 0 .24rem !important;
             padding:.08rem 0 .18rem !important;
@@ -5683,7 +5704,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.16').trim() || 'V2026.08.09.16';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.17').trim() || 'V2026.08.09.17';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7141,7 +7162,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.16';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.17';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -13253,6 +13274,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (dashboardContent) dashboardContent.classList.remove('hidden');
             if (dynamicContent && dynamicContent.childElementCount) dynamicContent.innerHTML = '';
             setHomeDashboardModulesReady(true);
+            if (typeof syncCurrentViewBodyClass === 'function') syncCurrentViewBodyClass('home');
             syncRoleAccessUi(getRoleAccessState());
             syncGlobalHeaderChrome({ reason: reason || 'home-dashboard-repair' });
             updateFooterNavState();
@@ -18517,6 +18539,37 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return scheduleTrackedViewRender(viewId, renderKey, trackedOptions);
         }
 
+        function syncHomeDashboardBodyMode() {
+            if (!document || !document.body) return false;
+            const homeView = document.getElementById('view-home');
+            const dashboardContent = document.getElementById('home-dashboard-content');
+            const dynamicContent = document.getElementById('home-dynamic-content');
+            const isHomeVisible = !!(homeView && !homeView.classList.contains('hidden'));
+            const isDashboardVisible = !!(
+                isHomeVisible
+                && dashboardContent
+                && !dashboardContent.classList.contains('hidden')
+                && (!dynamicContent || !dynamicContent.childElementCount)
+            );
+            document.body.classList.toggle('home-dashboard-mode', isDashboardVisible);
+            return isDashboardVisible;
+        }
+
+        function syncCurrentViewBodyClass(viewId = '') {
+            if (!document || !document.body) return;
+            const safeViewId = String(viewId || getCurrentVisibleViewId() || 'home')
+                .trim()
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '') || 'home';
+            Array.from(document.body.classList).forEach((className) => {
+                if (className.indexOf('current-view-') === 0) document.body.classList.remove(className);
+            });
+            document.body.dataset.currentView = safeViewId;
+            document.body.classList.add(`current-view-${safeViewId}`);
+            syncHomeDashboardBodyMode();
+        }
+
         function showOnlyPrimaryView(viewId = '') {
             const safeViewId = String(viewId || '').trim();
             if (!safeViewId) return null;
@@ -18532,6 +18585,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 }
             });
             if (targetView) currentPrimaryViewId = safeViewId;
+            syncCurrentViewBodyClass(safeViewId);
             if (typeof syncRequestDetailScrollMode === 'function') syncRequestDetailScrollMode();
             repairAppShellScrollState(`show-view:${safeViewId}`);
             return targetView;
@@ -26057,7 +26111,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.16').trim() || 'V2026.08.09.16';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.17').trim() || 'V2026.08.09.17';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -45115,6 +45169,7 @@ function toggleDriveQuickRequestItem(domId) {
                 scrollArea.style.opacity = '1';
             }
             setHomeDashboardModulesReady(true);
+            if (typeof syncCurrentViewBodyClass === 'function') syncCurrentViewBodyClass('home');
             document.body.classList.remove('detail-field-active');
             repairAppShellScrollState('login-shell-open', { resetGestureState: true });
             syncRoleAccessUi(getRoleAccessState());
@@ -65981,6 +66036,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
             lastGuardedViewSwitchKey = switchGuardKey;
             lastGuardedViewSwitchAt = switchNow;
+            syncCurrentViewBodyClass(nextViewId);
             if (currentViewId && currentViewId !== nextViewId) {
                 cancelScheduledViewRenderWork(currentViewId);
                 cancelScheduledUiRenderByPrefix(`view-enter:${currentViewId}`);
@@ -109028,6 +109084,7 @@ C.14.043 C.15.000
                 ensureAdminRecipientUsers(false).then(() => scheduleManagersRender(true)).catch(() => {});
             }
             renderHomeOrManagersNow(true);
+            if (typeof syncHomeDashboardBodyMode === 'function') syncHomeDashboardBodyMode();
             return false;
         }
 
@@ -116225,6 +116282,7 @@ C.14.043 C.15.000
                 if (dashboardHero) dashboardHero.classList.remove('hidden');
                 dashboardContent.classList.add('hidden');
                 dynamicContent.innerHTML = getRepHomeDashboardHtml();
+                if (typeof syncHomeDashboardBodyMode === 'function') syncHomeDashboardBodyMode();
                 return;
             }
             if (activeHomeTab === CROP_ROLL_HOME_TAB && canViewCropRollHome()) {
@@ -116239,6 +116297,7 @@ C.14.043 C.15.000
             if (dashboardHero) dashboardHero.classList.remove('hidden');
             dashboardContent.classList.remove('hidden');
             dynamicContent.innerHTML = '';
+            if (typeof syncCurrentViewBodyClass === 'function') syncCurrentViewBodyClass('home');
         }
         function updateSyncDiagnostics(modeOverride = '') {
             if (modeOverride) syncDiagnosticsOverride = modeOverride;
