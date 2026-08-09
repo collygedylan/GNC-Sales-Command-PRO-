@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.10';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.11';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1431,17 +1431,18 @@ body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-
 .leaf-home-launch-row{display:none}
 .home-dashboard-sticky{position:-webkit-sticky;position:sticky;top:0;z-index:54;margin:-.2rem 0 1rem;padding:.2rem 0 .75rem;background:linear-gradient(180deg,var(--sticky-chrome-bg) 0%,rgba(248,251,249,.985) 88%,rgba(248,251,249,0) 100%);isolation:isolate}
 .home-dashboard-sticky::before{content:"";position:absolute;left:calc(var(--shell-gutter) * -1);right:calc(var(--shell-gutter) * -1);top:-.25rem;bottom:0;background:inherit;pointer-events:none;z-index:-1}
-#view-home .home-dashboard-sticky #home-dashboard-hero{margin-bottom:.65rem!important;padding:1rem 1.1rem!important;border-radius:18px!important}
+#view-home .home-dashboard-sticky #home-dashboard-hero{margin-bottom:.65rem!important;padding:.9rem 1rem!important;border-radius:18px!important}
 #view-home .home-dashboard-sticky #home-dashboard-hero h1{margin-top:0!important;margin-bottom:.15rem!important;font-size:clamp(1.12rem,4.7vw,1.55rem)!important;line-height:1.02!important}
-#view-home .home-dashboard-sticky #home-dashboard-hero p{margin-bottom:.65rem!important;font-size:9px!important}
-#view-home .home-dashboard-sticky #home-dashboard-hero .flex.flex-col{padding-top:.65rem!important}
-#view-home .home-dashboard-sticky #home-dashboard-hero .text-\[15px\]{font-size:12px!important;letter-spacing:.16em!important}
-.home-run-script-btn{min-height:44px;flex:0 0 auto;border-radius:18px!important;padding:.7rem .9rem!important;box-shadow:0 12px 24px rgba(0,122,77,.12)!important}
-.home-sync-accordion{margin-bottom:0!important}
-.home-sync-accordion>summary{padding:.75rem .9rem!important;align-items:center}
-.home-sync-accordion #dashboard-sync-stamp{font-size:.86rem!important;line-height:1.1}
+#view-home .home-dashboard-sticky #home-dashboard-hero p{margin-bottom:.35rem!important;font-size:8px!important}
+#view-home .home-dashboard-sticky #home-dashboard-hero .flex.flex-col{padding-top:.45rem!important}
+#view-home .home-dashboard-sticky #home-dashboard-hero .text-\[15px\]{font-size:10px!important;letter-spacing:.16em!important}
+.home-dashboard-logo{max-width:clamp(9.5rem,31vw,13.5rem)!important;margin-top:.15rem!important;padding:.55rem!important;border-radius:14px!important}
+.home-run-script-btn{min-height:38px;flex:0 0 auto;border-radius:15px!important;padding:.56rem .78rem!important;box-shadow:0 10px 22px rgba(0,122,77,.12)!important}
+.home-sync-accordion{width:100%;margin:.65rem 0 0!important}
+.home-sync-accordion>summary{padding:.62rem .75rem!important;align-items:center}
+.home-sync-accordion #dashboard-sync-stamp{font-size:.8rem!important;line-height:1.1}
 .home-sync-accordion #dashboard-sync-files{max-height:min(30vh,240px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-#home-dashboard-content{scroll-margin-top:18rem}
+#home-dashboard-content{scroll-margin-top:13rem}
 body.ios-device .home-dashboard-sticky{transition:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:none!important;transform:none!important;-webkit-transform:none!important}
 .leaf-action-card{margin-top:.65rem;border:1px solid #bbf7d0;background:linear-gradient(180deg,#f6fffb,#ecfdf5);border-radius:18px;padding:.85rem .9rem;box-shadow:0 8px 20px rgba(16,185,129,.08)}
 .leaf-action-eyebrow{font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#047857}
@@ -1454,7 +1455,8 @@ body.ios-device .home-dashboard-sticky{transition:none!important;backdrop-filter
 @media (max-width: 767px){
   .leaf-launch-btn--header{display:none}
   .leaf-home-launch-row{display:block}
-  .home-run-script-btn{min-height:40px!important;border-radius:16px!important;padding:.62rem .74rem!important;letter-spacing:.1em!important}
+  .home-dashboard-logo{max-width:10.75rem!important}
+  .home-run-script-btn{min-height:36px!important;border-radius:14px!important;padding:.52rem .66rem!important;letter-spacing:.1em!important}
 }
         #sync-diagnostics-badge{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;box-shadow:0 4px 10px rgba(15,23,42,.12)}
         #sync-diagnostics-detail{font-size:9px;font-weight:800;line-height:1.2;color:rgba(236,253,245,.88);text-align:right;max-width:200px}
@@ -5392,7 +5394,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.10').trim() || 'V2026.08.09.10';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.11').trim() || 'V2026.08.09.11';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -5461,30 +5463,30 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div id="home-dashboard-hero" class="bg-[#007a4d] text-white p-6 rounded-xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
                             <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
                             <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div>
-                            <img src="./ag-data-solutions-logo.png" alt="Ag Data Solutions" class="z-10 relative mt-4 w-full max-w-[300px] rounded-xl bg-white/95 p-3 object-contain shadow-sm">
+                            <img src="./ag-data-solutions-logo.png" alt="Ag Data Solutions" class="home-dashboard-logo z-10 relative mt-4 w-full max-w-[300px] rounded-xl bg-white/95 p-3 object-contain shadow-sm">
                             <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                             <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
                                 <div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">POWERED BY AG METRIC</div>
                             </div>
+                            <details id="dashboard-sync-accordion" class="hidden home-sync-accordion group bg-white/95 rounded-2xl border border-white/50 shadow-sm overflow-hidden text-left z-10 relative">
+                                <summary class="list-none cursor-pointer p-4 flex items-start justify-between gap-3">
+                                    <div class="min-w-0 flex-1">
+                                        <div id="dashboard-sync-stamp" class="text-lg font-black text-slate-900">Awaiting imported file data</div>
+                                        <div id="dashboard-sync-summary" class="hidden"></div>
+                                    </div>
+                                    <div class="flex items-center gap-2 flex-shrink-0">
+                                        <button id="run-google-script-btn" type="button" class="hidden home-run-script-btn inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-emerald-200 bg-emerald-50 text-[#007a4d] text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="event.preventDefault(); event.stopPropagation(); return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
+                                        <div class="w-10 h-10 rounded-2xl bg-emerald-50 text-[#007a4d] flex items-center justify-center border border-emerald-100 shadow-sm"><i class="ph-bold ph-database text-xl"></i></div>
+                                        <div class="w-8 h-8 rounded-xl border border-emerald-100 bg-white text-[#007a4d] flex items-center justify-center transition-transform duration-200 group-open:rotate-180"><i class="ph-bold ph-caret-down text-lg"></i></div>
+                                    </div>
+                                </summary>
+                                <div class="border-t border-emerald-100/70 bg-emerald-50/20 px-4 pb-4">
+                                    <div id="dashboard-sync-files" class="mt-4 space-y-2">
+                                        <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-400">No imported file metadata loaded yet.</div>
+                                    </div>
+                                </div>
+                            </details>
                         </div>
-                        <details id="dashboard-sync-accordion" class="hidden home-sync-accordion group bg-white rounded-2xl border border-emerald-100 shadow-sm mb-6 overflow-hidden">
-                            <summary class="list-none cursor-pointer p-4 flex items-start justify-between gap-3">
-                                <div class="min-w-0 flex-1">
-                                    <div id="dashboard-sync-stamp" class="text-lg font-black text-slate-900">Awaiting imported file data</div>
-                                    <div id="dashboard-sync-summary" class="hidden"></div>
-                                </div>
-                                <div class="flex items-center gap-2 flex-shrink-0">
-                                    <button id="run-google-script-btn" type="button" class="hidden home-run-script-btn inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-emerald-200 bg-emerald-50 text-[#007a4d] text-[10px] font-black uppercase tracking-[0.14em] whitespace-nowrap shadow-sm active:scale-95" onclick="event.preventDefault(); event.stopPropagation(); return runGoogleAppsScriptTrigger()"><i class="ph-bold ph-lightning text-sm"></i><span data-run-script-label>Run Script</span></button>
-                                    <div class="w-11 h-11 rounded-2xl bg-emerald-50 text-[#007a4d] flex items-center justify-center border border-emerald-100 shadow-sm"><i class="ph-bold ph-database text-2xl"></i></div>
-                                    <div class="w-8 h-8 rounded-xl border border-emerald-100 bg-white text-[#007a4d] flex items-center justify-center transition-transform duration-200 group-open:rotate-180"><i class="ph-bold ph-caret-down text-lg"></i></div>
-                                </div>
-                            </summary>
-                            <div class="border-t border-emerald-100/70 bg-emerald-50/20 px-4 pb-4">
-                                <div id="dashboard-sync-files" class="mt-4 space-y-2">
-                                    <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-400">No imported file metadata loaded yet.</div>
-                                </div>
-                            </div>
-                        </details>
                     </div>
                     <div id="home-dynamic-content" class="space-y-6"></div>
                     <div id="home-dashboard-content">
@@ -6883,7 +6885,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.10';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.11';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -25881,7 +25883,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.10').trim() || 'V2026.08.09.10';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.11').trim() || 'V2026.08.09.11';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
