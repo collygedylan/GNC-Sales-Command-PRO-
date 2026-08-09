@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.12';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.13';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4655,6 +4655,100 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             background:rgba(255,255,255,.98) !important;
             box-shadow:0 -8px 18px rgba(15,23,42,.06) !important;
         }
+        body.viewport-phone :is(#task-tabs-container.task-top-inline,#drive-season-filters.drive-top-inline .drive-top-controls-row,#review-plant-filters.drive-top-inline .drive-top-controls-row,#move-up-plant-filters.drive-top-inline .drive-top-controls-row,#drive-plant-filters.drive-top-inline .drive-plant-filter-row,#av-top-filters.av-top-inline .av-top-controls-row,#docks-filter-controls.docks-top-inline .docks-filter-row,#request-dylan-filter-panel .grid),
+        body.viewport-tablet :is(#task-tabs-container.task-top-inline,#drive-season-filters.drive-top-inline .drive-top-controls-row,#review-plant-filters.drive-top-inline .drive-top-controls-row,#move-up-plant-filters.drive-top-inline .drive-top-controls-row,#drive-plant-filters.drive-top-inline .drive-plant-filter-row,#av-top-filters.av-top-inline .av-top-controls-row,#docks-filter-controls.docks-top-inline .docks-filter-row,#request-dylan-filter-panel .grid){
+            display:grid !important;
+            grid-auto-flow:row !important;
+            grid-auto-columns:auto !important;
+            grid-template-columns:repeat(var(--responsive-filter-columns,4),minmax(0,1fr)) !important;
+            grid-template-rows:auto !important;
+            gap:var(--responsive-filter-gap,.22rem) !important;
+            align-items:stretch !important;
+            overflow:visible !important;
+        }
+        body.viewport-phone :is(#task-tabs-container.task-top-inline .task-top-control-shell,#drive-season-filters.drive-top-inline .task-top-control-shell,#review-plant-filters.drive-top-inline .task-top-control-shell,#move-up-plant-filters.drive-top-inline .task-top-control-shell,#drive-plant-filters.drive-top-inline .task-top-control-shell,#av-top-filters.av-top-inline .task-top-control-shell,#docks-filter-controls.docks-top-inline .task-top-control-shell){
+            padding:.14rem .12rem !important;
+            border-radius:.74rem !important;
+        }
+        body.viewport-phone :is(#task-tabs-container.task-top-inline .task-top-control-button,#drive-season-filters.drive-top-inline .task-top-control-button,#review-plant-filters.drive-top-inline .task-top-control-button,#move-up-plant-filters.drive-top-inline .task-top-control-button,#drive-plant-filters.drive-top-inline .task-top-control-button,#av-top-filters.av-top-inline .task-top-control-button,#docks-filter-controls.docks-top-inline .task-top-control-button,#request-dylan-filter-panel .grid>.relative>button){
+            min-height:38px !important;
+            padding:.24rem .14rem !important;
+            gap:.08rem !important;
+            justify-content:center !important;
+            text-align:center !important;
+            overflow:hidden !important;
+        }
+        body.viewport-tablet :is(#task-tabs-container.task-top-inline .task-top-control-button,#drive-season-filters.drive-top-inline .task-top-control-button,#review-plant-filters.drive-top-inline .task-top-control-button,#move-up-plant-filters.drive-top-inline .task-top-control-button,#drive-plant-filters.drive-top-inline .task-top-control-button,#av-top-filters.av-top-inline .task-top-control-button,#docks-filter-controls.docks-top-inline .task-top-control-button,#request-dylan-filter-panel .grid>.relative>button){
+            min-height:42px !important;
+            padding:.32rem .26rem !important;
+            gap:.16rem !important;
+        }
+        body.viewport-phone :is(#task-tabs-container.task-top-inline .task-top-control-button,#drive-season-filters.drive-top-inline .task-top-control-button,#review-plant-filters.drive-top-inline .task-top-control-button,#move-up-plant-filters.drive-top-inline .task-top-control-button,#drive-plant-filters.drive-top-inline .task-top-control-button,#av-top-filters.av-top-inline .task-top-control-button,#docks-filter-controls.docks-top-inline .task-top-control-button) > i:first-child{
+            display:none !important;
+        }
+        body.viewport-phone :is(#task-tabs-container.task-top-inline .task-top-control-button,#drive-season-filters.drive-top-inline .task-top-control-button,#review-plant-filters.drive-top-inline .task-top-control-button,#move-up-plant-filters.drive-top-inline .task-top-control-button,#drive-plant-filters.drive-top-inline .task-top-control-button,#av-top-filters.av-top-inline .task-top-control-button,#docks-filter-controls.docks-top-inline .task-top-control-button) > i:last-child{
+            font-size:.56rem !important;
+            margin-left:.02rem !important;
+        }
+        body.viewport-phone :is(#task-tabs-container.task-top-inline .task-top-control-button,#drive-season-filters.drive-top-inline .task-top-control-button,#review-plant-filters.drive-top-inline .task-top-control-button,#move-up-plant-filters.drive-top-inline .task-top-control-button,#drive-plant-filters.drive-top-inline .task-top-control-button,#av-top-filters.av-top-inline .task-top-control-button,#docks-filter-controls.docks-top-inline .task-top-control-button) > span,
+        body.viewport-phone #request-dylan-filter-panel .grid>.relative>button>span{
+            min-width:0 !important;
+            align-items:center !important;
+            text-align:center !important;
+            padding-right:.22rem !important;
+        }
+        body.viewport-phone :is(#task-tabs-container.task-top-inline .task-top-control-title,#drive-season-filters.drive-top-inline .task-top-control-title,#review-plant-filters.drive-top-inline .task-top-control-title,#move-up-plant-filters.drive-top-inline .task-top-control-title,#drive-plant-filters.drive-top-inline .task-top-control-title,#av-top-filters.av-top-inline .task-top-control-title,#docks-filter-controls.docks-top-inline .task-top-control-title,#request-dylan-filter-panel .grid>.relative>button>span>span:first-child){
+            font-size:clamp(.34rem,1.65vw,.42rem) !important;
+            letter-spacing:.035em !important;
+            line-height:1 !important;
+        }
+        body.viewport-phone :is(#task-tabs-container.task-top-inline .task-top-control-summary,#drive-season-filters.drive-top-inline .task-top-control-summary,#review-plant-filters.drive-top-inline .task-top-control-summary,#move-up-plant-filters.drive-top-inline .task-top-control-summary,#drive-plant-filters.drive-top-inline .task-top-control-summary,#av-top-filters.av-top-inline .task-top-control-summary,#docks-filter-controls.docks-top-inline .task-top-control-summary,#request-dylan-filter-panel .grid>.relative>button>span>span+span){
+            margin-top:.07rem !important;
+            font-size:clamp(.44rem,2.2vw,.56rem) !important;
+            line-height:1.02 !important;
+            max-width:100% !important;
+        }
+        body.viewport-phone #view-av #av-top-filters.av-top-inline :is([data-av-filter-shell="genus"],[data-av-filter-shell="contsize"],[data-av-filter-shell="hold"]),
+        body.viewport-tablet #view-av #av-top-filters.av-top-inline :is([data-av-filter-shell="genus"],[data-av-filter-shell="contsize"],[data-av-filter-shell="hold"]){
+            display:block !important;
+            min-width:0 !important;
+        }
+        body.viewport-phone #view-av #av-top-filters.av-top-inline .av-filter-shell.hidden,
+        body.viewport-tablet #view-av #av-top-filters.av-top-inline .av-filter-shell.hidden{
+            display:none !important;
+        }
+        body.viewport-phone :is(.excel-filter-panel.excel-filter-panel--viewport-safe,#view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel:not(.hidden),#request-dylan-filter-panel .grid>.relative>div.absolute){
+            position:fixed !important;
+            left:max(.62rem,var(--shell-gutter,12px)) !important;
+            right:max(.62rem,var(--shell-gutter,12px)) !important;
+            top:auto !important;
+            bottom:calc(var(--footer-nav-reserve,78px) + .55rem + env(safe-area-inset-bottom)) !important;
+            width:auto !important;
+            min-width:0 !important;
+            max-width:none !important;
+            max-height:min(calc(var(--responsive-viewport-height,100vh) - var(--footer-nav-reserve,78px) - 6.25rem),30rem) !important;
+            border-radius:.95rem !important;
+            overflow:hidden !important;
+            z-index:33000 !important;
+            transform:none !important;
+            -webkit-transform:none !important;
+            box-shadow:0 18px 44px rgba(15,23,42,.26) !important;
+        }
+        body.viewport-phone.viewport-short :is(.excel-filter-panel.excel-filter-panel--viewport-safe,#view-wrapper .fixed-filter-rail .task-top-control-panel.excel-filter-panel:not(.hidden),#request-dylan-filter-panel .grid>.relative>div.absolute){
+            max-height:min(54vh,22rem) !important;
+        }
+        body.viewport-phone :is(.excel-filter-search-wrap,.excel-filter-footer){
+            padding:.34rem !important;
+        }
+        body.viewport-phone .excel-filter-search{
+            min-height:2.16rem !important;
+            border-radius:.72rem !important;
+            font-size:16px !important;
+            padding:.46rem 1.9rem .46rem .66rem !important;
+        }
+        body.viewport-phone .excel-filter-option{
+            min-height:2.16rem !important;
+        }
         html.outdoor-mode #view-av .av-primary-tabs-sticky,
         body.outdoor-mode #view-av .av-primary-tabs-sticky,
         html.outdoor-mode #view-drive .drive-controls-sticky,
@@ -5515,7 +5609,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.12').trim() || 'V2026.08.09.12';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.13').trim() || 'V2026.08.09.13';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7009,7 +7103,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.12';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.13';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7329,6 +7423,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         let viewportShellState = { appHeight: 0, visualHeight: 0, keyboardOffset: 0, standalone: null, ios: null, keyboardOpen: null };
         let viewportSyncFrameQueued = false;
         let viewportModeCompact = null;
+        let viewportResponsiveProfileKey = '';
         let horizontalClampFrameQueued = false;
         let deferredChromeSyncTimers = Object.create(null);
         let runAfterTouchInteractionTasks = Object.create(null);
@@ -9624,6 +9719,72 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return window.matchMedia('(max-width: 640px)').matches;
         }
 
+        function getResponsiveViewportProfile() {
+            const viewport = window.visualViewport || null;
+            const layoutWidth = Math.round(window.innerWidth || document.documentElement.clientWidth || 0);
+            const layoutHeight = Math.round(window.innerHeight || document.documentElement.clientHeight || 0);
+            const width = Math.max(320, Math.round(viewport && viewport.width ? viewport.width : layoutWidth));
+            const height = Math.max(320, Math.round(viewport && viewport.height ? viewport.height : layoutHeight));
+            const shortest = Math.min(width, height);
+            const longest = Math.max(width, height);
+            const coarse = isCoarsePointerDevice();
+            const ua = String(navigator.userAgent || '');
+            const ios = isIOSDevice();
+            const android = /Android/i.test(ua);
+            const windows = /Windows/i.test(ua);
+            const mac = /Macintosh|Mac OS X/i.test(ua) && !ios;
+            const phone = width <= 640 || (coarse && shortest <= 560);
+            const tablet = !phone && (width <= 1180 || (coarse && shortest <= 900 && longest <= 1400));
+            const desktop = !phone && !tablet;
+            const short = height <= 680;
+            const veryNarrow = width <= 380;
+            const landscape = width > height;
+            return { width, height, shortest, longest, coarse, ios, android, windows, mac, phone, tablet, desktop, short, veryNarrow, landscape };
+        }
+
+        function applyResponsiveViewportProfile(force = false) {
+            if (!document || !document.documentElement || !document.body) return '';
+            const profile = getResponsiveViewportProfile();
+            const viewportClass = profile.phone ? 'phone' : (profile.tablet ? 'tablet' : 'desktop');
+            const platformClass = profile.ios ? 'ios' : (profile.android ? 'android' : (profile.windows ? 'windows' : (profile.mac ? 'mac' : 'other')));
+            const key = [
+                viewportClass,
+                platformClass,
+                profile.width,
+                profile.height,
+                profile.short ? 'short' : 'tall',
+                profile.landscape ? 'landscape' : 'portrait',
+                profile.coarse ? 'coarse' : 'fine'
+            ].join(':');
+            if (!force && viewportResponsiveProfileKey === key) return key;
+            viewportResponsiveProfileKey = key;
+            const targets = [document.documentElement, document.body];
+            targets.forEach((target) => {
+                if (!target || !target.classList) return;
+                target.classList.toggle('viewport-phone', profile.phone);
+                target.classList.toggle('viewport-tablet', profile.tablet);
+                target.classList.toggle('viewport-desktop', profile.desktop);
+                target.classList.toggle('viewport-short', profile.short);
+                target.classList.toggle('viewport-tall', !profile.short);
+                target.classList.toggle('viewport-very-narrow', profile.veryNarrow);
+                target.classList.toggle('viewport-landscape', profile.landscape);
+                target.classList.toggle('viewport-portrait', !profile.landscape);
+                target.classList.toggle('platform-ios', profile.ios);
+                target.classList.toggle('platform-android', profile.android);
+                target.classList.toggle('platform-windows', profile.windows);
+                target.classList.toggle('platform-mac', profile.mac);
+                target.classList.toggle('pointer-coarse', profile.coarse);
+                target.classList.toggle('pointer-fine', !profile.coarse);
+            });
+            document.documentElement.dataset.viewportProfile = viewportClass;
+            document.documentElement.dataset.platformProfile = platformClass;
+            document.documentElement.style.setProperty('--responsive-viewport-width', `${profile.width}px`);
+            document.documentElement.style.setProperty('--responsive-viewport-height', `${profile.height}px`);
+            document.documentElement.style.setProperty('--responsive-filter-columns', profile.phone ? (profile.veryNarrow ? '3' : '4') : (profile.tablet ? '5' : '6'));
+            document.documentElement.style.setProperty('--responsive-filter-gap', profile.phone ? '.18rem' : (profile.tablet ? '.26rem' : '.34rem'));
+            return key;
+        }
+
         function syncViewportMode(options = {}) {
             const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const syncReason = normalizeUiSyncReason(nextOptions.reason);
@@ -9631,6 +9792,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 scheduleDeferredChromeSyncTask('viewport-mode', () => syncViewportMode({ reason: `deferred:${syncReason || 'viewport-mode'}`, force: true }));
                 return viewportModeCompact;
             }
+            applyResponsiveViewportProfile(!!nextOptions.force);
             const compact = isCompactViewport();
             if (viewportModeCompact === compact) return compact;
             viewportModeCompact = compact;
@@ -26006,7 +26168,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.12').trim() || 'V2026.08.09.12';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.13').trim() || 'V2026.08.09.13';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -45202,9 +45364,14 @@ function toggleDriveQuickRequestItem(domId) {
             const reserveInitialMode = 'initial';
             const prefersDeferredWarm = isTouchConstrainedDevice();
             const shouldWarmEvalInventoryChecks = !!(access && access.isEval && !access.isAdmin);
+            const shouldWarmWarehouseAssignments = allowedViews.has('drive') || allowedViews.has('tasks');
 
             addLoginWarmupTarget(initialTargets, 'master', 'initial');
             addLoginWarmupTarget(fullTargets, 'master', 'full');
+            if (shouldWarmWarehouseAssignments) {
+                addLoginWarmupTarget(initialTargets, 'warehouseAssignedItems', 'initial');
+                addLoginWarmupTarget(fullTargets, 'warehouseAssignedItems', 'full');
+            }
             if (shouldWarmEvalInventoryChecks) {
                 addLoginWarmupTarget(initialTargets, 'inventoryEditRequests', 'initial');
                 addLoginWarmupTarget(fullTargets, 'inventoryEditRequests', 'full');
@@ -45241,7 +45408,7 @@ function toggleDriveQuickRequestItem(domId) {
                 addLoginWarmupTarget(fullTargets, 'reserves', 'full');
             }
 
-            const initialPriority = ['master', 'requests', 'avOpen', 'soc', 'salesOffice', 'avNotes', 'cavAvBlankKeys', 'cav', 'reserves'];
+            const initialPriority = ['master', 'warehouseAssignedItems', 'requests', 'avOpen', 'soc', 'salesOffice', 'avNotes', 'cavAvBlankKeys', 'cav', 'reserves'];
             const initialKeys = initialPriority.concat(Array.from(initialTargets.keys()).filter((key) => !initialPriority.includes(key)));
             const initialQueue = [];
             const initialStart = prefersDeferredWarm ? (openedFromCache ? 80 : (restoreSession ? 220 : 120)) : 30;
@@ -45254,7 +45421,7 @@ function toggleDriveQuickRequestItem(domId) {
                 });
             }
 
-            const fullPriority = ['master', 'avNotes', 'cavAvBlankKeys', 'cav', 'avOpen', 'requests', 'soc', 'salesOffice', 'reserves'];
+            const fullPriority = ['master', 'warehouseAssignedItems', 'avOpen', 'requests', 'soc', 'salesOffice', 'avNotes', 'cavAvBlankKeys', 'cav', 'reserves'];
             const fullKeys = fullPriority.concat(Array.from(fullTargets.keys()).filter((key) => !fullPriority.includes(key)));
             const fullQueue = [];
             const fullStart = openedFromCache
@@ -45269,11 +45436,11 @@ function toggleDriveQuickRequestItem(domId) {
                 if (!target) return;
                 const extraDelay = key === 'reserves' && (isIOSDevice() || isStandaloneApp()) ? (openedFromCache ? 350 : 180) : 0;
                 let targetDelay = fullStart + (fullQueue.length * fullStep) + extraDelay;
-                if (key === 'master') {
-                    const masterFastDelay = openedFromCache
-                        ? (prefersDeferredWarm ? 360 : 220)
-                        : (prefersDeferredWarm ? 300 : 220);
-                    targetDelay = Math.min(targetDelay, masterFastDelay);
+                if (key === 'master' || key === 'warehouseAssignedItems') {
+                    const fastDelay = key === 'master'
+                        ? (openedFromCache ? (prefersDeferredWarm ? 360 : 220) : (prefersDeferredWarm ? 300 : 220))
+                        : (openedFromCache ? (prefersDeferredWarm ? 520 : 320) : (prefersDeferredWarm ? 420 : 280));
+                    targetDelay = Math.min(targetDelay, fastDelay);
                 }
                 fullQueue.push({ key, mode: target.mode, delay: targetDelay });
             });
@@ -67093,6 +67260,17 @@ function toggleDriveQuickRequestItem(domId) {
             });
         }
 
+        function shouldRenderViewSynchronouslyOnSwitch(viewId = '', state = null) {
+            const targetViewId = String(viewId || '').trim();
+            if (!targetViewId) return false;
+            const lightViewIds = ['home', 'sales', 'qc', 'communication', 'production', 'sales-inventory', 'disease-pest', 'office', 'po-management'];
+            if (!lightViewIds.includes(targetViewId)) return false;
+            const safeState = (state && typeof state === 'object') ? state : ensureViewRenderState(targetViewId);
+            if (safeState.initialized && !safeState.dirty) return false;
+            const config = getViewLoadingConfig(targetViewId);
+            return !(config && Array.isArray(config.required) && config.required.length);
+        }
+
         function switchView(viewId, options = {}) {
             const viewSwitchStartedAt = beginInternalPerfMeasure();
             persistAppFilterStateNow();
@@ -67167,14 +67345,19 @@ function toggleDriveQuickRequestItem(domId) {
                 repairAppShellScrollState(`view-switch:${nextViewId}`, { resetGestureState: currentViewId !== nextViewId });
                 updateFooterNavState();
                 if (needsTargetRender) {
-                    scheduleUiRender(`view-switch-render:${nextViewId}`, () => {
+                    const runTargetRender = () => {
                         if (!isLatestViewRenderToken(nextViewId, renderToken)) {
                             incrementInternalPerfCounter('staleViewRenderSkips');
                             return;
                         }
                         if (getCurrentVisibleViewId() !== nextViewId) return;
                         renderViewContent(nextViewId, false, false);
-                    }, isTouchConstrainedDevice() ? 12 : 4);
+                    };
+                    if (shouldRenderViewSynchronouslyOnSwitch(nextViewId, nextState)) {
+                        runTargetRender();
+                    } else {
+                        scheduleUiRender(`view-switch-render:${nextViewId}`, runTargetRender, isTouchConstrainedDevice() ? 12 : 4);
+                    }
                 }
             } else if (needsTargetRender) {
                 queueViewRender(nextViewId);
@@ -72898,11 +73081,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function shouldCollapseAvDetailedTopFilters() {
-            const body = document.body;
-            const compactBody = !!(body && body.classList.contains('viewport-compact'));
-            const viewportWidth = Math.max(window.innerWidth || 0, document.documentElement ? document.documentElement.clientWidth : 0);
-            const mobilePlatform = isIOSDevice() || /Android/i.test(navigator.userAgent || '');
-            return compactBody || viewportWidth <= 720 || mobilePlatform;
+            return false;
         }
 
         function renderAvTopControls(items = []) {
@@ -72937,7 +73116,7 @@ function toggleDriveQuickRequestItem(domId) {
             const hasResettableFilters = hasActiveAvQuickResetFilters();
             container.classList.toggle('av-top-has-salesrep', showSalesRepFilter);
             container.classList.toggle('av-top-has-customer', showRepCustomerFilter);
-            [3, 4, 5].forEach((count) => container.classList.toggle(`av-top-filter-count-${count}`, visibleFilterCount === count));
+            [3, 4, 5, 6, 7, 8].forEach((count) => container.classList.toggle(`av-top-filter-count-${count}`, visibleFilterCount === count));
             const salesRepSearchToken = normalizeRepMatchToken(avSalesRepSearchTerm || '');
             const filteredSalesRepOptions = avSalesRepDropdownOpen && salesRepSearchToken
                 ? salesRepOptions.filter((option) => doesProgressiveSearchTextMatch(option.searchToken, salesRepSearchToken))
