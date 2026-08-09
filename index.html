@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.11';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.12';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1380,7 +1380,7 @@ body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-
         #view-production button[id^="production-open-"],
         #view-disease-pest button[id^="disease-pest-open-"],
         #view-office button[id^="office-open-"],
-        #view-sales-inventory button[id^="sales-inventory-open-"],
+        #sales-inventory-hub-grid > button,
         #view-communication button[id^="communication-open-"],
         .app-card-shell,
         .app-smart-card,
@@ -1393,7 +1393,7 @@ body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-
         #view-production button[id^="production-open-"] i,
         #view-disease-pest button[id^="disease-pest-open-"] i,
         #view-office button[id^="office-open-"] i,
-        #view-sales-inventory button[id^="sales-inventory-open-"] i,
+        #sales-inventory-hub-grid > button i,
         #view-communication button[id^="communication-open-"] i{color:#007a4d !important}
         #photo-modal-prev:not(.hidden),
         #photo-modal-next:not(.hidden){display:flex}
@@ -1429,20 +1429,20 @@ body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-
 .leaf-launch-btn--home .leaf-launch-copy strong{font-size:11px}
 .leaf-launch-btn--home .leaf-launch-copy small{font-size:9px;letter-spacing:.12em;text-transform:none;color:rgba(236,253,245,.82)}
 .leaf-home-launch-row{display:none}
-.home-dashboard-sticky{position:-webkit-sticky;position:sticky;top:0;z-index:54;margin:-.2rem 0 1rem;padding:.2rem 0 .75rem;background:linear-gradient(180deg,var(--sticky-chrome-bg) 0%,rgba(248,251,249,.985) 88%,rgba(248,251,249,0) 100%);isolation:isolate}
+.home-dashboard-sticky{position:-webkit-sticky;position:sticky;top:0;z-index:54;margin:-.2rem 0 .42rem;padding:.16rem 0 .34rem;background:linear-gradient(180deg,var(--sticky-chrome-bg) 0%,rgba(248,251,249,.985) 88%,rgba(248,251,249,0) 100%);isolation:isolate}
 .home-dashboard-sticky::before{content:"";position:absolute;left:calc(var(--shell-gutter) * -1);right:calc(var(--shell-gutter) * -1);top:-.25rem;bottom:0;background:inherit;pointer-events:none;z-index:-1}
-#view-home .home-dashboard-sticky #home-dashboard-hero{margin-bottom:.65rem!important;padding:.9rem 1rem!important;border-radius:18px!important}
+#view-home .home-dashboard-sticky #home-dashboard-hero{margin-bottom:.34rem!important;padding:.76rem .9rem!important;border-radius:18px!important}
 #view-home .home-dashboard-sticky #home-dashboard-hero h1{margin-top:0!important;margin-bottom:.15rem!important;font-size:clamp(1.12rem,4.7vw,1.55rem)!important;line-height:1.02!important}
-#view-home .home-dashboard-sticky #home-dashboard-hero p{margin-bottom:.35rem!important;font-size:8px!important}
-#view-home .home-dashboard-sticky #home-dashboard-hero .flex.flex-col{padding-top:.45rem!important}
+#view-home .home-dashboard-sticky #home-dashboard-hero p{margin-bottom:.25rem!important;font-size:8px!important}
+#view-home .home-dashboard-sticky #home-dashboard-hero .flex.flex-col{padding-top:.32rem!important}
 #view-home .home-dashboard-sticky #home-dashboard-hero .text-\[15px\]{font-size:10px!important;letter-spacing:.16em!important}
-.home-dashboard-logo{max-width:clamp(9.5rem,31vw,13.5rem)!important;margin-top:.15rem!important;padding:.55rem!important;border-radius:14px!important}
+.home-dashboard-logo{max-width:clamp(8.2rem,27vw,11.5rem)!important;margin-top:.05rem!important;padding:.42rem!important;border-radius:13px!important}
 .home-run-script-btn{min-height:38px;flex:0 0 auto;border-radius:15px!important;padding:.56rem .78rem!important;box-shadow:0 10px 22px rgba(0,122,77,.12)!important}
-.home-sync-accordion{width:100%;margin:.65rem 0 0!important}
+.home-sync-accordion{width:100%;margin:.42rem 0 0!important}
 .home-sync-accordion>summary{padding:.62rem .75rem!important;align-items:center}
 .home-sync-accordion #dashboard-sync-stamp{font-size:.8rem!important;line-height:1.1}
 .home-sync-accordion #dashboard-sync-files{max-height:min(30vh,240px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-#home-dashboard-content{scroll-margin-top:13rem}
+#home-dashboard-content{scroll-margin-top:11rem}
 body.ios-device .home-dashboard-sticky{transition:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;box-shadow:none!important;transform:none!important;-webkit-transform:none!important}
 .leaf-action-card{margin-top:.65rem;border:1px solid #bbf7d0;background:linear-gradient(180deg,#f6fffb,#ecfdf5);border-radius:18px;padding:.85rem .9rem;box-shadow:0 8px 20px rgba(16,185,129,.08)}
 .leaf-action-eyebrow{font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#047857}
@@ -1570,6 +1570,120 @@ body.ios-device .home-dashboard-sticky{transition:none!important;backdrop-filter
         .manager-module-card{display:flex;align-items:center;gap:.8rem;width:100%;min-height:92px;border-radius:18px;border:1px solid #d1fae5;background:#fff;padding:1rem;text-align:left;box-shadow:0 8px 20px rgba(15,23,42,.05);touch-action:manipulation}
         .manager-module-card:active{transform:scale(.99)}
         .manager-module-icon{display:flex;align-items:center;justify-content:center;width:44px;height:44px;flex:0 0 44px;border-radius:14px;background:#ecfdf5;color:#007a4d;border:1px solid #a7f3d0;font-size:22px}
+        #home-dashboard-modules{margin-top:-.1rem}
+        #home-dashboard-modules h2,
+        #home-rep-dashboard-modules h2{margin-bottom:.46rem!important;font-size:.58rem!important;letter-spacing:.12em!important}
+        #home-dashboard-grid,
+        #home-rep-dashboard-grid,
+        #sales-hub-grid,
+        #production-hub-grid,
+        #sales-inventory-hub-grid,
+        #qc-hub-grid,
+        #office-hub-grid,
+        #communication-hub-grid,
+        .manager-module-grid{grid-template-columns:repeat(auto-fit,minmax(min(9.25rem,100%),1fr))!important;gap:.55rem!important}
+        #home-dashboard-grid,
+        #home-rep-dashboard-grid{margin-bottom:1.1rem!important}
+        #home-dashboard-grid>div,
+        #home-rep-dashboard-grid>button,
+        #sales-hub-grid>button,
+        #production-hub-grid>button,
+        #sales-inventory-hub-grid>button,
+        #qc-hub-grid>button,
+        #office-hub-grid>button,
+        #communication-hub-grid>button,
+        .manager-module-card{
+            display:flex!important;
+            flex-direction:column!important;
+            align-items:center!important;
+            justify-content:center!important;
+            gap:.32rem!important;
+            min-height:68px!important;
+            padding:.55rem .48rem!important;
+            border-radius:12px!important;
+            border:1.5px solid #007a4d!important;
+            background:#fff!important;
+            text-align:center!important;
+            box-shadow:0 4px 12px rgba(15,23,42,.045)!important;
+            overflow:hidden;
+        }
+        #home-dashboard-grid>div:active,
+        #home-rep-dashboard-grid>button:active,
+        #sales-hub-grid>button:active,
+        #production-hub-grid>button:active,
+        #sales-inventory-hub-grid>button:active,
+        #qc-hub-grid>button:active,
+        #office-hub-grid>button:active,
+        #communication-hub-grid>button:active,
+        .manager-module-card:active{transform:scale(.98)}
+        #sales-hub-grid>button::after{display:none!important;content:none!important}
+        #home-dashboard-grid>div>i,
+        #home-rep-dashboard-grid>button>i,
+        #sales-hub-grid>button>div:first-child,
+        #production-hub-grid>button>div:first-child,
+        #sales-inventory-hub-grid>button>div:first-child,
+        #qc-hub-grid>button>div:first-child,
+        #office-hub-grid>button>div:first-child,
+        #communication-hub-grid>button>div:first-child,
+        .manager-module-icon{
+            margin:0!important;
+            width:1.95rem!important;
+            height:1.95rem!important;
+            flex:0 0 1.95rem!important;
+            border-radius:.72rem!important;
+            font-size:1.22rem!important;
+        }
+        #home-dashboard-grid>div>i,
+        #home-rep-dashboard-grid>button>i{width:auto!important;height:auto!important;flex:0 0 auto!important;font-size:1.38rem!important}
+        #home-dashboard-grid>div>span,
+        #home-rep-dashboard-grid>button>span,
+        #sales-hub-grid>button>div:nth-child(2),
+        #production-hub-grid>button>div:nth-child(2),
+        #sales-inventory-hub-grid>button>div:nth-child(2),
+        #qc-hub-grid>button>div:nth-child(2),
+        #office-hub-grid>button>div:nth-child(2),
+        #communication-hub-grid>button>div:nth-child(2),
+        .manager-module-title{
+            margin:0!important;
+            min-width:0!important;
+            max-width:100%!important;
+            color:#007a4d!important;
+            font-size:.66rem!important;
+            font-weight:900!important;
+            line-height:1.04!important;
+            letter-spacing:.08em!important;
+            text-transform:uppercase!important;
+            text-align:center!important;
+            overflow-wrap:anywhere;
+        }
+        #sales-hub-grid>button>div:nth-child(3),
+        #production-hub-grid>button>div:nth-child(3),
+        #sales-inventory-hub-grid>button>div:nth-child(3),
+        #qc-hub-grid>button>div:nth-child(3),
+        #office-hub-grid>button>div:nth-child(3),
+        #communication-hub-grid>button>div:nth-child(3),
+        .manager-module-kicker,
+        .manager-module-subtitle{display:none!important}
+        @media (max-width:640px){
+            #home-dashboard-grid,
+            #home-rep-dashboard-grid,
+            #sales-hub-grid,
+            #production-hub-grid,
+            #sales-inventory-hub-grid,
+            #qc-hub-grid,
+            #office-hub-grid,
+            #communication-hub-grid,
+            .manager-module-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:.52rem!important}
+            #home-dashboard-grid>div,
+            #home-rep-dashboard-grid>button,
+            #sales-hub-grid>button,
+            #production-hub-grid>button,
+            #sales-inventory-hub-grid>button,
+            #qc-hub-grid>button,
+            #office-hub-grid>button,
+            #communication-hub-grid>button,
+            .manager-module-card{min-height:64px!important;padding:.5rem .42rem!important}
+        }
         @media (max-width:820px),(pointer:coarse){
             #view-drive .drive-controls-sticky,
             #view-drive .drive-controls-sticky.fixed-filter-rail{
@@ -3510,6 +3624,13 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
                 gap:.65rem;
             }
         }
+        #view-sales #sales-hub-grid{grid-template-columns:repeat(auto-fit,minmax(min(9.25rem,100%),1fr))!important;gap:.55rem!important}
+        #view-sales button[id^="sales-open-"]{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:.32rem!important;min-height:68px!important;padding:.55rem .48rem!important;border-radius:12px!important;border:1.5px solid #007a4d!important;background:#fff!important;text-align:center!important;box-shadow:0 4px 12px rgba(15,23,42,.045)!important;overflow:hidden}
+        #view-sales button[id^="sales-open-"]::after{display:none!important;content:none!important}
+        #view-sales button[id^="sales-open-"]>div:first-child{margin:0!important;width:1.95rem!important;height:1.95rem!important;flex:0 0 1.95rem!important;border-radius:.72rem!important;font-size:1.22rem!important}
+        #view-sales button[id^="sales-open-"]>div:nth-child(2){margin:0!important;min-width:0!important;max-width:100%!important;color:#007a4d!important;font-size:.66rem!important;font-weight:900!important;line-height:1.04!important;letter-spacing:.08em!important;text-transform:uppercase!important;text-align:center!important;white-space:normal!important;overflow-wrap:anywhere}
+        #view-sales button[id^="sales-open-"]>div:nth-child(3){display:none!important}
+        @media (max-width:640px){#view-sales #sales-hub-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:.52rem!important}#view-sales button[id^="sales-open-"]{min-height:64px!important;padding:.5rem .42rem!important}}
     </style>
     <style>
         #main-scroll-area{-webkit-overflow-scrolling:touch}
@@ -5394,7 +5515,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.11').trim() || 'V2026.08.09.11';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.12').trim() || 'V2026.08.09.12';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -5508,11 +5629,9 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                                 <div id="home-tile-sales-inventory" onclick="openInventoryHubView()" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-storefront text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Inventory</span></div>
                                 <div id="home-tile-production" onclick="switchView('production')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-plant text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Production</span></div>
                                 <div id="home-tile-moves" onclick="openMovesView()" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-map-pin-line text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Location Move</span></div>
-                                <div id="home-tile-inventory-office" onclick="openInventoryOfficeView()" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-warehouse text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Inventory Office</span></div>
                                 <div id="home-tile-reports" onclick="switchView('reports')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-chart-bar text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Reports</span></div>
                                 <div id="home-tile-review" onclick="switchView('review')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-warning-circle text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">New Crop Release</span></div>
                                 <div id="home-tile-move-up" onclick="switchView('move-up')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-arrow-up text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Move Up</span></div>
-                                <div id="home-tile-advertisement" onclick="switchView('advertisement')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-megaphone text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Advertisement</span></div>
                                 <div id="home-tile-diagnostics" onclick="switchView('diagnostics')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-stethoscope text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Diagnostics</span></div>
                                 <div id="home-tile-grower" onclick="switchView('grower')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-plant text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Grower</span></div>
                                 <div id="home-tile-pest-management" onclick="switchView('pest-management')" class="hidden bg-white border-2 border-red-600 p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-bug text-3xl text-red-700"></i><span class="font-bold text-sm text-red-700 uppercase tracking-wide">Pest Management</span></div>
@@ -5691,6 +5810,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-purple-700"><i class="ph-bold ph-briefcase text-2xl"></i></div>
                             <div class="text-lg font-black text-slate-900">Sales Office</div>
                             <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Bloom Picker orders</div>
+                        </button>
+                        <button type="button" id="sales-open-advertisement" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('advertisement')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-megaphone text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Advertisement</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Flyers and media</div>
                         </button>
                         <button type="button" id="sales-open-tasks" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('tasks')">
                             <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-clipboard-text text-2xl"></i></div>
@@ -6885,7 +7009,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.11';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.12';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -20325,19 +20449,18 @@ bindFastInvokeById('home-tile-qc', 'switchView', ['qc'], 'QC');
             bindFastInvokeById('home-tile-sales-inventory', 'openInventoryHubView', [], 'Inventory');
             bindFastInvokeById('home-tile-production', 'switchView', ['production'], 'Production');
             bindFastInvokeById('home-tile-moves', 'openMovesView', [], 'Location Move');
-            bindFastInvokeById('home-tile-inventory-office', 'openInventoryOfficeView', [], 'Inventory Office');
             bindFastInvokeById('home-tile-reports', 'switchView', ['reports'], 'Reports');
             bindFastInvokeById('home-tile-review', 'switchView', ['review'], 'New Crop Release');
             bindFastInvokeById('home-tile-move-up', 'switchView', ['move-up'], 'Move Up');
-            bindFastInvokeById('home-tile-advertisement', 'switchView', ['advertisement'], 'Advertisement');
 bindFastInvokeById('footer-menu-btn', 'toggleMenu', [], 'Menu');
 bindFastInvokeById('footer-sales-btn', 'switchView', ['sales'], 'Sales');
 bindFastInvokeById('footer-managers-btn', 'switchView', ['managers'], 'Managers');
 bindFastInvokeById('footer-request-btn', 'switchView', ['request'], 'Que');
 bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 'Communication');
 bindFastInvokeById('footer-walkie-btn', 'switchView', ['walkie'], 'Walkie');
-bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
+            bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             bindFastInvokeById('sales-open-bloom-orders', 'openSalesOfficeView', [], 'Sales Office');
+            bindFastInvokeById('sales-open-advertisement', 'switchView', ['advertisement'], 'Advertisement');
             bindFastInvokeById('production-open-take-back', 'switchView', ['take-back'], 'Take Back');
             bindFastInvokeById('production-open-84rd', 'open84RdInventoryView', [], '84 R.D');
             bindFastInvokeById('production-open-disease-pest', 'switchView', ['disease-pest'], 'Disease & Pest Management');
@@ -25883,7 +26006,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.11').trim() || 'V2026.08.09.11';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.12').trim() || 'V2026.08.09.12';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -33854,6 +33977,102 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
         window.scheduleDeferredCardPhotoHydration = scheduleDeferredCardPhotoHydration;
 
+        let avCardPhotoHydrationTimer = 0;
+
+        function getAvCardPhotoHydrationScope(root = document) {
+            if (root && root.querySelectorAll && root !== document) return root;
+            return document.getElementById('av-content') || document;
+        }
+
+        function isAvCardPhotoHydrationRelevant(root = document) {
+            if (typeof getCurrentVisibleViewId === 'function' && getCurrentVisibleViewId() === 'av') return true;
+            const scope = getAvCardPhotoHydrationScope(root);
+            return !!(scope && scope.querySelector && scope.querySelector('.app-av-catalog-card'));
+        }
+
+        function isElementNearViewport(el = null, leadPx = 1200) {
+            if (!el || typeof el.getBoundingClientRect !== 'function') return false;
+            const rect = el.getBoundingClientRect();
+            const viewportHeight = Math.max(1, (window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 1);
+            const viewportWidth = Math.max(1, (window.visualViewport && window.visualViewport.width) || window.innerWidth || document.documentElement.clientWidth || 1);
+            return rect.bottom >= -leadPx
+                && rect.top <= viewportHeight + leadPx
+                && rect.right >= -120
+                && rect.left <= viewportWidth + 120;
+        }
+
+        function retryAvDeferredPhotoFallback(img = null) {
+            if (!img || !img.dataset || img.dataset.avPhotoRetryTried === '1') return;
+            const originalSrc = String(img.dataset.src || '').trim();
+            const fallbackSrc = getDeferredCardPhotoFallbackSrc(originalSrc);
+            if (!fallbackSrc || fallbackSrc === img.src) return;
+            img.dataset.avPhotoRetryTried = '1';
+            img.dataset.photoLoadFailed = '';
+            img.dataset.photoFallbackTried = '1';
+            img.src = fallbackSrc;
+        }
+
+        function hydrateAvCardPhotoSlide(slideEl = null) {
+            if (!slideEl || !slideEl.querySelectorAll) return;
+            const imgs = Array.from(slideEl.querySelectorAll('img[data-deferred-card-photo="1"]'));
+            imgs.forEach((img) => {
+                if (!img) return;
+                if (img.dataset && img.dataset.photoLoadFailed === '1') retryAvDeferredPhotoFallback(img);
+                hydrateDeferredCardPhoto(img);
+                window.setTimeout(() => {
+                    if (img && img.dataset && img.dataset.photoHydrated === '1' && img.complete && !img.naturalWidth) retryAvDeferredPhotoFallback(img);
+                }, 900);
+            });
+        }
+        window.hydrateAvCardPhotoSlide = hydrateAvCardPhotoSlide;
+
+        function hydrateVisibleAvCardPhotos(root = document, options = {}) {
+            if (!isAvCardPhotoHydrationRelevant(root)) return;
+            const scope = getAvCardPhotoHydrationScope(root);
+            if (!scope || !scope.querySelectorAll) return;
+            const leadPx = Number(options.leadPx || (isTouchConstrainedDevice() ? 1500 : 1800));
+            const maxCount = Number(options.maxCount || (isTouchConstrainedDevice() ? 90 : 160));
+            let count = 0;
+            const cards = scope.matches && scope.matches('.app-av-catalog-card')
+                ? [scope]
+                : Array.from(scope.querySelectorAll('.app-av-catalog-card'));
+            for (const card of cards) {
+                if (count >= maxCount) break;
+                if (!isElementNearViewport(card, leadPx)) continue;
+                const track = card.querySelector('.app-av-photo-track');
+                if (track) {
+                    const slides = Array.from(track.querySelectorAll('.app-av-photo-slide'));
+                    if (!slides.length) continue;
+                    const slideWidth = Math.max(1, Number(track.clientWidth) || 1);
+                    const currentIndex = Math.max(0, Math.min(slides.length - 1, Math.round((Number(track.scrollLeft) || 0) / slideWidth)));
+                    [slides[0], slides[currentIndex], slides[currentIndex + 1]].filter(Boolean).forEach((slide) => {
+                        if (count >= maxCount) return;
+                        hydrateAvCardPhotoSlide(slide);
+                        count += 1;
+                    });
+                    continue;
+                }
+                const imgs = Array.from(card.querySelectorAll('img[data-deferred-card-photo="1"]'));
+                for (const img of imgs) {
+                    if (count >= maxCount) break;
+                    if (img.dataset && img.dataset.photoLoadFailed === '1') retryAvDeferredPhotoFallback(img);
+                    hydrateDeferredCardPhoto(img);
+                    count += 1;
+                }
+            }
+        }
+
+        function queueAvCardPhotoHydration(root = document, delayMs = 90) {
+            if (!isAvCardPhotoHydrationRelevant(root)) return;
+            const scope = getAvCardPhotoHydrationScope(root);
+            if (avCardPhotoHydrationTimer) clearTimeout(avCardPhotoHydrationTimer);
+            avCardPhotoHydrationTimer = window.setTimeout(() => {
+                avCardPhotoHydrationTimer = 0;
+                hydrateVisibleAvCardPhotos(scope);
+            }, Math.max(0, Number(delayMs) || 0));
+        }
+        window.queueAvCardPhotoHydration = queueAvCardPhotoHydration;
+
         function trimDeferredCardPhotoHydrationState() {
             if (deferredCardPhotoHydrationIdleTimer) {
                 clearTimeout(deferredCardPhotoHydrationIdleTimer);
@@ -33895,6 +34114,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const slideWidth = Math.max(1, Number(trackEl.clientWidth) || 1);
                 const index = Math.max(0, Math.min(dots.length - 1, Math.round((Number(trackEl.scrollLeft) || 0) / slideWidth)));
                 dots.forEach((dot, dotIndex) => dot.classList.toggle('is-active', dotIndex === index));
+                const slides = Array.from(trackEl.querySelectorAll('.app-av-photo-slide'));
+                hydrateAvCardPhotoSlide(slides[index]);
             });
         }
         window.syncAvCardPhotoCarouselDots = syncAvCardPhotoCarouselDots;
@@ -33928,6 +34149,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 track.scrollLeft = nextLeft;
             }
             window.setTimeout(() => syncAvCardPhotoCarouselDots(track), 80);
+            hydrateAvCardPhotoSlide(slides[nextIndex]);
+            window.setTimeout(() => hydrateAvCardPhotoSlide(slides[nextIndex]), 120);
             return false;
         }
         window.stepAvCardPhotoCarousel = stepAvCardPhotoCarousel;
@@ -49456,14 +49679,14 @@ function toggleDriveQuickRequestItem(domId) {
             'po-management': [],
             'sales-inventory': ['drawer-sales-inventory-btn', 'home-tile-sales-inventory'],
             'sales-office': ['drawer-sales-office-btn'],
-            moves: ['drawer-moves-btn', 'home-tile-inventory-office'],
+            moves: ['drawer-moves-btn'],
             'weather-hold': [],
             reports: ['drawer-reports-btn', 'home-tile-reports'],
             hours: ['drawer-hours-btn'],
             'low-stock': ['drawer-low-stock-btn'],
             review: ['drawer-review-btn'],
             'move-up': ['drawer-move-up-btn'],
-            advertisement: ['drawer-advertisement-btn', 'home-tile-advertisement'],
+            advertisement: ['drawer-advertisement-btn'],
             diagnostics: ['drawer-diagnostics-btn'],
             'disease-pest': ['drawer-disease-pest-btn'],
             grower: ['drawer-grower-btn'],
@@ -60024,6 +60247,7 @@ function toggleDriveQuickRequestItem(domId) {
                 setHubButtonVisibility('sales-open-communication', canAccessView('communication')),
                 setHubButtonVisibility('sales-open-request', canAccessView('request')),
                 setHubButtonVisibility('sales-open-bloom-orders', canAccessView('sales-office')),
+                setHubButtonVisibility('sales-open-advertisement', canAccessView('advertisement')),
                 setHubButtonVisibility('sales-open-tasks', canAccessView('tasks') && !isSalesShellAccess(access)),
                 setHubButtonVisibility('sales-open-weather-hold', canAccessView('weather-hold'))
             ].filter(Boolean).length;
@@ -74701,6 +74925,7 @@ function toggleDriveQuickRequestItem(domId) {
             setContainerUiState(container, 'content');
             tuneNativeImagePerformance(container);
             scheduleDeferredCardPhotoHydration(container);
+            queueAvCardPhotoHydration(container, 80);
         }
 
         function setContainerHtml(container, html, options = {}) {
@@ -74725,6 +74950,7 @@ function toggleDriveQuickRequestItem(domId) {
             setContainerUiState(container, 'content');
             tuneNativeImagePerformance(container);
             scheduleDeferredCardPhotoHydration(container);
+            queueAvCardPhotoHydration(container, 80);
         }
 
         function renderMarkupChunkedByKey(tokenKey, container, crumb, rows, crumbText, renderRow, options = {}) {
@@ -113069,13 +113295,11 @@ C.14.043 C.15.000
                 .filter((tab) => [SHEAR_APPROVAL_VIEW, NCR_APPROVAL_NEW_CROP_VIEW].includes(String(tab && tab.id || '').trim().toLowerCase()));
             const cardsHtml = tabs.map((tab) => {
                 const meta = getManagerModuleMeta(tab.id);
-                return `<button type="button" class="manager-module-card" ${buildFastInvokeAttrs('setHomeTab', [tab.id], tab.label || meta.label)}>
+                const label = tab.label || meta.label || 'Module';
+                const description = meta.description || 'Open approval work.';
+                return `<button type="button" class="manager-module-card" title="${esc(`${label}: ${description}`)}" ${buildFastInvokeAttrs('setHomeTab', [tab.id], label)}>
                     <span class="manager-module-icon"><i class="ph-bold ${esc(meta.icon || 'ph-seal-check')}"></i></span>
-                    <span class="min-w-0">
-                        <span class="block text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Approval Queue</span>
-                        <span class="mt-1 block text-lg font-black leading-tight text-slate-900">${esc(tab.label || meta.label)}</span>
-                        <span class="mt-1 block text-[12px] font-semibold leading-snug text-slate-500">${esc(meta.description || 'Open approval work.')}</span>
-                    </span>
+                    <span class="manager-module-title">${esc(label)}</span>
                 </button>`;
             }).join('');
             if (!cardsHtml) {
@@ -115096,7 +115320,11 @@ C.14.043 C.15.000
             if (!options.length) {
                 return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No manager modules match that search.</div>';
             }
-            const cards = options.map((option) => `<button type="button" class="manager-module-card" onclick="return setHomeTab('${escJsAttrValue(option.id)}')"><span class="manager-module-icon"><i class="ph-bold ${esc(option.icon || 'ph-squares-four')}"></i></span><span class="min-w-0"><span class="block text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Open Module</span><span class="mt-1 block text-lg font-black leading-tight text-slate-900">${esc(option.label || 'Module')}</span><span class="mt-1 block text-[12px] font-semibold leading-snug text-slate-500">${esc(option.description || 'Open a manager workflow.')}</span></span></button>`).join('');
+            const cards = options.map((option) => {
+                const label = option.label || 'Module';
+                const description = option.description || 'Open a manager workflow.';
+                return `<button type="button" class="manager-module-card" title="${esc(`${label}: ${description}`)}" aria-label="${esc(`${label}: ${description}`)}" onclick="return setHomeTab('${escJsAttrValue(option.id)}')"><span class="manager-module-icon"><i class="ph-bold ${esc(option.icon || 'ph-squares-four')}"></i></span><span class="manager-module-title">${esc(label)}</span></button>`;
+            }).join('');
             return `<div class="space-y-4"><div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Manager Modules</div><div class="mt-1 text-xl font-black text-slate-900">Choose what you are working on</div><div class="mt-1 text-[12px] font-semibold text-slate-500">Pick one module. The top row stays clean while you work.</div></div><div class="manager-module-grid">${cards}</div></div>`;
         }
 
@@ -117318,6 +117546,7 @@ C.14.043 C.15.000
                     scrollFramePending = false;
                     markScrollActivity();
                     scheduleSwipeCloseOnScroll();
+                    queueAvCardPhotoHydration(document.getElementById('av-content') || document, 60);
                 });
             };
             scrollArea.addEventListener('scroll', onMainScroll, { passive: true });
@@ -119875,8 +120104,8 @@ C.14.043 C.15.000
                     const hasKnownRowIndex = Number.isFinite(rowIndex);
                     const isAvPhotoFeed = sourceView === 'av-photo'
                         || (typeof getIsAvPhotoSubview === 'function' && getIsAvPhotoSubview());
-                    const eagerHeroRowLimit = isTouchConstrainedDevice() ? 16 : 40;
-                    const hydrateAheadRowLimit = isTouchConstrainedDevice() ? 44 : 104;
+                    const eagerHeroRowLimit = isTouchConstrainedDevice() ? 24 : 72;
+                    const hydrateAheadRowLimit = isTouchConstrainedDevice() ? 120 : 240;
                     const photoSlidesHtml = validAvPhotoUrls.map((url, index) => {
                         const thumbUrl = getDirectImageUrl(url, 'card-feature');
                         const isPrimaryHeroPhoto = index === 0;
