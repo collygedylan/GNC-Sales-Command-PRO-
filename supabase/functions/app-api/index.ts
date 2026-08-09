@@ -156,6 +156,7 @@ const READABLE_TABLES = new Set([
   "ph_hold_stop_itemcode_summaries",
   "ph_warehouse_assigned_items",
   "ph_hl_po",
+  "ph_view_po_27f1_hl",
   AV_OPTION_EVAL_REQUESTS_TABLE,
 ]);
 const WRITABLE_TABLES = new Set([
