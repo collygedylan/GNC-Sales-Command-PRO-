@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.13';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.14';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -4749,6 +4749,80 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.viewport-phone .excel-filter-option{
             min-height:2.16rem !important;
         }
+        #view-home .home-dashboard-sticky{
+            margin:-.32rem 0 .24rem !important;
+            padding:.08rem 0 .18rem !important;
+        }
+        #view-home .home-dashboard-sticky #home-dashboard-hero{
+            margin-bottom:.22rem !important;
+            padding:.56rem .72rem !important;
+            border-radius:16px !important;
+        }
+        #view-home .home-dashboard-logo{
+            max-width:clamp(7rem,22vw,9.4rem) !important;
+            padding:.32rem !important;
+            border-radius:12px !important;
+        }
+        #view-home .home-sync-accordion{
+            margin-top:.28rem !important;
+        }
+        #view-home .home-sync-accordion>summary{
+            min-height:44px !important;
+            padding:.44rem .62rem !important;
+        }
+        #view-home .home-sync-accordion #dashboard-sync-stamp{
+            font-size:.72rem !important;
+        }
+        #view-home .home-run-script-btn{
+            min-height:34px !important;
+            padding:.46rem .62rem !important;
+            border-radius:13px !important;
+            font-size:.54rem !important;
+        }
+        #view-home #home-dashboard-modules{
+            margin-top:-.02rem !important;
+        }
+        #view-home #home-dashboard-modules h2,
+        #view-home #home-rep-dashboard-modules h2{
+            margin-bottom:.34rem !important;
+            font-size:.54rem !important;
+        }
+        #view-home #home-dashboard-grid,
+        #view-home #home-rep-dashboard-grid{
+            grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+            gap:.36rem .48rem !important;
+            margin-bottom:.55rem !important;
+        }
+        #view-home #home-dashboard-grid>div,
+        #view-home #home-rep-dashboard-grid>button{
+            min-height:clamp(2.28rem,5.1vh,2.95rem) !important;
+            padding:.34rem .42rem !important;
+            gap:.14rem !important;
+            border-radius:10px !important;
+            box-shadow:0 3px 8px rgba(15,23,42,.035) !important;
+        }
+        #view-home #home-dashboard-grid>div>i,
+        #view-home #home-rep-dashboard-grid>button>i{
+            font-size:clamp(1rem,2.25vh,1.28rem) !important;
+            line-height:1 !important;
+        }
+        #view-home #home-dashboard-grid>div>span,
+        #view-home #home-rep-dashboard-grid>button>span{
+            font-size:clamp(.5rem,1.25vh,.62rem) !important;
+            line-height:1 !important;
+            letter-spacing:.075em !important;
+        }
+        @media (max-width:420px){
+            #view-home #home-dashboard-grid,
+            #view-home #home-rep-dashboard-grid{
+                gap:.32rem !important;
+            }
+            #view-home #home-dashboard-grid>div,
+            #view-home #home-rep-dashboard-grid>button{
+                min-height:2.18rem !important;
+                padding:.3rem .34rem !important;
+            }
+        }
         html.outdoor-mode #view-av .av-primary-tabs-sticky,
         body.outdoor-mode #view-av .av-primary-tabs-sticky,
         html.outdoor-mode #view-drive .drive-controls-sticky,
@@ -5609,7 +5683,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.13').trim() || 'V2026.08.09.13';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.14').trim() || 'V2026.08.09.14';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7103,7 +7177,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.13';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.14';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26168,7 +26242,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.13').trim() || 'V2026.08.09.13';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.14').trim() || 'V2026.08.09.14';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
