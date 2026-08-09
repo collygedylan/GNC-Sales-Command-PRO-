@@ -132,9 +132,9 @@ const WAREHOUSE_ASSIGNED_ITEMS_TABLE = 'ph_warehouse_assigned_items';
 const WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID = '1gZ2qeKnsOdEYKMMxXerUUTU5Fq7aeeNz9yVOxKK76OQ';
 const WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID = '1zDQbk9alVLqd6rW0O9QbJa9ZN6hax5P2';
 const HL_PO_PARSED_TABLE = 'ph_27f1_hl_po';
-const HL_PO_PARSED_SOURCE_FOLDER_ID = '13jQ37aqokXgzZ2z3VOOdCANdW5lQPgv2';
-const HL_PO_PARSED_PROCESSED_FOLDER_ID = '1681oPSyfz7mURdywOKH_9FQNnBQmmSWO';
-const HL_PO_PARSED_EXPECTED_ROW_COUNT = 247;
+const HL_PO_PARSED_SOURCE_FOLDER_ID = '1681oPSyfz7mURdywOKH_9FQNnBQmmSWO';
+const HL_PO_PARSED_PROCESSED_FOLDER_ID = '13jQ37aqokXgzZ2z3VOOdCANdW5lQPgv2';
+const HL_PO_PARSED_EXPECTED_SOURCE_ROW_COUNT = 247;
 const HL_PO_PARSED_TIMEZONE = 'America/Chicago';
 
 const FOLDERS = {
@@ -4650,16 +4650,27 @@ const HL_PO_PARSED_REQUIRED_COLUMNS = Object.freeze([
   'po_remain'
 ]);
 
+const HL_PO_PARSED_REQUIRED_INPUT_COLUMNS = Object.freeze([
+  'item_code',
+  'lot',
+  'size',
+  'common_name',
+  'po_ordered',
+  'lot_pend_rec',
+  'seas_on_hand',
+  'po_remain'
+]);
+
 const HL_PO_PARSED_HEADER_ALIASES = Object.freeze({
   item_code: ['item_code', 'item code', 'itemcode', 'item'],
   lot: ['lot', 'lot code', 'lotcode'],
   size: ['size', 'container size', 'cont size', 'contsize', 'printed container code', 'printedcontainercode'],
   common_name: ['common_name', 'common name', 'commonname'],
-  po_ordered: ['po_ordered', 'po ordered', 'poordered'],
+  po_ordered: ['po_ordered', 'po ordered', 'poordered', 'total quantity ordered', 'totalquantityordered', 'quantity ordered', 'quantityordered'],
   genus: ['genus', 'genus name', 'genusname'],
   po_comments: ['po_comments', 'po comments', 'p o comments', 'po comment', 'comments', 'comment'],
   lot_pend_rec: ['lot_pend_rec', 'lot pend rec', 'lot pend received', 'lot pending rec', 'lotpendrec'],
-  seas_on_hand: ['seas_on_hand', 'seas on hand', 'season on hand', 'season oh', 'season onhand', 'seasonoh'],
+  seas_on_hand: ['seas_on_hand', 'seas on hand', 'season on hand', 'season oh', 'season onhand', 'seasonoh', 'ptronhand', 'ptr on hand'],
   po_received: ['po_received', 'po received', 'poreceived'],
   po_remain: ['po_remain', 'po remain', 'po remaining', 'poremain']
 });
@@ -4695,7 +4706,7 @@ function getHlPoHeaderMatch_(row) {
     const columnName = HL_PO_PARSED_HEADER_ALIAS_MAP[normalizeHlPoHeaderKey_(header)];
     if (columnName && indexByColumn[columnName] == null) indexByColumn[columnName] = index;
   });
-  const missing = HL_PO_PARSED_REQUIRED_COLUMNS.filter(function(columnName) {
+  const missing = HL_PO_PARSED_REQUIRED_INPUT_COLUMNS.filter(function(columnName) {
     return indexByColumn[columnName] == null;
   });
   return missing.length ? null : indexByColumn;
@@ -4712,7 +4723,7 @@ function findHlPoHeaderRow_(values) {
 }
 
 function formatHlPoRequiredHeaderList_() {
-  return HL_PO_PARSED_REQUIRED_COLUMNS.join(', ');
+  return HL_PO_PARSED_REQUIRED_INPUT_COLUMNS.join(', ');
 }
 
 function isHlPoParsedFileSupported_(file) {
@@ -4811,7 +4822,7 @@ function parseHlPoNumericValue_(value, columnName, rowNumber, fileName) {
 }
 
 function isHlPoParsedDataRowBlank_(row, indexByColumn) {
-  return HL_PO_PARSED_REQUIRED_COLUMNS.every(function(columnName) {
+  return HL_PO_PARSED_REQUIRED_INPUT_COLUMNS.every(function(columnName) {
     const value = getHlPoCellValue_(row, indexByColumn, columnName);
     return value == null || String(value).replace(/\u00a0/g, ' ').trim() === '';
   });
@@ -4931,8 +4942,8 @@ function syncHlPoParsedFolder_(sourceFolderId, processedFolderId, tableName) {
       if (!rows.length) {
         throw new Error(`No importable HL PO rows found in ${fileName} on sheet ${sheetData.sourceSheetName}.`);
       }
-      if (HL_PO_PARSED_EXPECTED_ROW_COUNT && rows.length !== HL_PO_PARSED_EXPECTED_ROW_COUNT) {
-        throw new Error(`HL PO row count mismatch for ${fileName} on sheet ${sheetData.sourceSheetName}: expected ${HL_PO_PARSED_EXPECTED_ROW_COUNT}, found ${rows.length}. Upload skipped and file left in source folder.`);
+      if (HL_PO_PARSED_EXPECTED_SOURCE_ROW_COUNT && sheetData.values.length !== HL_PO_PARSED_EXPECTED_SOURCE_ROW_COUNT) {
+        throw new Error(`HL PO source row count mismatch for ${fileName} on sheet ${sheetData.sourceSheetName}: expected ${HL_PO_PARSED_EXPECTED_SOURCE_ROW_COUNT} sheet rows including the header, found ${sheetData.values.length}. Upload skipped and file left in source folder.`);
       }
       const uploadedRows = upsertHlPoParsedRows_(safeTableName, rows);
       moveDriveFileToFolderWithRetry_(file, processedFolder, `${safeTableName} processed file ${fileName}`);
