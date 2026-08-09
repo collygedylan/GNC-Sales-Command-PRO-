@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.18';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.19';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5704,7 +5704,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.18').trim() || 'V2026.08.09.18';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.19').trim() || 'V2026.08.09.19';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -5803,10 +5803,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <h2 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">App Modules</h2>
                             <div id="home-dashboard-grid" class="grid grid-cols-2 gap-3 mb-8">
                                 <div id="home-tile-drive" onclick="switchView('drive')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin role-rep role-qc-supervisor hidden"><i class="ph-bold ph-car text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Drive Mode</span></div>
-                                <div id="home-tile-tasks" onclick="switchView('tasks')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-clipboard-text text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Tasks</span></div>
                                 <div id="home-tile-docks" onclick="switchView('docks')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-truck text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Docks</span></div>
                                 <div id="home-tile-av" onclick="switchView('av')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-notebook text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">AV</span></div>
-                                <div id="home-tile-request" onclick="switchView('request')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-list-checks text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Que</span></div>
                                 <div id="home-tile-communication" onclick="switchView('communication')" class="hidden bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer" style="display:none !important;" aria-hidden="true"><i class="ph-bold ph-chat-circle-dots text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Communication</span></div>
                                 <div id="home-tile-sales" onclick="switchView('sales')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access hidden"><i class="ph-bold ph-handshake text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Sales</span></div>
                                 <div id="home-tile-managers" onclick="switchView('managers')" class="bg-white border-2 border-[#007a4d] p-4 rounded-xl flex flex-col items-center justify-center gap-2 shadow-sm active:scale-95 transition-transform cursor-pointer role-access role-admin hidden"><i class="ph-bold ph-users-three text-3xl text-[#007a4d]"></i><span class="font-bold text-sm text-[#007a4d] uppercase tracking-wide">Managers</span></div>
@@ -5989,9 +5987,9 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Chat, calendar, email</div>
                         </button>
                         <button type="button" id="sales-open-request" class="rounded-2xl border border-blue-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('request')">
-                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700"><i class="ph-bold ph-chat-circle-text text-2xl"></i></div>
-                            <div class="text-lg font-black text-slate-900">Request</div>
-                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Pending requests</div>
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700"><i class="ph-bold ph-list-checks text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Que</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Que folders</div>
                         </button>
                         <button type="button" id="sales-open-bloom-orders" class="rounded-2xl border border-purple-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openSalesOfficeView()">
                             <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-purple-700"><i class="ph-bold ph-briefcase text-2xl"></i></div>
@@ -6037,6 +6035,16 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-orange-700"><i class="ph-bold ph-truck text-2xl"></i></div>
                             <div class="text-lg font-black text-slate-900">Docks</div>
                             <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Quality dock workflow</div>
+                        </button>
+                        <button type="button" id="qc-open-tasks" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('tasks')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-clipboard-text text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Task</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Assigned work rows</div>
+                        </button>
+                        <button type="button" id="qc-open-request" class="rounded-2xl border border-blue-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('request')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700"><i class="ph-bold ph-list-checks text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Que</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Que folders</div>
                         </button>
                     </div>
                     <div id="qc-empty-state" class="hidden rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">No QC modules are available for this login.</div>
@@ -6183,6 +6191,11 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-clipboard-text text-2xl"></i></div>
                             <div class="text-lg font-black text-slate-900">Task</div>
                             <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Production task rows</div>
+                        </button>
+                        <button type="button" id="production-open-request" class="rounded-2xl border border-blue-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return switchView('request')">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700"><i class="ph-bold ph-list-checks text-2xl"></i></div>
+                            <div class="text-lg font-black text-slate-900">Que</div>
+                            <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">Que folders</div>
                         </button>
                         <button type="button" id="production-open-propagation" class="rounded-2xl border border-emerald-100 bg-white p-4 text-left shadow-sm active:scale-[0.99]" onclick="return openProductionWorkflow('propagation')">
                             <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#007a4d]"><i class="ph-bold ph-tree-structure text-2xl"></i></div>
@@ -7162,7 +7175,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.18';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.19';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -20543,10 +20556,8 @@ bindFastInvokeById('drawer-drive-btn', 'openDrawerView', ['drive'], 'Drive Mode'
             bindFastInvokeById('drawer-advertisement-btn', 'openDrawerView', ['advertisement'], 'Advertisement');
             bindFastInvokeById('drawer-logout-btn', 'logoutFromDrawer', [], 'Log Out');
             bindFastInvokeById('home-tile-drive', 'switchView', ['drive'], 'Drive Mode');
-            bindFastInvokeById('home-tile-tasks', 'switchView', ['tasks'], 'Tasks');
             bindFastInvokeById('home-tile-docks', 'switchView', ['docks'], 'Docks');
             bindFastInvokeById('home-tile-av', 'switchView', ['av'], 'AV');
-            bindFastInvokeById('home-tile-request', 'switchView', ['request'], 'Que');
 bindFastInvokeById('home-tile-communication', 'switchView', ['communication'], 'Communication');
 bindFastInvokeById('home-tile-sales', 'switchView', ['sales'], 'Sales');
 bindFastInvokeById('home-tile-managers', 'switchView', ['managers'], 'Managers');
@@ -20565,11 +20576,17 @@ bindFastInvokeById('footer-managers-btn', 'switchView', ['managers'], 'Managers'
 bindFastInvokeById('footer-request-btn', 'switchView', ['request'], 'Que');
 bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 'Communication');
             bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
+            bindFastInvokeById('sales-open-request', 'switchView', ['request'], 'Que');
+            bindFastInvokeById('sales-open-tasks', 'switchView', ['tasks'], 'Task');
             bindFastInvokeById('sales-open-bloom-orders', 'openSalesOfficeView', [], 'Sales Office');
             bindFastInvokeById('sales-open-advertisement', 'switchView', ['advertisement'], 'Advertisement');
+            bindFastInvokeById('qc-open-tasks', 'switchView', ['tasks'], 'Task');
+            bindFastInvokeById('qc-open-request', 'switchView', ['request'], 'Que');
             bindFastInvokeById('production-open-take-back', 'switchView', ['take-back'], 'Take Back');
             bindFastInvokeById('production-open-84rd', 'open84RdInventoryView', [], '84 R.D');
             bindFastInvokeById('production-open-disease-pest', 'switchView', ['disease-pest'], 'Disease & Pest Management');
+            bindFastInvokeById('production-open-tasks', 'switchView', ['tasks'], 'Task');
+            bindFastInvokeById('production-open-request', 'switchView', ['request'], 'Que');
             bindFastInvokeById('inventory-open-tasks', 'switchView', ['tasks'], 'Task');
             bindFastInvokeById('inventory-open-drive', 'switchView', ['drive'], 'Drive Mode');
             bindFastInvokeById('inventory-open-crop-roll', 'switchView', ['crop-roll'], 'Crop Roll');
@@ -26111,7 +26128,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.18').trim() || 'V2026.08.09.18';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.19').trim() || 'V2026.08.09.19';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -49770,7 +49787,7 @@ function toggleDriveQuickRequestItem(domId) {
         const ROLE_ACCESS_VIEWS = ['drive','tasks','docks','take-back','production','production-workflow','weather-hold','shear-list','sales','managers','building','qc','av','request','reserves','sales-office','office','po-management','sales-inventory','moves','reports','hours','low-stock','review','move-up','advertisement','diagnostics','disease-pest','grower','pest-management','communication','department-calendar','chat'];
         const ROLE_VIEW_ELEMENT_IDS = Object.freeze({
             drive: ['drawer-drive-btn', 'home-tile-drive'],
-            tasks: ['drawer-tasks-btn', 'home-tile-tasks'],
+            tasks: ['drawer-tasks-btn'],
             docks: ['drawer-docks-btn', 'home-tile-docks'],
             'crop-roll': ['drawer-crop-roll-btn'],
             'take-back': ['drawer-take-back-btn'],
@@ -49782,7 +49799,7 @@ function toggleDriveQuickRequestItem(domId) {
             building: ['drawer-building-btn', 'home-tile-building'],
             qc: ['drawer-qc-btn', 'home-tile-qc'],
             av: ['drawer-av-btn', 'home-tile-av'],
-            request: ['drawer-request-btn', 'home-tile-request', 'footer-request-btn'],
+            request: ['drawer-request-btn', 'footer-request-btn'],
             reserves: ['drawer-reserves-btn'],
             office: ['drawer-office-btn', 'home-tile-office'],
             'po-management': [],
@@ -49872,10 +49889,12 @@ function toggleDriveQuickRequestItem(domId) {
                 allowedViews.add('sales-inventory');
                 allowedViews.add('weather-hold');
                 allowedViews.add('shear-list');
+                allowedViews.add('tasks');
+                allowedViews.add('request');
             } else if (isForeman && !isAdmin) {
-                ['drive', 'take-back', 'production', 'production-workflow', 'sales-inventory', 'weather-hold', 'shear-list', 'tasks', 'communication', 'department-calendar', 'chat', 'hours', 'grower'].forEach(viewId => allowedViews.add(viewId));
+                ['drive', 'take-back', 'production', 'production-workflow', 'sales-inventory', 'weather-hold', 'shear-list', 'tasks', 'request', 'communication', 'department-calendar', 'chat', 'hours', 'grower'].forEach(viewId => allowedViews.add(viewId));
             } else if (isGrower && !isAdmin) {
-                ['production', 'production-workflow', 'sales-inventory', 'weather-hold', 'shear-list', 'tasks', 'grower', 'communication', 'department-calendar', 'chat'].forEach(viewId => allowedViews.add(viewId));
+                ['production', 'production-workflow', 'sales-inventory', 'weather-hold', 'shear-list', 'tasks', 'request', 'grower', 'communication', 'department-calendar', 'chat'].forEach(viewId => allowedViews.add(viewId));
             } else if (isEval && !isAdmin) {
                 ['sales-inventory', 'tasks', 'drive', 'request', 'moves', 'docks', 'communication', 'department-calendar', 'chat', 'av', 'sales-office', 'weather-hold'].forEach(viewId => allowedViews.add(viewId));
             } else if (isDivision && !isAdmin) {
@@ -49897,9 +49916,9 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (isRepLike) {
                 ['drive', 'sales', 'av', 'docks', 'request', 'tasks', 'weather-hold', 'communication', 'department-calendar', 'chat', 'sales-office', 'office'].forEach(viewId => allowedViews.add(viewId));
             } else if (isQcSupervisor) {
-                ['qc', 'drive', 'docks'].forEach(viewId => allowedViews.add(viewId));
+                ['qc', 'drive', 'docks', 'tasks', 'request'].forEach(viewId => allowedViews.add(viewId));
             } else if (isQc) {
-                ['qc', 'drive', 'docks'].forEach(viewId => allowedViews.add(viewId));
+                ['qc', 'drive', 'docks', 'tasks', 'request'].forEach(viewId => allowedViews.add(viewId));
             }
             if (canUseMovesModule()) {
                 allowedViews.add('moves');
@@ -59122,7 +59141,6 @@ function toggleDriveQuickRequestItem(domId) {
                 { id: 'home-sales-open-av', view: 'av', action: 'return openSalesAvModule()', icon: 'ph-notebook', title: 'AV' },
                 { id: 'home-sales-open-docks', view: 'docks', icon: 'ph-truck', title: 'Docks' },
                 { id: 'home-sales-open-communication', view: 'communication', icon: 'ph-chat-circle-dots', title: 'Communication' },
-                { id: 'home-sales-open-request', view: 'request', icon: 'ph-chat-circle-text', title: 'Request' },
                 { id: 'home-sales-open-weather-hold', view: 'weather-hold', icon: 'ph-cloud-sun', title: 'Weather & Hold Risk' }
             ];
             const cardsHtml = cards.map(renderRepHomeDashboardTileMarkup).filter(Boolean).join('');
@@ -59165,7 +59183,9 @@ function toggleDriveQuickRequestItem(domId) {
         function renderQcHub() {
             const visibleCount = [
                 setHubButtonVisibility('qc-open-drive', canAccessView('drive')),
-                setHubButtonVisibility('qc-open-docks', canAccessView('docks'))
+                setHubButtonVisibility('qc-open-docks', canAccessView('docks')),
+                setHubButtonVisibility('qc-open-tasks', canAccessView('tasks')),
+                setHubButtonVisibility('qc-open-request', canAccessView('request'))
             ].filter(Boolean).length;
             const emptyState = document.getElementById('qc-empty-state');
             if (emptyState) emptyState.classList.toggle('hidden', visibleCount > 0);
@@ -59180,6 +59200,7 @@ function toggleDriveQuickRequestItem(domId) {
                 setHubButtonVisibility('production-open-84rd', canAccessView('sales-inventory') && !isEvalInventoryUser),
                 setHubButtonVisibility('production-open-disease-pest', canAccessView('disease-pest')),
                 setHubButtonVisibility('production-open-tasks', canAccessView('tasks')),
+                setHubButtonVisibility('production-open-request', canAccessView('request')),
                 setHubButtonVisibility('production-open-propagation', canAccessView('production')),
                 setHubButtonVisibility('production-open-planting', canAccessView('production')),
                 setHubButtonVisibility('production-open-can-filling', canAccessView('production')),
