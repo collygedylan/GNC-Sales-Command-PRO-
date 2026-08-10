@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.28';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.29';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5053,13 +5053,13 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         }
         @media (max-width:760px), (pointer:coarse){
             #view-home{
-                --home-phone-tile-height:clamp(3.05rem,6.3dvh,4.15rem);
-                --home-phone-row-gap:.3rem;
-                --home-phone-col-gap:.44rem;
-                --home-phone-tile-padding-y:.38rem;
-                --home-phone-tile-gap:.22rem;
-                --home-phone-icon-size:clamp(1.12rem,2.75dvh,1.68rem);
-                --home-phone-label-size:clamp(.58rem,1.42dvh,.76rem);
+                --home-phone-tile-height:clamp(3.8rem,9.4dvh,5.65rem);
+                --home-phone-row-gap:.38rem;
+                --home-phone-col-gap:.5rem;
+                --home-phone-tile-padding-y:.48rem;
+                --home-phone-tile-gap:.28rem;
+                --home-phone-icon-size:clamp(1.28rem,3.35dvh,2rem);
+                --home-phone-label-size:clamp(.64rem,1.65dvh,.86rem);
             }
             body.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #main-scroll-area{
                 overflow-y:hidden !important;
@@ -6070,7 +6070,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.28').trim() || 'V2026.08.09.28';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.29').trim() || 'V2026.08.09.29';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7540,7 +7540,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.28';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.29';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -10345,15 +10345,15 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const rowGapPx = clamp(Math.round(profile.height * (profile.short ? 0.0052 : 0.0062)), profile.veryNarrow ? 3 : 4, profile.short ? 5 : 7);
             const colGapPx = clamp(Math.round(profile.width * 0.026), 8, 12);
             const fitTilePx = Math.floor((availableHeight - (rowGapPx * Math.max(0, rowCount - 1))) / rowCount);
-            const maxTilePx = profile.short ? 58 : 68;
-            const preferredMinPx = profile.short ? 39 : 46;
+            const maxTilePx = profile.short ? 72 : 92;
+            const preferredMinPx = profile.short ? 46 : 60;
             const hardMinPx = profile.veryNarrow || profile.short ? 34 : 38;
             let tilePx = Math.min(maxTilePx, fitTilePx);
             tilePx = fitTilePx < preferredMinPx ? Math.max(hardMinPx, tilePx) : Math.max(preferredMinPx, tilePx);
-            const iconPx = clamp(Math.round(tilePx * 0.37), profile.short ? 16 : 18, 28);
-            const labelPx = clamp(Math.round(tilePx * 0.17), profile.short ? 8 : 9, 13);
-            const tileGapPx = clamp(Math.round(tilePx * 0.065), 2, 5);
-            const paddingYPx = clamp(Math.round(tilePx * 0.12), 4, 8);
+            const iconPx = clamp(Math.round(tilePx * 0.36), profile.short ? 18 : 21, 34);
+            const labelPx = clamp(Math.round(tilePx * 0.16), profile.short ? 10 : 11, 15);
+            const tileGapPx = clamp(Math.round(tilePx * 0.07), 3, 7);
+            const paddingYPx = clamp(Math.round(tilePx * 0.13), 5, 11);
             const nextKey = [
                 profile.width,
                 profile.height,
@@ -26659,7 +26659,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.28').trim() || 'V2026.08.09.28';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.29').trim() || 'V2026.08.09.29';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
