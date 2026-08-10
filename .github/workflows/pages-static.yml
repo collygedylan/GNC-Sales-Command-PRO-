@@ -36,11 +36,12 @@ jobs:
           cp CNAME _site/CNAME
           cp .nojekyll _site/.nojekyll
           cp OneSignalSDKWorker.js _site/OneSignalSDKWorker.js
-          cp ag-data-solutions-logo.png _site/ag-data-solutions-logo.png
-          cp ag-data-solutions-icon-v20260708023-32.png _site/ag-data-solutions-icon-v20260708023-32.png
-          cp ag-data-solutions-icon-v20260708023-180.png _site/ag-data-solutions-icon-v20260708023-180.png
-          cp ag-data-solutions-icon-v20260708023-192.png _site/ag-data-solutions-icon-v20260708023-192.png
-          cp ag-data-solutions-icon-v20260708023-512.png _site/ag-data-solutions-icon-v20260708023-512.png
+          cp ag-data-solutions-logo-v2026080923.png _site/ag-data-solutions-logo-v2026080923.png
+          cp ag-data-solutions-splash-v2026080923.png _site/ag-data-solutions-splash-v2026080923.png
+          cp ag-data-solutions-icon-v2026080923-32.png _site/ag-data-solutions-icon-v2026080923-32.png
+          cp ag-data-solutions-icon-v2026080923-180.png _site/ag-data-solutions-icon-v2026080923-180.png
+          cp ag-data-solutions-icon-v2026080923-192.png _site/ag-data-solutions-icon-v2026080923-192.png
+          cp ag-data-solutions-icon-v2026080923-512.png _site/ag-data-solutions-icon-v2026080923-512.png
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

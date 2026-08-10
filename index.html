@@ -5,17 +5,17 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
     <title>Ag Data Solutions</title>
     <meta name="theme-color" content="#007a4d">
-    <link rel="icon" type="image/png" sizes="32x32" href="./ag-data-solutions-icon-v20260708023-32.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="./ag-data-solutions-icon-v20260708023-192.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="./ag-data-solutions-icon-v20260708023-180.png">
-    <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v202607141237.png">
-    <link rel="preload" as="image" href="./ag-data-solutions-logo.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./ag-data-solutions-icon-v2026080923-32.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="./ag-data-solutions-icon-v2026080923-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./ag-data-solutions-icon-v2026080923-180.png">
+    <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v2026080923.png">
+    <link rel="preload" as="image" href="./ag-data-solutions-logo-v2026080923.png">
     <link rel="preconnect" href="https://cdn.tailwindcss.com">
     <link rel="preconnect" href="https://unpkg.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.22';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.23';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -119,6 +119,12 @@ body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-h
         .footer-nav-btn:active{transform:scale(.97)}
         .footer-nav-btn.active,.footer-nav-btn.menu-open{color:#007a4d;background:#ecfdf5;border-color:#a7f3d0;box-shadow:0 6px 16px rgba(7,94,63,.12)}
         .footer-nav-badge{position:absolute;top:3px;right:8px;min-width:18px;height:18px;padding:0 4px;background:#ef4444;color:#fff;font-size:10px;font-weight:900;border-radius:999px;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+        #bottom-nav{grid-template-columns:repeat(4,minmax(0,1fr)) !important;width:min(520px,calc(100% - (var(--shell-gutter) * 2))) !important;max-width:calc(100% - (var(--shell-gutter) * 2)) !important}
+        #bottom-nav [data-footer-view="sales"],
+        #bottom-nav [data-footer-view="tasks"],
+        #bottom-nav [data-footer-view="docks"],
+        #bottom-nav [data-footer-view="request"],
+        #bottom-nav [data-footer-view="communication"]{display:none !important}
         button,a,[role="button"],[onclick],label,.excel-filter-option,.footer-nav-btn,.amazon-inline-back,.app-card-bottom-btn,.request-swipe-action{touch-action:manipulation;-webkit-tap-highlight-color:rgba(0,0,0,0)}
         #chat-content{max-width:100%;min-width:0;overflow:hidden;padding-bottom:calc(.35rem + env(safe-area-inset-bottom))}
         #view-chat .freeze-panel{margin-bottom:.35rem}
@@ -4956,6 +4962,97 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 padding:.6rem .5rem !important;
             }
         }
+        body:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #bottom-nav{
+            left:50% !important;
+            right:auto !important;
+            transform:translateX(-50%) !important;
+            width:min(520px,calc(100% - (var(--shell-gutter) * 2))) !important;
+            max-width:calc(100% - (var(--shell-gutter) * 2)) !important;
+        }
+        @media (pointer:coarse) and (max-height:820px){
+            body.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #main-scroll-area{
+                overflow-y:hidden !important;
+            }
+            #view-home .home-dashboard-sticky{
+                margin:-.26rem 0 .12rem !important;
+                padding:.05rem 0 .08rem !important;
+            }
+            #view-home .home-dashboard-sticky #home-dashboard-hero{
+                margin-bottom:.14rem !important;
+                padding:.42rem .6rem !important;
+                border-radius:15px !important;
+            }
+            #view-home .home-dashboard-logo{
+                max-width:clamp(5.8rem,18vh,7.4rem) !important;
+                padding:.24rem !important;
+                border-radius:11px !important;
+            }
+            #view-home .home-dashboard-sticky #home-dashboard-hero p{
+                margin-bottom:.16rem !important;
+                font-size:7px !important;
+            }
+            #view-home .home-dashboard-sticky #home-dashboard-hero .text-\[15px\]{
+                font-size:8.5px !important;
+                letter-spacing:.12em !important;
+            }
+            #view-home .home-dashboard-sticky #home-dashboard-hero .flex.flex-col{
+                padding-top:.2rem !important;
+            }
+            #view-home .home-sync-accordion{
+                margin-top:.22rem !important;
+            }
+            #view-home .home-sync-accordion>summary{
+                min-height:38px !important;
+                padding:.32rem .46rem !important;
+            }
+            #view-home .home-sync-accordion #dashboard-sync-stamp{
+                font-size:.66rem !important;
+            }
+            #view-home .home-run-script-btn{
+                min-height:31px !important;
+                padding:.36rem .5rem !important;
+                font-size:.5rem !important;
+            }
+            #view-home #home-dashboard-modules h2,
+            #view-home #home-rep-dashboard-modules h2{
+                margin-bottom:.24rem !important;
+                font-size:.5rem !important;
+            }
+            #view-home #home-dashboard-grid,
+            #view-home #home-rep-dashboard-grid{
+                gap:.28rem .38rem !important;
+                margin-bottom:.18rem !important;
+            }
+            #view-home #home-dashboard-grid>div,
+            #view-home #home-rep-dashboard-grid>button{
+                min-height:clamp(3.05rem,6.2vh,3.55rem) !important;
+                padding:.42rem .44rem !important;
+                gap:.2rem !important;
+                border-radius:10px !important;
+            }
+            #view-home #home-dashboard-grid>div>i,
+            #view-home #home-rep-dashboard-grid>button>i{
+                font-size:clamp(1.18rem,2.55vh,1.45rem) !important;
+            }
+            #view-home #home-dashboard-grid>div>span,
+            #view-home #home-rep-dashboard-grid>button>span{
+                font-size:clamp(.57rem,1.28vh,.68rem) !important;
+                letter-spacing:.06em !important;
+            }
+        }
+        @media (pointer:coarse) and (max-height:680px){
+            #view-home .home-dashboard-sticky #home-dashboard-hero{
+                padding:.32rem .48rem !important;
+            }
+            #view-home .home-dashboard-logo{
+                max-width:5.8rem !important;
+            }
+            #view-home #home-dashboard-grid>div,
+            #view-home #home-rep-dashboard-grid>button{
+                min-height:2.78rem !important;
+                padding:.32rem .36rem !important;
+            }
+        }
         html.outdoor-mode #view-av .av-primary-tabs-sticky,
         body.outdoor-mode #view-av .av-primary-tabs-sticky,
         html.outdoor-mode #view-drive .drive-controls-sticky,
@@ -5030,7 +5127,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <img src="./ag-data-solutions-logo.png" alt="Ag Data Solutions" class="w-full max-w-[270px] rounded-xl object-contain">
+                <img src="./ag-data-solutions-logo-v2026080923.png" alt="Ag Data Solutions" class="w-full max-w-[270px] rounded-xl object-contain">
                 <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">POWERED BY AG METRIC</span>
                 </div>
@@ -5816,7 +5913,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.22').trim() || 'V2026.08.09.22';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.23').trim() || 'V2026.08.09.23';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -5884,7 +5981,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div id="home-dashboard-hero" class="bg-[#007a4d] text-white p-6 rounded-xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
                             <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
                             <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div>
-                            <img src="./ag-data-solutions-logo.png" alt="Ag Data Solutions" class="home-dashboard-logo z-10 relative mt-4 w-full max-w-[300px] rounded-xl bg-white/95 p-3 object-contain shadow-sm">
+                            <img src="./ag-data-solutions-logo-v2026080923.png" alt="Ag Data Solutions" class="home-dashboard-logo z-10 relative mt-4 w-full max-w-[300px] rounded-xl bg-white/95 p-3 object-contain shadow-sm">
                             <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                             <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
                                 <div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">POWERED BY AG METRIC</div>
@@ -7286,7 +7383,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.22';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.23';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -19815,8 +19912,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const body = getDepartmentCalendarPushBody(event, options);
             const notificationOptions = {
                 body,
-                icon: './ag-data-solutions-icon-v20260708023-192.png',
-                badge: './ag-data-solutions-icon-v20260708023-192.png',
+                icon: './ag-data-solutions-icon-v2026080923-192.png',
+                badge: './ag-data-solutions-icon-v2026080923-192.png',
                 tag: `calendar-foreground-${event.id}`,
                 renotify: true,
                 silent: false,
@@ -26238,7 +26335,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.22').trim() || 'V2026.08.09.22';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.23').trim() || 'V2026.08.09.23';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -51148,8 +51245,8 @@ function toggleDriveQuickRequestItem(domId) {
             const body = title && title !== sender ? `${title}: ${preview}` : preview;
             const options = {
                 body,
-                icon: './ag-data-solutions-icon-v20260708023-192.png',
-                badge: './ag-data-solutions-icon-v20260708023-192.png',
+                icon: './ag-data-solutions-icon-v2026080923-192.png',
+                badge: './ag-data-solutions-icon-v2026080923-192.png',
                 tag: `chat-foreground-${message.conversationId}-${message.id}`,
                 renotify: true,
                 silent: false,
@@ -119132,7 +119229,7 @@ C.14.043 C.15.000
                     ? `<div class="app-av-reserve-panel"><div class="min-w-0"><div class="app-av-reserve-title">Reserved For</div><div class="app-av-reserve-main">${esc(firstNonEmptyValue(item.AV_RESERVE_CUSTOMER_PREVIEW, 'Reserve Customer'))}</div><div class="app-av-reserve-sub">${esc([firstNonEmptyValue(item.AV_RESERVE_SALESREP_PREVIEW, ''), firstNonEmptyValue(item.AV_RESERVE_CONSIGNEE_PREVIEW, '')].filter(Boolean).join(' | ') || 'ph_reserves')}</div></div><div class="app-av-reserve-count">${esc(String(item.AV_RESERVE_CUSTOMER_COUNT || 1))} customer${Number(item.AV_RESERVE_CUSTOMER_COUNT || 1) === 1 ? '' : 's'}</div></div>`
                     : '';
                 const photoCaption = escJsAttrValue(`${item.COMMONNAME || 'AV Item'} - ${item.CONTSIZE || '-'}`);
-                const agDataLogoSrc = 'ag-data-solutions-logo.png';
+                const agDataLogoSrc = 'ag-data-solutions-logo-v2026080923.png';
                 const pendingLeavesHtml = Array.from({ length: 5 }, () => `<span class="app-av-pending-leaf" aria-hidden="true"><img src="${agDataLogoSrc}" alt=""></span>`).join('');
                 const pendingHeroHtml = `<div class="app-av-hero-empty app-av-pending-hero" aria-label="update pending"><img src="${agDataLogoSrc}" class="app-av-pending-logo" alt="Ag Data Solutions"><div class="app-av-pending-text">update pending</div><div class="app-av-pending-leaves">${pendingLeavesHtml}</div></div>`;
                 const avCardActivationLabel = hasValidAvPhotos ? 'Open AV photos' : 'Update pending';
