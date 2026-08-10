@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.09.46';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.09.47';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.46').trim() || 'V2026.08.09.46';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.47').trim() || 'V2026.08.09.47';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.46';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.47';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26922,7 +26922,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.46').trim() || 'V2026.08.09.46';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.47').trim() || 'V2026.08.09.47';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -37588,7 +37588,9 @@ let avTopControlsRenderToken = 0;
                 PRIORITY: priorityValue,
                 ptronhand: String(firstNonEmptyValue(safeItem.PTRONHAND, safeItem.ptronhand, safeSnapshot.ptrOnHand, '') || '').trim(),
                 ptrreviewed: String(firstNonEmptyValue(safeItem.PTRREVIEWED, safeItem.ptrreviewed, safeSnapshot.ptrReviewed, '') || '').trim(),
-                ptravailable: String(firstNonEmptyValue(safeItem.PTRAVAILABLE, safeItem.ptravailable, safeSnapshot.ptrAvailable, '') || '').trim()
+                ptravailable: String(firstNonEmptyValue(safeItem.PTRAVAILABLE, safeItem.ptravailable, safeSnapshot.ptrAvailable, '') || '').trim(),
+                locationnote: String(firstNonEmptyValue(safeItem.LOCATIONNOTE, safeItem.locationnote, safeSnapshot.locationNote, '') || '').trim(),
+                locationptn1: getInventoryActionLocationPtn1Value(safeItem, safeSnapshot)
             };
             row.UNIQUE_ID = row.unique_id;
             row.ITEMCODE = row.itemcode;
@@ -37598,7 +37600,37 @@ let avTopControlsRenderToken = 0;
             row.PTRONHAND = row.ptronhand;
             row.PTRREVIEWED = row.ptrreviewed;
             row.PTRAVAILABLE = row.ptravailable;
+            row.LOCATIONNOTE = row.locationnote;
+            row.LOCATIONPTN1 = row.locationptn1;
             return row;
+        }
+
+        function getInventoryActionLocationPtn1Value(...sources) {
+            const keys = [
+                'LOCATIONPTN1',
+                'locationptn1',
+                'locationPtn1',
+                'LOCATION_PTN1',
+                'location_ptn1',
+                'LOC_PTN1',
+                'loc_ptn1',
+                'LOCATIONPULLTAGNOTE1',
+                'locationpulltagnote1',
+                'locationPullTagNote1',
+                'LOCATION_PULL_TAG_NOTE_1',
+                'location_pull_tag_note_1',
+                'PULLTAGNOTE1',
+                'pulltagnote1',
+                'pullTagNote1'
+            ];
+            for (const source of sources) {
+                if (!source || typeof source !== 'object') continue;
+                for (const key of keys) {
+                    const raw = String(source[key] == null ? '' : source[key]).trim();
+                    if (raw) return raw;
+                }
+            }
+            return '';
         }
 
         function buildArgosInventoryPriorityChangeReportRow(payload = null) {
@@ -37620,6 +37652,8 @@ let avTopControlsRenderToken = 0;
             assignPair('CONTSIZE', 'contsize', firstNonEmptyValue(snapshot.contSize, item && item.CONTSIZE, item && item.contsize, ''));
             assignPair('LOTCODE', 'lotcode', firstNonEmptyValue(source.lotcode, snapshot.lotCode, item && item.LOTCODE, ''));
             assignPair('LOCATIONCODE', 'locationcode', firstNonEmptyValue(source.locationcode, snapshot.locationCode, item && item.LOCATIONCODE, ''));
+            assignPair('LOCATIONNOTE', 'locationnote', firstNonEmptyValue(source.locationnote, snapshot.locationNote, item && item.LOCATIONNOTE, item && item.locationnote, ''));
+            assignPair('LOCATIONPTN1', 'locationptn1', getInventoryActionLocationPtn1Value(source, snapshot, item));
             assignPair('SOURCE', 'source', firstNonEmptyValue(source.source, snapshot.source, item && item.SOURCE, ''));
             assignPair('PTRONHAND', 'ptronhand', firstNonEmptyValue(source.ptronhand, snapshot.ptrOnHand, item && item.PTRONHAND, ''));
             assignPair('PTRREVIEWED', 'ptrreviewed', firstNonEmptyValue(source.ptrreviewed, snapshot.ptrReviewed, item && item.PTRREVIEWED, ''));
@@ -37642,6 +37676,8 @@ let avTopControlsRenderToken = 0;
             };
             setPair('LOTCODE', 'lotcode', screenValues.lotcode);
             setPair('LOCATIONCODE', 'locationcode', screenValues.locationcode);
+            setPair('LOCATIONNOTE', 'locationnote', screenValues.locationnote);
+            setPair('LOCATIONPTN1', 'locationptn1', getInventoryActionLocationPtn1Value(screenValues, rowOptions, sourceRow));
             setPair('SOURCE', 'source', firstNonEmptyValue(screenValues.source, screenValues.sourcecode, ''));
             setPair('PTRAVAILABLE', 'ptravailable', screenValues.ptravailable);
             setPair('PTRONHAND', 'ptronhand', screenValues.ptronhand);
@@ -37767,6 +37803,8 @@ let avTopControlsRenderToken = 0;
                     itemcode: firstNonEmptyValue(sourceRow && sourceRow.ITEMCODE, sourceRow && sourceRow.itemcode, ''),
                     lotcode: firstNonEmptyValue(reportRow.LOTCODE, reportRow.lotcode, ''),
                     locationcode: firstNonEmptyValue(reportRow.LOCATIONCODE, reportRow.locationcode, ''),
+                    locationnote: firstNonEmptyValue(reportRow.LOCATIONNOTE, reportRow.locationnote, ''),
+                    locationptn1: firstNonEmptyValue(reportRow.LOCATIONPTN1, reportRow.locationptn1, ''),
                     source: firstNonEmptyValue(reportRow.SOURCE, reportRow.source, ''),
                     priority: firstNonEmptyValue(reportRow.PRIORITY, reportRow.priority, ''),
                     ptronhand: firstNonEmptyValue(reportRow.PTRONHAND, reportRow.ptronhand, ''),
@@ -37776,7 +37814,8 @@ let avTopControlsRenderToken = 0;
                 transaction: {
                     newPriority: requestedPriority,
                     priority: requestedPriority,
-                    reason: String(firstNonEmptyValue(screenValues.locationnote, screenValues.note, safeOptions.reason, '') || '').trim()
+                    reason: String(firstNonEmptyValue(screenValues.locationnote, screenValues.note, safeOptions.reason, '') || '').trim(),
+                    locationptn1: firstNonEmptyValue(reportRow.LOCATIONPTN1, reportRow.locationptn1, '')
                 }
             };
             const responseData = await sendArgosInventoryPriorityChangeReportEmail(reportPayload, null, {
@@ -37791,6 +37830,7 @@ let avTopControlsRenderToken = 0;
         function buildArgosInventoryTransactionPayload() {
             const state = argosInventoryTransactionState || {};
             const snapshot = state.snapshot || {};
+            const sourceItem = state.item && typeof state.item === 'object' ? state.item : {};
             const transactionAction = normalizeArgosInventoryTransactionAction(state.action || 'qty');
             const requestedHoldAction = normalizeArgosInventoryTransactionRequestAction(getArgosInventoryTransactionInputValue('argos-inventory-transaction-hold-action'));
             const isPriorityChange = requestedHoldAction === 'priority_change';
@@ -37857,7 +37897,9 @@ let avTopControlsRenderToken = 0;
                     season: snapshot.season,
                     saleyear: snapshot.salesYear,
                     holdstopcode: snapshot.holdStopCode,
-                    holdstopreason: snapshot.holdStopReason
+                    holdstopreason: snapshot.holdStopReason,
+                    locationnote: firstNonEmptyValue(snapshot.locationNote, sourceItem.LOCATIONNOTE, sourceItem.locationnote, ''),
+                    locationptn1: getInventoryActionLocationPtn1Value(snapshot, sourceItem)
                 },
                 transaction: tx,
                 clientVersion: String(APP_SHELL_VERSION || APP_SHELL_BUILD || '').trim()
@@ -38260,6 +38302,14 @@ let avTopControlsRenderToken = 0;
                 item && item.priority,
                 ''
             ) || '').trim();
+            const locationNote = String(firstNonEmptyValue(
+                baseRow && baseRow.locationnote,
+                baseRow && baseRow.locationNote,
+                item && item.LOCATIONNOTE,
+                item && item.locationnote,
+                ''
+            ) || '').trim();
+            const locationPtn1 = getInventoryActionLocationPtn1Value(baseRow, item);
             return {
                 ...(baseRow || {}),
                 itemCode: String(firstNonEmptyValue(baseRow && baseRow.itemCode, item && item.ITEMCODE, item && item.itemcode, '-') || '-').trim(),
@@ -38273,6 +38323,10 @@ let avTopControlsRenderToken = 0;
                 ptrreviewed: String(firstNonEmptyValue(baseRow && baseRow.ptrreviewed, item && item.PTRREVIEWED, item && item.ptrreviewed, '-') || '-').trim(),
                 priority: currentPriority,
                 requestedPriority: selections && selections.priority ? selections.requestedPriority : '',
+                locationNote,
+                locationnote: locationNote,
+                locationPtn1,
+                locationptn1: locationPtn1,
                 holdStopCode,
                 holdStopReason
             };
@@ -38376,6 +38430,8 @@ let avTopControlsRenderToken = 0;
                 HOLDSTOPREASON: row.holdStopReason,
                 PRIORITY: row.priority,
                 REQUESTED_PRIORITY: selections.requestedPriority || '',
+                LOCATIONNOTE: row.locationNote || '',
+                LOCATIONPTN1: row.locationPtn1 || '',
                 PTRONHAND: row.ptronhand,
                 PTRREVIEWED: row.ptrreviewed,
                 PTRAVAILABLE: row.ptravailable,
@@ -38384,6 +38440,8 @@ let avTopControlsRenderToken = 0;
                 REQ_COMMENTS: [
                     labels.length ? `Actions: ${labels.join(', ')}` : '',
                     priorityText ? `Priority: ${priorityText}` : '',
+                    row.locationNote ? `LOCATIONNOTE: ${row.locationNote}` : '',
+                    row.locationPtn1 ? `LOCATIONPTN1: ${row.locationPtn1}` : '',
                     selections.message ? `Message: ${selections.message}` : ''
                 ].filter(Boolean).join('\n')
             };
@@ -38420,6 +38478,8 @@ let avTopControlsRenderToken = 0;
             if (selections.priority) lines.push(`REQUESTED PRIORITY: ${selections.requestedPriority || '-'}`);
             lines.push(`HOLDSTOPCODE: ${row.holdStopCode || '-'}`);
             lines.push(`HOLDSTOPREASON: ${row.holdStopReason || '-'}`);
+            if (row.locationNote) lines.push(`LOCATIONNOTE: ${row.locationNote}`);
+            if (row.locationPtn1) lines.push(`LOCATIONPTN1: ${row.locationPtn1}`);
             lines.push('');
             lines.push('Requested Actions:');
             if (selections.ncr) lines.push('- NCR');
@@ -38469,6 +38529,12 @@ let avTopControlsRenderToken = 0;
                 dataCell('Priority Change', { bold: true, nowrap: true }),
                 dataCell(`${row.priority || '-'} -> ${selections.requestedPriority || '-'}`, { bold: true, highlight: true })
             ]);
+            const locationNoteTableHtml = (row.locationNote || row.locationPtn1)
+                ? table(['LOCATIONNOTE', 'LOCATIONPTN1'], [[
+                    dataCell(row.locationNote || '-', { bold: true, highlight: !!row.locationNote }),
+                    dataCell(row.locationPtn1 || '-', { bold: true, highlight: !!row.locationPtn1 })
+                ]])
+                : '';
             const messageHtml = selections.message
                 ? `<div style="margin:0 0 14px 0;border-left:4px solid #007a4d;background:#ecfdf5;padding:10px 12px;font-size:13px;line-height:1.4;"><strong>Message:</strong><br>${h(selections.message).replace(/\n/g, '<br>')}</div>`
                 : '';
@@ -38497,6 +38563,7 @@ let avTopControlsRenderToken = 0;
                     dataCell(selections.takeOffHold ? strikeValue(row.holdStopCode) : row.holdStopCode, { html: selections.takeOffHold, bold: true, nowrap: true, highlight: selections.takeOffHold }),
                     dataCell(selections.takeOffHold ? strikeValue(row.holdStopReason) : row.holdStopReason, { html: selections.takeOffHold, bold: true, highlight: selections.takeOffHold })
                 ]])}
+                ${locationNoteTableHtml}
                 ${table(['ACTION', 'REQUEST'], actionRows.length ? actionRows : [[dataCell('None'), dataCell('-')]])}
             </div>`;
         }
@@ -55249,7 +55316,7 @@ function toggleDriveQuickRequestItem(domId) {
             priorityUpdate: String(firstNonEmptyValue(row.priorityUpdate, row.PRIUPDATED, '') || '').trim(),
             locationnoteDate: String(firstNonEmptyValue(row.locationnoteDate, row.LOCATIONNOTEDATE, '') || '').trim(),
             locationnote: String(firstNonEmptyValue(row.locationnote, row.LOCATIONNOTE, '') || '').trim(),
-            locationptn1: String(firstNonEmptyValue(row.locationptn1, row.LOCATIONPTN1, row.LOC_PTN1, '') || '').trim(),
+            locationptn1: getInventoryActionLocationPtn1Value(row),
             holdStopCode: String(firstNonEmptyValue(row.holdStopCode, row.holdstopcode, row.HOLDSTOPCODE, '') || '').trim(),
             holdStopReason: normalizeBloomActionHoldStopReasonValue(firstNonEmptyValue(row.holdStopReason, row.holdstopreason, row.HOLDSTOPREASON, '')),
             salesNote: normalizePaperNcrSalesNoteValue(firstNonEmptyValue(row.salesNote, row.SALESNOTE, row.SALES_NOTE, '')),
@@ -55299,6 +55366,8 @@ function toggleDriveQuickRequestItem(domId) {
             source,
             currentPriority: String(firstNonEmptyValue(row.currentPriority, row.originalPriority, row.priority, row.PRIORITY, '') || '').trim(),
             requestedPriority: String(firstNonEmptyValue(row.requestedPriority, row.requested_priority, row.newPriority, row.new_priority, '') || '').trim(),
+            locationnote: String(firstNonEmptyValue(row.locationnote, row.locationNote, row.LOCATIONNOTE, '') || '').trim(),
+            locationptn1: getInventoryActionLocationPtn1Value(row),
             season: String(firstNonEmptyValue(row.season, row.SEASON, '') || '').trim(),
             salesYear: String(firstNonEmptyValue(row.salesYear, row.salesyear, row.SALESYEAR, '') || '').trim()
         };
@@ -57267,7 +57336,7 @@ function toggleDriveQuickRequestItem(domId) {
                 priorityUpdate: formatGroupedBloomNcrReportDateValue(firstNonEmptyValue(screenValues.priorityUpdate, item && item.PRIUPDATED, item && item.priupdated, '')),
                 locationnoteDate: formatGroupedBloomNcrReportDateValue(firstNonEmptyValue(screenValues.locationnoteDate, item && item.LOCATIONNOTEDATE, item && item.locationnotedate, '')),
                 locationnote: String(firstNonEmptyValue(screenValues.locationnote, item && item.LOCATIONNOTE, item && item.locationnote, '') || '').trim(),
-                locationptn1: String(firstNonEmptyValue(screenValues.locationptn1, item && item.LOCATIONPTN1, item && item.locationptn1, item && item.LOC_PTN1, item && item.loc_ptn1, '') || '').trim()
+                locationptn1: getInventoryActionLocationPtn1Value(screenValues, safeOptions, item)
             };
         }
 
@@ -83324,6 +83393,8 @@ function toggleDriveQuickRequestItem(domId) {
                 source: String(firstNonEmptyValue(getMasterInventorySourceCode(row), row.SOURCE, row.source, row.SOURCECODE, row.sourcecode, '') || '').trim().toUpperCase(),
                 currentPriority: String(firstNonEmptyValue(row.PRIORITY, row.priority, '') || '').trim(),
                 requestedPriority,
+                locationnote: String(firstNonEmptyValue(row.LOCATIONNOTE, row.locationnote, '') || '').trim(),
+                locationptn1: getInventoryActionLocationPtn1Value(row),
                 season: getBloomActionRowExplicitSeasonCode(row),
                 salesYear: getBloomActionRowExplicitSalesYearCode(row)
             };
@@ -85139,7 +85210,7 @@ function toggleDriveQuickRequestItem(domId) {
                 }
                 state.locationnoteDate = String(firstNonEmptyValue(screenValues.locationnoteDate, state.locationnoteDate, '') || '').trim();
                 state.locationnote = String(firstNonEmptyValue(screenValues.locationnote, state.locationnote, '') || '').trim();
-                state.locationptn1 = String(firstNonEmptyValue(screenValues.locationptn1, state.locationptn1, '') || '').trim();
+                state.locationptn1 = String(firstNonEmptyValue(getInventoryActionLocationPtn1Value(screenValues, normalizedOptions), state.locationptn1, '') || '').trim();
                 state.salesNote = normalizePaperNcrSalesNoteValue(firstNonEmptyValue(normalizedOptions && normalizedOptions.salesNote, screenValues.salesNote, screenValues.salesnote, state.salesNote, ''));
                 if (actionType === 'note') {
                     const requestedLine = String(firstNonEmptyValue(
@@ -85318,7 +85389,7 @@ function toggleDriveQuickRequestItem(domId) {
             const priority = firstNonEmptyValue(screenValues.priority, rowOptions.priority, sourceRow && sourceRow.PRIORITY, state.priority, '');
             const noteDate = firstNonEmptyValue(screenValues.locationnoteDate, screenValues.locationnotedate, rowOptions.locationnoteDate, sourceRow && sourceRow.LOCATIONNOTEDATE, state.locationnoteDate, '');
             const locationNote = firstNonEmptyValue(screenValues.locationnote, rowOptions.locationnote, sourceRow && sourceRow.LOCATIONNOTE, state.locationnote, '');
-            const ptn1 = firstNonEmptyValue(screenValues.locationptn1, rowOptions.locationptn1, sourceRow && sourceRow.LOCATIONPTN1, state.locationptn1, '');
+            const ptn1 = firstNonEmptyValue(getInventoryActionLocationPtn1Value(screenValues, rowOptions, sourceRow), state.locationptn1, '');
             const holdCode = firstNonEmptyValue(screenValues.holdstopcode, rowOptions.holdStopCode, rowOptions.holdstopcode, sourceRow && sourceRow.HOLDSTOPCODE, state.holdstopcode, '');
             const holdReason = firstNonEmptyValue(screenValues.holdstopreason, rowOptions.holdStopReason, rowOptions.holdstopreason, sourceRow && sourceRow.HOLDSTOPREASON, state.holdstopreason, '');
             const salesNote = firstNonEmptyValue(screenValues.salesNote, screenValues.salesnote, rowOptions.salesNote, rowOptions.salesnote, sourceRow && sourceRow.SALESNOTE, state.salesNote, '');
@@ -134040,15 +134111,28 @@ ${folderNote ? `Folder Note: ${folderNote}
             const priorityChangeRows = normalizePaperNcrPriorityChangeRows(safePkg.offHoldPriorityChangeRows || safePkg.priorityChangeRows || []);
             const buildPriorityChangeRequestHtml = () => {
                 if (!priorityChangeRows.length) return '';
+                const includePriorityNotes = priorityChangeRows.some((priorityRow) => priorityRow.locationnote || priorityRow.locationptn1);
+                const priorityHeaders = includePriorityNotes
+                    ? ['ITEMCODE', 'LOCATIONCODE', 'SOURCE', 'CURRENT PRIORITY', 'REQUESTED PRIORITY', 'LOCATIONNOTE', 'LOCATIONPTN1']
+                    : ['ITEMCODE', 'LOCATIONCODE', 'SOURCE', 'CURRENT PRIORITY', 'REQUESTED PRIORITY'];
                 const priorityTable = buildRowsTable(
-                    ['ITEMCODE', 'LOCATIONCODE', 'SOURCE', 'CURRENT PRIORITY', 'REQUESTED PRIORITY'],
-                    priorityChangeRows.map((priorityRow) => [
-                        dataCell(priorityRow.itemCode, { bold: true, nowrap: true }),
-                        dataCell(priorityRow.locationcode, { bold: true, nowrap: true }),
-                        dataCell(priorityRow.source, { bold: true, nowrap: true }),
-                        dataCell(priorityRow.currentPriority, { bold: true, nowrap: true }),
-                        dataCell(priorityRow.requestedPriority, { bold: true, nowrap: true, highlight: true })
-                    ])
+                    priorityHeaders,
+                    priorityChangeRows.map((priorityRow) => {
+                        const cells = [
+                            dataCell(priorityRow.itemCode, { bold: true, nowrap: true }),
+                            dataCell(priorityRow.locationcode, { bold: true, nowrap: true }),
+                            dataCell(priorityRow.source, { bold: true, nowrap: true }),
+                            dataCell(priorityRow.currentPriority, { bold: true, nowrap: true }),
+                            dataCell(priorityRow.requestedPriority, { bold: true, nowrap: true, highlight: true })
+                        ];
+                        if (includePriorityNotes) {
+                            cells.push(
+                                dataCell(priorityRow.locationnote || '-', { bold: true, highlight: !!priorityRow.locationnote }),
+                                dataCell(priorityRow.locationptn1 || '-', { bold: true, highlight: !!priorityRow.locationptn1 })
+                            );
+                        }
+                        return cells;
+                    })
                 );
                 return `<div style="margin:14px 0 0 0;line-height:1.45;">
                     <div style="font-weight:800;margin:0 0 10px 0;text-transform:uppercase;letter-spacing:.08em;color:#007a4d;">Priority Change Request</div>
@@ -134275,13 +134359,16 @@ ${folderNote ? `Folder Note: ${folderNote}
                         lines.push('');
                         lines.push('Priority Change Request:');
                         priorityChangeRows.forEach((priorityRow) => {
-                            lines.push([
+                            const priorityParts = [
                                 `ITEMCODE ${getPaperNcrDisplayValue(priorityRow.itemCode)}`,
                                 `LOCATIONCODE ${getPaperNcrDisplayValue(priorityRow.locationcode)}`,
                                 `SOURCE ${getPaperNcrDisplayValue(priorityRow.source)}`,
                                 `CURRENT PRIORITY ${getPaperNcrDisplayValue(priorityRow.currentPriority)}`,
                                 `REQUESTED PRIORITY ${getPaperNcrDisplayValue(priorityRow.requestedPriority)}`
-                            ].join(' | '));
+                            ];
+                            if (priorityRow.locationnote) priorityParts.push(`LOCATIONNOTE ${getPaperNcrDisplayValue(priorityRow.locationnote)}`);
+                            if (priorityRow.locationptn1) priorityParts.push(`LOCATIONPTN1 ${getPaperNcrDisplayValue(priorityRow.locationptn1)}`);
+                            lines.push(priorityParts.join(' | '));
                         });
                     }
                     lines.push('');
