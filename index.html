@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.35';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.36';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -196,6 +196,11 @@ body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-h
         .app-card-actions{display:flex;gap:.55rem;margin-top:.9rem;padding-top:.85rem;border-top:1px solid #e5e7eb}
         .app-card-shell img,.inv-card img{display:block}
 .app-smart-card{border-radius:22px !important;box-shadow:0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important;border-color:#d7e4db !important;background:linear-gradient(180deg,#ffffff 0%,#fbfdfc 100%);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;contain:layout paint}
+.app-smart-card.app-card-planstart-monday{border-left:8px solid #9333ea !important;background:linear-gradient(180deg,#f3e8ff 0%,#e9d5ff 100%) !important;border-color:#a855f7 !important;box-shadow:0 0 0 2px rgba(147,51,234,.24),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
+.app-smart-card.app-card-planstart-tuesday,.app-smart-card.app-card-planstart-unknown{border-left:8px solid #ef4444 !important;background:linear-gradient(180deg,#ffe4e6 0%,#fecdd3 100%) !important;border-color:#fb7185 !important;box-shadow:0 0 0 2px rgba(239,68,68,.26),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
+.app-smart-card.app-card-planstart-wednesday{border-left:8px solid #16a34a !important;background:linear-gradient(180deg,#dcfce7 0%,#bbf7d0 100%) !important;border-color:#22c55e !important;box-shadow:0 0 0 2px rgba(22,163,74,.24),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
+.app-smart-card.app-card-planstart-thursday{border-left:8px solid #2563eb !important;background:linear-gradient(180deg,#dbeafe 0%,#bfdbfe 100%) !important;border-color:#3b82f6 !important;box-shadow:0 0 0 2px rgba(37,99,235,.24),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
+.app-smart-card.app-card-planstart-friday{border-left:8px solid #64748b !important;background:linear-gradient(180deg,#e2e8f0 0%,#cbd5e1 100%) !important;border-color:#64748b !important;box-shadow:0 0 0 2px rgba(100,116,139,.22),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
 body.performance-scroll-active .app-smart-card,body.performance-scroll-active .request-swipe-surface,body.performance-scroll-active .crop-roll-priority-review-row,body.performance-scroll-active .crop-roll-review-card,body.performance-scroll-active .manager-module-card{transition:none !important;box-shadow:none !important;filter:none !important}
 body.performance-scroll-active .task-top-control-shell,body.performance-scroll-active .drive-filter-shell,body.performance-scroll-active .av-filter-shell,body.performance-scroll-active .crop-roll-filter-shell,body.performance-scroll-active .manager-crop-roll-review-filter-shell,body.performance-scroll-active .sticky-search,body.performance-scroll-active .freeze-panel,body.performance-scroll-active .manager-module-freeze,body.performance-scroll-active #bottom-nav{transition:none !important}
 body.performance-scroll-active .task-top-control-shell,body.performance-scroll-active .drive-filter-shell,body.performance-scroll-active .av-filter-shell,body.performance-scroll-active .crop-roll-filter-shell,body.performance-scroll-active .manager-crop-roll-review-filter-shell{box-shadow:none !important;filter:none !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
@@ -6075,7 +6080,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.35').trim() || 'V2026.08.09.35';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.36').trim() || 'V2026.08.09.36';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7545,7 +7550,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.35';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.36';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -17075,6 +17080,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     const changedMasterItems = Array.from(changedMasterIds).map((uid) => findItemByUniqueId(uid)).filter(Boolean);
                     const masterClearOps = collectMasterAvRuleClearOps(changedMasterItems);
                     if (masterClearOps.length) persistMasterAvRuleClearOps(masterClearOps);
+                    syncCompletedDockSuspendSeasonSalesOfficeAfterMasterRefresh(changedMasterItems, {
+                        reason: 'suspend-tag-master-realtime'
+                    });
                 }
             }
             if (tableSet.has(CROP_ROLL_DRIVE_SOURCE_TABLE) || tableSet.has('ph_crop_roll_rows')) {
@@ -26714,7 +26722,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.35').trim() || 'V2026.08.09.35';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.36').trim() || 'V2026.08.09.36';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -31039,6 +31047,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         payload.data = mergeInitialMasterRowsWithExisting(payload.data);
                     }
                     processAndLoadData(payload);
+                    if (key === 'master') {
+                        syncCompletedDockSuspendSeasonSalesOfficeAfterMasterRefresh(fullInventory, {
+                            reason: wantsFull ? 'suspend-tag-master-full-refresh' : 'suspend-tag-master-refresh'
+                        });
+                    }
                 }
                 if (key === 'reserves') {
                     if (isViewVisible('av') && (activeAVTab === 'reserves' || shouldPrepareAvRepCustomerFilterData())) queueInteractiveViewRender('av', false, true, wantsFull ? 18 : 8, 220);
@@ -86649,6 +86662,17 @@ function toggleDriveQuickRequestItem(domId) {
             }else{
                 const detailOptions = { sourceDomId: domId };
                 if (String(sourceView || '').trim().toLowerCase() === 'request') {
+                    const suspendMirror = findDockSuspendDcRequestMirrorRowByUniqueId(uniqueId)
+                        || findDockSuspendDcRequestMirrorRowByDomId(domId);
+                    if (suspendMirror && isDockSuspendDcRequestMirrorRow(suspendMirror)) {
+                        const suspendSource = findDockSuspendDcRequestSourceRow(suspendMirror) || suspendMirror;
+                        if (isDockSuspendDcRequestCompletedRow(suspendSource) || isRequestComplete(suspendMirror)) {
+                            setDockSuspendDcRequestMirrorHidden(suspendMirror, true);
+                            refreshLocalDockSuspendDcRequestState('dock-suspend-tag-click-already-complete', suspendSource);
+                            showToast('Already Done', 'This Suspend Tag row is already completed.');
+                            return false;
+                        }
+                    }
                     detailOptions.preferredTab = 'request';
                 }
                 openDetail(uniqueId,sourceView, detailOptions);
@@ -93682,12 +93706,27 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return 'app-card-planstart-unknown';
         }
 
+        function getDockSuspendDcRequestPlanstartToneStyle(item = null) {
+            const toneClass = getDockSuspendDcRequestPlanstartToneClass(item);
+            const styles = {
+                'app-card-planstart-monday': 'border-left:8px solid #9333ea;border-color:#a855f7;background:linear-gradient(180deg,#f3e8ff 0%,#e9d5ff 100%);box-shadow:0 0 0 2px rgba(147,51,234,.24),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04);',
+                'app-card-planstart-tuesday': 'border-left:8px solid #ef4444;border-color:#fb7185;background:linear-gradient(180deg,#ffe4e6 0%,#fecdd3 100%);box-shadow:0 0 0 2px rgba(239,68,68,.26),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04);',
+                'app-card-planstart-wednesday': 'border-left:8px solid #16a34a;border-color:#22c55e;background:linear-gradient(180deg,#dcfce7 0%,#bbf7d0 100%);box-shadow:0 0 0 2px rgba(22,163,74,.24),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04);',
+                'app-card-planstart-thursday': 'border-left:8px solid #2563eb;border-color:#3b82f6;background:linear-gradient(180deg,#dbeafe 0%,#bfdbfe 100%);box-shadow:0 0 0 2px rgba(37,99,235,.24),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04);',
+                'app-card-planstart-friday': 'border-left:8px solid #64748b;border-color:#64748b;background:linear-gradient(180deg,#e2e8f0 0%,#cbd5e1 100%);box-shadow:0 0 0 2px rgba(100,116,139,.22),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04);',
+                'app-card-planstart-unknown': 'border-left:8px solid #ef4444;border-color:#fb7185;background:linear-gradient(180deg,#ffe4e6 0%,#fecdd3 100%);box-shadow:0 0 0 2px rgba(239,68,68,.26),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04);'
+            };
+            return styles[toneClass] || styles['app-card-planstart-unknown'];
+        }
+
         function syncDockSuspendDcRequestQuantityAliases(row = null, sourceRow = null) {
             if (!row || typeof row !== 'object') return row;
             const source = (sourceRow && typeof sourceRow === 'object')
                 ? sourceRow
                 : (isDockSuspendDcRequestMirrorRow(row) ? findDockSuspendDcRequestSourceRow(row) : null);
+            const linkedMaster = getDockSuspendDcRequestLinkedMasterRow(row, source) || null;
             const sourceSnapshot = source && source.SNAPSHOT && typeof source.SNAPSHOT === 'object' ? source.SNAPSHOT : {};
+            const masterSnapshot = linkedMaster && linkedMaster.SNAPSHOT && typeof linkedMaster.SNAPSHOT === 'object' ? linkedMaster.SNAPSHOT : {};
             const rowSnapshot = row.SNAPSHOT && typeof row.SNAPSHOT === 'object' ? row.SNAPSHOT : {};
             const setAliases = (aliases = [], value = '') => {
                 if (value === null || value === undefined || String(value).trim() === '') return;
@@ -93704,6 +93743,16 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 sourceSnapshot.ptronhand,
                 sourceSnapshot.PTR_ON_HAND,
                 sourceSnapshot.ptr_on_hand,
+                linkedMaster && linkedMaster.PTRONHAND,
+                linkedMaster && linkedMaster.ptronhand,
+                linkedMaster && linkedMaster.PTR_ON_HAND,
+                linkedMaster && linkedMaster.ptr_on_hand,
+                linkedMaster && linkedMaster.EXT_PTRONHAND,
+                linkedMaster && linkedMaster.ext_ptronhand,
+                masterSnapshot.PTRONHAND,
+                masterSnapshot.ptronhand,
+                masterSnapshot.PTR_ON_HAND,
+                masterSnapshot.ptr_on_hand,
                 row.PTRONHAND,
                 row.ptronhand,
                 rowSnapshot.PTRONHAND,
@@ -93725,6 +93774,20 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 sourceSnapshot.ptr_reviewed,
                 sourceSnapshot.PTRREVIEW,
                 sourceSnapshot.ptrreview,
+                linkedMaster && linkedMaster.PTRREVIEWED,
+                linkedMaster && linkedMaster.ptrreviewed,
+                linkedMaster && linkedMaster.PTR_REVIEWED,
+                linkedMaster && linkedMaster.ptr_reviewed,
+                linkedMaster && linkedMaster.PTRREVIEW,
+                linkedMaster && linkedMaster.ptrreview,
+                linkedMaster && linkedMaster.REVIEWED,
+                linkedMaster && linkedMaster.reviewed,
+                masterSnapshot.PTRREVIEWED,
+                masterSnapshot.ptrreviewed,
+                masterSnapshot.PTR_REVIEWED,
+                masterSnapshot.ptr_reviewed,
+                masterSnapshot.PTRREVIEW,
+                masterSnapshot.ptrreview,
                 row.PTRREVIEWED,
                 row.ptrreviewed,
                 rowSnapshot.PTRREVIEWED,
@@ -93746,6 +93809,20 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 source && source.available,
                 sourceSnapshot.PTRAVAILABLE,
                 sourceSnapshot.ptravailable,
+                linkedMaster && linkedMaster.PTRAVAILABLE,
+                linkedMaster && linkedMaster.ptravailable,
+                linkedMaster && linkedMaster.PRTAVAILABLE,
+                linkedMaster && linkedMaster.prtavailable,
+                linkedMaster && linkedMaster.LOC_AVAIL,
+                linkedMaster && linkedMaster.loc_avail,
+                linkedMaster && linkedMaster.LOC_AVAILABLE,
+                linkedMaster && linkedMaster.loc_available,
+                linkedMaster && linkedMaster.LOCAVA,
+                linkedMaster && linkedMaster.locava,
+                linkedMaster && linkedMaster.AVAILABLE,
+                linkedMaster && linkedMaster.available,
+                masterSnapshot.PTRAVAILABLE,
+                masterSnapshot.ptravailable,
                 row.PTRAVAILABLE,
                 row.ptravailable,
                 rowSnapshot.PTRAVAILABLE,
@@ -93757,12 +93834,29 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 source && source.s_lts,
                 sourceSnapshot.S_LTS,
                 sourceSnapshot.s_lts,
+                linkedMaster && linkedMaster.S_LTS,
+                linkedMaster && linkedMaster.s_lts,
+                masterSnapshot.S_LTS,
+                masterSnapshot.s_lts,
                 row.S_LTS,
                 row.s_lts,
                 rowSnapshot.S_LTS,
                 rowSnapshot.s_lts,
                 ''
             ));
+            return row;
+        }
+
+        function getDockSuspendDcRequestQuantityDisplayRow(item = null) {
+            if (!item || !isDockSuspendDcRequestMirrorRow(item)) return item;
+            const sourceRow = findDockSuspendDcRequestSourceRow(item) || item;
+            const linkedMaster = getDockSuspendDcRequestLinkedMasterRow(item, sourceRow) || null;
+            const row = {
+                ...(linkedMaster || {}),
+                ...(sourceRow || {}),
+                ...(item || {})
+            };
+            syncDockSuspendDcRequestQuantityAliases(row, sourceRow);
             return row;
         }
 
@@ -119713,6 +119807,7 @@ C.14.043 C.15.000
                 && isDockSuspendDcRequestMirrorRow(item);
             const suspendTagPlanstartToneClass = isSuspendTagRequestCard ? getDockSuspendDcRequestPlanstartToneClass(item) : '';
             const suspendTagPlanstartToneDataAttr = suspendTagPlanstartToneClass ? ` data-planstart-tone="${escJsAttrValue(suspendTagPlanstartToneClass)}"` : '';
+            const suspendTagPlanstartStyleAttr = isSuspendTagRequestCard ? ` style="${escapeHtml(getDockSuspendDcRequestPlanstartToneStyle(item))}"` : '';
             const requestCardToneClass = suspendTagPlanstartToneClass || (isDocksRequestCard
                 ? 'bg-red-50 border-red-300 ring-1 ring-red-200'
                 : (isSeasonSalesNoteCard ? 'bg-orange-100 border-orange-600' : 'bg-white border-purple-200'));
@@ -119909,6 +120004,9 @@ C.14.043 C.15.000
                 const dockSuspendCardDataHtml = isDockSuspendDcRequestMirrorRow(item) && activeReqTab === 'suspend-tag'
                     ? buildDockSuspendDcRequestCardDataHtml(item)
                     : '';
+                const requestQuantityAndFieldChipsHtml = isDockSuspendDcRequestMirrorRow(item) && activeReqTab === 'suspend-tag'
+                    ? `${buildInventoryQuantityChipsHtml(getDockSuspendDcRequestQuantityDisplayRow(item), { compact: true })}${cardDesignChipsHtml}`
+                    : compactCardFieldChipsHtml;
                 const requestDone = isRequestComplete(item);
                 const statusChip = requestDone
                     ? `<span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200">Complete</span>`
@@ -119934,7 +120032,7 @@ C.14.043 C.15.000
                 const dockSuspendTagActionHtml = isDockSuspendDcRequestMirrorRow(item) && activeReqTab === 'suspend-tag' && !requestDone
                     ? `<div class="mt-3 grid grid-cols-1 gap-2 border-t border-red-100 pt-3 sm:grid-cols-2"><button type="button" ${nestedDockActionPressAttrs} class="min-h-[44px] rounded-xl bg-[#007a4d] px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="return handleDockSuspendDcDonePress(event, '${safeUidJs}', this)"><i class="ph-bold ph-check-circle mr-1 text-base align-middle"></i> Done</button><button type="button" ${nestedDockActionPressAttrs} class="min-h-[44px] rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-amber-700 shadow-sm active:scale-95" onclick="return handleDockSuspendDcEmailPress(event, '${safeUidJs}', this)"><i class="ph-bold ph-envelope-simple mr-1 text-base align-middle"></i> Email</button></div>`
                     : '';
-        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${requestBorderClass}" data-dom-id="${item.DOM_ID}" data-request-uid="${esc(item.UNIQUE_ID)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}"${suspendTagPlanstartToneDataAttr} oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open request row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked, '${safeCardSourceViewKey}')"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-', item)}${buildInventorySecondarylineHtml(loc, requestSource)}<div class="app-card-meta-grid grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${historyBadge}${statusChip}${reserveBadge}<span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">QTY: ${reqQty}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${lot}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${priority}</span>${compactCardFieldChipsHtml}</div>${holdHtml}${requestSalesNoteHtml}${dockSuspendCardDataHtml}${inventoryEditActionHtml}</div>${inlineThumbHtml}</div>${dockSuspendTagActionHtml}${requestRemoveButtonHtml}${actionBadge}</div></div>`;
+        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${requestBorderClass}" data-dom-id="${item.DOM_ID}" data-request-uid="${esc(item.UNIQUE_ID)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}"${suspendTagPlanstartToneDataAttr}${suspendTagPlanstartStyleAttr} oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open request row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked, '${safeCardSourceViewKey}')"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-', item)}${buildInventorySecondarylineHtml(loc, requestSource)}<div class="app-card-meta-grid grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${historyBadge}${statusChip}${reserveBadge}<span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">QTY: ${reqQty}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${lot}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${priority}</span>${requestQuantityAndFieldChipsHtml}</div>${holdHtml}${requestSalesNoteHtml}${dockSuspendCardDataHtml}${inventoryEditActionHtml}</div>${inlineThumbHtml}</div>${dockSuspendTagActionHtml}${requestRemoveButtonHtml}${actionBadge}</div></div>`;
             }
             if(sourceView === 'docks'){
                 const qty = formatDockDisplayQty(getDockDisplayQty(item));
@@ -138938,6 +139036,86 @@ ${folderNote ? `Folder Note: ${folderNote}
             };
         }
 
+        function getDockSuspendDcRequestSavedPhotoLinkCsv(mirrorRow = null, sourceRow = null) {
+            const source = sourceRow || getDockSuspendDcRequestBaseRow(mirrorRow) || mirrorRow || {};
+            const mirror = mirrorRow || source || {};
+            if (mirror) syncDockSuspendDcRequestPhotoAliases(mirror, source);
+            return mergePhotoCsvList([
+                mirror.REQ_PHOTO_LINK,
+                mirror.REQUEST_PHOTO_LINK,
+                mirror.REQUESTPHOTO_LINK,
+                mirror.DOCK_PHOTO_LINK,
+                mirror.DOCKPHOTO_LINK,
+                mirror.ROW_PHOTO_LINK,
+                mirror.SAVED_PHOTO_LINK,
+                mirror.PHOTO_LINK,
+                source.REQ_PHOTO_LINK,
+                source.REQUEST_PHOTO_LINK,
+                source.REQUESTPHOTO_LINK,
+                source.DOCK_PHOTO_LINK,
+                source.DOCKPHOTO_LINK,
+                source.ROW_PHOTO_LINK,
+                source.SAVED_PHOTO_LINK,
+                source.PHOTO_LINK
+            ]);
+        }
+
+        function getDockSuspendDcRequestSavedPhotoNameCsv(mirrorRow = null, sourceRow = null) {
+            const source = sourceRow || getDockSuspendDcRequestBaseRow(mirrorRow) || mirrorRow || {};
+            const mirror = mirrorRow || source || {};
+            if (mirror) syncDockSuspendDcRequestPhotoAliases(mirror, source);
+            return mergePhotoCsvList([
+                mirror.REQ_PHOTO_NAME,
+                mirror.REQUEST_PHOTO_NAME,
+                mirror.REQUESTPHOTONAME,
+                mirror.DOCK_PHOTO_NAME,
+                mirror.DOCKPHOTO_NAME,
+                mirror.ROW_PHOTO_NAME,
+                mirror.SAVED_PHOTO_NAME,
+                mirror.PHOTO_NAME,
+                source.REQ_PHOTO_NAME,
+                source.REQUEST_PHOTO_NAME,
+                source.REQUESTPHOTONAME,
+                source.DOCK_PHOTO_NAME,
+                source.DOCKPHOTO_NAME,
+                source.ROW_PHOTO_NAME,
+                source.SAVED_PHOTO_NAME,
+                source.PHOTO_NAME
+            ]);
+        }
+
+        function getDockSuspendDcRequestCompletionSyncValues(mirrorRow = null, sourceRow = null) {
+            const source = sourceRow || getDockSuspendDcRequestBaseRow(mirrorRow) || mirrorRow || {};
+            const mirror = mirrorRow || source || {};
+            const values = getDockSuspendDcRequestCompletionValues(mirror, source);
+            const text = (...valuesList) => String(firstNonEmptyValue(...valuesList, '') || '').trim();
+            values.pick = text(
+                getRequestResolvedPickNoteValue(mirror, source, { includeStandard: true }),
+                getRequestResolvedPickNoteValue(source, mirror, { includeStandard: true }),
+                mirror.REQ_PICK,
+                mirror.REQ_PIC_NOTE,
+                mirror.PIC_NOTE,
+                mirror.PICK,
+                source.REQ_PICK,
+                source.REQ_PIC_NOTE,
+                source.PIC_NOTE,
+                source.PICK
+            );
+            values.comments = text(
+                mirror.REQ_COMMENTS,
+                mirror.REQUEST_NOTE,
+                mirror.DOCK_NOTE,
+                mirror.DOCK_ISSUE_NOTE,
+                source.REQ_COMMENTS,
+                source.REQUEST_NOTE,
+                source.DOCK_NOTE,
+                source.DOCK_ISSUE_NOTE,
+                source.SALES_NOTE,
+                source.SALESNOTE
+            );
+            return values;
+        }
+
         function getDockSuspendDcRequestCompletionReadiness(mirrorRow = null, sourceRow = null) {
             const source = sourceRow || getDockSuspendDcRequestBaseRow(mirrorRow) || mirrorRow || {};
             const values = getDockSuspendDcRequestCompletionValues(mirrorRow, source);
@@ -138967,6 +139145,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                 || (Array.isArray(requestsInventory) ? requestsInventory.find((row) => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim() === uid) : null);
             if (!mirrorRow || !isDockSuspendDcRequestMirrorRow(mirrorRow)) {
                 showToast('Missing Row', 'That Suspend Tag row could not be found.', true);
+                return false;
+            }
+            const sourceRow = findDockSuspendDcRequestSourceRow(mirrorRow) || mirrorRow;
+            if (isDockSuspendDcRequestCompletedRow(sourceRow) || isRequestComplete(mirrorRow)) {
+                setDockSuspendDcRequestMirrorHidden(mirrorRow, true);
+                refreshLocalDockSuspendDcRequestState('dock-suspend-tag-update-already-complete', sourceRow);
+                showToast('Already Done', 'This Suspend Tag row is already completed.');
                 return false;
             }
             const tab = String(firstNonEmptyValue(safeOptions.preferredTab, 'request') || 'request').trim() || 'request';
@@ -139034,9 +139219,31 @@ ${folderNote ? `Folder Note: ${folderNote}
             return payload;
         }
 
+        async function ensureDockSuspendDcRequestLinkedMasterRow(mirrorRow = null, sourceRow = null) {
+            let linkedMaster = getDockSuspendDcRequestLinkedMasterRow(mirrorRow, sourceRow);
+            if (linkedMaster) return linkedMaster;
+            if (navigator.onLine === false || typeof loadDatasetTargetsWithLimit !== 'function') return null;
+            await loadDatasetTargetsWithLimit([{ key: 'master', mode: 'full' }], {
+                force: true,
+                preserveRequestedMode: true,
+                retryReason: 'dock-suspend-master-sync'
+            }, 1).catch((error) => {
+                console.warn('Could not load master inventory for Suspend Tag sync', error);
+            });
+            linkedMaster = getDockSuspendDcRequestLinkedMasterRow(mirrorRow, sourceRow);
+            return linkedMaster || null;
+        }
+
         async function syncDockSuspendDcRequestMasterFromSave(mirrorRow = null, sourceRow = null, values = {}, reqPhotoLink = '', reqPhotoName = '', completedAt = '') {
-            const linkedMaster = getDockSuspendDcRequestLinkedMasterRow(mirrorRow, sourceRow);
-            if (!linkedMaster) return { updated: false, payload: null, masterItem: null, error: null };
+            const linkedMaster = await ensureDockSuspendDcRequestLinkedMasterRow(mirrorRow, sourceRow);
+            if (!linkedMaster) {
+                return {
+                    updated: false,
+                    payload: null,
+                    masterItem: null,
+                    error: new Error('Linked inventory row could not be found for this Suspend Tag row.')
+                };
+            }
             const payload = buildDockSuspendDcRequestMasterSyncPayload(values, reqPhotoLink, reqPhotoName, completedAt);
             const result = await syncLinkedMasterFromRequestSave(mirrorRow, payload, linkedMaster, {
                 timeoutMs: getDetailRowWriteTimeoutMs(),
@@ -139080,28 +139287,55 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function syncSuspendTagSeasonSalesOfficeAfterSave(mirrorRow = null, sourceRow = null) {
             const linkedMaster = getDockSuspendDcRequestLinkedMasterRow(mirrorRow, sourceRow);
+            const completed = isDockSuspendDcRequestCompletedRow(sourceRow)
+                || isRequestComplete(mirrorRow)
+                || hasCompletionDateValue(linkedMaster);
+            if (!completed) return [];
             const baseRow = linkedMaster || sourceRow || mirrorRow;
             const itemCode = getMasterItemCodeKey(baseRow) || getItemInquiryItemCode(baseRow);
             if (!itemCode) return [];
-            const candidates = [linkedMaster, sourceRow, mirrorRow].filter(Boolean);
-            const shouldSync = candidates.some((row) => {
-                if (!row) return false;
-                if (isSeasonSalesNoteCardItem(row)) return true;
-                const assignment = firstNonEmptyValue(
-                    row.APP_TAB_ASSIGNMENT,
-                    row.app_tab_assignment,
-                    row.MASTER_APP_TAB_ASSIGNMENT,
-                    row.master_app_tab_assignment,
-                    ''
-                );
-                return isCurrentSeasonSalesNotesAssignmentRow(row, assignment);
-            });
-            if (!shouldSync) return [];
             const remoteOps = syncSeasonSalesOfficeStateForItemCodes([itemCode], {
-                preserveAssignments: true,
+                preserveAssignments: false,
                 reason: 'suspend-tag-data-save'
             });
             remoteOps.forEach((op) => Promise.resolve(op).catch((error) => console.warn('Suspend Tag Sales Office sync failed', error)));
+            return remoteOps;
+        }
+
+        function getCompletedDockSuspendSeasonSalesOfficeSyncCodes(masterRows = []) {
+            const scopedRows = Array.isArray(masterRows) ? masterRows.filter(Boolean) : [];
+            const scopedCodes = new Set(scopedRows.map((row) => getMasterItemCodeKey(row)).filter(Boolean));
+            const codes = new Set();
+            const addCode = (code = '') => {
+                const normalized = String(code || '').trim().toUpperCase();
+                if (!normalized) return;
+                if (scopedCodes.size && !scopedCodes.has(normalized)) return;
+                codes.add(normalized);
+            };
+            if (Array.isArray(socInventory)) {
+                socInventory.forEach((row) => {
+                    if (!row || !isDockSuspendDcRequestRowAnyStatus(row) || !isDockSuspendDcRequestCompletedRow(row)) return;
+                    addCode(getMasterItemCodeKey(row) || getItemInquiryItemCode(row));
+                });
+            }
+            scopedRows.forEach((row) => {
+                if (!row || !hasCompletionDateValue(row) || !isCurrentSeasonSalesNotesRow(row)) return;
+                const assignment = firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, row.app_tab_assignment, '');
+                if (!getSingleDigitSeasonPriority(row) && !isCurrentSeasonSalesNotesAssignmentRow(row, assignment)) return;
+                addCode(getMasterItemCodeKey(row));
+            });
+            return Array.from(codes);
+        }
+
+        function syncCompletedDockSuspendSeasonSalesOfficeAfterMasterRefresh(masterRows = [], options = {}) {
+            if (typeof syncSeasonSalesOfficeStateForItemCodes !== 'function') return [];
+            const codes = getCompletedDockSuspendSeasonSalesOfficeSyncCodes(masterRows);
+            if (!codes.length) return [];
+            const remoteOps = syncSeasonSalesOfficeStateForItemCodes(codes, {
+                preserveAssignments: false,
+                reason: options && options.reason ? options.reason : 'suspend-tag-master-refresh'
+            });
+            remoteOps.forEach((op) => Promise.resolve(op).catch((error) => console.warn('Suspend Tag master refresh Sales Office sync failed', error)));
             return remoteOps;
         }
 
@@ -139342,6 +139576,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 showToast('Missing Source', 'The source Docks row ID is missing.', true);
                 return false;
             }
+            if (isDockSuspendDcRequestCompletedRow(sourceRow) || isRequestComplete(mirrorRow)) {
+                setDockSuspendDcRequestMirrorHidden(mirrorRow, true);
+                refreshLocalDockSuspendDcRequestState('dock-suspend-tag-card-already-complete', sourceRow);
+                showToast('Already Done', 'This Suspend Tag row is already completed.');
+                return false;
+            }
             const parts = getDockSuspendDcRequestGroupParts(sourceRow);
             const confirmText = [
                 'Mark this Suspend Tag row done?',
@@ -139377,53 +139617,53 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (button) {
                 button.disabled = true;
                 button.classList.add('opacity-70', 'pointer-events-none');
-                button.innerHTML = '<i class="ph-bold ph-check-circle mr-1 text-base align-middle"></i> Done';
+                button.innerHTML = '<i class="ph-bold ph-check-circle mr-1 text-base align-middle"></i> Completing...';
             }
             const completedAt = new Date().toISOString();
+            let linkedMaster = null;
+            let masterSnapshot = null;
             try {
+                linkedMaster = await ensureDockSuspendDcRequestLinkedMasterRow(mirrorRow, sourceRow);
+                if (!linkedMaster) throw new Error('The linked inventory row could not be found. The Suspend Tag row was not completed.');
+                masterSnapshot = { ...linkedMaster };
+                const values = getDockSuspendDcRequestCompletionSyncValues(mirrorRow, sourceRow);
+                const reqPhotoLink = getDockSuspendDcRequestSavedPhotoLinkCsv(mirrorRow, sourceRow);
+                const reqPhotoName = getDockSuspendDcRequestSavedPhotoNameCsv(mirrorRow, sourceRow);
+                const masterSync = await syncDockSuspendDcRequestMasterFromSave(mirrorRow, sourceRow, values, reqPhotoLink, reqPhotoName, completedAt);
+                if (!masterSync || masterSync.error || masterSync.updated !== true) {
+                    throw (masterSync && masterSync.error) || new Error('The linked inventory row did not confirm the Suspend Tag completion.');
+                }
+                await runDetailWriteWithRetry('ph_soc_master', 'PATCH', { date_completed: completedAt }, `unique_id=eq.${encodeURIComponent(sourceUid)}`, {
+                    timeoutMs: getDetailRowWriteTimeoutMs(),
+                    retries: DETAIL_ROW_WRITE_RETRY_COUNT,
+                    retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
+                });
                 applyDockSuspendDcRequestHandledState(sourceRow, completedAt, false);
                 applyDockSuspendDcRequestHandledState(mirrorRow, completedAt, true);
                 setDockSuspendDcRequestMirrorHidden(mirrorRow, true);
                 refreshLocalDockSuspendDcRequestState('dock-suspend-tag-card-complete', sourceRow);
+                const masterUid = String(firstNonEmptyValue(masterSync.masterItem && masterSync.masterItem.UNIQUE_ID, linkedMaster && linkedMaster.UNIQUE_ID, '') || '').trim();
+                if (masterUid) queueAppLiveEventForWrite('ph_master_inventory', 'UPDATE', [{ unique_id: masterUid }], '');
+                queueAppLiveEventForWrite('ph_soc_master', 'UPDATE', [{ unique_id: sourceUid }], '');
+                flushQueuedAppLiveEvents().catch(() => {});
+                syncSuspendTagSeasonSalesOfficeAfterSave(mirrorRow, sourceRow);
+                triggerRequestRealtimeUiRefresh(250);
                 showToast('Marked Done', 'Suspend Tag row completed.');
             } catch (error) {
+                console.warn('Suspend Tag card completion sync failed', error);
                 restoreDockSuspendDcRequestHandledState(sourceRow, sourceSnapshot);
                 restoreDockSuspendDcRequestHandledState(mirrorRow, mirrorSnapshot);
+                if (linkedMaster && masterSnapshot) Object.assign(linkedMaster, masterSnapshot);
                 setDockSuspendDcRequestMirrorHidden(mirrorRow, false);
                 refreshLocalDockSuspendDcRequestState('dock-suspend-tag-card-complete-rollback', sourceRow);
+                showToast('Sync Failed', error && error.message ? error.message : 'Could not mark this Suspend Tag row done. It was put back in the list.', true);
+            } finally {
                 if (button) {
                     button.disabled = false;
                     button.classList.remove('opacity-70', 'pointer-events-none');
                     button.innerHTML = originalButtonHtml || '<i class="ph-bold ph-check-circle mr-1 text-base align-middle"></i> Done';
                 }
-                showToast('Could Not Complete', error && error.message ? error.message : 'Could not mark this Suspend Tag row done.', true);
-                return false;
             }
-            runDetailWriteWithRetry('ph_soc_master', 'PATCH', { date_completed: completedAt }, `unique_id=eq.${encodeURIComponent(sourceUid)}`, {
-                    timeoutMs: getDetailRowWriteTimeoutMs(),
-                    retries: DETAIL_ROW_WRITE_RETRY_COUNT,
-                    retryDelayMs: DETAIL_ROW_WRITE_RETRY_DELAY_MS
-                })
-                .then(() => {
-                    queueAppLiveEventForWrite('ph_soc_master', 'UPDATE', [{ unique_id: sourceUid }], '');
-                    flushQueuedAppLiveEvents().catch(() => {});
-                    triggerRequestRealtimeUiRefresh(250);
-                })
-                .catch((error) => {
-                    console.warn('Suspend Tag card completion sync failed', error);
-                    restoreDockSuspendDcRequestHandledState(sourceRow, sourceSnapshot);
-                    restoreDockSuspendDcRequestHandledState(mirrorRow, mirrorSnapshot);
-                    setDockSuspendDcRequestMirrorHidden(mirrorRow, false);
-                    refreshLocalDockSuspendDcRequestState('dock-suspend-tag-card-complete-rollback', sourceRow);
-                    showToast('Sync Failed', error && error.message ? error.message : 'Could not mark this Suspend Tag row done. It was put back in the list.', true);
-                })
-                .finally(() => {
-                    if (button) {
-                        button.disabled = false;
-                        button.classList.remove('opacity-70', 'pointer-events-none');
-                        button.innerHTML = originalButtonHtml || '<i class="ph-bold ph-check-circle mr-1 text-base align-middle"></i> Done';
-                    }
-                });
             return false;
         }
 
@@ -139483,30 +139723,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
             }
             const noteText = buildDockSuspendDcRequestNote(values, firstNonEmptyValue(sourceRow.DOCK_NOTE, sourceRow.DOCK_ISSUE_NOTE, mirrorRow.REQ_COMMENTS, mirrorRow.REQUEST_NOTE, ''));
-            const reqPhotoLink = mergePhotoCsvList([
-                mirrorRow.REQ_PHOTO_LINK,
-                mirrorRow.REQUEST_PHOTO_LINK,
-                mirrorRow.REQUESTPHOTO_LINK,
-                mirrorRow.DOCK_PHOTO_LINK,
-                mirrorRow.DOCKPHOTO_LINK,
-                sourceRow.REQ_PHOTO_LINK,
-                sourceRow.REQUEST_PHOTO_LINK,
-                sourceRow.REQUESTPHOTO_LINK,
-                sourceRow.DOCK_PHOTO_LINK,
-                sourceRow.DOCKPHOTO_LINK
-            ]);
-            const reqPhotoName = mergePhotoCsvList([
-                mirrorRow.REQ_PHOTO_NAME,
-                mirrorRow.REQUEST_PHOTO_NAME,
-                mirrorRow.REQUESTPHOTONAME,
-                mirrorRow.DOCK_PHOTO_NAME,
-                mirrorRow.DOCKPHOTO_NAME,
-                sourceRow.REQ_PHOTO_NAME,
-                sourceRow.REQUEST_PHOTO_NAME,
-                sourceRow.REQUESTPHOTONAME,
-                sourceRow.DOCK_PHOTO_NAME,
-                sourceRow.DOCKPHOTO_NAME
-            ]);
+            const reqPhotoLink = getDockSuspendDcRequestSavedPhotoLinkCsv(mirrorRow, sourceRow);
+            const reqPhotoName = getDockSuspendDcRequestSavedPhotoNameCsv(mirrorRow, sourceRow);
             const completedAt = shouldCompleteSuspendTag ? new Date().toISOString() : String(firstNonEmptyValue(sourceRow.DATE_COMPLETED, sourceRow.date_completed, '') || '').trim();
             const matchBaselinePtr = values.match !== '' ? getDockSuspendDcRequestLocMatchBaselinePtr(sourceRow || mirrorRow) : null;
             const locMatchQty = values.match !== '' ? calculateDockSuspendDcRequestLocMatchQty(sourceRow || mirrorRow, values.match) : null;
