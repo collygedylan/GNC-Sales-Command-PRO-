@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.38';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.39';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1319,11 +1319,13 @@ body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-
 .request-swipe-row--season{background:linear-gradient(180deg,#ecfdf5 0%,#dcfce7 100%) !important;border-color:#007a4d !important}
 .request-swipe-surface{position:relative;z-index:2;width:100%;background:#ffffff;border-radius:inherit;padding:0;transition:transform .18s ease;will-change:transform;touch-action:pan-y;-webkit-user-select:none;user-select:none}
 .request-swipe-surface--season{background:linear-gradient(180deg,#ecfdf5 0%,#dcfce7 100%) !important}
-.request-swipe-row.app-card-planstart-monday,.request-swipe-surface.app-card-planstart-monday,#view-detail.detail-request-mode .request-desired-summary.app-card-planstart-monday,.request-open-info-card.app-card-planstart-monday{background:linear-gradient(180deg,#f3e8ff 0%,#e9d5ff 100%) !important;border-color:#a855f7 !important}
-.request-swipe-row.app-card-planstart-tuesday,.request-swipe-row.app-card-planstart-unknown,.request-swipe-surface.app-card-planstart-tuesday,.request-swipe-surface.app-card-planstart-unknown,#view-detail.detail-request-mode .request-desired-summary.app-card-planstart-tuesday,#view-detail.detail-request-mode .request-desired-summary.app-card-planstart-unknown,.request-open-info-card.app-card-planstart-tuesday,.request-open-info-card.app-card-planstart-unknown{background:linear-gradient(180deg,#ffe4e6 0%,#fecdd3 100%) !important;border-color:#fb7185 !important}
-.request-swipe-row.app-card-planstart-wednesday,.request-swipe-surface.app-card-planstart-wednesday,#view-detail.detail-request-mode .request-desired-summary.app-card-planstart-wednesday,.request-open-info-card.app-card-planstart-wednesday{background:linear-gradient(180deg,#dcfce7 0%,#bbf7d0 100%) !important;border-color:#22c55e !important}
-.request-swipe-row.app-card-planstart-thursday,.request-swipe-surface.app-card-planstart-thursday,#view-detail.detail-request-mode .request-desired-summary.app-card-planstart-thursday,.request-open-info-card.app-card-planstart-thursday{background:linear-gradient(180deg,#dbeafe 0%,#bfdbfe 100%) !important;border-color:#3b82f6 !important}
-.request-swipe-row.app-card-planstart-friday,.request-swipe-surface.app-card-planstart-friday,#view-detail.detail-request-mode .request-desired-summary.app-card-planstart-friday,.request-open-info-card.app-card-planstart-friday{background:linear-gradient(180deg,#e2e8f0 0%,#cbd5e1 100%) !important;border-color:#64748b !important}
+.request-swipe-row[data-planstart-tone],.request-swipe-surface[data-planstart-tone],#view-detail.detail-request-mode .request-desired-summary[data-planstart-tone],.request-open-info-card[data-planstart-tone]{background:var(--planstart-bg,#fff) !important;background-color:var(--planstart-bg-color,#fff) !important;border-color:var(--planstart-border,#d1fae5) !important;border-left:10px solid var(--planstart-accent,#007a4d) !important;box-shadow:var(--planstart-shadow,0 14px 34px rgba(15,23,42,.08)) !important}
+.app-smart-card[data-planstart-tone]{background:var(--planstart-bg,#fff) !important;background-color:var(--planstart-bg-color,#fff) !important;border-color:var(--planstart-border,#d1fae5) !important;border-left:10px solid var(--planstart-accent,#007a4d) !important;box-shadow:var(--planstart-shadow,0 14px 34px rgba(15,23,42,.08)) !important}
+.request-swipe-row.app-card-planstart-monday,.request-swipe-surface.app-card-planstart-monday,#view-detail.detail-request-mode .request-desired-summary.app-card-planstart-monday,.request-open-info-card.app-card-planstart-monday{--planstart-bg:linear-gradient(180deg,#e9d5ff 0%,#d8b4fe 100%);--planstart-bg-color:#e9d5ff;--planstart-accent:#7e22ce;--planstart-border:#a855f7}
+.request-swipe-row.app-card-planstart-tuesday,.request-swipe-row.app-card-planstart-unknown,.request-swipe-surface.app-card-planstart-tuesday,.request-swipe-surface.app-card-planstart-unknown,#view-detail.detail-request-mode .request-desired-summary.app-card-planstart-tuesday,#view-detail.detail-request-mode .request-desired-summary.app-card-planstart-unknown,.request-open-info-card.app-card-planstart-tuesday,.request-open-info-card.app-card-planstart-unknown{--planstart-bg:linear-gradient(180deg,#fecdd3 0%,#fda4af 100%);--planstart-bg-color:#fecdd3;--planstart-accent:#dc2626;--planstart-border:#fb7185}
+.request-swipe-row.app-card-planstart-wednesday,.request-swipe-surface.app-card-planstart-wednesday,#view-detail.detail-request-mode .request-desired-summary.app-card-planstart-wednesday,.request-open-info-card.app-card-planstart-wednesday{--planstart-bg:linear-gradient(180deg,#bbf7d0 0%,#86efac 100%);--planstart-bg-color:#bbf7d0;--planstart-accent:#15803d;--planstart-border:#22c55e}
+.request-swipe-row.app-card-planstart-thursday,.request-swipe-surface.app-card-planstart-thursday,#view-detail.detail-request-mode .request-desired-summary.app-card-planstart-thursday,.request-open-info-card.app-card-planstart-thursday{--planstart-bg:linear-gradient(180deg,#bfdbfe 0%,#93c5fd 100%);--planstart-bg-color:#bfdbfe;--planstart-accent:#1d4ed8;--planstart-border:#3b82f6}
+.request-swipe-row.app-card-planstart-friday,.request-swipe-surface.app-card-planstart-friday,#view-detail.detail-request-mode .request-desired-summary.app-card-planstart-friday,.request-open-info-card.app-card-planstart-friday{--planstart-bg:linear-gradient(180deg,#cbd5e1 0%,#94a3b8 100%);--planstart-bg-color:#cbd5e1;--planstart-accent:#475569;--planstart-border:#64748b}
         .request-swipe-action{position:absolute;top:0;right:0;bottom:0;width:88px;display:flex;align-items:center;justify-content:center;background:#ffffff;color:#dc2626;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;z-index:1}
         .request-swipe-row.swipe-open .request-swipe-surface{transform:translateX(-88px);-webkit-transform:translateX(-88px)}
         #request-rep-modal{background:rgba(15,23,42,.58);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
@@ -6085,7 +6087,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.38').trim() || 'V2026.08.09.38';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.39').trim() || 'V2026.08.09.39';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7555,7 +7557,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.38';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.39';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26727,7 +26729,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.38').trim() || 'V2026.08.09.38';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.39').trim() || 'V2026.08.09.39';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -88945,6 +88947,7 @@ function toggleDriveQuickRequestItem(domId) {
             const cell = (label, value, extraClass = '') => `<div class="request-desired-cell ${escapeShareHtml(extraClass)}"><span class="request-desired-label">${escapeShareHtml(label)}</span><span class="request-desired-value">${escapeShareHtml(displayValue(value))}</span></div>`;
             const rowNoteClass = requestNote ? 'request-desired-cell--wide request-desired-cell--row-note-data' : 'request-desired-cell--wide';
             const suspendDetailToneClass = isDockSuspendDcRequestMirrorRow(item) ? getDockSuspendDcRequestPlanstartToneClass(item) : '';
+            const suspendDetailToneDataAttr = suspendDetailToneClass ? ` data-planstart-tone="${escapeHtml(suspendDetailToneClass)}"` : '';
             const suspendDetailToneStyle = suspendDetailToneClass ? ` style="${escapeHtml(getDockSuspendDcRequestPlanstartToneStyle(item))}"` : '';
             const managerSubmittedInfoHtml = isManagerApprovalDetail ? `<div class="request-desired-grid mt-2">
                 ${cell('Submitted Spec', managerSubmittedSpec || desiredSpec)}
@@ -88954,7 +88957,7 @@ function toggleDriveQuickRequestItem(domId) {
                 ${cell('Pick Note', managerPickNote || 'N/A')}
                 ${cell('Comments', managerComments || 'N/A')}
             </div>` : '';
-            panel.innerHTML = `<div class="request-desired-summary ${escapeShareHtml(suspendDetailToneClass)}"${suspendDetailToneStyle}>
+            panel.innerHTML = `<div class="request-desired-summary ${escapeShareHtml(suspendDetailToneClass)}"${suspendDetailToneDataAttr}${suspendDetailToneStyle}>
                 <div class="request-desired-chips">${chip('Pri', priorityValue)}${chip('On hand', ptrValue)}${chip('Review', ptrReviewedValue)}${chip('Available', ptrAvailableValue)}${chip('Open Stock', sLtsValue)}${chip('Qty', requestQty || '0')}${reserveChip}</div>
                 <div class="request-desired-grid">
                     ${cell('Sales Rep', salesRepName || 'Unknown Rep')}
@@ -89045,6 +89048,7 @@ function toggleDriveQuickRequestItem(domId) {
             const safeConfig = (config && typeof config === 'object') ? config : {};
             const toneClass = String(safeConfig.toneClass || '').trim();
             const safeToneClass = /^app-card-planstart-(monday|tuesday|wednesday|thursday|friday|unknown)$/.test(toneClass) ? toneClass : '';
+            const toneDataAttr = safeToneClass ? ` data-planstart-tone="${escapeHtml(safeToneClass)}"` : '';
             const toneStyleText = String(safeConfig.toneStyle || '').trim();
             const toneStyleAttr = safeToneClass && toneStyleText ? ` style="${escapeHtml(toneStyleText)}"` : '';
             const displayValue = (value, fallback = 'N/A') => {
@@ -89067,7 +89071,7 @@ function toggleDriveQuickRequestItem(domId) {
                 .filter(Boolean)
                 .map((entry) => cell(entry.label, entry.value, entry.extraClass || ''))
                 .join('');
-            return `<div class="request-open-info-card ${escapeShareHtml(safeToneClass)}"${toneStyleAttr}>
+            return `<div class="request-open-info-card ${escapeShareHtml(safeToneClass)}"${toneDataAttr}${toneStyleAttr}>
                 <div class="request-open-info-head">
                     <h2 id="request-open-info-title" class="request-open-info-title">${escapeShareHtml(displayValue(safeConfig.commonName, 'Unknown'))}</h2>
                     <div class="request-open-info-code">${escapeShareHtml(displayValue(safeConfig.topCode, ''))}</div>
@@ -93768,17 +93772,108 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return 'app-card-planstart-unknown';
         }
 
-        function getDockSuspendDcRequestPlanstartToneStyle(item = null) {
+        const DOCK_SUSPEND_DC_PLANSTART_TONE_CLASSES = Object.freeze([
+            'app-card-planstart-monday',
+            'app-card-planstart-tuesday',
+            'app-card-planstart-wednesday',
+            'app-card-planstart-thursday',
+            'app-card-planstart-friday',
+            'app-card-planstart-unknown'
+        ]);
+
+        function getDockSuspendDcRequestPlanstartToneMeta(item = null) {
             const toneClass = getDockSuspendDcRequestPlanstartToneClass(item);
-            const styles = {
-                'app-card-planstart-monday': 'border-left:8px solid #9333ea;border-color:#a855f7;background:linear-gradient(180deg,#f3e8ff 0%,#e9d5ff 100%);box-shadow:0 0 0 2px rgba(147,51,234,.24),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04);',
-                'app-card-planstart-tuesday': 'border-left:8px solid #ef4444;border-color:#fb7185;background:linear-gradient(180deg,#ffe4e6 0%,#fecdd3 100%);box-shadow:0 0 0 2px rgba(239,68,68,.26),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04);',
-                'app-card-planstart-wednesday': 'border-left:8px solid #16a34a;border-color:#22c55e;background:linear-gradient(180deg,#dcfce7 0%,#bbf7d0 100%);box-shadow:0 0 0 2px rgba(22,163,74,.24),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04);',
-                'app-card-planstart-thursday': 'border-left:8px solid #2563eb;border-color:#3b82f6;background:linear-gradient(180deg,#dbeafe 0%,#bfdbfe 100%);box-shadow:0 0 0 2px rgba(37,99,235,.24),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04);',
-                'app-card-planstart-friday': 'border-left:8px solid #64748b;border-color:#64748b;background:linear-gradient(180deg,#e2e8f0 0%,#cbd5e1 100%);box-shadow:0 0 0 2px rgba(100,116,139,.22),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04);',
-                'app-card-planstart-unknown': 'border-left:8px solid #ef4444;border-color:#fb7185;background:linear-gradient(180deg,#ffe4e6 0%,#fecdd3 100%);box-shadow:0 0 0 2px rgba(239,68,68,.26),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04);'
+            const meta = {
+                'app-card-planstart-monday': {
+                    label: 'Monday',
+                    bg: 'linear-gradient(180deg,#e9d5ff 0%,#d8b4fe 100%)',
+                    bgColor: '#e9d5ff',
+                    accent: '#7e22ce',
+                    border: '#a855f7',
+                    shadow: '0 0 0 2px rgba(126,34,206,.32),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04)'
+                },
+                'app-card-planstart-tuesday': {
+                    label: 'Tuesday',
+                    bg: 'linear-gradient(180deg,#fecdd3 0%,#fda4af 100%)',
+                    bgColor: '#fecdd3',
+                    accent: '#dc2626',
+                    border: '#fb7185',
+                    shadow: '0 0 0 2px rgba(220,38,38,.34),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04)'
+                },
+                'app-card-planstart-wednesday': {
+                    label: 'Wednesday',
+                    bg: 'linear-gradient(180deg,#bbf7d0 0%,#86efac 100%)',
+                    bgColor: '#bbf7d0',
+                    accent: '#15803d',
+                    border: '#22c55e',
+                    shadow: '0 0 0 2px rgba(21,128,61,.32),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04)'
+                },
+                'app-card-planstart-thursday': {
+                    label: 'Thursday',
+                    bg: 'linear-gradient(180deg,#bfdbfe 0%,#93c5fd 100%)',
+                    bgColor: '#bfdbfe',
+                    accent: '#1d4ed8',
+                    border: '#3b82f6',
+                    shadow: '0 0 0 2px rgba(29,78,216,.32),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04)'
+                },
+                'app-card-planstart-friday': {
+                    label: 'Friday',
+                    bg: 'linear-gradient(180deg,#cbd5e1 0%,#94a3b8 100%)',
+                    bgColor: '#cbd5e1',
+                    accent: '#475569',
+                    border: '#64748b',
+                    shadow: '0 0 0 2px rgba(71,85,105,.28),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04)'
+                },
+                'app-card-planstart-unknown': {
+                    label: 'Unknown',
+                    bg: 'linear-gradient(180deg,#fecdd3 0%,#fda4af 100%)',
+                    bgColor: '#fecdd3',
+                    accent: '#dc2626',
+                    border: '#fb7185',
+                    shadow: '0 0 0 2px rgba(220,38,38,.34),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04)'
+                }
             };
-            return styles[toneClass] || styles['app-card-planstart-unknown'];
+            return { toneClass, ...(meta[toneClass] || meta['app-card-planstart-unknown']) };
+        }
+
+        function getDockSuspendDcRequestPlanstartToneStyle(item = null) {
+            const tone = getDockSuspendDcRequestPlanstartToneMeta(item);
+            return `--planstart-bg:${tone.bg};--planstart-bg-color:${tone.bgColor};--planstart-accent:${tone.accent};--planstart-border:${tone.border};--planstart-shadow:${tone.shadow};background:${tone.bg} !important;background-color:${tone.bgColor} !important;border-color:${tone.border} !important;border-left:10px solid ${tone.accent} !important;box-shadow:${tone.shadow} !important;`;
+        }
+
+        function applyDockSuspendDcPlanstartToneToElement(element = null, item = null) {
+            if (!element || !item || !isDockSuspendDcRequestMirrorRow(item)) return false;
+            const tone = getDockSuspendDcRequestPlanstartToneMeta(item);
+            const rawPlanstart = String(firstNonEmptyValue(getDockSuspendDcRequestPlanstartValue(item), '') || '').trim();
+            DOCK_SUSPEND_DC_PLANSTART_TONE_CLASSES.forEach((className) => element.classList.remove(className));
+            element.classList.add(tone.toneClass);
+            element.dataset.planstartTone = tone.toneClass;
+            if (rawPlanstart) element.dataset.planstartValue = rawPlanstart;
+            element.style.setProperty('--planstart-bg', tone.bg);
+            element.style.setProperty('--planstart-bg-color', tone.bgColor);
+            element.style.setProperty('--planstart-accent', tone.accent);
+            element.style.setProperty('--planstart-border', tone.border);
+            element.style.setProperty('--planstart-shadow', tone.shadow);
+            element.style.setProperty('background', tone.bg, 'important');
+            element.style.setProperty('background-color', tone.bgColor, 'important');
+            element.style.setProperty('border-color', tone.border, 'important');
+            element.style.setProperty('border-left', `10px solid ${tone.accent}`, 'important');
+            element.style.setProperty('box-shadow', tone.shadow, 'important');
+            return true;
+        }
+
+        function applyDockSuspendDcPlanstartCardTones(root = document) {
+            const scope = root && typeof root.querySelectorAll === 'function' ? root : document;
+            scope.querySelectorAll('.item-row[data-request-uid], .request-swipe-row[data-request-uid]').forEach((card) => {
+                const requestUid = String(card && card.dataset && card.dataset.requestUid || '').trim();
+                if (!requestUid) return;
+                const item = findRequestInventoryRowByUniqueId(requestUid);
+                if (!item || !isDockSuspendDcRequestMirrorRow(item)) return;
+                const displayItem = buildDockSuspendDcRequestCardDisplayItem(item, 'request');
+                applyDockSuspendDcPlanstartToneToElement(card, displayItem);
+                const surface = card.querySelector && card.querySelector('.request-swipe-surface');
+                if (surface) applyDockSuspendDcPlanstartToneToElement(surface, displayItem);
+            });
         }
 
         function syncDockSuspendDcRequestQuantityAliases(row = null, sourceRow = null) {
@@ -96888,7 +96983,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     approxCardHeight: 360,
                     renderSignature: renderKey,
                     emptyHtml: `<div class="p-8 text-center text-gray-400">${requestSuspendTagCommonNameSearchTerm || requestSuspendTagAssignedToFilter !== 'all' ? 'No suspend tag rows match these filters.' : 'No suspend tag rows for this dock.'}</div>`,
-                    onComplete: decorateRequestRows,
+                    onComplete: () => {
+                        decorateRequestRows();
+                        applyDockSuspendDcPlanstartCardTones(resultsContainer);
+                    },
                     onCompleteAfterInteractive: true,
                     onCompleteDelayMs: 140
                 });
@@ -117822,6 +117920,11 @@ C.14.043 C.15.000
 
                 row.appendChild(action);
                 row.appendChild(surface);
+                if (requestItem && isDockSuspendDcRequestMirrorRow(requestItem)) {
+                    const displayRequestItem = buildDockSuspendDcRequestCardDisplayItem(requestItem, 'request');
+                    applyDockSuspendDcPlanstartToneToElement(row, displayRequestItem);
+                    applyDockSuspendDcPlanstartToneToElement(surface, displayRequestItem);
+                }
                 row.addEventListener('touchstart', (event) => {
                     if (event.__requestSwipeHandled || shouldIgnoreDuplicateRequestTouchEvent()) return;
                     event.__requestSwipeHandled = true;
