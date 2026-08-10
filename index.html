@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.29';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.30';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6070,7 +6070,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.29').trim() || 'V2026.08.09.29';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.30').trim() || 'V2026.08.09.30';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7540,7 +7540,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.29';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.30';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -14143,18 +14143,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return normalizeCardQuantityValue(firstNonEmptyValue(
                 item.S_LTS,
                 item.s_lts,
-                item.SLTS,
-                item.slts,
-                item.si_LTS,
-                item.SI_LTS,
-                item.A_LTS,
-                item.a_LTS,
-                item.ai_LTS,
-                item.AI_LTS,
                 snapshot.S_LTS,
                 snapshot.s_lts,
-                snapshot.SLTS,
-                snapshot.slts,
                 '0'
             ));
         }
@@ -15981,10 +15971,6 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return parseFloat(String(firstNonEmptyValue(
                 item && item.S_LTS,
                 item && item.s_lts,
-                item && item.SLTS,
-                item && item.slts,
-                item && item['S LTS'],
-                item && item['s lts'],
                 '0'
             )).replace(/,/g,'')) || 0;
         }
@@ -26659,7 +26645,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.29').trim() || 'V2026.08.09.29';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.30').trim() || 'V2026.08.09.30';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -64085,7 +64071,7 @@ function toggleDriveQuickRequestItem(domId) {
                 ptronhand: normalizeCardQuantityValue(firstNonEmptyValue(snapshot.ptronhand, snapshot.PTRONHAND, snapshot.ptr_on_hand, snapshot.PTR_ON_HAND, record && record.source_ptr, '0')),
                 ptrreviewed: normalizeCardQuantityValue(firstNonEmptyValue(snapshot.ptrreviewed, snapshot.PTRREVIEWED, '0')),
                 ptravailable: normalizeCardQuantityValue(firstNonEmptyValue(snapshot.ptravailable, snapshot.PTRAVAILABLE, record && record.source_ptr, '0')),
-                s_lts: normalizeCardQuantityValue(firstNonEmptyValue(snapshot.s_lts, snapshot.S_LTS, snapshot.SLTS, '0')),
+                s_lts: normalizeCardQuantityValue(firstNonEmptyValue(snapshot.s_lts, snapshot.S_LTS, '0')),
                 percent: `${formatShearDecisionNumber(firstNonEmptyValue(record && record.percent, 100), 0)}%`,
                 instructions: String(firstNonEmptyValue(record && record.instructions, '') || '').trim()
             };
@@ -79169,7 +79155,7 @@ function toggleDriveQuickRequestItem(domId) {
             const ptrOnHandValue = normalizeCardQuantityValue(firstNonEmptyValue(record.ptronhand, record.PTRONHAND, record.ptr_on_hand, record.PTR_ON_HAND, record.ptravailable, record.PTRAVAILABLE, '0'));
             const ptrReviewedValue = normalizeCardQuantityValue(firstNonEmptyValue(record.ptrreviewed, record.PTRREVIEWED, record.ptr_reviewed, record.PTR_REVIEWED, '0'));
             const ptrAvailableValue = needsRecount ? String(firstNonEmptyValue(recountInfo.plannedText, record.move_planned_qty, record.ptravailable, record.quantity_available, '0') || '0') : firstNonEmptyValue(record.ptravailable, record.quantity_available, '0');
-            const openStockValue = normalizeCardQuantityValue(firstNonEmptyValue(record.s_lts, record.S_LTS, record.SLTS, '0'));
+            const openStockValue = normalizeCardQuantityValue(firstNonEmptyValue(record.s_lts, record.S_LTS, '0'));
             const fromPtrAvailable = String(firstNonEmptyValue(needsRecount ? recountInfo.plannedText : '', record.move_planned_qty, record.ptravailable, record.quantity_available, '0') || '0').trim() || '0';
             const toPtrAvailable = String(firstNonEmptyValue(record.to_ptravailable, '0') || '0').trim() || '0';
             const recordEyebrow = needsRecount ? 'Inventory Office Recount' : (isNcrOfficeRecord ? `${getNcrApprovalTypeLabel(record.ncr_approval_type || 'new-crop')} Approval` : (isInventoryOfficeQueueRecord ? 'Inventory Office Queue' : 'Consolidate Inventory'));
@@ -123918,7 +123904,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function getDriveReportSLtsValue(item = null) {
-            return parseAppNumber(firstNonEmptyValue(item && item.S_LTS, item && item.s_lts, item && item.SLTS, item && item.slts, ''));
+            return parseAppNumber(firstNonEmptyValue(item && item.S_LTS, item && item.s_lts, ''));
         }
 
         function getDriveReportSeasonValue(item = null) {
@@ -124408,7 +124394,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 case 'DESIGLOC':
                     return firstNonEmptyValue(item.DESIGLOC, item.desigloc, '');
                 case 'S_LTS':
-                    return firstNonEmptyValue(item.S_LTS, item.s_LTS, item.si_LTS, item.SI_LTS, item.A_LTS, item.a_LTS, item.ai_LTS, item.AI_LTS, '');
+                    return firstNonEmptyValue(item.S_LTS, item.s_lts, item.s_LTS, '');
                 case 'ITEMSPEC':
                     return firstNonEmptyValue(item.ITEMSPEC, item.itemspec, item.SPEC, item.spec, '');
             }
@@ -134471,7 +134457,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 { label: 'Priority', value: (row) => row.PRIORITY || '' },
                 { label: 'Available', value: (row) => firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, '') },
                 { label: 'On Hand', value: (row) => firstNonEmptyValue(row.PTRONHAND, row.ptronhand, '') },
-                { label: 'Open Stock', value: (row) => firstNonEmptyValue(row.S_LTS, row.s_lts, row.SLTS, '') },
+                { label: 'Open Stock', value: (row) => firstNonEmptyValue(row.S_LTS, row.s_lts, '') },
                 { label: 'Source', value: (row) => row.SOURCE || '' },
                 { label: 'Genus', value: (row) => row.GENUS || row.GENUSNAME || '' },
                 { label: 'Sales Note', value: (row) => firstNonEmptyValue(row.SALES_NOTE, row.sales_note, row.SALESNOTE, '') },
@@ -134529,7 +134515,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const metrics = [
                 ['Available', formatNonSaleableNumber(firstNonEmptyValue(row && row.PTRAVAILABLE, row && row.ptravailable, ''))],
                 ['On Hand', formatNonSaleableNumber(firstNonEmptyValue(row && row.PTRONHAND, row && row.ptronhand, ''))],
-                ['Open Stock', formatNonSaleableNumber(firstNonEmptyValue(row && row.S_LTS, row && row.s_lts, row && row.SLTS, ''))]
+                ['Open Stock', formatNonSaleableNumber(firstNonEmptyValue(row && row.S_LTS, row && row.s_lts, ''))]
             ].map(([label, value]) => `<div class="rounded-xl border border-slate-100 bg-white px-3 py-2"><div class="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">${label}</div><div class="mt-1 text-lg font-black text-slate-900">${esc(value)}</div></div>`).join('');
             const noteHtml = salesNote || holdCode || holdReason
                 ? `<div class="mt-3 rounded-xl border border-orange-100 bg-orange-50 px-3 py-2 text-[12px] font-bold text-orange-900">${salesNote ? `Sales Note: ${esc(salesNote)}` : ''}${salesNote && (holdCode || holdReason) ? '<br>' : ''}${holdCode || holdReason ? `Hold/Stop: ${esc(holdCode || '-')} ${holdReason ? `- ${esc(holdReason)}` : ''}` : ''}</div>`
