@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.09.45';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.09.46';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.45').trim() || 'V2026.08.09.45';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.46').trim() || 'V2026.08.09.46';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.45';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.46';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -17239,8 +17239,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     const changedMasterItems = Array.from(changedMasterIds).map((uid) => findItemByUniqueId(uid)).filter(Boolean);
                     const masterClearOps = collectMasterAvRuleClearOps(changedMasterItems);
                     if (masterClearOps.length) persistMasterAvRuleClearOps(masterClearOps);
-                    syncCompletedDockSuspendSeasonSalesOfficeAfterMasterRefresh(changedMasterItems, {
-                        reason: 'suspend-tag-master-realtime'
+                    syncSeasonSalesOfficeAfterMasterInventoryRefresh(changedMasterItems, {
+                        reason: 'master-priority-realtime',
+                        delayMs: 80
                     });
                 }
             }
@@ -26921,7 +26922,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.45').trim() || 'V2026.08.09.45';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.46').trim() || 'V2026.08.09.46';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -31248,11 +31249,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         payload.data = mergeInitialMasterRowsWithExisting(payload.data);
                     }
                     processAndLoadData(payload);
-                    if (key === 'master') {
-                        syncCompletedDockSuspendSeasonSalesOfficeAfterMasterRefresh(fullInventory, {
-                            reason: wantsFull ? 'suspend-tag-master-full-refresh' : 'suspend-tag-master-refresh'
-                        });
-                    }
                 }
                 if (key === 'reserves') {
                     if (isViewVisible('av') && (activeAVTab === 'reserves' || shouldPrepareAvRepCustomerFilterData())) queueInteractiveViewRender('av', false, true, wantsFull ? 18 : 8, 220);
@@ -46493,6 +46489,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if(Array.isArray(data)) {
                     if(data&&data.length>0){
                         let updated=false;
+                        const masterSeasonSalesOfficeBefore = captureSeasonSalesOfficeMasterRefreshSnapshot(fullInventory);
                         data.forEach(updatedRow=>{
                             let idx=fullInventory.findIndex(i=>i.UNIQUE_ID===updatedRow.unique_id);
                             if(idx>-1){
@@ -46511,6 +46508,11 @@ function toggleDriveQuickRequestItem(domId) {
                         });
                         if(updated){
                             processAndLoadData({ data: fullInventory, avOpenData: buildAvOpenInventoryFromMasterItems(fullInventory) });
+                            syncSeasonSalesOfficeAfterMasterInventoryRefresh(fullInventory, {
+                                previousSnapshot: masterSeasonSalesOfficeBefore,
+                                reason: 'master-delta-priority-refresh',
+                                delayMs: 80
+                            });
                             if(activeItem&&!document.getElementById('view-detail').classList.contains('hidden')){
                                 const detailInputActive = (typeof isDetailEditableField === 'function' && isDetailEditableField(document.activeElement))
                                     || (typeof isDetailMeasurementKeyboardActiveForInput === 'function' && isDetailMeasurementKeyboardActiveForInput());
@@ -46933,6 +46935,164 @@ function toggleDriveQuickRequestItem(domId) {
             });
         }
 
+        let pendingSeasonSalesOfficeMasterRefreshCodes = new Set();
+        let pendingSeasonSalesOfficeMasterRefreshTimer = null;
+        const SEASON_SALES_OFFICE_MASTER_REFRESH_SYNC_DELAY_MS = 120;
+        const SEASON_SALES_OFFICE_MASTER_REFRESH_SYNC_CHUNK_SIZE = 24;
+
+        function getSeasonSalesOfficeRowIdentityKey(row = null) {
+            return String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
+        }
+
+        function isMasterInventorySalesOfficeRow(row = null) {
+            const sourceTable = String(firstNonEmptyValue(row && row.SOURCE_TABLE, row && row.source_table, 'ph_master_inventory') || '').trim().toLowerCase();
+            return sourceTable === 'ph_master_inventory';
+        }
+
+        function hasSalesOfficeRowForMasterId(masterId = '') {
+            const safeId = String(masterId || '').trim();
+            if (!safeId || !Array.isArray(salesOfficeInventory)) return false;
+            return salesOfficeInventory.some((row) => {
+                const uniqueId = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
+                const linkedMasterId = String(firstNonEmptyValue(row && row.MASTER_ID, row && row.master_id, '') || '').trim();
+                return uniqueId === safeId || linkedMasterId === safeId;
+            });
+        }
+
+        function isSeasonSalesOfficeMasterRefreshRelevantRow(row = null) {
+            if (!row || !isMasterInventorySalesOfficeRow(row)) return false;
+            if (!isCurrentSeasonSalesNotesRow(row)) return false;
+            if (getSingleDigitSeasonPriority(row) != null) return true;
+            if (isCurrentSeasonSalesNotesAssignmentRow(row, firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, row.app_tab_assignment, ''))) return true;
+            const uniqueId = getSeasonSalesOfficeRowIdentityKey(row);
+            return hasSalesOfficeRowForMasterId(uniqueId);
+        }
+
+        function buildSeasonSalesOfficeMasterRefreshSignature(row = null) {
+            if (!row || !isMasterInventorySalesOfficeRow(row)) return '';
+            const parts = [
+                getSeasonSalesOfficeRowIdentityKey(row),
+                getMasterItemCodeKey(row),
+                firstNonEmptyValue(row.PRIORITY, row.priority, ''),
+                firstNonEmptyValue(row.APP_TAB_ASSIGNMENT, row.app_tab_assignment, ''),
+                firstNonEmptyValue(row.PRODUCTIVITY_ORIGIN_ASSIGNMENT, row.productivity_origin_assignment, ''),
+                isCurrentSeasonSalesNotesRow(row) ? 'current-season' : 'other-season',
+                getNcrSeasonCode(row),
+                getNcrSalesYear(row),
+                firstNonEmptyValue(row.LOTCODE, row.lotcode, ''),
+                firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, ''),
+                firstNonEmptyValue(row.CONTSIZE, row.contsize, ''),
+                firstNonEmptyValue(row.PTRAVAILABLE, row.ptravailable, row.PRTAVAILABLE, row.prtavailable, ''),
+                firstNonEmptyValue(row.END_CAP_FOLDER, row.end_cap_folder, ''),
+                getHoldStopSnapshotFromItem(row),
+                getHoldStopBeginDateValueFromItem(row),
+                firstNonEmptyValue(row.DATE_COMPLETED, row.date_completed, ''),
+                firstNonEmptyValue(row.AV_NOTE, row.av_note, ''),
+                firstNonEmptyValue(row.SALES_NOTE, row.sales_note, row.SALESNOTE, ''),
+                firstNonEmptyValue(row.MATCH, row.match, row.MATCHPCT, row.matchpct, row.MATCH_PCT, ''),
+                firstNonEmptyValue(row.LOC_MATCH_QTY, row.loc_match_qty, ''),
+                firstNonEmptyValue(row.INITIAL_PTR, row.initial_ptr, ''),
+                firstNonEmptyValue(row.SPEC, row.spec, ''),
+                firstNonEmptyValue(row.CALIPER, row.caliper, ''),
+                firstNonEmptyValue(row.PICK, row.pic_note, row.PIC_NOTE, ''),
+                getSharedAppPhotoLinkCsvRaw(row, { includePending: false }),
+                getSharedAppPhotoName(row),
+                firstNonEmptyValue(row.AV_RULE_BUNDLE_UPDATED_AT, row.av_rule_bundle_updated_at, ''),
+                firstNonEmptyValue(row.AV_RULE_LAST_CLEAR_REASON, row.av_rule_last_clear_reason, '')
+            ];
+            return parts.map((value) => normalizeRuleText(value)).join('|');
+        }
+
+        function captureSeasonSalesOfficeMasterRefreshSnapshot(rows = []) {
+            const snapshot = new Map();
+            (Array.isArray(rows) ? rows : []).forEach((row) => {
+                if (!row || !isMasterInventorySalesOfficeRow(row)) return;
+                const uniqueId = getSeasonSalesOfficeRowIdentityKey(row);
+                const itemCode = getMasterItemCodeKey(row);
+                if (!uniqueId || !itemCode) return;
+                snapshot.set(uniqueId, {
+                    itemCode,
+                    signature: buildSeasonSalesOfficeMasterRefreshSignature(row),
+                    relevant: isSeasonSalesOfficeMasterRefreshRelevantRow(row)
+                });
+            });
+            return snapshot;
+        }
+
+        function getSeasonSalesOfficeMasterRefreshSyncCodes(previousSnapshot = null, rows = [], options = {}) {
+            const before = previousSnapshot instanceof Map ? previousSnapshot : new Map();
+            const codes = new Set();
+            const seenIds = new Set();
+            (Array.isArray(rows) ? rows : []).forEach((row) => {
+                if (!row || !isMasterInventorySalesOfficeRow(row)) return;
+                const uniqueId = getSeasonSalesOfficeRowIdentityKey(row);
+                const itemCode = getMasterItemCodeKey(row);
+                if (!uniqueId || !itemCode) return;
+                seenIds.add(uniqueId);
+                const previous = before.get(uniqueId) || null;
+                const relevantNow = isSeasonSalesOfficeMasterRefreshRelevantRow(row);
+                const signatureNow = buildSeasonSalesOfficeMasterRefreshSignature(row);
+                const changed = previous
+                    ? (previous.signature !== signatureNow || previous.itemCode !== itemCode)
+                    : relevantNow;
+                if (!changed) return;
+                if (relevantNow || (previous && previous.relevant)) {
+                    codes.add(itemCode);
+                    if (previous && previous.itemCode && previous.itemCode !== itemCode) codes.add(previous.itemCode);
+                }
+            });
+            before.forEach((previous, uniqueId) => {
+                if (!previous || !previous.relevant || seenIds.has(uniqueId)) return;
+                if (previous.itemCode) codes.add(previous.itemCode);
+            });
+            return Array.from(codes);
+        }
+
+        function queueSeasonSalesOfficeMasterRefreshSync(itemCodes = [], options = {}) {
+            const codes = (Array.isArray(itemCodes) ? itemCodes : [itemCodes])
+                .map((code) => String(code || '').trim().toUpperCase())
+                .filter(Boolean);
+            if (!codes.length || typeof syncSeasonSalesOfficeStateForItemCodes !== 'function') return [];
+            codes.forEach((code) => pendingSeasonSalesOfficeMasterRefreshCodes.add(code));
+            const opts = options || {};
+            if (pendingSeasonSalesOfficeMasterRefreshTimer) clearTimeout(pendingSeasonSalesOfficeMasterRefreshTimer);
+            const delay = Math.max(0, Number(opts.delayMs) || SEASON_SALES_OFFICE_MASTER_REFRESH_SYNC_DELAY_MS);
+            pendingSeasonSalesOfficeMasterRefreshTimer = setTimeout(() => {
+                pendingSeasonSalesOfficeMasterRefreshTimer = null;
+                if (!pendingSeasonSalesOfficeMasterRefreshCodes.size) return;
+                const pendingCodes = Array.from(pendingSeasonSalesOfficeMasterRefreshCodes);
+                pendingSeasonSalesOfficeMasterRefreshCodes.clear();
+                const chunks = [];
+                for (let index = 0; index < pendingCodes.length; index += SEASON_SALES_OFFICE_MASTER_REFRESH_SYNC_CHUNK_SIZE) {
+                    chunks.push(pendingCodes.slice(index, index + SEASON_SALES_OFFICE_MASTER_REFRESH_SYNC_CHUNK_SIZE));
+                }
+                chunks.forEach((chunk, chunkIndex) => {
+                    const runChunk = () => {
+                        const remoteOps = syncSeasonSalesOfficeStateForItemCodes(chunk, {
+                            preserveAssignments: false,
+                            reason: opts.reason || 'master-priority-refresh'
+                        });
+                        remoteOps.forEach((op) => Promise.resolve(op).catch((error) => console.warn('Season Sales Office master refresh sync failed', error)));
+                    };
+                    const chunkDelay = chunkIndex * 80;
+                    if (typeof scheduleUiRender === 'function') scheduleUiRender(`season-office-master-refresh-${chunkIndex}-${chunk.join('-')}`, runChunk, chunkDelay);
+                    else setTimeout(runChunk, chunkDelay);
+                });
+            }, delay);
+            return codes;
+        }
+
+        function syncSeasonSalesOfficeAfterMasterInventoryRefresh(masterRows = [], options = {}) {
+            if (typeof syncSeasonSalesOfficeStateForItemCodes !== 'function') return [];
+            const opts = options || {};
+            const codes = new Set(getSeasonSalesOfficeMasterRefreshSyncCodes(opts.previousSnapshot, masterRows, opts));
+            getCompletedDockSuspendSeasonSalesOfficeSyncCodes(masterRows).forEach((code) => codes.add(code));
+            return queueSeasonSalesOfficeMasterRefreshSync(Array.from(codes), {
+                reason: opts.reason || 'master-priority-refresh',
+                delayMs: opts.delayMs
+            });
+        }
+
         function buildAvOpenInventoryFromMasterItems(items = []) {
             return items.filter((item) => shouldIncludeMasterItemInAvSeasonView(item));
         }
@@ -47035,6 +47195,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasCavAvBlankKeys) changedDatasetKeys.push('cavAvBlankKeys');
             if (hasAvHotPrice) changedDatasetKeys.push('avHotPriceKeys');
             let avRuleClearOps = [];
+            const masterSeasonSalesOfficeBefore = hasMaster ? captureSeasonSalesOfficeMasterRefreshSnapshot(fullInventory) : null;
 
             if (hasAvNotes) {
                 avNotesDb = res.avNotesData || [];
@@ -47263,6 +47424,12 @@ function toggleDriveQuickRequestItem(domId) {
             if (didStructuralDataChange) {
                 invalidateResolvedViewStateCaches();
                 applyLocalEdits();
+                if (hasMaster && !res._fromCache) {
+                    syncSeasonSalesOfficeAfterMasterInventoryRefresh(fullInventory, {
+                        previousSnapshot: masterSeasonSalesOfficeBefore,
+                        reason: 'master-dataset-refresh'
+                    });
+                }
                 applyPendingRequestArchives();
                 refreshAffectedViews(changedDatasetKeys);
                 scheduleTaskHotCacheWarmup('dataset-change', hasMaster ? 90 : 160);
