@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.09.44';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.09.45';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.44').trim() || 'V2026.08.09.44';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.45').trim() || 'V2026.08.09.45';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.44';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.45';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -16605,6 +16605,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (row && row.REQUEST_HISTORY) return;
                 if (sameLinkedRow(row)) applyRequestSnapshotData(row);
             });
+            if (syncDockSuspendDcRequestMirrorsFromMasterRow(canonicalMaster)) {
+                markViewDirty('request');
+                updateFooterRequestBadge();
+            }
             flyerFolderInventory.forEach((row) => {
                 if (!row) return;
                 const rowMasterId = getFlyerFolderSourceMasterId(row);
@@ -26917,7 +26921,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.44').trim() || 'V2026.08.09.44';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.45').trim() || 'V2026.08.09.45';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -120095,6 +120099,154 @@ C.14.043 C.15.000
             );
         }
 
+        function getDockSuspendDcRequestCardDataSeasonKey(row = null) {
+            if (!row) return '';
+            const directSeason = normalizeSearchValue(firstNonEmptyValue(row.SEASON, row.season, row.SEASONCODE, row.seasoncode, ''));
+            if (directSeason) return directSeason;
+            const lotParts = typeof getItemInquiryLotSortParts === 'function' ? getItemInquiryLotSortParts(row) : null;
+            return normalizeSearchValue(lotParts && lotParts.season ? lotParts.season : '');
+        }
+
+        function getDockSuspendDcRequestCardDataUpdatedAtMs(row = null) {
+            if (!row) return 0;
+            const candidates = [
+                row.AV_RULE_PHOTO_UPDATED_AT,
+                row.av_rule_photo_updated_at,
+                row.AV_RULE_BUNDLE_UPDATED_AT,
+                row.av_rule_bundle_updated_at,
+                row.DATE_COMPLETED,
+                row.date_completed,
+                row.UPDATED_AT,
+                row.updated_at,
+                row.PHOTO_DATE,
+                row.photo_date,
+                row.PHOTO_DATE_LABEL,
+                row.photo_date_label
+            ];
+            for (const value of candidates) {
+                const text = String(firstNonEmptyValue(value, '') || '').trim();
+                if (!text) continue;
+                const parsed = Date.parse(text);
+                if (Number.isFinite(parsed)) return parsed;
+            }
+            return 0;
+        }
+
+        function getDockSuspendDcRequestCardDataMatchScore(row = null, target = null) {
+            if (!row || !target || !hasRequestItemCodeOptionValidPhotoData(row)) return -1;
+            const clean = (value) => normalizeSearchValue(firstNonEmptyValue(value, ''));
+            const rowItem = clean(firstNonEmptyValue(row.ITEMCODE, row.itemcode, ''));
+            const targetItem = clean(firstNonEmptyValue(target.ITEMCODE, target.itemcode, ''));
+            const sameItem = !!(rowItem && targetItem && rowItem === targetItem);
+            const samePlantSize = sameItem || isRequestItemCodeOptionSamePlantSize(row, target);
+            if (!sameItem && !samePlantSize) return -1;
+            const rowLot = clean(firstNonEmptyValue(row.LOTCODE, row.lotcode, row.LOT, ''));
+            const targetLot = clean(firstNonEmptyValue(target.LOTCODE, target.lotcode, target.LOT, ''));
+            const rowLoc = clean(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, row.LOCATION, ''));
+            const targetLoc = clean(firstNonEmptyValue(target.LOCATIONCODE, target.locationcode, target.LOCATION, ''));
+            const rowSize = getRequestItemCodeOptionContSizeKey(row);
+            const targetSize = getRequestItemCodeOptionContSizeKey(target);
+            const rowSeason = getDockSuspendDcRequestCardDataSeasonKey(row);
+            const targetSeason = getDockSuspendDcRequestCardDataSeasonKey(target);
+            const sameLot = !!(rowLot && targetLot && rowLot === targetLot);
+            const sameLocation = !!(rowLoc && targetLoc && rowLoc === targetLoc);
+            const sameSize = !!(rowSize && targetSize && rowSize === targetSize);
+            const sameSeason = !!(rowSeason && targetSeason && rowSeason === targetSeason);
+            if (targetLot && rowLot && !sameLot && targetSeason && rowSeason && !sameSeason) return -1;
+            let score = sameItem ? 500 : 300;
+            if (sameLocation && sameLot) score += 2000;
+            else if (sameLocation) score += 400;
+            if (sameLot) score += 650;
+            else if (targetLot && rowLot) score -= 160;
+            if (sameSize) score += 180;
+            if (sameSeason) score += 90;
+            if (getPhotoUrlList(getSharedAppPhotoLinkCsv(row, { includePending: false })).length) score += 45;
+            if (String(firstNonEmptyValue(row.AV_NOTE, row.av_note, row.SPEC, row.spec, row.MATCH, row.match, '') || '').trim()) score += 30;
+            return score;
+        }
+
+        function findBestDockSuspendDcRequestCardDataRow(rows = [], target = null) {
+            const candidates = (Array.isArray(rows) ? rows : [])
+                .map((row) => ({
+                    row,
+                    score: getDockSuspendDcRequestCardDataMatchScore(row, target),
+                    updatedAt: getDockSuspendDcRequestCardDataUpdatedAtMs(row)
+                }))
+                .filter((entry) => entry.row && entry.score >= 500)
+                .sort((a, b) => (b.score - a.score) || (b.updatedAt - a.updatedAt));
+            return candidates.length ? candidates[0].row : null;
+        }
+
+        function applyDockSuspendDcRequestDisplayDataToBackingRows(displayRow = null, mirrorRow = null, sourceRow = null) {
+            if (!displayRow || !mirrorRow || !isDockSuspendDcRequestMirrorRow(mirrorRow)) return false;
+            const targets = [mirrorRow, sourceRow].filter((row, index, rows) => row && rows.findIndex((candidate) => candidate === row) === index);
+            if (!targets.length) return false;
+            const photoCsv = mergePhotoCsvList([
+                getDriveCustomerOutreachPhotoCsv(displayRow),
+                displayRow.REQ_PHOTO_LINK,
+                displayRow.REQUEST_PHOTO_LINK,
+                displayRow.DOCK_PHOTO_LINK,
+                displayRow.DOCKPHOTO_LINK,
+                displayRow.ROW_PHOTO_LINK,
+                displayRow.SAVED_PHOTO_LINK,
+                displayRow.PHOTO_LINK
+            ]);
+            const photoNameCsv = mergePhotoCsvList([
+                displayRow.REQ_PHOTO_NAME,
+                displayRow.REQUEST_PHOTO_NAME,
+                displayRow.DOCK_PHOTO_NAME,
+                displayRow.DOCKPHOTO_NAME,
+                displayRow.ROW_PHOTO_NAME,
+                displayRow.SAVED_PHOTO_NAME,
+                displayRow.PHOTO_NAME
+            ]);
+            const spec = firstNonEmptyValue(getDriveCustomerOutreachSpec(displayRow), getItemDisplayValue(displayRow, 'SPEC', 'drive'), displayRow.DOCK_SPEC, displayRow.dock_spec, displayRow.SPEC, displayRow.spec, '');
+            const caliper = firstNonEmptyValue(getItemDisplayValue(displayRow, 'CALIPER', 'drive'), displayRow.DOCK_CALIPER, displayRow.dock_caliper, displayRow.CALIPER, displayRow.caliper, '');
+            const match = firstNonEmptyValue(getItemDisplayValue(displayRow, 'MATCH', 'drive'), displayRow.MATCH, displayRow.match, displayRow.REQ_MATCH, displayRow.req_match, '');
+            const locMatchQty = firstNonEmptyValue(getCurrentCardLocPhotoMatchQtyValue(displayRow, 'drive'), getDisplayLocMatchQtyValue(displayRow, 'drive'), displayRow.LOC_MATCH_QTY, displayRow.loc_match_qty, '');
+            const avNote = firstNonEmptyValue(getItemDisplayValue(displayRow, 'AV_NOTE', 'drive'), displayRow.AV_NOTE, displayRow.av_note, '');
+            const salesNote = firstNonEmptyValue(getItemDisplayValue(displayRow, 'SALES_NOTE', 'drive'), displayRow.SALES_NOTE, displayRow.sales_note, displayRow.SALESNOTE, displayRow.salesnote, '');
+            let changed = false;
+            targets.forEach((target) => {
+                const setValue = (keys = [], value = '') => {
+                    const text = String(firstNonEmptyValue(value, '') || '').trim();
+                    if (!text) return;
+                    keys.forEach((key) => {
+                        if (String(firstNonEmptyValue(target[key], '') || '').trim() === text) return;
+                        target[key] = text;
+                        changed = true;
+                    });
+                };
+                setValue(['REQ_PHOTO_LINK', 'REQUEST_PHOTO_LINK', 'REQUESTPHOTO_LINK', 'DOCK_PHOTO_LINK', 'DOCKPHOTO_LINK', 'ROW_PHOTO_LINK'], photoCsv);
+                setValue(['REQ_PHOTO_NAME', 'REQUEST_PHOTO_NAME', 'REQUESTPHOTONAME', 'DOCK_PHOTO_NAME', 'DOCKPHOTO_NAME', 'ROW_PHOTO_NAME'], photoNameCsv);
+                setValue(['SPEC', 'spec', 'REQ_SPEC', 'req_spec', 'DOCK_SPEC', 'dock_spec'], spec);
+                setValue(['CALIPER', 'caliper', 'REQ_CALIPER', 'req_caliper', 'DOCK_CALIPER', 'dock_caliper'], caliper);
+                setValue(['MATCH', 'match', 'REQ_MATCH', 'req_match'], match);
+                setValue(['LOC_MATCH_QTY', 'loc_match_qty', 'REQ_LOC_MATCH_QTY', 'req_loc_match_qty', 'PHOTO_MATCH_QTY', 'photo_match_qty'], locMatchQty);
+                setValue(['AV_NOTE', 'av_note'], avNote);
+                setValue(['SALES_NOTE', 'sales_note', 'SALESNOTE', 'salesnote'], salesNote);
+                normalizeRowPhotoFields(target);
+                buildSearchIndex(target);
+            });
+            return changed;
+        }
+
+        function syncDockSuspendDcRequestMirrorsFromMasterRow(masterItem = null) {
+            if (!masterItem || !hasRequestItemCodeOptionValidPhotoData(masterItem) || !Array.isArray(requestsInventory) || !requestsInventory.length) return false;
+            let changed = false;
+            requestsInventory.forEach((mirrorRow) => {
+                if (!mirrorRow || !isDockSuspendDcRequestMirrorRow(mirrorRow)) return;
+                const sourceRow = findDockSuspendDcRequestSourceRow(mirrorRow) || mirrorRow;
+                const score = Math.max(
+                    getDockSuspendDcRequestCardDataMatchScore(masterItem, sourceRow || mirrorRow),
+                    getDockSuspendDcRequestCardDataMatchScore(masterItem, mirrorRow)
+                );
+                if (score < 500) return;
+                if (applyDockSuspendDcRequestDisplayDataToBackingRows(masterItem, mirrorRow, sourceRow)) changed = true;
+            });
+            return changed;
+        }
+
         function findDockSuspendDcRequestCardDisplayDataRow(item = null) {
             if (!item || !isDockSuspendDcRequestMirrorRow(item)) return null;
             const sourceRow = findDockSuspendDcRequestSourceRow(item) || item;
@@ -120102,14 +120254,14 @@ C.14.043 C.15.000
             const exactOption = optionRows.find((row) => isSameDockSuspendDcRequestCardDataLocation(row, sourceRow || item))
                 || optionRows.find((row) => isSameDockSuspendDcRequestCardDataLocation(row, item));
             if (exactOption) return hydrateDockSuspendTagPhotoSpecRow(exactOption, '', 0, sourceRow || item) || exactOption;
+            const groupedOption = findBestDockSuspendDcRequestCardDataRow(optionRows, sourceRow || item)
+                || findBestDockSuspendDcRequestCardDataRow(optionRows, item);
+            if (groupedOption) return hydrateDockSuspendTagPhotoSpecRow(groupedOption, '', 0, sourceRow || item) || groupedOption;
             const linkedMaster = getDockSuspendDcRequestLinkedMasterRow(item, sourceRow);
             if (
                 linkedMaster
                 && hasRequestItemCodeOptionValidPhotoData(linkedMaster)
-                && (
-                    isSameDockSuspendDcRequestCardDataLocation(linkedMaster, sourceRow || item)
-                    || isSameDockSuspendDcRequestCardDataLocation(linkedMaster, item)
-                )
+                && getDockSuspendDcRequestCardDataMatchScore(linkedMaster, sourceRow || item) >= 500
             ) {
                 return hydrateDockSuspendTagPhotoSpecRow(linkedMaster, '', 0, sourceRow || item) || linkedMaster;
             }
@@ -120185,6 +120337,10 @@ C.14.043 C.15.000
             const displayRow = findDockSuspendDcRequestCardDisplayDataRow(item);
             const optionHadDisplayData = displayRow ? applyDisplayData(displayRow, 'drive') : false;
             row.DOCK_SUSPEND_DISPLAY_DATA_ROW = !!(sourceHadDisplayData || optionHadDisplayData);
+            if (optionHadDisplayData) {
+                applyDockSuspendDcRequestDisplayDataToBackingRows(displayRow, row, sourceRow);
+                applyDockSuspendDcRequestDisplayDataToBackingRows(displayRow, item, sourceRow);
+            }
             syncDockSuspendDcRequestPhotoAliases(row, sourceRow);
             syncDockSuspendDcRequestQuantityAliases(row, sourceRow);
             normalizeRowPhotoFields(row);
