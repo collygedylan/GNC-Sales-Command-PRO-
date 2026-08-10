@@ -12060,6 +12060,18 @@ function encodeStoragePath_(path) {
     .join('/');
 }
 
+function isDylanLevelAutomationRequester_(requestedBy) {
+  const safeRequester = String(requestedBy || '').trim().toLowerCase();
+  return [
+    'dylan_collyge',
+    'dylancollyge@agmetricapp.com',
+    'dylan_collyge@greenleafnursery.com',
+    'megan_kelly',
+    'megankelly@agmetricapp.com',
+    'megan_kelly@greenleafnursery.com'
+  ].indexOf(safeRequester) !== -1;
+}
+
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
@@ -12070,9 +12082,9 @@ function doPost(e) {
 
     if (payload.type === 'drivearound_name_preview' || payload.type === 'drivearound_name_cleanup') {
       const requestedBy = String(payload.requested_by || payload.requestedBy || '').trim().toLowerCase();
-      const allowedRequester = requestedBy === 'dylan_collyge' || requestedBy === 'dylancollyge@agmetricapp.com';
+      const allowedRequester = isDylanLevelAutomationRequester_(requestedBy);
       if (!allowedRequester) {
-        throw new Error('DriveAround name cleanup is restricted to dylan_collyge.');
+        throw new Error('DriveAround name cleanup is restricted to Dylan/Megan-level access.');
       }
       const limit = Math.max(1, Math.min(5000, Number(payload.limit) || 0));
       const result = payload.type === 'drivearound_name_cleanup'
@@ -12083,9 +12095,9 @@ function doPost(e) {
 
     if (payload.type === 'drivearound_history_backfill') {
       const requestedBy = String(payload.requested_by || payload.requestedBy || '').trim().toLowerCase();
-      const allowedRequester = requestedBy === 'dylan_collyge' || requestedBy === 'dylancollyge@agmetricapp.com';
+      const allowedRequester = isDylanLevelAutomationRequester_(requestedBy);
       if (!allowedRequester) {
-        throw new Error('DriveAround history backfill is restricted to dylan_collyge.');
+        throw new Error('DriveAround history backfill is restricted to Dylan/Megan-level access.');
       }
       const runInline = payload.run_inline === true || payload.runInline === true;
       if (runInline) return jsonOutput_(startDriveAroundHistoryBackfill());

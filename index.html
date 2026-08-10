@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.09.48';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.09.49';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.48').trim() || 'V2026.08.09.48';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.49').trim() || 'V2026.08.09.49';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.48';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.49';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -15531,6 +15531,215 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const upper = text.toUpperCase();
             if (upper === 'NULL' || upper === 'N/A' || upper === '-') return '';
             return text;
+        }
+
+        function normalizeMasterAvPayloadIdentityPart(value = '') {
+            return String(value == null ? '' : value).trim().toUpperCase();
+        }
+
+        function getMasterAvPayloadPreserveKeys(row = null) {
+            if (!row) return [];
+            const keys = [];
+            const pushKey = (value) => {
+                const safe = String(value || '').trim();
+                if (safe && !keys.includes(safe)) keys.push(safe);
+            };
+            const uniqueId = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, row.ID, row.id, '') || '').trim();
+            const masterId = String(firstNonEmptyValue(row.MASTER_UNIQUE_ID, row.master_unique_id, row.MASTER_ID, row.master_id, '') || '').trim();
+            pushKey(uniqueId ? `uid:${uniqueId}` : '');
+            pushKey(masterId ? `uid:${masterId}` : '');
+            const itemCode = normalizeMasterAvPayloadIdentityPart(firstNonEmptyValue(row.ITEMCODE, row.itemcode, row.ITEM, row.item, ''));
+            const lotCode = normalizeMasterAvPayloadIdentityPart(firstNonEmptyValue(row.LOTCODE, row.lotcode, row.LOT, row.lot, ''));
+            const locationCode = normalizeMasterAvPayloadIdentityPart(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, row.LOCATION, row.location, row.LOC, row.loc, ''));
+            const contSize = normalizeMasterAvPayloadIdentityPart(firstNonEmptyValue(row.CONTSIZE, row.contsize, row.ITEMSPEC, row.itemspec, row.SIZE, row.size, ''));
+            const source = normalizeMasterAvPayloadIdentityPart(firstNonEmptyValue(row.SOURCE, row.source, row.SOURCECODE, row.sourcecode, ''));
+            if (itemCode && lotCode && locationCode && contSize && source) pushKey(`row:${itemCode}|${lotCode}|${locationCode}|${contSize}|${source}`);
+            if (itemCode && lotCode && locationCode && contSize) pushKey(`row:${itemCode}|${lotCode}|${locationCode}|${contSize}`);
+            if (itemCode && lotCode && locationCode) pushKey(`row:${itemCode}|${lotCode}|${locationCode}`);
+            return keys;
+        }
+
+        function captureMasterAvPayloadPreserveState(row = null) {
+            if (!row) return null;
+            const clean = (value) => normalizeRuleText(firstNonEmptyValue(value, ''));
+            const photoLink = mergePhotoCsvList([
+                row.ROW_PHOTO_LINK,
+                row.row_photo_link,
+                getSharedAppPhotoLinkCsvRaw(row, { includePending: false }),
+                row.REQ_PHOTO_LINK,
+                row.req_photo_link,
+                row.REQUEST_PHOTO_LINK,
+                row.request_photo_link,
+                row.DOCK_PHOTO_LINK,
+                row.dock_photo_link,
+                row.DOCKPHOTO_LINK,
+                row.dockphoto_link,
+                row.FLYER_PHOTO_LINK,
+                row.flyer_photo_link
+            ]);
+            const photoName = mergePhotoCsvList([
+                row.ROW_PHOTO_NAME,
+                row.row_photo_name,
+                getSharedAppPhotoName(row),
+                row.REQ_PHOTO_NAME,
+                row.req_photo_name,
+                row.REQUEST_PHOTO_NAME,
+                row.request_photo_name,
+                row.DOCK_PHOTO_NAME,
+                row.dock_photo_name,
+                row.DOCKPHOTO_NAME,
+                row.dockphoto_name,
+                row.FLYER_PHOTO_NAME,
+                row.flyer_photo_name
+            ]);
+            return {
+                AV_NOTE: clean(firstNonEmptyValue(row.AV_NOTE, row.av_note, row.REQ_AV_NOTE, row.req_av_note, row.DOCK_AV_NOTE, row.dock_av_note, row.FLYER_AV_NOTE, row.flyer_av_note, '')),
+                SALES_NOTE: clean(firstNonEmptyValue(row.SALES_NOTE, row.sales_note, row.SALESNOTE, row.salesnote, row.DOCK_NOTE, row.dock_note, row.REQUEST_NOTE, row.request_note, '')),
+                MATCH: clean(firstNonEmptyValue(row.MATCH, row.match, row.MATCHPCT, row.matchpct, row.MATCH_PCT, row.match_pct, row.REQ_MATCH, row.req_match, row.DOCK_MATCH, row.dock_match, row.FLYER_MATCH, row.flyer_match, '')),
+                SPEC: clean(firstNonEmptyValue(row.SPEC, row.spec, row.REQ_SPEC, row.req_spec, row.DOCK_SPEC, row.dock_spec, row.FLYER_SPEC, row.flyer_spec, '')),
+                CALIPER: clean(firstNonEmptyValue(row.CALIPER, row.caliper, row.REQ_CALIPER, row.req_caliper, row.DOCK_CALIPER, row.dock_caliper, row.FLYER_CALIPER, row.flyer_caliper, '')),
+                PICK: clean(firstNonEmptyValue(row.PICK, row.pick, row.PIC_NOTE, row.pic_note, row.PICKNOTE, row.picknote, row.REQ_PICK, row.req_pick, row.DOCK_PICK, row.dock_pick, row.FLYER_PICK, row.flyer_pick, '')),
+                LOC_MATCH_QTY: clean(firstNonEmptyValue(row.LOC_MATCH_QTY, row.loc_match_qty, row.REQ_LOC_MATCH_QTY, row.req_loc_match_qty, row.DOCK_LOC_MATCH_QTY, row.dock_loc_match_qty, row.FLYER_LOC_MATCH_QTY, row.flyer_loc_match_qty, '')),
+                INITIAL_PTR: clean(firstNonEmptyValue(row.INITIAL_PTR, row.initial_ptr, row.REQ_INITIAL_PTR, row.req_initial_ptr, row.DOCK_INITIAL_PTR, row.dock_initial_ptr, row.FLYER_INITIAL_PTR, row.flyer_initial_ptr, '')),
+                DATE_COMPLETED: clean(firstNonEmptyValue(row.DATE_COMPLETED, row.date_completed, row.COMPLETED_AT, row.completed_at, '')),
+                COMPLETED_BY: clean(firstNonEmptyValue(row.COMPLETED_BY, row.completed_by, row.UPDATED_BY, row.updated_by, '')),
+                SAVED_PHOTO_LINK: photoLink,
+                SAVED_PHOTO_NAME: photoName,
+                AV_RULE_BUNDLE_UPDATED_AT: clean(firstNonEmptyValue(row.AV_RULE_BUNDLE_UPDATED_AT, row.av_rule_bundle_updated_at, '')),
+                AV_RULE_AV_NOTE_UPDATED_AT: clean(firstNonEmptyValue(row.AV_RULE_AV_NOTE_UPDATED_AT, row.av_rule_av_note_updated_at, '')),
+                AV_RULE_SPEC_UPDATED_AT: clean(firstNonEmptyValue(row.AV_RULE_SPEC_UPDATED_AT, row.av_rule_spec_updated_at, '')),
+                AV_RULE_MATCH_UPDATED_AT: clean(firstNonEmptyValue(row.AV_RULE_MATCH_UPDATED_AT, row.av_rule_match_updated_at, '')),
+                AV_RULE_CALIPER_UPDATED_AT: clean(firstNonEmptyValue(row.AV_RULE_CALIPER_UPDATED_AT, row.av_rule_caliper_updated_at, '')),
+                AV_RULE_PHOTO_UPDATED_AT: clean(firstNonEmptyValue(row.AV_RULE_PHOTO_UPDATED_AT, row.av_rule_photo_updated_at, '')),
+                AV_RULE_PRIORITY_SNAPSHOT: clean(firstNonEmptyValue(row.AV_RULE_PRIORITY_SNAPSHOT, row.av_rule_priority_snapshot, '')),
+                AV_RULE_HOLDSTOP_SNAPSHOT: clean(firstNonEmptyValue(row.AV_RULE_HOLDSTOP_SNAPSHOT, row.av_rule_holdstop_snapshot, ''))
+            };
+        }
+
+        function hasMasterAvPayloadPreserveState(state = null) {
+            if (!state) return false;
+            return [
+                state.AV_NOTE,
+                state.SALES_NOTE,
+                state.MATCH,
+                state.SPEC,
+                state.CALIPER,
+                state.PICK,
+                state.LOC_MATCH_QTY,
+                state.INITIAL_PTR,
+                state.DATE_COMPLETED,
+                state.SAVED_PHOTO_LINK,
+                state.SAVED_PHOTO_NAME
+            ].some((value) => normalizeRuleText(value) !== '');
+        }
+
+        function scoreMasterAvPayloadPreserveState(state = null) {
+            if (!state) return 0;
+            let score = 0;
+            ['AV_NOTE','SALES_NOTE','MATCH','SPEC','CALIPER','PICK','LOC_MATCH_QTY','INITIAL_PTR','DATE_COMPLETED'].forEach((key) => {
+                if (normalizeRuleText(state[key]) !== '') score += 1;
+            });
+            score += parsePhotoCsvValues(state.SAVED_PHOTO_LINK).length * 3;
+            const updatedCandidates = [
+                state.AV_RULE_BUNDLE_UPDATED_AT,
+                state.AV_RULE_PHOTO_UPDATED_AT,
+                state.DATE_COMPLETED
+            ].map((value) => Date.parse(value || '')).filter((stamp) => Number.isFinite(stamp));
+            if (updatedCandidates.length) score += Math.min(9, Math.floor(Math.max.apply(null, updatedCandidates) / 86400000) % 10);
+            return score;
+        }
+
+        function captureMasterAvPayloadPreserveIndex(sources = []) {
+            const rows = [];
+            (Array.isArray(sources) ? sources : [sources]).forEach((source) => {
+                if (Array.isArray(source)) rows.push(...source);
+                else if (source) rows.push(source);
+            });
+            const index = new Map();
+            rows.forEach((row) => {
+                if (!row) return;
+                const state = captureMasterAvPayloadPreserveState(row);
+                if (!hasMasterAvPayloadPreserveState(state)) return;
+                const stateScore = scoreMasterAvPayloadPreserveState(state);
+                getMasterAvPayloadPreserveKeys(row).forEach((key) => {
+                    const existing = index.get(key);
+                    if (!existing || stateScore >= existing._score) {
+                        index.set(key, Object.assign({}, state, { _score: stateScore }));
+                    }
+                });
+            });
+            return index;
+        }
+
+        function applyMasterAvPayloadPreserveState(row = null, preserveIndex = null) {
+            if (!row || !(preserveIndex instanceof Map) || preserveIndex.size === 0) return row;
+            let preserved = null;
+            const keys = getMasterAvPayloadPreserveKeys(row);
+            for (const key of keys) {
+                preserved = preserveIndex.get(key);
+                if (preserved) break;
+            }
+            if (!hasMasterAvPayloadPreserveState(preserved)) return row;
+            const copyIfBlank = (keysToSet, value) => {
+                const safeValue = normalizeRuleText(value);
+                if (!safeValue) return;
+                const current = firstNonEmptyValue(...keysToSet.map((key) => row[key]));
+                if (normalizeRuleText(current) !== '') return;
+                keysToSet.forEach((key) => { row[key] = safeValue; });
+            };
+            copyIfBlank(['AV_NOTE', 'av_note'], preserved.AV_NOTE);
+            copyIfBlank(['SALES_NOTE', 'sales_note', 'SALESNOTE', 'salesnote'], preserved.SALES_NOTE);
+            copyIfBlank(['MATCH', 'match', 'MATCHPCT', 'matchpct', 'MATCH_PCT', 'match_pct'], preserved.MATCH);
+            copyIfBlank(['SPEC', 'spec'], preserved.SPEC);
+            copyIfBlank(['CALIPER', 'caliper'], preserved.CALIPER);
+            copyIfBlank(['PICK', 'pick', 'PIC_NOTE', 'pic_note'], preserved.PICK);
+            copyIfBlank(['LOC_MATCH_QTY', 'loc_match_qty'], preserved.LOC_MATCH_QTY);
+            copyIfBlank(['INITIAL_PTR', 'initial_ptr'], preserved.INITIAL_PTR);
+            copyIfBlank(['DATE_COMPLETED', 'date_completed'], preserved.DATE_COMPLETED);
+            copyIfBlank(['COMPLETED_BY', 'completed_by'], preserved.COMPLETED_BY);
+            [
+                ['AV_RULE_BUNDLE_UPDATED_AT', 'av_rule_bundle_updated_at'],
+                ['AV_RULE_AV_NOTE_UPDATED_AT', 'av_rule_av_note_updated_at'],
+                ['AV_RULE_SPEC_UPDATED_AT', 'av_rule_spec_updated_at'],
+                ['AV_RULE_MATCH_UPDATED_AT', 'av_rule_match_updated_at'],
+                ['AV_RULE_CALIPER_UPDATED_AT', 'av_rule_caliper_updated_at'],
+                ['AV_RULE_PHOTO_UPDATED_AT', 'av_rule_photo_updated_at'],
+                ['AV_RULE_PRIORITY_SNAPSHOT', 'av_rule_priority_snapshot'],
+                ['AV_RULE_HOLDSTOP_SNAPSHOT', 'av_rule_holdstop_snapshot']
+            ].forEach(([upper, lower]) => copyIfBlank([upper, lower], preserved[upper]));
+            const mergedPhotoLink = mergePhotoCsvList([
+                getSharedAppPhotoLinkCsvRaw(row, { includePending: false }),
+                row.ROW_PHOTO_LINK,
+                row.REQ_PHOTO_LINK,
+                row.DOCK_PHOTO_LINK,
+                row.FLYER_PHOTO_LINK,
+                preserved.SAVED_PHOTO_LINK
+            ]);
+            if (mergedPhotoLink) {
+                row.SAVED_PHOTO_LINK = mergedPhotoLink;
+                row.photo_link = mergedPhotoLink;
+                row.PHOTO_LINK = mergedPhotoLink;
+                row.PHOTOLINK = mergedPhotoLink;
+                row['PHOTO LINK'] = mergedPhotoLink;
+                row.ROW_PHOTO_LINK = mergePhotoCsvList([row.ROW_PHOTO_LINK, row.REQ_PHOTO_LINK, row.DOCK_PHOTO_LINK, row.FLYER_PHOTO_LINK, mergedPhotoLink]);
+            }
+            const mergedPhotoName = mergePhotoCsvList([
+                getSharedAppPhotoName(row),
+                row.ROW_PHOTO_NAME,
+                row.REQ_PHOTO_NAME,
+                row.DOCK_PHOTO_NAME,
+                row.FLYER_PHOTO_NAME,
+                preserved.SAVED_PHOTO_NAME
+            ]);
+            if (mergedPhotoName) {
+                row.SAVED_PHOTO_NAME = mergedPhotoName;
+                row.photo_name = mergedPhotoName;
+                row.PHOTO_NAME = mergedPhotoName;
+                row.PHOTONAME = mergedPhotoName;
+                row['PHOTO NAME'] = mergedPhotoName;
+                row.ROW_PHOTO_NAME = mergePhotoCsvList([row.ROW_PHOTO_NAME, row.REQ_PHOTO_NAME, row.DOCK_PHOTO_NAME, row.FLYER_PHOTO_NAME, mergedPhotoName]);
+            }
+            return row;
         }
 
         const WINDOWS_1252_EXTRA_CODEPOINT_TO_BYTE = {
@@ -26931,7 +27140,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.48').trim() || 'V2026.08.09.48';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.49').trim() || 'V2026.08.09.49';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -37680,7 +37889,7 @@ let avTopControlsRenderToken = 0;
             setPair('LOTCODE', 'lotcode', screenValues.lotcode);
             setPair('LOCATIONCODE', 'locationcode', screenValues.locationcode);
             setPair('LOCATIONNOTE', 'locationnote', screenValues.locationnote);
-            setPair('LOCATIONPTN1', 'locationptn1', getInventoryActionLocationPtn1Value(screenValues, rowOptions, sourceRow));
+            setPair('LOCATIONPTN1', 'locationptn1', getInventoryActionLocationPtn1Value(screenValues, rowOptions, item));
             setPair('SOURCE', 'source', firstNonEmptyValue(screenValues.source, screenValues.sourcecode, ''));
             setPair('PTRAVAILABLE', 'ptravailable', screenValues.ptravailable);
             setPair('PTRONHAND', 'ptronhand', screenValues.ptronhand);
@@ -47267,6 +47476,14 @@ function toggleDriveQuickRequestItem(domId) {
             if (hasAvHotPrice) changedDatasetKeys.push('avHotPriceKeys');
             let avRuleClearOps = [];
             const masterSeasonSalesOfficeBefore = hasMaster ? captureSeasonSalesOfficeMasterRefreshSnapshot(fullInventory) : null;
+            const masterAvPayloadPreserveIndex = hasMaster ? captureMasterAvPayloadPreserveIndex([
+                fullInventory,
+                avOpenInventory,
+                salesOfficeInventory,
+                requestsInventory,
+                socInventory,
+                flyerFolderInventory
+            ]) : null;
 
             if (hasAvNotes) {
                 avNotesDb = res.avNotesData || [];
@@ -47275,7 +47492,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             if (hasMaster) {
-                fullInventory = scopeMasterInventoryRowsForCurrentUser(res.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));});
+                fullInventory = scopeMasterInventoryRowsForCurrentUser(res.data || []).map((item,idx)=>{applyMasterAvPayloadPreserveState(item, masterAvPayloadPreserveIndex);item.DOM_ID='fi_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));});
                 applyMasterAppTabAssignments(fullInventory);
                 avRuleClearOps = res._fromCache ? [] : collectMasterAvRuleClearOps(fullInventory);
                 rebuildMasterInventoryIndexes();
