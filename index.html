@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.23';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.24';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -119,12 +119,8 @@ body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-h
         .footer-nav-btn:active{transform:scale(.97)}
         .footer-nav-btn.active,.footer-nav-btn.menu-open{color:#007a4d;background:#ecfdf5;border-color:#a7f3d0;box-shadow:0 6px 16px rgba(7,94,63,.12)}
         .footer-nav-badge{position:absolute;top:3px;right:8px;min-width:18px;height:18px;padding:0 4px;background:#ef4444;color:#fff;font-size:10px;font-weight:900;border-radius:999px;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
-        #bottom-nav{grid-template-columns:repeat(4,minmax(0,1fr)) !important;width:min(520px,calc(100% - (var(--shell-gutter) * 2))) !important;max-width:calc(100% - (var(--shell-gutter) * 2)) !important}
-        #bottom-nav [data-footer-view="sales"],
-        #bottom-nav [data-footer-view="tasks"],
-        #bottom-nav [data-footer-view="docks"],
-        #bottom-nav [data-footer-view="request"],
-        #bottom-nav [data-footer-view="communication"]{display:none !important}
+        #bottom-nav{grid-template-columns:repeat(8,minmax(0,1fr)) !important;width:min(760px,calc(100% - (var(--shell-gutter) * 2))) !important;max-width:calc(100% - (var(--shell-gutter) * 2)) !important}
+        #bottom-nav [data-footer-view="sales"]{display:none !important}
         button,a,[role="button"],[onclick],label,.excel-filter-option,.footer-nav-btn,.amazon-inline-back,.app-card-bottom-btn,.request-swipe-action{touch-action:manipulation;-webkit-tap-highlight-color:rgba(0,0,0,0)}
         #chat-content{max-width:100%;min-width:0;overflow:hidden;padding-bottom:calc(.35rem + env(safe-area-inset-bottom))}
         #view-chat .freeze-panel{margin-bottom:.35rem}
@@ -4966,7 +4962,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             left:50% !important;
             right:auto !important;
             transform:translateX(-50%) !important;
-            width:min(520px,calc(100% - (var(--shell-gutter) * 2))) !important;
+            width:min(760px,calc(100% - (var(--shell-gutter) * 2))) !important;
             max-width:calc(100% - (var(--shell-gutter) * 2)) !important;
         }
         @media (pointer:coarse) and (max-height:820px){
@@ -5913,7 +5909,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.23').trim() || 'V2026.08.09.23';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.24').trim() || 'V2026.08.09.24';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7383,7 +7379,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.23';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.24';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26335,7 +26331,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.23').trim() || 'V2026.08.09.23';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.24').trim() || 'V2026.08.09.24';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
