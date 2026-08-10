@@ -134,7 +134,6 @@ const WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID = '1zDQbk9alVLqd6rW0O9QbJa9ZN6hax5P2';
 const HL_PO_PARSED_TABLE = 'ph_27f1_hl_po';
 const HL_PO_PARSED_SOURCE_FOLDER_ID = '1681oPSyfz7mURdywOKH_9FQNnBQmmSWO';
 const HL_PO_PARSED_PROCESSED_FOLDER_ID = '13jQ37aqokXgzZ2z3VOOdCANdW5lQPgv2';
-const HL_PO_PARSED_EXPECTED_SOURCE_ROW_COUNT = 247;
 const HL_PO_PARSED_TIMEZONE = 'America/Chicago';
 
 const FOLDERS = {
@@ -4945,9 +4944,6 @@ function syncHlPoParsedFolder_(sourceFolderId, processedFolderId, tableName) {
       const rows = buildHlPoParsedRows_(file, sheetData, runId, importedAt);
       if (!rows.length) {
         throw new Error(`No importable HL PO rows found in ${fileName} on sheet ${sheetData.sourceSheetName}.`);
-      }
-      if (HL_PO_PARSED_EXPECTED_SOURCE_ROW_COUNT && sheetData.values.length !== HL_PO_PARSED_EXPECTED_SOURCE_ROW_COUNT) {
-        throw new Error(`HL PO source row count mismatch for ${fileName} on sheet ${sheetData.sourceSheetName}: expected ${HL_PO_PARSED_EXPECTED_SOURCE_ROW_COUNT} sheet rows including the header, found ${sheetData.values.length}. Upload skipped and file left in source folder.`);
       }
       const uploadedRows = upsertHlPoParsedRows_(safeTableName, rows);
       moveDriveFileToFolderWithRetry_(file, processedFolder, `${safeTableName} processed file ${fileName}`);
