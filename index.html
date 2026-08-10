@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.37';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.38';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1319,6 +1319,11 @@ body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-
 .request-swipe-row--season{background:linear-gradient(180deg,#ecfdf5 0%,#dcfce7 100%) !important;border-color:#007a4d !important}
 .request-swipe-surface{position:relative;z-index:2;width:100%;background:#ffffff;border-radius:inherit;padding:0;transition:transform .18s ease;will-change:transform;touch-action:pan-y;-webkit-user-select:none;user-select:none}
 .request-swipe-surface--season{background:linear-gradient(180deg,#ecfdf5 0%,#dcfce7 100%) !important}
+.request-swipe-row.app-card-planstart-monday,.request-swipe-surface.app-card-planstart-monday,#view-detail.detail-request-mode .request-desired-summary.app-card-planstart-monday,.request-open-info-card.app-card-planstart-monday{background:linear-gradient(180deg,#f3e8ff 0%,#e9d5ff 100%) !important;border-color:#a855f7 !important}
+.request-swipe-row.app-card-planstart-tuesday,.request-swipe-row.app-card-planstart-unknown,.request-swipe-surface.app-card-planstart-tuesday,.request-swipe-surface.app-card-planstart-unknown,#view-detail.detail-request-mode .request-desired-summary.app-card-planstart-tuesday,#view-detail.detail-request-mode .request-desired-summary.app-card-planstart-unknown,.request-open-info-card.app-card-planstart-tuesday,.request-open-info-card.app-card-planstart-unknown{background:linear-gradient(180deg,#ffe4e6 0%,#fecdd3 100%) !important;border-color:#fb7185 !important}
+.request-swipe-row.app-card-planstart-wednesday,.request-swipe-surface.app-card-planstart-wednesday,#view-detail.detail-request-mode .request-desired-summary.app-card-planstart-wednesday,.request-open-info-card.app-card-planstart-wednesday{background:linear-gradient(180deg,#dcfce7 0%,#bbf7d0 100%) !important;border-color:#22c55e !important}
+.request-swipe-row.app-card-planstart-thursday,.request-swipe-surface.app-card-planstart-thursday,#view-detail.detail-request-mode .request-desired-summary.app-card-planstart-thursday,.request-open-info-card.app-card-planstart-thursday{background:linear-gradient(180deg,#dbeafe 0%,#bfdbfe 100%) !important;border-color:#3b82f6 !important}
+.request-swipe-row.app-card-planstart-friday,.request-swipe-surface.app-card-planstart-friday,#view-detail.detail-request-mode .request-desired-summary.app-card-planstart-friday,.request-open-info-card.app-card-planstart-friday{background:linear-gradient(180deg,#e2e8f0 0%,#cbd5e1 100%) !important;border-color:#64748b !important}
         .request-swipe-action{position:absolute;top:0;right:0;bottom:0;width:88px;display:flex;align-items:center;justify-content:center;background:#ffffff;color:#dc2626;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;z-index:1}
         .request-swipe-row.swipe-open .request-swipe-surface{transform:translateX(-88px);-webkit-transform:translateX(-88px)}
         #request-rep-modal{background:rgba(15,23,42,.58);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
@@ -6080,7 +6085,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.37').trim() || 'V2026.08.09.37';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.38').trim() || 'V2026.08.09.38';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7550,7 +7555,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.37';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.38';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26722,7 +26727,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.37').trim() || 'V2026.08.09.37';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.38').trim() || 'V2026.08.09.38';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -74198,7 +74203,7 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
         const chunkRenderTokensByKey = Object.create(null);
-        const DEFAULT_RENDER_SIGNATURE_FIELDS = ['UNIQUE_ID','DOM_ID','COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PRIORITY','PTRONHAND','ptronhand','PTRAVAILABLE','S_LTS','LOCATIONNOTE','LOCATIONNOTEDATE','SEASON','AV_NOTE','HOLDSTOPCODE','HOLDSTOPREASON','HOLDSTOPBEGINDATE','HOLD_RELEASE_APPROVED_AT','EVAL_TASK_TYPE','EVAL_TASK_STATUS','EVAL_TASK_INSTRUCTIONS','EVAL_TASK_ASSIGNED_AT','EVAL_TASK_COMPLETED_AT','EVAL_TASK_RECOUNT_QTY','EVAL_TASK_MOVED_UP_QTY','EVAL_TASK_HOLD_ACTION','EVAL_TASK_HOLD_CODE','EVAL_TASK_HOLD_REASON','EVAL_TASK_RESULT_NOTE','LISTPRICE','HOT_PRICE','HOTPRICE','REQ_STATUS','REQ_QTY','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_DESIRED_SPEC','REQ_DESIRED_CALIPER','DESIRED_SPEC','DESIRED_CALIPER','REQ_PICK','REQUEST_NOTE','request_note','REQUEST_NOTES','request_notes','REQ_NOTE','req_note','REQ_ROW_NOTE','req_row_note','ROW_NOTE','row_note','ROWNOTE','rownote','REQUEST_ROW_NOTE','request_row_note','REQUEST_MESSAGE','request_message','NOTE','note','REQ_COMMENTS','NCR_APPROVAL_MESSAGE','ncr_approval_message','ORDER_STATUS','ORDER_QTY','ORDER_RESERVE','SALES_NOTE','sales_note','PIC_NOTE','pic_note','MOVE_BATCH_ID','MOVE_APPROVAL_STAGE','MOVE_STATUS','MOVE_GROUP_KEY','MOVE_FROM_LOCATIONCODE','MOVE_TO_LOCATIONCODE','MOVE_PLANNED_QTY','MOVE_ACTUAL_QTY','MOVE_TA_QTY','MOVE_RECOUNT_REQUIRED','MOVE_RECOUNT_LOCATIONCODE','MOVE_DESTINATION_NEEDS_ROW','MOVE_DYLAN_APPROVED_AT','MOVE_JD_APPROVED_AT','MOVE_COMPLETED_AT','MOVE_COMPLETED_BY','DOCK_NUM','STOPNUMBER','CUSTOMERNAME','SALESREPNAME','FOLDERNAME','COUNT','LABEL','NAME','LOCATIONBUCKET','BLOCKALPHA','STATUS','LINECOUNT','TOTALQTY','ROW_PHOTO_LINK','REQ_PHOTO_LINK','DOCK_PHOTO_LINK','FLYER_PHOTO_LINK','DOCK_NOTE','DOCK_ISSUE_NOTE','DOCK_ISSUE_STATE','DOCK_ISSUE_SOURCE_UID','DOCK_ISSUE_SOURCE_MATCH_KEY','issueSourceUniqueId','issueState','issueNote','sourceQty','remainingQty','sourceMatchKey','currentSourceUniqueId'];
+        const DEFAULT_RENDER_SIGNATURE_FIELDS = ['UNIQUE_ID','DOM_ID','COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PRIORITY','PTRONHAND','ptronhand','PTRAVAILABLE','S_LTS','LOCATIONNOTE','LOCATIONNOTEDATE','PLANSTART','planstart','PLAN_START','plan_start','SEASON','AV_NOTE','HOLDSTOPCODE','HOLDSTOPREASON','HOLDSTOPBEGINDATE','HOLD_RELEASE_APPROVED_AT','EVAL_TASK_TYPE','EVAL_TASK_STATUS','EVAL_TASK_INSTRUCTIONS','EVAL_TASK_ASSIGNED_AT','EVAL_TASK_COMPLETED_AT','EVAL_TASK_RECOUNT_QTY','EVAL_TASK_MOVED_UP_QTY','EVAL_TASK_HOLD_ACTION','EVAL_TASK_HOLD_CODE','EVAL_TASK_HOLD_REASON','EVAL_TASK_RESULT_NOTE','LISTPRICE','HOT_PRICE','HOTPRICE','REQ_STATUS','REQ_QTY','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_DESIRED_SPEC','REQ_DESIRED_CALIPER','DESIRED_SPEC','DESIRED_CALIPER','REQ_PICK','REQUEST_NOTE','request_note','REQUEST_NOTES','request_notes','REQ_NOTE','req_note','REQ_ROW_NOTE','req_row_note','ROW_NOTE','row_note','ROWNOTE','rownote','REQUEST_ROW_NOTE','request_row_note','REQUEST_MESSAGE','request_message','NOTE','note','REQ_COMMENTS','NCR_APPROVAL_MESSAGE','ncr_approval_message','ORDER_STATUS','ORDER_QTY','ORDER_RESERVE','SALES_NOTE','sales_note','PIC_NOTE','pic_note','MOVE_BATCH_ID','MOVE_APPROVAL_STAGE','MOVE_STATUS','MOVE_GROUP_KEY','MOVE_FROM_LOCATIONCODE','MOVE_TO_LOCATIONCODE','MOVE_PLANNED_QTY','MOVE_ACTUAL_QTY','MOVE_TA_QTY','MOVE_RECOUNT_REQUIRED','MOVE_RECOUNT_LOCATIONCODE','MOVE_DESTINATION_NEEDS_ROW','MOVE_DYLAN_APPROVED_AT','MOVE_JD_APPROVED_AT','MOVE_COMPLETED_AT','MOVE_COMPLETED_BY','DOCK_NUM','STOPNUMBER','CUSTOMERNAME','SALESREPNAME','FOLDERNAME','COUNT','LABEL','NAME','LOCATIONBUCKET','BLOCKALPHA','STATUS','LINECOUNT','TOTALQTY','ROW_PHOTO_LINK','REQ_PHOTO_LINK','DOCK_PHOTO_LINK','FLYER_PHOTO_LINK','DOCK_NOTE','DOCK_ISSUE_NOTE','DOCK_ISSUE_STATE','DOCK_ISSUE_SOURCE_UID','DOCK_ISSUE_SOURCE_MATCH_KEY','issueSourceUniqueId','issueState','issueNote','sourceQty','remainingQty','sourceMatchKey','currentSourceUniqueId'];
 
         function normalizeRenderSignature(value = '') {
             return String(value || '').trim();
@@ -88939,6 +88944,8 @@ function toggleDriveQuickRequestItem(domId) {
                 : `<label class="request-desired-chip" for="req-reserve-summary"><span class="request-desired-label">Reserve</span><select id="req-reserve-summary" class="request-desired-reserve-select" onchange="return syncRequestSummaryReserve(this.value)"><option value="NO"${reserveValue === 'NO' ? ' selected' : ''}>NO</option><option value="YES"${reserveValue === 'YES' ? ' selected' : ''}>YES</option></select></label>`;
             const cell = (label, value, extraClass = '') => `<div class="request-desired-cell ${escapeShareHtml(extraClass)}"><span class="request-desired-label">${escapeShareHtml(label)}</span><span class="request-desired-value">${escapeShareHtml(displayValue(value))}</span></div>`;
             const rowNoteClass = requestNote ? 'request-desired-cell--wide request-desired-cell--row-note-data' : 'request-desired-cell--wide';
+            const suspendDetailToneClass = isDockSuspendDcRequestMirrorRow(item) ? getDockSuspendDcRequestPlanstartToneClass(item) : '';
+            const suspendDetailToneStyle = suspendDetailToneClass ? ` style="${escapeHtml(getDockSuspendDcRequestPlanstartToneStyle(item))}"` : '';
             const managerSubmittedInfoHtml = isManagerApprovalDetail ? `<div class="request-desired-grid mt-2">
                 ${cell('Submitted Spec', managerSubmittedSpec || desiredSpec)}
                 ${cell('Submitted Caliper', managerSubmittedCaliper || desiredCaliper)}
@@ -88947,7 +88954,7 @@ function toggleDriveQuickRequestItem(domId) {
                 ${cell('Pick Note', managerPickNote || 'N/A')}
                 ${cell('Comments', managerComments || 'N/A')}
             </div>` : '';
-            panel.innerHTML = `<div class="request-desired-summary">
+            panel.innerHTML = `<div class="request-desired-summary ${escapeShareHtml(suspendDetailToneClass)}"${suspendDetailToneStyle}>
                 <div class="request-desired-chips">${chip('Pri', priorityValue)}${chip('On hand', ptrValue)}${chip('Review', ptrReviewedValue)}${chip('Available', ptrAvailableValue)}${chip('Open Stock', sLtsValue)}${chip('Qty', requestQty || '0')}${reserveChip}</div>
                 <div class="request-desired-grid">
                     ${cell('Sales Rep', salesRepName || 'Unknown Rep')}
@@ -89008,9 +89015,12 @@ function toggleDriveQuickRequestItem(domId) {
             const snapshot = getRequestOpenInfoSnapshot(item, detailSourceView);
             if (!snapshot) return '';
             const rowNoteClass = snapshot.requestNote ? 'request-open-info-cell--wide request-open-info-cell--row-note-data' : 'request-open-info-cell--wide';
+            const suspendInfoToneClass = isDockSuspendDcRequestMirrorRow(item) ? getDockSuspendDcRequestPlanstartToneClass(item) : '';
             return buildRequestOpenInfoCardFromValues({
                 commonName: snapshot.commonName,
                 topCode: snapshot.topCode,
+                toneClass: suspendInfoToneClass,
+                toneStyle: suspendInfoToneClass ? getDockSuspendDcRequestPlanstartToneStyle(item) : '',
                 chips: [
                     ['Pri', snapshot.priorityValue],
                     ['On hand', snapshot.ptrValue],
@@ -89033,6 +89043,10 @@ function toggleDriveQuickRequestItem(domId) {
 
         function buildRequestOpenInfoCardFromValues(config = {}) {
             const safeConfig = (config && typeof config === 'object') ? config : {};
+            const toneClass = String(safeConfig.toneClass || '').trim();
+            const safeToneClass = /^app-card-planstart-(monday|tuesday|wednesday|thursday|friday|unknown)$/.test(toneClass) ? toneClass : '';
+            const toneStyleText = String(safeConfig.toneStyle || '').trim();
+            const toneStyleAttr = safeToneClass && toneStyleText ? ` style="${escapeHtml(toneStyleText)}"` : '';
             const displayValue = (value, fallback = 'N/A') => {
                 const text = String(value || '').trim();
                 return text || fallback;
@@ -89053,7 +89067,7 @@ function toggleDriveQuickRequestItem(domId) {
                 .filter(Boolean)
                 .map((entry) => cell(entry.label, entry.value, entry.extraClass || ''))
                 .join('');
-            return `<div class="request-open-info-card">
+            return `<div class="request-open-info-card ${escapeShareHtml(safeToneClass)}"${toneStyleAttr}>
                 <div class="request-open-info-head">
                     <h2 id="request-open-info-title" class="request-open-info-title">${escapeShareHtml(displayValue(safeConfig.commonName, 'Unknown'))}</h2>
                     <div class="request-open-info-code">${escapeShareHtml(displayValue(safeConfig.topCode, ''))}</div>
@@ -96028,6 +96042,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 clean(item.CONTSIZE),
                 clean(item.LOCATIONCODE),
                 clean(item.LOTCODE),
+                clean(getDockSuspendDcRequestPlanstartValue(item)),
                 clean(getRequestCardSourceLabel(item)),
                 clean(item.REQUESTED_BY),
                 clean(item.REQ_CUSTOMER),
@@ -117756,6 +117771,10 @@ C.14.043 C.15.000
                 row.classList.add('request-swipe-row');
                 const isSeasonSwipeRow = row.classList.contains('app-smart-card--season');
                 if (isSeasonSwipeRow) row.classList.add('request-swipe-row--season');
+                const planstartToneClass = String(row.dataset.planstartTone || '').trim();
+                const hasPlanstartToneClass = /^app-card-planstart-(monday|tuesday|wednesday|thursday|friday|unknown)$/.test(planstartToneClass);
+                const planstartToneStyle = hasPlanstartToneClass && row.style ? String(row.style.cssText || '').trim() : '';
+                if (hasPlanstartToneClass) row.classList.add(planstartToneClass);
                 [
                     'onpointerdown',
                     'onpointermove',
@@ -117773,6 +117792,11 @@ C.14.043 C.15.000
                 const surface = document.createElement('div');
                 surface.className = 'request-swipe-surface';
                 if (isSeasonSwipeRow) surface.classList.add('request-swipe-surface--season');
+                if (hasPlanstartToneClass) {
+                    surface.classList.add(planstartToneClass);
+                    surface.dataset.planstartTone = planstartToneClass;
+                    if (planstartToneStyle) surface.style.cssText = planstartToneStyle;
+                }
                 surface.setAttribute('role', 'button');
                 surface.setAttribute('tabindex', '0');
                 surface.setAttribute('aria-label', row.getAttribute('aria-label') || 'Open request row');
@@ -119856,6 +119880,8 @@ C.14.043 C.15.000
                 && isDockSuspendDcRequestMirrorRow(item);
             const suspendTagPlanstartToneClass = isSuspendTagRequestCard ? getDockSuspendDcRequestPlanstartToneClass(item) : '';
             const suspendTagPlanstartToneDataAttr = suspendTagPlanstartToneClass ? ` data-planstart-tone="${escJsAttrValue(suspendTagPlanstartToneClass)}"` : '';
+            const suspendTagPlanstartValue = isSuspendTagRequestCard ? String(firstNonEmptyValue(getDockSuspendDcRequestPlanstartValue(item), '') || '').trim() : '';
+            const suspendTagPlanstartValueAttr = suspendTagPlanstartValue ? ` data-planstart-value="${escJsAttrValue(suspendTagPlanstartValue)}"` : '';
             const suspendTagPlanstartStyleAttr = isSuspendTagRequestCard ? ` style="${escapeHtml(getDockSuspendDcRequestPlanstartToneStyle(item))}"` : '';
             const requestCardToneClass = suspendTagPlanstartToneClass || (isDocksRequestCard
                 ? 'bg-red-50 border-red-300 ring-1 ring-red-200'
@@ -120081,7 +120107,7 @@ C.14.043 C.15.000
                 const dockSuspendTagActionHtml = isDockSuspendDcRequestMirrorRow(item) && activeReqTab === 'suspend-tag' && !requestDone
                     ? `<div class="mt-3 grid grid-cols-1 gap-2 border-t border-red-100 pt-3 sm:grid-cols-2"><button type="button" ${nestedDockActionPressAttrs} class="min-h-[44px] rounded-xl bg-[#007a4d] px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95" onclick="return handleDockSuspendDcDonePress(event, '${safeUidJs}', this)"><i class="ph-bold ph-check-circle mr-1 text-base align-middle"></i> Done</button><button type="button" ${nestedDockActionPressAttrs} class="min-h-[44px] rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-[10px] font-black uppercase tracking-[0.12em] text-amber-700 shadow-sm active:scale-95" onclick="return handleDockSuspendDcEmailPress(event, '${safeUidJs}', this)"><i class="ph-bold ph-envelope-simple mr-1 text-base align-middle"></i> Email</button></div>`
                     : '';
-        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${requestBorderClass}" data-dom-id="${item.DOM_ID}" data-request-uid="${esc(item.UNIQUE_ID)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}"${suspendTagPlanstartToneDataAttr}${suspendTagPlanstartStyleAttr} oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open request row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked, '${safeCardSourceViewKey}')"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-', item)}${buildInventorySecondarylineHtml(loc, requestSource)}<div class="app-card-meta-grid grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${historyBadge}${statusChip}${reserveBadge}<span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">QTY: ${reqQty}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${lot}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${priority}</span>${requestQuantityAndFieldChipsHtml}</div>${holdHtml}${requestSalesNoteHtml}${dockSuspendCardDataHtml}${inventoryEditActionHtml}</div>${inlineThumbHtml}</div>${dockSuspendTagActionHtml}${requestRemoveButtonHtml}${actionBadge}</div></div>`;
+        return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory ${seasonCardShellClass} relative ${requestCardToneClass} p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${requestBorderClass}" data-dom-id="${item.DOM_ID}" data-request-uid="${esc(item.UNIQUE_ID)}" data-request-history="${item.REQUEST_HISTORY ? 'true' : 'false'}"${suspendTagPlanstartToneDataAttr}${suspendTagPlanstartValueAttr}${suspendTagPlanstartStyleAttr} oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView, 'Open request row')}><div class="card-checkbox-container flex-shrink-0"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-[#007a4d] focus:ring-[#007a4d] shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked, '${safeCardSourceViewKey}')"></div><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Unknown', item.CONTSIZE || '-', item)}${buildInventorySecondarylineHtml(loc, requestSource)}<div class="app-card-meta-grid grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${rep}</div><div class="truncate"><i class="ph-bold ph-storefront mr-1"></i>${cust}</div></div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600">${historyBadge}${statusChip}${reserveBadge}<span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">QTY: ${reqQty}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${loc}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${lot}</span><span class="bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded border border-orange-100">Pri: ${priority}</span>${requestQuantityAndFieldChipsHtml}</div>${holdHtml}${requestSalesNoteHtml}${dockSuspendCardDataHtml}${inventoryEditActionHtml}</div>${inlineThumbHtml}</div>${dockSuspendTagActionHtml}${requestRemoveButtonHtml}${actionBadge}</div></div>`;
             }
             if(sourceView === 'docks'){
                 const qty = formatDockDisplayQty(getDockDisplayQty(item));
