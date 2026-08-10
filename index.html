@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.09.49';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.09.50';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.49').trim() || 'V2026.08.09.49';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.50').trim() || 'V2026.08.09.50';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.49';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.50';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7755,6 +7755,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         let realtimeDirtyIdsByTable = new Map();
         let fallbackSyncInterval = null;
         let syncCatchupTimer = null;
+        let loadedDatasetBackgroundCatchupTimer = null;
         let localRowSaveRefreshQuietUntil = 0;
         let localRowSaveRefreshQuietReason = '';
         let realtimeReconnectTimer = null;
@@ -7814,6 +7815,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const LONG_SESSION_CACHE_LIMIT = 64;
         const EXCEL_FILTER_RENDER_LIMIT_TOUCH = 90;
         const EXCEL_FILTER_RENDER_LIMIT_DESKTOP = 180;
+        const PERF_DEBUG_STORAGE_KEY = 'gnc_perf_debug_v1';
+        const PERF_DEBUG_WARN_MS = 120;
         const internalPerfStats = window.__gncPerfStats || (window.__gncPerfStats = {
             forcedRerenders: 0,
             skippedRealtimeEchoes: 0,
@@ -7854,7 +7857,13 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             taskFilterRenderDurations: Object.create(null),
             staleViewRenderSkips: 0,
             cancelledChunkRenders: 0,
-            longTaskDurations: Object.create(null)
+            longTaskDurations: Object.create(null),
+            datasetLoadDurations: Object.create(null),
+            cachePersistDurations: Object.create(null),
+            filterRenderDurations: Object.create(null),
+            skippedUnchangedCachePersists: 0,
+            visibleFirstRefreshes: 0,
+            loadedDatasetBackgroundCatchups: 0
         });
         let recentLocalRealtimeWrites = new Map();
         let pendingPhotoUploads = new Map();
@@ -8080,6 +8089,22 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
         }
 
+        function isInternalPerfDebugEnabled() {
+            try {
+                return localStorage.getItem(PERF_DEBUG_STORAGE_KEY) === '1';
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function logInternalPerfDuration(bucketName = '', key = '', duration = 0) {
+            const ms = Number(duration) || 0;
+            if (!isInternalPerfDebugEnabled() && ms < PERF_DEBUG_WARN_MS) return;
+            try {
+                console.info('[GNC perf]', String(bucketName || 'duration'), String(key || 'default'), `${Math.round(ms)}ms`);
+            } catch (error) {}
+        }
+
         function pushInternalPerfSample(bucketName = '', value = 0, key = '') {
             const safeBucketName = String(bucketName || '').trim();
             const sampleValue = Number(value);
@@ -8101,6 +8126,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (!started) return 0;
             const duration = beginInternalPerfMeasure() - started;
             pushInternalPerfSample(bucketName, duration, key);
+            logInternalPerfDuration(bucketName, key, duration);
             return duration;
         }
 
@@ -25417,6 +25443,37 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             'avHotPriceKeys',
             'avNotes'
         ]);
+        let cacheContentRevision = 0;
+        let lastPersistedCacheSignature = '';
+
+        function markCacheSnapshotDirty(reason = 'data-change') {
+            cacheContentRevision += 1;
+            if (cacheContentRevision > Number.MAX_SAFE_INTEGER - 1000) cacheContentRevision = 1;
+            if (isInternalPerfDebugEnabled()) {
+                try { console.info('[GNC perf]', 'cache-dirty', String(reason || 'data-change'), cacheContentRevision); } catch (error) {}
+            }
+            return cacheContentRevision;
+        }
+
+        function buildCacheSnapshotSignature() {
+            const datasetBits = Object.keys(DATASET_DEFINITIONS || {}).sort().map((key) => {
+                const state = getDatasetState(key);
+                return [
+                    key,
+                    state.initialLoaded ? 'i1' : 'i0',
+                    state.fullLoaded ? 'f1' : 'f0',
+                    state.lastLoadedAt || '',
+                    getDatasetRenderRowCount(key)
+                ].join(':');
+            }).join('|');
+            return [
+                CACHE_SCHEMA_VERSION,
+                normalizeSessionIdentity(currentUser),
+                normalizeSessionIdentity(safeRole || currentRole),
+                cacheContentRevision,
+                datasetBits
+            ].join('::');
+        }
 
         function shouldTrustCachedFullLoadForDataset(key = '') {
             return !NETWORK_VERIFIED_DATASET_KEYS.has(String(key || '').trim());
@@ -25690,7 +25747,7 @@ const ncrFilterStateByView = {
         let lastBackgroundRefreshAt=0;
         let cacheWarmPromise=null;
         let cachePersistTimer=null; let cachePersistIdleHandle=null; let lastCachePersistAt=0; let pendingCachePersist=false;
-let currentUser=""; let currentUserDisplay=""; let currentRole=""; let currentUserDivision="10"; let currentUserLanguage="English"; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let currentPrimaryViewId="home"; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let bloomPickerActionsOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let bloomCropUpdateModalOpen=false; let bloomCropUpdatePendingItems=[]; let bloomCropUpdateEmailContext=null; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0; let leafVoiceRecognition=null; let leafVoiceListening=false; let leafVoiceSpeaking=false; let leafVoiceAbortRequested=false; let leafVoiceSubmitPending=false; let leafVoiceInterimText=''; let leafVoiceFinalText=''; let leafVoiceStatusOverride=''; let leafLastSpokenAnswer=''; let leafVoiceUtterance=null; let leafVoiceFinalizeTimer=null; let leafVoiceLastSpeechAt=0;
+let currentUser=""; let currentUserDisplay=""; let currentRole=""; let currentUserDivision="10"; let currentUserLanguage="English"; let safeRole=""; let repPermutations=[]; let activeItem=null; let lastView=""; let currentPrimaryViewId="home"; let activeDetailTab="overview"; let activeDetailSourceView=""; let detailOverviewFieldSearchTerm=""; let selectedItems=new Set(); let cartPanelOpen=false; let bloomPickerActionsOpen=false; let cartUiObserver=null; let cartUiRefreshQueued=false; let lastCartToggleAt=0; let lastCartToggleDomId=""; let isMultiSelectMode=false; let pressTimer=null; let isLongPress=false; let touchStartX=0; let touchStartY=0; let pendingAction=null; let pendingActionOptions=null; let pendingTabType=null; let bloomShareMenuOpen=false; let bloomCropUpdateModalOpen=false; let bloomCropUpdatePendingItems=[]; let bloomCropUpdateEmailContext=null; let hasAppliedInitialHomeView=false; let detailHydrationToken=0; let detailHydrationTimer=null; let pendingDetailHydrationToken=0; let detailTransitionActiveUntil=0; let locMatchCalculationCacheKey=''; let locMatchCalculationCacheValue=null; let currentAppSessionToken=""; let currentAppSessionExpiresAt=0; let leafAssistantMessages=[]; let leafAssistantBusy=false; let leafLastRequestId=0; let leafVoiceRecognition=null; let leafVoiceListening=false; let leafVoiceSpeaking=false; let leafVoiceAbortRequested=false; let leafVoiceSubmitPending=false; let leafVoiceInterimText=''; let leafVoiceFinalText=''; let leafVoiceStatusOverride=''; let leafLastSpokenAnswer=''; let leafVoiceUtterance=null; let leafVoiceFinalizeTimer=null; let leafVoiceLastSpeechAt=0;
 let bloomCropUpdateRecipientMode='reps'; let bloomCropUpdateReserveEmailGroups=[]; let bloomCropUpdateReserveRowsLoading=false; let bloomCropUpdateReserveRowsError=''; let bloomCropUpdateReserveFetchToken=0;
 let bloomShiftReportFormat='report'; let bloomShiftReportColumnMode='custom'; let bloomShiftReportSelectedColumns=new Set(); let bloomShiftReportColumnSearch='';
 let appAdminRecipientUsers=[]; let appAdminRecipientUsersPromise=null; let appAdminRecipientUsersLoaded=false; let appAdminRecipientUsersSignature=''; let appAdminRecipientEmailByToken=new Map(); let appEvalRecipientUsersSignature=''; let appEmailRecipientUsers=[]; let appEmailRecipientUsersPromise=null; let appEmailRecipientUsersLoaded=false; let appEmailRecipientUsersSignature=''; let appEmailRecipientEmailByToken=new Map();
@@ -27140,7 +27197,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.49').trim() || 'V2026.08.09.49';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.50').trim() || 'V2026.08.09.50';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -31221,9 +31278,25 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function runPersistCurrentCacheNow() {
+            const persistStartedAt = beginInternalPerfMeasure();
             pendingCachePersist = false;
             lastCachePersistAt = Date.now();
-            return saveToCache(buildCacheSnapshot()).catch(() => false);
+            const nextSignature = buildCacheSnapshotSignature();
+            if (nextSignature && lastPersistedCacheSignature === nextSignature) {
+                incrementInternalPerfCounter('skippedUnchangedCachePersists');
+                recordInternalPerfDuration('cachePersistDurations', persistStartedAt, 'skip-unchanged');
+                return Promise.resolve(true);
+            }
+            return saveToCache(buildCacheSnapshot())
+                .then((ok) => {
+                    if (ok !== false && nextSignature) lastPersistedCacheSignature = nextSignature;
+                    recordInternalPerfDuration('cachePersistDurations', persistStartedAt, ok === false ? 'failed' : 'saved');
+                    return ok;
+                })
+                .catch(() => {
+                    recordInternalPerfDuration('cachePersistDurations', persistStartedAt, 'failed');
+                    return false;
+                });
         }
 
         function queueIdleCachePersist() {
@@ -31573,6 +31646,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         async function loadDatasetTargetsWithLimit(targets = [], options = {}, concurrency = null) {
             const safeTargets = (Array.isArray(targets) ? targets : []).filter((item) => item && item.key);
             if (!safeTargets.length) return true;
+            const loadStartedAt = beginInternalPerfMeasure();
             const opts = options || {};
             opts.interruptedDuringLoad = false;
             const resolvedConcurrency = concurrency == null ? getDatasetTargetLoadConcurrency(safeTargets, options) : concurrency;
@@ -31590,7 +31664,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     if (interruptIfBusy()) return;
                     const item = safeTargets[index];
                     index += 1;
+                    const itemStartedAt = beginInternalPerfMeasure();
                     await ensureDatasetLoaded(item.key, item.mode, opts);
+                    recordInternalPerfDuration('datasetLoadDurations', itemStartedAt, getDatasetTargetKey(item));
                     if (opts.interruptedDuringLoad) {
                         interrupted = true;
                         return;
@@ -31604,6 +31680,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 workers.push(runWorker());
             }
             await Promise.all(workers);
+            recordInternalPerfDuration('datasetLoadDurations', loadStartedAt, `batch:${safeTargets.length}`);
             if (interrupted) {
                 queueInterruptedRefreshRetry(opts);
                 return false;
@@ -31671,6 +31748,50 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const state = getDatasetState(item.key);
                 return state.initialLoaded || state.fullLoaded;
             });
+        }
+
+        function getDatasetTargetKey(item = null) {
+            if (!item || !item.key) return '';
+            return `${String(item.key || '').trim()}:${item.mode === 'full' ? 'full' : 'initial'}`;
+        }
+
+        function queueLoadedDatasetBackgroundCatchup(loadedKeys = [], excludeTargets = [], delayMs = 0) {
+            if (loadedDatasetBackgroundCatchupTimer) clearTimeout(loadedDatasetBackgroundCatchupTimer);
+            if (!currentUser || document.hidden || navigator.onLine === false) return;
+            const safeLoadedKeys = Array.isArray(loadedKeys) ? loadedKeys.slice() : [];
+            const excluded = new Set((Array.isArray(excludeTargets) ? excludeTargets : []).map(getDatasetTargetKey).filter(Boolean));
+            if (!safeLoadedKeys.length) return;
+            const baseDelay = isTouchConstrainedDevice() ? 6500 : 2800;
+            loadedDatasetBackgroundCatchupTimer = setTimeout(() => {
+                loadedDatasetBackgroundCatchupTimer = null;
+                if (!currentUser || document.hidden || navigator.onLine === false || backgroundRefreshInFlight) return;
+                if (shouldSkipPassiveRefreshAfterLocalSave()) {
+                    updateSyncDiagnostics(getPassiveSyncIdleMode());
+                    return;
+                }
+                if (shouldDeferInteractiveBackgroundWork()) {
+                    incrementInternalPerfCounter('deferredBackgroundRefreshes');
+                    queueLoadedDatasetBackgroundCatchup(safeLoadedKeys, excludeTargets, Math.max(INTERACTION_REFRESH_DEFER_MS, baseDelay));
+                    return;
+                }
+                const targets = getLoadedDatasetRefreshTargets(safeLoadedKeys)
+                    .filter((item) => !excluded.has(getDatasetTargetKey(item)))
+                    .filter((item) => isDatasetStale(item.key, getDatasetRefreshMaxAge(item.key, item.mode)));
+                const eligibleTargets = filterManualSyncEligibleTargets(targets);
+                if (!eligibleTargets.length) return;
+                incrementInternalPerfCounter('loadedDatasetBackgroundCatchups');
+                backgroundRefreshInFlight = true;
+                loadDatasetTargetsWithLimit(eligibleTargets, {
+                    force: true,
+                    preserveRequestedMode: true,
+                    interruptible: true,
+                    requeueOnInteraction: true,
+                    retryReason: 'loaded-dataset-background-catchup'
+                }, 1).catch(() => false).finally(() => {
+                    backgroundRefreshInFlight = false;
+                    updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'idle');
+                });
+            }, Math.max(baseDelay, Number(delayMs) || 0));
         }
 
         function shouldLoadInventoryEditRequestsForEvalRows() {
@@ -31914,13 +32035,19 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return true;
             }
             if (backgroundRefreshInFlight) return false;
+            const forceAllLoadedDatasets = !!(
+                opts.forceAllLoadedDatasets
+                || opts.refreshAllLoadedDatasets
+                || opts.retryForceLoadedRefresh
+            );
             const refreshOptions = {
                 force: true,
                 preserveRequestedMode: true,
                 interruptible: true,
                 requeueOnInteraction: true,
                 retryReason: 'loaded-refresh',
-                retryForceLoadedRefresh: shouldForce,
+                retryForceLoadedRefresh: shouldForce && forceAllLoadedDatasets,
+                forceAllLoadedDatasets,
                 ...opts
             };
             if ((!shouldForce && shouldDeferInteractiveBackgroundWork()) || (shouldForce && shouldPauseInterruptibleRefresh(refreshOptions))) {
@@ -31940,9 +32067,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 lastBackgroundRefreshAt = Date.now();
                 return true;
             }
+            const visibleFirstTargets = getVisibleRefreshTargets(loadedKeys, { includeBackground: false });
             const targets = shouldForce
-                ? getLoadedDatasetRefreshTargets(loadedKeys)
-                : getVisibleRefreshTargets(loadedKeys, { includeBackground: false })
+                ? (forceAllLoadedDatasets ? getLoadedDatasetRefreshTargets(loadedKeys) : (visibleFirstTargets.length ? visibleFirstTargets : getLoadedDatasetRefreshTargets(loadedKeys)))
+                : visibleFirstTargets
                     .filter((item) => isDatasetStale(item.key, getDatasetRefreshMaxAge(item.key, item.mode)))
                     .filter((item) => !(item.key === 'requests' && shouldRunRequestViewLiveSync()));
             const eligibleTargets = filterManualSyncEligibleTargets(targets);
@@ -31962,6 +32090,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const didLoad = await loadDatasetTargetsWithLimit(eligibleTargets, refreshOptions);
                 if (!didLoad) return false;
                 lastBackgroundRefreshAt = Date.now();
+                if (shouldForce && !forceAllLoadedDatasets) {
+                    incrementInternalPerfCounter('visibleFirstRefreshes');
+                    queueLoadedDatasetBackgroundCatchup(loadedKeys, eligibleTargets, isTouchConstrainedDevice() ? 7200 : 3200);
+                }
                 updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'idle');
                 return true;
             } finally {
@@ -46870,7 +47002,10 @@ function toggleDriveQuickRequestItem(domId) {
 
         async function fetchBackgroundData(mode='full') {
             if (mode === 'critical' || mode === 'supplemental') return true;
-            return refreshLoadedDatasets(mode === 'full' || mode === 'force');
+            const safeMode = String(mode || 'full').trim().toLowerCase();
+            return refreshLoadedDatasets(safeMode === 'full' || safeMode === 'force', {
+                forceAllLoadedDatasets: safeMode === 'force'
+            });
         }
         function hasUsableEndCapFolderValue(value = '') {
             const text = String(value || '').trim().toUpperCase();
@@ -47706,6 +47841,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             if (didStructuralDataChange) {
+                markCacheSnapshotDirty(`dataset:${changedDatasetKeys.join(',') || 'structural'}`);
                 rebuildDetailLookupIndexes();
             }
 
@@ -53774,6 +53910,7 @@ function toggleDriveQuickRequestItem(domId) {
                 ? visibleAffectedViews
                 : getVisibleAffectedViewIds(changedKeys);
             if (changedRow) {
+                markCacheSnapshotDirty(`row:${safeSourceTable || 'local'}`);
                 invalidateResolvedViewStateCaches();
                 buildSearchIndex(changedRow);
                 syncRowDataAcrossViews(changedRow);
@@ -74911,7 +75048,17 @@ function toggleDriveQuickRequestItem(domId) {
             let hash = 2166136261;
             hash = updateRenderSignatureHash(hash, prefix);
             hash = updateRenderSignatureHash(hash, safeRows.length);
-            safeRows.forEach((row, index) => {
+            hash = updateRenderSignatureHash(hash, resolvedViewStateEpoch);
+            const fullHashLimit = (typeof isTouchConstrainedDevice === 'function' && isTouchConstrainedDevice()) ? 140 : 260;
+            const shouldSampleRows = safeRows.length > fullHashLimit;
+            const sampleIndexes = shouldSampleRows
+                ? new Set([0, 1, Math.floor(safeRows.length / 4), Math.floor(safeRows.length / 2), Math.floor((safeRows.length * 3) / 4), safeRows.length - 2, safeRows.length - 1].filter((index) => index >= 0 && index < safeRows.length))
+                : null;
+            const rowsToHash = shouldSampleRows ? Array.from(sampleIndexes).sort((a, b) => a - b).map((index) => ({ row: safeRows[index], index })) : safeRows.map((row, index) => ({ row, index }));
+            if (shouldSampleRows) {
+                hash = updateRenderSignatureHash(hash, `sampled:${safeRows.length}:${fullHashLimit}`);
+            }
+            rowsToHash.forEach(({ row, index }) => {
                 if (!row || typeof row !== 'object') {
                     hash = updateRenderSignatureHash(hash, `row:${index}:${String(row || '')}`);
                     return;
@@ -75114,7 +75261,7 @@ function toggleDriveQuickRequestItem(domId) {
             if (count <= 0) return false;
             const coarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
             const touchOptimized = isIOSDevice() || isStandaloneApp() || coarsePointer;
-            const mobileCutoff = Math.max(20, Math.min(Number(mobileThreshold) || 120, 60));
+            const mobileCutoff = Math.max(16, Math.min(Number(mobileThreshold) || 120, 36));
             const desktopCutoff = Math.max(30, Math.min(Number(desktopThreshold) || 220, 132));
             return count > (touchOptimized ? mobileCutoff : desktopCutoff);
         }
@@ -75181,23 +75328,23 @@ function toggleDriveQuickRequestItem(domId) {
             const chunkSize = Number.isFinite(configuredChunkSize) && configuredChunkSize > 0
                 ? Math.max(1, Math.floor(configuredChunkSize))
                 : (adaptiveConstrained
-                ? (total > 1800 ? 10 : (total > 900 ? 14 : 20))
+                ? (total > 1800 ? 8 : (total > 900 ? 10 : 14))
                 : (iosConstrained
-                ? (total > 1800 ? 12 : (total > 900 ? 14 : 16))
+                ? (total > 1800 ? 8 : (total > 900 ? 10 : 12))
                 : (touchOptimized
-                ? (total > 1800 ? 22 : (total > 900 ? 28 : 36))
+                ? (total > 1800 ? 16 : (total > 900 ? 20 : 26))
                 : (total > 1400 ? 36 : (total > 700 ? 48 : 64)))));
             const configuredInitialScreens = Number(options.initialScreens);
             const initialScreens = Number.isFinite(configuredInitialScreens) && configuredInitialScreens > 0
                 ? configuredInitialScreens
-                : (adaptiveConstrained ? 1.35 : (iosConstrained ? 1.25 : (touchOptimized ? 2.0 : 2.5)));
+                : (adaptiveConstrained ? 1.1 : (iosConstrained ? 1.0 : (touchOptimized ? 1.35 : 2.2)));
             const configuredInitialRows = Number(options.initialRows);
-            const computedInitialTarget = Math.max(touchOptimized ? Math.max(iosConstrained ? 12 : 18, chunkSize) : Math.max(28, chunkSize), Math.ceil((viewportHeight * initialScreens) / approxCardHeight));
+            const computedInitialTarget = Math.max(touchOptimized ? Math.max(iosConstrained ? 8 : 12, chunkSize) : Math.max(24, chunkSize), Math.ceil((viewportHeight * initialScreens) / approxCardHeight));
             const initialTarget = Math.min(total, Math.max(1, Number.isFinite(configuredInitialRows) && configuredInitialRows > 0 ? Math.floor(configuredInitialRows) : computedInitialTarget));
             const configuredPerFrameRows = Number(options.perFrameRows);
             const perFrameLimit = Number.isFinite(configuredPerFrameRows) && configuredPerFrameRows > 0
                 ? Math.max(1, Math.floor(configuredPerFrameRows))
-                : (adaptiveConstrained ? Math.max(chunkSize, adaptiveLevel >= 2 ? 12 : 18) : (iosConstrained ? Math.max(chunkSize, 10) : (touchOptimized ? Math.max(chunkSize, 32) : Math.max(chunkSize, 64))));
+                : (adaptiveConstrained ? Math.max(chunkSize, adaptiveLevel >= 2 ? 8 : 12) : (iosConstrained ? Math.max(chunkSize, 8) : (touchOptimized ? Math.max(chunkSize, 22) : Math.max(chunkSize, 56))));
             const frameBudgetMs = adaptiveConstrained ? (adaptiveLevel >= 2 ? 1.8 : 2.6) : (iosConstrained ? Math.min(IOS_CHUNK_FRAME_BUDGET_MS, 3.5) : (touchOptimized ? 4.0 : 4.8));
             const hasFollowupChunks = total > initialTarget;
             const reserveHeightCap = touchOptimized
@@ -75377,15 +75524,15 @@ function toggleDriveQuickRequestItem(domId) {
             const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
             const approxCardHeight = sourceView === 'reserves_drill' ? 255 : (getIsAvPhotoSubview() ? 230 : 245);
             const chunkSize = adaptiveConstrained
-                ? (total > 1600 ? 10 : (total > 800 ? 14 : 20))
+                ? (total > 1600 ? 8 : (total > 800 ? 10 : 14))
                 : (iosConstrained
-                ? (total > 1600 ? 16 : (total > 800 ? 20 : 24))
+                ? (total > 1600 ? 8 : (total > 800 ? 10 : 12))
                 : (touchOptimized
-                ? (total > 1600 ? 32 : (total > 800 ? 42 : 54))
-                : (total > 1200 ? 52 : (total > 600 ? 68 : 88))));
-            const initialScreens = adaptiveConstrained ? 1.6 : (iosConstrained ? 2.2 : (touchOptimized ? 4.0 : 3.2));
-            const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(iosConstrained ? 18 : 22, chunkSize * (iosConstrained ? 1 : 2)) : Math.max(32, chunkSize), Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = adaptiveConstrained ? Math.max(chunkSize, adaptiveLevel >= 2 ? 12 : 18) : (iosConstrained ? Math.max(chunkSize, 12) : (touchOptimized ? Math.max(chunkSize, 52) : Math.max(chunkSize, 96)));
+                ? (total > 1600 ? 18 : (total > 800 ? 24 : 30))
+                : (total > 1200 ? 44 : (total > 600 ? 56 : 72))));
+            const initialScreens = adaptiveConstrained ? 1.15 : (iosConstrained ? 1.05 : (touchOptimized ? 1.45 : 2.6));
+            const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(iosConstrained ? 8 : 14, chunkSize) : Math.max(28, chunkSize), Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
+            const perFrameLimit = adaptiveConstrained ? Math.max(chunkSize, adaptiveLevel >= 2 ? 8 : 12) : (iosConstrained ? Math.max(chunkSize, 8) : (touchOptimized ? Math.max(chunkSize, 24) : Math.max(chunkSize, 72)));
             const frameBudgetMs = adaptiveConstrained ? (adaptiveLevel >= 2 ? 1.8 : 2.6) : (iosConstrained ? IOS_CHUNK_FRAME_BUDGET_MS : (touchOptimized ? 5.0 : 5.5));
             const interactionHoldDeadline = Date.now() + CHUNK_RENDER_INTERACTION_HOLD_MAX_MS;
             let index = 0;
@@ -75500,19 +75647,19 @@ function toggleDriveQuickRequestItem(domId) {
             const approxCardHeight = Math.max(120, Number(options.approxCardHeight) || 185);
             const emptyHtml = options.emptyHtml || `<div class="p-6 text-center text-gray-400">No rows found.</div>`;
             const chunkSize = adaptiveLevel >= 2
-                ? (total > 800 ? 8 : 12)
+                ? (total > 800 ? 6 : 10)
                 : (adaptiveConstrained
-                    ? (total > 1200 ? 12 : (total > 600 ? 16 : 20))
+                    ? (total > 1200 ? 8 : (total > 600 ? 10 : 14))
                     : (iosConstrained
-                        ? (total > 1600 ? 16 : (total > 800 ? 20 : 24))
+                        ? (total > 1600 ? 8 : (total > 800 ? 10 : 12))
                         : (touchOptimized
-                            ? (total > 1600 ? 32 : (total > 800 ? 42 : 54))
-                            : (total > 1200 ? 52 : (total > 600 ? 68 : 88)))));
-            const initialScreens = adaptiveLevel >= 2 ? 1.25 : (adaptiveConstrained ? 1.6 : (iosConstrained ? 2.2 : (touchOptimized ? 4.0 : 3.2)));
-            const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(iosConstrained || adaptiveConstrained ? 12 : 22, chunkSize * (iosConstrained || adaptiveConstrained ? 1 : 2)) : Math.max(32, chunkSize), Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
+                            ? (total > 1600 ? 18 : (total > 800 ? 24 : 30))
+                            : (total > 1200 ? 44 : (total > 600 ? 56 : 72)))));
+            const initialScreens = adaptiveLevel >= 2 ? 1.05 : (adaptiveConstrained ? 1.15 : (iosConstrained ? 1.05 : (touchOptimized ? 1.45 : 2.6)));
+            const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(iosConstrained || adaptiveConstrained ? 8 : 14, chunkSize) : Math.max(28, chunkSize), Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
             const perFrameLimit = adaptiveLevel >= 2
-                ? Math.max(chunkSize, 8)
-                : (adaptiveConstrained ? Math.max(chunkSize, 14) : (iosConstrained ? Math.max(chunkSize, 12) : (touchOptimized ? Math.max(chunkSize, 52) : Math.max(chunkSize, 96))));
+                ? Math.max(chunkSize, 6)
+                : (adaptiveConstrained ? Math.max(chunkSize, 10) : (iosConstrained ? Math.max(chunkSize, 8) : (touchOptimized ? Math.max(chunkSize, 24) : Math.max(chunkSize, 72))));
             const frameBudgetMs = adaptiveLevel >= 2 ? 2.4 : (adaptiveConstrained ? 3.0 : (iosConstrained ? IOS_CHUNK_FRAME_BUDGET_MS : (touchOptimized ? 5.0 : 5.5)));
             const interactionHoldDeadline = Date.now() + CHUNK_RENDER_INTERACTION_HOLD_MAX_MS;
             let index = 0;
@@ -77386,9 +77533,23 @@ function toggleDriveQuickRequestItem(domId) {
                 const suspendDisplayRow = prefix === 'req-' && isDockSuspendDcRequestMirrorRow(activeItem)
                     ? getDockSuspendDcRequestQuantityDisplayRow(activeItem)
                     : null;
-                let qty = suspendDisplayRow
-                    ? calculateDockSuspendDcRequestLocMatchQty(suspendDisplayRow, matchEl.value)
-                    : calculateLocMatchQtyValue(activeItem, matchEl.value);
+                const sourceRow = suspendDisplayRow || activeItem;
+                const cacheKey = [
+                    prefix,
+                    firstNonEmptyValue(sourceRow && sourceRow.UNIQUE_ID, sourceRow && sourceRow.unique_id, sourceRow && sourceRow.DOM_ID, ''),
+                    firstNonEmptyValue(sourceRow && sourceRow.PTRONHAND, sourceRow && sourceRow.ptronhand, sourceRow && sourceRow.PTRAVAILABLE, sourceRow && sourceRow.ptravailable, sourceRow && sourceRow.S_LTS, sourceRow && sourceRow.s_lts, ''),
+                    String(matchEl.value || '').trim()
+                ].join('|');
+                let qty = null;
+                if (cacheKey && cacheKey === locMatchCalculationCacheKey) {
+                    qty = locMatchCalculationCacheValue;
+                } else {
+                    qty = suspendDisplayRow
+                        ? calculateDockSuspendDcRequestLocMatchQty(suspendDisplayRow, matchEl.value)
+                        : calculateLocMatchQtyValue(activeItem, matchEl.value);
+                    locMatchCalculationCacheKey = cacheKey;
+                    locMatchCalculationCacheValue = qty;
+                }
                 if(qty==null){
                     if(displayEl)displayEl.classList.add('hidden');
                     return;
@@ -127425,13 +127586,17 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function renderDriveTopControls(items = [], stateOverride = null) {
+            const renderStartedAt = beginInternalPerfMeasure();
             const container = document.getElementById('drive-season-filters');
             clearRemovedDriveTopFilterState();
             const safeItems = Array.isArray(items) ? items : [];
             const state = stateOverride && typeof stateOverride === 'object'
                 ? stateOverride
                 : buildDrivePlantFilterState(safeItems);
-            if (!container) return state;
+            if (!container) {
+                recordInternalPerfDuration('filterRenderDurations', renderStartedAt, 'drive-top-controls:no-container');
+                return state;
+            }
             drivePlantFilterItemsCache = safeItems;
             const columnSummary = getDriveColumnFilterSummaryLabel();
             const controlButtonClass = (isActive = false) => `task-top-control-button inline-flex w-full items-center gap-2 rounded-full border px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.11em] sm:px-3.5 sm:text-[10px] ${isActive ? 'bg-emerald-600 border-emerald-600 text-white shadow-md' : 'bg-white border-emerald-200 text-emerald-700 shadow-sm'}`;
@@ -127442,6 +127607,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!didMountShell && renderSignature === lastDriveTopControlsRenderSignature) {
                 syncDriveFilterResetRow(container, resetFiltersActive);
                 renderDriveColumnFilterWindow(state);
+                recordInternalPerfDuration('filterRenderDurations', renderStartedAt, 'drive-top-controls:skip');
                 return state;
             }
             syncDriveTopControlShell(container, 'columns', {
@@ -127454,6 +127620,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             syncDriveFilterResetRow(container, resetFiltersActive);
             renderDriveColumnFilterWindow(state);
             if (didMountShell) scheduleStickyRailOffsetSync('drive-filter-strip');
+            recordInternalPerfDuration('filterRenderDurations', renderStartedAt, 'drive-top-controls');
             return state;
         }
 
@@ -127466,16 +127633,23 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function updateDriveTopFilterOptionsOnly(kind = '') {
+            const renderStartedAt = beginInternalPerfMeasure();
             const safeKind = String(kind || '').trim().toLowerCase();
             const container = document.getElementById('drive-season-filters');
             const shell = container ? container.querySelector(`[data-drive-filter-shell="${safeKind}"]`) : null;
             if (safeKind === 'columns') {
-                return renderDriveColumnFilterWindow(buildDrivePlantFilterState(drivePlantFilterItemsCache));
+                const didRender = renderDriveColumnFilterWindow(buildDrivePlantFilterState(drivePlantFilterItemsCache));
+                recordInternalPerfDuration('filterRenderDurations', renderStartedAt, 'drive-options:columns');
+                return didRender;
             }
             const optionsEl = shell ? shell.querySelector('.excel-filter-options') : null;
-            if (!optionsEl) return false;
+            if (!optionsEl) {
+                recordInternalPerfDuration('filterRenderDurations', renderStartedAt, `drive-options:${safeKind}:missing`);
+                return false;
+            }
             if (safeKind === 'season') {
                 optionsEl.innerHTML = buildDriveSeasonFilterOptionsHtml();
+                recordInternalPerfDuration('filterRenderDurations', renderStartedAt, 'drive-options:season');
                 return true;
             }
             const state = buildDrivePlantFilterState(drivePlantFilterItemsCache);
@@ -127483,26 +127657,31 @@ ${folderNote ? `Folder Note: ${folderNote}
                 optionsEl.innerHTML = state.genusOptions.length
                     ? buildDrivePlantMultiSelectOptionsHtml(state.filteredGenusOptions, selectedDriveGenusNames, 'genus', 'toggleDriveGenusSelection', 'No matching genus names.')
                     : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No GENUSNAME data available.</div>';
+                recordInternalPerfDuration('filterRenderDurations', renderStartedAt, 'drive-options:genus');
                 return true;
             }
             if (safeKind === 'contsize') {
                 optionsEl.innerHTML = state.sizeOptions.length
                     ? buildDrivePlantMultiSelectOptionsHtml(state.filteredSizeOptions, selectedDriveContSizes, 'contsize', 'toggleDriveContSizeSelection', 'No matching container sizes.')
                     : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No CONTSIZE data available.</div>';
+                recordInternalPerfDuration('filterRenderDurations', renderStartedAt, 'drive-options:contsize');
                 return true;
             }
             if (safeKind === 'location') {
                 optionsEl.innerHTML = state.locationOptions.length
                     ? buildDrivePlantMultiSelectOptionsHtml(state.filteredLocationOptions, selectedDriveLocationCodes, 'location', 'toggleDriveLocationSelection', 'No matching locations.')
                     : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No LOCATIONCODE data available.</div>';
+                recordInternalPerfDuration('filterRenderDurations', renderStartedAt, 'drive-options:location');
                 return true;
             }
             if (safeKind === 'lot') {
                 optionsEl.innerHTML = state.lotOptions.length
                     ? buildDrivePlantMultiSelectOptionsHtml(state.filteredLotOptions, selectedDriveLotCodes, 'lot', 'toggleDriveLotSelection', 'No matching lot codes.')
                     : '<div class="px-3 py-4 text-center text-[11px] font-semibold text-gray-400">No LOTCODE data available.</div>';
+                recordInternalPerfDuration('filterRenderDurations', renderStartedAt, 'drive-options:lot');
                 return true;
             }
+            recordInternalPerfDuration('filterRenderDurations', renderStartedAt, `drive-options:${safeKind || 'unknown'}`);
             return false;
         }
 
