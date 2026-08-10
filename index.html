@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.42';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.09.43';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.42').trim() || 'V2026.08.09.42';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.43').trim() || 'V2026.08.09.43';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.42';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.43';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7797,7 +7797,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const CACHE_PERSIST_HIDDEN_MIN_INTERVAL_MS = 6000;
         const CACHE_PERSIST_REALTIME_VISIBLE_MIN_INTERVAL_MS = 180000;
         const CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS = 12000;
-        const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
+        const CACHE_PERSIST_IDLE_TIMEOUT_MS = 6500;
         const PHOTO_MAX_WIDTH = 4096;
         const PHOTO_JPEG_QUALITY = 0.95;
         const PHOTO_ORIGINAL_UPLOAD_MAX_BYTES = 24 * 1024 * 1024;
@@ -8515,6 +8515,65 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 if (rawValue === false || rawValue === 0) return `${field}:0`;
                 return `${field}:${String(rawValue == null ? '' : rawValue).trim()}`;
             }).join('|');
+        }
+
+        function getLightweightSignatureFieldValue(row = null, field = '') {
+            if (!row || typeof row !== 'object') return '';
+            const safeField = String(field || '').trim();
+            if (!safeField) return '';
+            const rawValue = firstNonEmptyValue(
+                row[safeField],
+                row[safeField.toLowerCase()],
+                row[safeField.toUpperCase()],
+                ''
+            );
+            if (rawValue === true || rawValue === 1) return '1';
+            if (rawValue === false || rawValue === 0) return '0';
+            if (rawValue == null) return '';
+            if (Array.isArray(rawValue)) return rawValue.map((value) => String(value == null ? '' : value).trim()).join(',');
+            if (typeof rawValue === 'object') {
+                return String(firstNonEmptyValue(rawValue.updated_at, rawValue.updatedAt, rawValue.status, rawValue.id, rawValue.unique_id, '') || '').trim();
+            }
+            return String(rawValue).trim();
+        }
+
+        function buildLightweightRowsSignature(rows = [], fields = []) {
+            const safeRows = Array.isArray(rows) ? rows : [];
+            const signatureFields = Array.isArray(fields) && fields.length ? fields : ['unique_id', 'updated_at'];
+            let hash = 2166136261;
+            hash = updateRenderSignatureHash(hash, safeRows.length);
+            for (let index = 0; index < safeRows.length; index += 1) {
+                const row = safeRows[index];
+                if (!row || typeof row !== 'object') {
+                    hash = updateRenderSignatureHash(hash, `${index}:${String(row == null ? '' : row)}`);
+                    continue;
+                }
+                hash = updateRenderSignatureHash(hash, firstNonEmptyValue(row.unique_id, row.UNIQUE_ID, row.id, row.ID, index));
+                for (let fieldIndex = 0; fieldIndex < signatureFields.length; fieldIndex += 1) {
+                    hash = updateRenderSignatureHash(hash, getLightweightSignatureFieldValue(row, signatureFields[fieldIndex]));
+                }
+            }
+            return `${safeRows.length}:${(hash >>> 0).toString(16)}`;
+        }
+
+        function buildLightweightMapSignature(map = null, fields = []) {
+            if (!(map instanceof Map) || !map.size) return '0:0';
+            const signatureFields = Array.isArray(fields) && fields.length
+                ? fields
+                : ['updated_at', 'updatedAt', 'status', 'state', 'count', 'completed_at', 'date_completed'];
+            let hash = 2166136261;
+            hash = updateRenderSignatureHash(hash, map.size);
+            map.forEach((value, key) => {
+                hash = updateRenderSignatureHash(hash, key);
+                if (value && typeof value === 'object') {
+                    for (let index = 0; index < signatureFields.length; index += 1) {
+                        hash = updateRenderSignatureHash(hash, getLightweightSignatureFieldValue(value, signatureFields[index]));
+                    }
+                    return;
+                }
+                hash = updateRenderSignatureHash(hash, value == null ? '' : value);
+            });
+            return `${map.size}:${(hash >>> 0).toString(16)}`;
         }
 
         function rememberLocalRealtimeWrite(tableName = '', row = null) {
@@ -26788,7 +26847,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.42').trim() || 'V2026.08.09.42';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.43').trim() || 'V2026.08.09.43';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -30559,6 +30618,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function getFullDatasetPageConcurrency(table = '') {
             const normalizedTable = String(table || '').trim();
+            const touchConstrained = typeof isTouchConstrainedDevice === 'function' && isTouchConstrainedDevice();
+            if (touchConstrained && (normalizedTable === 'ph_master_inventory' || normalizedTable === 'ph_reserves' || normalizedTable === CROP_ROLL_DRIVE_OPEN_ROWS_TABLE || normalizedTable === CROP_ROLL_DRIVE_SOURCE_TABLE)) return 1;
             if (normalizedTable === 'ph_master_inventory' || normalizedTable === 'ph_reserves') return 2;
             if (normalizedTable === CROP_ROLL_DRIVE_OPEN_ROWS_TABLE || normalizedTable === CROP_ROLL_DRIVE_SOURCE_TABLE) return 2;
             return 1;
@@ -31141,7 +31202,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     const activeEvalSimpleFilter = getActiveEvalSimpleTaskFilterValue();
                     if (isViewVisible('tasks') && (activeTaskView === 'av-blanks' || activeEvalSimpleFilter === 'av-blanks')) queueInteractiveViewRender('tasks', false, true, wantsFull ? 18 : 8, 220);
                 }
-                if (key === 'master' && state.fullLoaded && (wantsFull || shouldFetchAllForInitial)) persistCurrentCache(true, 'master-full');
+                if (key === 'master' && state.fullLoaded && (wantsFull || shouldFetchAllForInitial)) {
+                    const canPersistMasterImmediately = !isTouchConstrainedDevice() && !shouldDeferInteractiveBackgroundWork();
+                    persistCurrentCache(canPersistMasterImmediately, 'master-full');
+                }
                 else persistCurrentCache();
                 touchSyncTimestamp();
                 if (masterFullLooksPartial || masterInitialLooksPartial) {
@@ -46383,7 +46447,14 @@ function toggleDriveQuickRequestItem(domId) {
                 }
 
                 const reqData = await fetchActiveRequestLiveRows('*');
-                let hash = JSON.stringify(reqData || []);
+                let hash = buildLightweightRowsSignature(reqData || [], [
+                    'unique_id','updated_at','created_at','date_completed','req_status','status','row_status',
+                    'request_folder','foldername','folder_name','customername','consigneename','salesrepname',
+                    'itemcode','commonname','contsize','locationcode','lotcode','priority','qty','req_qty',
+                    'order_qty','reserve','sales_note','dock_note','request_note','note','pic_note','photo_link',
+                    'photo_name','req_photo_link','req_photo_name','dock_photo_link','dock_photo_name','match',
+                    'loc_match_qty','av_note','spec','caliper','pick','assignedto'
+                ]);
                 if(hash !== localStorage.getItem('last_req_hash')) {
                     processAndLoadData({ requestsData: formatFetchedRows(reqData || [], ACTIVE_REQUEST_TABLE) });
                     localStorage.setItem('last_req_hash', hash);
@@ -46402,7 +46473,12 @@ function toggleDriveQuickRequestItem(domId) {
                     if(soRes.ok) soData = await soRes.json();
                 }
                 if(Array.isArray(soData)) {
-                    let soHash = JSON.stringify(soData);
+                    let soHash = buildLightweightRowsSignature(soData, [
+                        'unique_id','updated_at','created_at','date_completed','order_status','status',
+                        'itemcode','commonname','contsize','locationcode','lotcode','priority','sales_note',
+                        'av_note','photo_link','photo_name','row_photo_link','row_photo_name','dock_photo_link',
+                        'dock_photo_name','match','loc_match_qty','spec','caliper','pick','assignedto'
+                    ]);
                     if(soHash !== localStorage.getItem('last_so_hash')) {
                         processAndLoadData({ salesOfficeData: formatFetchedRows(soData, 'ph_sales_office') });
                         localStorage.setItem('last_so_hash', soHash);
@@ -46411,19 +46487,19 @@ function toggleDriveQuickRequestItem(domId) {
                     }
                 }
 
-                const previousDockTeamSnapshot = JSON.stringify(Array.from(dockTeamStatusByDock.entries()));
-                const previousDockItemSnapshot = JSON.stringify(Array.from(dockItemProgressByUid.entries()));
-                const previousDockIssueSnapshot = JSON.stringify(Array.from(dockIssueStatusByUid.entries()));
-                const previousDockAllocationSnapshot = JSON.stringify(Array.from(dockIssueAllocationsById.entries()));
+                const previousDockTeamSnapshot = buildLightweightMapSignature(dockTeamStatusByDock, ['updated_at','dock','dock_num','status','state','assignee','assigned_to','completed_at','date_completed','count']);
+                const previousDockItemSnapshot = buildLightweightMapSignature(dockItemProgressByUid, ['updated_at','unique_id','status','state','qty','sourceQty','remainingQty','completed_at','date_completed']);
+                const previousDockIssueSnapshot = buildLightweightMapSignature(dockIssueStatusByUid, ['updated_at','unique_id','issueState','issue_state','issueNote','issue_note','sourceQty','remainingQty','sourceMatchKey','currentSourceUniqueId']);
+                const previousDockAllocationSnapshot = buildLightweightMapSignature(dockIssueAllocationsById, ['updated_at','unique_id','issueState','status','sourceQty','remainingQty','dock','dock_num','completed_at']);
                 await Promise.allSettled([
                     ensureDockTeamStatusLoaded(true),
                     ensureDockItemStatusLoaded(true),
                     ensureDockIssueDataLoaded(true)
                 ]);
-                const dockWorkflowChanged = previousDockTeamSnapshot !== JSON.stringify(Array.from(dockTeamStatusByDock.entries()))
-                    || previousDockItemSnapshot !== JSON.stringify(Array.from(dockItemProgressByUid.entries()))
-                    || previousDockIssueSnapshot !== JSON.stringify(Array.from(dockIssueStatusByUid.entries()))
-                    || previousDockAllocationSnapshot !== JSON.stringify(Array.from(dockIssueAllocationsById.entries()));
+                const dockWorkflowChanged = previousDockTeamSnapshot !== buildLightweightMapSignature(dockTeamStatusByDock, ['updated_at','dock','dock_num','status','state','assignee','assigned_to','completed_at','date_completed','count'])
+                    || previousDockItemSnapshot !== buildLightweightMapSignature(dockItemProgressByUid, ['updated_at','unique_id','status','state','qty','sourceQty','remainingQty','completed_at','date_completed'])
+                    || previousDockIssueSnapshot !== buildLightweightMapSignature(dockIssueStatusByUid, ['updated_at','unique_id','issueState','issue_state','issueNote','issue_note','sourceQty','remainingQty','sourceMatchKey','currentSourceUniqueId'])
+                    || previousDockAllocationSnapshot !== buildLightweightMapSignature(dockIssueAllocationsById, ['updated_at','unique_id','issueState','status','sourceQty','remainingQty','dock','dock_num','completed_at']);
                 if (dockWorkflowChanged) {
                     markViewDirty('docks');
                     queueInteractiveViewRender('docks', false, true, 48, 220);
