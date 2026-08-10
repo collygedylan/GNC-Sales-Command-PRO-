@@ -112,7 +112,7 @@ const EMIT_APP_LIVE_EVENTS = true;
 const DRIVE_AROUND_HISTORY_TABLE = 'ph_drive_around_report_files';
 const DRIVE_AROUND_HISTORY_ROW_TABLE = 'ph_drive_around_report_rows';
 const HOLD_STOP_ITEMCODE_SUMMARY_TABLE = 'ph_hold_stop_itemcode_summaries';
-const HOLD_STOP_LEARNING_REFRESH_RPC = 'v2_refresh_hold_learning_from_drive_around_rows';
+const HOLD_STOP_LEARNING_REFRESH_RPC = 'ph_start_hold_learning_refresh_chunked';
 const DRIVE_AROUND_HISTORY_FOLDER_ID = '1hswTWk4GooXIAXFmfdx9I6IyqLJ1LqSA';
 const DRIVE_AROUND_HISTORY_MAX_FILES_PER_RUN = 2500;
 const DRIVE_AROUND_HISTORY_MAX_PARSED_FILES_PER_RUN = 5;
@@ -3138,7 +3138,11 @@ function callSupabaseRpc_(functionName, payload) {
 function refreshHoldStopItemcodeLearningAfterHistory_(reason) {
   const started = new Date();
   try {
-    const result = callSupabaseRpc_(HOLD_STOP_LEARNING_REFRESH_RPC, { p_limit: 100000 });
+    const result = callSupabaseRpc_(HOLD_STOP_LEARNING_REFRESH_RPC, {
+      p_job_name: 'drivearound_history_learning_refresh',
+      p_item_batch_size: 200,
+      p_summary_batch_size: 1000
+    });
     const summary = {
       success: true,
       reason: String(reason || 'drive_around_history_backfill'),
@@ -3146,7 +3150,7 @@ function refreshHoldStopItemcodeLearningAfterHistory_(reason) {
       elapsedMs: new Date().getTime() - started.getTime()
     };
     emitTableSyncLiveEvent_(HOLD_STOP_ITEMCODE_SUMMARY_TABLE, summary);
-    console.log(`[HOLD STOP LEARNING] Refreshed itemcode H/S summaries after ${summary.reason} in ${summary.elapsedMs}ms.`);
+    console.log(`[HOLD STOP LEARNING] Queued chunked itemcode H/S summary refresh after ${summary.reason} in ${summary.elapsedMs}ms.`);
     return summary;
   } catch (error) {
     const message = error && error.message ? error.message : String(error);
