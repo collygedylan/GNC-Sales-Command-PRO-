@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.32';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.33';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6070,7 +6070,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.32').trim() || 'V2026.08.09.32';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.33').trim() || 'V2026.08.09.33';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7540,7 +7540,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.32';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.33';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -14839,8 +14839,72 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return normalizeRowPhotoFields(target);
         }
 
+        function syncDockSuspendDcRequestPhotoAliases(item = null, sourceOverride = null) {
+            if (!item) return item;
+            const sourceTable = String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '') || '').trim().toLowerCase();
+            const isMirrorRow = isDockSuspendDcRequestMirrorRow(item);
+            const isSourceRow = sourceTable === 'ph_soc_master' && (isDockSuspendDcRequestSource(item) || String(firstNonEmptyValue(item.DOCK_PHOTO_LINK, item.dock_photo_link, item.DOCKPHOTO_LINK, item.REQ_PHOTO_LINK, item.req_photo_link, '') || '').trim());
+            if (!isMirrorRow && !isSourceRow && !sourceOverride) return item;
+            const sourceRow = sourceOverride || (isMirrorRow ? findDockSuspendDcRequestSourceRow(item) : (isSourceRow ? item : null));
+            const rows = [item, sourceRow].filter((row, index, list) => row && list.findIndex((candidate) => candidate === row) === index);
+            const photoLink = mergePhotoCsvList(rows.flatMap((row) => [
+                row.REQ_PHOTO_LINK,
+                row.req_photo_link,
+                row.REQUEST_PHOTO_LINK,
+                row.request_photo_link,
+                row.REQUESTPHOTO_LINK,
+                row.requestphoto_link,
+                row.DOCK_PHOTO_LINK,
+                row.dock_photo_link,
+                row.DOCKPHOTO_LINK,
+                row.dockphoto_link
+            ]));
+            const photoName = mergePhotoCsvList(rows.flatMap((row) => [
+                row.REQ_PHOTO_NAME,
+                row.req_photo_name,
+                row.REQUEST_PHOTO_NAME,
+                row.request_photo_name,
+                row.REQUESTPHOTONAME,
+                row.requestphotoname,
+                row.DOCK_PHOTO_NAME,
+                row.dock_photo_name,
+                row.DOCKPHOTO_NAME,
+                row.dockphoto_name
+            ]));
+            rows.forEach((row) => {
+                if (photoLink) {
+                    row.REQ_PHOTO_LINK = photoLink;
+                    row.req_photo_link = photoLink;
+                    row.REQUEST_PHOTO_LINK = photoLink;
+                    row.request_photo_link = photoLink;
+                    row.REQUESTPHOTO_LINK = photoLink;
+                    row.requestphoto_link = photoLink;
+                    row.DOCK_PHOTO_LINK = photoLink;
+                    row.dock_photo_link = photoLink;
+                    row.DOCKPHOTO_LINK = photoLink;
+                    row.dockphoto_link = photoLink;
+                }
+                if (photoName) {
+                    row.REQ_PHOTO_NAME = photoName;
+                    row.req_photo_name = photoName;
+                    row.REQUEST_PHOTO_NAME = photoName;
+                    row.request_photo_name = photoName;
+                    row.REQUESTPHOTONAME = photoName;
+                    row.requestphotoname = photoName;
+                    row.DOCK_PHOTO_NAME = photoName;
+                    row.dock_photo_name = photoName;
+                    row.DOCKPHOTO_NAME = photoName;
+                    row.dockphoto_name = photoName;
+                }
+                normalizeRowPhotoFields(row);
+                buildSearchIndex(row);
+            });
+            return item;
+        }
+
         function getRequestPhotoOwnerItem(item = null) {
             if (!item) return null;
+            if (isDockSuspendDcRequestMirrorRow(item)) return item;
             const uniqueId = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim();
             const directRequestRow = uniqueId ? findRequestRowByUniqueId(uniqueId) : null;
             if (directRequestRow) return directRequestRow;
@@ -26645,7 +26709,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.32').trim() || 'V2026.08.09.32';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.33').trim() || 'V2026.08.09.33';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -93636,6 +93700,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             };
             if (!row.MASTER_ID) row.MASTER_ID = firstNonEmptyValue(item.MASTER_UNIQUE_ID, item.master_unique_id, '');
             if (!row.MASTER_UNIQUE_ID) row.MASTER_UNIQUE_ID = firstNonEmptyValue(item.MASTER_ID, item.master_id, '');
+            syncDockSuspendDcRequestPhotoAliases(row, item);
             normalizeRowPhotoFields(row);
             buildSearchIndex(row);
             return row;
@@ -119341,8 +119406,7 @@ C.14.043 C.15.000
 
         function buildDockSuspendDcRequestCardDisplayItem(item = null, sourceView = '') {
             if (!item || String(sourceView || '').trim().toLowerCase() !== 'request' || !isDockSuspendDcRequestMirrorRow(item)) return item;
-            const displayRow = findDockSuspendDcRequestCardDisplayDataRow(item);
-            if (!displayRow) return item;
+            const sourceRow = findDockSuspendDcRequestSourceRow(item) || item;
             const row = { ...(item || {}) };
             const setIfPresent = (keys = [], value = '') => {
                 const text = String(firstNonEmptyValue(value, '') || '').trim();
@@ -119351,69 +119415,108 @@ C.14.043 C.15.000
                     if (!String(firstNonEmptyValue(row[key], '') || '').trim()) row[key] = text;
                 });
             };
-            const photoCsv = mergePhotoCsvList([
-                getDriveCustomerOutreachPhotoCsv(displayRow),
-                displayRow.REQ_PHOTO_LINK,
-                displayRow.REQUEST_PHOTO_LINK,
-                displayRow.ROW_PHOTO_LINK,
-                displayRow.SAVED_PHOTO_LINK,
-                displayRow.PHOTO_LINK
-            ]);
-            const photoNameCsv = mergePhotoCsvList([
-                displayRow.REQ_PHOTO_NAME,
-                displayRow.REQUEST_PHOTO_NAME,
-                displayRow.ROW_PHOTO_NAME,
-                displayRow.SAVED_PHOTO_NAME,
-                displayRow.PHOTO_NAME
-            ]);
-            if (photoCsv && !getRequestPhotoLinkCsv(row, { includePending: false })) {
-                row.REQ_PHOTO_LINK = photoCsv;
-                row.REQUEST_PHOTO_LINK = photoCsv;
-                row.REQUESTPHOTO_LINK = photoCsv;
-                row.ROW_PHOTO_LINK = photoCsv;
-            }
-            if (photoNameCsv && !String(firstNonEmptyValue(row.REQ_PHOTO_NAME, row.REQUEST_PHOTO_NAME, row.REQUESTPHOTONAME, '') || '').trim()) {
-                row.REQ_PHOTO_NAME = photoNameCsv;
-                row.REQUEST_PHOTO_NAME = photoNameCsv;
-                row.REQUESTPHOTONAME = photoNameCsv;
-                row.ROW_PHOTO_NAME = photoNameCsv;
-            }
-            setIfPresent(['SPEC', 'spec', 'REQ_SPEC', 'req_spec', 'DOCK_SPEC', 'dock_spec'], firstNonEmptyValue(getDriveCustomerOutreachSpec(displayRow), getItemDisplayValue(displayRow, 'SPEC', 'drive'), ''));
-            setIfPresent(['CALIPER', 'caliper', 'REQ_CALIPER', 'req_caliper', 'DOCK_CALIPER', 'dock_caliper'], firstNonEmptyValue(getItemDisplayValue(displayRow, 'CALIPER', 'drive'), displayRow.CALIPER, displayRow.caliper, ''));
-            setIfPresent(['MATCH', 'match', 'REQ_MATCH', 'req_match'], firstNonEmptyValue(getItemDisplayValue(displayRow, 'MATCH', 'drive'), displayRow.MATCH, displayRow.match, ''));
-            setIfPresent(['LOC_MATCH_QTY', 'loc_match_qty', 'REQ_LOC_MATCH_QTY', 'req_loc_match_qty', 'PHOTO_MATCH_QTY', 'photo_match_qty'], firstNonEmptyValue(getCurrentCardLocPhotoMatchQtyValue(displayRow, 'drive'), getDisplayLocMatchQtyValue(displayRow, 'drive'), displayRow.LOC_MATCH_QTY, displayRow.loc_match_qty, ''));
-            setIfPresent(['AV_NOTE', 'av_note'], firstNonEmptyValue(getItemDisplayValue(displayRow, 'AV_NOTE', 'drive'), displayRow.AV_NOTE, displayRow.av_note, ''));
-            setIfPresent(['SALES_NOTE', 'sales_note', 'SALESNOTE', 'salesnote'], firstNonEmptyValue(getItemDisplayValue(displayRow, 'SALES_NOTE', 'drive'), displayRow.SALES_NOTE, displayRow.sales_note, displayRow.SALESNOTE, displayRow.salesnote, ''));
-            setIfPresent(['DESIGITEM', 'desigitem'], firstNonEmptyValue(displayRow.DESIGITEM, displayRow.desigitem, ''));
-            const photoUpdatedAt = firstNonEmptyValue(displayRow.AV_RULE_PHOTO_UPDATED_AT, displayRow.DATE_COMPLETED, displayRow.date_completed, displayRow.UPDATED_AT, displayRow.updated_at, '');
-            if (photoUpdatedAt && !String(firstNonEmptyValue(row.AV_RULE_PHOTO_UPDATED_AT, row.av_rule_photo_updated_at, '') || '').trim()) {
-                row.AV_RULE_PHOTO_UPDATED_AT = photoUpdatedAt;
-                row.av_rule_photo_updated_at = photoUpdatedAt;
-            }
-            row.DOCK_SUSPEND_DISPLAY_DATA_ROW = true;
+            syncDockSuspendDcRequestPhotoAliases(row, sourceRow);
+            const applyDisplayData = (displayRow = null, displaySourceView = 'request') => {
+                if (!displayRow) return false;
+                const photoCsv = mergePhotoCsvList([
+                    getDriveCustomerOutreachPhotoCsv(displayRow),
+                    displayRow.REQ_PHOTO_LINK,
+                    displayRow.REQUEST_PHOTO_LINK,
+                    displayRow.DOCK_PHOTO_LINK,
+                    displayRow.DOCKPHOTO_LINK,
+                    displayRow.ROW_PHOTO_LINK,
+                    displayRow.SAVED_PHOTO_LINK,
+                    displayRow.PHOTO_LINK
+                ]);
+                const photoNameCsv = mergePhotoCsvList([
+                    displayRow.REQ_PHOTO_NAME,
+                    displayRow.REQUEST_PHOTO_NAME,
+                    displayRow.DOCK_PHOTO_NAME,
+                    displayRow.DOCKPHOTO_NAME,
+                    displayRow.ROW_PHOTO_NAME,
+                    displayRow.SAVED_PHOTO_NAME,
+                    displayRow.PHOTO_NAME
+                ]);
+                if (photoCsv) {
+                    row.REQ_PHOTO_LINK = mergePhotoCsvList([row.REQ_PHOTO_LINK, photoCsv]);
+                    row.REQUEST_PHOTO_LINK = row.REQ_PHOTO_LINK;
+                    row.REQUESTPHOTO_LINK = row.REQ_PHOTO_LINK;
+                    row.DOCK_PHOTO_LINK = mergePhotoCsvList([row.DOCK_PHOTO_LINK, photoCsv]);
+                    row.DOCKPHOTO_LINK = row.DOCK_PHOTO_LINK;
+                    row.ROW_PHOTO_LINK = mergePhotoCsvList([row.ROW_PHOTO_LINK, photoCsv]);
+                }
+                if (photoNameCsv) {
+                    row.REQ_PHOTO_NAME = mergePhotoCsvList([row.REQ_PHOTO_NAME, photoNameCsv]);
+                    row.REQUEST_PHOTO_NAME = row.REQ_PHOTO_NAME;
+                    row.REQUESTPHOTONAME = row.REQ_PHOTO_NAME;
+                    row.DOCK_PHOTO_NAME = mergePhotoCsvList([row.DOCK_PHOTO_NAME, photoNameCsv]);
+                    row.DOCKPHOTO_NAME = row.DOCK_PHOTO_NAME;
+                    row.ROW_PHOTO_NAME = mergePhotoCsvList([row.ROW_PHOTO_NAME, photoNameCsv]);
+                }
+                setIfPresent(['SPEC', 'spec', 'REQ_SPEC', 'req_spec', 'DOCK_SPEC', 'dock_spec'], firstNonEmptyValue(getDriveCustomerOutreachSpec(displayRow), getItemDisplayValue(displayRow, 'SPEC', displaySourceView), displayRow.DOCK_SPEC, displayRow.dock_spec, ''));
+                setIfPresent(['CALIPER', 'caliper', 'REQ_CALIPER', 'req_caliper', 'DOCK_CALIPER', 'dock_caliper'], firstNonEmptyValue(getItemDisplayValue(displayRow, 'CALIPER', displaySourceView), displayRow.DOCK_CALIPER, displayRow.dock_caliper, displayRow.CALIPER, displayRow.caliper, ''));
+                setIfPresent(['MATCH', 'match', 'REQ_MATCH', 'req_match'], firstNonEmptyValue(getItemDisplayValue(displayRow, 'MATCH', displaySourceView), displayRow.MATCH, displayRow.match, displayRow.REQ_MATCH, displayRow.req_match, ''));
+                setIfPresent(['LOC_MATCH_QTY', 'loc_match_qty', 'REQ_LOC_MATCH_QTY', 'req_loc_match_qty', 'PHOTO_MATCH_QTY', 'photo_match_qty'], firstNonEmptyValue(getCurrentCardLocPhotoMatchQtyValue(displayRow, displaySourceView), getDisplayLocMatchQtyValue(displayRow, displaySourceView), displayRow.LOC_MATCH_QTY, displayRow.loc_match_qty, ''));
+                setIfPresent(['AV_NOTE', 'av_note'], firstNonEmptyValue(getItemDisplayValue(displayRow, 'AV_NOTE', displaySourceView), displayRow.AV_NOTE, displayRow.av_note, ''));
+                setIfPresent(['SALES_NOTE', 'sales_note', 'SALESNOTE', 'salesnote'], firstNonEmptyValue(getItemDisplayValue(displayRow, 'SALES_NOTE', displaySourceView), displayRow.SALES_NOTE, displayRow.sales_note, displayRow.SALESNOTE, displayRow.salesnote, ''));
+                setIfPresent(['DOCK_NOTE', 'dock_note', 'REQ_COMMENTS', 'req_comments'], firstNonEmptyValue(displayRow.DOCK_NOTE, displayRow.dock_note, displayRow.DOCK_ISSUE_NOTE, displayRow.dock_issue_note, displayRow.REQ_COMMENTS, displayRow.req_comments, displayRow.REQUEST_NOTE, displayRow.request_note, ''));
+                setIfPresent(['DESIGITEM', 'desigitem'], firstNonEmptyValue(displayRow.DESIGITEM, displayRow.desigitem, ''));
+                const photoUpdatedAt = firstNonEmptyValue(displayRow.AV_RULE_PHOTO_UPDATED_AT, displayRow.DATE_COMPLETED, displayRow.date_completed, displayRow.UPDATED_AT, displayRow.updated_at, '');
+                if (photoUpdatedAt && !String(firstNonEmptyValue(row.AV_RULE_PHOTO_UPDATED_AT, row.av_rule_photo_updated_at, '') || '').trim()) {
+                    row.AV_RULE_PHOTO_UPDATED_AT = photoUpdatedAt;
+                    row.av_rule_photo_updated_at = photoUpdatedAt;
+                }
+                return !!(photoCsv || photoNameCsv || firstNonEmptyValue(row.REQ_SPEC, row.REQ_MATCH, row.LOC_MATCH_QTY, row.AV_NOTE, row.DOCK_NOTE, ''));
+            };
+            const sourceHadDisplayData = applyDisplayData(sourceRow, 'request');
+            const displayRow = findDockSuspendDcRequestCardDisplayDataRow(item);
+            const optionHadDisplayData = displayRow ? applyDisplayData(displayRow, 'drive') : false;
+            row.DOCK_SUSPEND_DISPLAY_DATA_ROW = !!(sourceHadDisplayData || optionHadDisplayData);
+            syncDockSuspendDcRequestPhotoAliases(row, sourceRow);
             normalizeRowPhotoFields(row);
             buildSearchIndex(row);
             return row;
         }
 
         function buildDockSuspendDcRequestCardDataHtml(item = null) {
-            if (!item || !item.DOCK_SUSPEND_DISPLAY_DATA_ROW) return '';
-            const photoLink = getRowPhotoLink(item, 'request');
-            const hasPhoto = getPhotoUrlList(photoLink).length > 0;
-            const spec = String(firstNonEmptyValue(getItemDisplayValue(item, 'SPEC', 'request'), '') || '').trim();
-            const caliper = String(firstNonEmptyValue(getItemDisplayValue(item, 'CALIPER', 'request'), '') || '').trim();
-            const match = String(firstNonEmptyValue(getItemDisplayValue(item, 'MATCH', 'request'), item.MATCH, item.match, '') || '').trim();
-            const locMatchQty = String(firstNonEmptyValue(getCurrentCardLocPhotoMatchQtyValue(item, 'request'), getDisplayLocMatchQtyValue(item, 'request'), item.LOC_MATCH_QTY, item.loc_match_qty, '') || '').trim();
-            const avNote = String(firstNonEmptyValue(getItemDisplayValue(item, 'AV_NOTE', 'request'), item.AV_NOTE, item.av_note, '') || '').trim();
+            if (!item || !isDockSuspendDcRequestMirrorRow(item)) return '';
+            const sourceRow = findDockSuspendDcRequestSourceRow(item) || item;
+            syncDockSuspendDcRequestPhotoAliases(item, sourceRow);
+            const photoLink = mergePhotoCsvList([
+                getRowPhotoLink(item, 'request'),
+                getRowPhotoLink(sourceRow, 'docks'),
+                sourceRow && sourceRow.REQ_PHOTO_LINK,
+                sourceRow && sourceRow.REQUEST_PHOTO_LINK,
+                sourceRow && sourceRow.DOCK_PHOTO_LINK,
+                sourceRow && sourceRow.DOCKPHOTO_LINK
+            ]);
+            const pendingPhotoKeys = new Set([
+                ...getPendingPhotoPreviewEntries(item, 'req-'),
+                ...(sourceRow && sourceRow !== item ? getPendingPhotoPreviewEntries(sourceRow, 'req-') : [])
+            ].map((entry) => String(firstNonEmptyValue(entry && entry.url, entry && entry.id, '') || '').trim()).filter(Boolean));
+            const pendingCount = pendingPhotoKeys.size;
+            const photoCount = getPhotoUrlList(photoLink).length + pendingCount;
+            const values = getDockSuspendDcRequestCompletionValues(item, sourceRow);
+            const spec = String(firstNonEmptyValue(values.spec, getItemDisplayValue(item, 'SPEC', 'request'), sourceRow && sourceRow.DOCK_SPEC, sourceRow && sourceRow.dock_spec, '') || '').trim();
+            const caliper = String(firstNonEmptyValue(values.caliper, getItemDisplayValue(item, 'CALIPER', 'request'), sourceRow && sourceRow.DOCK_CALIPER, sourceRow && sourceRow.dock_caliper, '') || '').trim();
+            const match = String(firstNonEmptyValue(values.match, getItemDisplayValue(item, 'MATCH', 'request'), item.MATCH, item.match, sourceRow && sourceRow.MATCH, sourceRow && sourceRow.match, '') || '').trim();
+            const locMatchQty = String(firstNonEmptyValue(getCurrentCardLocPhotoMatchQtyValue(item, 'request'), getDisplayLocMatchQtyValue(item, 'request'), item.LOC_MATCH_QTY, item.loc_match_qty, sourceRow && sourceRow.LOC_MATCH_QTY, sourceRow && sourceRow.loc_match_qty, '') || '').trim();
+            const avNote = String(firstNonEmptyValue(values.avNote, getItemDisplayValue(item, 'AV_NOTE', 'request'), item.AV_NOTE, item.av_note, sourceRow && sourceRow.AV_NOTE, sourceRow && sourceRow.av_note, '') || '').trim();
+            const dockNote = String(firstNonEmptyValue(item.DOCK_NOTE, item.dock_note, sourceRow && sourceRow.DOCK_NOTE, sourceRow && sourceRow.dock_note, item.DOCK_ISSUE_NOTE, item.dock_issue_note, sourceRow && sourceRow.DOCK_ISSUE_NOTE, sourceRow && sourceRow.dock_issue_note, '') || '').trim();
+            const pickNote = String(firstNonEmptyValue(item.REQ_PICK, item.req_pick, item.REQ_PIC_NOTE, item.req_pic_note, item.PIC_NOTE, item.pic_note, sourceRow && sourceRow.REQ_PICK, sourceRow && sourceRow.req_pick, sourceRow && sourceRow.PIC_NOTE, sourceRow && sourceRow.pic_note, '') || '').trim();
+            const matchDisplay = match ? `${match}${String(match).includes('%') ? '' : '%'}` : '';
             const chips = [
-                hasPhoto && locMatchQty ? `<span class="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700">LOC PHOTO MATCH <span class="text-emerald-900">${esc(normalizeCardQuantityValue(locMatchQty))}</span></span>` : '',
+                photoCount ? `<span class="rounded border border-purple-200 bg-purple-50 px-2 py-1 text-purple-700">PHOTOS <span class="text-purple-900">${esc(String(photoCount))}</span></span>` : '',
+                locMatchQty !== '' ? `<span class="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700">LOC PHOTO MATCH <span class="text-emerald-900">${esc(normalizeCardQuantityValue(locMatchQty))}</span></span>` : '',
                 spec ? `<span class="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">SPEC: <span class="text-slate-900">${esc(spec)}</span></span>` : '',
                 caliper ? `<span class="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">CAL: <span class="text-slate-900">${esc(caliper)}</span></span>` : '',
-                match ? `<span class="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">MATCH %: <span class="text-slate-900">${esc(match)}</span></span>` : ''
+                matchDisplay ? `<span class="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">MATCH: <span class="text-slate-900">${esc(matchDisplay)}</span></span>` : ''
             ].filter(Boolean).join('');
             const chipsHtml = chips ? `<div class="mt-2 flex flex-wrap gap-1.5 text-[10px] font-black uppercase tracking-[0.08em]">${chips}</div>` : '';
+            const dockNoteHtml = dockNote ? `<div class="mt-2 rounded border border-sky-200 bg-sky-50 p-2 text-[12px] font-semibold text-sky-800 shadow-sm whitespace-pre-wrap"><span class="font-black">DOCK NOTE:</span> ${esc(dockNote)}</div>` : '';
+            const pickNoteHtml = pickNote ? `<div class="mt-2 rounded border border-emerald-200 bg-emerald-50 p-2 text-[12px] font-semibold text-emerald-800 shadow-sm whitespace-pre-wrap"><span class="font-black">PICK NOTE:</span> ${esc(pickNote)}</div>` : '';
             const avNoteHtml = avNote ? `<div class="mt-2 rounded border border-blue-200 bg-blue-50 p-2 text-[12px] font-semibold text-blue-800 shadow-sm whitespace-pre-wrap"><span class="font-black">AV NOTE:</span> ${esc(avNote)}</div>` : '';
-            return chipsHtml || avNoteHtml ? `${chipsHtml}${avNoteHtml}` : '';
+            return chipsHtml || dockNoteHtml || pickNoteHtml || avNoteHtml ? `${chipsHtml}${dockNoteHtml}${pickNoteHtml}${avNoteHtml}` : '';
         }
 
         function generateCard(item,sourceView,colorClass='status-green', renderMeta={}) {
@@ -138610,6 +138713,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function hasDockSuspendDcRequestCompletionPhoto(item = null, sourceRow = null) {
+            if (item) syncDockSuspendDcRequestPhotoAliases(item, sourceRow);
             const photoCsv = firstNonEmptyValue(
                 item && item.REQ_PHOTO_LINK,
                 item && item.REQUEST_PHOTO_LINK,
@@ -138628,7 +138732,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 item && item.PHOTO_LINK,
                 ''
             );
-            return parsePhotoCsvValues(photoCsv).length > 0 || getPendingPhotoUploadsForItem(item, 'req-').length > 0;
+            const pendingUploads = [
+                ...getPendingPhotoUploadsForItem(item, 'req-'),
+                ...(sourceRow && sourceRow !== item ? getPendingPhotoUploadsForItem(sourceRow, 'req-') : [])
+            ];
+            return parsePhotoCsvValues(photoCsv).length > 0 || pendingUploads.length > 0;
         }
 
         function getDockSuspendDcRequestCompletionValues(mirrorRow = null, sourceRow = null) {
@@ -139175,6 +139283,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!mirrorRow || !isDockSuspendDcRequestMirrorRow(mirrorRow)) return false;
             const sourceUid = getDockSuspendDcRequestSourceUid(mirrorRow);
             const sourceRow = findDockSuspendDcRequestSourceRow(mirrorRow) || mirrorRow;
+            syncDockSuspendDcRequestPhotoAliases(mirrorRow, sourceRow);
             const btnComp = document.getElementById('req-btn-save-complete');
             const isReviewSave = !!isComplete;
             const shouldCompleteSuspendTag = !!(options && options.completeSuspendTag === true);
@@ -139185,7 +139294,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                 showToast('Photo Required', 'Add a photo before saving this Suspend Tag row.', true);
                 return true;
             }
-            const pendingUploads = getPendingPhotoUploadsForItem(mirrorRow, 'req-');
+            const pendingUploads = [...new Set([
+                ...getPendingPhotoUploadsForItem(mirrorRow, 'req-'),
+                ...(sourceRow && sourceRow !== mirrorRow ? getPendingPhotoUploadsForItem(sourceRow, 'req-') : [])
+            ])];
             if (isReviewSave && pendingUploads.length > 0) {
                 if (!isSilentAutoSave) showToast('Saving', 'Waiting for the photo to finish uploading before saving this Suspend Tag row.', false);
                 const uploadResults = await Promise.allSettled(pendingUploads);
@@ -139197,6 +139309,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
             }
 
+            syncDockSuspendDcRequestPhotoAliases(mirrorRow, sourceRow);
             const values = getDockSuspendDcRequestFormValues();
             if (isReviewSave) {
                 const readinessMirror = {
@@ -139221,8 +139334,30 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
             }
             const noteText = buildDockSuspendDcRequestNote(values, firstNonEmptyValue(sourceRow.DOCK_NOTE, sourceRow.DOCK_ISSUE_NOTE, mirrorRow.REQ_COMMENTS, mirrorRow.REQUEST_NOTE, ''));
-            const reqPhotoLink = mergePhotoCsvList([mirrorRow.REQ_PHOTO_LINK, mirrorRow.REQUEST_PHOTO_LINK, sourceRow.DOCK_PHOTO_LINK, sourceRow.DOCKPHOTO_LINK]);
-            const reqPhotoName = mergePhotoCsvList([mirrorRow.REQ_PHOTO_NAME, mirrorRow.REQUEST_PHOTO_NAME, sourceRow.DOCK_PHOTO_NAME, sourceRow.DOCKPHOTO_NAME]);
+            const reqPhotoLink = mergePhotoCsvList([
+                mirrorRow.REQ_PHOTO_LINK,
+                mirrorRow.REQUEST_PHOTO_LINK,
+                mirrorRow.REQUESTPHOTO_LINK,
+                mirrorRow.DOCK_PHOTO_LINK,
+                mirrorRow.DOCKPHOTO_LINK,
+                sourceRow.REQ_PHOTO_LINK,
+                sourceRow.REQUEST_PHOTO_LINK,
+                sourceRow.REQUESTPHOTO_LINK,
+                sourceRow.DOCK_PHOTO_LINK,
+                sourceRow.DOCKPHOTO_LINK
+            ]);
+            const reqPhotoName = mergePhotoCsvList([
+                mirrorRow.REQ_PHOTO_NAME,
+                mirrorRow.REQUEST_PHOTO_NAME,
+                mirrorRow.REQUESTPHOTONAME,
+                mirrorRow.DOCK_PHOTO_NAME,
+                mirrorRow.DOCKPHOTO_NAME,
+                sourceRow.REQ_PHOTO_NAME,
+                sourceRow.REQUEST_PHOTO_NAME,
+                sourceRow.REQUESTPHOTONAME,
+                sourceRow.DOCK_PHOTO_NAME,
+                sourceRow.DOCKPHOTO_NAME
+            ]);
             const completedAt = shouldCompleteSuspendTag ? new Date().toISOString() : String(firstNonEmptyValue(sourceRow.DATE_COMPLETED, sourceRow.date_completed, '') || '').trim();
             const matchBaselinePtr = values.match !== '' ? getDockSuspendDcRequestLocMatchBaselinePtr(sourceRow || mirrorRow) : null;
             const locMatchQty = values.match !== '' ? calculateDockSuspendDcRequestLocMatchQty(sourceRow || mirrorRow, values.match) : null;
@@ -139267,8 +139402,18 @@ ${folderNote ? `Folder Note: ${folderNote}
             sourceRow.DOCK_NOTE = noteText;
             sourceRow.DOCK_PHOTO_LINK = reqPhotoLink;
             sourceRow.DOCKPHOTO_LINK = reqPhotoLink;
+            sourceRow.dock_photo_link = reqPhotoLink;
+            sourceRow.dockphoto_link = reqPhotoLink;
+            sourceRow.REQ_PHOTO_LINK = reqPhotoLink;
+            sourceRow.REQUEST_PHOTO_LINK = reqPhotoLink;
+            sourceRow.REQUESTPHOTO_LINK = reqPhotoLink;
             sourceRow.DOCK_PHOTO_NAME = reqPhotoName;
             sourceRow.DOCKPHOTO_NAME = reqPhotoName;
+            sourceRow.dock_photo_name = reqPhotoName;
+            sourceRow.dockphoto_name = reqPhotoName;
+            sourceRow.REQ_PHOTO_NAME = reqPhotoName;
+            sourceRow.REQUEST_PHOTO_NAME = reqPhotoName;
+            sourceRow.REQUESTPHOTONAME = reqPhotoName;
             if (values.avNote) sourceRow.AV_NOTE = values.avNote;
             if (values.match !== '') {
                 sourceRow.MATCH = values.match;
@@ -139302,7 +139447,15 @@ ${folderNote ? `Folder Note: ${folderNote}
             mirrorRow.REQ_COMMENTS = values.comments || noteText;
             mirrorRow.AV_NOTE = values.avNote;
             mirrorRow.REQ_PHOTO_LINK = reqPhotoLink;
+            mirrorRow.REQUEST_PHOTO_LINK = reqPhotoLink;
+            mirrorRow.REQUESTPHOTO_LINK = reqPhotoLink;
+            mirrorRow.DOCK_PHOTO_LINK = reqPhotoLink;
+            mirrorRow.DOCKPHOTO_LINK = reqPhotoLink;
             mirrorRow.REQ_PHOTO_NAME = reqPhotoName;
+            mirrorRow.REQUEST_PHOTO_NAME = reqPhotoName;
+            mirrorRow.REQUESTPHOTONAME = reqPhotoName;
+            mirrorRow.DOCK_PHOTO_NAME = reqPhotoName;
+            mirrorRow.DOCKPHOTO_NAME = reqPhotoName;
             if (shouldCompleteSuspendTag) {
                 mirrorRow.REQ_STATUS = 'Complete';
                 mirrorRow.STATUS = 'Complete';
@@ -139321,6 +139474,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             markViewDirty('docks');
             updateFooterRequestBadge();
             if (shouldCompleteSuspendTag) refreshLocalRequestViewState('dock-suspend-request-complete', { forceRender: true, preferImmediate: true, userAction: true, typingDelay: 44 });
+            else refreshLocalRequestViewState('dock-suspend-request-save', { forceRender: true, preferImmediate: true, userAction: true, typingDelay: 0, immediate: true, renderHiddenRequest: true });
 
             try {
                 if (!sourceUid) throw new Error('Missing source dock row id.');
@@ -141208,7 +141362,10 @@ ${folderNote ? `Folder Note: ${folderNote}
 
             const safePrefix = String(prefix || '').trim().toLowerCase();
             const detailUploadItem = itemToUpload;
-            const requestPhotoOwner = safePrefix === 'req-' ? getRequestPhotoOwnerItem(itemToUpload) : null;
+            const isSuspendTagRequestUpload = safePrefix === 'req-' && isDockSuspendDcRequestMirrorRow(itemToUpload);
+            const suspendTagSourceUploadItem = isSuspendTagRequestUpload ? findDockSuspendDcRequestSourceRow(itemToUpload) : null;
+            if (isSuspendTagRequestUpload) syncDockSuspendDcRequestPhotoAliases(itemToUpload, suspendTagSourceUploadItem);
+            const requestPhotoOwner = safePrefix === 'req-' && !isSuspendTagRequestUpload ? getRequestPhotoOwnerItem(itemToUpload) : null;
             if (requestPhotoOwner && requestPhotoOwner !== itemToUpload) {
                 mergeRequestPhotoFields(itemToUpload, requestPhotoOwner);
                 itemToUpload = requestPhotoOwner;
@@ -141220,7 +141377,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             });
             const jpegFileName = buildInventoryRowPhotoFileName(itemToUpload, file, { uploadToken, extension: 'jpg' });
             const targetFileName = originalFileName;
-            const previewItems = [detailUploadItem, itemToUpload].filter((item, index, list) => (
+            const previewItems = [detailUploadItem, itemToUpload, suspendTagSourceUploadItem].filter((item, index, list) => (
                 item && list.findIndex((candidate) => candidate === item) === index
             ));
             const previewUrl = URL.createObjectURL(file);
@@ -141310,7 +141467,17 @@ ${folderNote ? `Folder Note: ${folderNote}
                             }
                             if (!publicUrl) throw new Error('Photo upload did not return a public URL.');
                             applyUploadedPhotoEverywhere(itemToUpload, prefix, publicUrl, fileName);
-                            if (detailUploadItem && detailUploadItem !== itemToUpload) {
+                            if (isSuspendTagRequestUpload) {
+                                applyUploadedPhotoFieldsToItem(itemToUpload, 'dock-', publicUrl, fileName);
+                                if (suspendTagSourceUploadItem && suspendTagSourceUploadItem !== itemToUpload) {
+                                    applyUploadedPhotoFieldsToItem(suspendTagSourceUploadItem, 'req-', publicUrl, fileName);
+                                    applyUploadedPhotoFieldsToItem(suspendTagSourceUploadItem, 'dock-', publicUrl, fileName);
+                                }
+                                syncDockSuspendDcRequestPhotoAliases(itemToUpload, suspendTagSourceUploadItem);
+                                refreshPhotoAcrossViews(itemToUpload, prefix);
+                                if (suspendTagSourceUploadItem) refreshPhotoAcrossViews(suspendTagSourceUploadItem, 'dock-');
+                                refreshLocalDockSuspendDcRequestState('dock-suspend-photo-upload', suspendTagSourceUploadItem || itemToUpload);
+                            } else if (detailUploadItem && detailUploadItem !== itemToUpload) {
                                 applyUploadedPhotoFieldsToItem(detailUploadItem, prefix, publicUrl, fileName);
                                 mergeRequestPhotoFields(itemToUpload, detailUploadItem);
                                 refreshPhotoAcrossViews(detailUploadItem, prefix);
@@ -141391,6 +141558,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
             registerPendingPhotoUpload(itemToUpload, prefix, queuedUploadPromise);
             if (detailUploadItem && detailUploadItem !== itemToUpload) registerPendingPhotoUpload(detailUploadItem, prefix, queuedUploadPromise);
+            if (suspendTagSourceUploadItem && suspendTagSourceUploadItem !== itemToUpload && suspendTagSourceUploadItem !== detailUploadItem) registerPendingPhotoUpload(suspendTagSourceUploadItem, prefix, queuedUploadPromise);
             queuedUploadPromise.catch((err) => {
                 showToast('Error', 'Upload failed: ' + (err && err.message ? err.message : 'Unknown error'), true);
             });
