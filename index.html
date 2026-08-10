@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.33';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.34';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -187,6 +187,11 @@ body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-h
         .app-card-ready{border-left:6px solid #22c55e !important}
         .app-card-hold{border-left:6px solid #facc15 !important}
         .app-card-stop{border-left:6px solid #ef4444 !important}
+        .app-smart-card.app-card-planstart-monday{border-left:6px solid #9333ea !important;background:#faf5ff !important;border-color:#d8b4fe !important;box-shadow:0 0 0 1px rgba(147,51,234,.14),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
+        .app-smart-card.app-card-planstart-tuesday,.app-smart-card.app-card-planstart-unknown{border-left:6px solid #ef4444 !important;background:#fff1f2 !important;border-color:#fda4af !important;box-shadow:0 0 0 1px rgba(239,68,68,.16),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
+        .app-smart-card.app-card-planstart-wednesday{border-left:6px solid #16a34a !important;background:#f0fdf4 !important;border-color:#86efac !important;box-shadow:0 0 0 1px rgba(22,163,74,.14),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
+        .app-smart-card.app-card-planstart-thursday{border-left:6px solid #2563eb !important;background:#eff6ff !important;border-color:#93c5fd !important;box-shadow:0 0 0 1px rgba(37,99,235,.14),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
+        .app-smart-card.app-card-planstart-friday{border-left:6px solid #64748b !important;background:#f8fafc !important;border-color:#cbd5e1 !important;box-shadow:0 0 0 1px rgba(100,116,139,.14),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
         .app-card-note{border-radius:12px}
         .app-card-actions{display:flex;gap:.55rem;margin-top:.9rem;padding-top:.85rem;border-top:1px solid #e5e7eb}
         .app-card-shell img,.inv-card img{display:block}
@@ -6070,7 +6075,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.33').trim() || 'V2026.08.09.33';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.34').trim() || 'V2026.08.09.34';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7540,7 +7545,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.33';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.34';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26709,7 +26714,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.33').trim() || 'V2026.08.09.33';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.34').trim() || 'V2026.08.09.34';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -93623,6 +93628,60 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 || null;
         }
 
+        function getDockSuspendDcRequestPlanstartValue(item = null) {
+            const sourceRow = isDockSuspendDcRequestMirrorRow(item) ? findDockSuspendDcRequestSourceRow(item) : null;
+            return firstNonEmptyValue(
+                item && item.PLANSTART,
+                item && item.planstart,
+                sourceRow && sourceRow.PLANSTART,
+                sourceRow && sourceRow.planstart,
+                ''
+            );
+        }
+
+        function getUtcWeekdayFromDateParts(year, month, day) {
+            const y = Number(year);
+            const m = Number(month);
+            const d = Number(day);
+            if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return null;
+            if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+            const date = new Date(Date.UTC(y, m - 1, d));
+            if (
+                date.getUTCFullYear() !== y
+                || date.getUTCMonth() !== m - 1
+                || date.getUTCDate() !== d
+            ) return null;
+            return date.getUTCDay();
+        }
+
+        function getDockSuspendDcRequestPlanstartWeekday(item = null) {
+            const rawValue = getDockSuspendDcRequestPlanstartValue(item);
+            if (!rawValue) return null;
+            if (rawValue instanceof Date && !Number.isNaN(rawValue.getTime())) {
+                return getUtcWeekdayFromDateParts(rawValue.getUTCFullYear(), rawValue.getUTCMonth() + 1, rawValue.getUTCDate());
+            }
+            const text = String(rawValue || '').trim();
+            const isoMatch = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:\b|T|\s)/);
+            if (isoMatch) return getUtcWeekdayFromDateParts(isoMatch[1], isoMatch[2], isoMatch[3]);
+            const slashMatch = text.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})(?:\b|\s)/);
+            if (slashMatch) {
+                let year = Number(slashMatch[3]);
+                if (year < 100) year += 2000;
+                return getUtcWeekdayFromDateParts(year, slashMatch[1], slashMatch[2]);
+            }
+            return null;
+        }
+
+        function getDockSuspendDcRequestPlanstartToneClass(item = null) {
+            const weekday = getDockSuspendDcRequestPlanstartWeekday(item);
+            if (weekday === 1) return 'app-card-planstart-monday';
+            if (weekday === 2) return 'app-card-planstart-tuesday';
+            if (weekday === 3) return 'app-card-planstart-wednesday';
+            if (weekday === 4) return 'app-card-planstart-thursday';
+            if (weekday === 5) return 'app-card-planstart-friday';
+            return 'app-card-planstart-unknown';
+        }
+
         const REQUEST_SUSPEND_TAG_ASSIGNED_FILTER_USERS = Object.freeze(['dylan_collyge', 'jd_jones', 'megan_kelly']);
 
         function canUseRequestSuspendTagAssignedToFilter(userOverride = '') {
@@ -119564,10 +119623,14 @@ C.14.043 C.15.000
                 || String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '') || '').trim().toLowerCase() === 'ph_soc_master'
                 || String(firstNonEmptyValue(item.REQUEST_SOURCE, item.request_source, '') || '').trim().toLowerCase() === 'docks'
             );
-            const requestCardToneClass = isDocksRequestCard
+            const isSuspendTagRequestCard = String(sourceView || '').trim().toLowerCase() === 'request'
+                && activeReqTab === 'suspend-tag'
+                && isDockSuspendDcRequestMirrorRow(item);
+            const suspendTagPlanstartToneClass = isSuspendTagRequestCard ? getDockSuspendDcRequestPlanstartToneClass(item) : '';
+            const requestCardToneClass = suspendTagPlanstartToneClass || (isDocksRequestCard
                 ? 'bg-red-50 border-red-300 ring-1 ring-red-200'
-                : (isSeasonSalesNoteCard ? 'bg-orange-100 border-orange-600' : 'bg-white border-purple-200');
-            const requestBorderClass = isDocksRequestCard ? 'app-card-stop' : holdBorderClass;
+                : (isSeasonSalesNoteCard ? 'bg-orange-100 border-orange-600' : 'bg-white border-purple-200'));
+            const requestBorderClass = suspendTagPlanstartToneClass ? '' : (isDocksRequestCard ? 'app-card-stop' : holdBorderClass);
             const salesOfficeCardToneClass = isSeasonSalesNoteCard ? 'bg-orange-100 border-orange-600' : 'bg-purple-50/40 border-purple-200';
             const salesOfficeChipToneClass = isSeasonSalesNoteCard ? 'border-orange-400 bg-orange-100 text-orange-900' : 'border-purple-200 bg-white text-purple-700';
             const salesOfficePanelToneClass = isSeasonSalesNoteCard ? 'border-orange-400' : 'border-purple-200';
