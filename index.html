@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.30';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.31';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6070,7 +6070,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.30').trim() || 'V2026.08.09.30';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.31').trim() || 'V2026.08.09.31';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7540,7 +7540,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.30';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.31';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26645,7 +26645,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.30').trim() || 'V2026.08.09.30';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.31').trim() || 'V2026.08.09.31';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -136865,6 +136865,46 @@ ${folderNote ? `Folder Note: ${folderNote}
             return payload;
         }
 
+        function getLinkedRequestTimestampMs(value = '') {
+            const iso = getValidIsoTimestamp(value);
+            if (!iso) return NaN;
+            const stamp = Date.parse(iso);
+            return Number.isFinite(stamp) ? stamp : NaN;
+        }
+
+        function getLinkedRequestCompletionDateValue(sourceItem = null, savePayload = {}) {
+            return String(firstNonEmptyValue(
+                savePayload && savePayload.date_completed,
+                savePayload && savePayload.DATE_COMPLETED,
+                savePayload && savePayload.completed_at,
+                savePayload && savePayload.COMPLETED_AT,
+                sourceItem && sourceItem.DATE_COMPLETED,
+                sourceItem && sourceItem.date_completed,
+                sourceItem && sourceItem.COMPLETED_AT,
+                sourceItem && sourceItem.completed_at,
+                ''
+            ) || '').trim();
+        }
+
+        function getLinkedRequestCreatedDateValue(requestRow = null) {
+            return String(firstNonEmptyValue(
+                requestRow && requestRow.CREATED_AT,
+                requestRow && requestRow.created_at,
+                requestRow && requestRow.DATE_CREATED,
+                requestRow && requestRow.date_created,
+                requestRow && requestRow.REQ_CREATED_AT,
+                requestRow && requestRow.req_created_at,
+                ''
+            ) || '').trim();
+        }
+
+        function isLinkedRequestCompletionFreshForRequest(sourceItem = null, savePayload = {}, requestRow = null) {
+            const completedMs = getLinkedRequestTimestampMs(getLinkedRequestCompletionDateValue(sourceItem, savePayload));
+            const createdMs = getLinkedRequestTimestampMs(getLinkedRequestCreatedDateValue(requestRow));
+            if (!Number.isFinite(completedMs) || !Number.isFinite(createdMs)) return true;
+            return completedMs + 60000 >= createdMs;
+        }
+
         function hasPayloadKey(payload = null, key = '') {
             return !!(payload && typeof payload === 'object' && Object.prototype.hasOwnProperty.call(payload, key));
         }
@@ -137075,6 +137115,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     linkedSource.DATE_COMPLETED = completedAt;
                     linkedSource.date_completed = completedAt;
                 }
+                if (!isLinkedRequestCompletionFreshForRequest(linkedSource, { date_completed: completedAt }, requestRow)) continue;
                 return linkedSource;
             }
             return null;
@@ -137083,11 +137124,11 @@ ${folderNote ? `Folder Note: ${folderNote}
         function findCompletedSourceForPendingRequestRow(requestRow = null) {
             if (!requestRow || !isRequestPendingVisible(requestRow)) return null;
             const linkedMaster = findLinkedMasterRow(requestRow);
-            if (linkedMaster && hasCompletionDateValue(linkedMaster) && !hasLinkedRequestCompletionCustomerConflict(linkedMaster, requestRow)) return linkedMaster;
+            if (linkedMaster && hasCompletionDateValue(linkedMaster) && isLinkedRequestCompletionFreshForRequest(linkedMaster, {}, requestRow) && !hasLinkedRequestCompletionCustomerConflict(linkedMaster, requestRow)) return linkedMaster;
             const completedCropRollSource = findCompletedCropRollSourceForPendingRequestRow(requestRow);
             if (completedCropRollSource) return completedCropRollSource;
             if (!Array.isArray(fullInventory) || !fullInventory.length) return null;
-            return fullInventory.find((item) => item && hasCompletionDateValue(item) && isLinkedRequestCompletionFieldMatch(item, requestRow) && !hasLinkedRequestCompletionCustomerConflict(item, requestRow)) || null;
+            return fullInventory.find((item) => item && hasCompletionDateValue(item) && isLinkedRequestCompletionFreshForRequest(item, {}, requestRow) && isLinkedRequestCompletionFieldMatch(item, requestRow) && !hasLinkedRequestCompletionCustomerConflict(item, requestRow)) || null;
         }
 
         function schedulePendingRequestSourceCompletionReconcile(delay = 80, reason = 'request-source-completion') {
@@ -137116,6 +137157,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 for (const entry of pendingRows.slice(0, 80)) {
                     const rowId = String(firstNonEmptyValue(entry.row && entry.row.UNIQUE_ID, entry.row && entry.row.unique_id, '') || '').trim();
                     if (!rowId || !isRequestPendingVisible(entry.row)) continue;
+                    if (!isLinkedRequestCompletionFreshForRequest(entry.source, {}, entry.row)) continue;
                     const payload = buildLinkedRequestCompletionPayload(entry.source, {
                         date_completed: firstNonEmptyValue(entry.source && entry.source.DATE_COMPLETED, entry.source && entry.source.date_completed, new Date().toISOString())
                     }, entry.row, false);
@@ -137272,6 +137314,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             for (const requestRow of pendingRows) {
                 const rowId = String(firstNonEmptyValue(requestRow.UNIQUE_ID, requestRow.unique_id, '') || '').trim();
                 if (!rowId) continue;
+                if (!isLinkedRequestCompletionFreshForRequest(sourceItem, savePayload, requestRow)) continue;
                 const requestPayload = buildLinkedRequestCompletionPayload(sourceItem, savePayload, requestRow, canPersistCompletionUser);
                 try {
                     await runDetailWriteWithRetry('ph_active_request', 'PATCH', requestPayload, `unique_id=eq.${encodeURIComponent(rowId)}`, requestOptions);
