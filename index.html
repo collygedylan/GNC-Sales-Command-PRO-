@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.09.47';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.09.48';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.47').trim() || 'V2026.08.09.47';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.48').trim() || 'V2026.08.09.48';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.47';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.48';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -25886,8 +25886,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const PENDING_EDITS_PERSIST_DEBOUNCE_MS = 400;
         const salesRepList=["Abbey Burka","Alyssa Beitz","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Casey Rufener","Chris Farrow","Chris Gaydos","David Brandt","Ellen Deely","JD Jones","Jessica Robertson","Josh Ringleb","Kayla Knepp","Kevin Effinger","Molly Dixon","Nate Douglas","Rudy Martinez","Toby Brown","Tony Bono","Traci Earle","Tracey Tapscott","Troy Lee","Wes Lugas"];
         const PRIVILEGED_MANAGER_USER_KEYS = Object.freeze(['dylan_collyge', 'jd_jones', 'megan_kelly']);
+        const DYLAN_LEVEL_ACCESS_USER_KEYS = Object.freeze(['dylan_collyge', 'megan_kelly']);
         const PRIVILEGED_MANAGER_USER_TOKENS = new Set([...PRIVILEGED_MANAGER_USER_KEYS, 'dylan', 'jd', 'jdjones', 'jd jones', 'megan', 'megankelly', 'megan kelly']);
-        const SALES_CREDIT_REVIEW_USERS = new Set(['dylan_collyge', 'jd_jones']);
+        const SALES_CREDIT_REVIEW_USERS = new Set(['dylan_collyge', 'jd_jones', 'megan_kelly']);
         const REQUEST_REP_ENABLED_TOKENS = new Set(['alyssa_beitz','alyssa beitz','alyssabeitz','tony_bono','tony bono','tonybono','kayla_knepp','kayla knepp','kaylaknepp']);
         const REQUEST_GLOBAL_ACCESS_TOKENS = new Set(['kayla_knepp','kayla knepp','kaylaknepp']);
         const REQUEST_ROW_ARCHIVE_USERS = new Set(['kayla_knepp','kayla knepp','kaylaknepp','kayla','knepp','kayla_knepp@greenleafnursery.com','kayla.knepp@greenleafnursery.com']);
@@ -25954,7 +25955,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             megan_kelly: 'megan_kelly@greenleafnursery.com',
             jd_jones: 'jd_jones@greenleafnursery.com'
         });
-        const BLOOM_GROUPED_NCR_ALLOWED_USER_KEYS = Object.freeze([NCR_APPROVAL_DYLAN_USER, NCR_APPROVAL_JD_USER]);
+        const BLOOM_GROUPED_NCR_ALLOWED_USER_KEYS = Object.freeze([NCR_APPROVAL_DYLAN_USER, NCR_APPROVAL_JD_USER, NCR_APPROVAL_MEGAN_USER]);
         const NCR_APPROVAL_NEW_CROP_VIEW = 'ncr-approvals';
         const NCR_APPROVAL_MOVE_UP_VIEW = 'move-up-approvals';
         const NCR_APPROVAL_MOVE_DOWN_VIEW = 'move-down-approvals';
@@ -26178,6 +26179,16 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
         }
 
+        function isDylanLevelAccessUser(userOverride = '') {
+            return [userOverride, currentUser, currentUserDisplay]
+                .filter((value) => String(value || '').trim())
+                .some((value) => {
+                    const evalKey = normalizeEvalAccessUserKey(value);
+                    const pushKey = typeof normalizePushUsername === 'function' ? normalizePushUsername(value) : evalKey;
+                    return DYLAN_LEVEL_ACCESS_USER_KEYS.includes(evalKey) || DYLAN_LEVEL_ACCESS_USER_KEYS.includes(pushKey);
+                });
+        }
+
         function isPrivilegedManagerUserKey(value = '') {
             const raw = String(value || '').trim().toLowerCase();
             if (!raw) return false;
@@ -26191,9 +26202,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function isExactDylanCollygeUser(userOverride = '') {
-            return [userOverride, currentUser, currentUserDisplay]
-                .filter((value) => String(value || '').trim())
-                .some((value) => normalizeEvalAccessUserKey(value) === 'dylan_collyge');
+            return isDylanLevelAccessUser(userOverride);
         }
 
         function canUseEvalTaskAssignment(userOverride = '') {
@@ -26912,7 +26921,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW = 'av-blanks-photo-bypass';
         const AV_BLANKS_PHOTO_BYPASS_SETTINGS_KEY = 'av_blanks_photo_bypass_users';
         const AV_BLANKS_PHOTO_BYPASS_STORAGE_KEY = 'gnc_av_blanks_photo_bypass_v1';
-        const AV_BLANKS_PHOTO_BYPASS_MANAGER_USERS = Object.freeze(['dylan_collyge', 'jd_jones']);
+        const AV_BLANKS_PHOTO_BYPASS_MANAGER_USERS = Object.freeze(['dylan_collyge', 'jd_jones', 'megan_kelly']);
         const APP_CURRENT_SEASON_OPTIONS = Object.freeze(['S1', 'F1']);
         const APP_SEASON_DISPLAY_ORDER = Object.freeze(['S1', 'F1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
         let appSeasonSettingsCache = null;
@@ -26922,7 +26931,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.47').trim() || 'V2026.08.09.47';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.48').trim() || 'V2026.08.09.48';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -29410,7 +29419,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const nextStatus = normalizeSalesCreditStatus(status);
             if (!safeId || nextStatus === 'pending') return false;
             if (!canReviewSalesCreditRequests()) {
-                showToast('Restricted', 'Only Dylan and JD can approve or deny credits.', true);
+                showToast('Restricted', 'Only Dylan, JD, and Megan can approve or deny credits.', true);
                 return false;
             }
             const row = salesCreditRequestsById.get(safeId) || (Array.isArray(salesCreditRequestsInventory) ? salesCreditRequestsInventory.find((entry) => String(entry && entry.UNIQUE_ID || '').trim() === safeId) : null);
@@ -35316,7 +35325,7 @@ let avTopControlsRenderToken = 0;
             return !!(canAccessView('drive') && (access.isForeman || canUseDriveQuickRequest()));
         }
 
-        const DRIVE_CARD_OPTIONS_ALWAYS_USERS = Object.freeze(new Set(['kayla_knepp', 'jd_jones', 'dylan_collyge']));
+        const DRIVE_CARD_OPTIONS_ALWAYS_USERS = Object.freeze(new Set(['kayla_knepp', 'jd_jones', 'dylan_collyge', 'megan_kelly']));
 
         function getCurrentDriveCardOptionUserKeys(userOverride = '', displayOverride = '') {
             return [userOverride, displayOverride, currentUser, currentUserDisplay]
@@ -37491,13 +37500,7 @@ let avTopControlsRenderToken = 0;
         }
 
         function isArgosInventoryTransactionDylanActor() {
-            const userKey = typeof normalizePushUsername === 'function'
-                ? normalizePushUsername(currentUser || currentUserDisplay || '')
-                : String(currentUser || currentUserDisplay || '').trim().toLowerCase();
-            const displayKey = typeof normalizePushUsername === 'function'
-                ? normalizePushUsername(currentUserDisplay || currentUser || '')
-                : String(currentUserDisplay || currentUser || '').trim().toLowerCase();
-            return userKey === 'dylan_collyge' || displayKey === 'dylan_collyge';
+            return isDylanLevelAccessUser();
         }
 
         function getArgosInventoryTransactionActorEmail() {
@@ -41743,6 +41746,7 @@ function toggleDriveQuickRequestItem(domId) {
             { username: 'morgan_anderson', display: 'morgan_anderson' },
             { username: 'kayla_knepp', display: 'kayla_knepp' },
             { username: 'dylan_collyge', display: 'dylan_collyge' },
+            { username: 'megan_kelly', display: 'megan_kelly' },
             { username: 'jd_jones', display: 'jd_jones' },
             { username: 'todd_dowty', display: 'todd_dowty' }
         ]);
@@ -68952,9 +68956,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function canUseRequestEmailChainPicker() {
-            const username = normalizePushUsername(currentUser || currentUserDisplay || '');
-            const displayUser = normalizePushUsername(currentUserDisplay || currentUser || '');
-            return username === 'dylan_collyge' || displayUser === 'dylan_collyge';
+            return isDylanLevelAccessUser();
         }
 
         function resetRequestEmailChainState() {
@@ -69360,7 +69362,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function isDylanEmailTestSender() {
-            return normalizePushUsername(firstNonEmptyValue(currentUser, currentUserDisplay, '')) === 'dylan_collyge';
+            return isDylanLevelAccessUser();
         }
 
         function getDylanEmailTestDefaultRecipients() {
@@ -99337,10 +99339,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function canManageCropRoll() {
-            return getCropRollActorKey() === 'dylan_collyge';
+            return DYLAN_LEVEL_ACCESS_USER_KEYS.includes(getCropRollActorKey());
         }
 
-        const CROP_ROLL_EVAL_FILTER_ADMIN_USERS = new Set(['dylan_collyge', 'jd_jones']);
+        const CROP_ROLL_EVAL_FILTER_ADMIN_USERS = new Set(['dylan_collyge', 'jd_jones', 'megan_kelly']);
 
         function canUseCropRollEvalUserFilter() {
             return CROP_ROLL_EVAL_FILTER_ADMIN_USERS.has(getCropRollActorKey());
@@ -99844,7 +99846,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         async function createCropRollSnapshot() {
             if (!canManageCropRoll()) {
-                showToast('Dylan Only', 'Only Dylan can start a Crop Roll run.', true);
+                showToast('Restricted', 'Only Dylan or Megan can start a Crop Roll run.', true);
                 return false;
             }
             if (cropRollCreating) return false;
@@ -99893,7 +99895,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         async function archiveCropRollRun() {
             if (!canManageCropRoll()) {
-                showToast('Dylan Only', 'Only Dylan can archive Crop Roll runs.', true);
+                showToast('Restricted', 'Only Dylan or Megan can archive Crop Roll runs.', true);
                 return false;
             }
             if (!cropRollActiveRun || cropRollArchiving) return false;
@@ -100106,7 +100108,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 ? `<div class="flex flex-wrap gap-2">${cropRollActiveRun ? `<button type="button" class="rounded-xl border border-red-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-red-700 shadow-sm active:scale-95 ${cropRollArchiving ? 'opacity-60 pointer-events-none' : ''}" onclick="archiveCropRollRun(); return false;">${cropRollArchiving ? 'Archiving...' : 'Archive Run'}</button>` : `<button type="button" class="rounded-xl border border-[#007a4d] bg-[#007a4d] px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95 ${cropRollCreating ? 'opacity-60 pointer-events-none' : ''}" onclick="createCropRollSnapshot(); return false;">${cropRollCreating ? 'Starting...' : 'Start Run'}</button>`}<button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="refreshCropRollData(); return false;">Refresh</button></div>`
                 : '<button type="button" class="rounded-xl border border-emerald-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-95" onclick="refreshCropRollData(); return false;">Refresh</button>';
             if (!cropRollActiveRun) {
-                return `<div class="space-y-4">${managerReviewHtml}<div class="rounded-[1.5rem] border border-emerald-100 bg-white p-5 shadow-sm"><div class="flex flex-wrap items-start justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Crop Roll</div><div class="mt-1 text-2xl font-black text-slate-900">Run Control</div>${runMetaHtml}</div>${dylanControls}</div><div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-[12px] font-bold text-slate-500">Dylan starts one active run. The snapshot assigns rows using the app's existing eval assignment rules and keeps progress stable until the run is archived.</div></div></div>`;
+                return `<div class="space-y-4">${managerReviewHtml}<div class="rounded-[1.5rem] border border-emerald-100 bg-white p-5 shadow-sm"><div class="flex flex-wrap items-start justify-between gap-3"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Crop Roll</div><div class="mt-1 text-2xl font-black text-slate-900">Run Control</div>${runMetaHtml}</div>${dylanControls}</div><div class="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-[12px] font-bold text-slate-500">Dylan or Megan starts one active run. The snapshot assigns rows using the app's existing eval assignment rules and keeps progress stable until the run is archived.</div></div></div>`;
             }
             const userOptionsHtml = canManageCropRoll()
                 ? `<select class="rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[10px] font-black uppercase text-slate-700" onchange="return setCropRollFilter('user', this.value)"><option value="">All Users</option>${userBreakdown.map((entry) => `<option value="${escJsAttrValue(entry.key)}" ${cropRollSelectedUser === entry.key ? 'selected' : ''}>${escapeHtml(entry.label)} (${entry.stats.groupComplete}/${entry.stats.groupTotal})</option>`).join('')}</select>`
@@ -114320,9 +114322,7 @@ C.14.043 C.15.000
         }
 
         function canViewManagerShortageCancel(userOverride = '') {
-            return [userOverride, currentUser, currentUserDisplay]
-                .filter((value) => String(value || '').trim())
-                .some((value) => normalizePushUsername(value) === 'dylan_collyge');
+            return isDylanLevelAccessUser(userOverride);
         }
 
         function getSocRawFieldValue(row = null, keys = []) {
@@ -114516,7 +114516,7 @@ C.14.043 C.15.000
 
         function renderManagerShortageCancelPanel() {
             if (!canViewManagerShortageCancel()) {
-                return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">Shortage/Cancel is available to Dylan only.</div>';
+                return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">Shortage/Cancel is available to Dylan and Megan only.</div>';
             }
             if (!isDatasetLoaded('soc', 'full') && getDatasetRenderRowCount('soc') <= 0) {
                 ensureDatasetLoaded('soc', 'full').then(() => scheduleManagersRender(true)).catch(() => scheduleManagersRender(true));
@@ -114541,7 +114541,7 @@ C.14.043 C.15.000
                 <div class="rounded-2xl border border-amber-100 bg-white/90 p-4 shadow-sm">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                            <div class="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">Dylan Only</div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">Dylan / Megan</div>
                             <div class="mt-1 text-xl font-black text-slate-900">Shortage/Cancel</div>
                             <div class="mt-1 text-[12px] font-semibold text-slate-500">SOC rows where ordered and shipped quantities are both present and do not match.</div>
                         </div>
@@ -114571,9 +114571,7 @@ C.14.043 C.15.000
         }
 
         function canViewManagerBlockClearing(userOverride = '') {
-            return [userOverride, currentUser, currentUserDisplay]
-                .filter((value) => String(value || '').trim())
-                .some((value) => normalizePushUsername(value) === 'dylan_collyge');
+            return isDylanLevelAccessUser(userOverride);
         }
 
         function getBlockClearingRowValue(row = null, keys = [], fallback = '') {
@@ -115519,7 +115517,7 @@ C.14.043 C.15.000
 
         function renderManagerBlockClearingPanel() {
             if (!canViewManagerBlockClearing()) {
-                return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">Block Clearing is available to Dylan only.</div>';
+                return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-sm font-bold text-slate-400">Block Clearing is available to Dylan and Megan only.</div>';
             }
             if (!isDatasetLoaded('master', 'full') && getDatasetRenderRowCount('master') <= 0) {
                 ensureDatasetLoaded('master', 'full').then(() => scheduleManagersRender(true)).catch(() => scheduleManagersRender(true));
@@ -115537,7 +115535,7 @@ C.14.043 C.15.000
                     : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No blocks match the current search.</div>';
                 return `<div class="space-y-4">
                     <div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
-                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Dylan Only</div>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Dylan / Megan</div>
                         <div class="mt-1 text-xl font-black text-slate-900">Block Clearing</div>
                         <div class="mt-3 grid gap-3 sm:grid-cols-3">
                             <div class="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3"><div class="text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]">Rows</div><div class="text-2xl font-black text-slate-900">${cache.rows.length}</div></div>
