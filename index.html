@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.09.43';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.09.44';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.43').trim() || 'V2026.08.09.43';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.44').trim() || 'V2026.08.09.44';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7377,7 +7377,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                             <div id="req-container-caliper" class="hidden"><label class="text-[10px] font-bold text-gray-500 uppercase">Caliper</label><input type="text" id="req-caliper" class="input-field" placeholder="e.g. 2 inch" onchange="saveData(false, 'req-', true)"></div>
                             <div class="mb-3 relative"><label class="text-[10px] font-bold text-gray-500 uppercase">LOC MATCH %</label><input type="text" inputmode="decimal" pattern="[0-9.]*" id="req-match" class="input-field !mb-0 pr-20" placeholder="e.g. 95" oninput="calculateMatchQty('req-')" onchange="saveData(false, 'req-', true)"><div id="req-match-display" class="pointer-events-none absolute right-3 bottom-3 text-[10px] font-bold text-[#007a4d] hidden">LOC PHOTO MATCH: <span id="req-match-qty-val">0</span></div></div>
                         </div>
-                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="req-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" oninput="this.value=this.value.toUpperCase(); debouncedFilterAvNotes('req-')" onfocus="filterAvNotes('req-')" onblur="setTimeout(()=>{if(document.getElementById('req-av-dropdown-list'))document.getElementById('req-av-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('req-')">+</button></div><div id="req-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
+                        <div class="relative w-full mb-3"><label class="text-[10px] font-bold text-blue-700 uppercase flex justify-between"><span>AV Note</span></label><div class="flex gap-2 relative"><input type="text" id="req-av-note" class="input-field border-blue-500 bg-blue-50 uppercase flex-grow !mb-0" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="characters" enterkeyhint="done" oninput="handleRequestAvNoteInput(this)" onfocus="handleRequestAvNoteFocus(this)" onblur="setTimeout(()=>{if(document.getElementById('req-av-dropdown-list'))document.getElementById('req-av-dropdown-list').classList.add('hidden'); saveData(false, 'req-', true);}, 200)" placeholder="TYPE AV NOTE OR SELECT..."><button type="button" class="shrink-0 h-[48px] w-[48px] rounded-xl border border-blue-300 bg-blue-100 text-blue-700 text-2xl font-black shadow-sm active:scale-95" onmousedown="event.preventDefault()" onclick="appendSpecCaliperToAvNote('req-')">+</button></div><div id="req-av-dropdown-list" class="absolute z-50 bg-white border border-blue-300 w-full max-h-48 overflow-y-auto rounded-md shadow-2xl hidden top-[65px] left-0 flex flex-col"></div></div>
                             <div id="req-reserve-field-wrap"><label class="text-[10px] font-bold text-gray-500 uppercase">Reserve</label><select id="req-reserve" class="input-field bg-white" onchange="saveData(false, 'req-', true)"><option value="NO">NO</option><option value="YES">YES</option></select></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Pick Note</label><input type="text" id="req-pick" class="input-field" placeholder="e.g. Needs spacing" onchange="saveData(false, 'req-', true)"></div>
                             <div><label class="text-[10px] font-bold text-gray-500 uppercase">Comments</label><textarea id="req-comments" class="input-field resize-y" placeholder="Any additional comments..." onblur="saveData(false, 'req-', true)"></textarea></div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.43';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.44';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -12376,6 +12376,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const safePrefix = String(prefix || '').trim();
             if (event && typeof event.preventDefault === 'function') event.preventDefault();
             if (event && typeof event.stopPropagation === 'function') event.stopPropagation();
+            if (shouldUseLeanRequestAvNoteInput(safePrefix)) return hideAvNoteDropdown(safePrefix);
             if (!canEditRowDetails(safePrefix)) {
                 showRowEditRestrictedToast(safePrefix);
                 return false;
@@ -14617,6 +14618,35 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function getDisplayLocMatchQtyValue(item, sourceView = '') {
             if (!item) return '';
+            if (typeof isDockSuspendDcRequestMirrorRow === 'function' && isDockSuspendDcRequestMirrorRow(item)) {
+                const displayRow = getDockSuspendDcRequestQuantityDisplayRow(item) || item;
+                const matchValue = firstNonEmptyValue(
+                    item.REQ_MATCH,
+                    item.req_match,
+                    item.MATCH,
+                    item.match,
+                    displayRow.REQ_MATCH,
+                    displayRow.req_match,
+                    displayRow.MATCH,
+                    displayRow.match,
+                    ''
+                );
+                if (isInvalidLocMatchPercent(matchValue)) return '';
+                const storedQty = String(firstNonEmptyValue(
+                    displayRow.LOC_MATCH_QTY,
+                    displayRow.loc_match_qty,
+                    displayRow.REQ_LOC_MATCH_QTY,
+                    displayRow.req_loc_match_qty,
+                    displayRow.PHOTO_MATCH_QTY,
+                    displayRow.photo_match_qty,
+                    item.LOC_MATCH_QTY,
+                    item.loc_match_qty,
+                    ''
+                ) || '').trim();
+                if (storedQty) return storedQty;
+                const derivedQty = calculateDockSuspendDcRequestLocMatchQty(displayRow, matchValue);
+                return derivedQty == null ? '' : String(derivedQty);
+            }
             if (shouldPreferFlyerOwnedFields(item, sourceView)) {
                 const flyerMatch = firstNonEmptyValue(item.FLYER_MATCH, item.MATCH, '');
                 if (isInvalidLocMatchPercent(flyerMatch)) return '';
@@ -25490,6 +25520,9 @@ let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprova
 
         function getDetailInputSaveDebounceMs(inputId = '') {
             const safeId = String(inputId || '').trim();
+            if (safeId === 'req-av-note' && typeof isDockSuspendDcRequestMirrorRow === 'function' && isDockSuspendDcRequestMirrorRow(activeItem)) {
+                return isIOSDevice() || isStandaloneApp() ? 2600 : 1400;
+            }
             if (safeId.endsWith('-av-note')) return isIOSDevice() ? 1400 : DETAIL_AV_INPUT_SAVE_DEBOUNCE_MS;
             if (safeId === 'dock-sales-desc') return isIOSDevice() || isStandaloneApp() ? 1200 : 850;
             if (safeId === 'req-reserve') return DETAIL_INPUT_SAVE_DEBOUNCE_MS;
@@ -25697,12 +25730,49 @@ let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprova
 
         function debouncedFilterAvNotes(prefix) {
             const key = String(prefix || '');
+            if (shouldUseLeanRequestAvNoteInput(key)) {
+                hideAvNoteDropdown(key);
+                return;
+            }
             if (avNoteFilterTimers[key]) clearTimeout(avNoteFilterTimers[key]);
             const delayMs = isIOSDevice() ? 180 : ((isTouchOptimizedDevice() || isCoarsePointerDevice()) ? 100 : 70);
             avNoteFilterTimers[key] = setTimeout(() => {
                 avNoteFilterTimers[key] = null;
                 requestAnimationFrame(() => filterAvNotes(key));
             }, delayMs);
+        }
+
+        function shouldUseLeanRequestAvNoteInput(prefix = '') {
+            return String(prefix || '').trim() === 'req-' && typeof isDockSuspendDcRequestMirrorRow === 'function' && isDockSuspendDcRequestMirrorRow(activeItem);
+        }
+
+        function uppercaseInputValuePreservingCaret(input = null) {
+            if (!input) return '';
+            const original = String(input.value || '');
+            const upper = original.toUpperCase();
+            if (upper === original) return upper;
+            const start = typeof input.selectionStart === 'number' ? input.selectionStart : upper.length;
+            const end = typeof input.selectionEnd === 'number' ? input.selectionEnd : start;
+            input.value = upper;
+            try { input.setSelectionRange(start, end); } catch (error) {}
+            return upper;
+        }
+
+        function handleRequestAvNoteInput(input = null) {
+            uppercaseInputValuePreservingCaret(input);
+            if (shouldUseLeanRequestAvNoteInput('req-')) {
+                hideAvNoteDropdown('req-');
+                return;
+            }
+            debouncedFilterAvNotes('req-');
+        }
+
+        function handleRequestAvNoteFocus(input = null) {
+            if (shouldUseLeanRequestAvNoteInput('req-')) {
+                hideAvNoteDropdown('req-');
+                return;
+            }
+            filterAvNotes('req-');
         }
         const DRIVE_MODE_LABELS = { ok: 'Drive Mode' };
         let activeDriveMode='ok'; let activeDriveTab='name'; let activeDriveHoldStopReport='hold-stop'; let driveReportEvalUserFilter='all'; let driveOpenStockReportSeason='S1'; let driveOpenStockReportSalesYear='26'; let driveOpenStockReportMaxSLts='0'; let selectedDriveBlock=null; let selectedDriveLoc=null; let driveQuickRequestCardMode=false; let driveQuickFilterName=''; let driveQuickFilterLocation=''; let driveQuickFilterLot=''; let driveQuickFilterSize=''; let driveQuickFilterPriority=''; let driveQuickFilterLtsMode=''; let driveQuickFilterLtsValue=''; let driveQuickHoldStopOnly=false; let driveQuickFilterOptionsCacheKey=''; let driveQuickFilterOptionsCache=null; let driveBaseFilterCacheKey=''; let driveBaseFilterCacheItems=[]; let driveBaseContextCacheKey=''; let driveBaseContextCacheItems=[]; let driveBaseSearchContextKey=''; let driveBaseLastSearchTerm=''; let driveBaseLastSearchItems=[]; let driveQuickFilterCacheKey=''; let driveQuickFilterCacheItems=[]; let driveQuickFiltersModalOpen=false;
@@ -26847,7 +26917,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.43').trim() || 'V2026.08.09.43';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.44').trim() || 'V2026.08.09.44';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -76854,7 +76924,12 @@ function toggleDriveQuickRequestItem(domId) {
                     if(displayEl)displayEl.classList.add('hidden');
                     return;
                 }
-                let qty=calculateLocMatchQtyValue(activeItem, matchEl.value);
+                const suspendDisplayRow = prefix === 'req-' && isDockSuspendDcRequestMirrorRow(activeItem)
+                    ? getDockSuspendDcRequestQuantityDisplayRow(activeItem)
+                    : null;
+                let qty = suspendDisplayRow
+                    ? calculateDockSuspendDcRequestLocMatchQty(suspendDisplayRow, matchEl.value)
+                    : calculateLocMatchQtyValue(activeItem, matchEl.value);
                 if(qty==null){
                     if(displayEl)displayEl.classList.add('hidden');
                     return;
@@ -138700,6 +138775,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             ].map(parseAppNumber).filter((value) => value != null);
             const positive = candidates.find((value) => value > 0);
             if (positive != null) return positive;
+            const orderedQty = parseAppNumber(typeof getDockOrderedQtyRaw === 'function' ? getDockOrderedQtyRaw(row) : firstNonEmptyValue(row && row.QUANTITYORDERED, row && row.QTY_ORDERED, row && row.REQ_QTY, ''));
+            if (orderedQty != null && orderedQty > 0) return orderedQty;
             return candidates.length ? Math.max(0, candidates[0]) : null;
         }
 
@@ -140077,6 +140154,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             const sourceUid = getDockSuspendDcRequestSourceUid(mirrorRow);
             const sourceRow = findDockSuspendDcRequestSourceRow(mirrorRow) || mirrorRow;
             syncDockSuspendDcRequestPhotoAliases(mirrorRow, sourceRow);
+            syncDockSuspendDcRequestQuantityAliases(sourceRow, sourceRow);
+            syncDockSuspendDcRequestQuantityAliases(mirrorRow, sourceRow);
             const btnComp = document.getElementById('req-btn-save-complete');
             const isReviewSave = !!isComplete;
             const shouldCompleteSuspendTag = !!(options && options.completeSuspendTag === true);
@@ -140240,12 +140319,12 @@ ${folderNote ? `Folder Note: ${folderNote}
 
             const changedDatasetKeys = getDatasetKeysForTable('ph_soc_master');
             const visibleAffectedViews = getVisibleAffectedViewIds(changedDatasetKeys);
-            propagateCommittedEdit('ph_soc_master', sourceRow, changedDatasetKeys, visibleAffectedViews, { delay: 0, typingDelay: 140, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
+            propagateCommittedEdit('ph_soc_master', sourceRow, changedDatasetKeys, visibleAffectedViews, { delay: 0, typingDelay: isSilentAutoSave ? 520 : 140, requestUiDelay: REQUEST_REALTIME_UI_DELAY_MS });
             markViewDirty('request');
             markViewDirty('docks');
             updateFooterRequestBadge();
             if (shouldCompleteSuspendTag) refreshLocalRequestViewState('dock-suspend-request-complete', { forceRender: true, preferImmediate: true, userAction: true, typingDelay: 44 });
-            else refreshLocalRequestViewState('dock-suspend-request-save', { forceRender: true, preferImmediate: true, userAction: true, typingDelay: 0, immediate: true, renderHiddenRequest: true });
+            else if (!isSilentAutoSave) refreshLocalRequestViewState('dock-suspend-request-save', { forceRender: true, preferImmediate: true, userAction: true, typingDelay: 0, immediate: true, renderHiddenRequest: true });
 
             try {
                 if (!sourceUid) throw new Error('Missing source dock row id.');
@@ -141985,6 +142064,10 @@ ${folderNote ? `Folder Note: ${folderNote}
         function filterAvNotes(prefix, options = {}) {
             const safePrefix = String(prefix || '');
             const safeOptions = options && typeof options === 'object' ? options : {};
+            if (shouldUseLeanRequestAvNoteInput(safePrefix)) {
+                hideAvNoteDropdown(safePrefix);
+                return;
+            }
             const avNoteContextItem = safePrefix === 'hold-release-' && holdReleasePromptItem ? holdReleasePromptItem : activeItem;
             if (!avNoteContextItem) return;
             if (!isDatasetLoaded('avNotes', 'initial')) {
