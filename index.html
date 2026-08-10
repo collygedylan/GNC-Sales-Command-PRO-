@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.41';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.42';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.41').trim() || 'V2026.08.09.41';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.42').trim() || 'V2026.08.09.42';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.41';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.42';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26788,7 +26788,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.41').trim() || 'V2026.08.09.41';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.42').trim() || 'V2026.08.09.42';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -93820,6 +93820,38 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return date.getUTCDay();
         }
 
+        const DOCK_SUSPEND_DC_MONTH_NAME_INDEX = Object.freeze({
+            jan: 1,
+            january: 1,
+            feb: 2,
+            february: 2,
+            mar: 3,
+            march: 3,
+            apr: 4,
+            april: 4,
+            may: 5,
+            jun: 6,
+            june: 6,
+            jul: 7,
+            july: 7,
+            aug: 8,
+            august: 8,
+            sep: 9,
+            sept: 9,
+            september: 9,
+            oct: 10,
+            october: 10,
+            nov: 11,
+            november: 11,
+            dec: 12,
+            december: 12
+        });
+
+        function getDockSuspendDcMonthNumberFromText(value = '') {
+            const key = String(value || '').trim().toLowerCase();
+            return Number(DOCK_SUSPEND_DC_MONTH_NAME_INDEX[key] || 0) || null;
+        }
+
         function getDockSuspendDcRequestPlanstartWeekdayFromValue(rawValue = '') {
             if (!rawValue) return null;
             if (rawValue instanceof Date && !Number.isNaN(rawValue.getTime())) {
@@ -93839,6 +93871,11 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 let year = Number(slashMatch[3]);
                 if (year < 100) year += 2000;
                 return getUtcWeekdayFromDateParts(year, slashMatch[1], slashMatch[2]);
+            }
+            const namedMonthMatch = text.match(/^(?:(?:mon|tue|wed|thu|fri|sat|sun)(?:day)?\s*,?\s+)?([a-z]{3,9})\s+(\d{1,2})(?:st|nd|rd|th)?\s*,?\s+(\d{4})(?:\b|\s)/i);
+            if (namedMonthMatch) {
+                const month = getDockSuspendDcMonthNumberFromText(namedMonthMatch[1]);
+                if (month) return getUtcWeekdayFromDateParts(namedMonthMatch[3], month, namedMonthMatch[2]);
             }
             return null;
         }
@@ -94730,6 +94767,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     String(firstNonEmptyValue(row && row.LOCATIONCODE, row && row.locationcode, '') || '').trim(),
                     String(firstNonEmptyValue(row && row.LOTCODE, row && row.lotcode, '') || '').trim(),
                     String(firstNonEmptyValue(row && row.QUANTITYORDERED, row && row.QTY_ORDERED, row && row.PTRAVAILABLE, row && row.ptravailable, '') || '').trim(),
+                    String(firstNonEmptyValue(getDockSuspendDcLooseRowValue(row, DOCK_SUSPEND_DC_PLANSTART_KEYS), '') || '').trim(),
                     String(firstNonEmptyValue(row && row.CUSTOMERNAME, row && row.customername, '') || '').trim(),
                     String(firstNonEmptyValue(row && row.CONSIGNEENAME, row && row.consigneename, '') || '').trim(),
                     String(firstNonEmptyValue(row && row.ASSIGNEDTO, row && row.assignedto, row && row.AssignedTo, row && row.ASSIGNED_TO, row && row.assigned_to, '') || '').trim()
