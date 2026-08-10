@@ -5,17 +5,17 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
     <title>Ag Data Solutions</title>
     <meta name="theme-color" content="#007a4d">
-    <link rel="icon" type="image/png" sizes="32x32" href="./ag-data-solutions-icon-v2026080923-32.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="./ag-data-solutions-icon-v2026080923-192.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="./ag-data-solutions-icon-v2026080923-180.png">
-    <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v2026080923.png">
-    <link rel="preload" as="image" href="./ag-data-solutions-logo-v2026080923.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./ag-data-solutions-icon-v2026080925-32.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="./ag-data-solutions-icon-v2026080925-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./ag-data-solutions-icon-v2026080925-180.png">
+    <link rel="apple-touch-startup-image" href="./ag-data-solutions-splash-v2026080925.png">
+    <link rel="preload" as="image" href="./ag-data-solutions-logo-v2026080925.png">
     <link rel="preconnect" href="https://cdn.tailwindcss.com">
     <link rel="preconnect" href="https://unpkg.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.09.24';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.09.25';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5049,6 +5049,151 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 padding:.32rem .36rem !important;
             }
         }
+        @media (max-width:760px), (pointer:coarse){
+            body.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #main-scroll-area{
+                overflow-y:hidden !important;
+                overscroll-behavior-y:none !important;
+                scroll-padding-bottom:var(--footer-nav-reserve) !important;
+            }
+            body.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-wrapper{
+                height:calc(100% - var(--footer-nav-reserve)) !important;
+                min-height:0 !important;
+                overflow:hidden !important;
+            }
+            body.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-home:not(.hidden){
+                height:100% !important;
+                min-height:0 !important;
+                display:flex !important;
+                flex-direction:column !important;
+                overflow:hidden !important;
+            }
+            #view-home .home-dashboard-sticky{
+                position:relative !important;
+                top:auto !important;
+                z-index:1 !important;
+                flex:0 0 auto !important;
+                margin:-.2rem 0 .1rem !important;
+                padding:0 !important;
+                background:transparent !important;
+            }
+            #view-home .home-dashboard-sticky::before{
+                display:none !important;
+            }
+            #view-home .home-dashboard-sticky #home-dashboard-hero{
+                margin:0 !important;
+                padding:.34rem .52rem !important;
+                border-radius:14px !important;
+                box-shadow:0 6px 16px rgba(7,94,63,.14) !important;
+            }
+            #view-home .home-dashboard-logo{
+                max-width:clamp(5.3rem,24vw,6.8rem) !important;
+                margin-top:0 !important;
+                padding:.22rem !important;
+                border-radius:10px !important;
+            }
+            #view-home .home-dashboard-sticky #home-dashboard-hero p{
+                margin-bottom:.08rem !important;
+                font-size:6.5px !important;
+                letter-spacing:.15em !important;
+            }
+            #view-home .home-dashboard-sticky #home-dashboard-hero .flex.flex-col{
+                padding-top:.16rem !important;
+                margin-top:.02rem !important;
+            }
+            #view-home .home-dashboard-sticky #home-dashboard-hero .text-\[15px\]{
+                font-size:7.5px !important;
+                letter-spacing:.1em !important;
+            }
+            #view-home .home-sync-accordion{
+                margin-top:.2rem !important;
+                border-radius:13px !important;
+            }
+            #view-home .home-sync-accordion>summary{
+                min-height:34px !important;
+                padding:.28rem .42rem !important;
+                gap:.35rem !important;
+            }
+            #view-home .home-sync-accordion #dashboard-sync-stamp{
+                font-size:.6rem !important;
+                line-height:1 !important;
+            }
+            #view-home .home-run-script-btn{
+                min-height:28px !important;
+                padding:.28rem .42rem !important;
+                border-radius:11px !important;
+                font-size:.46rem !important;
+                letter-spacing:.08em !important;
+            }
+            #view-home .home-sync-accordion summary .w-10,
+            #view-home .home-sync-accordion summary .h-10{
+                width:1.9rem !important;
+                height:1.9rem !important;
+                border-radius:.7rem !important;
+            }
+            #view-home .home-sync-accordion summary .w-8,
+            #view-home .home-sync-accordion summary .h-8{
+                width:1.55rem !important;
+                height:1.55rem !important;
+                border-radius:.6rem !important;
+            }
+            #view-home #home-dynamic-content{
+                display:none !important;
+            }
+            #view-home #home-dashboard-content{
+                flex:1 1 auto !important;
+                min-height:0 !important;
+                overflow:hidden !important;
+                scroll-margin-top:0 !important;
+            }
+            #view-home #home-dashboard-modules.hidden{
+                display:none !important;
+            }
+            body.current-view-home.home-dashboard-mode:not(.keyboard-open):not(.detail-field-active):not(.measurement-keyboard-open) #view-home #home-dashboard-modules:not(.hidden){
+                height:100% !important;
+                min-height:0 !important;
+                display:flex !important;
+                flex-direction:column !important;
+                overflow:hidden !important;
+                margin-top:0 !important;
+            }
+            #view-home #home-dashboard-modules h2,
+            #view-home #home-rep-dashboard-modules h2{
+                flex:0 0 auto !important;
+                margin:0 0 .16rem .15rem !important;
+                font-size:.48rem !important;
+                line-height:1 !important;
+            }
+            #view-home #home-dashboard-grid,
+            #view-home #home-rep-dashboard-grid{
+                flex:1 1 auto !important;
+                min-height:0 !important;
+                display:grid !important;
+                grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+                grid-auto-rows:minmax(0,1fr) !important;
+                align-content:stretch !important;
+                gap:.22rem .32rem !important;
+                margin-bottom:0 !important;
+                overflow:hidden !important;
+            }
+            #view-home #home-dashboard-grid>div,
+            #view-home #home-rep-dashboard-grid>button{
+                min-height:0 !important;
+                height:100% !important;
+                padding:.18rem .28rem !important;
+                gap:.12rem !important;
+                border-radius:9px !important;
+            }
+            #view-home #home-dashboard-grid>div>i,
+            #view-home #home-rep-dashboard-grid>button>i{
+                font-size:clamp(1rem,2.35vh,1.28rem) !important;
+            }
+            #view-home #home-dashboard-grid>div>span,
+            #view-home #home-rep-dashboard-grid>button>span{
+                font-size:clamp(.5rem,1.18vh,.62rem) !important;
+                line-height:1 !important;
+                letter-spacing:.055em !important;
+            }
+        }
         html.outdoor-mode #view-av .av-primary-tabs-sticky,
         body.outdoor-mode #view-av .av-primary-tabs-sticky,
         html.outdoor-mode #view-drive .drive-controls-sticky,
@@ -5123,7 +5268,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
     <div id="view-login">
         <div class="login-card">
             <div class="flex flex-col items-center mb-8 w-full relative">
-                <img src="./ag-data-solutions-logo-v2026080923.png" alt="Ag Data Solutions" class="w-full max-w-[270px] rounded-xl object-contain">
+                <img src="./ag-data-solutions-logo-v2026080925.png" alt="Ag Data Solutions" class="w-full max-w-[270px] rounded-xl object-contain">
                 <div class="flex flex-col items-center gap-0.5 mt-5">
                     <span class="text-[17px] font-black text-gray-800 tracking-[0.2em] uppercase border-b-[3px] border-[#007a4d] pb-0.5">POWERED BY AG METRIC</span>
                 </div>
@@ -5909,7 +6054,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.24').trim() || 'V2026.08.09.24';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.25').trim() || 'V2026.08.09.25';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -5977,7 +6122,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div id="home-dashboard-hero" class="bg-[#007a4d] text-white p-6 rounded-xl mb-6 shadow-lg flex flex-col items-center text-center relative overflow-hidden">
                             <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full pointer-events-none"></div>
                             <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-black opacity-10 rounded-full pointer-events-none"></div>
-                            <img src="./ag-data-solutions-logo-v2026080923.png" alt="Ag Data Solutions" class="home-dashboard-logo z-10 relative mt-4 w-full max-w-[300px] rounded-xl bg-white/95 p-3 object-contain shadow-sm">
+                            <img src="./ag-data-solutions-logo-v2026080925.png" alt="Ag Data Solutions" class="home-dashboard-logo z-10 relative mt-4 w-full max-w-[300px] rounded-xl bg-white/95 p-3 object-contain shadow-sm">
                             <p class="text-green-100 text-[10px] font-bold mb-5 uppercase tracking-[0.2em] z-10 relative">Dashboard</p>
                             <div class="flex flex-col items-center pt-4 border-t border-white/20 w-full mt-1 z-10 relative">
                                 <div class="text-[15px] font-black tracking-[0.2em] text-white uppercase drop-shadow-sm">POWERED BY AG METRIC</div>
@@ -6771,7 +6916,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                         <div class="advertisement-editor-header">
                             <div class="min-w-0">
                                 <div class="advertisement-editor-eyebrow">Marketing Studio</div>
-                                <input id="advertisement-title" class="advertisement-title-input" type="text" value="Greenleaf Advertisement" aria-label="Advertisement title" onchange="updateAdvertisementTitle(this.value)">
+                                <input id="advertisement-title" class="advertisement-title-input" type="text" value="Ag Data Advertisement" aria-label="Advertisement title" onchange="updateAdvertisementTitle(this.value)">
                             </div>
                             <button type="button" id="advertisement-export-top-btn" class="advertisement-primary-btn" onclick="return exportAdvertisementDesign()"><i class="ph-bold ph-download-simple"></i><span>Export Ad</span></button>
                         </div>
@@ -7379,7 +7524,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.24';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.25';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -19908,8 +20053,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const body = getDepartmentCalendarPushBody(event, options);
             const notificationOptions = {
                 body,
-                icon: './ag-data-solutions-icon-v2026080923-192.png',
-                badge: './ag-data-solutions-icon-v2026080923-192.png',
+                icon: './ag-data-solutions-icon-v2026080925-192.png',
+                badge: './ag-data-solutions-icon-v2026080925-192.png',
                 tag: `calendar-foreground-${event.id}`,
                 renotify: true,
                 silent: false,
@@ -26331,7 +26476,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.24').trim() || 'V2026.08.09.24';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.25').trim() || 'V2026.08.09.25';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -35355,8 +35500,8 @@ let avTopControlsRenderToken = 0;
                 type: 'email',
                 emailType: 'ncr_approval',
                 subject: `Inventory Edit Approval: ${subjectName}`,
-                fromName: 'Greenleaf Inventory Edit',
-                brandLabel: 'Greenleaf Inventory Edit',
+                fromName: 'Ag Data Inventory Edit',
+                brandLabel: 'Ag Data Inventory Edit',
                 sourceLabel: 'Inventory Edit',
                 folderId: normalized.id,
                 requestFolder: 'Inventory Edit Approval',
@@ -51241,8 +51386,8 @@ function toggleDriveQuickRequestItem(domId) {
             const body = title && title !== sender ? `${title}: ${preview}` : preview;
             const options = {
                 body,
-                icon: './ag-data-solutions-icon-v2026080923-192.png',
-                badge: './ag-data-solutions-icon-v2026080923-192.png',
+                icon: './ag-data-solutions-icon-v2026080925-192.png',
+                badge: './ag-data-solutions-icon-v2026080925-192.png',
                 tag: `chat-foreground-${message.conversationId}-${message.id}`,
                 renotify: true,
                 silent: false,
@@ -52086,7 +52231,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const ok = await subscribeCurrentDeviceForPush({ prompt: true, force: isCellularPushDevice() });
                 if (ok) {
                     hideMobilePushEnablePrompt();
-                    showToast('Notifications On', 'This device is ready for Greenleaf alerts.');
+                    showToast('Notifications On', 'This device is ready for Ag Data alerts.');
                 } else if (Notification.permission === 'denied') {
                     maybeWarnPushPermissionBlocked(true);
                     showPushPermissionHelp();
@@ -52184,7 +52329,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (ok) {
                     androidPushForceRefreshedThisSession = /Android/i.test(String(navigator.userAgent || ''));
                     if (isCellularPushDevice()) markMobilePushRefreshComplete();
-                    showToast('Notifications On', 'This device will receive Greenleaf alerts.');
+                    showToast('Notifications On', 'This device will receive Ag Data alerts.');
                     return true;
                 }
                 if (Notification.permission === 'denied') {
@@ -63823,7 +63968,7 @@ function toggleDriveQuickRequestItem(domId) {
                 ],
                 cells: [
                     ['Sales Rep', assignedTo || 'Shear List'],
-                    ['Customer / Consignee', firstNonEmptyValue(snapshot.req_customer, snapshot.customer_name, 'Greenleaf Nursery')],
+                    ['Customer / Consignee', firstNonEmptyValue(snapshot.req_customer, snapshot.customer_name, 'Customer / Consignee')],
                     ['Row Note', instructionText || 'N/A', 'request-open-info-cell--wide'],
                     ['Required Spec', firstNonEmptyValue(snapshot.req_spec, snapshot.desired_spec, 'N/A')],
                     ['Required Caliper', firstNonEmptyValue(snapshot.req_caliper, snapshot.desired_caliper, 'N/A')],
@@ -65482,8 +65627,8 @@ function toggleDriveQuickRequestItem(domId) {
                 type: 'email',
                 emailType: 'shear_location_complete',
                 subject: `Shear Location Complete: ${safeLocation}`,
-                fromName: 'Greenleaf Shear List',
-                brandLabel: 'Greenleaf Shear List',
+                fromName: 'Ag Data Shear List',
+                brandLabel: 'Ag Data Shear List',
                 sourceLabel: 'Shear List',
                 customer: 'Shear List',
                 requestCustomer: 'Shear List',
@@ -89639,7 +89784,7 @@ function toggleDriveQuickRequestItem(domId) {
                 ? `<div class="detail-av-hero-dots">${photoUrls.slice(0, 6).map(() => '<span></span>').join('')}</div>`
                 : '';
             const stat = (label, value) => `<div class="detail-av-stat"><div class="detail-av-stat-label">${escapeShareHtml(label)}</div><div class="detail-av-stat-value">${escapeShareHtml(value)}</div></div>`;
-            hero.innerHTML = `<div class="detail-av-hero-card">${photoHtml}${dotHtml}<div class="detail-av-info"><div class="detail-av-store"><span class="detail-av-store-mark"><i class="ph-bold ph-leaf"></i></span><span>Greenleaf Availability</span></div><div class="detail-av-stats">${stat('On hand', ptrOnHandText)}${stat('Review', ptrReviewText)}${stat('Available', ptrAvailableText)}${stat('Open Stock', openStockText)}${stat('Loc Photo Match', locPhotoMatchText)}</div>${pickNoteText ? `<div class="detail-av-pick-note"><div class="detail-av-pick-note-label">Pick Note</div><div class="detail-av-pick-note-text">${escapeShareHtml(pickNoteText)}</div></div>` : ''}</div></div>`;
+            hero.innerHTML = `<div class="detail-av-hero-card">${photoHtml}${dotHtml}<div class="detail-av-info"><div class="detail-av-store"><span class="detail-av-store-mark"><i class="ph-bold ph-leaf"></i></span><span>Ag Data Availability</span></div><div class="detail-av-stats">${stat('On hand', ptrOnHandText)}${stat('Review', ptrReviewText)}${stat('Available', ptrAvailableText)}${stat('Open Stock', openStockText)}${stat('Loc Photo Match', locPhotoMatchText)}</div>${pickNoteText ? `<div class="detail-av-pick-note"><div class="detail-av-pick-note-label">Pick Note</div><div class="detail-av-pick-note-text">${escapeShareHtml(pickNoteText)}</div></div>` : ''}</div></div>`;
             hero.classList.remove('hidden');
         }
 
@@ -119225,7 +119370,7 @@ C.14.043 C.15.000
                     ? `<div class="app-av-reserve-panel"><div class="min-w-0"><div class="app-av-reserve-title">Reserved For</div><div class="app-av-reserve-main">${esc(firstNonEmptyValue(item.AV_RESERVE_CUSTOMER_PREVIEW, 'Reserve Customer'))}</div><div class="app-av-reserve-sub">${esc([firstNonEmptyValue(item.AV_RESERVE_SALESREP_PREVIEW, ''), firstNonEmptyValue(item.AV_RESERVE_CONSIGNEE_PREVIEW, '')].filter(Boolean).join(' | ') || 'ph_reserves')}</div></div><div class="app-av-reserve-count">${esc(String(item.AV_RESERVE_CUSTOMER_COUNT || 1))} customer${Number(item.AV_RESERVE_CUSTOMER_COUNT || 1) === 1 ? '' : 's'}</div></div>`
                     : '';
                 const photoCaption = escJsAttrValue(`${item.COMMONNAME || 'AV Item'} - ${item.CONTSIZE || '-'}`);
-                const agDataLogoSrc = 'ag-data-solutions-logo-v2026080923.png';
+                const agDataLogoSrc = 'ag-data-solutions-logo-v2026080925.png';
                 const pendingLeavesHtml = Array.from({ length: 5 }, () => `<span class="app-av-pending-leaf" aria-hidden="true"><img src="${agDataLogoSrc}" alt=""></span>`).join('');
                 const pendingHeroHtml = `<div class="app-av-hero-empty app-av-pending-hero" aria-label="update pending"><img src="${agDataLogoSrc}" class="app-av-pending-logo" alt="Ag Data Solutions"><div class="app-av-pending-text">update pending</div><div class="app-av-pending-leaves">${pendingLeavesHtml}</div></div>`;
                 const avCardActivationLabel = hasValidAvPhotos ? 'Open AV photos' : 'Update pending';
@@ -119297,7 +119442,7 @@ C.14.043 C.15.000
                 const holdReasonCatalogHtml = holdReasonValue
                     ? `<section class="app-av-catalog-note app-av-catalog-note--hold"><span class="app-av-catalog-note-label">Hold / Stop</span><div class="app-av-catalog-note-text">${cleanHoldCode ? `${esc(cleanHoldCode)} - ` : ''}${esc(holdReasonValue)}</div></section>`
                     : '';
-        return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av app-av-catalog-card relative rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView === 'reserves_drill' ? 'av' : sourceView, avCardActivationLabel)}><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked, '${safeCardSourceViewKey}')"></div><div class="app-av-catalog-frame"><div class="app-av-catalog-media"><div class="app-av-catalog-photo-wrap">${heroHtml}</div>${saveRowHtml}</div><div class="app-av-catalog-info"><div><span class="app-av-catalog-eyebrow"><i class="ph-bold ph-leaf"></i> Greenleaf Availability</span><h3 class="app-av-catalog-title">${esc(commonNameText)}</h3><div class="app-av-catalog-meta"><span>${esc(contSizeText)}</span><span>${esc(itemCodeText)}</span><span>Location ${esc(locationCodeText)}</span><span>Season ${esc(seasonText)}</span></div></div><div class="app-av-catalog-highlight"><div class="app-av-catalog-stock-block">${avStockMetricRowHtml}</div>${priceHtml}</div><div class="app-av-catalog-note-grid">${avNoteCatalogHtml}${holdReasonCatalogHtml}</div><div class="app-av-catalog-actions">${bloomButtonHtml}<div class="app-av-secondary-actions">${viewPhotosButtonHtml}</div></div></div></div></div>`;
+        return `<div class="flex items-start w-full mb-3 item-row app-smart-card app-smart-card--inventory app-smart-card--av app-av-catalog-card relative rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${item.DOM_ID}" oncontextmenu="return handleCardContextMenu(event, '${item.DOM_ID}')" ${buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView === 'reserves_drill' ? 'av' : sourceView, avCardActivationLabel)}><div class="card-checkbox-container flex-shrink-0 mt-1"><input type="checkbox" class="card-checkbox w-6 h-6 rounded border-gray-300 text-teal-600 focus:ring-teal-600 shadow-sm" ${isChecked} onclick="event.stopPropagation(); toggleGlobalItem('${item.DOM_ID}', this.checked, '${safeCardSourceViewKey}')"></div><div class="app-av-catalog-frame"><div class="app-av-catalog-media"><div class="app-av-catalog-photo-wrap">${heroHtml}</div>${saveRowHtml}</div><div class="app-av-catalog-info"><div><span class="app-av-catalog-eyebrow"><i class="ph-bold ph-leaf"></i> Ag Data Availability</span><h3 class="app-av-catalog-title">${esc(commonNameText)}</h3><div class="app-av-catalog-meta"><span>${esc(contSizeText)}</span><span>${esc(itemCodeText)}</span><span>Location ${esc(locationCodeText)}</span><span>Season ${esc(seasonText)}</span></div></div><div class="app-av-catalog-highlight"><div class="app-av-catalog-stock-block">${avStockMetricRowHtml}</div>${priceHtml}</div><div class="app-av-catalog-note-grid">${avNoteCatalogHtml}${holdReasonCatalogHtml}</div><div class="app-av-catalog-actions">${bloomButtonHtml}<div class="app-av-secondary-actions">${viewPhotosButtonHtml}</div></div></div></div></div>`;
             };
 
             if(sourceView === 'av-photo' || sourceView === 'av') {
@@ -134347,7 +134492,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         let advertisementHistory = [];
         let advertisementHistoryIndex = -1;
         let advertisementHistoryLocked = false;
-        let advertisementLastTitle = 'Greenleaf Advertisement';
+        let advertisementLastTitle = 'Ag Data Advertisement';
         let advertisementTouchPointers = new Map();
         let advertisementGestureState = null;
         let advertisementExportInFlight = false;
@@ -134359,12 +134504,12 @@ ${folderNote ? `Folder Note: ${folderNote}
         function getAdvertisementTitle() {
             const input = document.getElementById('advertisement-title');
             const value = String(input ? input.value : advertisementLastTitle || '').trim();
-            advertisementLastTitle = value || 'Greenleaf Advertisement';
+            advertisementLastTitle = value || 'Ag Data Advertisement';
             return advertisementLastTitle;
         }
 
         function updateAdvertisementTitle(value = '') {
-            advertisementLastTitle = String(value || '').trim() || 'Greenleaf Advertisement';
+            advertisementLastTitle = String(value || '').trim() || 'Ag Data Advertisement';
             const input = document.getElementById('advertisement-title');
             if (input && input.value !== advertisementLastTitle) input.value = advertisementLastTitle;
             return false;
@@ -135655,7 +135800,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function buildAdvertisementExportFileName(format = 'png') {
-            const cleanTitle = getAdvertisementTitle().replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'greenleaf-ad';
+            const cleanTitle = getAdvertisementTitle().replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'ag-data-ad';
             const date = new Date().toISOString().slice(0, 10);
             return `${cleanTitle}-${date}.${format}`;
         }
@@ -135685,10 +135830,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             return { blob, dataUrl, fileName, format: safeFormat };
         }
 
-        async function deliverAdvertisementExport(blob, fileName = 'greenleaf-ad.png') {
+        async function deliverAdvertisementExport(blob, fileName = 'ag-data-ad.png') {
             const file = new File([blob], fileName, { type: blob.type || 'image/png' });
             if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
-                await navigator.share({ files: [file], title: getAdvertisementTitle(), text: 'Greenleaf advertisement export' });
+                await navigator.share({ files: [file], title: getAdvertisementTitle(), text: 'Ag Data advertisement export' });
                 return 'shared';
             }
             const objectUrl = URL.createObjectURL(blob);
