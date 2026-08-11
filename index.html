@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.11.05';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.11.06';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.05').trim() || 'V2026.08.11.05';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.06').trim() || 'V2026.08.11.06';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.05';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.06';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7978,6 +7978,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const ACTIVE_TYPING_GRACE_MS = 280;
         const ACTIVE_SCROLL_GRACE_MS = 560;
         const FAST_PRESS_MOVE_THRESHOLD_PX = 14;
+        const FAST_PRESS_TOUCH_MOVE_THRESHOLD_PX = 24;
         const FAST_PRESS_CLICK_SUPPRESS_MS = 420;
         const FAST_PRESS_SCOPE_SUPPRESS_MS = 280;
         const DRIVE_DRILL_CARD_CLICK_SUPPRESS_MS = 420;
@@ -20037,7 +20038,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             if (activeFastPress.pointerId !== null && Number(event.pointerId) !== activeFastPress.pointerId) return true;
             const deltaX = Math.abs(Number(event.clientX || 0) - activeFastPress.startX);
             const deltaY = Math.abs(Number(event.clientY || 0) - activeFastPress.startY);
-            if ((deltaX > FAST_PRESS_MOVE_THRESHOLD_PX || deltaY > FAST_PRESS_MOVE_THRESHOLD_PX) && !activeFastPress.cancelled) {
+            const movementThreshold = (activeFastPress.pointerType === 'touch' || activeFastPress.pointerType === 'pen')
+                ? FAST_PRESS_TOUCH_MOVE_THRESHOLD_PX
+                : FAST_PRESS_MOVE_THRESHOLD_PX;
+            if ((deltaX > movementThreshold || deltaY > movementThreshold) && !activeFastPress.cancelled) {
                 activeFastPress.cancelled = true;
                 armFastPressGhostClickSuppression(activeFastPress.pointerType);
             }
@@ -27216,7 +27220,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.05').trim() || 'V2026.08.11.05';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.06').trim() || 'V2026.08.11.06';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -68595,7 +68599,7 @@ function toggleDriveQuickRequestItem(domId) {
                 selectedDriveBlock = block;
                 selectedDriveLoc = null;
                 driveViewLevel = 1;
-            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
+            }, getDriveDrillNavigationOptions({ resetScrollTopAfterRender: true }));
         }
         function selectDriveLoc(loc) {
             cancelDriveSearchRenderWork();
@@ -68604,7 +68608,7 @@ function toggleDriveQuickRequestItem(domId) {
                 setDriveSearchManualSelectionLock(false);
                 selectedDriveLoc = loc;
                 driveViewLevel = 2;
-            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
+            }, getDriveDrillNavigationOptions({ resetScrollTopAfterRender: true }));
         }
         function resetDriveView(shouldRender = true) {
             activeDriveMode = 'ok';
@@ -125808,6 +125812,60 @@ ${folderNote ? `Folder Note: ${folderNote}
             return false;
         }
 
+        function getDriveDrillNavigationOptions(overrides = {}) {
+            const nextOverrides = (overrides && typeof overrides === 'object') ? overrides : {};
+            return {
+                delay: 0,
+                typingDelay: isTouchConstrainedDevice() ? 28 : 18,
+                forceRender: true,
+                interactiveCritical: true,
+                allowDuringLiveGesture: true,
+                allowWhileTyping: true,
+                allowWhileTouching: true,
+                allowWhileScrolling: true,
+                allowDuringRecentInteraction: true,
+                allowDuringExtendedBlock: true,
+                touchDelayMs: 8,
+                scrollDelayMs: 12,
+                interactionDelayMs: 8,
+                maxDeferMs: 140,
+                ...nextOverrides
+            };
+        }
+
+        function tryAutoDrillDriveCommonNameSearch(term = '') {
+            if (activeDriveTab !== 'name') return false;
+            const normalizedTerm = normalizeSearchValue(term);
+            if (normalizedTerm.length < 3) return false;
+            let driveViewState;
+            try {
+                driveViewState = buildDriveVisibleItemsState();
+            } catch (error) {
+                return false;
+            }
+            const visibleItems = Array.isArray(driveViewState && driveViewState.visibleItems) ? driveViewState.visibleItems : [];
+            if (!visibleItems.length) return false;
+            const matchingNames = new Map();
+            visibleItems.forEach((item) => {
+                const commonName = getDrivePlantCommonName(item);
+                const normalizedName = normalizeSearchValue(commonName);
+                if (!normalizedName) return;
+                if (!doesProgressiveSearchTextMatch(commonName, normalizedTerm) && !normalizedName.includes(normalizedTerm)) return;
+                if (!matchingNames.has(normalizedName)) matchingNames.set(normalizedName, commonName);
+            });
+            if (!matchingNames.size) return false;
+            const exactMatch = matchingNames.get(normalizedTerm);
+            const nextName = exactMatch || (matchingNames.size === 1 ? matchingNames.values().next().value : '');
+            if (!nextName) return false;
+            selectedDriveName = nextName;
+            selectedDriveSize = null;
+            selectedDriveSeason = null;
+            selectedDriveProgram = null;
+            driveViewLevel = 1;
+            setDriveSearchManualSelectionLock(false);
+            return true;
+        }
+
         function scheduleDriveSearchRender(term = '', options = {}) {
             const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const touchConstrained = isTouchConstrainedDevice();
@@ -129636,7 +129694,11 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             if (shouldScopeDriveSearchToSelectedLocation()) {
                 setDriveSearchManualSelectionLock(false);
-            } else if (activeDriveTab === 'name' || activeDriveTab === 'loc') {
+            } else if (activeDriveTab === 'name') {
+                resetDriveDrillSelectionState();
+                const didAutoDrillName = tryAutoDrillDriveCommonNameSearch(term);
+                setDriveSearchManualSelectionLock(term.length > 0 && !didAutoDrillName);
+            } else if (activeDriveTab === 'loc') {
                 resetDriveDrillSelectionState();
                 setDriveSearchManualSelectionLock(term.length > 0);
             } else {
@@ -129657,7 +129719,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 selectedDriveSeason = null;
                 selectedDriveProgram = null;
                 driveViewLevel = 1;
-            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
+            }, getDriveDrillNavigationOptions({ resetScrollTopAfterRender: true }));
         }
         function selectDriveSize(size) {
             cancelDriveSearchRenderWork();
@@ -129668,7 +129730,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 selectedDriveSeason = null;
                 selectedDriveProgram = null;
                 driveViewLevel = 2;
-            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
+            }, getDriveDrillNavigationOptions({ resetScrollTopAfterRender: true }));
         }
         function selectDriveSeason(season) {
             cancelDriveSearchRenderWork();
@@ -129678,7 +129740,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 selectedDriveSeason = season;
                 selectedDriveProgram = null;
                 driveViewLevel = 3;
-            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
+            }, getDriveDrillNavigationOptions({ resetScrollTopAfterRender: true }));
         }
         function selectDriveProgram(program) {
             const safeProgram = normalizeDriveItemProgram(program);
@@ -129689,7 +129751,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 setDriveSearchManualSelectionLock(false);
                 selectedDriveProgram = safeProgram;
                 driveViewLevel = 4;
-            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: true });
+            }, getDriveDrillNavigationOptions({ resetScrollTopAfterRender: true }));
         }
         function backToDriveSeasons() {
             cancelDriveSearchRenderWork();
@@ -129698,7 +129760,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 driveViewLevel = 2;
                 selectedDriveSeason = null;
                 selectedDriveProgram = null;
-            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: `drive-name:${selectedDriveName || ''}:${selectedDriveSize || ''}:seasons` });
+            }, getDriveDrillNavigationOptions({ resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: `drive-name:${selectedDriveName || ''}:${selectedDriveSize || ''}:seasons` }));
         }
         function backToDrivePrograms() {
             cancelDriveSearchRenderWork();
@@ -129706,7 +129768,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             return runDirectTrackedNavigation('drive', `drive-season:${String(selectedDriveSeason || '').trim()}`, () => {
                 driveViewLevel = 3;
                 selectedDriveProgram = null;
-            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: `drive-name:${selectedDriveName || ''}:${selectedDriveSize || ''}:${selectedDriveSeason || ''}:programs` });
+            }, getDriveDrillNavigationOptions({ resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: `drive-name:${selectedDriveName || ''}:${selectedDriveSize || ''}:${selectedDriveSeason || ''}:programs` }));
         }
         function backToDriveSizes() {
             cancelDriveSearchRenderWork();
@@ -129716,7 +129778,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 selectedDriveSize = null;
                 selectedDriveSeason = null;
                 selectedDriveProgram = null;
-            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: `drive-name:${selectedDriveName || ''}:sizes` });
+            }, getDriveDrillNavigationOptions({ resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: `drive-name:${selectedDriveName || ''}:sizes` }));
         }
         function backToDriveNames() {
             cancelDriveSearchRenderWork();
@@ -129727,7 +129789,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 selectedDriveSize = null;
                 selectedDriveSeason = null;
                 selectedDriveProgram = null;
-            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: 'drive:name:names' });
+            }, getDriveDrillNavigationOptions({ resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: 'drive:name:names' }));
         }
         function backToDriveBlocks() {
             cancelDriveSearchRenderWork();
@@ -129736,7 +129798,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 driveViewLevel = 0;
                 selectedDriveBlock = null;
                 selectedDriveLoc = null;
-            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: 'drive:loc:blocks' });
+            }, getDriveDrillNavigationOptions({ resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: 'drive:loc:blocks' }));
         }
         function backToDriveLocations() {
             cancelDriveSearchRenderWork();
@@ -129744,7 +129806,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             return runDirectTrackedNavigation('drive', `drive-block:${String(selectedDriveBlock || '').trim()}`, () => {
                 driveViewLevel = 1;
                 selectedDriveLoc = null;
-            }, { delay: 0, typingDelay: 160, resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: `drive:loc:${selectedDriveBlock || ''}:locations` });
+            }, getDriveDrillNavigationOptions({ resetScrollTopAfterRender: restoreScrollTop == null, restoreScrollTopAfterRender: restoreScrollTop, scrollResetKey: `drive:loc:${selectedDriveBlock || ''}:locations` }));
         }
 
         function driveRowHasEarlyALotCode(item = null) {
