@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.11.17';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.11.18';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -5608,8 +5608,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                 </select>
             </div>
             <div class="flex gap-2">
-                <button class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95" onclick="document.getElementById('dock-info-modal').classList.add('hidden')">CANCEL</button>
-                <button class="w-2/3 bg-[#007a4d] text-white font-bold p-3 rounded-lg shadow-md active:scale-95" onclick="saveDockInfoModal()">SAVE & CONTINUE</button>
+                <button type="button" data-fast-press-ignore class="w-1/3 bg-gray-100 text-gray-600 font-bold p-3 rounded-lg shadow-sm active:scale-95" onpointerdown="releaseUserInteractionBlockers('dock-info-cancel-pointer',{forceEditingCleanup:true})" ontouchstart="releaseUserInteractionBlockers('dock-info-cancel-touch',{forceEditingCleanup:true})" onclick="releaseUserInteractionBlockers('dock-info-cancel',{forceEditingCleanup:true}); document.getElementById('dock-info-modal').classList.add('hidden'); return false;">CANCEL</button>
+                <button type="button" data-fast-press-ignore class="w-2/3 bg-[#007a4d] text-white font-bold p-3 rounded-lg shadow-md active:scale-95" onpointerdown="releaseUserInteractionBlockers('dock-info-save-pointer',{forceEditingCleanup:true})" ontouchstart="releaseUserInteractionBlockers('dock-info-save-touch',{forceEditingCleanup:true})" onclick="return saveDockInfoModal(event)">SAVE & CONTINUE</button>
             </div>
         </div>
     </div>
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.17').trim() || 'V2026.08.11.17';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.18').trim() || 'V2026.08.11.18';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.17';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.18';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -8753,7 +8753,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function isMobileTextEntryTarget(target = null) {
             if (!target || target.disabled || target.readOnly) return false;
-            if (target.tagName === 'SELECT') return true;
+            if (target.tagName === 'SELECT') return false;
             return isTextLikeElement(target);
         }
 
@@ -9044,27 +9044,68 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             queueMobileTextEntryVisibilitySettle(target, { forceViewportSync: !lightIosFilter, light: lightIosFilter });
         }
 
+        function clearMobileTextEntryState(reason = '', options = {}) {
+            if (mobileTextEntryInputSettleTimer) {
+                clearTimeout(mobileTextEntryInputSettleTimer);
+                mobileTextEntryInputSettleTimer = null;
+            }
+            if (mobileTextEntryVisibilitySettleTimer) {
+                clearTimeout(mobileTextEntryVisibilitySettleTimer);
+                mobileTextEntryVisibilitySettleTimer = null;
+            }
+            if (mobileTextEntryVisibilitySettleFrame) {
+                cancelAnimationFrame(mobileTextEntryVisibilitySettleFrame);
+                mobileTextEntryVisibilitySettleFrame = null;
+            }
+            mobileTextEntryState = { target: null, scrollElement: null, scrollTop: 0, scrollLeft: 0, expiresAt: 0, preserveUntil: 0 };
+            updateMobileTextEntryBodyState(null);
+            const opts = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            if (opts.forceEditingCleanup === true && document && document.body) {
+                document.body.classList.remove('keyboard-open', 'mobile-text-entry-active', 'mobile-filter-entry-active');
+                document.documentElement.style.setProperty('--keyboard-offset', '0px');
+            }
+            scheduleStickyRailOffsetSync(`mobile-text-entry-clear:${normalizeUiSyncReason(reason) || 'input'}`, true);
+            if (typeof syncViewportHeight === 'function' && opts.syncViewport !== false) syncViewportHeight({ reason: `mobile-text-entry-clear:${normalizeUiSyncReason(reason) || 'input'}`, force: true });
+            return true;
+        }
+
+        function releaseUserInteractionBlockers(reason = '', options = {}) {
+            const opts = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const now = Date.now();
+            if (activeTouchSessionClearTimer) {
+                clearTimeout(activeTouchSessionClearTimer);
+                activeTouchSessionClearTimer = null;
+            }
+            activeTouchSession = false;
+            lastTouchInteractionAt = now - ACTIVE_TOUCH_GRACE_MS - 1;
+            if (opts.keepRecentInteraction !== true) lastUserInteractionAt = now - ACTIVE_INTERACTION_GRACE_MS - 1;
+            if (opts.keepScrollInteraction !== true) lastScrollAt = now - ACTIVE_SCROLL_GRACE_MS - 1;
+            try { clearActiveFastPress(); } catch (error) {}
+            try { clearFastPressGhostClickSuppression(); } catch (error) {}
+            try { clearMobileTextEntryState(reason || 'interaction-release', { forceEditingCleanup: opts.forceEditingCleanup === true, syncViewport: opts.syncViewport !== false }); } catch (error) {}
+            try { repairAppShellScrollState(`interaction-release:${normalizeUiSyncReason(reason) || 'manual'}`, { resetGestureState: true, forceEditingCleanup: opts.forceEditingCleanup === true }); } catch (error) {}
+            return true;
+        }
+
+        function handleNativeSelectInteractionRelease(event) {
+            const target = event && event.target && event.target.closest ? event.target.closest('select') : null;
+            if (!target) return;
+            const eventType = String(event && event.type || '').toLowerCase();
+            if (eventType === 'pointerdown' || eventType === 'touchstart') {
+                setTimeout(() => releaseUserInteractionBlockers(`select:${eventType}:open`, { forceEditingCleanup: true, syncViewport: false }), 140);
+                setTimeout(() => releaseUserInteractionBlockers(`select:${eventType}:open-settled`, { forceEditingCleanup: true }), 520);
+                return;
+            }
+            releaseUserInteractionBlockers(`select:${eventType || 'event'}`, { forceEditingCleanup: true });
+            setTimeout(() => releaseUserInteractionBlockers(`select:${eventType || 'event'}:settled`, { forceEditingCleanup: true }), 80);
+        }
+
         function handleMobileTextEntryFocusOut(event) {
             const target = event && event.target ? event.target : null;
             if (target && mobileTextEntryState.target !== target) return;
             setTimeout(() => {
                 if (isMobileTextEntryTarget(document.activeElement)) return;
-                if (mobileTextEntryInputSettleTimer) {
-                    clearTimeout(mobileTextEntryInputSettleTimer);
-                    mobileTextEntryInputSettleTimer = null;
-                }
-                if (mobileTextEntryVisibilitySettleTimer) {
-                    clearTimeout(mobileTextEntryVisibilitySettleTimer);
-                    mobileTextEntryVisibilitySettleTimer = null;
-                }
-                if (mobileTextEntryVisibilitySettleFrame) {
-                    cancelAnimationFrame(mobileTextEntryVisibilitySettleFrame);
-                    mobileTextEntryVisibilitySettleFrame = null;
-                }
-                mobileTextEntryState = { target: null, scrollElement: null, scrollTop: 0, scrollLeft: 0, expiresAt: 0, preserveUntil: 0 };
-                updateMobileTextEntryBodyState(null);
-                scheduleStickyRailOffsetSync('mobile-text-entry-clear', true);
-                if (typeof syncViewportHeight === 'function') syncViewportHeight({ reason: 'mobile-text-entry-clear', force: true });
+                clearMobileTextEntryState('focusout');
             }, 160);
         }
 
@@ -9101,6 +9142,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             document.addEventListener('focusout', handleMobileTextEntryFocusOut, { capture: true });
             document.addEventListener('input', handleMobileTextEntryInput, { capture: true, passive: true });
             document.addEventListener('keydown', handleMobileTextEntryEnter, { capture: true });
+            document.addEventListener('pointerdown', handleNativeSelectInteractionRelease, { capture: true, passive: true });
+            if (!window.PointerEvent) document.addEventListener('touchstart', handleNativeSelectInteractionRelease, { capture: true, passive: true });
+            document.addEventListener('change', handleNativeSelectInteractionRelease, { capture: true });
+            document.addEventListener('focusout', handleNativeSelectInteractionRelease, { capture: true });
         }
 
         function getFastFocusableSearchInput(target = null) {
@@ -19143,6 +19188,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
         function beginDirectNavigationActivity() {
             cancelPendingNavigationScrollResets();
+            try { releaseUserInteractionBlockers('direct-navigation', { forceEditingCleanup: true, syncViewport: false }); } catch (error) {}
         }
 
         function shouldYieldUserActionRender(options = {}) {
@@ -19571,16 +19617,19 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             const trackedOptions = {
                 delay: 0,
                 userAction: true,
-                preferImmediate: false,
+                preferImmediate: true,
+                interactiveCritical: true,
                 yieldToPaint: true,
                 allowDuringLiveGesture: true,
+                allowWhileTyping: true,
                 allowWhileTouching: true,
                 allowWhileScrolling: true,
                 allowDuringRecentInteraction: true,
-                allowDuringExtendedBlock: visibleSameView || !!nextOptions.allowDuringExtendedBlock,
-                touchDelayMs: 10,
-                interactionDelayMs: 10,
-                scrollDelayMs: 18,
+                allowDuringExtendedBlock: true,
+                touchDelayMs: 8,
+                interactionDelayMs: 8,
+                scrollDelayMs: 12,
+                maxDeferMs: USER_VISIBLE_FORCE_RENDER_MAX_DEFER_MS,
                 ...nextOptions
             };
             if (afterRenderCallbacks.length) {
@@ -19859,7 +19908,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return scheduleTrackedViewRender('low-stock', 'low-stock:render', guardIosSafariRenderOptions({ delay, typingDelay, forceRender, userAction: true, preferImmediate: true, interactiveCritical: true, allowDuringLiveGesture: true, allowWhileTyping: true, allowWhileTouching: true, allowWhileScrolling: true, allowDuringRecentInteraction: true, allowDuringExtendedBlock: true, touchDelayMs: 10, interactionDelayMs: 10, scrollDelayMs: 14, maxDeferMs: 180 }, { touchDelayMs: 72, interactionDelayMs: 72, scrollDelayMs: 110 }));
         }
 
-        function scheduleDocksRender(delay = 0, typingDelay = 180, forceRender = false) {
+        function scheduleDocksRender(delay = 0, typingDelay = 28, forceRender = false) {
             return scheduleTrackedViewRender('docks', 'docks:render', guardIosSafariRenderOptions({ delay, typingDelay, forceRender, userAction: true, preferImmediate: true, interactiveCritical: true, allowDuringLiveGesture: true, allowWhileTouching: true, allowWhileScrolling: true, allowDuringRecentInteraction: true, allowDuringExtendedBlock: true, touchDelayMs: 10, interactionDelayMs: 10, scrollDelayMs: 14, maxDeferMs: 180 }, { touchDelayMs: 72, interactionDelayMs: 72, scrollDelayMs: 110 }));
         }
 
@@ -20351,6 +20400,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (typeof driveDrillCardClickArmedAt !== 'undefined') driveDrillCardClickArmedAt = 0;
                 if (typeof driveDrillCardClickSuppressSessionId !== 'undefined') driveDrillCardClickSuppressSessionId = 0;
             } catch (error) {}
+            try { releaseUserInteractionBlockers('footer-nav', { forceEditingCleanup: true, syncViewport: false }); } catch (error) {}
         }
 
         function blurFooterNavTextEntryTarget() {
@@ -20371,16 +20421,20 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             blurFooterNavTextEntryTarget();
             clearFooterNavInteractionState();
             try {
-                cancelScheduledUiRenderByPrefix('search:drive-search');
-                cancelScheduledUiRenderByPrefix('tracked-view:drive:');
-                cancelScheduledUiRenderByPrefix('view-switch-render:drive');
-                if (safeViewId !== 'drive' && typeof cancelScheduledViewRenderWork === 'function') cancelScheduledViewRenderWork('drive');
+                cancelScheduledUiRenderByPrefix('search:');
+                ['drive', 'docks', 'av', 'request', 'tasks', 'sales-office', 'crop-roll', 'managers'].forEach((viewName) => {
+                    if (viewName === safeViewId) return;
+                    cancelScheduledUiRenderByPrefix(`tracked-view:${viewName}`);
+                    cancelScheduledUiRenderByPrefix(`view-switch-render:${viewName}`);
+                    cancelScheduledUiRenderByPrefix(`view-enter:${viewName}`);
+                    cancelScheduledUiRenderByPrefix(`view-activate:${viewName}`);
+                    if (typeof cancelStaleSearchWorkForView === 'function') cancelStaleSearchWorkForView(viewName);
+                    if (typeof cancelScheduledViewRenderWork === 'function') cancelScheduledViewRenderWork(viewName);
+                });
             } catch (error) {}
             try { clearStaleIosEditingChromeState('footer-nav', { force: true }); } catch (error) {}
             try { repairAppShellScrollState(`footer-nav:${safeViewId}`, { resetGestureState: true, forceEditingCleanup: true }); } catch (error) {}
             return switchView(safeViewId, {
-                force: true,
-                forceRender: true,
                 interactiveCritical: true,
                 preferImmediate: true,
                 allowDuringLiveGesture: true,
@@ -27320,7 +27374,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.17').trim() || 'V2026.08.11.17';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.18').trim() || 'V2026.08.11.18';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -76228,9 +76282,43 @@ function toggleDriveQuickRequestItem(domId) {
             scheduleDeferredCardPhotoHydration(container);
             return;
         }
-        function clearDocksSearch(){ document.getElementById('docks-search').value=""; document.getElementById('docks-search-clear').classList.add('hidden'); if (dockViewMode === 'docks') { dockViewLevel=0; selectedDockNum=null; selectedDockStop=null; } scheduleTrackedSearchViewRender('docks', 'docks', '', { force: true, skipDebounce: true, typingDelay: 80, allowWhileTyping: true }); }
-        function handleDocksSearch(){ const input=document.getElementById('docks-search'); const term=input ? input.value.toLowerCase() : ''; const clearBtn=document.getElementById('docks-search-clear'); if(term.length>0){if(clearBtn)clearBtn.classList.remove('hidden'); if (dockViewMode === 'docks' && !selectedDockIssueUid) dockViewLevel=0;}else{if(clearBtn)clearBtn.classList.add('hidden'); if (dockViewMode === 'docks' && !selectedDockIssueUid) dockViewLevel=0;} const touchOptimized=isIOSDevice()||isStandaloneApp()||(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches); scheduleTrackedSearchViewRender('docks', 'docks', term, { debounceDelay: touchOptimized ? 180 : 110, typingDelay: touchOptimized ? 260 : 170, allowWhileTyping: false, allowDuringExtendedBlock: false }); }
-        function resetDockView(shouldRender = true) { dockViewMode = 'docks'; selectedDockIssueUid = null; selectedDockIssueAllocationId = ''; dockViewLevel = 0; selectedDockNum = null; selectedDockStop = null; document.getElementById('docks-search').value = ""; document.getElementById('docks-search-clear').classList.add('hidden'); updateDockModeToggleUi(); if (shouldRender) scheduleDocksRender(0); }
+        function getImmediateDocksRenderOptions(options = {}) {
+            return {
+                debounceDelay: isTouchConstrainedDevice() ? 42 : 24,
+                typingDelay: isTouchConstrainedDevice() ? 70 : 36,
+                force: true,
+                allowWhileTyping: true,
+                allowWhileTouching: true,
+                allowWhileScrolling: true,
+                allowDuringRecentInteraction: true,
+                allowDuringExtendedBlock: true,
+                interactiveCritical: true,
+                touchDelayMs: 8,
+                interactionDelayMs: 8,
+                scrollDelayMs: 12,
+                maxDeferMs: 240,
+                ...(options || {})
+            };
+        }
+
+        function clearDocksSearch(){
+            const input = document.getElementById('docks-search');
+            if (input) input.value="";
+            const clearBtn = document.getElementById('docks-search-clear');
+            if (clearBtn) clearBtn.classList.add('hidden');
+            if (dockViewMode === 'docks') { dockViewLevel=0; selectedDockNum=null; selectedDockStop=null; }
+            try { cancelStaleSearchWorkForView('docks'); } catch (error) {}
+            scheduleTrackedSearchViewRender('docks', 'docks', '', getImmediateDocksRenderOptions({ skipDebounce: true, debounceDelay: 0, typingDelay: 28 }));
+        }
+        function handleDocksSearch(){
+            const input=document.getElementById('docks-search');
+            const term=input ? input.value.toLowerCase() : '';
+            const clearBtn=document.getElementById('docks-search-clear');
+            if(term.length>0){if(clearBtn)clearBtn.classList.remove('hidden'); if (dockViewMode === 'docks' && !selectedDockIssueUid) dockViewLevel=0;}else{if(clearBtn)clearBtn.classList.add('hidden'); if (dockViewMode === 'docks' && !selectedDockIssueUid) dockViewLevel=0;}
+            try { cancelScheduledUiRenderByPrefix('tracked-view:docks'); } catch (error) {}
+            scheduleTrackedSearchViewRender('docks', 'docks', term, getImmediateDocksRenderOptions());
+        }
+        function resetDockView(shouldRender = true) { dockViewMode = 'docks'; selectedDockIssueUid = null; selectedDockIssueAllocationId = ''; dockViewLevel = 0; selectedDockNum = null; selectedDockStop = null; const input = document.getElementById('docks-search'); if (input) input.value = ""; const clearBtn = document.getElementById('docks-search-clear'); if (clearBtn) clearBtn.classList.add('hidden'); updateDockModeToggleUi(); if (shouldRender) scheduleDocksRender(0, 28, true); }
         function selectDock(dock) {
             const normalizedDock = normalizeDockViewDockKey(dock);
             return runDirectTrackedNavigation('docks', `dock:${normalizedDock}`, () => {
@@ -76241,7 +76329,7 @@ function toggleDriveQuickRequestItem(domId) {
                 selectedDockNum = normalizedDock;
                 selectedDockStop = null;
                 dockViewLevel = 1;
-            }, { delay: 0, typingDelay: 180 });
+            }, { delay: 0, typingDelay: 28, forceRender: true, interactiveCritical: true, allowWhileTyping: true, allowWhileTouching: true, allowWhileScrolling: true, allowDuringRecentInteraction: true, allowDuringExtendedBlock: true, touchDelayMs: 8, interactionDelayMs: 8, scrollDelayMs: 12, maxDeferMs: 240 });
         }
         function selectDockStop(stop) {
             const normalizedStop = normalizeDockViewStopKey(stop);
@@ -76252,10 +76340,11 @@ function toggleDriveQuickRequestItem(domId) {
                 updateDockModeToggleUi();
                 selectedDockStop = normalizedStop;
                 dockViewLevel = 2;
-            }, { delay: 0, typingDelay: 180 });
+            }, { delay: 0, typingDelay: 28, forceRender: true, interactiveCritical: true, allowWhileTyping: true, allowWhileTouching: true, allowWhileScrolling: true, allowDuringRecentInteraction: true, allowDuringExtendedBlock: true, touchDelayMs: 8, interactionDelayMs: 8, scrollDelayMs: 12, maxDeferMs: 240 });
         }
 
         function openDockInfoModal(dockNum) {
+            releaseUserInteractionBlockers('dock-info-open', { forceEditingCleanup: true, syncViewport: false });
             if (!canEditDockWorkflow()) {
                 showToast('Restricted', 'Only Admin or QC Supervisor can update dock team and status.', true);
                 return;
@@ -76273,12 +76362,17 @@ function toggleDriveQuickRequestItem(domId) {
             }).catch(() => {});
         }
 
-        function saveDockInfoModal() {
+        function saveDockInfoModal(event = null) {
+            if (event) {
+                if (typeof event.preventDefault === 'function') event.preventDefault();
+                if (typeof event.stopPropagation === 'function') event.stopPropagation();
+            }
+            releaseUserInteractionBlockers('dock-info-save', { forceEditingCleanup: true, syncViewport: false });
             if (!canEditDockWorkflow()) {
                 showToast('Restricted', 'Only Admin or QC Supervisor can update dock team and status.', true);
-                return;
+                return false;
             }
-            if(!pendingDockNum) return;
+            if(!pendingDockNum) return false;
             const dockNum = normalizeDockTeamDockKey(pendingDockNum);
             let info = normalizeDockTeamInfo({ checker: document.getElementById('dock-checker').value, inspector: document.getElementById('dock-inspector').value, mistake: document.getElementById('dock-mistake').value, status: document.getElementById('dock-status').value });
             let appliedLocalDockInfo = false;
@@ -76286,18 +76380,18 @@ function toggleDriveQuickRequestItem(domId) {
                 if (appliedLocalDockInfo) return;
                 appliedLocalDockInfo = true;
                 cacheDockTeamInfo(dockNum, info);
-                scheduleDocksRender(16);
+                scheduleDocksRender(0, 28, true);
             };
             document.getElementById('dock-info-modal').classList.add('hidden');
             if (navigator.onLine === false) {
                 applyLocalDockInfo();
                 showToast("Saved", "Dock updated on this device. Reconnect to sync the shared dock assignment.");
-                return;
+                return false;
             }
             ensureDockTeamSchemaReady().then((schemaReady) => {
                 if (!schemaReady) {
                     dockTeamStatusLoaded = false;
-                    scheduleDocksRender(16);
+                    scheduleDocksRender(0, 28, true);
                     showToast('Schema Required', 'Run dock_team_status_migration.sql in Supabase to share dock team assignments across users.', true);
                     return false;
                 }
@@ -76315,11 +76409,12 @@ function toggleDriveQuickRequestItem(domId) {
                 if (result === false) return;
                 dockTeamStatusLoaded = true;
                 showToast("Saved", "Dock updated.");
-                scheduleDocksRender(16);
+                scheduleDocksRender(0, 28, true);
             }).catch(() => {
                 applyLocalDockInfo();
                 showToast("Error", "Dock team saved on this device, but the shared dock assignment update failed.", true);
             });
+            return false;
         }
 
         function clearDockMistakeIssuePhotoPreviewUrl() {
