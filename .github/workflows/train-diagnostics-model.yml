@@ -1,4 +1,4 @@
-name: Train Diagnostics Model
+name: Train AgSight Diagnostics Model
 
 on:
   workflow_dispatch:
@@ -6,26 +6,27 @@ on:
       epochs:
         description: "Training epochs"
         required: false
-        default: "8"
+        default: "4"
       dry_run:
         description: "Only inspect Supabase assets; do not train"
         required: false
         default: "false"
   schedule:
-    - cron: "35 6 * * *"
+    # Weekly free-runtime guardrail. GitHub cron is UTC; this is 2:35 AM Central during daylight time.
+    - cron: "35 7 * * 0"
 
 permissions:
   contents: write
 
 concurrency:
   group: train-diagnostics-model
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   train:
-    name: Train diagnostics classifier
+    name: Train AgSight diagnostics classifier
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 45
 
     steps:
       - name: Check out repository
@@ -45,22 +46,22 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements-ml.txt
 
-      - name: Train diagnostics model
+      - name: Train AgSight diagnostics model
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GDRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
           GDRIVE_INVENTORY_FILE_ID: ${{ secrets.GDRIVE_INVENTORY_FILE_ID }}
-          ML_TRAINING_ASSETS_TABLE: v2_disease_training_assets
+          ML_TRAINING_ASSETS_TABLE: ph_disease_training_assets
           ML_TRAINING_ASSETS_BUCKET: disease_training_assets
-          DIAGNOSTICS_TRAIN_EPOCHS: ${{ github.event.inputs.epochs || '8' }}
+          DIAGNOSTICS_TRAIN_EPOCHS: ${{ github.event.inputs.epochs || '4' }}
           DIAGNOSTICS_DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
           DIAGNOSTICS_EXTRACT_PDF_IMAGES: "true"
           DIAGNOSTICS_USE_PRETRAINED: "true"
           LOG_LEVEL: INFO
         run: python train_diagnostics_model.py
 
-      - name: Commit diagnostics model updates
+      - name: Commit AgSight model updates
         if: ${{ github.event.inputs.dry_run != 'true' }}
         run: |
           git config user.name "github-actions[bot]"
@@ -70,5 +71,5 @@ jobs:
             exit 0
           fi
           git add models/diagnostics_classifier.pt models/diagnostics_labels.json models/diagnostics_training_report.json
-          git commit -m "Train diagnostics model from disease assets"
+          git commit -m "Train AgSight diagnostics model from disease assets"
           git push

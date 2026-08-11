@@ -1,8 +1,9 @@
-name: Run Supabase ML Worker
+name: Run AgSight Worker
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    # GitHub cron is UTC. 07:00 UTC is 2:00 AM Central during daylight time.
+    - cron: "0 7 * * *"
   workflow_dispatch:
   repository_dispatch:
     types:
@@ -13,13 +14,13 @@ on:
 
 concurrency:
   group: supabase-ml-worker
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   process-pending-ml-jobs:
-    name: Process pending ML image jobs
+    name: Process pending AgSight image jobs
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
 
     steps:
       - name: Check out repository
@@ -41,25 +42,25 @@ jobs:
         shell: bash
         run: |
           if [ ! -s "${ML_MODEL_PATH:-models/plant_classifier.pt}" ]; then
-            echo "::warning::Plant model file is missing. The worker can only produce manual-review results until models are synced."
+            echo "Plant model file is missing. AgSight will still run free local image checks and manual-review fallback."
           fi
           if [ ! -s "${ML_LABELS_PATH:-models/labels.json}" ]; then
-            echo "::warning::Label metadata is missing. The worker can only produce manual-review results until labels are synced."
+            echo "Label metadata is missing. AgSight will still run free local image checks and manual-review fallback."
           fi
 
-      - name: Process Supabase ML queue once
+      - name: Process Supabase AgSight queue once
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GDRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
           GDRIVE_INVENTORY_FILE_ID: ${{ secrets.GDRIVE_INVENTORY_FILE_ID }}
-          ML_JOB_TABLE: v2_ml_image_jobs
+          ML_JOB_TABLE: ph_ml_image_jobs
           ML_PHOTO_BUCKET: ml_capture_photos
-          ML_TRAINING_ASSETS_TABLE: v2_disease_training_assets
+          ML_TRAINING_ASSETS_TABLE: ph_disease_training_assets
           ML_TRAINING_ASSETS_BUCKET: disease_training_assets
-          APP_LIVE_EVENTS_TABLE: v2_app_live_events
-          GROWER_SCOUT_REPORTS_TABLE: v2_grower_scout_reports
-          GROWER_SCOUT_ASSETS_TABLE: v2_grower_scout_assets
+          APP_LIVE_EVENTS_TABLE: ph_app_live_events
+          GROWER_SCOUT_REPORTS_TABLE: ph_grower_scout_reports
+          GROWER_SCOUT_ASSETS_TABLE: ph_grower_scout_assets
           GROWER_SCOUT_AUDIO_BUCKET: grower_scout_audio
           GROWER_SCOUT_PHOTOS_BUCKET: grower_scout_photos
           GROWER_SCOUT_FILES_BUCKET: grower_scout_files
@@ -68,7 +69,9 @@ jobs:
           ML_LABELS_PATH: models/labels.json
           ML_DIAGNOSTICS_MODEL_PATH: models/diagnostics_classifier.pt
           ML_DIAGNOSTICS_LABELS_PATH: models/diagnostics_labels.json
-          ML_BATCH_SIZE: "200"
+          AG_SIGHT_MAX_PHOTOS_PER_RUN: "40"
+          AG_SIGHT_MAX_RUNTIME_SECONDS: "480"
+          ML_BATCH_SIZE: "40"
           ML_POLL_SECONDS: "0"
           ML_RUN_ONCE: "true"
           OLLAMA_URL: ""

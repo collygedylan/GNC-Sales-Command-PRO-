@@ -11699,7 +11699,6 @@ function getDiseaseSyncConfig_() {
 function syncDiseaseFolder_(config, folder, relativePath, state) {
   if (state.scannedFiles >= config.maxFiles) return;
   const folderName = String(folder.getName() || '').trim();
-  if (folderName.toLowerCase() === DISEASE_PROCESSED_FOLDER_NAME.toLowerCase()) return;
 
   const safeRelativePath = sanitizeDiseasePath_(relativePath);
   console.log('[DISEASE SYNC] Checking folder: ' + (safeRelativePath || folderName || 'Root'));
@@ -11721,7 +11720,6 @@ function syncDiseaseFolder_(config, folder, relativePath, state) {
   while (folders.hasNext() && state.scannedFiles < config.maxFiles) {
     const child = folders.next();
     const childName = String(child.getName() || '').trim();
-    if (childName.toLowerCase() === DISEASE_PROCESSED_FOLDER_NAME.toLowerCase()) continue;
     const childPath = safeRelativePath ? safeRelativePath + '/' + childName : childName;
     syncDiseaseFolder_(config, child, childPath, state);
   }
@@ -11731,16 +11729,20 @@ function syncDiseaseFile_(config, parentFolder, file, folderPath, state) {
   const mimeType = String(file.getMimeType() || '').trim();
   const assetKind = getDiseaseAssetKind_(mimeType);
   const fileName = file.getName();
+  const isAlreadyProcessedFolder = isDiseaseProcessedFolderPath_(folderPath);
   console.log('[DISEASE SYNC] ' + state.scannedFiles + '/' + config.maxFiles + ' preparing ' + fileName + ' (' + assetKind + ').');
 
   if (assetKind === 'other') {
-    moveDiseaseFileToProcessed_(parentFolder, file, 'unsupported disease asset ' + fileName);
+    if (!isAlreadyProcessedFolder) {
+      moveDiseaseFileToProcessed_(parentFolder, file, 'unsupported disease asset ' + fileName);
+      state.movedFiles += 1;
+    }
     state.skippedFiles += 1;
-    state.movedFiles += 1;
     return;
   }
 
   const driveFileId = file.getId();
+  const existingProcessedStatus = isAlreadyProcessedFolder ? getExistingDiseaseAssetProcessedStatus_(config, driveFileId) : '';
   const label = getDiseaseLabelForAsset_(folderPath, fileName);
   const parsedFields = parseDiseaseAssetFileName_(fileName, folderPath);
   const storagePath = buildDiseaseStoragePath_(folderPath, driveFileId, fileName, mimeType);
@@ -11773,14 +11775,22 @@ function syncDiseaseFile_(config, parentFolder, file, folderPath, state) {
     itemcode: parsedFields.itemcode,
     file_size: Number(file.getSize() || 0),
     checksum: getDiseaseAssetChecksum_(file, blob),
-    processed_status: 'pending_ml',
+    processed_status: existingProcessedStatus || 'pending_ml',
     metadata: {
       drive_url: file.getUrl(),
       drive_last_updated: file.getLastUpdated() ? file.getLastUpdated().toISOString() : '',
       original_mime_type: mimeType,
+      already_processed_folder: isAlreadyProcessedFolder,
       parsed_file_fields: parsedFields
     }
   });
+
+  if (isAlreadyProcessedFolder) {
+    state.filesProcessed += 1;
+    state.uploadedFiles += 1;
+    console.log('[DISEASE SYNC] Indexed already-processed reference: ' + fileName);
+    return;
+  }
 
   console.log('[DISEASE SYNC] Moving to Processed: ' + fileName);
   moveDiseaseFileToProcessed_(parentFolder, file, 'processed disease asset ' + fileName);
@@ -11788,6 +11798,14 @@ function syncDiseaseFile_(config, parentFolder, file, folderPath, state) {
   state.uploadedFiles += 1;
   state.movedFiles += 1;
   console.log('[DISEASE SYNC] Done: ' + fileName);
+}
+
+function isDiseaseProcessedFolderPath_(folderPath) {
+  const processedName = DISEASE_PROCESSED_FOLDER_NAME.toLowerCase();
+  return String(folderPath || '')
+    .split('/')
+    .map(function(part) { return String(part || '').trim().toLowerCase(); })
+    .some(function(part) { return part === processedName; });
 }
 
 function moveDiseaseFileToProcessed_(parentFolder, file, label) {
@@ -11965,6 +11983,27 @@ function upsertDiseaseAssetRow_(config, row) {
   const code = response.getResponseCode();
   if (code < 200 || code >= 300) {
     throw new Error('Supabase row upsert failed: HTTP ' + code + ' ' + response.getContentText());
+  }
+}
+
+function getExistingDiseaseAssetProcessedStatus_(config, driveFileId) {
+  const safeDriveFileId = String(driveFileId || '').trim();
+  if (!safeDriveFileId) return '';
+  const url = config.supabaseUrl + '/rest/v1/' + DISEASE_ASSET_TABLE
+    + '?select=processed_status&drive_file_id=eq.' + encodeURIComponent(safeDriveFileId)
+    + '&limit=1';
+  const response = UrlFetchApp.fetch(url, {
+    method: 'get',
+    muteHttpExceptions: true,
+    headers: getSupabaseHeadersForKey_(config.serviceRoleKey)
+  });
+  const code = response.getResponseCode();
+  if (code < 200 || code >= 300) return '';
+  try {
+    const rows = JSON.parse(response.getContentText() || '[]');
+    return rows && rows[0] ? String(rows[0].processed_status || '').trim() : '';
+  } catch (error) {
+    return '';
   }
 }
 

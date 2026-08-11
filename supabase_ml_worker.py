@@ -12,6 +12,7 @@ import os
 import pathlib
 import re
 import socket
+import statistics
 import tempfile
 import time
 import uuid
@@ -168,6 +169,142 @@ def is_actionable_diagnostic_text(value: Any) -> bool:
     return not any(phrase in text for phrase in non_actionable_phrases)
 
 
+def build_agsight_clear_summary(metrics: Dict[str, float]) -> str:
+    return (
+        "AgSight free checks did not find a strong color-stress, spotting, dieback, "
+        f"or photo-quality signal. Green cover {metrics.get('green_ratio', 0.0):.0%}; "
+        f"yellow {metrics.get('yellow_ratio', 0.0):.0%}; brown/dark {metrics.get('brown_dark_ratio', 0.0):.0%}."
+    )
+
+
+def inspect_image_with_agsight(image_path: pathlib.Path) -> Dict[str, Any]:
+    """Free local image checks. No paid model APIs or network calls are used here."""
+    try:
+        from PIL import Image, ImageStat
+    except Exception as exc:
+        return {
+            "status": "failed",
+            "score": 0.0,
+            "issue_type": "photo_quality",
+            "summary": f"AgSight could not load Pillow for free image checks: {exc}",
+            "flagged": False,
+            "metrics": {},
+        }
+
+    try:
+        with Image.open(image_path) as image:
+            rgb = image.convert("RGB")
+            rgb.thumbnail((360, 360))
+            width, height = rgb.size
+            pixels = list(rgb.getdata())
+            total = max(1, len(pixels))
+            stat = ImageStat.Stat(rgb)
+            channel_means = [float(value) for value in stat.mean]
+            brightness_values = [(r + g + b) / 3.0 for r, g, b in pixels]
+            avg_brightness = sum(brightness_values) / total
+            brightness_std = statistics.pstdev(brightness_values) if total > 1 else 0.0
+            greenish = yellow = brown_dark = pale = dark = 0
+            for r, g, b in pixels:
+                maxc = max(r, g, b)
+                minc = min(r, g, b)
+                saturation = (maxc - minc) / max(1, maxc)
+                if g > 70 and g > r * 1.08 and g > b * 1.08:
+                    greenish += 1
+                if r > 115 and g > 100 and b < 112 and r >= g * 0.82 and g >= r * 0.62:
+                    yellow += 1
+                if (r > 70 and g < 135 and b < 115 and r >= g * 0.92 and g >= b * 0.75) or (maxc < 55):
+                    brown_dark += 1
+                if maxc > 185 and saturation < 0.18:
+                    pale += 1
+                if maxc < 45:
+                    dark += 1
+            green_ratio = greenish / total
+            yellow_ratio = yellow / total
+            brown_dark_ratio = brown_dark / total
+            pale_ratio = pale / total
+            dark_ratio = dark / total
+
+            gray = rgb.convert("L")
+            gray_pixels = list(gray.getdata())
+            edge_samples: List[float] = []
+            if width > 2 and height > 2:
+                sample_step = max(1, (width * height) // 12000)
+                for idx in range(0, width * height - width - 1, sample_step):
+                    x = idx % width
+                    if x >= width - 1:
+                        continue
+                    edge_samples.append(abs(float(gray_pixels[idx]) - float(gray_pixels[idx + 1])))
+                    edge_samples.append(abs(float(gray_pixels[idx]) - float(gray_pixels[idx + width])))
+            edge_score = (sum(edge_samples) / len(edge_samples)) if edge_samples else 0.0
+
+            metrics = {
+                "width": float(width),
+                "height": float(height),
+                "red_mean": channel_means[0],
+                "green_mean": channel_means[1],
+                "blue_mean": channel_means[2],
+                "brightness": avg_brightness,
+                "contrast": brightness_std,
+                "edge_score": edge_score,
+                "green_ratio": green_ratio,
+                "yellow_ratio": yellow_ratio,
+                "brown_dark_ratio": brown_dark_ratio,
+                "pale_ratio": pale_ratio,
+                "dark_ratio": dark_ratio,
+            }
+
+            candidates: List[Tuple[str, float, str]] = []
+            if edge_score < 3.6 or brightness_std < 16:
+                candidates.append(("photo_quality", 0.58, "Photo may be blurry or too flat for confident field review."))
+            if avg_brightness < 42 or dark_ratio > 0.42:
+                candidates.append(("photo_quality", 0.62, "Photo appears very dark; retake may reveal plant symptoms better."))
+            if avg_brightness > 218 or pale_ratio > 0.42:
+                candidates.append(("photo_quality", 0.56, "Photo appears washed out; color symptoms may be hidden."))
+            if yellow_ratio > 0.22 and green_ratio < 0.42:
+                candidates.append(("chlorosis_low_fertility", min(0.92, 0.48 + yellow_ratio), "High yellowing signal may indicate chlorosis, low fertility, or stress."))
+            elif yellow_ratio > 0.16:
+                candidates.append(("yellowing_stress", min(0.82, 0.42 + yellow_ratio), "Moderate yellowing signal detected for human review."))
+            if brown_dark_ratio > 0.16 and green_ratio > 0.08:
+                candidates.append(("spotting_necrosis_dieback", min(0.94, 0.52 + brown_dark_ratio), "Brown/dark spotting or dieback-like color signal detected."))
+            elif brown_dark_ratio > 0.10 and yellow_ratio > 0.08:
+                candidates.append(("stress_or_leaf_damage", min(0.84, 0.46 + brown_dark_ratio + yellow_ratio / 2), "Mixed yellow and brown stress signal detected."))
+            if green_ratio < 0.08 and yellow_ratio + brown_dark_ratio > 0.18:
+                candidates.append(("possible_nonhealthy_tissue", min(0.86, 0.48 + yellow_ratio + brown_dark_ratio), "Low green cover with stress colors detected."))
+
+            if not candidates:
+                return {
+                    "status": "clear",
+                    "score": 0.0,
+                    "issue_type": "",
+                    "summary": build_agsight_clear_summary(metrics),
+                    "flagged": False,
+                    "metrics": metrics,
+                }
+
+            issue_type, score, summary = max(candidates, key=lambda item: item[1])
+            return {
+                "status": "flagged",
+                "score": round(float(score), 4),
+                "issue_type": issue_type,
+                "summary": (
+                    f"{summary} AgSight free metrics: green {green_ratio:.0%}, "
+                    f"yellow {yellow_ratio:.0%}, brown/dark {brown_dark_ratio:.0%}, "
+                    f"edge {edge_score:.1f}."
+                ),
+                "flagged": True,
+                "metrics": metrics,
+            }
+    except Exception as exc:
+        return {
+            "status": "failed",
+            "score": 0.0,
+            "issue_type": "photo_quality",
+            "summary": f"AgSight could not inspect this image: {exc}",
+            "flagged": False,
+            "metrics": {},
+        }
+
+
 def is_truthy_label_value(value: Any) -> bool:
     text = normalize_key(value)
     return text in {"1", "true", "yes", "y", "manual_review", "manual review", "fallback"}
@@ -304,6 +441,7 @@ class WorkerConfig:
     pest_management_alert_usernames: str = "dylan_collyge"
     poll_seconds: float = 10.0
     batch_size: int = 3
+    max_runtime_seconds: int = 0
     stale_processing_minutes: int = 30
     models_dir: pathlib.Path = DEFAULT_MODELS_DIR
     model_path: str = ""
@@ -335,7 +473,8 @@ class WorkerConfig:
             push_function_url=first_non_empty(os.environ.get("PUSH_FUNCTION_URL")),
             pest_management_alert_usernames=first_non_empty(os.environ.get("PEST_MANAGEMENT_ALERT_USERNAMES"), default="dylan_collyge"),
             poll_seconds=float(first_non_empty(os.environ.get("ML_POLL_SECONDS"), default="10")),
-            batch_size=int(first_non_empty(os.environ.get("ML_BATCH_SIZE"), default="3")),
+            batch_size=int(first_non_empty(os.environ.get("AG_SIGHT_MAX_PHOTOS_PER_RUN"), os.environ.get("ML_BATCH_SIZE"), default="3")),
+            max_runtime_seconds=int(first_non_empty(os.environ.get("AG_SIGHT_MAX_RUNTIME_SECONDS"), default="0")),
             stale_processing_minutes=int(first_non_empty(os.environ.get("ML_STALE_PROCESSING_MINUTES"), default="30")),
             models_dir=pathlib.Path(first_non_empty(os.environ.get("ML_MODELS_DIR"), default=str(DEFAULT_MODELS_DIR))),
             model_path=first_non_empty(os.environ.get("ML_MODEL_PATH")),
@@ -1652,6 +1791,8 @@ Scouting note:
         )
         reference_match = self.disease_reference_cache.match_job(job)
         reference_prediction = self.disease_reference_cache.prediction_from_match(reference_match)
+        agsight_result = inspect_image_with_agsight(image_path)
+        agsight_flagged = bool(agsight_result.get("flagged"))
         if reference_prediction and (diagnostics_prediction.manual_review or not diagnostics_prediction.diagnosis):
             diagnostics_prediction = reference_prediction
 
@@ -1674,7 +1815,7 @@ Scouting note:
             bool(self.models.diagnostics and self.models.diagnostics.available)
             and is_actionable_diagnostic_text(diagnostics_prediction.diagnosis)
             and not diagnostics_low_confidence
-        )
+        ) or agsight_flagged
         grading_result_ready = bool(
             self.models.plant.available
             and matched_entry
@@ -1682,7 +1823,7 @@ Scouting note:
             and normalize_grade(plant_prediction.grade)
         )
         should_request_approval = bool(diagnostic_issue_found or grading_result_ready)
-        manual_review = bool(diagnostic_issue_found and diagnostics_prediction.manual_review)
+        manual_review = bool(diagnostic_issue_found and (diagnostics_prediction.manual_review or agsight_flagged))
 
         genus = first_non_empty(source_identity.get("genus"), plant_prediction.genus)
         common_name = first_non_empty(source_identity.get("common_name"), plant_prediction.common_name)
@@ -1693,16 +1834,32 @@ Scouting note:
         reason_bits = [
             plant_prediction.reason,
             diagnostics_prediction.reason,
+            agsight_result.get("summary") if agsight_flagged else "",
             "Low confidence" if low_confidence else "",
             "Low diagnostics confidence" if diagnostics_low_confidence and diagnostics_prediction.diagnosis else "",
             "No inventory match" if not matched_entry else "",
         ]
         reason = "; ".join(bit for bit in reason_bits if bit)
-        diagnosis_default = "Manual review required" if diagnostic_issue_found else "No disease issue detected from available references."
-        treatment_default = "Review image before logging quantities." if diagnostic_issue_found else "No treatment recommended."
+        agsight_issue_type = first_non_empty(agsight_result.get("issue_type"))
+        agsight_summary = first_non_empty(agsight_result.get("summary"))
+        diagnosis_default = (
+            f"AgSight review: possible {agsight_issue_type.replace('_', ' ')}"
+            if agsight_flagged and agsight_issue_type
+            else ("Manual review required" if diagnostic_issue_found else "No disease issue detected from available references.")
+        )
+        treatment_default = "Review image and matched reference before taking action." if diagnostic_issue_found else "No treatment recommended."
+        diagnostic_diagnosis = diagnostics_prediction.diagnosis
+        diagnostic_treatment = diagnostics_prediction.treatment
+        if agsight_flagged and not is_actionable_diagnostic_text(diagnostic_diagnosis):
+            diagnostic_diagnosis = ""
+            diagnostic_treatment = ""
         reference_payload: Dict[str, Any] = {}
+        agsight_reference_asset_id = None
+        agsight_reference_url = None
         if reference_match:
             reference, reference_score = reference_match
+            agsight_reference_asset_id = reference.unique_id or None
+            agsight_reference_url = reference.public_url or None
             reference_payload = {
                 "diagnostic_reference_asset_id": reference.unique_id or None,
                 "diagnostic_reference_kind": reference.asset_kind or None,
@@ -1714,6 +1871,7 @@ Scouting note:
                 "diagnostic_reference_report_rewrite": reference.report_rewrite or None,
             }
 
+        checked_at = iso_now()
         return {
             "status": "pending_approval" if should_request_approval else "approved",
             "genus": source_identity.get("genus") or None,
@@ -1728,10 +1886,18 @@ Scouting note:
             "ml_grade": app_grade,
             "ml_confidence": round(float(plant_prediction.confidence or 0.0), 4),
             "matched_inventory_key": matched_entry.key if matched_entry else None,
-            "diagnosis": first_non_empty(diagnostics_prediction.diagnosis, plant_prediction.diagnosis, default=diagnosis_default),
-            "recommended_treatment": first_non_empty(diagnostics_prediction.treatment, plant_prediction.treatment, default=treatment_default),
+            "diagnosis": first_non_empty(diagnostic_diagnosis, plant_prediction.diagnosis, default=diagnosis_default),
+            "recommended_treatment": first_non_empty(diagnostic_treatment, plant_prediction.treatment, default=treatment_default),
             "manual_review": manual_review,
-            "ml_completed_at": iso_now(),
+            "ml_completed_at": checked_at,
+            "agsight_status": first_non_empty(agsight_result.get("status"), default="failed" if agsight_result.get("summary") else "clear"),
+            "agsight_score": round(float(agsight_result.get("score") or 0.0), 4),
+            "agsight_issue_type": agsight_issue_type or None,
+            "agsight_summary": agsight_summary or None,
+            "agsight_reference_asset_id": agsight_reference_asset_id,
+            "agsight_reference_url": agsight_reference_url,
+            "agsight_checked_at": checked_at,
+            "agsight_review_status": "unreviewed" if agsight_flagged else "not_required",
             "processing_started_at": None,
             "worker_id": self.worker_id,
             "last_error": reason or None,
@@ -1770,10 +1936,10 @@ Scouting note:
                 try:
                     self.supabase.table(self.config.job_table).update(payload).eq("unique_id", job_id).execute()
                 except Exception as update_exc:
-                    reference_keys = [key for key in payload if key.startswith("diagnostic_reference_")]
-                    if reference_keys and "does not exist" in str(update_exc).lower():
-                        LOGGER.warning("Diagnostic reference columns are missing; run diagnostic_reference_report_migration.sql. Saving ML result without reference fields for %s.", job_id)
-                        fallback_payload = {key: value for key, value in payload.items() if key not in reference_keys}
+                    optional_keys = [key for key in payload if key.startswith("diagnostic_reference_") or key.startswith("agsight_")]
+                    if optional_keys and "does not exist" in str(update_exc).lower():
+                        LOGGER.warning("Optional AgSight/diagnostic reference columns are missing; run the latest migration. Saving ML result without optional fields for %s.", job_id)
+                        fallback_payload = {key: value for key, value in payload.items() if key not in optional_keys}
                         self.supabase.table(self.config.job_table).update(fallback_payload).eq("unique_id", job_id).execute()
                         payload = fallback_payload
                     else:
@@ -1801,6 +1967,7 @@ Scouting note:
                 first_non_empty(asset.get("label"), default="Lab report indexed"),
                 first_non_empty(asset.get("file_name"), asset.get("source_file_title"), asset_path.name),
             )
+            checked_at = iso_now()
             return {
                 "processed_status": "processed",
                 "diagnosis": first_non_empty(asset.get("label"), default="Lab report indexed"),
@@ -1808,7 +1975,12 @@ Scouting note:
                 "report_text": report_text or None,
                 "report_rewrite": report_rewrite or None,
                 "confidence": None,
-                "processed_at": iso_now(),
+                "agsight_status": "reference_indexed",
+                "agsight_issue_type": first_non_empty(asset.get("label"), default="lab_report").replace(" ", "_") or None,
+                "agsight_summary": report_rewrite or report_text or "AgSight indexed this free reference lab report for future review matching.",
+                "agsight_score": None,
+                "agsight_checked_at": checked_at,
+                "processed_at": checked_at,
                 "processing_started_at": None,
                 "worker_id": self.worker_id,
                 "last_error": None,
@@ -1820,13 +1992,28 @@ Scouting note:
             manual_review=True,
             reason="No diagnostics model is configured.",
         )
+        agsight_result = inspect_image_with_agsight(asset_path)
+        agsight_flagged = bool(agsight_result.get("flagged"))
         reason = first_non_empty(prediction.reason)
+        issue_type = first_non_empty(agsight_result.get("issue_type"), prediction.diagnosis, asset.get("label"))
+        diagnosis = first_non_empty(
+            prediction.diagnosis if is_actionable_diagnostic_text(prediction.diagnosis) else "",
+            asset.get("label"),
+            agsight_result.get("summary") if agsight_flagged else "",
+            default="Manual review required",
+        )
+        checked_at = iso_now()
         return {
             "processed_status": "processed",
-            "diagnosis": first_non_empty(prediction.diagnosis, asset.get("label"), default="Manual review required"),
+            "diagnosis": diagnosis,
             "recommended_treatment": first_non_empty(prediction.treatment, default="Review image before using as training reference."),
             "confidence": round(float(prediction.confidence or 0.0), 4),
-            "processed_at": iso_now(),
+            "agsight_status": first_non_empty(agsight_result.get("status"), default="flagged" if agsight_flagged else "clear"),
+            "agsight_issue_type": issue_type.replace(" ", "_") if issue_type else None,
+            "agsight_summary": first_non_empty(agsight_result.get("summary"), reason, default="AgSight indexed this reference image."),
+            "agsight_score": round(float(agsight_result.get("score") or 0.0), 4),
+            "agsight_checked_at": checked_at,
+            "processed_at": checked_at,
             "processing_started_at": None,
             "worker_id": self.worker_id,
             "last_error": reason or None,
@@ -1863,9 +2050,9 @@ Scouting note:
                 try:
                     self.supabase.table(self.config.training_assets_table).update(payload).eq("unique_id", asset_id).execute()
                 except Exception as update_exc:
-                    optional_keys = {"report_text", "report_rewrite"}
+                    optional_keys = {"report_text", "report_rewrite"} | {key for key in payload if key.startswith("agsight_")}
                     if optional_keys.intersection(payload) and "does not exist" in str(update_exc).lower():
-                        LOGGER.warning("Lab report text columns are missing; run diagnostic_reference_report_migration.sql. Saving training asset result without report text for %s.", asset_id)
+                        LOGGER.warning("Optional lab report/AgSight columns are missing; run the latest migration. Saving training asset result without optional fields for %s.", asset_id)
                         fallback_payload = {key: value for key, value in payload.items() if key not in optional_keys}
                         self.supabase.table(self.config.training_assets_table).update(fallback_payload).eq("unique_id", asset_id).execute()
                         payload = fallback_payload
@@ -1885,18 +2072,38 @@ Scouting note:
             return False
 
     def run_once(self) -> int:
+        started_at = time.monotonic()
+
+        def within_runtime_limit() -> bool:
+            return not self.config.max_runtime_seconds or (time.monotonic() - started_at) < self.config.max_runtime_seconds
+
         self.recover_stale_jobs()
         self.recover_stale_training_assets()
         self.recover_stale_scout_reports()
         jobs = self.fetch_pending_jobs()
         processed = 0
         for job in jobs:
+            if not within_runtime_limit():
+                LOGGER.info("AgSight runtime limit reached before processing all pending photo jobs.")
+                return processed
             if self.process_job(job):
                 processed += 1
+        if not within_runtime_limit():
+            LOGGER.info("AgSight runtime limit reached before training asset processing.")
+            return processed
         for asset in self.fetch_pending_training_assets():
+            if not within_runtime_limit():
+                LOGGER.info("AgSight runtime limit reached before processing all training assets.")
+                return processed
             if self.process_training_asset(asset):
                 processed += 1
+        if not within_runtime_limit():
+            LOGGER.info("AgSight runtime limit reached before grower scout processing.")
+            return processed
         for report in self.fetch_pending_scout_reports():
+            if not within_runtime_limit():
+                LOGGER.info("AgSight runtime limit reached before processing all grower scout reports.")
+                return processed
             if self.process_scout_report(report):
                 processed += 1
         return processed
