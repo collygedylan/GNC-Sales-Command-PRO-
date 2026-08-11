@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.11.16';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.11.17';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.16').trim() || 'V2026.08.11.16';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.17').trim() || 'V2026.08.11.17';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.16';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.17';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9432,6 +9432,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 || safeReason.includes('visibility')
                 || safeReason.includes('manual')
                 || safeReason.includes('restore')
+                || safeReason.includes('view')
+                || safeReason.includes('nav')
+                || safeReason.includes('back')
+                || safeReason.includes('header')
             ) {
                 return false;
             }
@@ -19297,7 +19301,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     if (getCurrentVisibleViewId() !== safeViewId) return;
                     const nextSignature = buildPrimaryViewChromeSignature(safeViewId, nextOptions);
                     const skipStickySync = nextOptions.skipStickySync === true;
-                    const chromeUnchanged = !nextOptions.force && nextSignature === lastPrimaryViewChromeSignature && !shouldSyncRequest;
+                    const searchRepairState = typeof repairGlobalHeaderSearchForView === 'function'
+                        ? repairGlobalHeaderSearchForView(safeViewId, { reason: `view-chrome:${safeViewId}` })
+                        : { changed: false };
+                    const chromeUnchanged = !nextOptions.force && nextSignature === lastPrimaryViewChromeSignature && !shouldSyncRequest && !searchRepairState.changed;
                     if (chromeUnchanged) {
                         if (!skipStickySync) scheduleStickyRailOffsetSync(`view-chrome:${safeViewId}`, true);
                         return;
@@ -19643,6 +19650,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             });
             if (targetView) currentPrimaryViewId = safeViewId;
             syncCurrentViewBodyClass(safeViewId);
+            if (typeof repairGlobalHeaderSearchForView === 'function') repairGlobalHeaderSearchForView(safeViewId, { reason: `show-view:${safeViewId}` });
             if (typeof syncRequestDetailScrollMode === 'function') syncRequestDetailScrollMode();
             repairAppShellScrollState(`show-view:${safeViewId}`);
             return targetView;
@@ -27312,7 +27320,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.16').trim() || 'V2026.08.11.16';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.17').trim() || 'V2026.08.11.17';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28128,6 +28136,117 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             while (node.firstChild) node.removeChild(node.firstChild);
         }
 
+        function getGlobalHeaderSearchContainerIds() {
+            return Object.values(GLOBAL_HEADER_SEARCH_CONFIG).filter(Boolean);
+        }
+
+        function isGlobalHeaderSearchContainerElement(el) {
+            return !!(el && el.id && getGlobalHeaderSearchContainerIds().includes(el.id));
+        }
+
+        function getGlobalHeaderSearchContainerForView(viewId = '') {
+            const safeViewId = String(viewId || '').trim();
+            if (safeViewId === 'tasks') return shouldShowTaskHeaderSearch() ? GLOBAL_HEADER_SEARCH_CONFIG.tasks : '';
+            return GLOBAL_HEADER_SEARCH_CONFIG[safeViewId] || '';
+        }
+
+        function getGlobalHeaderSearchSlotChildId() {
+            const searchSlot = document.getElementById('global-header-search-slot');
+            if (!searchSlot) return '';
+            const child = Array.from(searchSlot.children || []).find((el) => isGlobalHeaderSearchContainerElement(el));
+            return child && child.id ? child.id : '';
+        }
+
+        function repairGlobalHeaderSearchForView(viewId = '', options = {}) {
+            ensureGlobalHeaderSearchPlaceholders();
+            const safeViewId = String(viewId || getCurrentVisibleViewId() || 'home').trim() || 'home';
+            const searchRow = document.getElementById('global-header-search-row');
+            const searchSlot = document.getElementById('global-header-search-slot');
+            const inlineTitle = document.getElementById('global-header-inline-title');
+            const expectedContainerId = getGlobalHeaderSearchContainerForView(safeViewId);
+            const expectedContainer = expectedContainerId ? document.getElementById(expectedContainerId) : null;
+            const wantsSearch = !!(expectedContainer && !expectedContainer.classList.contains('hidden'));
+            const slotChildren = searchSlot ? Array.from(searchSlot.children || []) : [];
+            const recognizedSlotChildren = slotChildren.filter((el) => isGlobalHeaderSearchContainerElement(el));
+            const slotIsCorrect = !!(
+                wantsSearch
+                && searchSlot
+                && recognizedSlotChildren.length === 1
+                && recognizedSlotChildren[0] === expectedContainer
+                && slotChildren.length === 1
+            );
+            let changed = false;
+
+            if (!slotIsCorrect && (recognizedSlotChildren.length || slotChildren.length)) {
+                restoreGlobalHeaderSearchContainers();
+                if (searchSlot && searchSlot.children.length) {
+                    clearNodeChildren(searchSlot);
+                    changed = true;
+                }
+            }
+
+            if (wantsSearch && searchSlot && expectedContainer) {
+                if (expectedContainer.parentNode !== searchSlot) {
+                    restoreGlobalHeaderSearchContainers();
+                    if (searchSlot.children.length) clearNodeChildren(searchSlot);
+                    searchSlot.appendChild(expectedContainer);
+                    changed = true;
+                }
+                if (searchRow && searchRow.classList.contains('hidden')) {
+                    searchRow.classList.remove('hidden');
+                    changed = true;
+                }
+                if (searchSlot.classList.contains('hidden')) {
+                    searchSlot.classList.remove('hidden');
+                    changed = true;
+                }
+                if (inlineTitle && !inlineTitle.classList.contains('hidden')) {
+                    inlineTitle.classList.add('hidden');
+                    changed = true;
+                }
+            } else {
+                if (recognizedSlotChildren.length) {
+                    restoreGlobalHeaderSearchContainers();
+                    changed = true;
+                }
+                if (searchSlot && searchSlot.children.length) {
+                    clearNodeChildren(searchSlot);
+                    changed = true;
+                }
+                if (searchSlot && !searchSlot.classList.contains('hidden')) {
+                    searchSlot.classList.add('hidden');
+                    changed = true;
+                }
+                const shouldHideRow = safeViewId === 'home';
+                if (searchRow && searchRow.classList.contains('hidden') !== shouldHideRow) {
+                    searchRow.classList.toggle('hidden', shouldHideRow);
+                    changed = true;
+                }
+                if (inlineTitle && inlineTitle.classList.contains('hidden') !== shouldHideRow) {
+                    inlineTitle.classList.toggle('hidden', shouldHideRow);
+                    changed = true;
+                }
+            }
+
+            if (typeof isInternalPerfDebugEnabled === 'function' && isInternalPerfDebugEnabled()) {
+                const actualId = getGlobalHeaderSearchSlotChildId();
+                const duplicateCount = Array.from(document.querySelectorAll('.amazon-search-host:not(.hidden)'))
+                    .filter((el) => el.parentNode === searchSlot || (typeof el.getClientRects === 'function' && el.getClientRects().length > 0))
+                    .length;
+                if ((safeViewId === 'home' && actualId) || (wantsSearch && actualId && actualId !== expectedContainerId) || duplicateCount > 1) {
+                    console.warn('[gnc-search-chrome]', {
+                        reason: options && options.reason ? options.reason : '',
+                        view: safeViewId,
+                        expected: wantsSearch ? expectedContainerId : '',
+                        actual: actualId,
+                        visibleSearchHosts: duplicateCount
+                    });
+                }
+            }
+
+            return { changed, expectedContainerId: wantsSearch ? expectedContainerId : '', actualContainerId: getGlobalHeaderSearchSlotChildId() };
+        }
+
         function formatGlobalHeaderTitle(viewId) {
             return String(viewId || 'home').replace(/-/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
         }
@@ -28559,7 +28678,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     searchContainerId || 'no-search',
                     searchVisible ? 'search-visible' : 'search-hidden',
                     currentUserDisplay || currentUser || 'User',
-                    APP_VERSION
+                    APP_VERSION,
+                    getGlobalHeaderSearchSlotChildId() || 'slot-empty'
                 ].join('|')
             };
         }
@@ -28568,7 +28688,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const syncReason = normalizeUiSyncReason(nextOptions.reason);
             const chromeState = getGlobalHeaderChromeState();
-            if (!nextOptions.force && chromeState.signature === lastGlobalHeaderChromeSignature) {
+            const searchRepairState = repairGlobalHeaderSearchForView(chromeState.currentView, { reason: syncReason || 'global-header' });
+            const repairedSignature = getGlobalHeaderChromeState().signature;
+            if (!nextOptions.force && repairedSignature === lastGlobalHeaderChromeSignature && !searchRepairState.changed) {
                 return;
             }
             if (!nextOptions.force && shouldDeferChromeSyncWork(syncReason)) {
@@ -28577,29 +28699,15 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             const headerUser = document.getElementById('header-user');
             const headerVersion = document.getElementById('header-version');
-            const searchRow = document.getElementById('global-header-search-row');
             const title = document.getElementById('global-header-view-title');
             const backBtn = document.getElementById('global-header-inline-back');
-            const searchSlot = document.getElementById('global-header-search-slot');
-            const inlineTitle = document.getElementById('global-header-inline-title');
             if (headerUser) headerUser.innerText = currentUserDisplay || currentUser || 'User';
             if (headerVersion) headerVersion.innerText = APP_VERSION;
             syncGoogleScriptButton();
             if (title) title.innerText = chromeState.resolvedTitle;
             if (backBtn) backBtn.classList.toggle('hidden', chromeState.currentView === 'home' ? !chromeState.showHomeBack : false);
-            lastGlobalHeaderChromeSignature = chromeState.signature;
-            restoreGlobalHeaderSearchContainers();
-            if (searchSlot) clearNodeChildren(searchSlot);
-            if (searchSlot && chromeState.searchContainer && chromeState.searchVisible) {
-                if (searchRow) searchRow.classList.remove('hidden');
-                searchSlot.classList.remove('hidden');
-                searchSlot.appendChild(chromeState.searchContainer);
-                if (inlineTitle) inlineTitle.classList.add('hidden');
-            } else {
-                if (searchSlot) searchSlot.classList.add('hidden');
-                if (inlineTitle) inlineTitle.classList.toggle('hidden', chromeState.currentView === 'home');
-                if (searchRow) searchRow.classList.toggle('hidden', chromeState.currentView === 'home');
-            }
+            repairGlobalHeaderSearchForView(chromeState.currentView, { reason: syncReason || 'global-header:final' });
+            lastGlobalHeaderChromeSignature = getGlobalHeaderChromeState().signature;
             scheduleStickyRailOffsetSync('global-header');
         }
 
@@ -45772,6 +45880,45 @@ function toggleDriveQuickRequestItem(domId) {
                     });
                 });
             }, debounceDelay);
+        }
+
+        function cancelSearchRenderWorkByPrefix(prefix = '') {
+            const safePrefix = String(prefix || '').trim();
+            if (!safePrefix) return;
+            Object.keys(searchRenderTimer || {}).forEach((key) => {
+                if (key === safePrefix || key.indexOf(safePrefix) === 0) {
+                    clearTimeout(searchRenderTimer[key]);
+                    delete searchRenderTimer[key];
+                }
+            });
+            Object.keys(searchRenderFrame || {}).forEach((key) => {
+                if (key === safePrefix || key.indexOf(safePrefix) === 0) {
+                    cancelAnimationFrame(searchRenderFrame[key]);
+                    delete searchRenderFrame[key];
+                }
+            });
+            cancelScheduledUiRenderByPrefix(`search:${safePrefix}`);
+        }
+
+        function cancelStaleSearchWorkForView(viewId = '') {
+            const safeViewId = String(viewId || '').trim();
+            if (!safeViewId) return;
+            if (safeViewId === 'drive') {
+                cancelDriveSearchRenderWork();
+                cancelDriveChunkedRenders();
+                return;
+            }
+            const prefixesByView = {
+                av: ['av'],
+                docks: ['docks'],
+                request: ['request-header-search', 'request-suspend-tag-commonname', 'request-modal'],
+                reserves: ['reserves'],
+                review: ['review'],
+                'move-up': ['move-up'],
+                'crop-roll': ['crop-roll-sy27-search', 'crop-roll-filter'],
+                managers: ['managers-search', 'manager-move-card', 'crop-roll-manager']
+            };
+            (prefixesByView[safeViewId] || []).forEach((prefix) => cancelSearchRenderWorkByPrefix(prefix));
         }
 
         function restoreSearchInputFocusIfSafe(input = null, cursorPos = null, options = {}) {
@@ -67319,6 +67466,7 @@ function toggleDriveQuickRequestItem(domId) {
             const currentViewId = getCurrentVisibleViewId();
             const targetScrollTop = nextOptions.targetScrollTop == null ? null : Math.max(0, Number(nextOptions.targetScrollTop) || 0);
             if (currentViewId && currentViewId !== nextViewId) {
+                if (typeof cancelStaleSearchWorkForView === 'function') cancelStaleSearchWorkForView(currentViewId);
                 cancelScheduledViewRenderWork(currentViewId);
                 cancelScheduledUiRenderByPrefix(`view-enter:${currentViewId}`);
                 cancelScheduledUiRenderByPrefix(`view-activate:${currentViewId}`);
@@ -67675,6 +67823,7 @@ function toggleDriveQuickRequestItem(domId) {
             syncCurrentViewBodyClass(nextViewId);
             if (nextViewId === 'home') scheduleHomeDashboardFitSettle('view-switch-home');
             if (currentViewId && currentViewId !== nextViewId) {
+                if (typeof cancelStaleSearchWorkForView === 'function') cancelStaleSearchWorkForView(currentViewId);
                 cancelScheduledViewRenderWork(currentViewId);
                 cancelScheduledUiRenderByPrefix(`view-enter:${currentViewId}`);
                 cancelScheduledUiRenderByPrefix(`view-activate:${currentViewId}`);
@@ -67697,14 +67846,15 @@ function toggleDriveQuickRequestItem(domId) {
                     queuePassiveRequestRenderRefresh('request-warm-reuse-passive');
                 }
                 if (targetScrollTop != null) scheduleUiRender(`view-restore:${nextViewId}:${targetScrollTop}`, () => setMainAreaScrollTop(targetScrollTop));
+                syncGlobalHeaderChrome({ reason: `view-reuse:${nextViewId}`, force: true });
                 schedulePrimaryViewChromeRefresh(nextViewId, {
                     delay: 0,
-                requestSyncDelay: nextViewId === 'request' ? 120 : 0,
-                passive: true,
-                passiveDelay: isTouchConstrainedDevice() ? 20 : 6,
-                skipStickySync: false,
-                skipHeaderSync: true
-            });
+                    requestSyncDelay: nextViewId === 'request' ? 120 : 0,
+                    passive: true,
+                    passiveDelay: isTouchConstrainedDevice() ? 20 : 6,
+                    skipStickySync: false,
+                    skipHeaderSync: false
+                });
                 repairAppShellScrollState(`view-reuse:${nextViewId}`);
                 recordInternalPerfDuration('viewSwitchDurations', viewSwitchStartedAt, `${currentViewId || 'none'}->${nextViewId}`);
                 return false;
