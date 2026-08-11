@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.09.51';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.09.52';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.51').trim() || 'V2026.08.09.51';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.09.52').trim() || 'V2026.08.09.52';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.51';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.09.52';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26234,6 +26234,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const NOT_ON_INVENTORY_APPROVAL_VIEW = 'not-on-inventory-approvals';
         const MANAGER_APPROVAL_TAB_VALUES = Object.freeze([SHEAR_APPROVAL_VIEW, NCR_APPROVAL_NEW_CROP_VIEW, NOT_ON_INVENTORY_APPROVAL_VIEW]);
         const TASK_DIAGNOSTICS_VIEW = 'diagnostics-review';
+        const MANAGER_AGSIGHT_REVIEW_VIEW = 'agsight-review';
         const INVENTORY_TRANSACTION_HISTORY_VIEW = 'inventory-transaction-history';
         const MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW = 'assigned-items-export';
         const MANAGER_SHORTAGE_CANCEL_VIEW = 'shortage-cancel';
@@ -27198,7 +27199,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.51').trim() || 'V2026.08.09.51';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.09.52').trim() || 'V2026.08.09.52';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -31839,8 +31840,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (viewId === 'docks') return withEvalInventoryEditRequestsForRowView({ required: [{ key: 'soc', mode: 'full' }], background: [], label: 'Loading all dock rows...' });
             if (viewId === 'request') return { required: [{ key: 'requests', mode: 'full' }, { key: 'requestHistory', mode: 'full' }, { key: 'salesCredits', mode: 'full' }, { key: 'inventoryEditRequests', mode: 'full' }, { key: 'soc', mode: 'full' }], background: [], label: 'Loading verified Que...' };
             if (viewId === 'managers') {
-                if (isTaskDiagnosticsView(activeHomeTab)) {
-                    return { required: [{ key: 'mlJobs', mode: 'initial' }], background: [{ key: 'mlJobs', mode: 'full' }], label: 'Loading manager diagnostics...' };
+                if (isManagerAgSightReviewView(activeHomeTab)) {
+                    return { required: [{ key: 'mlJobs', mode: 'initial' }], background: [{ key: 'mlJobs', mode: 'full' }], label: 'Loading AgSight review rows...' };
                 }
                 if (isInventoryChecksApprovalTaskView(activeHomeTab)) {
                     return { required: [{ key: 'master', mode: 'full' }, { key: 'inventoryEditRequests', mode: 'full' }], background: [{ key: 'mlJobs', mode: 'initial' }], label: 'Loading inventory check approvals...' };
@@ -54743,7 +54744,8 @@ function toggleDriveQuickRequestItem(domId) {
                     imageBucket: NCR_PHOTO_BUCKET,
                     imagePath: filePath,
                     imageUrl: publicUrl,
-                    uploadToken: String(firstNonEmptyValue(entry.id, createPendingPhotoToken()) || '').replace(/[^a-zA-Z0-9_-]/g, '')
+                    uploadToken: String(firstNonEmptyValue(entry.id, createPendingPhotoToken()) || '').replace(/[^a-zA-Z0-9_-]/g, ''),
+                    analysisBlob: entry.file
                 }).catch((error) => console.warn('ML queue background task failed for NCR photo.', error));
                 markPhotoPersistActivity();
             }
@@ -61461,7 +61463,8 @@ function toggleDriveQuickRequestItem(domId) {
                     imageBucket: NCR_PHOTO_BUCKET,
                     imagePath: filePath,
                     imageUrl: publicUrl,
-                    uploadToken: String(firstNonEmptyValue(entry.id, createPendingPhotoToken()) || '').replace(/[^a-zA-Z0-9_-]/g, '')
+                    uploadToken: String(firstNonEmptyValue(entry.id, createPendingPhotoToken()) || '').replace(/[^a-zA-Z0-9_-]/g, ''),
+                    analysisBlob: entry.file
                 }).catch((error) => console.warn('ML queue background task failed for Not On Inventory photo.', error));
                 markPhotoPersistActivity();
             }
@@ -110957,6 +110960,7 @@ C.14.043 C.15.000
             if (requestedTab === 'productivity' && canViewProductivityHome()) nextTab = 'productivity';
             else if (requestedTab === CROP_ROLL_HOME_TAB && canViewCropRollHome()) nextTab = CROP_ROLL_HOME_TAB;
             else if (requestedTab === MANAGER_APPROVAL_HOME_VIEW && getManagersToolAccess().canViewApproval) nextTab = MANAGER_APPROVAL_HOME_VIEW;
+            else if (requestedTab === MANAGER_AGSIGHT_REVIEW_VIEW && canUseManagerAgSightReviewView()) nextTab = MANAGER_AGSIGHT_REVIEW_VIEW;
             else if (requestedTab === 'moves' && canAccessView('moves')) nextTab = 'moves';
             else if (requestedTab === APP_SEASON_SETTINGS_VIEW && canManageCurrentSeasonSettings()) nextTab = APP_SEASON_SETTINGS_VIEW;
             else if (requestedTab === AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW && canManageAvBlanksPhotoBypassSettings()) nextTab = AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW;
@@ -110996,6 +111000,9 @@ C.14.043 C.15.000
                 ensureDatasetLoaded('master', 'full').then(() => scheduleManagersRender(true)).catch(() => {});
                 if (isNcrApprovalTaskView(nextTab)) scheduleNcrApprovalTaskRowsRefresh(nextTab, { force: true });
                 if (isNotOnInventoryApprovalTaskView(nextTab)) scheduleNotOnInventoryApprovalTaskRowsRefresh(nextTab, { force: true });
+            }
+            if (isManagerAgSightReviewView(nextTab)) {
+                ensureDatasetLoaded('mlJobs', 'initial').then(() => scheduleManagersRender(true)).catch(() => {});
             }
             if (nextTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) {
                 ensureDatasetLoaded('warehouseAssignedItems', 'full').then(() => scheduleManagersRender(true)).catch(() => {});
@@ -111619,6 +111626,202 @@ C.14.043 C.15.000
             const issueType = formatAgSightIssueType(firstNonEmptyValue(issue.AGSIGHT_ISSUE_TYPE, issue.DIAGNOSTIC_REFERENCE_LABEL, issue.DIAGNOSIS, 'Possible Issue'));
             const score = formatAgSightScore(issue.AGSIGHT_SCORE);
             return `<span class="max-w-full rounded-full border border-violet-200 bg-violet-50 ${sizeClasses} text-violet-700">AGSIGHT <span class="text-violet-900">${escapeHtml(issueType)}</span> <span class="text-violet-600">${escapeHtml(score)}</span></span>`;
+        }
+
+        function buildInstantAgSightClearSummary(metrics = {}) {
+            return `AgSight instant check did not find a strong color-stress, spotting, dieback, or photo-quality signal. Green cover ${Math.round(Number(metrics.greenRatio || 0) * 100)}%; yellow ${Math.round(Number(metrics.yellowRatio || 0) * 100)}%; brown/dark ${Math.round(Number(metrics.brownDarkRatio || 0) * 100)}%.`;
+        }
+
+        function buildInstantAgSightFlagSummary(issueType = '', metrics = {}) {
+            const issueLabel = formatAgSightIssueType(issueType);
+            const green = Math.round(Number(metrics.greenRatio || 0) * 100);
+            const yellow = Math.round(Number(metrics.yellowRatio || 0) * 100);
+            const brown = Math.round(Number(metrics.brownDarkRatio || 0) * 100);
+            const edge = Number(metrics.edgeScore || 0).toFixed(1);
+            if (issueType === 'photo_quality') return `AgSight instant check flagged photo quality for manager review. Edge score ${edge}; contrast ${Math.round(Number(metrics.contrast || 0))}; brightness ${Math.round(Number(metrics.brightness || 0))}.`;
+            return `AgSight instant check flagged possible ${issueLabel.toLowerCase()} for manager review. Green ${green}%; yellow ${yellow}%; brown/dark ${brown}%; edge ${edge}.`;
+        }
+
+        function loadImageBitmapForAgSight(blob) {
+            if (!blob) return Promise.resolve(null);
+            if (typeof createImageBitmap === 'function') {
+                return createImageBitmap(blob).catch(() => null);
+            }
+            return new Promise((resolve) => {
+                const url = URL.createObjectURL(blob);
+                const img = new Image();
+                img.onload = () => {
+                    URL.revokeObjectURL(url);
+                    resolve(img);
+                };
+                img.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    resolve(null);
+                };
+                img.src = url;
+            });
+        }
+
+        async function inspectImageBlobWithInstantAgSight(blob = null) {
+            if (!blob || typeof document === 'undefined') return null;
+            const source = await loadImageBitmapForAgSight(blob);
+            if (!source) {
+                return {
+                    status: 'failed',
+                    score: 0,
+                    issue_type: 'photo_quality',
+                    summary: 'AgSight instant check could not read this uploaded image.',
+                    flagged: false,
+                    metrics: {}
+                };
+            }
+            const sourceWidth = Number(source.width || source.naturalWidth || 0);
+            const sourceHeight = Number(source.height || source.naturalHeight || 0);
+            const maxDimension = 220;
+            const scale = Math.min(1, maxDimension / Math.max(1, sourceWidth, sourceHeight));
+            const width = Math.max(1, Math.round(sourceWidth * scale));
+            const height = Math.max(1, Math.round(sourceHeight * scale));
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: true });
+            if (!ctx) return null;
+            ctx.drawImage(source, 0, 0, width, height);
+            if (source && typeof source.close === 'function') {
+                try { source.close(); } catch (_) {}
+            }
+            const data = ctx.getImageData(0, 0, width, height).data;
+            const pixelCount = Math.max(1, width * height);
+            const sampleStride = Math.max(1, Math.floor(pixelCount / 16000));
+            const grayValues = new Uint8Array(pixelCount);
+            let sampled = 0;
+            let greenish = 0;
+            let yellow = 0;
+            let brownDark = 0;
+            let pale = 0;
+            let dark = 0;
+            let brightnessSum = 0;
+            let brightnessSqSum = 0;
+            for (let pixel = 0; pixel < pixelCount; pixel += 1) {
+                const i = pixel * 4;
+                const r = data[i] || 0;
+                const g = data[i + 1] || 0;
+                const b = data[i + 2] || 0;
+                const brightness = (r + g + b) / 3;
+                grayValues[pixel] = Math.max(0, Math.min(255, Math.round(brightness)));
+                if (pixel % sampleStride !== 0) continue;
+                sampled += 1;
+                brightnessSum += brightness;
+                brightnessSqSum += brightness * brightness;
+                const maxc = Math.max(r, g, b);
+                const minc = Math.min(r, g, b);
+                const saturation = (maxc - minc) / Math.max(1, maxc);
+                if (g > 70 && g > r * 1.08 && g > b * 1.08) greenish += 1;
+                if (r > 115 && g > 100 && b < 112 && r >= g * 0.82 && g >= r * 0.62) yellow += 1;
+                if ((r > 70 && g < 135 && b < 115 && r >= g * 0.92 && g >= b * 0.75) || maxc < 55) brownDark += 1;
+                if (maxc > 185 && saturation < 0.18) pale += 1;
+                if (maxc < 45) dark += 1;
+            }
+            sampled = Math.max(1, sampled);
+            let edgeSamples = 0;
+            let edgeSum = 0;
+            const edgeStride = Math.max(1, Math.floor(pixelCount / 12000));
+            for (let pixel = 0; pixel < pixelCount - width - 1; pixel += edgeStride) {
+                if ((pixel % width) >= width - 1) continue;
+                edgeSum += Math.abs(Number(grayValues[pixel]) - Number(grayValues[pixel + 1]));
+                edgeSum += Math.abs(Number(grayValues[pixel]) - Number(grayValues[pixel + width]));
+                edgeSamples += 2;
+            }
+            const brightness = brightnessSum / sampled;
+            const variance = Math.max(0, (brightnessSqSum / sampled) - (brightness * brightness));
+            const metrics = {
+                width,
+                height,
+                brightness,
+                contrast: Math.sqrt(variance),
+                edgeScore: edgeSamples ? edgeSum / edgeSamples : 0,
+                greenRatio: greenish / sampled,
+                yellowRatio: yellow / sampled,
+                brownDarkRatio: brownDark / sampled,
+                paleRatio: pale / sampled,
+                darkRatio: dark / sampled
+            };
+            const candidates = [];
+            if (metrics.edgeScore < 3.6 || metrics.contrast < 16) candidates.push(['photo_quality', 0.58]);
+            if (metrics.brightness < 42 || metrics.darkRatio > 0.42) candidates.push(['photo_quality', 0.62]);
+            if (metrics.brightness > 218 || metrics.paleRatio > 0.42) candidates.push(['photo_quality', 0.56]);
+            if (metrics.yellowRatio > 0.22 && metrics.greenRatio < 0.42) candidates.push(['chlorosis_low_fertility', Math.min(0.92, 0.48 + metrics.yellowRatio)]);
+            else if (metrics.yellowRatio > 0.16) candidates.push(['yellowing_stress', Math.min(0.82, 0.42 + metrics.yellowRatio)]);
+            if (metrics.brownDarkRatio > 0.16 && metrics.greenRatio > 0.08) candidates.push(['spotting_necrosis_dieback', Math.min(0.94, 0.52 + metrics.brownDarkRatio)]);
+            else if (metrics.brownDarkRatio > 0.10 && metrics.yellowRatio > 0.08) candidates.push(['stress_or_leaf_damage', Math.min(0.84, 0.46 + metrics.brownDarkRatio + metrics.yellowRatio / 2)]);
+            if (metrics.greenRatio < 0.08 && metrics.yellowRatio + metrics.brownDarkRatio > 0.18) candidates.push(['possible_nonhealthy_tissue', Math.min(0.86, 0.48 + metrics.yellowRatio + metrics.brownDarkRatio)]);
+            if (!candidates.length) {
+                return {
+                    status: 'clear',
+                    score: 0,
+                    issue_type: '',
+                    summary: buildInstantAgSightClearSummary(metrics),
+                    flagged: false,
+                    metrics
+                };
+            }
+            candidates.sort((a, b) => Number(b[1] || 0) - Number(a[1] || 0));
+            const issueType = candidates[0][0];
+            const score = Number(candidates[0][1] || 0);
+            return {
+                status: 'flagged',
+                score,
+                issue_type: issueType,
+                summary: buildInstantAgSightFlagSummary(issueType, metrics),
+                flagged: true,
+                metrics
+            };
+        }
+
+        async function runInstantAgSightForPhotoJob(localRow = null, payload = null, photoMeta = {}) {
+            const sourceRow = normalizeMlImageJobRow(localRow || payload);
+            const blob = photoMeta && (photoMeta.analysisBlob || photoMeta.blob);
+            if (!sourceRow || !sourceRow.UNIQUE_ID || !blob) return false;
+            try {
+                const result = await inspectImageBlobWithInstantAgSight(blob);
+                if (!result) return false;
+                const nowIso = new Date().toISOString();
+                const issueType = String(result.issue_type || '').trim();
+                const flagged = !!result.flagged;
+                const patch = {
+                    agsight_status: result.status || (flagged ? 'flagged' : 'clear'),
+                    agsight_score: Number(result.score || 0) || 0,
+                    agsight_issue_type: issueType || null,
+                    agsight_summary: String(result.summary || '').trim() || null,
+                    agsight_checked_at: nowIso,
+                    agsight_review_status: flagged ? 'unreviewed' : 'not_required',
+                    ml_confidence: Number(result.score || 0) || null,
+                    updated_at: nowIso
+                };
+                if (flagged) {
+                    patch.status = 'pending_approval';
+                    patch.manual_review = true;
+                    patch.diagnosis = `AgSight review: possible ${formatAgSightIssueType(issueType).toLowerCase()}`;
+                    patch.recommended_treatment = 'Manager review needed before action.';
+                    patch.ml_completed_at = nowIso;
+                }
+                await supabaseFetch(ML_IMAGE_JOBS_TABLE, 'PATCH', patch, `unique_id=eq.${encodeURIComponent(sourceRow.UNIQUE_ID)}`, { timeoutMs: SUPABASE_UPLOAD_TIMEOUT_MS });
+                const normalizedPatch = normalizeMlImageJobRow({ ...sourceRow, ...patch });
+                const currentRow = getMlImageJobById(sourceRow.UNIQUE_ID) || sourceRow;
+                Object.assign(currentRow, normalizedPatch);
+                upsertRealtimeRow(mlImageJobsInventory, currentRow, ML_IMAGE_JOBS_TABLE);
+                rebuildMlImageJobIndexes();
+                markViewDirty('diagnostics');
+                markViewDirty('tasks');
+                markViewDirty('managers');
+                if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 120);
+                if (isViewVisible('tasks') && isTaskDiagnosticsView(activeTaskView)) scheduleTasksRender(0, 0, true);
+                if (isViewVisible('managers') && isManagerAgSightReviewView(activeHomeTab)) scheduleManagersRender(true);
+                return true;
+            } catch (error) {
+                console.warn('Instant AgSight review failed.', error);
+                return false;
+            }
         }
 
         function getDiagnosticIssueCardTab(uid = '') {
@@ -112520,6 +112723,11 @@ C.14.043 C.15.000
                     markViewDirty('managers');
                     if (isViewVisible('diagnostics')) queueInteractiveViewRender('diagnostics', false, true, 0, 160);
                     if (typeof getCurrentVisibleViewId === 'function' && getCurrentVisibleViewId() === 'managers') scheduleManagersRender(true);
+                    const analysisBlob = photoMeta && (photoMeta.analysisBlob || photoMeta.blob);
+                    if (analysisBlob) {
+                        runInstantAgSightForPhotoJob(localRow, payload, { ...photoMeta, analysisBlob })
+                            .catch((error) => console.warn('Instant AgSight background task failed.', error));
+                    }
                 }
                 return true;
             } catch (error) {
@@ -116092,6 +116300,63 @@ C.14.043 C.15.000
             </div>`;
         }
 
+        function canUseManagerAgSightReviewView() {
+            return canUseMlAdminViews() || canAccessView('managers');
+        }
+
+        function isManagerAgSightReviewView(tab = activeHomeTab) {
+            return String(tab || '').trim().toLowerCase() === MANAGER_AGSIGHT_REVIEW_VIEW;
+        }
+
+        function getManagerAgSightReviewRows() {
+            if (!canUseManagerAgSightReviewView()) return [];
+            const rows = getMlJobsByStatus(['pending_approval']).filter((row) => isMlDiagnosticIssueRow(row));
+            if (!getManagersSearchTokens().length) return rows;
+            return rows.filter((row) => {
+                const item = normalizeMlImageJobRow(row) || {};
+                const metaInfo = getMlJobDriveModeMeta(item);
+                return managerTextMatchesSearch([
+                    getMlJobDisplayCommonName(item),
+                    firstNonEmptyValue(item.ITEMCODE, metaInfo.itemcode, ''),
+                    firstNonEmptyValue(item.CONTSIZE, metaInfo.contsize, ''),
+                    firstNonEmptyValue(item.LOCATIONCODE, metaInfo.loc, ''),
+                    firstNonEmptyValue(item.LOTCODE, metaInfo.lot, ''),
+                    firstNonEmptyValue(item.AGSIGHT_ISSUE_TYPE, item.DIAGNOSIS, ''),
+                    firstNonEmptyValue(item.AGSIGHT_SUMMARY, item.RECOMMENDED_TREATMENT, '')
+                ]);
+            });
+        }
+
+        function renderManagersAgSightReviewPanel() {
+            if (!canUseManagerAgSightReviewView()) {
+                return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">AgSight Review is restricted.</div>';
+            }
+            if (!isDatasetLoaded('mlJobs', 'initial')) {
+                queueDatasetLoad('mlJobs', 'initial', 0);
+                return '<div class="rounded-2xl border border-violet-100 bg-white p-8 text-center text-sm font-bold text-slate-400">Loading AgSight review rows...</div>';
+            }
+            const allRows = getMlJobsByStatus(['pending_approval']).filter((row) => isMlDiagnosticIssueRow(row));
+            const rows = getManagerAgSightReviewRows();
+            const searchActive = !!getManagersSearchTokens().length;
+            const countText = searchActive ? `${rows.length} shown of ${allRows.length}` : `${allRows.length} flagged`;
+            const cards = rows.length
+                ? rows.map((row) => renderTaskDiagnosticIssueCard(row)).join('')
+                : '<div class="rounded-2xl border border-dashed border-violet-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No AgSight photo flags need manager review right now.</div>';
+            return `<div class="space-y-4">
+                <div class="rounded-2xl border border-violet-100 bg-violet-50/70 p-4 shadow-sm">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <div class="text-[10px] font-black uppercase tracking-[0.16em] text-violet-700">AgSight Review</div>
+                            <div class="mt-1 text-xl font-black text-slate-900">${esc(countText)}</div>
+                            <div class="mt-1 text-[12px] font-semibold text-violet-900">Free instant photo checks are routed here for manager review. Field users are not notified when a row is flagged.</div>
+                        </div>
+                        <button type="button" class="inline-flex min-h-[42px] items-center justify-center rounded-xl border border-violet-200 bg-white px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-violet-700 shadow-sm active:scale-95 disabled:opacity-60" onclick="return refreshMlJobsNow()"><i class="ph-bold ph-arrows-clockwise align-middle text-base"></i><span class="align-middle ml-1">Refresh</span></button>
+                    </div>
+                </div>
+                <div class="space-y-3">${cards}</div>
+            </div>`;
+        }
+
         function getManagersToolAccess() {
             const canViewShearApprovals = canUseInventoryChecksApprovalView();
             const canViewNcrApprovals = canUseNcrApprovalTaskView();
@@ -116099,6 +116364,7 @@ C.14.043 C.15.000
                 canViewMoves: canAccessView('moves'),
                 canViewProductivity: canViewProductivityHome(),
                 canViewApproval: canViewShearApprovals || canViewNcrApprovals,
+                canViewAgSightReview: canUseManagerAgSightReviewView(),
                 canViewShearApprovals,
                 canViewNcrApprovals,
                 canViewNotOnInventoryApprovals: canUseNotOnInventoryApprovalTaskView(),
@@ -116115,6 +116381,7 @@ C.14.043 C.15.000
 
         function getDefaultManagersTab(access = getManagersToolAccess()) {
             if (access.canViewApproval) return MANAGER_APPROVAL_HOME_VIEW;
+            if (access.canViewAgSightReview) return MANAGER_AGSIGHT_REVIEW_VIEW;
             if (access.canViewNotOnInventoryApprovals) return NOT_ON_INVENTORY_APPROVAL_VIEW;
             if (access.canViewCropRoll) return CROP_ROLL_HOME_TAB;
             if (access.canViewMoves) return 'moves';
@@ -116131,6 +116398,7 @@ C.14.043 C.15.000
         function getManagerToolTabs(access = getManagersToolAccess()) {
             const tabs = [];
             if (access.canViewApproval) tabs.push({ id: MANAGER_APPROVAL_HOME_VIEW, label: 'Approval' });
+            if (access.canViewAgSightReview) tabs.push({ id: MANAGER_AGSIGHT_REVIEW_VIEW, label: 'AgSight Review' });
             if (access.canViewCropRoll) tabs.push({ id: CROP_ROLL_HOME_TAB, label: 'Crop Roll' });
             if (access.canViewMoves) tabs.push({ id: 'moves', label: 'Move' });
             if (access.canManageSeasonSettings) tabs.push({ id: APP_SEASON_SETTINGS_VIEW, label: 'Season' });
@@ -116164,6 +116432,7 @@ C.14.043 C.15.000
         function getManagerModuleMeta(tab = activeHomeTab) {
             const safeTab = String(tab || '').trim().toLowerCase();
             if (safeTab === MANAGER_APPROVAL_HOME_VIEW) return { label: 'Approval', description: 'Open Shear and NCR approval work.', icon: 'ph-seal-check' };
+            if (safeTab === MANAGER_AGSIGHT_REVIEW_VIEW) return { label: 'AgSight Review', description: 'Review plant photos flagged by AgSight after upload.', icon: 'ph-eye' };
             if (safeTab === CROP_ROLL_HOME_TAB) return { label: 'Crop Roll', description: 'Review completed crop-roll itemcodes before Inventory Office.', icon: 'ph-plant' };
             if (safeTab === 'moves') return { label: 'Move', description: 'Build location-code move sessions from Drive Mode rows.', icon: 'ph-map-pin-line' };
             if (safeTab === APP_SEASON_SETTINGS_VIEW) return { label: 'Season', description: 'Set the current and next sales season logic.', icon: 'ph-calendar-check' };
@@ -118316,6 +118585,7 @@ C.14.043 C.15.000
             let html = '';
             if (activeHomeTab === 'dashboard') html = renderManagerModulePicker(access, managerApprovalTabs, managerToolTabs);
             else if (activeHomeTab === MANAGER_APPROVAL_HOME_VIEW) html = renderManagerApprovalHomePanel(managerApprovalTabs);
+            else if (isManagerAgSightReviewView(activeHomeTab)) html += renderManagersAgSightReviewPanel();
             else if (activeHomeTab === 'productivity') html += renderProductivityHomePanel();
             else if (activeHomeTab === CROP_ROLL_HOME_TAB) html += renderCropRollHomePanel();
             else if (activeHomeTab === 'moves') html += renderManagerMovesPanel();
@@ -143286,7 +143556,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 imageBucket: bucketName,
                                 imagePath: filePath,
                                 imageUrl: publicUrl,
-                                uploadToken
+                                uploadToken,
+                                analysisBlob: blob
                             }).catch((error) => console.warn('ML queue background task failed.', error));
                             markPhotoPersistActivity();
                             cleanupUploadResources();
