@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.11.12';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.11.13';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.12').trim() || 'V2026.08.11.12';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.13').trim() || 'V2026.08.11.13';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.12';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.13';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7638,12 +7638,12 @@ const QUOTA_SAFE_CHAT_HEALTHY_POLL_MS = 180000;
 const QUOTA_SAFE_DIRECT_REALTIME_VIEW_IDS = new Set(['chat', 'communication', 'department-calendar', 'request']);
 const LIVE_SYNC_POLL_STANDALONE_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_POLL_STANDALONE_MS : 60000;
 const LIVE_SYNC_POLL_BROWSER_MS = QUOTA_SAFE_REALTIME_MODE ? QUOTA_SAFE_VISIBLE_POLL_BROWSER_MS : 90000;
-const REQUEST_LIVE_QUEUE_POLL_MS = 1000;
+const REQUEST_LIVE_QUEUE_POLL_MS = QUOTA_SAFE_REALTIME_MODE ? 30000 : 5000;
 const REQUEST_VISIBLE_POLL_MS = REQUEST_LIVE_QUEUE_POLL_MS;
-const REQUEST_QUEUE_VISIBLE_POLL_FLOOR_MS = 650;
-        const REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS = 850;
-const REQUEST_RECOUNT_SOURCE_REFRESH_MS = 2500;
-const REQUEST_SHEAR_LIST_STALE_MS = 1200;
+const REQUEST_QUEUE_VISIBLE_POLL_FLOOR_MS = QUOTA_SAFE_REALTIME_MODE ? 12000 : 2500;
+        const REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS = QUOTA_SAFE_REALTIME_MODE ? 15000 : 4000;
+const REQUEST_RECOUNT_SOURCE_REFRESH_MS = QUOTA_SAFE_REALTIME_MODE ? 15000 : 5000;
+const REQUEST_SHEAR_LIST_STALE_MS = QUOTA_SAFE_REALTIME_MODE ? 15000 : 5000;
 const REQUEST_LIVE_QUEUE_TABS = new Set(['pending', 'suspend-tag', 'moves', 'recount', 'av-check', 'shear-list', 'shear-test']);
 const FOREGROUND_INVENTORY_POLL_MS = 30000;
 const FOREGROUND_INVENTORY_FULL_MAX_AGE_MS = 30000;
@@ -7728,13 +7728,13 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         let activeVisibleViewPollMs = 0;
         const VIEW_ENTER_REFRESH_MIN_INTERVAL_MS = 60000;
         const VIEW_ENTER_REFRESH_REALTIME_HEALTHY_MS = 180000;
-        const REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS = 1000;
-        const REQUEST_VIEW_VISIBLE_FORCE_REFRESH_MIN_INTERVAL_MS = 650;
-        const REQUEST_VIEW_RENDER_CATCHUP_MIN_INTERVAL_MS = 750;
-        const REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS = 650;
-        const REQUEST_VIEW_ACTIVE_SIGNATURE_SYNC_MS = 850;
-        const REQUEST_VIEW_SECONDARY_SIGNATURE_SYNC_MS = 1200;
-        const REQUEST_VIEW_BACKGROUND_SIGNATURE_SYNC_MS = 1000;
+        const REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS = QUOTA_SAFE_REALTIME_MODE ? 12000 : 3500;
+        const REQUEST_VIEW_VISIBLE_FORCE_REFRESH_MIN_INTERVAL_MS = QUOTA_SAFE_REALTIME_MODE ? 10000 : 3000;
+        const REQUEST_VIEW_RENDER_CATCHUP_MIN_INTERVAL_MS = QUOTA_SAFE_REALTIME_MODE ? 12000 : 3000;
+        const REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS = QUOTA_SAFE_REALTIME_MODE ? 10000 : 3000;
+        const REQUEST_VIEW_ACTIVE_SIGNATURE_SYNC_MS = QUOTA_SAFE_REALTIME_MODE ? 30000 : 5000;
+        const REQUEST_VIEW_SECONDARY_SIGNATURE_SYNC_MS = QUOTA_SAFE_REALTIME_MODE ? 45000 : 8000;
+        const REQUEST_VIEW_BACKGROUND_SIGNATURE_SYNC_MS = QUOTA_SAFE_REALTIME_MODE ? 60000 : 10000;
         const viewEnterRefreshAt = new Map();
         const REALTIME_STARTUP_GRACE_MS = 12000;
         const REALTIME_RECOVERY_GRACE_MS = 3200;
@@ -17747,9 +17747,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 state.lastLoadedAt = '';
             });
             refreshAffectedViews(datasetKeys);
+            const targetedRowIds = normalizeAppLiveEventRowIds(firstNonEmptyValue(eventRow && eventRow.rowIds, eventRow && eventRow.row_ids, eventRow && eventRow.ROW_IDS, []));
+            const hasTargetedRows = targetedRowIds.length > 0 && !(eventRow && eventRow.bulk === true);
             const currentGetter = typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId : null;
             const currentView = resolveRealtimeContextViewId((currentGetter && currentGetter()) || activeRealtimeContextViewId || activeRealtimeViewId || 'home');
-            if (currentView && FORCE_VISIBLE_VIEW_REFRESH_IDS.has(currentView) && getAffectedViewsForDatasets(datasetKeys).includes(currentView)) {
+            if (!hasTargetedRows && currentView && FORCE_VISIBLE_VIEW_REFRESH_IDS.has(currentView) && getAffectedViewsForDatasets(datasetKeys).includes(currentView)) {
                 forceRefreshViewDatasets(currentView, { includeBackground: false, loadedOnly: false }).catch(() => {});
             }
             return datasetKeys;
@@ -18684,19 +18686,15 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (policy.viewId === 'chat') {
                     await forceRefreshViewDatasets(policy.viewId, { includeBackground: true });
                 } else if (policy.viewId === 'request') {
-                    const didRefresh = await forceRefreshRequestsForView('request-visible-poll', {
-                        allowWhileInteractive: true,
-                        force: true,
-                        minIntervalMs: 0
+                    const didRefresh = await runRequestViewLiveSync({
+                        alwaysOn: true,
+                        allowHealthyRealtime: true,
+                        once: true,
+                        minIntervalMs: REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS
                     });
-                    if (didRefresh === false) {
-                        await runRequestViewLiveSync({
-                            alwaysOn: true,
-                            allowHealthyRealtime: true,
-                            allowWhileInteractive: true,
-                            force: true,
-                            once: true,
-                            minIntervalMs: 0
+                    if (didRefresh !== false) {
+                        await refreshActiveRequestQueueSideData('request-visible-poll-side-data', {
+                            minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
                         });
                     }
                 } else {
@@ -18907,21 +18905,22 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                                 liveSyncMode = 'queued';
                                 updateSyncDiagnostics('queued');
                             }
-                            if (tableName === 'ph_active_request') syncAlwaysOnRequestData(0, { minIntervalMs: 0 });
+                            if (tableName === 'ph_active_request') syncAlwaysOnRequestData(REQUEST_VIEW_ACTIVE_SIGNATURE_SYNC_MS, {
+                                minIntervalMs: REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS
+                            });
                             if (tableName === SHEAR_LIST_TABLE || tableName === 'ph_inventory_edit_requests' || tableName === 'ph_av_option_eval_requests' || tableName === 'ph_sales_office' || tableName === 'ph_master_inventory' || tableName === 'ph_soc_master') {
-                                refreshActiveRequestQueueSideData('realtime-subscribed', {
-                                    force: true,
-                                    allowWhileInteractive: true,
-                                    minIntervalMs: 0
-                                }).catch(() => {});
+                                scheduleUiRender(`request-side-realtime-subscribed:${tableName}`, () => {
+                                    queuePassiveRequestRenderRefresh('realtime-subscribed');
+                                }, isTouchConstrainedDevice() ? 1600 : 900);
                             }
                             if (!isQuotaSafeRealtimeMode()) queueVisibleDatasetCatchup(160);
                         }
                         if (channelStatus === 'TIMED_OUT' || channelStatus === 'CHANNEL_ERROR' || channelStatus === 'CLOSED') {
-                            if (tableName === 'ph_active_request') syncAlwaysOnRequestData(140, { minIntervalMs: 0 });
+                            if (tableName === 'ph_active_request') syncAlwaysOnRequestData(REQUEST_VIEW_ACTIVE_SIGNATURE_SYNC_MS, {
+                                minIntervalMs: REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS
+                            });
                             if (tableName === SHEAR_LIST_TABLE || tableName === 'ph_inventory_edit_requests' || tableName === 'ph_av_option_eval_requests' || tableName === 'ph_sales_office' || tableName === 'ph_master_inventory' || tableName === 'ph_soc_master') {
                                 refreshActiveRequestQueueSideData('realtime-recovery', {
-                                    allowWhileInteractive: true,
                                     minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
                                 }).catch(() => {});
                             }
@@ -27303,7 +27302,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.12').trim() || 'V2026.08.11.12';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.13').trim() || 'V2026.08.11.13';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -32221,32 +32220,20 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return;
             }
             if (targetView === 'request') {
-                updateSyncDiagnostics('refreshing');
-                forceRefreshRequestsForView('request-view-enter', {
-                    allowWhileInteractive: true,
-                    force: true,
-                    minIntervalMs: 0
-                }).then((didRefresh) => {
-                    if (didRefresh !== false) {
-                        syncAlwaysOnRequestData(REQUEST_VIEW_ACTIVE_SIGNATURE_SYNC_MS, {
-                            minIntervalMs: REQUEST_VIEW_VISIBLE_FORCE_REFRESH_MIN_INTERVAL_MS
-                        });
-                        return;
-                    }
+                updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'queued');
+                setRealtimeSubscriptionsForView('request', true);
+                scheduleUiRender('request-view-enter-live-sync', () => {
+                    if (!isViewVisible('request')) return;
                     runRequestViewLiveSync({
                         allowHealthyRealtime: true,
-                        allowWhileInteractive: true,
-                        force: true,
+                        allowWhileInteractive: false,
                         once: true,
-                        minIntervalMs: 0
+                        minIntervalMs: REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS
                     }).catch(() => {});
-                }).catch(() => {
-                    forceRefreshRequestsForView('request-view-enter', {
-                        allowWhileInteractive: true,
-                        force: true,
-                        minIntervalMs: 0
-                    }).catch(() => {});
-                });
+                    syncAlwaysOnRequestData(REQUEST_VIEW_ACTIVE_SIGNATURE_SYNC_MS, {
+                        minIntervalMs: REQUEST_VIEW_VISIBLE_FORCE_REFRESH_MIN_INTERVAL_MS
+                    });
+                }, isTouchConstrainedDevice() ? 1400 : 800);
                 return;
             }
             if (targetView === 'chat') {
@@ -46576,11 +46563,10 @@ function toggleDriveQuickRequestItem(domId) {
             setTimeout(() => ensureHomeDashboardReadyAfterLogin('login-shell-watchdog-1'), 650);
             setTimeout(() => ensureHomeDashboardReadyAfterLogin('login-shell-watchdog-2'), 1800);
             runAfterShellInteractive(() => {
-                wakeRequestQueueLiveData('login-shell-open', {
-                    force: true,
-                    minIntervalMs: 0
+                syncAlwaysOnRequestData(REQUEST_VIEW_BACKGROUND_SIGNATURE_SYNC_MS, {
+                    minIntervalMs: REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS
                 });
-            }, touchShell ? 40 : 0);
+            }, touchShell ? 3200 : 1400);
         }
 
                 function addLoginWarmupTarget(targetMap, key, mode = 'initial') {
@@ -67351,11 +67337,11 @@ function toggleDriveQuickRequestItem(domId) {
                 skipHeaderSync: nextState.initialized && !nextState.dirty
             });
             if (nextViewId === 'request') {
-                runAfterShellInteractive(() => wakeRequestQueueLiveData('request-fast-back', {
-                    force: true,
-                    minIntervalMs: 0,
-                    subscribeVisible: true
-                }), isTouchConstrainedDevice() ? 16 : 4);
+                setRealtimeSubscriptionsForView('request', true);
+                runAfterShellInteractive(() => {
+                    if (getCurrentVisibleViewId() !== 'request') return;
+                    queuePassiveRequestRenderRefresh('request-fast-back-passive');
+                }, isTouchConstrainedDevice() ? 1200 : 700);
             }
             schedulePassiveViewActivationWork(nextViewId, {
                 delay: isTouchConstrainedDevice() ? 96 : 44,
@@ -67639,11 +67625,19 @@ function toggleDriveQuickRequestItem(domId) {
             const forceViewRender = !!(switchOptions.force || switchOptions.forceRender || switchOptions.forceReset);
             repairAppShellScrollState(`view-switch-start:${currentViewId || 'none'}:${nextViewId}`, { resetGestureState: currentViewId !== nextViewId });
             if (nextViewId === 'request') {
-                wakeRequestQueueLiveData('request-switch', {
-                    force: true,
-                    minIntervalMs: 0,
-                    subscribeVisible: true
-                });
+                setRealtimeSubscriptionsForView('request', true);
+                scheduleUiRender('request-switch-live-sync', () => {
+                    if (getCurrentVisibleViewId() !== 'request') return;
+                    runRequestViewLiveSync({
+                        allowHealthyRealtime: true,
+                        allowWhileInteractive: false,
+                        once: true,
+                        minIntervalMs: REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS
+                    }).catch(() => {});
+                    syncAlwaysOnRequestData(REQUEST_VIEW_ACTIVE_SIGNATURE_SYNC_MS, {
+                        minIntervalMs: REQUEST_VIEW_VISIBLE_FORCE_REFRESH_MIN_INTERVAL_MS
+                    });
+                }, isTouchConstrainedDevice() ? 1400 : 800);
             }
             const switchGuardKey = `${currentViewId || 'none'}->${nextViewId}`;
             const switchNow = Date.now();
@@ -67673,11 +67667,8 @@ function toggleDriveQuickRequestItem(domId) {
             if (currentViewId === nextViewId && nextState.initialized && !nextState.dirty && !forceViewRender && canReuseWarmViewContent(nextViewId)) {
                 incrementInternalPerfCounter('warmViewReuseHits');
                 if (nextViewId === 'request') {
-                    wakeRequestQueueLiveData('request-warm-reuse', {
-                        force: true,
-                        minIntervalMs: 0,
-                        subscribeVisible: true
-                    });
+                    setRealtimeSubscriptionsForView('request', true);
+                    queuePassiveRequestRenderRefresh('request-warm-reuse-passive');
                 }
                 if (targetScrollTop != null) scheduleUiRender(`view-restore:${nextViewId}:${targetScrollTop}`, () => setMainAreaScrollTop(targetScrollTop));
                 schedulePrimaryViewChromeRefresh(nextViewId, {
@@ -68969,9 +68960,20 @@ function toggleDriveQuickRequestItem(domId) {
                 scrollDelayMs: 40
             });
             scheduleUiRender(`request-tab-refresh:${nextTab}`, () => {
-                forceRefreshRequestsForView('request-tab', { force: true, minIntervalMs: 0, allowWhileInteractive: true }).catch(() => {});
-                refreshActiveRequestQueueSideData('request-tab-side-data', { force: true, allowWhileInteractive: true, minIntervalMs: 0 }).catch(() => {});
-            }, isTouchConstrainedDevice() ? 360 : 180);
+                if (shouldDeferPassiveRequestRenderRefresh()) {
+                    queuePassiveRequestRenderRefresh('request-tab-passive-deferred');
+                    return;
+                }
+                refreshActiveRequestQueueSideData('request-tab-side-data', {
+                    allowWhileInteractive: false,
+                    minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
+                }).catch(() => {});
+                runRequestViewLiveSync({
+                    allowHealthyRealtime: true,
+                    once: true,
+                    minIntervalMs: REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS
+                }).catch(() => {});
+            }, isTouchConstrainedDevice() ? 1600 : 900);
             return scheduled;
         }
 
@@ -98085,11 +98087,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             syncRequestTabButtons();
             syncRequestHeaderSearchChrome();
             if (ensureViewDataForRender('request')) return;
-            refreshActiveRequestQueueSideData('request-render-side-data', {
-                allowWhileInteractive: true,
-                minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
-            }).catch(() => {});
-            queueRequestVisibleRenderCatchup('request-render-catchup');
+            queuePassiveRequestRenderRefresh('request-render-passive');
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
             bumpChunkRenderTokenByKey('request-main');
@@ -98493,6 +98491,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         let pendingRequestSourceCompletionReconcileInFlight = false;
         let requestQueueSideRefreshInFlight = false;
         let requestQueueSideRefreshLastAt = 0;
+        let requestRenderPassiveRefreshTimer = null;
         let requestRecountMasterRefreshInFlight = false;
         let requestRecountMasterRefreshLastAt = 0;
         let requestRecountMasterRowIds = new Set();
@@ -98590,6 +98589,50 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     });
                 }).catch(() => {});
             }, 80);
+            return true;
+        }
+
+        function shouldDeferPassiveRequestRenderRefresh() {
+            if (!currentUser || navigator.onLine === false || document.hidden || !isViewVisible('request')) return true;
+            if (!isLiveRequestQueueTab()) return true;
+            if (hasActiveTextEntryFocus() || isUserActivelyTyping() || isUserActivelyTouching() || isUserActivelyScrolling() || isUserInRecentInteractionWindow()) return true;
+            try {
+                if (hasExtendedInteractionBlockers({ ignoreChunkDuringInteraction: true })) return true;
+            } catch (error) {}
+            return false;
+        }
+
+        function queuePassiveRequestRenderRefresh(reason = 'request-render') {
+            if (shouldDeferPassiveRequestRenderRefresh()) return false;
+            const now = Date.now();
+            const minGap = Math.max(REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS, REQUEST_VIEW_SIGNATURE_SYNC_MIN_INTERVAL_MS, 12000);
+            const lastRefreshAt = Math.max(
+                Number(requestQueueSideRefreshLastAt || 0),
+                Number(lastRequestViewForceRefreshAt || 0),
+                Number(lastRequestViewSignatureSyncAt || 0),
+                Number(lastRequestLiveWakeAt || 0)
+            );
+            if (lastRefreshAt && (now - lastRefreshAt) < minGap) return false;
+            if (requestRenderPassiveRefreshTimer) return false;
+            requestRenderPassiveRefreshTimer = setTimeout(() => {
+                requestRenderPassiveRefreshTimer = null;
+                if (shouldDeferPassiveRequestRenderRefresh()) {
+                    requestRenderPassiveRefreshTimer = setTimeout(() => {
+                        requestRenderPassiveRefreshTimer = null;
+                        queuePassiveRequestRenderRefresh(`${reason}:deferred`);
+                    }, getInteractiveRefreshResumeDelayMs());
+                    return;
+                }
+                refreshActiveRequestQueueSideData(reason || 'request-render-passive-side-data', {
+                    allowWhileInteractive: false,
+                    minIntervalMs: minGap
+                }).catch(() => {});
+                runRequestViewLiveSync({
+                    allowHealthyRealtime: true,
+                    once: true,
+                    minIntervalMs: minGap
+                }).catch(() => {});
+            }, isTouchConstrainedDevice() ? 1800 : 1100);
             return true;
         }
 
