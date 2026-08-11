@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.11.09';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.11.10';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.09').trim() || 'V2026.08.11.09';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.10').trim() || 'V2026.08.11.10';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.09';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.10';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -19496,6 +19496,26 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return true;
         }
 
+        function runImmediateDriveInteractionRender(renderKey = '', options = {}) {
+            const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            const targetView = document.getElementById('view-drive');
+            if (!targetView || targetView.classList.contains('hidden')) return false;
+            const touchRenderStartedAt = beginInternalPerfMeasure();
+            markViewDirty('drive');
+            prepareLatestViewRender('drive');
+            const viewRenderStartedAt = beginInternalPerfMeasure();
+            try {
+                const didFastDriveRender = !nextOptions.forceReset && renderDriveFastVisibleContent(String(renderKey || 'drive-direct'));
+                if (!didFastDriveRender) renderViewContent('drive', !!nextOptions.forceReset, true);
+            } finally {
+                recordAdaptiveRenderDuration('view:drive-direct', getAdaptivePerfElapsedMs(viewRenderStartedAt));
+                sampleAdaptiveDomPressure('view:drive-direct');
+            }
+            recordInternalPerfDuration('touchToRenderDurations', touchRenderStartedAt, 'drive');
+            if (typeof nextOptions.afterRender === 'function') nextOptions.afterRender();
+            return true;
+        }
+
         function runDirectTrackedNavigation(viewId, renderKey = '', mutateStateFn = null, options = {}) {
             beginDirectNavigationActivity();
             if (typeof mutateStateFn === 'function') mutateStateFn();
@@ -19560,6 +19580,9 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             delete trackedOptions.restoreScrollTopAfterRender;
             delete trackedOptions.scrollResetKey;
             scheduleAppSessionHousekeeping(`navigation:${safeViewId || 'view'}`, 1800);
+            if (safeViewId === 'drive' && trackedOptions.driveFastContent === true) {
+                return runImmediateDriveInteractionRender(renderKey, trackedOptions);
+            }
             return scheduleTrackedViewRender(viewId, renderKey, trackedOptions);
         }
 
@@ -27228,7 +27251,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.09').trim() || 'V2026.08.11.09';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.10').trim() || 'V2026.08.11.10';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -125817,7 +125840,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             cancelDriveSearchRenderWork();
             const requestToken = ++driveSearchRequestToken;
             const drillStateKey = getDriveDrillSelectionStateKey();
-            const requestDelay = (isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) ? 24 : 8;
+            const requestDelay = (isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) ? 10 : 4;
             driveSearchDebounceTimer = setTimeout(() => {
                 driveSearchDebounceTimer = null;
                 if (requestToken !== driveSearchRequestToken) return;
@@ -125922,45 +125945,50 @@ ${folderNote ? `Folder Note: ${folderNote}
             const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const touchConstrained = isTouchConstrainedDevice();
             const hasDebounceDelay = Object.prototype.hasOwnProperty.call(nextOptions, 'debounceDelay');
-            const hasTypingDelay = Object.prototype.hasOwnProperty.call(nextOptions, 'typingDelay');
+            const safeKey = 'drive-search';
+            const normalizedTerm = normalizeSearchValue(term);
+            if (!nextOptions.force && searchRenderLastTerm[safeKey] === normalizedTerm && containerHasActualRenderableContent(document.getElementById('drive-content'))) return;
+            if (searchRenderTimer[safeKey]) {
+                clearTimeout(searchRenderTimer[safeKey]);
+                delete searchRenderTimer[safeKey];
+            }
+            if (searchRenderFrame[safeKey]) {
+                cancelAnimationFrame(searchRenderFrame[safeKey]);
+                delete searchRenderFrame[safeKey];
+            }
+            cancelScheduledUiRenderByPrefix(`search:${safeKey}`);
             cancelPendingNavigationScrollResets();
             invalidateDriveResolvedCardState();
             markViewDirty('drive');
             const renderToken = prepareLatestViewRender('drive');
-            scheduleSearchRender('drive-search', () => {
+            const requestToken = Number(nextOptions.requestToken || 0) || 0;
+            const drillStateKey = String(nextOptions.drillStateKey || '').trim();
+            const renderDelay = Math.max(0, hasDebounceDelay ? (Number(nextOptions.debounceDelay) || 0) : (touchConstrained ? 10 : 4));
+            const runDriveSearchPaint = () => {
+                delete searchRenderFrame[safeKey];
                 if (!isLatestViewRenderToken('drive', renderToken)) {
                     incrementInternalPerfCounter('staleViewRenderSkips');
                     return false;
                 }
-                if (Number(nextOptions.requestToken || 0) && Number(nextOptions.requestToken || 0) !== driveSearchRequestToken) return false;
+                if (requestToken && requestToken !== driveSearchRequestToken) return false;
                 const didAutoDrillName = nextOptions.allowAutoCommonNameDrill === true
                     ? tryAutoDrillDriveCommonNameSearch(term)
                     : false;
-                if (!didAutoDrillName && String(nextOptions.drillStateKey || '').trim() && String(nextOptions.drillStateKey || '').trim() !== getDriveDrillSelectionStateKey()) return false;
+                if (!didAutoDrillName && drillStateKey && drillStateKey !== getDriveDrillSelectionStateKey()) return false;
                 const targetView = document.getElementById('view-drive');
                 if (!targetView || targetView.classList.contains('hidden')) return false;
+                const searchRenderStartedAt = beginInternalPerfMeasure();
                 if (!renderDriveFastVisibleContent('drive-search')) {
-                    renderViewContent('drive', false, false);
+                    renderViewContent('drive', false, true);
                 }
+                searchRenderLastTerm[safeKey] = normalizedTerm;
+                recordInternalPerfDuration('searchRenderDurations', searchRenderStartedAt, safeKey);
                 return true;
-            }, term, {
-                force: !!nextOptions.force,
-                skipDebounce: !!nextOptions.skipDebounce,
-                debounceDelay: Math.max(0, hasDebounceDelay ? (Number(nextOptions.debounceDelay) || 0) : (touchConstrained ? 12 : 4)),
-                typingDelay: Math.max(touchConstrained ? 10 : 8, hasTypingDelay ? (Number(nextOptions.typingDelay) || 0) : (touchConstrained ? 14 : 10)),
-                allowWhileTyping: Object.prototype.hasOwnProperty.call(nextOptions, 'allowWhileTyping') ? !!nextOptions.allowWhileTyping : true,
-                allowDuringLiveGesture: Object.prototype.hasOwnProperty.call(nextOptions, 'allowDuringLiveGesture') ? !!nextOptions.allowDuringLiveGesture : true,
-                allowWhileTouching: Object.prototype.hasOwnProperty.call(nextOptions, 'allowWhileTouching') ? !!nextOptions.allowWhileTouching : true,
-                allowWhileScrolling: Object.prototype.hasOwnProperty.call(nextOptions, 'allowWhileScrolling') ? !!nextOptions.allowWhileScrolling : true,
-                allowDuringRecentInteraction: Object.prototype.hasOwnProperty.call(nextOptions, 'allowDuringRecentInteraction') ? !!nextOptions.allowDuringRecentInteraction : true,
-                allowDuringExtendedBlock: Object.prototype.hasOwnProperty.call(nextOptions, 'allowDuringExtendedBlock') ? !!nextOptions.allowDuringExtendedBlock : true,
-                interactiveCritical: true,
-                visibleSearch: true,
-                touchDelayMs: touchConstrained ? 8 : 6,
-                scrollDelayMs: touchConstrained ? 10 : 8,
-                interactionDelayMs: touchConstrained ? 8 : 6,
-                maxDeferMs: touchConstrained ? 120 : 100
-            });
+            };
+            searchRenderTimer[safeKey] = setTimeout(() => {
+                delete searchRenderTimer[safeKey];
+                searchRenderFrame[safeKey] = requestAnimationFrame(runDriveSearchPaint);
+            }, renderDelay);
         }
 
         function clearDriveSearch() {
