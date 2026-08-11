@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.11.03';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.11.04';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.03').trim() || 'V2026.08.11.03';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.04').trim() || 'V2026.08.11.04';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.03';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.04';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -27216,7 +27216,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.03').trim() || 'V2026.08.11.03';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.04').trim() || 'V2026.08.11.04';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -37305,6 +37305,8 @@ let avTopControlsRenderToken = 0;
                 lastPltgDate: String(firstNonEmptyValue(safeItem.LASTPLTGDATE, safeItem.lastpltgdate, '') || '').trim(),
                 holdStopCode: String(firstNonEmptyValue(safeItem.HOLDSTOPCODE, safeItem.holdstopcode, safeItem.HOLSTOPCODE, safeItem.holstopcode, '') || '').trim(),
                 holdStopReason: String(firstNonEmptyValue(safeItem.HOLDSTOPREASON, safeItem.holdstopreason, safeItem.HOLSTOPREASON, safeItem.holstopreason, '') || '').trim(),
+                locationNote: String(firstNonEmptyValue(safeItem.LOCATIONNOTE, safeItem.locationnote, safeItem.LOCATION_NOTE, safeItem.location_note, '') || '').trim(),
+                locationPtn1: getInventoryActionLocationPtn1Value(safeItem),
                 season: String(firstNonEmptyValue(safeItem.SEASON, safeItem.season, '') || '').trim(),
                 salesYear: String(firstNonEmptyValue(safeItem.SALEYEAR, safeItem.saleyear, safeItem.SALESYEAR, safeItem.salesyear, safeItem.SALES_YEAR, safeItem.sales_year, '') || '').trim()
             };
@@ -37312,7 +37314,7 @@ let avTopControlsRenderToken = 0;
 
         const ARGOS_INVENTORY_TRANSACTION_LOT_SEASONS = Object.freeze(['S1', 'F1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
         const ARGOS_INVENTORY_TRANSACTION_MOVE_SEASON_REQUEST_ACTIONS = Object.freeze(['move_up', 'move_down']);
-        const ARGOS_INVENTORY_TRANSACTION_REQUEST_ACTIONS = Object.freeze(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'ncr', 'recount', 'priority_change', 'move_up', 'move_down']);
+        const ARGOS_INVENTORY_TRANSACTION_REQUEST_ACTIONS = Object.freeze(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'ncr', 'recount', 'priority_change', 'move_up', 'move_down', 'hold_reason_change', 'location_note_change']);
         const ARGOS_INVENTORY_TRANSACTION_REQUEST_LABELS = Object.freeze({
             hold: 'On Hold',
             take_off_hold: 'Off Hold',
@@ -37322,7 +37324,9 @@ let avTopControlsRenderToken = 0;
             recount: 'Re-Count',
             priority_change: 'Priority Change',
             move_up: 'Move Up',
-            move_down: 'Move Down'
+            move_down: 'Move Down',
+            hold_reason_change: 'Hold Stop Reason Change',
+            location_note_change: 'Location Note / PTN1 Change'
         });
         const ARGOS_INVENTORY_TRANSACTION_HOLD_ACTION_OPTIONS = Object.freeze([
             { value: 'none', label: 'No request', detail: 'No email request' },
@@ -37334,7 +37338,9 @@ let avTopControlsRenderToken = 0;
             { value: 'recount', label: 'Re-Count Request', detail: 'Email only' },
             { value: 'priority_change', label: 'Priority Change', detail: 'Email report only' },
             { value: 'move_up', label: 'Move Up Request', detail: 'Email only' },
-            { value: 'move_down', label: 'Move Down Request', detail: 'Email only' }
+            { value: 'move_down', label: 'Move Down Request', detail: 'Email only' },
+            { value: 'hold_reason_change', label: 'Hold Stop Reason Change', detail: 'Email only' },
+            { value: 'location_note_change', label: 'Location Note / PTN1 Change', detail: 'Email only' }
         ]);
 
         function getArgosInventoryTransactionLotYears(item = null) {
@@ -37516,7 +37522,7 @@ let avTopControlsRenderToken = 0;
                             <label class="argos-tx-field" data-argos-destination-field="location"><span>New Location</span><input id="argos-inventory-transaction-new-location" class="argos-tx-input" placeholder="Location"></label>
                             <div class="argos-tx-field argos-tx-field-wide" data-argos-hold-field="action">
                                 <span>Request / Hold-Stop</span>
-                                <select id="argos-inventory-transaction-hold-action" class="argos-tx-select-native" tabindex="-1" aria-hidden="true" onchange="return setArgosInventoryTransactionHoldAction(this.value)"><option value="none">No request</option><option value="hold">On Hold Request (email only)</option><option value="take_off_hold">Off Hold Request (email only)</option><option value="stop_ship">On Stop Request (email only)</option><option value="off_stop_ship">Off Stop Request (email only)</option><option value="ncr">NCR Request (email only)</option><option value="recount">Re-Count Request (email only)</option><option value="priority_change">Priority Change (email report only)</option><option value="move_up">Move Up Request (email only)</option><option value="move_down">Move Down Request (email only)</option></select>
+                                <select id="argos-inventory-transaction-hold-action" class="argos-tx-select-native" tabindex="-1" aria-hidden="true" onchange="return setArgosInventoryTransactionHoldAction(this.value)"><option value="none">No request</option><option value="hold">On Hold Request (email only)</option><option value="take_off_hold">Off Hold Request (email only)</option><option value="stop_ship">On Stop Request (email only)</option><option value="off_stop_ship">Off Stop Request (email only)</option><option value="ncr">NCR Request (email only)</option><option value="recount">Re-Count Request (email only)</option><option value="priority_change">Priority Change (email report only)</option><option value="move_up">Move Up Request (email only)</option><option value="move_down">Move Down Request (email only)</option><option value="hold_reason_change">Hold Stop Reason Change (email only)</option><option value="location_note_change">Location Note / PTN1 Change (email only)</option></select>
                                 <button type="button" id="argos-inventory-transaction-hold-action-button" class="argos-tx-input argos-tx-select-button" aria-expanded="false" aria-controls="argos-inventory-transaction-hold-action-picker" onclick="return toggleArgosInventoryTransactionHoldActionPicker()"><span class="argos-tx-select-copy"><strong data-argos-hold-label>No request</strong><small data-argos-hold-detail>No email request</small></span><i class="ph-bold ph-caret-down text-lg text-slate-500"></i></button>
                                 <div id="argos-inventory-transaction-hold-action-picker" class="argos-tx-choice-panel hidden" role="listbox" aria-label="Request / Hold-Stop options">
                                     <button type="button" class="argos-tx-choice-option active" data-argos-hold-option="none" role="option" aria-selected="true" onclick="return selectArgosInventoryTransactionHoldAction('none')"><span><strong>No request</strong><small>Apply inventory change normally</small></span><i class="ph-bold ph-check text-[#007a4d]"></i></button>
@@ -37529,6 +37535,8 @@ let avTopControlsRenderToken = 0;
                                     <button type="button" class="argos-tx-choice-option" data-argos-hold-option="priority_change" role="option" aria-selected="false" onclick="return selectArgosInventoryTransactionHoldAction('priority_change')"><span><strong>Priority Change</strong><small>Email report only</small></span><i class="ph-bold ph-circle text-slate-300"></i></button>
                                     <button type="button" class="argos-tx-choice-option" data-argos-hold-option="move_up" role="option" aria-selected="false" onclick="return selectArgosInventoryTransactionHoldAction('move_up')"><span><strong>Move Up Request</strong><small>Email only</small></span><i class="ph-bold ph-circle text-slate-300"></i></button>
                                     <button type="button" class="argos-tx-choice-option" data-argos-hold-option="move_down" role="option" aria-selected="false" onclick="return selectArgosInventoryTransactionHoldAction('move_down')"><span><strong>Move Down Request</strong><small>Email only</small></span><i class="ph-bold ph-circle text-slate-300"></i></button>
+                                    <button type="button" class="argos-tx-choice-option" data-argos-hold-option="hold_reason_change" role="option" aria-selected="false" onclick="return selectArgosInventoryTransactionHoldAction('hold_reason_change')"><span><strong>Hold Stop Reason Change</strong><small>Email only</small></span><i class="ph-bold ph-circle text-slate-300"></i></button>
+                                    <button type="button" class="argos-tx-choice-option" data-argos-hold-option="location_note_change" role="option" aria-selected="false" onclick="return selectArgosInventoryTransactionHoldAction('location_note_change')"><span><strong>Location Note / PTN1 Change</strong><small>Email only</small></span><i class="ph-bold ph-circle text-slate-300"></i></button>
                                 </div>
                             </div>
                             <label class="argos-tx-field argos-tx-field-wide" data-argos-hold-field="reason"><span>Hold/Stop Reason</span><input id="argos-inventory-transaction-hold-reason" class="argos-tx-input" placeholder="Reason for H"></label>
@@ -37751,6 +37759,11 @@ let avTopControlsRenderToken = 0;
             return getArgosInventoryTransactionRequestAction() === 'priority_change';
         }
 
+        function isArgosInventoryTransactionHoldReasonRequestAction(action = '') {
+            const safeAction = normalizeArgosInventoryTransactionRequestAction(action);
+            return safeAction === 'hold' || safeAction === 'stop_ship' || safeAction === 'hold_reason_change';
+        }
+
         function isArgosInventoryTransactionRequestOnlyMode() {
             const requestAction = getArgosInventoryTransactionRequestAction();
             return !!requestAction;
@@ -37783,7 +37796,9 @@ let avTopControlsRenderToken = 0;
             const newLotInput = document.getElementById('argos-inventory-transaction-new-lot');
             const newLocationInput = document.getElementById('argos-inventory-transaction-new-location');
             const reasonInput = document.getElementById('argos-inventory-transaction-hold-reason');
+            const holdReasonField = document.querySelector('[data-argos-hold-field="reason"]');
             const needsDestinationSeasonLot = requestOnly && stateAction === 'reclass' && isArgosInventoryTransactionMoveSeasonRequestAction(requestAction);
+            const needsHoldReason = isArgosInventoryTransactionHoldReasonRequestAction(requestAction);
             if (reasonField) reasonField.classList.toggle('hidden', requestOnly);
             if (sourceField) sourceField.classList.toggle('hidden', requestOnly || isPriorityChange);
             if (qtyField) qtyField.classList.toggle('hidden', requestOnly || isPriorityChange);
@@ -37803,7 +37818,8 @@ let avTopControlsRenderToken = 0;
             if (newItemInput) newItemInput.required = !requestOnly && !isPriorityChange && stateAction === 'reclass';
             if (newLotInput) newLotInput.required = needsDestinationSeasonLot || (!requestOnly && stateAction !== 'qty' && !isPriorityChange);
             if (newLocationInput) newLocationInput.required = !requestOnly && stateAction !== 'qty' && !isPriorityChange;
-            if (reasonInput && (requestOnly || isPriorityChange)) reasonInput.required = false;
+            if (holdReasonField) holdReasonField.hidden = !needsHoldReason;
+            if (reasonInput && (requestOnly || isPriorityChange)) reasonInput.required = needsHoldReason;
             if (advanced) {
                 advanced.classList.toggle('hidden', requestOnly || isPriorityChange);
                 if (requestOnly || isPriorityChange) advanced.open = false;
@@ -37843,11 +37859,12 @@ let avTopControlsRenderToken = 0;
                 setArgosInventoryTransactionAction('reclass');
             }
             syncArgosInventoryTransactionHoldActionPicker(safeAction);
-            if (reasonField) reasonField.hidden = safeAction !== 'hold' && safeAction !== 'stop_ship';
+            const needsHoldReason = isArgosInventoryTransactionHoldReasonRequestAction(safeAction);
+            if (reasonField) reasonField.hidden = !needsHoldReason;
             if (note) note.hidden = safeAction === 'none';
             if (reasonInput) {
-                reasonInput.required = safeAction === 'hold' || safeAction === 'stop_ship';
-                if (safeAction !== 'hold' && safeAction !== 'stop_ship') reasonInput.value = '';
+                reasonInput.required = needsHoldReason;
+                if (!needsHoldReason) reasonInput.value = '';
             }
             refreshArgosInventoryTransactionLotOptions(argosInventoryTransactionState && argosInventoryTransactionState.item);
             syncArgosInventoryTransactionRequestOnlyMode();
@@ -38363,6 +38380,17 @@ let avTopControlsRenderToken = 0;
                     moveDownSeason: requestAction === 'move_down' ? destinationSeason : ''
                 };
             }
+            if (requestAction === 'hold_reason_change') {
+                const requestedReason = normalizeBloomActionHoldStopReasonValue(getArgosInventoryTransactionInputValue('argos-inventory-transaction-hold-reason'));
+                if (!requestedReason) {
+                    showToast('Hold Reason Required', 'Enter the requested Hold Stop Reason before opening the email request.', true);
+                    return false;
+                }
+                requestInitialValues = {
+                    ...(requestInitialValues || {}),
+                    holdstopreason: requestedReason
+                };
+            }
             const rowFormOptions = requestInitialValues ? { initialValuesByIndex: [requestInitialValues] } : {};
             closeArgosInventoryTransactionModal();
             if (requestAction === 'priority_change') {
@@ -38380,7 +38408,7 @@ let avTopControlsRenderToken = 0;
                     }
                 });
             }
-            if (requestAction === 'ncr' || requestAction === 'move_up' || requestAction === 'move_down') {
+            if (requestAction === 'ncr' || requestAction === 'move_up' || requestAction === 'move_down' || requestAction === 'hold_reason_change' || requestAction === 'location_note_change') {
                 return openBloomActionRowFormModal([item], {
                     ...rowFormOptions,
                     action: requestAction,
@@ -55783,6 +55811,8 @@ function toggleDriveQuickRequestItem(domId) {
         if (normalized === 'note' || normalized === 'send-note' || normalized === 'send-as-note') return 'note';
         if (normalized === 'recount' || normalized === 're-count') return 'recount';
         if (normalized === 'locationmove' || normalized === 'location-move') return 'location-move';
+        if (normalized === 'holdreasonchange' || normalized === 'hold-reason-change' || normalized === 'holdstopreasonchange' || normalized === 'hold-stop-reason-change') return 'hold-reason-change';
+        if (normalized === 'locationnotechange' || normalized === 'location-note-change' || normalized === 'location-ptn1-change' || normalized === 'ptn1-change' || normalized === 'location-note-ptn1-change') return 'location-note-change';
         if (normalized === 'shear' || normalized === 'shear-list' || normalized === 'add-to-shear-list') return 'shear';
         return 'ncr';
     }
@@ -55798,6 +55828,8 @@ function toggleDriveQuickRequestItem(domId) {
         if (normalized === 'note' || normalized === 'send-note' || normalized === 'send-as-note') return 'note';
         if (normalized === 'recount' || normalized === 're-count') return 'recount';
         if (normalized === 'location-move' || normalized === 'locationmove') return 'location-move';
+        if (normalized === 'hold-reason-change' || normalized === 'holdstop-reason-change' || normalized === 'hold-stop-reason-change') return 'hold-reason-change';
+        if (normalized === 'location-note-change' || normalized === 'location-ptn1-change' || normalized === 'ptn1-change' || normalized === 'location-note-ptn1-change') return 'location-note-change';
         if (normalized === 'shear' || normalized === 'shear-list' || normalized === 'add-to-shear-list') return 'shear';
         return normalizePaperNcrRowAction(value);
     }
@@ -55827,6 +55859,8 @@ function toggleDriveQuickRequestItem(domId) {
         if (action === 'on-stop') return 'On Stop Qty';
         if (action === 'off-stop') return 'Off Stop Qty';
         if (action === 'recount') return 'Re-Count';
+        if (action === 'hold-reason-change') return 'Hold Stop Reason';
+        if (action === 'location-note-change') return 'Location Note';
         return 'NCR Qty';
     }
 
@@ -55872,6 +55906,8 @@ function toggleDriveQuickRequestItem(domId) {
         if (action === 'note') return 'Send As Note';
         if (action === 'recount') return 'Re-Count';
         if (action === 'location-move') return 'Location Move';
+        if (action === 'hold-reason-change') return 'Hold Stop Reason Change';
+        if (action === 'location-note-change') return 'Location Note / PTN1 Change';
         if (action === 'shear') return 'Add To Shear List';
         return 'NCR';
     }
@@ -82456,6 +82492,8 @@ function toggleDriveQuickRequestItem(domId) {
             priority_change: 'Priority Change',
             move_up: 'Move Up',
             move_down: 'Move Down',
+            hold_reason_change: 'Hold Stop Reason Change',
+            location_note_change: 'Location Note / PTN1 Change',
             note: 'Note',
             shear: 'Shear List'
         });
@@ -82467,9 +82505,9 @@ function toggleDriveQuickRequestItem(domId) {
             { username: 'abbey_burka', display: 'Abbey Burka' }
         ]);
 
-        const BLOOM_EMAIL_PURPOSE_REPORT_ACTIONS = new Set(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'move_down', 'recount', 'note', 'shear']);
-        const BLOOM_EMAIL_PURPOSE_RECLASS_ONLY_ACTIONS = new Set(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'ncr', 'recount', 'move_up', 'move_down']);
-        const BLOOM_ACTION_ROW_FORM_PURPOSES = new Set(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'ncr', 'move_up', 'move_down', 'recount', 'note']);
+        const BLOOM_EMAIL_PURPOSE_REPORT_ACTIONS = new Set(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'move_down', 'recount', 'note', 'shear', 'hold_reason_change', 'location_note_change']);
+        const BLOOM_EMAIL_PURPOSE_RECLASS_ONLY_ACTIONS = new Set(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'ncr', 'recount', 'move_up', 'move_down', 'hold_reason_change', 'location_note_change']);
+        const BLOOM_ACTION_ROW_FORM_PURPOSES = new Set(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'ncr', 'move_up', 'move_down', 'recount', 'note', 'hold_reason_change', 'location_note_change']);
 
         function isBloomEmailPurposeReasonRequired(purpose = bloomEmailPurposeAction) {
             return purpose === 'hold' || purpose === 'stop_ship' || purpose === 'note';
@@ -82494,6 +82532,8 @@ function toggleDriveQuickRequestItem(domId) {
             if (purpose === 'priority_change') return 'Priority Change';
             if (purpose === 'move_up') return 'Move Up';
             if (purpose === 'move_down') return 'Move Down';
+            if (purpose === 'hold_reason_change') return 'Hold Stop Reason Change';
+            if (purpose === 'location_note_change') return 'Location Note / PTN1 Change';
             if (purpose === 'note') return 'Note';
             if (purpose === 'shear') return 'Shear List';
             return BLOOM_EMAIL_PURPOSE_LABELS[purpose] || BLOOM_EMAIL_PURPOSE_LABELS.general;
@@ -82507,6 +82547,8 @@ function toggleDriveQuickRequestItem(domId) {
             if (purpose === 'move_down') return 'Move Down Note';
             if (purpose === 'recount') return 'Re-Count Note';
             if (purpose === 'priority_change') return 'Priority Change Note';
+            if (purpose === 'hold_reason_change') return 'Requested Hold Stop Reason';
+            if (purpose === 'location_note_change') return 'Location Note / PTN1';
             if (purpose === 'note') return 'Note';
             if (purpose === 'shear') return 'Shear Instructions';
             return 'Note';
@@ -82523,6 +82565,8 @@ function toggleDriveQuickRequestItem(domId) {
             if (purpose === 'priority_change') return 'GNC PH Priority Change';
             if (purpose === 'move_up') return 'GNC PH Move Up';
             if (purpose === 'move_down') return 'GNC PH Move Down';
+            if (purpose === 'hold_reason_change') return 'GNC PH Hold Stop Reason Change';
+            if (purpose === 'location_note_change') return 'GNC PH Location Note / PTN1 Change';
             if (purpose === 'note') return 'GNC PH Note';
             if (purpose === 'shear') return 'GNC PH Shear List';
             return `GNC ${BLOOM_EMAIL_PURPOSE_LABELS[purpose] || BLOOM_EMAIL_PURPOSE_LABELS.general}`;
@@ -84227,8 +84271,14 @@ function toggleDriveQuickRequestItem(domId) {
             const inputBase = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-black text-slate-900 shadow-sm focus:border-[#007a4d] focus:outline-none';
             const labelBase = 'mb-1 ml-1 block text-[9px] font-black uppercase tracking-[0.14em] text-[#007a4d]';
             const editInput = (label, field, value, attrs = '') => `<label class="block"><span class="${labelBase}">${escapeHtml(label)}</span><input data-bloom-action-field="${escapeHtml(field)}" data-index="${index}" class="${inputBase}" value="${escapeHtml(value || '')}" ${attrs}></label>`;
-            const noteFieldLabel = action === 'note' || action === 'recount' ? 'Note' : 'Locationnote';
-            const noteFieldPlaceholder = action === 'note' ? 'Note' : (action === 'recount' ? 'Optional recount note' : 'Location note');
+            const noteFieldLabel = action === 'note' || action === 'recount'
+                ? 'Note'
+                : (action === 'location_note_change' ? 'Requested Locationnote' : 'Locationnote');
+            const noteFieldPlaceholder = action === 'note'
+                ? 'Note'
+                : (action === 'recount'
+                    ? 'Optional recount note'
+                    : (action === 'location_note_change' ? 'Requested location note, or leave current if only PTN1 changes' : 'Location note'));
             const releaseQtyHtml = action === 'ncr'
                 ? `<label class="block"><span class="${labelBase}">Release QTY</span><input data-bloom-action-field="release_qty" data-index="${index}" class="${inputBase}" inputmode="numeric" pattern="[0-9]*" value="${escapeHtml(releaseQty)}" placeholder="Release qty" oninput="handleBloomActionRowQtyInput(${index})"></label>`
                 : '';
@@ -84589,6 +84639,45 @@ function toggleDriveQuickRequestItem(domId) {
                     };
                 }
             }
+            if (context.action === 'hold_reason_change') {
+                const item = Array.isArray(context.rows) ? context.rows[index] : null;
+                const requestedReason = normalizeBloomActionHoldStopReasonValue(values.holdstopreason);
+                const currentReason = normalizeBloomActionHoldStopReasonValue(firstNonEmptyValue(
+                    getBloomActionRowCurrentHoldStopReasonFromSource(item),
+                    getBloomActionRowCurrentHoldStopReason(item),
+                    ''
+                ));
+                if (!requestedReason) {
+                    return {
+                        title: 'Hold Reason Required',
+                        message: `Enter the requested Hold Stop Reason for row ${index + 1}.`,
+                        field: 'holdstopreason'
+                    };
+                }
+                if (!isPaperNcrValueChanged(requestedReason, currentReason)) {
+                    return {
+                        title: 'Hold Reason Unchanged',
+                        message: `Change the Hold Stop Reason for row ${index + 1} before sending.`,
+                        field: 'holdstopreason'
+                    };
+                }
+            }
+            if (context.action === 'location_note_change') {
+                const item = Array.isArray(context.rows) ? context.rows[index] : null;
+                const requestedNote = String(values.locationnote || '').trim();
+                const requestedPtn1 = String(values.locationptn1 || '').trim();
+                const currentNote = String(firstNonEmptyValue(item && item.LOCATIONNOTE, item && item.locationnote, getBloomActionRowBaseLocationNote(item), '') || '').trim();
+                const currentPtn1 = String(getBloomActionRowReadonlyValue(item, 'locationptn1') || '').trim();
+                const noteChanged = requestedNote && isPaperNcrValueChanged(requestedNote, currentNote);
+                const ptn1Changed = requestedPtn1 && isPaperNcrValueChanged(requestedPtn1, currentPtn1);
+                if (!noteChanged && !ptn1Changed) {
+                    return {
+                        title: 'Location Note Required',
+                        message: `Change LOCATIONNOTE, LOCATIONPTN1, or both for row ${index + 1} before sending.`,
+                        field: 'locationnote'
+                    };
+                }
+            }
             if ((context.action === 'hold' || context.action === 'stop_ship') && !values.holdstopcode) {
                 return {
                     title: 'Holdstopcode Required',
@@ -84702,6 +84791,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function buildBloomActionRowFormRowOptions(item = null, payload = {}, values = {}, context = {}) {
             const formAction = String(context && context.action || '').trim();
+            const paperAction = getPaperInquiryReportActionFromBloomAction(formAction);
             const action = formAction === 'move_up'
                 ? 'move-up'
                 : ((formAction === 'take_off_hold' || formAction === 'off_stop_ship') ? 'hold-release' : 'new-crop');
@@ -84722,13 +84812,21 @@ function toggleDriveQuickRequestItem(domId) {
             ) || '').trim();
             const originalHoldStopReason = normalizeBloomActionHoldStopReasonValue(firstNonEmptyValue(
                 getBloomActionRowCurrentHoldStopReasonFromSource(item),
+                getBloomActionRowCurrentHoldStopReason(item),
                 values.holdstopreason,
                 payload.holdstopreason,
-                getBloomActionRowCurrentHoldStopReason(item),
                 ''
             ));
+            const requestedHoldStopReason = normalizeBloomActionHoldStopReasonValue(firstNonEmptyValue(
+                values.holdstopreason,
+                payload.holdstopreason,
+                originalHoldStopReason,
+                ''
+            ));
+            const requestedLocationNote = String(firstNonEmptyValue(values.locationnote, payload.locationnote, getBloomActionRowBaseLocationNote(item), '') || '').trim();
+            const requestedLocationPtn1 = String(firstNonEmptyValue(values.locationptn1, payload.locationptn1, getBloomActionRowReadonlyValue(item, 'locationptn1'), '') || '').trim();
             const screenValues = {
-                actionType: action,
+                actionType: paperAction || action,
                 approvalType: action,
                 ptravailable: payload.ptravailable == null ? '' : payload.ptravailable,
                 releaseQty: action === 'new-crop' ? (payload.loc_match_qty == null ? '' : payload.loc_match_qty) : '',
@@ -84739,7 +84837,7 @@ function toggleDriveQuickRequestItem(domId) {
                 destinationSeason,
                 destinationLotcode: firstNonEmptyValue(values.lotcode, payload.lotcode, getBloomActionRowReadonlyValue(item, 'lotcode'), ''),
                 holdstopcode: normalizeBloomActionHoldStopCodeChoice(payload.holdstopcode),
-                holdstopreason: originalHoldStopReason,
+                holdstopreason: formAction === 'hold_reason_change' ? requestedHoldStopReason : originalHoldStopReason,
                 originalHoldStopCode,
                 original_holdstopcode: originalHoldStopCode,
                 originalHoldStopReason,
@@ -84755,9 +84853,9 @@ function toggleDriveQuickRequestItem(domId) {
                 evaldate: firstNonEmptyValue(values.evaldate, payload.evaldate, ''),
                 priorityUpdate: firstNonEmptyValue(values.priorityUpdate, payload.priupdated, ''),
                 locationnoteDate: firstNonEmptyValue(values.locationnoteDate, payload.locationnotedate, ''),
-                locationnote: payload.locationnote || '',
+                locationnote: formAction === 'location_note_change' ? requestedLocationNote : (payload.locationnote || ''),
                 note: (formAction === 'note' || formAction === 'recount') ? (payload.locationnote || '') : '',
-                locationptn1: firstNonEmptyValue(values.locationptn1, payload.locationptn1, getBloomActionRowReadonlyValue(item, 'locationptn1'), '')
+                locationptn1: requestedLocationPtn1
             };
             const recommendationMeta = normalizeApprovalRecommendationMeta({
                 type: action,
@@ -85046,14 +85144,14 @@ function toggleDriveQuickRequestItem(domId) {
             const action = normalizePaperNcrRowAction(actionType);
             if (action === 'move-up') return firstNonEmptyValue(state.moveUpQty, state.ncrQty, '');
             if (action === 'move-down') return firstNonEmptyValue(state.moveDownQty, state.ncrQty, '');
-            if (action === 'note' || action === 'recount' || action === 'location-move' || action === 'shear') return '';
+            if (action === 'note' || action === 'recount' || action === 'location-move' || action === 'hold-reason-change' || action === 'location-note-change' || action === 'shear') return '';
             return firstNonEmptyValue(state.ncrQty, '');
         }
 
         function refreshPaperNcrStateAutoNoteForAction(state = null, snapshot = {}, createdAt = new Date()) {
             if (!state) return state;
             const actionType = normalizePaperNcrRowAction(state.actionType || 'ncr');
-            if (actionType === 'note' || actionType === 'recount' || actionType === 'move-up' || actionType === 'location-move' || actionType === 'shear') return state;
+            if (actionType === 'note' || actionType === 'recount' || actionType === 'move-up' || actionType === 'location-move' || actionType === 'hold-reason-change' || actionType === 'location-note-change' || actionType === 'shear') return state;
             const nextNote = buildPaperNcrDefaultNote(snapshot || {}, getPaperNcrPrimaryQtyForAction(state, actionType), createdAt, actionType);
             const currentLine = String(firstNonEmptyValue(state.ncrNote, '') || '').trim();
             const currentLocationNote = String(firstNonEmptyValue(state.locationnote, '') || '').trim();
@@ -85198,8 +85296,18 @@ function toggleDriveQuickRequestItem(domId) {
             let defaultNote = '';
             if (rowAction === 'note') defaultNote = requestedNote;
             else if (rowAction === 'recount') defaultNote = requestedNote || buildPaperNcrRecountLine(snapshot, now);
-            else if (rowAction !== 'move-up') defaultNote = buildPaperNcrDefaultNote(snapshot, releaseQty, now, rowAction);
+            else if (rowAction !== 'move-up' && rowAction !== 'hold-reason-change' && rowAction !== 'location-note-change') defaultNote = buildPaperNcrDefaultNote(snapshot, releaseQty, now, rowAction);
             const currentLocationNote = String(firstNonEmptyValue(snapshot.locationnote, '') || '').trim();
+            const currentLocationPtn1 = String(firstNonEmptyValue(snapshot.locationptn1, '') || '').trim();
+            const requestedLocationNote = rowAction === 'location-note-change'
+                ? String(firstNonEmptyValue(rowOptionsScreenValues.locationnote, existingRowOptions && existingRowOptions.locationnote, currentLocationNote, '') || '').trim()
+                : currentLocationNote;
+            const requestedLocationPtn1 = rowAction === 'location-note-change'
+                ? String(firstNonEmptyValue(getInventoryActionLocationPtn1Value(rowOptionsScreenValues, existingRowOptions), currentLocationPtn1, '') || '').trim()
+                : currentLocationPtn1;
+            const requestedHoldReason = rowAction === 'hold-reason-change'
+                ? normalizeBloomActionHoldStopReasonValue(firstNonEmptyValue(rowOptionsScreenValues.holdstopreason, existingRowOptions && existingRowOptions.holdStopReason, existingRowOptions && existingRowOptions.holdstopreason, holdReason, ''))
+                : holdReason;
             return {
                 checked: !!checked,
                 actionType: rowAction,
@@ -85208,13 +85316,15 @@ function toggleDriveQuickRequestItem(domId) {
                 moveDownQty: rowAction === 'move-down' ? String(firstNonEmptyValue(existingRowOptions && existingRowOptions.moveDownQty, releaseQty, '') || '').trim() : '',
                 moveDownSeason: rowAction === 'move-down' ? normalizePaperNcrMoveDownSeason(existingRowOptions && existingRowOptions.moveDownSeason || getPaperNcrDefaultMoveSeason()) : getPaperNcrDefaultMoveSeason(),
                 priority: normalizePaperNcrPriorityForAction(priority, rowAction),
-                locationnoteDate: (rowAction === 'note' || rowAction === 'recount') ? String(firstNonEmptyValue(snapshot.locationnoteDate, '') || '').trim() : noteDate,
-                locationnote: (rowAction === 'note' || rowAction === 'recount' || rowAction === 'move-up') ? currentLocationNote : defaultNote,
-                locationptn1: String(firstNonEmptyValue(snapshot.locationptn1, '') || '').trim(),
+                locationnoteDate: (rowAction === 'note' || rowAction === 'recount' || rowAction === 'hold-reason-change') ? String(firstNonEmptyValue(snapshot.locationnoteDate, '') || '').trim() : noteDate,
+                locationnote: rowAction === 'location-note-change'
+                    ? requestedLocationNote
+                    : ((rowAction === 'note' || rowAction === 'recount' || rowAction === 'move-up' || rowAction === 'hold-reason-change') ? currentLocationNote : defaultNote),
+                locationptn1: requestedLocationPtn1,
                 holdstopcode: holdCode,
-                holdstopreason: holdReason,
+                holdstopreason: requestedHoldReason,
                 salesNote,
-                ncrNote: rowAction === 'move-up' ? '' : defaultNote,
+                ncrNote: (rowAction === 'move-up' || rowAction === 'hold-reason-change' || rowAction === 'location-note-change') ? '' : defaultNote,
                 note: (rowAction === 'note' || rowAction === 'recount') ? requestedNote : '',
                 originalPriority: priority,
                 originalLocationNoteDate: String(firstNonEmptyValue(snapshot.locationnoteDate, '') || '').trim(),
@@ -85291,7 +85401,9 @@ function toggleDriveQuickRequestItem(domId) {
                 ['on-hold', 'On Hold'],
                 ['off-hold', 'Off Hold'],
                 ['on-stop', 'On Stop'],
-                ['off-stop', 'Off Stop']
+                ['off-stop', 'Off Stop'],
+                ['hold-reason-change', 'Hold Stop Reason Change'],
+                ['location-note-change', 'Location Note / PTN1 Change']
             ].map(([value, label]) => `<option value="${escapeHtml(value)}"${value === selected ? ' selected' : ''}>${escapeHtml(label)}</option>`).join('');
         }
 
@@ -85508,6 +85620,8 @@ function toggleDriveQuickRequestItem(domId) {
             if (normalized === 'note' || normalized === 'send_note' || normalized === 'send_as_note') return 'note';
             if (normalized === 'recount' || normalized === 're_count') return 'recount';
             if (normalized === 'location_move') return 'location-move';
+            if (normalized === 'hold_reason_change' || normalized === 'holdstop_reason_change' || normalized === 'hold_stop_reason_change') return 'hold-reason-change';
+            if (normalized === 'location_note_change' || normalized === 'location_ptn1_change' || normalized === 'ptn1_change' || normalized === 'location_note_ptn1_change') return 'location-note-change';
             if (normalized === 'shear' || normalized === 'shear_list' || normalized === 'add_to_shear_list') return 'shear';
             return '';
         }
@@ -85665,6 +85779,45 @@ function toggleDriveQuickRequestItem(domId) {
                     state.locationnoteDate = state.originalLocationNoteDate || '';
                     state.locationnote = state.originalLocationNote || '';
                     state.locationptn1 = state.originalLocationPtn1 || state.locationptn1 || '';
+                } else if (actionType === 'hold-reason-change') {
+                    const requestedReason = normalizeBloomActionHoldStopReasonValue(firstNonEmptyValue(
+                        screenValues.holdstopreason,
+                        normalizedOptions && normalizedOptions.holdStopReason,
+                        normalizedOptions && normalizedOptions.holdstopreason,
+                        state.holdstopreason,
+                        ''
+                    ));
+                    state.ncrQty = '';
+                    state.moveUpQty = '';
+                    state.moveDownQty = '';
+                    state.ncrNote = '';
+                    state.note = '';
+                    state.holdstopcode = normalizeBloomActionHoldStopCodeChoice(state.originalHoldStopCode || state.holdstopcode || '');
+                    state.holdstopreason = requestedReason;
+                    state.locationnoteDate = state.originalLocationNoteDate || '';
+                    state.locationnote = state.originalLocationNote || '';
+                    state.locationptn1 = state.originalLocationPtn1 || state.locationptn1 || '';
+                } else if (actionType === 'location-note-change') {
+                    const requestedLocationNote = String(firstNonEmptyValue(
+                        screenValues.locationnote,
+                        normalizedOptions && normalizedOptions.locationnote,
+                        state.locationnote,
+                        ''
+                    ) || '').trim();
+                    const requestedLocationPtn1 = String(firstNonEmptyValue(
+                        getInventoryActionLocationPtn1Value(screenValues, normalizedOptions),
+                        state.locationptn1,
+                        ''
+                    ) || '').trim();
+                    state.ncrQty = '';
+                    state.moveUpQty = '';
+                    state.moveDownQty = '';
+                    state.ncrNote = '';
+                    state.note = '';
+                    state.holdstopcode = normalizeBloomActionHoldStopCodeChoice(state.originalHoldStopCode || state.holdstopcode || '');
+                    state.holdstopreason = state.originalHoldStopReason || state.holdstopreason || '';
+                    state.locationnote = requestedLocationNote;
+                    state.locationptn1 = requestedLocationPtn1;
                 } else if (actionType === 'location-move' || actionType === 'shear') {
                     const requestedLine = String(firstNonEmptyValue(
                         screenValues.locationnote,
@@ -86501,6 +86654,27 @@ function toggleDriveQuickRequestItem(domId) {
                     }
                     if (!getPaperNcrMoveDownSeasonOptions().includes(normalizePaperNcrMoveDownSeason(state.moveDownSeason))) {
                         return `${pkg.commonName || `Item ${index + 1}`} ${rowLabel} needs a Move Down season.`;
+                    }
+                }
+                if (action === 'hold-reason-change') {
+                    const requestedReason = normalizeBloomActionHoldStopReasonValue(state.holdstopreason);
+                    const originalReason = normalizeBloomActionHoldStopReasonValue(state.originalHoldStopReason);
+                    if (!requestedReason) {
+                        return `${pkg.commonName || `Item ${index + 1}`} ${rowLabel} needs a new Hold Stop Reason.`;
+                    }
+                    if (!isPaperNcrValueChanged(requestedReason, originalReason)) {
+                        return `${pkg.commonName || `Item ${index + 1}`} ${rowLabel} needs a Hold Stop Reason different from current.`;
+                    }
+                }
+                if (action === 'location-note-change') {
+                    const requestedNote = String(state.locationnote || '').trim();
+                    const requestedPtn1 = String(state.locationptn1 || '').trim();
+                    const originalNote = String(state.originalLocationNote || '').trim();
+                    const originalPtn1 = String(state.originalLocationPtn1 || '').trim();
+                    const noteChanged = requestedNote && isPaperNcrValueChanged(requestedNote, originalNote);
+                    const ptn1Changed = requestedPtn1 && isPaperNcrValueChanged(requestedPtn1, originalPtn1);
+                    if (!noteChanged && !ptn1Changed) {
+                        return `${pkg.commonName || `Item ${index + 1}`} ${rowLabel} needs a changed LOCATIONNOTE or LOCATIONPTN1.`;
                     }
                 }
             }
@@ -134905,7 +135079,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             const changed = !!requested && isPaperNcrValueChanged(requested, original);
             return {
                 value: changed ? requested : (original || requested),
-                highlight: changed
+                original,
+                requested,
+                highlight: changed,
+                changed
             };
         }
 
@@ -134926,6 +135103,11 @@ ${folderNote ? `Folder Note: ${folderNote}
             const valueHtml = (value, fallback = '') => {
                 const raw = display(value, fallback);
                 return raw ? h(raw) : '&nbsp;';
+            };
+            const changedValueHtml = (originalValue = '', requestedValue = '') => {
+                const original = display(originalValue, 'Blank');
+                const requested = display(requestedValue, 'Blank');
+                return `${h(original)} <span style="display:inline-block;margin:0 5px;color:#111827;font-weight:900;">-&gt;</span> <span style="display:inline-block;padding:2px 6px;background:#fff176;color:#111827;font-weight:900;">${h(requested)}</span>`;
             };
             const headerCell = (label) => `<th style="padding:8px 10px;background:#555a57;color:#f4f4f4;font-size:13px;line-height:1.15;font-weight:800;text-align:left;text-transform:uppercase;border-bottom:2px solid #b8b8b8;white-space:normal;">${h(label)}</th>`;
             const dataCell = (value, options = {}) => `<td style="padding:10px;border-bottom:1px solid #b8b8b8;color:inherit;font-size:13px;line-height:1.25;font-weight:${options && options.bold ? '800' : '600'};vertical-align:top;word-break:break-word;${options && options.nowrap ? 'white-space:nowrap;' : ''}${options && options.highlight ? 'background:#fff176;' : ''}">${options && options.html ? String(value || '') : valueHtml(value)}</td>`;
@@ -135009,6 +135191,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const currentLocationNoteDate = locationNoteDateInfo.value;
                 const currentLocationNote = locationNoteInfo.value;
                 const currentLocationPtn1 = locationPtn1Info.value;
+                const locationNoteDateCellValue = locationNoteDateInfo.highlight ? changedValueHtml(locationNoteDateInfo.original, locationNoteDateInfo.requested) : currentLocationNoteDate;
+                const locationNoteCellValue = locationNoteInfo.highlight ? changedValueHtml(locationNoteInfo.original, locationNoteInfo.requested) : currentLocationNote;
+                const locationPtn1CellValue = locationPtn1Info.highlight ? changedValueHtml(locationPtn1Info.original, locationPtn1Info.requested) : currentLocationPtn1;
                 const sourceHoldStopCodeRaw = displayHoldStopCode(firstNonEmptyValue(
                     getBloomActionRowCurrentHoldStopFromSource(row),
                     getBloomActionRowCurrentHoldStop(row),
@@ -135031,8 +135216,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const emailCurrentHoldStopReasonRaw = normalizeBloomActionHoldStopReasonValue(firstNonEmptyValue(sourceHoldStopReasonRaw, currentHoldStopReasonRaw, ''));
                 const requestedHoldStopReason = normalizeBloomActionHoldStopReasonValue(firstNonEmptyValue(row.holdStopReason, row.holdstopreason, ''));
                 const clearsHoldStopReason = !!currentHoldStopReasonRaw && !requestedHoldStopReason;
-                const setsHoldStopReason = ['on-hold', 'on-stop'].includes(actionType) && !!requestedHoldStopReason && requestedHoldStopReason !== currentHoldStopReasonRaw;
-                const holdStopReasonCellHtml = clearsHoldStopReason ? xOutHoldStopCodeHtml(currentHoldStopReasonRaw) : (setsHoldStopReason ? highlightedCodeHtml(requestedHoldStopReason) : '');
+                const setsHoldStopReason = (['on-hold', 'on-stop'].includes(actionType) || actionType === 'hold-reason-change') && !!requestedHoldStopReason && requestedHoldStopReason !== currentHoldStopReasonRaw;
+                const holdStopReasonCellHtml = clearsHoldStopReason
+                    ? xOutHoldStopCodeHtml(currentHoldStopReasonRaw)
+                    : (setsHoldStopReason
+                        ? (actionType === 'hold-reason-change' ? changedValueHtml(currentHoldStopReasonRaw, requestedHoldStopReason) : highlightedCodeHtml(requestedHoldStopReason))
+                        : '');
                 const holdStopReasonCellValue = holdStopReasonCellHtml || currentHoldStopReasonRaw || requestedHoldStopReason;
                 const originalSalesNote = normalizePaperNcrSalesNoteValue(firstNonEmptyValue(row.originalSalesNote, row.salesNote, ''));
                 const salesNote = normalizePaperNcrSalesNoteValue(firstNonEmptyValue(row.salesNote, originalSalesNote, ''));
@@ -135045,9 +135234,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const noteTable = buildTable(
                     ['LOCATIONNOTEDATE', 'LOCATIONNOTE', 'LOCATIONPTN1'],
                     [
-                        dataCell(currentLocationNoteDate, { bold: true, highlight: locationNoteDateInfo.highlight }),
-                        dataCell(currentLocationNote, { bold: true, highlight: locationNoteInfo.highlight }),
-                        dataCell(currentLocationPtn1, { bold: true, highlight: locationPtn1Info.highlight })
+                        dataCell(locationNoteDateCellValue, { html: locationNoteDateInfo.highlight, bold: true, highlight: locationNoteDateInfo.highlight }),
+                        dataCell(locationNoteCellValue, { html: locationNoteInfo.highlight, bold: true, highlight: locationNoteInfo.highlight }),
+                        dataCell(locationPtn1CellValue, { html: locationPtn1Info.highlight, bold: true, highlight: locationPtn1Info.highlight })
                     ]
                 );
                 if (actionType === 'off-hold') {
@@ -135149,6 +135338,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const destination = getActionDestinationText(row, action);
                 return `${base} (${actionLabel} ${qtyText})${destination ? ` --> ${destination}` : ''}`;
             };
+            const getChangedText = (info = {}) => {
+                if (!info || !info.highlight) return getPaperNcrDisplayValue(info && info.value);
+                return `${getPaperNcrDisplayValue(info.original || 'Blank')} -> ${getPaperNcrDisplayValue(info.requested || 'Blank')}`;
+            };
             activeRows.forEach((row, index) => {
                 const actionType = normalizePaperNcrRowAction(row.actionType || 'ncr');
                 const priorityInfo = getPaperNcrEmailPriorityInfo(row);
@@ -135177,7 +135370,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const emailCurrentHoldStopReason = normalizeBloomActionHoldStopReasonValue(firstNonEmptyValue(sourceHoldStopReasonRaw, currentHoldStopReason, ''));
                 const requestedHoldStopReason = normalizeBloomActionHoldStopReasonValue(firstNonEmptyValue(row.holdStopReason, row.holdstopreason, ''));
                 const clearsHoldStopReason = !!currentHoldStopReason && !requestedHoldStopReason;
-                const setsHoldStopReason = ['on-hold', 'on-stop'].includes(actionType) && !!requestedHoldStopReason && requestedHoldStopReason !== currentHoldStopReason;
+                const setsHoldStopReason = (['on-hold', 'on-stop'].includes(actionType) || actionType === 'hold-reason-change') && !!requestedHoldStopReason && requestedHoldStopReason !== currentHoldStopReason;
                 const holdStopReasonText = clearsHoldStopReason
                     ? `${getPaperNcrDisplayValue(currentHoldStopReason)} -> BLANK`
                     : (setsHoldStopReason ? `${getPaperNcrDisplayValue(currentHoldStopReason || 'Blank')} -> ${requestedHoldStopReason}` : getPaperNcrDisplayValue(currentHoldStopReason || requestedHoldStopReason || 'Blank'));
@@ -135228,8 +135421,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 ].filter(Boolean);
                 lines.push(itemParts.join(' | '));
                 lines.push('Current Row Details:');
-                lines.push([`ROW ${row.rowIndex || index + 1}`, `LOTCODE ${getPaperNcrDisplayValue(row.lotcode)}`, `LOCATIONCODE ${getPaperNcrDisplayValue(row.locationcode)}`, `SOURCE ${getPaperNcrDisplayValue(row.source)}`, `DESIGCUST ${getPaperNcrDisplayValue(row.desigCust)}`, `PRIORITY ${getPaperNcrDisplayValue(priorityInfo.value)}`, `PTRONHAND ${getOnHandText(row, actionType)}`, `PTRREVIEWED ${getPaperNcrQtyDisplay(row.ptrreviewed)}`, `PTRAVAILABLE ${getPaperNcrQtyDisplay(row.ptravailable)}`, `LOCATIONNOTEDATE ${getPaperNcrDisplayValue(currentLocationNoteDate)}`, `LOCATIONPTN1 ${getPaperNcrDisplayValue(currentLocationPtn1)}`].join(' | '));
-                lines.push(`LOCATIONNOTE: ${getPaperNcrDisplayValue(currentLocationNote)}`);
+                lines.push([`ROW ${row.rowIndex || index + 1}`, `LOTCODE ${getPaperNcrDisplayValue(row.lotcode)}`, `LOCATIONCODE ${getPaperNcrDisplayValue(row.locationcode)}`, `SOURCE ${getPaperNcrDisplayValue(row.source)}`, `DESIGCUST ${getPaperNcrDisplayValue(row.desigCust)}`, `PRIORITY ${getPaperNcrDisplayValue(priorityInfo.value)}`, `PTRONHAND ${getOnHandText(row, actionType)}`, `PTRREVIEWED ${getPaperNcrQtyDisplay(row.ptrreviewed)}`, `PTRAVAILABLE ${getPaperNcrQtyDisplay(row.ptravailable)}`, `LOCATIONNOTEDATE ${getChangedText(locationNoteDateInfo)}`, `LOCATIONPTN1 ${getChangedText(locationPtn1Info)}`].join(' | '));
+                lines.push(`LOCATIONNOTE: ${getChangedText(locationNoteInfo)}`);
                 if (actionType === 'note') {
                     lines.push('Note:');
                     if (requestedLineText) lines.push(`NOTE: ${requestedLineText}`);
@@ -135242,6 +135435,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                     if (String(getPaperNcrPrimaryQtyForAction(row, actionType) || '').trim()) lines.push(`${String(getPaperNcrQuantityLabelForAction(actionType)).toUpperCase()}: ${getPaperNcrDisplayValue(getPaperNcrPrimaryQtyForAction(row, actionType))}`);
                     if (actionType === 'move-down' && String(row.moveDownSeason || '').trim()) lines.push(`MOVE DOWN SEASON: ${row.moveDownSeason}`);
                     if (String(row.priority || '').trim()) lines.push(`REQUESTED PRIORITY: ${row.priority}`);
+                    if (actionType === 'hold-reason-change') lines.push(`REQUESTED HOLDSTOPREASON: ${getPaperNcrDisplayValue(requestedHoldStopReason)}`);
+                    if (actionType === 'location-note-change') {
+                        if (locationNoteInfo.highlight) lines.push(`REQUESTED LOCATIONNOTE: ${getPaperNcrDisplayValue(locationNoteInfo.requested)}`);
+                        if (locationPtn1Info.highlight) lines.push(`REQUESTED LOCATIONPTN1: ${getPaperNcrDisplayValue(locationPtn1Info.requested)}`);
+                    }
                     if (requestedLineText) lines.push(`${String(getPaperNcrRowActionLabel(actionType)).toUpperCase()} LINE: ${requestedLineText}`);
                 }
                 lines.push('');

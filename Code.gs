@@ -5405,6 +5405,8 @@ function resolveJdApprovalEmailTypeLabel_(payload) {
   );
   if (explicitLabel) return explicitLabel;
   const approvalType = String(payload && (payload.approvalType || payload.approval_type) || '').trim().toLowerCase().replace(/_/g, '-');
+  if (approvalType === 'hold-reason-change' || approvalType === 'hold-stop-reason-change') return 'Hold Stop Reason Change';
+  if (approvalType === 'location-note-change' || approvalType === 'location-ptn1-change' || approvalType === 'location-note-ptn1-change') return 'Location Note / PTN1 Change';
   if (approvalType === 'hold' || approvalType === 'hold-release' || approvalType === 'off-hold') return 'Off Hold Approval';
   if (approvalType === 'move-up' || approvalType === 'moveup') return 'Move Up Approval';
   if (approvalType === 'recount' || approvalType === 're-count') return 'Re-Count Approval';
@@ -6057,12 +6059,17 @@ function buildRequestItemFieldRowsText_(item) {
     ['Lot Code', firstNonEmptyRequestValue_(item && item.lotcode, item && item.LOTCODE, '')],
     ['Season', firstNonEmptyRequestValue_(item && item.season, item && item.SEASON, '')],
     ['Priority', firstNonEmptyRequestValue_(item && item.priority, item && item.PRIORITY, '')],
+    ['Hold Stop Code', firstNonEmptyRequestValue_(item && item.holdstopcode, item && item.HOLDSTOPCODE, '')],
+    ['Hold Stop Reason', firstNonEmptyRequestValue_(item && item.holdstopreason, item && item.HOLDSTOPREASON, '')],
     ['S_LTS', firstNonEmptyRequestValue_(item && item.s_lts, item && item.S_LTS, '')],
     ['PTR Available', firstNonEmptyRequestValue_(item && item.ptravailable, item && item.PTRAVAILABLE, '')],
     ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
     ['Completed By', formatRequestCompletionUserLabel_(item)],
     ['Submitted By', formatApprovalRequesterLabel_(item)],
     ['Request Note', firstNonEmptyRequestValue_(item && item.request_note, item && item.req_note, item && item.REQUEST_NOTE, item && item.REQ_NOTE, '')],
+    ['Location Note Date', firstNonEmptyRequestValue_(item && item.locationnotedate, item && item.LOCATIONNOTEDATE, '')],
+    ['Location Note', firstNonEmptyRequestValue_(item && item.locationnote, item && item.LOCATIONNOTE, '')],
+    ['LOCATIONPTN1', firstNonEmptyRequestValue_(item && item.locationptn1, item && item.LOCATIONPTN1, '')],
     ['EVAL Task', getEvalTaskEmailTypeLabel_(firstNonEmptyRequestValue_(item && item.eval_task_type, item && item.EVAL_TASK_TYPE, ''))],
     ['EVAL Requested By', getEvalTaskRequestedByFromItem_(item)],
     ['EVAL Reviewer', firstNonEmptyRequestValue_(item && item.assignedto, item && item.ASSIGNEDTO, '')],
@@ -6101,12 +6108,17 @@ function buildRequestItemFieldRowsHtml_(item) {
     ['Lot Code', firstNonEmptyRequestValue_(item && item.lotcode, item && item.LOTCODE, '')],
     ['Season', firstNonEmptyRequestValue_(item && item.season, item && item.SEASON, '')],
     ['Priority', firstNonEmptyRequestValue_(item && item.priority, item && item.PRIORITY, '')],
+    ['Hold Stop Code', firstNonEmptyRequestValue_(item && item.holdstopcode, item && item.HOLDSTOPCODE, '')],
+    ['Hold Stop Reason', firstNonEmptyRequestValue_(item && item.holdstopreason, item && item.HOLDSTOPREASON, '')],
     ['S_LTS', firstNonEmptyRequestValue_(item && item.s_lts, item && item.S_LTS, '')],
     ['PTR Available', firstNonEmptyRequestValue_(item && item.ptravailable, item && item.PTRAVAILABLE, '')],
     ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
     ['Completed By', formatRequestCompletionUserLabel_(item)],
     ['Submitted By', formatApprovalRequesterLabel_(item)],
     ['Request Note', firstNonEmptyRequestValue_(item && item.request_note, item && item.req_note, item && item.REQUEST_NOTE, item && item.REQ_NOTE, '')],
+    ['Location Note Date', firstNonEmptyRequestValue_(item && item.locationnotedate, item && item.LOCATIONNOTEDATE, '')],
+    ['Location Note', firstNonEmptyRequestValue_(item && item.locationnote, item && item.LOCATIONNOTE, '')],
+    ['LOCATIONPTN1', firstNonEmptyRequestValue_(item && item.locationptn1, item && item.LOCATIONPTN1, '')],
     ['EVAL Task', getEvalTaskEmailTypeLabel_(firstNonEmptyRequestValue_(item && item.eval_task_type, item && item.EVAL_TASK_TYPE, ''))],
     ['EVAL Requested By', getEvalTaskRequestedByFromItem_(item)],
     ['EVAL Reviewer', firstNonEmptyRequestValue_(item && item.assignedto, item && item.ASSIGNEDTO, '')],
@@ -11346,6 +11358,8 @@ function getApprovalEmailDisplayName_(payload) {
   ).trim();
   if (explicitName) return explicitName;
   const approvalType = String(payload && (payload.approvalType || payload.approval_type) || '').trim().toLowerCase().replace(/_/g, '-');
+  if (approvalType.indexOf('hold-reason-change') !== -1 || approvalType.indexOf('hold-stop-reason-change') !== -1) return 'GNC PH HOLD STOP REASON CHANGE';
+  if (approvalType.indexOf('location-note-change') !== -1 || approvalType.indexOf('location-ptn1-change') !== -1 || approvalType.indexOf('location-note-ptn1-change') !== -1) return 'GNC PH LOCATION NOTE / PTN1 CHANGE';
   if (approvalType.indexOf('hold-release') !== -1 || approvalType.indexOf('hold') !== -1) return 'GNC PH HOLD REMOVAL';
   if (approvalType.indexOf('recount') !== -1 || approvalType.indexOf('re-count') !== -1) return 'GNC PH RE-COUNT';
   if (approvalType.indexOf('move-down') !== -1 || approvalType.indexOf('movedown') !== -1) return 'GNC PH MOVE DOWN';
