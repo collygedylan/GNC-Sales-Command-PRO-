@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.11.08';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.11.09';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.08').trim() || 'V2026.08.11.08';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.09').trim() || 'V2026.08.11.09';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.08';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.09';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -27228,7 +27228,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.08').trim() || 'V2026.08.11.08';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.09').trim() || 'V2026.08.11.09';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -67036,11 +67036,24 @@ function toggleDriveQuickRequestItem(domId) {
             return false;
         }
 
+        function canReuseWarmViewContent(viewId = '') {
+            const safeViewId = String(viewId || '').trim();
+            if (!safeViewId || typeof VIEW_LOAD_UI === 'undefined' || !VIEW_LOAD_UI[safeViewId]) return true;
+            const ui = VIEW_LOAD_UI[safeViewId];
+            const container = ui && ui.container ? document.getElementById(ui.container) : null;
+            if (!container) return true;
+            return containerHasActualRenderableContent(container);
+        }
+
         function renderViewContent(viewId, forceReset = false, forceRender = false) {
             const state = ensureViewRenderState(viewId);
             if (!forceReset && !forceRender && state.initialized && !state.dirty) {
-                incrementInternalPerfCounter('warmViewReuseHits');
-                return;
+                if (canReuseWarmViewContent(viewId)) {
+                    incrementInternalPerfCounter('warmViewReuseHits');
+                    return;
+                }
+                state.dirty = true;
+                incrementInternalPerfCounter('blankWarmViewRepaints');
             }
             const renderStartedAt = beginInternalPerfMeasure();
 
@@ -75128,6 +75141,18 @@ function toggleDriveQuickRequestItem(domId) {
             delete container.dataset.renderSignature;
         }
 
+        function containerHasActualRenderableContent(container) {
+            if (!container) return false;
+            const visibleChildren = Array.from(container.children || []).filter((child) => !(child.classList && child.classList.contains('hidden')));
+            if (!visibleChildren.length) return !!String(container.textContent || '').trim();
+            return visibleChildren.some((child) => {
+                if (child.classList && child.classList.contains('skeleton')) return false;
+                const childText = String(child.textContent || '').replace(/\s+/g, ' ').trim();
+                if (childText) return true;
+                return !!(child.children && child.children.length);
+            });
+        }
+
         function updateRenderSignatureHash(hash = 2166136261, value = '') {
             let nextHash = Number(hash) >>> 0;
             const input = String(value || '');
@@ -75169,7 +75194,7 @@ function toggleDriveQuickRequestItem(domId) {
 
         function setContainerHtmlWithSignature(container, html, signature = '', options = {}) {
             const safeSignature = normalizeRenderSignature(signature);
-            if (safeSignature && getContainerRenderSignature(container) === safeSignature) {
+            if (safeSignature && getContainerRenderSignature(container) === safeSignature && containerHasActualRenderableContent(container)) {
                 incrementInternalPerfCounter('skippedSignatureRenders');
                 return false;
             }
@@ -75469,7 +75494,7 @@ function toggleDriveQuickRequestItem(domId) {
 
             if (crumb && typeof crumbText === 'string') crumb.innerText = crumbText;
 
-            if (renderSignature && getContainerRenderSignature(container) === renderSignature) {
+            if (renderSignature && getContainerRenderSignature(container) === renderSignature && containerHasActualRenderableContent(container)) {
                 incrementInternalPerfCounter('chunkRenderSkips');
                 if (reserveSpace) container.style.minHeight = '';
                 if (onComplete) requestAnimationFrame(() => {
@@ -75650,7 +75675,7 @@ function toggleDriveQuickRequestItem(domId) {
             let index = 0;
             container.classList.add('performance-windowed-list');
             crumb.innerText = crumbText;
-            if (renderSignature && getContainerRenderSignature(container) === renderSignature) {
+            if (renderSignature && getContainerRenderSignature(container) === renderSignature && containerHasActualRenderableContent(container)) {
                 incrementInternalPerfCounter('chunkRenderSkips');
                 container.style.minHeight = '';
                 recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, `av-open:${sourceView}`);
@@ -75777,7 +75802,7 @@ function toggleDriveQuickRequestItem(domId) {
             let index = 0;
             container.classList.add('performance-windowed-list');
             crumb.innerText = crumbText;
-            if (renderSignature && getContainerRenderSignature(container) === renderSignature) {
+            if (renderSignature && getContainerRenderSignature(container) === renderSignature && containerHasActualRenderableContent(container)) {
                 incrementInternalPerfCounter('chunkRenderSkips');
                 container.style.minHeight = '';
                 recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, String(options.chunkKey || 'av-generic'));
@@ -108452,7 +108477,7 @@ C.14.043 C.15.000
             const renderKey = buildDriveRenderKey(modeKey, crumbText, safeEntries);
             if (shouldUseChunkedCardRender(safeEntries.length, options.threshold || 110, options.chunkThreshold || 190)) {
                 syncDriveCrumb(crumb, crumbText);
-                if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
+                if (hasMatchingDriveRenderContent(container, renderKey)) return;
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
                 renderMarkupChunkedByKey(modeKey, container, crumb, safeEntries, crumbText, renderEntry, {
                     approxCardHeight: options.approxCardHeight || 96,
@@ -108551,7 +108576,7 @@ C.14.043 C.15.000
             const shouldChunkCropRollCards = finalItems.length > (touchCropRollCardList ? 14 : 120);
             if (shouldChunkCropRollCards) {
                 syncDriveCrumb(crumb, crumbText);
-                if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
+                if (hasMatchingDriveRenderContent(container, renderKey)) return;
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
                 renderMarkupChunkedByKey(`crop-roll-${activeView}-${filterKey}-card`, container, crumb, finalItems, crumbText, (item) => generateCard(item, 'crop-roll', 'status-blue'), {
                     approxCardHeight: 310,
@@ -129968,11 +129993,20 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (crumb.innerText !== nextText) crumb.innerText = nextText;
         }
 
+        function hasMatchingDriveRenderContent(container, renderKey = '') {
+            return !!(
+                container
+                && container.dataset
+                && container.dataset.driveRenderKey === String(renderKey || '')
+                && containerHasActualRenderableContent(container)
+            );
+        }
+
         function applyDriveRenderMarkup(container, crumb, crumbText, html, renderKey = '') {
             if (!container) return false;
             syncDriveCrumb(crumb, crumbText);
             const nextKey = String(renderKey || (String(crumbText || '') + '::' + String(html || '')));
-            if (container.dataset && container.dataset.driveRenderKey === nextKey) return false;
+            if (hasMatchingDriveRenderContent(container, nextKey)) return false;
             setContainerHtml(container, html);
             if (container.dataset) container.dataset.driveRenderKey = nextKey;
             return true;
@@ -130180,7 +130214,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`, 'drive:fast-cards:empty');
                 } else if (shouldUseChunkedCardRender(finalItems.length, 12, 72)) {
                     syncDriveCrumb(crumb, crumbText);
-                    if (!(container.dataset && container.dataset.driveRenderKey === renderKey)) {
+                    if (!hasMatchingDriveRenderContent(container, renderKey)) {
                         if (container.dataset) container.dataset.driveRenderKey = renderKey;
                         renderMarkupChunkedByKey('drive-fast-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), getDriveChunkRenderOptions('cards'));
                     }
@@ -130284,7 +130318,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const renderKey = buildDriveRenderKey(modeKey, crumbText, safeEntries);
             if (shouldUseChunkedCardRender(safeEntries.length, options.threshold || 32, options.chunkThreshold || 92)) {
                 syncDriveCrumb(crumb, crumbText);
-                if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
+                if (hasMatchingDriveRenderContent(container, renderKey)) return;
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
                 renderMarkupChunkedByKey(modeKey, container, crumb, safeEntries, crumbText, renderEntry, getDriveChunkRenderOptions('drill', options));
                 return;
@@ -130350,7 +130384,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             if (shouldUseChunkedCardRender(finalItems.length, 12, 72)) {
                 syncDriveCrumb(crumb, crumbText);
-                if (container.dataset && container.dataset.driveRenderKey === renderKey) return true;
+                if (hasMatchingDriveRenderContent(container, renderKey)) return true;
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
                 renderMarkupChunkedByKey('drive-quick-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), getDriveChunkRenderOptions('cards'));
                 return true;
@@ -130509,7 +130543,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             if (shouldUseChunkedCardRender(finalItems.length, 12, 72)) {
                 syncDriveCrumb(crumb, crumbText);
-                if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
+                if (hasMatchingDriveRenderContent(container, renderKey)) return;
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
                 renderMarkupChunkedByKey('drive-name-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), getDriveChunkRenderOptions('cards'));
                 return;
@@ -130598,7 +130632,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             if (shouldUseChunkedCardRender(finalItems.length, 12, 72)) {
                 syncDriveCrumb(crumb, crumbText);
-                if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
+                if (hasMatchingDriveRenderContent(container, renderKey)) return;
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
                 renderMarkupChunkedByKey('drive-loc-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), getDriveChunkRenderOptions('cards'));
                 return;
@@ -130634,7 +130668,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             if (shouldUseChunkedCardRender(finalItems.length, 12, 72)) {
                 syncDriveCrumb(crumb, crumbText);
-                if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
+                if (hasMatchingDriveRenderContent(container, renderKey)) return;
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
                 renderMarkupChunkedByKey('drive-hold-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item, 'status-yellow')), getDriveChunkRenderOptions('cards', {
                     prefixHtml: reportTabsHtml
@@ -130659,7 +130693,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             if (shouldUseChunkedCardRender(finalItems.length, 12, 72)) {
                 syncDriveCrumb(crumb, crumbText);
-                if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
+                if (hasMatchingDriveRenderContent(container, renderKey)) return;
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
                 renderMarkupChunkedByKey('drive-season-sales-notes-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), getDriveChunkRenderOptions('cards'));
                 return;
@@ -130724,7 +130758,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
             if (shouldUseChunkedCardRender(finalItems.length, 12, 72)) {
                 syncDriveCrumb(crumb, crumbText);
-                if (container.dataset && container.dataset.driveRenderKey === renderKey) {
+                if (hasMatchingDriveRenderContent(container, renderKey)) {
                     syncControls();
                     return;
                 }
