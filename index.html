@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.11.07';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.11.08';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.07').trim() || 'V2026.08.11.07';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.08').trim() || 'V2026.08.11.08';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.07';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.08';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -19486,7 +19486,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             }
             const targetView = document.getElementById('view-' + safeViewId);
             if (!targetView || targetView.classList.contains('hidden')) return false;
-            renderViewContent(safeViewId, !!nextOptions.forceReset, !!nextOptions.forceRender);
+            const didFastDriveRender = safeViewId === 'drive'
+                && nextOptions.driveFastContent === true
+                && !nextOptions.forceReset
+                && renderDriveFastVisibleContent('drive-fast-immediate');
+            if (!didFastDriveRender) renderViewContent(safeViewId, !!nextOptions.forceReset, !!nextOptions.forceRender);
             if (touchRenderStartedAt) recordInternalPerfDuration('touchToRenderDurations', touchRenderStartedAt, safeViewId);
             if (typeof nextOptions.afterRender === 'function') nextOptions.afterRender();
             return true;
@@ -19665,7 +19669,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (!targetView || targetView.classList.contains('hidden')) return;
                 const viewRenderStartedAt = beginInternalPerfMeasure();
                 try {
-                    renderViewContent(safeViewId, !!nextOptions.forceReset, !!nextOptions.forceRender);
+                    const didFastDriveRender = safeViewId === 'drive'
+                        && nextOptions.driveFastContent === true
+                        && !nextOptions.forceReset
+                        && renderDriveFastVisibleContent('drive-fast-tracked');
+                    if (!didFastDriveRender) renderViewContent(safeViewId, !!nextOptions.forceReset, !!nextOptions.forceRender);
                 } finally {
                     recordAdaptiveRenderDuration(`view:${safeViewId}`, getAdaptivePerfElapsedMs(viewRenderStartedAt));
                     sampleAdaptiveDomPressure(`view:${safeViewId}`);
@@ -26093,7 +26101,7 @@ let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprova
         const MOVES_PAIR_SEASONS = new Set(['F1', 'S1']);
         const MOVES_UNIVERSAL_SEASONS = new Set(['U1', 'U2', 'U3']);
         const MOVES_PAIR_LOTCODES = new Set(['26.S1', '27.F1']);
-let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveSeason=null; let selectedDriveProgram=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let selectedDriveLocationCodes=new Set(); let driveLocationSearchTerm=''; let driveLocationFilterOpen=false; let selectedDriveLotCodes=new Set(); let driveLotSearchTerm=''; let driveLotFilterOpen=false; let drivePlantFilterItemsCache=[]; let drivePlantFilterGenusOptions=[]; let drivePlantFilterContSizeOptions=[]; let drivePlantFilterLocationOptions=[]; let drivePlantFilterLotOptions=[]; let driveGenusSelectionMode='all'; let driveContSizeSelectionMode='all'; let driveLocationSelectionMode='all'; let driveLotSelectionMode='all'; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; let driveSeasonSearchTerm=''; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); const AV_FILTER_SEASON_OPTIONS=Object.freeze(["F1","S1","U1","U2"]); const CAV_AV_BLANK_KEYS_QUERY=`select=*&order=itemcode.asc`; const DRIVE_DRILL_ALL_VALUE='__ALL__'; const DRIVE_DRILL_ALL_LABEL='ALL'; const DRIVE_ITEM_PROGRAM_OPTIONS=Object.freeze([{ value:'q1', label:'Q1', suffix:'1' }, { value:'promo', label:'PROMO', suffix:'2' }]); let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS); let driveResolvedCardStateKey=''; let driveResolvedCardStateCache=null; let driveVisibleItemsStateCacheKey=''; let driveVisibleItemsStateCache=null; let driveDrillGroupStateCache=new Map(); let driveSearchRequiresManualSelection=false; let driveSearchDebounceTimer=null; let driveSearchRequestToken=0;
+let driveViewLevel=0; let selectedDriveName=null; let selectedDriveSize=null; let selectedDriveSeason=null; let selectedDriveProgram=null; let selectedDriveCommonNames=new Set(); let driveCommonNameSearchTerm=''; let driveCommonNameFilterOpen=false; let selectedDriveGenusNames=new Set(); let driveGenusSearchTerm=''; let driveGenusFilterOpen=false; let selectedDriveContSizes=new Set(); let driveContSizeSearchTerm=''; let driveContSizeFilterOpen=false; let selectedDriveLocationCodes=new Set(); let driveLocationSearchTerm=''; let driveLocationFilterOpen=false; let selectedDriveLotCodes=new Set(); let driveLotSearchTerm=''; let driveLotFilterOpen=false; let drivePlantFilterItemsCache=[]; let drivePlantFilterGenusOptions=[]; let drivePlantFilterContSizeOptions=[]; let drivePlantFilterLocationOptions=[]; let drivePlantFilterLotOptions=[]; let driveGenusSelectionMode='all'; let driveContSizeSelectionMode='all'; let driveLocationSelectionMode='all'; let driveLotSelectionMode='all'; let driveViewDropdownOpen=false; let driveSeasonDropdownOpen=false; let driveSeasonSearchTerm=''; const DRIVE_SEASON_OPTIONS=Object.freeze(["S1","F1","U1","U2","U3","X","Y","Z"]); const AV_FILTER_SEASON_OPTIONS=Object.freeze(["F1","S1","U1","U2"]); const CAV_AV_BLANK_KEYS_QUERY=`select=*&order=itemcode.asc`; const DRIVE_DRILL_ALL_VALUE='__ALL__'; const DRIVE_DRILL_ALL_LABEL='ALL'; const DRIVE_ITEM_PROGRAM_OPTIONS=Object.freeze([{ value:'q1', label:'Q1', suffix:'1' }, { value:'promo', label:'PROMO', suffix:'2' }]); let driveSelectedSeasons=new Set(DRIVE_SEASON_OPTIONS); let driveResolvedCardStateKey=''; let driveResolvedCardStateCache=null; let driveVisibleItemsStateCacheKey=''; let driveVisibleItemsStateCache=null; let driveFastVisibleItemsStateCacheKey=''; let driveFastVisibleItemsStateCache=null; let driveDrillGroupStateCache=new Map(); let driveSearchRequiresManualSelection=false; let driveSearchDebounceTimer=null; let driveSearchRequestToken=0;
         let driveColumnFilters={}; let driveColumnFilterDrafts={}; let driveColumnFilterSelectedHeaders=new Set(); let driveColumnFilterDropdownOpen=false; let driveColumnFilterStep='select'; let driveColumnFilterFieldKey=''; let driveColumnFilterMode='values'; let driveColumnFilterValueSearchTerm=''; let driveColumnFilterFieldSearchTerm=''; let driveColumnFilterHeaderFieldsCache=[]; let driveStandardColumnFilters={}; let driveSeasonSalesNoteColumnFilters={};
         let drivePlantFilterStateCacheKey=''; let drivePlantFilterStateCache=null;
 
@@ -27220,7 +27228,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.07').trim() || 'V2026.08.11.07';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.08').trim() || 'V2026.08.11.08';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -41563,6 +41571,8 @@ let avTopControlsRenderToken = 0;
             driveResolvedCardStateCache = null;
             driveVisibleItemsStateCacheKey = '';
             driveVisibleItemsStateCache = null;
+            driveFastVisibleItemsStateCacheKey = '';
+            driveFastVisibleItemsStateCache = null;
             driveDrillGroupStateCache = new Map();
             driveQuickFilterCacheKey = '';
             driveQuickFilterCacheItems = [];
@@ -41778,7 +41788,20 @@ return false;
                 driveBaseFilterCacheItems = baseItems;
                 return baseItems;
             }
-            const filteredItems = filterBySearch(baseItems, term, searchProfile);
+            let searchSourceItems = baseItems;
+            const previousTerm = String(driveBaseLastSearchTerm || '').trim();
+            if (
+                driveBaseSearchContextKey === searchContextKey
+                && previousTerm
+                && term.length > previousTerm.length
+                && term.indexOf(previousTerm) === 0
+                && Array.isArray(driveBaseLastSearchItems)
+                && driveBaseLastSearchItems.length <= baseItems.length
+            ) {
+                searchSourceItems = driveBaseLastSearchItems;
+                incrementInternalPerfCounter('driveProgressiveSearchCacheHits');
+            }
+            const filteredItems = filterBySearch(searchSourceItems, term, searchProfile);
             driveBaseSearchContextKey = searchContextKey;
             driveBaseLastSearchTerm = term;
             driveBaseLastSearchItems = filteredItems;
@@ -125828,6 +125851,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 allowWhileScrolling: true,
                 allowDuringRecentInteraction: true,
                 allowDuringExtendedBlock: true,
+                driveFastContent: true,
                 touchDelayMs: 8,
                 scrollDelayMs: 12,
                 interactionDelayMs: 8,
@@ -125842,7 +125866,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (normalizedTerm.length < 3) return false;
             let driveViewState;
             try {
-                driveViewState = buildDriveVisibleItemsState();
+                driveViewState = buildDriveFastVisibleItemsState();
             } catch (error) {
                 return false;
             }
@@ -125890,7 +125914,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (!didAutoDrillName && String(nextOptions.drillStateKey || '').trim() && String(nextOptions.drillStateKey || '').trim() !== getDriveDrillSelectionStateKey()) return false;
                 const targetView = document.getElementById('view-drive');
                 if (!targetView || targetView.classList.contains('hidden')) return false;
-                renderViewContent('drive', false, false);
+                if (!renderDriveFastVisibleContent('drive-search')) {
+                    renderViewContent('drive', false, false);
+                }
                 return true;
             }, term, {
                 force: !!nextOptions.force,
@@ -130027,6 +130053,147 @@ ${folderNote ? `Folder Note: ${folderNote}
                 resolvedStateKey
             };
             return driveVisibleItemsStateCache;
+        }
+
+        function buildDriveFastPlantFilterState(items = []) {
+            clearRemovedDriveTopFilterState();
+            const safeItems = Array.isArray(items) ? items : [];
+            const genusOptions = Array.isArray(drivePlantFilterGenusOptions) ? drivePlantFilterGenusOptions : [];
+            const sizeOptions = Array.isArray(drivePlantFilterContSizeOptions) ? drivePlantFilterContSizeOptions : [];
+            const locationOptions = Array.isArray(drivePlantFilterLocationOptions) ? drivePlantFilterLocationOptions : [];
+            const lotOptions = Array.isArray(drivePlantFilterLotOptions) ? drivePlantFilterLotOptions : [];
+            return {
+                baseItems: safeItems,
+                filteredItems: safeItems,
+                genusOptions,
+                filteredGenusOptions: genusOptions,
+                sizeOptions,
+                filteredSizeOptions: sizeOptions,
+                locationOptions,
+                filteredLocationOptions: locationOptions,
+                lotOptions,
+                filteredLotOptions: lotOptions,
+                genusSelectedCount: genusOptions.length,
+                contSizeSelectedCount: sizeOptions.length,
+                locationSelectedCount: locationOptions.length,
+                lotSelectedCount: lotOptions.length,
+                genusAllSelected: true,
+                contSizeAllSelected: true,
+                locationAllSelected: true,
+                lotAllSelected: true,
+                hasActiveFilters: false,
+                hasTypedSearch: false,
+                fastDriveState: true
+            };
+        }
+
+        function buildDriveFastVisibleItemsState() {
+            const stateStartedAt = beginInternalPerfMeasure();
+            const baseSearchFilteredItems = getDriveFilteredItems(false);
+            drivePlantFilterItemsCache = baseSearchFilteredItems;
+            const resolvedStateKey = [
+                activeDriveTab,
+                activeDriveHoldStopReport,
+                normalizeDriveReportEvalUserFilter(driveReportEvalUserFilter),
+                normalizeDriveOpenStockReportSeasonInput(driveOpenStockReportSeason),
+                normalizeDriveOpenStockReportSalesYearInput(driveOpenStockReportSalesYear),
+                normalizeDriveOpenStockReportMaxSLtsInput(driveOpenStockReportMaxSLts),
+                driveBaseFilterCacheKey,
+                buildDriveColumnFilterStateKey(),
+                String(driveQuickFilterName || '').toLowerCase().trim(),
+                String(driveQuickFilterLocation || '').trim(),
+                String(driveQuickFilterLot || '').trim(),
+                String(driveQuickFilterSize || '').trim(),
+                getDriveQuickPriorityValues().join('|'),
+                String(driveQuickFilterLtsMode || '').trim(),
+                String(driveQuickFilterLtsValue || '').trim(),
+                'fast-v1'
+            ].join('::');
+            if (driveFastVisibleItemsStateCacheKey === resolvedStateKey && driveFastVisibleItemsStateCache) {
+                incrementInternalPerfCounter('viewStateCacheHits');
+                recordInternalPerfDuration('filterRenderDurations', stateStartedAt, 'drive-fast-state:cache');
+                return driveFastVisibleItemsStateCache;
+            }
+            const drivePlantFilterState = buildDriveFastPlantFilterState(baseSearchFilteredItems);
+            const columnFilteredItems = applyDriveColumnFiltersToItems(baseSearchFilteredItems);
+            const visibleItems = applyDriveQuickFiltersToItems(columnFilteredItems, `fast:${resolvedStateKey}`);
+            reconcileDriveDrillSelectionWithVisibleItems(visibleItems);
+            driveFastVisibleItemsStateCacheKey = resolvedStateKey;
+            driveFastVisibleItemsStateCache = {
+                baseSearchFilteredItems,
+                drivePlantFilterState,
+                visibleItems,
+                resolvedStateKey
+            };
+            recordInternalPerfDuration('filterRenderDurations', stateStartedAt, 'drive-fast-state');
+            return driveFastVisibleItemsStateCache;
+        }
+
+        function syncDriveTopControlsForFastPaint() {
+            const container = document.getElementById('drive-season-filters');
+            if (!container) return;
+            ensureDriveTopControlsShell(container);
+            const columnSummary = getDriveColumnFilterSummaryLabel();
+            const controlButtonClass = (isActive = false) => `task-top-control-button inline-flex w-full items-center gap-2 rounded-full border px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.11em] sm:px-3.5 sm:text-[10px] ${isActive ? 'bg-emerald-600 border-emerald-600 text-white shadow-md' : 'bg-white border-emerald-200 text-emerald-700 shadow-sm'}`;
+            syncDriveTopControlShell(container, 'columns', {
+                buttonClass: controlButtonClass(driveColumnFilterDropdownOpen || !!getDriveColumnFilterActiveCount()),
+                summary: columnSummary,
+                open: false,
+                bodyHtml: ''
+            });
+            syncDriveFilterResetRow(container, hasActiveDriveQuickResetFilters());
+        }
+
+        function renderDriveFastVisibleContent(reason = 'drive-fast') {
+            const renderStartedAt = beginInternalPerfMeasure();
+            if (ensureViewDataForRender('drive')) return false;
+            const driveView = document.getElementById('view-drive');
+            if (!driveView || driveView.classList.contains('hidden')) return false;
+            if (activeDriveMode !== 'ok') return false;
+            const container = document.getElementById('drive-content');
+            const crumb = document.getElementById('drive-crumb');
+            if (!container || !crumb) return false;
+            const drillTabs = document.getElementById('drive-drill-tabs');
+            if (drillTabs) drillTabs.classList.remove('hidden');
+            cancelDriveChunkedRenders();
+            const driveModeLabel = DRIVE_MODE_LABELS[activeDriveMode] || 'Drive Mode';
+            const driveViewState = buildDriveFastVisibleItemsState();
+            if (activeDriveTab === 'name') {
+                renderDriveQuickRequestBar([]);
+                renderDriveCommonNameDrill(container, crumb, driveModeLabel, driveViewState);
+            } else if (activeDriveTab === 'loc') {
+                renderDriveQuickRequestBar([]);
+                renderDriveLocationDrill(container, crumb, driveModeLabel, driveViewState);
+            } else if (activeDriveTab === 'hold') {
+                renderDriveQuickRequestBar([]);
+                renderDriveHoldStopCodeView(container, crumb, driveModeLabel, driveViewState);
+            } else if (activeDriveTab === 'season-sales-notes') {
+                renderDriveQuickRequestBar([]);
+                renderDriveSeasonSalesNotesView(container, crumb, driveModeLabel, driveViewState);
+            } else {
+                const { finalItems, crumbText, renderKey } = buildDriveResolvedCardState(driveModeLabel, driveViewState);
+                renderDriveQuickRequestBar(finalItems);
+                if (finalItems.length === 0) {
+                    const emptyMessage = hasActiveDriveQuickFilters()
+                        ? 'No rows match the current Drive filters.'
+                        : 'No items found matching the current search.';
+                    applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`, 'drive:fast-cards:empty');
+                } else if (shouldUseChunkedCardRender(finalItems.length, 12, 72)) {
+                    syncDriveCrumb(crumb, crumbText);
+                    if (!(container.dataset && container.dataset.driveRenderKey === renderKey)) {
+                        if (container.dataset) container.dataset.driveRenderKey = renderKey;
+                        renderMarkupChunkedByKey('drive-fast-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), getDriveChunkRenderOptions('cards'));
+                    }
+                } else {
+                    applyDriveRenderMarkup(container, crumb, crumbText, finalItems.map((item) => generateCard(item, 'drive', getDriveCardStatusClass(item))).join(''), renderKey);
+                }
+            }
+            syncDriveTopControlsForFastPaint();
+            const state = ensureViewRenderState('drive');
+            state.initialized = true;
+            state.dirty = false;
+            recordInternalPerfDuration('viewRenderDurations', renderStartedAt, reason || 'drive-fast');
+            return true;
         }
 
         function getDriveCardNameDrillScope(items = [], driveModeLabel = '') {
