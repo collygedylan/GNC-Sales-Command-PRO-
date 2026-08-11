@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.11.02';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.11.03';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.02').trim() || 'V2026.08.11.02';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.03').trim() || 'V2026.08.11.03';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.02';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.03';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -19697,10 +19697,10 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             scheduleSearchRender(searchKey, () => {
                 if (!isLatestViewRenderToken(safeViewId, renderToken)) {
                     incrementInternalPerfCounter('staleViewRenderSkips');
-                    return;
+                    return false;
                 }
                 const targetView = document.getElementById('view-' + safeViewId);
-                if (!targetView || targetView.classList.contains('hidden')) return;
+                if (!targetView || targetView.classList.contains('hidden')) return false;
                 const searchViewRenderStartedAt = beginInternalPerfMeasure();
                 try {
                     renderViewContent(safeViewId, false, false);
@@ -19708,7 +19708,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                     recordAdaptiveRenderDuration(`search-view:${safeViewId}`, getAdaptivePerfElapsedMs(searchViewRenderStartedAt));
                     sampleAdaptiveDomPressure(`search-view:${safeViewId}`);
                 }
-            }, term, options);
+                return true;
+            }, term, { ...(options || {}), visibleSearch: true });
             return false;
         }
 
@@ -27215,7 +27216,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.02').trim() || 'V2026.08.11.02';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.03').trim() || 'V2026.08.11.03';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -45578,7 +45579,6 @@ function toggleDriveQuickRequestItem(domId) {
             if (normalizedTerm !== null) {
                 const lastTerm = searchRenderLastTerm[safeKey];
                 if (!options.force && lastTerm === normalizedTerm) return;
-                searchRenderLastTerm[safeKey] = normalizedTerm;
             }
             if (searchRenderTimer[safeKey]) clearTimeout(searchRenderTimer[safeKey]);
             if (searchRenderFrame[safeKey]) cancelAnimationFrame(searchRenderFrame[safeKey]);
@@ -45587,11 +45587,14 @@ function toggleDriveQuickRequestItem(domId) {
             searchRenderToken[safeKey] = renderToken;
             const touchOptimized = isTouchConstrainedDevice();
             const interactiveSearch = options && options.interactiveCritical === true;
+            const visibleSearch = interactiveSearch || (options && options.visibleSearch === true);
             const baseDelay = interactiveSearch
                 ? (touchOptimized ? 18 : 1)
-                : (safeKey === 'drive-search'
-                    ? (touchOptimized ? 88 : 12)
-                    : (touchOptimized ? 72 : 10));
+                : (visibleSearch
+                    ? (touchOptimized ? 58 : 8)
+                    : (safeKey === 'drive-search'
+                        ? (touchOptimized ? 88 : 12)
+                        : (touchOptimized ? 72 : 10)));
             const hasDebounceDelay = Object.prototype.hasOwnProperty.call(options || {}, 'debounceDelay');
             const hasTypingDelay = Object.prototype.hasOwnProperty.call(options || {}, 'typingDelay');
             const debounceDelay = options && options.skipDebounce
@@ -45601,7 +45604,7 @@ function toggleDriveQuickRequestItem(domId) {
                 10,
                 hasTypingDelay
                     ? (Number(options.typingDelay) || 10)
-                    : (interactiveSearch ? (touchOptimized ? 24 : 14) : (touchOptimized ? 90 : 24))
+                    : (interactiveSearch ? (touchOptimized ? 24 : 14) : (visibleSearch ? (touchOptimized ? 54 : 16) : (touchOptimized ? 90 : 24)))
             );
             searchRenderTimer[safeKey] = setTimeout(() => {
                 delete searchRenderTimer[safeKey];
@@ -45618,9 +45621,9 @@ function toggleDriveQuickRequestItem(domId) {
                     const allowDuringExtendedBlock = !protectActiveGesture && (Object.prototype.hasOwnProperty.call(options || {}, 'allowDuringExtendedBlock') ? !!options.allowDuringExtendedBlock : true);
                     scheduleTypingAwareUiRender(`search:${safeKey}`, () => {
                         if (Number(searchRenderToken[safeKey] || 0) !== renderToken) return;
-                        if (normalizedTerm !== null && searchRenderLastTerm[safeKey] !== normalizedTerm) return;
                         const searchRenderStartedAt = beginInternalPerfMeasure();
-                        renderFn();
+                        const renderResult = renderFn();
+                        if (normalizedTerm !== null && renderResult !== false) searchRenderLastTerm[safeKey] = normalizedTerm;
                         recordInternalPerfDuration('searchRenderDurations', searchRenderStartedAt, safeKey);
                     }, 0, typingDelay, {
                         allowWhileTyping,
@@ -68697,10 +68700,13 @@ function toggleDriveQuickRequestItem(domId) {
             if (clearBtn) clearBtn.classList.toggle('hidden', term.length <= 0);
             resetAvSearchDrilldownState();
             scheduleTrackedSearchViewRender('av', 'av', term, {
-                debounceDelay: isTouchConstrainedDevice() ? 104 : 24,
-                typingDelay: isTouchConstrainedDevice() ? 76 : 18,
-                allowWhileTyping: !isTouchConstrainedDevice(),
-                allowDuringExtendedBlock: false
+                debounceDelay: isTouchConstrainedDevice() ? 72 : 18,
+                typingDelay: isTouchConstrainedDevice() ? 48 : 16,
+                allowWhileTyping: true,
+                allowWhileTouching: true,
+                allowDuringRecentInteraction: true,
+                allowDuringExtendedBlock: false,
+                maxDeferMs: isTouchConstrainedDevice() ? 260 : 180
             });
         }
 
@@ -125569,7 +125575,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             cancelDriveSearchRenderWork();
             const requestToken = ++driveSearchRequestToken;
             const drillStateKey = getDriveDrillSelectionStateKey();
-            const requestDelay = (isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) ? 64 : 18;
+            const requestDelay = (isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) ? 48 : 14;
             driveSearchDebounceTimer = setTimeout(() => {
                 driveSearchDebounceTimer = null;
                 if (requestToken !== driveSearchRequestToken) return;
@@ -125622,18 +125628,19 @@ ${folderNote ? `Folder Note: ${folderNote}
             scheduleSearchRender('drive-search', () => {
                 if (!isLatestViewRenderToken('drive', renderToken)) {
                     incrementInternalPerfCounter('staleViewRenderSkips');
-                    return;
+                    return false;
                 }
-                if (Number(nextOptions.requestToken || 0) && Number(nextOptions.requestToken || 0) !== driveSearchRequestToken) return;
-                if (String(nextOptions.drillStateKey || '').trim() && String(nextOptions.drillStateKey || '').trim() !== getDriveDrillSelectionStateKey()) return;
+                if (Number(nextOptions.requestToken || 0) && Number(nextOptions.requestToken || 0) !== driveSearchRequestToken) return false;
+                if (String(nextOptions.drillStateKey || '').trim() && String(nextOptions.drillStateKey || '').trim() !== getDriveDrillSelectionStateKey()) return false;
                 const targetView = document.getElementById('view-drive');
-                if (!targetView || targetView.classList.contains('hidden')) return;
+                if (!targetView || targetView.classList.contains('hidden')) return false;
                 renderViewContent('drive', false, false);
+                return true;
             }, term, {
                 force: !!nextOptions.force,
                 skipDebounce: !!nextOptions.skipDebounce,
                 debounceDelay: Math.max(0, Number(nextOptions.debounceDelay) || 0),
-                typingDelay: Math.max(touchConstrained ? 54 : 24, Number(nextOptions.typingDelay) || (touchConstrained ? 64 : 32)),
+                typingDelay: Math.max(touchConstrained ? 28 : 14, Number(nextOptions.typingDelay) || (touchConstrained ? 42 : 20)),
                 allowWhileTyping: Object.prototype.hasOwnProperty.call(nextOptions, 'allowWhileTyping') ? !!nextOptions.allowWhileTyping : true,
                 allowDuringLiveGesture: Object.prototype.hasOwnProperty.call(nextOptions, 'allowDuringLiveGesture') ? !!nextOptions.allowDuringLiveGesture : true,
                 allowWhileTouching: Object.prototype.hasOwnProperty.call(nextOptions, 'allowWhileTouching') ? !!nextOptions.allowWhileTouching : true,
@@ -125641,10 +125648,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 allowDuringRecentInteraction: Object.prototype.hasOwnProperty.call(nextOptions, 'allowDuringRecentInteraction') ? !!nextOptions.allowDuringRecentInteraction : true,
                 allowDuringExtendedBlock: Object.prototype.hasOwnProperty.call(nextOptions, 'allowDuringExtendedBlock') ? !!nextOptions.allowDuringExtendedBlock : true,
                 interactiveCritical: true,
-                touchDelayMs: touchConstrained ? 28 : 14,
-                scrollDelayMs: touchConstrained ? 42 : 16,
-                interactionDelayMs: touchConstrained ? 28 : 16,
-                maxDeferMs: 520
+                visibleSearch: true,
+                touchDelayMs: touchConstrained ? 18 : 10,
+                scrollDelayMs: touchConstrained ? 24 : 12,
+                interactionDelayMs: touchConstrained ? 18 : 12,
+                maxDeferMs: 260
             });
         }
 
