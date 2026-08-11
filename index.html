@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.11.18';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.11.19';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.18').trim() || 'V2026.08.11.18';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.19').trim() || 'V2026.08.11.19';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.18';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.19';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -7651,7 +7651,10 @@ const FOREGROUND_INVENTORY_INITIAL_MAX_AGE_MS = 15000;
 const FORCE_VIEW_ENTER_REFRESH_MIN_INTERVAL_MS = 10000;
 const FAST_FOREGROUND_DATA_VIEW_IDS = new Set(['drive', 'crop-roll', 'av', 'reserves', 'tasks', 'request', 'managers', 'docks', 'sales-office', 'moves', 'review', 'move-up', 'low-stock', 'advertisement', 'reports', 'grower', 'pest-management', 'shear-list', 'sales-inventory', 'production-workflow']);
 const FAST_FOREGROUND_DATASET_KEYS = new Set(['master', 'cropRollDrive', 'avOpen', 'avHotPriceKeys', 'reserves', 'customerRepMap', 'cav', 'cavAvBlankKeys', 'soc', 'salesOffice', 'flyerRows', 'flyerHistory', 'mlJobs', 'growerScoutReports', 'growerScoutAssets', 'warehouseAssignedItems', 'avNotes']);
-const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'reserves', 'tasks', 'request', 'managers', 'docks', 'sales-office', 'moves', 'review', 'move-up', 'low-stock', 'advertisement', 'reports', 'grower', 'pest-management', 'shear-list', 'sales-inventory', 'production-workflow']);
+const EMERGENCY_VISIBLE_FIRST_MODE = true;
+const EMERGENCY_FOREGROUND_QUIET_MS = 12000;
+const EMERGENCY_BACKGROUND_RETRY_MAX_MS = 18000;
+const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set([]);
         const APP_LIVE_EVENT_VIEW_AREAS = Object.freeze({
             home: ['request', 'sales-office', 'tasks', 'diagnostics', 'grower', 'production', 'sales-inventory', 'shear-list', 'take-back', 'customer-rep-map'],
             drive: ['inventory', 'av', 'reserves', 'request', 'sales-office', 'customer-rep-map'],
@@ -7877,6 +7880,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const searchFilterCache = new WeakMap();
         window.pendingPhotoUploads = pendingPhotoUploads;
         let lastUserInteractionAt = Date.now();
+        let lastEmergencyForegroundActionAt = Date.now();
         let lastTouchInteractionAt = 0;
         let activeTouchSession = false;
         let activeTouchSessionClearTimer = null;
@@ -8696,6 +8700,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         function markUserInteractionActivity(event) {
             const now = Date.now();
             lastUserInteractionAt = now;
+            lastEmergencyForegroundActionAt = now;
             if (isTouchLikeInteractionStartEvent(event)) {
                 if (!activeTouchSession) touchInteractionSessionSerial += 1;
                 activeTouchSession = true;
@@ -9203,6 +9208,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 lastFastSearchInputFocusTarget = input;
                 lastFastSearchInputFocusAt = Date.now();
                 lastTypingAt = lastFastSearchInputFocusAt;
+                lastEmergencyForegroundActionAt = lastFastSearchInputFocusAt;
                 cancelPendingNavigationScrollResets();
             });
         }
@@ -9211,6 +9217,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const target = event && event.target ? event.target : document.activeElement;
             if (!isTextLikeElement(target)) return;
             lastTypingAt = Date.now();
+            lastEmergencyForegroundActionAt = lastTypingAt;
             scheduleAppSessionHousekeeping('typing-settled', ACTIVE_TYPING_GRACE_MS + 900);
         }
         window.addEventListener('input', markTypingActivity, { passive: true });
@@ -18485,12 +18492,41 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return delay;
         }
 
+        function markEmergencyForegroundAction(reason = '') {
+            lastEmergencyForegroundActionAt = Date.now();
+            if (window && window.__gncPerfStats && reason) window.__gncPerfStats.lastForegroundActionReason = String(reason || '').slice(0, 80);
+        }
+
+        function getEmergencyForegroundQuietDelayMs(minDelay = 0) {
+            if (!EMERGENCY_VISIBLE_FIRST_MODE || document.hidden) return 0;
+            const now = Date.now();
+            const lastAction = Math.max(
+                Number(lastEmergencyForegroundActionAt) || 0,
+                Number(lastTypingAt) || 0,
+                Number(lastScrollAt) || 0,
+                Number(lastTouchInteractionAt) || 0,
+                Number(lastViewSwitchAt) || 0,
+                Number(lastFastPressActionAt) || 0
+            );
+            const requested = Math.max(0, Number(minDelay) || 0);
+            const quietRemaining = Math.max(0, EMERGENCY_FOREGROUND_QUIET_MS - (now - lastAction));
+            const activeDelay = (hasActiveTextEntryFocus() || isUserActivelyTyping() || isUserActivelyScrolling() || isUserActivelyTouching() || isDetailTransitionActive() || hasPendingFieldSaveActivity())
+                ? (isTouchConstrainedDevice() ? 2600 : 1600)
+                : 0;
+            if (quietRemaining <= 0 && activeDelay <= 0) return 0;
+            return Math.min(EMERGENCY_BACKGROUND_RETRY_MAX_MS, Math.max(requested, quietRemaining, activeDelay));
+        }
+
+        function shouldDeferEmergencyBackgroundWork(minDelay = 0) {
+            return getEmergencyForegroundQuietDelayMs(minDelay) > 0;
+        }
+
         function shouldPauseInterruptibleRefresh(options = {}) {
             const opts = options || {};
             if (opts.allowWhileInteractive) return false;
             if (!opts.interruptible && !opts.requeueOnInteraction) return false;
             if (document.hidden) return false;
-            return shouldDeferInteractiveBackgroundWork();
+            return shouldDeferInteractiveBackgroundWork() || shouldDeferEmergencyBackgroundWork();
         }
 
         function queueInterruptedRefreshRetry(options = {}) {
@@ -18500,7 +18536,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 return;
             }
             if (opts.requeueOnInteraction === false) return;
-            const delay = Math.max(getInteractiveRefreshResumeDelayMs(), Number(opts.retryDelayMs) || 0);
+            const delay = Math.max(getInteractiveRefreshResumeDelayMs(), getEmergencyForegroundQuietDelayMs(), Number(opts.retryDelayMs) || 0);
             incrementInternalPerfCounter('interactionBlockedRefreshes');
             updateSyncDiagnostics(liveSyncMode === 'realtime' ? 'realtime' : 'queued');
             if (opts.retryForceLoadedRefresh && typeof refreshLoadedDatasets === 'function') {
@@ -18625,7 +18661,14 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (shouldDeferInteractiveBackgroundWork()) {
                     incrementInternalPerfCounter('deferredVisibleCatchups');
                     incrementInternalPerfCounter('interactionBlockedRefreshes');
-                    queueVisibleDatasetCatchup(getPassiveRefreshInteractionBackoffMs(delay));
+                    queueVisibleDatasetCatchup(Math.max(getPassiveRefreshInteractionBackoffMs(delay), getEmergencyForegroundQuietDelayMs(delay)));
+                    return;
+                }
+                const emergencyDelay = getEmergencyForegroundQuietDelayMs(delay);
+                if (emergencyDelay > 0) {
+                    incrementInternalPerfCounter('deferredVisibleCatchups');
+                    incrementInternalPerfCounter('interactionBlockedRefreshes');
+                    queueVisibleDatasetCatchup(emergencyDelay);
                     return;
                 }
                 const visibleView = resolveRealtimeContextViewId(typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : (activeRealtimeContextViewId || activeRealtimeViewId || 'home'));
@@ -18732,10 +18775,11 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 updateSyncDiagnostics('manual-sync');
                 return;
             }
-            if (backgroundRefreshInFlight || shouldDeferInteractiveBackgroundWork()) {
+            const emergencyDelay = getEmergencyForegroundQuietDelayMs(policy.viewId === 'request' ? REQUEST_QUEUE_VISIBLE_POLL_FLOOR_MS : 1200);
+            if (backgroundRefreshInFlight || shouldDeferInteractiveBackgroundWork() || emergencyDelay > 0) {
                 const deferDelay = policy.viewId === 'chat'
                     ? Math.min(Math.max(900, Number(policy.pollMs) || 2000), 2000)
-                    : getPassiveRefreshInteractionBackoffMs(policy.viewId === 'request' ? REQUEST_QUEUE_VISIBLE_POLL_FLOOR_MS : 1200);
+                    : Math.max(getPassiveRefreshInteractionBackoffMs(policy.viewId === 'request' ? REQUEST_QUEUE_VISIBLE_POLL_FLOOR_MS : 1200), emergencyDelay);
                 syncVisibleViewPoll(policy.viewId, { delay: deferDelay });
                 return;
             }
@@ -19188,6 +19232,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
 
         function beginDirectNavigationActivity() {
             cancelPendingNavigationScrollResets();
+            markEmergencyForegroundAction('direct-navigation');
             try { releaseUserInteractionBlockers('direct-navigation', { forceEditingCleanup: true, syncViewport: false }); } catch (error) {}
         }
 
@@ -27374,7 +27419,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.18').trim() || 'V2026.08.11.18';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.19').trim() || 'V2026.08.11.19';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -32048,9 +32093,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     updateSyncDiagnostics(getPassiveSyncIdleMode());
                     return;
                 }
-                if (shouldDeferInteractiveBackgroundWork()) {
+                const emergencyDelay = getEmergencyForegroundQuietDelayMs(baseDelay);
+                if (shouldDeferInteractiveBackgroundWork() || emergencyDelay > 0) {
                     incrementInternalPerfCounter('deferredBackgroundRefreshes');
-                    queueLoadedDatasetBackgroundCatchup(safeLoadedKeys, excludeTargets, Math.max(INTERACTION_REFRESH_DEFER_MS, baseDelay));
+                    queueLoadedDatasetBackgroundCatchup(safeLoadedKeys, excludeTargets, Math.max(INTERACTION_REFRESH_DEFER_MS, baseDelay, emergencyDelay));
                     return;
                 }
                 const targets = getLoadedDatasetRefreshTargets(safeLoadedKeys)
@@ -32329,7 +32375,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 forceAllLoadedDatasets,
                 ...opts
             };
-            if ((!shouldForce && shouldDeferInteractiveBackgroundWork()) || (shouldForce && shouldPauseInterruptibleRefresh(refreshOptions))) {
+            if ((!shouldForce && (shouldDeferInteractiveBackgroundWork() || shouldDeferEmergencyBackgroundWork())) || (shouldForce && shouldPauseInterruptibleRefresh(refreshOptions))) {
                 queueInterruptedRefreshRetry(refreshOptions);
                 return false;
             }
@@ -32387,10 +32433,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return;
             }
             const now = Date.now();
-            if (!options.force && targetView !== 'request' && shouldDeferInteractiveBackgroundWork()) {
+            const emergencyEnterDelay = getEmergencyForegroundQuietDelayMs(Number(options.backgroundDelay) || 90);
+            if (!options.force && targetView !== 'request' && (shouldDeferInteractiveBackgroundWork() || emergencyEnterDelay > 0)) {
                 incrementInternalPerfCounter('deferredViewEnterRefreshes');
                 incrementInternalPerfCounter('interactionBlockedRefreshes');
-                queueVisibleDatasetCatchup(Math.max(INTERACTION_REFRESH_DEFER_MS, Number(options.backgroundDelay) || 90));
+                queueVisibleDatasetCatchup(Math.max(INTERACTION_REFRESH_DEFER_MS, emergencyEnterDelay, Number(options.backgroundDelay) || 90));
                 return;
             }
             if (targetView === 'request') {
