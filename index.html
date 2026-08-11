@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.11.04';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.11.05';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.04').trim() || 'V2026.08.11.04';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.05').trim() || 'V2026.08.11.05';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.04';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.05';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -19771,7 +19771,7 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         }
 
         function scheduleDriveFilterRender(delay = 0, typingDelay = 28, forceRender = false) {
-            return scheduleTrackedViewRenderPreservingScroll('drive', 'drive:filter-render', guardIosSafariRenderOptions({ delay, typingDelay, forceRender, userAction: true, preferImmediate: false, allowDuringLiveGesture: false, allowWhileTouching: false, allowWhileScrolling: false, allowDuringRecentInteraction: false, touchDelayMs: 96, interactionDelayMs: 96, scrollDelayMs: 180 }, { touchDelayMs: 180, interactionDelayMs: 200, scrollDelayMs: 260 }));
+            return scheduleTrackedViewRenderPreservingScroll('drive', 'drive:filter-render', guardIosSafariRenderOptions({ delay, typingDelay: Math.min(Number(typingDelay) || 28, 36), forceRender, userAction: true, preferImmediate: true, interactiveCritical: true, allowDuringLiveGesture: true, allowWhileTouching: true, allowWhileScrolling: true, allowDuringRecentInteraction: true, touchDelayMs: 18, interactionDelayMs: 18, scrollDelayMs: 36, maxDeferMs: 180 }, { touchDelayMs: 72, interactionDelayMs: 72, scrollDelayMs: 110 }));
         }
 
         function scheduleTasksRender(delay = 0, typingDelay = 20, forceRender = false) {
@@ -27216,7 +27216,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.04').trim() || 'V2026.08.11.04';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.05').trim() || 'V2026.08.11.05';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -45665,7 +45665,7 @@ function toggleDriveQuickRequestItem(domId) {
                         ignoreChunkDuringInteraction: true,
                         interactiveCritical,
                         maxDeferMs: Math.max(
-                            250,
+                            interactiveCritical ? 110 : 250,
                             Number(options && options.maxDeferMs) || (interactiveCritical ? USER_VISIBLE_FORCE_RENDER_MAX_DEFER_MS : USER_VISIBLE_RENDER_MAX_DEFER_MS)
                         )
                     });
@@ -75140,13 +75140,13 @@ function toggleDriveQuickRequestItem(domId) {
             return `${normalizeRenderSignature(prefix)}:${safeRows.length}:${(hash >>> 0).toString(16)}`;
         }
 
-        function setContainerHtmlWithSignature(container, html, signature = '') {
+        function setContainerHtmlWithSignature(container, html, signature = '', options = {}) {
             const safeSignature = normalizeRenderSignature(signature);
             if (safeSignature && getContainerRenderSignature(container) === safeSignature) {
                 incrementInternalPerfCounter('skippedSignatureRenders');
                 return false;
             }
-            setContainerHtml(container, html);
+            setContainerHtml(container, html, options);
             if (safeSignature) setContainerRenderSignature(container, safeSignature);
             return true;
         }
@@ -75330,20 +75330,38 @@ function toggleDriveQuickRequestItem(domId) {
             if (count <= 0) return false;
             const coarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
             const touchOptimized = isIOSDevice() || isStandaloneApp() || coarsePointer;
-            const mobileCutoff = Math.max(16, Math.min(Number(mobileThreshold) || 120, 36));
-            const desktopCutoff = Math.max(30, Math.min(Number(desktopThreshold) || 220, 132));
+            const adaptiveConstrained = typeof isAdaptivePerformanceMode === 'function' && isAdaptivePerformanceMode();
+            const mobileCutoff = Math.max(10, Math.min(Number(mobileThreshold) || 120, adaptiveConstrained ? 16 : 24));
+            const desktopCutoff = Math.max(24, Math.min(Number(desktopThreshold) || 220, adaptiveConstrained ? 64 : 96));
             return count > (touchOptimized ? mobileCutoff : desktopCutoff);
         }
 
-        function appendHtmlFragment(container, html) {
+        function shouldRunPostRenderPhotoHydration(container = null, options = {}) {
+            if (!container || !container.querySelector) return false;
+            const nextOptions = (options && typeof options === 'object') ? options : {};
+            if (nextOptions.skipPhotoHydration === true) return false;
+            if (nextOptions.forcePhotoHydration === true) return true;
+            try {
+                return !!container.querySelector('img, .app-av-catalog-card, .app-av-photo-carousel, [data-deferred-card-photo="1"]');
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function runPostRenderPhotoHydration(container = null, options = {}) {
+            if (!shouldRunPostRenderPhotoHydration(container, options)) return;
+            tuneNativeImagePerformance(container);
+            scheduleDeferredCardPhotoHydration(container);
+            queueAvCardPhotoHydration(container, 80);
+        }
+
+        function appendHtmlFragment(container, html, options = {}) {
             if (!container || !html) return;
             const template = document.createElement('template');
             template.innerHTML = html;
             container.appendChild(template.content);
             setContainerUiState(container, 'content');
-            tuneNativeImagePerformance(container);
-            scheduleDeferredCardPhotoHydration(container);
-            queueAvCardPhotoHydration(container, 80);
+            runPostRenderPhotoHydration(container, options);
         }
 
         function setContainerHtml(container, html, options = {}) {
@@ -75366,9 +75384,7 @@ function toggleDriveQuickRequestItem(domId) {
                 container.appendChild(template.content);
             }
             setContainerUiState(container, 'content');
-            tuneNativeImagePerformance(container);
-            scheduleDeferredCardPhotoHydration(container);
-            queueAvCardPhotoHydration(container, 80);
+            runPostRenderPhotoHydration(container, nextOptions);
         }
 
         function renderMarkupChunkedByKey(tokenKey, container, crumb, rows, crumbText, renderRow, options = {}) {
@@ -125795,6 +125811,8 @@ ${folderNote ? `Folder Note: ${folderNote}
         function scheduleDriveSearchRender(term = '', options = {}) {
             const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const touchConstrained = isTouchConstrainedDevice();
+            const hasDebounceDelay = Object.prototype.hasOwnProperty.call(nextOptions, 'debounceDelay');
+            const hasTypingDelay = Object.prototype.hasOwnProperty.call(nextOptions, 'typingDelay');
             cancelPendingNavigationScrollResets();
             invalidateDriveResolvedCardState();
             markViewDirty('drive');
@@ -125813,8 +125831,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             }, term, {
                 force: !!nextOptions.force,
                 skipDebounce: !!nextOptions.skipDebounce,
-                debounceDelay: Math.max(0, Number(nextOptions.debounceDelay) || 0),
-                typingDelay: Math.max(touchConstrained ? 28 : 14, Number(nextOptions.typingDelay) || (touchConstrained ? 42 : 20)),
+                debounceDelay: Math.max(0, hasDebounceDelay ? (Number(nextOptions.debounceDelay) || 0) : (touchConstrained ? 12 : 4)),
+                typingDelay: Math.max(touchConstrained ? 14 : 8, hasTypingDelay ? (Number(nextOptions.typingDelay) || 0) : (touchConstrained ? 18 : 10)),
                 allowWhileTyping: Object.prototype.hasOwnProperty.call(nextOptions, 'allowWhileTyping') ? !!nextOptions.allowWhileTyping : true,
                 allowDuringLiveGesture: Object.prototype.hasOwnProperty.call(nextOptions, 'allowDuringLiveGesture') ? !!nextOptions.allowDuringLiveGesture : true,
                 allowWhileTouching: Object.prototype.hasOwnProperty.call(nextOptions, 'allowWhileTouching') ? !!nextOptions.allowWhileTouching : true,
@@ -125823,10 +125841,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                 allowDuringExtendedBlock: Object.prototype.hasOwnProperty.call(nextOptions, 'allowDuringExtendedBlock') ? !!nextOptions.allowDuringExtendedBlock : true,
                 interactiveCritical: true,
                 visibleSearch: true,
-                touchDelayMs: touchConstrained ? 18 : 10,
-                scrollDelayMs: touchConstrained ? 24 : 12,
-                interactionDelayMs: touchConstrained ? 18 : 12,
-                maxDeferMs: 260
+                touchDelayMs: touchConstrained ? 12 : 8,
+                scrollDelayMs: touchConstrained ? 14 : 10,
+                interactionDelayMs: touchConstrained ? 12 : 8,
+                maxDeferMs: touchConstrained ? 150 : 120
             });
         }
 
@@ -127231,6 +127249,45 @@ ${folderNote ? `Folder Note: ${folderNote}
             }).join('');
         }
 
+        function renderExcelFilterOptionsIntoHost(host = null, options = [], selectedValues = new Set(), buildOptionsHtml = null, signature = '', renderOptions = {}) {
+            if (!host || typeof buildOptionsHtml !== 'function') return false;
+            const safeOptions = Array.isArray(options) ? options : [];
+            const selectedSet = selectedValues instanceof Set ? selectedValues : new Set();
+            const nextOptions = (renderOptions && typeof renderOptions === 'object') ? renderOptions : {};
+            const safeSignature = String(signature || '').trim();
+            if (safeSignature && host.dataset && host.dataset.excelOptionSignature === safeSignature) return true;
+            const previousScrollTop = host.scrollTop || 0;
+            const touchOptimized = typeof isTouchConstrainedDevice === 'function' && isTouchConstrainedDevice();
+            const firstLimit = Math.max(20, Number(nextOptions.firstLimit) || (touchOptimized ? EXCEL_FILTER_RENDER_LIMIT_TOUCH : EXCEL_FILTER_RENDER_LIMIT_DESKTOP));
+            const chunkSize = Math.max(18, Number(nextOptions.chunkSize) || (touchOptimized ? 48 : 96));
+            const firstOptions = safeOptions.slice(0, Math.min(safeOptions.length, firstLimit));
+            const token = host.dataset ? (Number(host.dataset.excelOptionRenderToken || 0) + 1) : 1;
+            if (host.dataset) {
+                host.dataset.excelOptionRenderToken = String(token);
+                host.dataset.excelOptionSignature = safeSignature;
+            }
+            host.innerHTML = buildOptionsHtml(firstOptions, selectedSet);
+            if (nextOptions.resetScroll) {
+                host.scrollTop = 0;
+            } else if (nextOptions.preserveScroll) {
+                host.scrollTop = Math.min(previousScrollTop, Math.max(0, host.scrollHeight - host.clientHeight));
+            }
+            if (safeOptions.length <= firstOptions.length) return true;
+            let index = firstOptions.length;
+            const appendNext = () => {
+                if (!host || !host.isConnected) return;
+                if (host.dataset && Number(host.dataset.excelOptionRenderToken || 0) !== token) return;
+                const nextSlice = safeOptions.slice(index, index + chunkSize);
+                if (nextSlice.length) appendHtmlFragment(host, buildOptionsHtml(nextSlice, selectedSet), { skipPhotoHydration: true });
+                index += nextSlice.length;
+                if (index < safeOptions.length) {
+                    window.setTimeout(() => requestAnimationFrame(appendNext), touchOptimized ? 26 : 12);
+                }
+            };
+            window.setTimeout(() => requestAnimationFrame(appendNext), touchOptimized ? 32 : 16);
+            return true;
+        }
+
         function formatDriveColumnFilterSummary(fieldKey = '', filter = null) {
             const safeFilter = filter || getDriveColumnFilterFromMap(driveColumnFilterDrafts, fieldKey);
             if (!isDriveColumnFilterActive(safeFilter)) return '';
@@ -127514,12 +127571,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                     selectedFields.map((field) => normalizeDriveColumnFilterKey(field && field.key)).join('|'),
                     buildDriveColumnFilterStateKeyFromMap(driveColumnFilterDrafts)
                 ].join(':');
-                setContainerHtmlWithSignature(headersHost, buildDriveColumnSelectedHeaderPillsHtml(selectedFields, selectedField), headerSignature);
+                setContainerHtmlWithSignature(headersHost, buildDriveColumnSelectedHeaderPillsHtml(selectedFields, selectedField), headerSignature, { skipPhotoHydration: true });
             }
 
             const activeHost = document.getElementById('drive-column-active-filters');
             if (activeHost) {
-                setContainerHtmlWithSignature(activeHost, buildDriveColumnActiveFilterChipsHtml(driveColumnFilterDrafts), `drive-column-active:${buildDriveColumnFilterStateKeyFromMap(driveColumnFilterDrafts)}`);
+                setContainerHtmlWithSignature(activeHost, buildDriveColumnActiveFilterChipsHtml(driveColumnFilterDrafts), `drive-column-active:${buildDriveColumnFilterStateKeyFromMap(driveColumnFilterDrafts)}`, { skipPhotoHydration: true });
             }
 
             const badge = document.querySelector('#drive-column-filter-window [data-drive-column-modal-badge]');
@@ -127530,19 +127587,20 @@ ${folderNote ? `Folder Note: ${folderNote}
 
             const valuesHost = document.getElementById('drive-column-value-options');
             if (valuesHost && selectedMode === 'values') {
-                const previousScrollTop = valuesHost.scrollTop || 0;
                 const selectedValues = new Set(selectedFilter && Array.isArray(selectedFilter.values) ? selectedFilter.values.map(normalizeDriveColumnValue) : []);
                 const valueSearch = normalizeExcelFilterSearchTerm(driveColumnFilterValueSearchTerm);
                 const valueOptions = getDriveColumnValueOptions(sourceItems, selectedField.key);
                 const filteredValueOptions = valueSearch
                     ? valueOptions.filter((value) => doesExcelFilterSearchMatchStart(formatDriveColumnValueLabel(value), valueSearch))
                     : valueOptions;
-                valuesHost.innerHTML = buildDriveColumnValueOptionsHtml(filteredValueOptions, selectedValues);
-                if (resetValueScroll) {
-                    valuesHost.scrollTop = 0;
-                } else if (preserveValueScroll) {
-                    valuesHost.scrollTop = Math.min(previousScrollTop, Math.max(0, valuesHost.scrollHeight - valuesHost.clientHeight));
-                }
+                renderExcelFilterOptionsIntoHost(
+                    valuesHost,
+                    filteredValueOptions,
+                    selectedValues,
+                    buildDriveColumnValueOptionsHtml,
+                    `drive-values:${selectedField.key}:${valueSearch}:${filteredValueOptions.length}:${Array.from(selectedValues).join('|')}`,
+                    { resetScroll: resetValueScroll, preserveScroll: preserveValueScroll }
+                );
             }
             return true;
         }
@@ -127732,6 +127790,23 @@ ${folderNote ? `Folder Note: ${folderNote}
             }).join('');
         }
 
+        function buildAvColumnSelectedHeaderPillsHtml(selectedFields = [], selectedField = null) {
+            const activeKey = normalizeDriveColumnFilterKey(selectedField && selectedField.key);
+            return (Array.isArray(selectedFields) ? selectedFields : []).map((field) => {
+                const key = normalizeDriveColumnFilterKey(field && field.key);
+                if (!key) return '';
+                const isSelected = key === activeKey;
+                const fieldFilter = getAvColumnDraftFilterForField(key);
+                const hasFilter = isDriveColumnFilterActive(fieldFilter);
+                const buttonClass = isSelected
+                    ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+                    : hasFilter
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                        : 'border-slate-200 bg-white text-slate-700';
+                return `<button type="button" class="inline-flex min-h-[2.45rem] max-w-[13rem] shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-left ${buttonClass}" ${buildExcelFilterFastAttrs('setAvColumnFilterFieldKey', key)}><span class="min-w-0 truncate text-[11px] font-black uppercase tracking-[0.08em]">${esc(field.label)}</span>${hasFilter ? `<span class="shrink-0 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700'} px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.08em]">${esc(formatDriveColumnFilterSummary(key, fieldFilter))}</span>` : ''}</button>`;
+            }).join('');
+        }
+
         function buildAvColumnFilterEditWindowHtml(state = {}) {
             const sourceItems = Array.isArray(state.filteredItems) ? state.filteredItems : avFilterItemsCache;
             const fieldItems = Array.isArray(state.baseItems) ? state.baseItems : sourceItems;
@@ -127749,18 +127824,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const filteredValueOptions = valueSearch
                 ? valueOptions.filter((value) => doesExcelFilterSearchMatchStart(formatDriveColumnValueLabel(value), valueSearch))
                 : valueOptions;
-            const selectedHeadersHtml = selectedFields.map((field) => {
-                const key = normalizeDriveColumnFilterKey(field.key);
-                const isSelected = selectedField && key === selectedField.key;
-                const fieldFilter = getAvColumnDraftFilterForField(key);
-                const hasFilter = isDriveColumnFilterActive(fieldFilter);
-                const buttonClass = isSelected
-                    ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
-                    : hasFilter
-                        ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                        : 'border-slate-200 bg-white text-slate-700';
-                return `<button type="button" class="inline-flex min-h-[2.45rem] max-w-[13rem] shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-left ${buttonClass}" ${buildExcelFilterFastAttrs('setAvColumnFilterFieldKey', key)}><span class="min-w-0 truncate text-[11px] font-black uppercase tracking-[0.08em]">${esc(field.label)}</span>${hasFilter ? `<span class="shrink-0 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700'} px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.08em]">${esc(formatDriveColumnFilterSummary(key, fieldFilter))}</span>` : ''}</button>`;
-            }).join('');
+            const selectedHeadersHtml = buildAvColumnSelectedHeaderPillsHtml(selectedFields, selectedField);
             const modeHtml = DRIVE_COLUMN_FILTER_MODES.map((entry) => {
                 const activeClass = entry.value === selectedMode ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm' : 'border-emerald-200 bg-white text-emerald-700';
                 return `<button type="button" class="min-h-[2.65rem] rounded-2xl border px-2 py-2 text-[9px] font-black uppercase leading-tight tracking-[0.04em] ${activeClass}" ${buildExcelFilterFastAttrs('setAvColumnFilterMode', entry.value)}>${esc(entry.label)}</button>`;
@@ -127770,13 +127834,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                 ? `<div class="mt-3"><label class="mb-1 block text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">${selectedMode === 'contains' ? 'Contains' : 'Compare'}</label><input id="av-column-filter-text" type="text" class="excel-filter-search !pr-3" value="${esc(textValue)}" placeholder="${selectedMode === 'contains' ? 'Text to find...' : 'Compare value...'}" oninput="return setAvColumnFilterTextValue(this.value)" onkeydown="return handleAvColumnFilterTextKeydown(event)"></div>`
                 : '';
             const valuesHtml = selectedMode === 'values'
-                ? `<div class="mt-3 rounded-2xl border border-emerald-100 bg-white"><div class="border-b border-emerald-50">${buildExcelFilterSearchHtml('av-column-value-search', avColumnFilterValueSearchTerm, 'Search values...', 'setAvColumnFilterValueSearchTerm', 'handleAvColumnValueSearchKeydown')}</div><div class="excel-filter-options" style="max-height:min(48dvh,24rem)">${buildAvColumnValueOptionsHtml(filteredValueOptions, selectedValues)}</div></div>`
+                ? `<div class="mt-3 rounded-2xl border border-emerald-100 bg-white"><div class="border-b border-emerald-50">${buildExcelFilterSearchHtml('av-column-value-search', avColumnFilterValueSearchTerm, 'Search values...', 'setAvColumnFilterValueSearchTerm', 'handleAvColumnValueSearchKeydown')}</div><div id="av-column-value-options" class="excel-filter-options" style="max-height:min(48dvh,24rem)">${buildAvColumnValueOptionsHtml(filteredValueOptions, selectedValues)}</div></div>`
                 : '';
             const selectedTitle = selectedField ? selectedField.label : 'Column';
             const clearFieldDisabled = selectedField && isDriveColumnFilterActive(selectedFilter) ? '' : ' opacity-50 pointer-events-none';
             const clearAllDisabled = activeCount ? '' : ' opacity-50 pointer-events-none';
-            const bodyHtml = `<div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3" style="-webkit-overflow-scrolling:touch"><div class="shrink-0 overflow-x-auto rounded-2xl border border-emerald-100 bg-white p-2" style="-webkit-overflow-scrolling:touch"><div class="flex min-w-0 gap-2">${selectedHeadersHtml}</div></div><div class="rounded-2xl border border-emerald-100 bg-white p-3"><div class="mb-3 flex items-center justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Selected Header</div><div class="truncate text-lg font-black text-emerald-800">${esc(selectedTitle)}</div></div><button type="button" class="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.08em] text-slate-600${clearFieldDisabled}" ${buildExcelFilterFastAttrs('clearAvColumnFilterField', selectedField ? selectedField.key : '')}>Clear</button></div><div class="grid grid-cols-3 gap-1.5 sm:grid-cols-5">${modeHtml}</div>${textInputHtml}${valuesHtml}</div><div class="rounded-2xl border border-emerald-100 bg-white p-3"><div class="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Active Filters</div><div class="flex flex-wrap gap-2">${buildAvColumnActiveFilterChipsHtml(avColumnFilterDrafts)}</div></div></div>`;
-            const footerHtml = `<footer class="grid shrink-0 grid-cols-4 gap-2 border-t border-emerald-100 bg-white/95 p-3"><button type="button" class="rounded-2xl border border-emerald-200 bg-white px-2 py-3 text-[10px] font-black uppercase tracking-[0.08em] text-emerald-700 shadow-sm" ${buildExcelFilterFastAttrs('backToAvColumnHeaderSelection')}>Headers</button><button type="button" class="rounded-2xl border border-slate-200 bg-white px-2 py-3 text-[10px] font-black uppercase tracking-[0.08em] text-slate-700 shadow-sm${clearAllDisabled}" ${buildExcelFilterFastAttrs('clearAllAvColumnFilters')}>Clear All</button><button type="button" class="rounded-2xl border border-slate-200 bg-white px-2 py-3 text-[10px] font-black uppercase tracking-[0.08em] text-slate-700 shadow-sm" ${buildExcelFilterFastAttrs('cancelAvColumnFilterWindow')}>Cancel</button><button type="button" class="rounded-2xl bg-emerald-600 px-2 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm" ${buildExcelFilterFastAttrs('closeAvColumnFilterDropdown')}>Done</button></footer>`;
+            const bodyHtml = `<div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3" style="-webkit-overflow-scrolling:touch"><div class="shrink-0 overflow-x-auto rounded-2xl border border-emerald-100 bg-white p-2" style="-webkit-overflow-scrolling:touch"><div id="av-column-selected-headers" class="flex min-w-0 gap-2">${selectedHeadersHtml}</div></div><div class="rounded-2xl border border-emerald-100 bg-white p-3"><div class="mb-3 flex items-center justify-between gap-3"><div class="min-w-0"><div class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Selected Header</div><div class="truncate text-lg font-black text-emerald-800">${esc(selectedTitle)}</div></div><button id="av-column-clear-field" type="button" class="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.08em] text-slate-600${clearFieldDisabled}" ${buildExcelFilterFastAttrs('clearAvColumnFilterField', selectedField ? selectedField.key : '')}>Clear</button></div><div class="grid grid-cols-3 gap-1.5 sm:grid-cols-5">${modeHtml}</div>${textInputHtml}${valuesHtml}</div><div class="rounded-2xl border border-emerald-100 bg-white p-3"><div class="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Active Filters</div><div id="av-column-active-filters" class="flex flex-wrap gap-2">${buildAvColumnActiveFilterChipsHtml(avColumnFilterDrafts)}</div></div></div>`;
+            const footerHtml = `<footer class="grid shrink-0 grid-cols-4 gap-2 border-t border-emerald-100 bg-white/95 p-3"><button type="button" class="rounded-2xl border border-emerald-200 bg-white px-2 py-3 text-[10px] font-black uppercase tracking-[0.08em] text-emerald-700 shadow-sm" ${buildExcelFilterFastAttrs('backToAvColumnHeaderSelection')}>Headers</button><button id="av-column-clear-all" type="button" class="rounded-2xl border border-slate-200 bg-white px-2 py-3 text-[10px] font-black uppercase tracking-[0.08em] text-slate-700 shadow-sm${clearAllDisabled}" ${buildExcelFilterFastAttrs('clearAllAvColumnFilters')}>Clear All</button><button type="button" class="rounded-2xl border border-slate-200 bg-white px-2 py-3 text-[10px] font-black uppercase tracking-[0.08em] text-slate-700 shadow-sm" ${buildExcelFilterFastAttrs('cancelAvColumnFilterWindow')}>Cancel</button><button type="button" class="rounded-2xl bg-emerald-600 px-2 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm" ${buildExcelFilterFastAttrs('closeAvColumnFilterDropdown')}>Done</button></footer>`;
             return buildAvColumnFilterWindowShellHtml({
                 title: 'Set Filters',
                 badge: activeCount ? `${activeCount} active` : `${selectedFields.length} headers`,
@@ -127802,6 +127866,63 @@ ${folderNote ? `Folder Note: ${folderNote}
             const state = stateOverride && typeof stateOverride === 'object' ? stateOverride : buildAvSharedFilterState(avFilterItemsCache);
             host.innerHTML = buildAvColumnFilterWindowHtml(state);
             document.body.classList.add('overflow-hidden');
+            return true;
+        }
+
+        function refreshAvColumnFilterEditWindowPartial({ preserveValueScroll = true, resetValueScroll = false } = {}) {
+            if (!avColumnFilterDropdownOpen || avColumnFilterStep !== 'edit') return false;
+            const state = buildAvSharedFilterState(avFilterItemsCache);
+            const sourceItems = Array.isArray(state.filteredItems) ? state.filteredItems : avFilterItemsCache;
+            const fieldItems = Array.isArray(state.baseItems) ? state.baseItems : sourceItems;
+            const fields = getAvColumnFilterFields(fieldItems);
+            const selectedFields = getAvColumnSelectedFields(fields);
+            if (!selectedFields.length) return false;
+            const selectedField = ensureAvColumnFilterFieldSelection(fields);
+            if (!selectedField) return false;
+            const selectedFilter = getAvColumnDraftFilterForField(selectedField.key);
+            const selectedMode = normalizeDriveColumnFilterMode(selectedFilter ? selectedFilter.mode : avColumnFilterMode || 'values');
+            avColumnFilterMode = selectedMode;
+            const activeCount = getAvColumnFilterActiveCountFromMap(avColumnFilterDrafts);
+
+            const headersHost = document.getElementById('av-column-selected-headers');
+            if (headersHost) {
+                const headerSignature = [
+                    'av-column-selected',
+                    selectedField.key,
+                    selectedFields.map((field) => normalizeDriveColumnFilterKey(field && field.key)).join('|'),
+                    buildAvColumnFilterStateKeyFromMap(avColumnFilterDrafts)
+                ].join(':');
+                setContainerHtmlWithSignature(headersHost, buildAvColumnSelectedHeaderPillsHtml(selectedFields, selectedField), headerSignature, { skipPhotoHydration: true });
+            }
+
+            const activeHost = document.getElementById('av-column-active-filters');
+            if (activeHost) {
+                setContainerHtmlWithSignature(activeHost, buildAvColumnActiveFilterChipsHtml(avColumnFilterDrafts), `av-column-active:${buildAvColumnFilterStateKeyFromMap(avColumnFilterDrafts)}`, { skipPhotoHydration: true });
+            }
+
+            const badge = document.querySelector('#av-column-filter-window [data-av-column-modal-badge]');
+            if (badge) badge.textContent = activeCount ? `${activeCount} active` : `${selectedFields.length} headers`;
+
+            setDriveColumnFilterButtonDisabledState(document.getElementById('av-column-clear-field'), !(selectedField && isDriveColumnFilterActive(selectedFilter)));
+            setDriveColumnFilterButtonDisabledState(document.getElementById('av-column-clear-all'), !activeCount);
+
+            const valuesHost = document.getElementById('av-column-value-options');
+            if (valuesHost && selectedMode === 'values') {
+                const selectedValues = new Set(selectedFilter && Array.isArray(selectedFilter.values) ? selectedFilter.values.map(normalizeDriveColumnValue) : []);
+                const valueSearch = normalizeExcelFilterSearchTerm(avColumnFilterValueSearchTerm);
+                const valueOptions = getDriveColumnValueOptions(sourceItems, selectedField.key);
+                const filteredValueOptions = valueSearch
+                    ? valueOptions.filter((value) => doesExcelFilterSearchMatchStart(formatDriveColumnValueLabel(value), valueSearch))
+                    : valueOptions;
+                renderExcelFilterOptionsIntoHost(
+                    valuesHost,
+                    filteredValueOptions,
+                    selectedValues,
+                    buildAvColumnValueOptionsHtml,
+                    `av-values:${selectedField.key}:${valueSearch}:${filteredValueOptions.length}:${Array.from(selectedValues).join('|')}`,
+                    { resetScroll: resetValueScroll, preserveScroll: preserveValueScroll }
+                );
+            }
             return true;
         }
 
@@ -128848,6 +128969,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function setAvColumnFilterValueSearchTerm(value = '') {
             avColumnFilterValueSearchTerm = String(value || '');
+            if (refreshAvColumnFilterEditWindowPartial({ preserveValueScroll: false, resetValueScroll: true })) return false;
             const input = document.getElementById('av-column-value-search');
             const cursorPos = input && typeof input.selectionStart === 'number' ? input.selectionStart : null;
             renderAvColumnFilterWindow();
@@ -128887,6 +129009,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             beginDirectNavigationActivity();
             avColumnFilterDropdownOpen = true;
             avColumnFilterDrafts = setAvColumnFilterInMap(avColumnFilterDrafts, selectedField.key, { mode: 'values', values: Array.from(nextValues), text: '' });
+            if (refreshAvColumnFilterEditWindowPartial({ preserveValueScroll: true })) return false;
             renderAvColumnFilterWindow();
             return false;
         }
@@ -128896,6 +129019,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             const selectedField = ensureAvColumnFilterFieldSelection(fields);
             if (!selectedField) return false;
             avColumnFilterDrafts = setAvColumnFilterInMap(avColumnFilterDrafts, selectedField.key, { mode: normalizeDriveColumnFilterMode(avColumnFilterMode || 'contains'), values: [], text: value });
+            refreshAvColumnFilterEditWindowPartial({ preserveValueScroll: true });
             return false;
         }
 
@@ -129722,11 +129846,27 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function buildDriveRenderKey(mode = '', crumbText = '', entries = []) {
-            return [
-                String(mode || '').trim(),
-                String(crumbText || '').trim(),
-                (Array.isArray(entries) ? entries : []).map((entry) => buildDriveRenderEntrySignature(entry)).join('||')
-            ].join('::');
+            const safeEntries = Array.isArray(entries) ? entries : [];
+            let hash = 2166136261;
+            hash = updateRenderSignatureHash(hash, String(mode || '').trim());
+            hash = updateRenderSignatureHash(hash, String(crumbText || '').trim());
+            hash = updateRenderSignatureHash(hash, safeEntries.length);
+            hash = updateRenderSignatureHash(hash, resolvedViewStateEpoch);
+            hash = updateRenderSignatureHash(hash, selectedItems instanceof Set ? selectedItems.size : 0);
+            const fullHashLimit = (typeof isTouchConstrainedDevice === 'function' && isTouchConstrainedDevice()) ? 120 : 220;
+            const shouldSampleEntries = safeEntries.length > fullHashLimit;
+            const sampleIndexes = shouldSampleEntries
+                ? new Set([0, 1, Math.floor(safeEntries.length / 4), Math.floor(safeEntries.length / 2), Math.floor((safeEntries.length * 3) / 4), safeEntries.length - 2, safeEntries.length - 1].filter((index) => index >= 0 && index < safeEntries.length))
+                : null;
+            const indexes = shouldSampleEntries
+                ? Array.from(sampleIndexes).sort((a, b) => a - b)
+                : safeEntries.map((_, index) => index);
+            if (shouldSampleEntries) hash = updateRenderSignatureHash(hash, `sampled:${safeEntries.length}:${fullHashLimit}`);
+            indexes.forEach((index) => {
+                hash = updateRenderSignatureHash(hash, index);
+                hash = updateRenderSignatureHash(hash, buildDriveRenderEntrySignature(safeEntries[index]));
+            });
+            return `drive:${String(mode || '').trim()}:${safeEntries.length}:${(hash >>> 0).toString(16)}`;
         }
 
         function syncDriveCrumb(crumb, crumbText = '') {
@@ -129743,6 +129883,31 @@ ${folderNote ? `Folder Note: ${folderNote}
             setContainerHtml(container, html);
             if (container.dataset) container.dataset.driveRenderKey = nextKey;
             return true;
+        }
+
+        function getDriveChunkRenderOptions(kind = 'cards', overrides = {}) {
+            const nextOverrides = (overrides && typeof overrides === 'object') ? overrides : {};
+            const touchOptimized = typeof isTouchConstrainedDevice === 'function' && isTouchConstrainedDevice();
+            const adaptiveConstrained = typeof isAdaptivePerformanceMode === 'function' && isAdaptivePerformanceMode();
+            const isCardList = String(kind || '').toLowerCase() !== 'drill';
+            const baseOptions = isCardList
+                ? {
+                    approxCardHeight: 310,
+                    chunkSize: touchOptimized ? (adaptiveConstrained ? 4 : 5) : (adaptiveConstrained ? 24 : 36),
+                    initialRows: touchOptimized ? (adaptiveConstrained ? 4 : 5) : (adaptiveConstrained ? 14 : 18),
+                    perFrameRows: touchOptimized ? (adaptiveConstrained ? 4 : 5) : (adaptiveConstrained ? 24 : 36),
+                    initialScreens: touchOptimized ? 0.75 : 1.7,
+                    interactionHoldMaxMs: touchOptimized ? 340 : 460
+                }
+                : {
+                    approxCardHeight: 84,
+                    chunkSize: touchOptimized ? (adaptiveConstrained ? 8 : 10) : (adaptiveConstrained ? 28 : 40),
+                    initialRows: touchOptimized ? (adaptiveConstrained ? 10 : 12) : (adaptiveConstrained ? 28 : 38),
+                    perFrameRows: touchOptimized ? (adaptiveConstrained ? 8 : 10) : (adaptiveConstrained ? 28 : 44),
+                    initialScreens: touchOptimized ? 1.0 : 1.8,
+                    interactionHoldMaxMs: touchOptimized ? 300 : 420
+                };
+            return { ...baseOptions, ...nextOverrides };
         }
 
         function syncDriveFilterStrip(container, html = '', signature = '') {
@@ -129883,13 +130048,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 return;
             }
             const renderKey = buildDriveRenderKey(modeKey, crumbText, safeEntries);
-            if (shouldUseChunkedCardRender(safeEntries.length, options.threshold || 110, options.chunkThreshold || 190)) {
+            if (shouldUseChunkedCardRender(safeEntries.length, options.threshold || 32, options.chunkThreshold || 92)) {
                 syncDriveCrumb(crumb, crumbText);
                 if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                renderMarkupChunkedByKey(modeKey, container, crumb, safeEntries, crumbText, renderEntry, {
-                    approxCardHeight: options.approxCardHeight || 96
-                });
+                renderMarkupChunkedByKey(modeKey, container, crumb, safeEntries, crumbText, renderEntry, getDriveChunkRenderOptions('drill', options));
                 return;
             }
             const html = safeEntries.map((entry) => renderEntry(entry)).join('');
@@ -129951,13 +130114,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`, 'drive:quick-card:empty');
                 return true;
             }
-            if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
+            if (shouldUseChunkedCardRender(finalItems.length, 12, 72)) {
                 syncDriveCrumb(crumb, crumbText);
                 if (container.dataset && container.dataset.driveRenderKey === renderKey) return true;
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                renderMarkupChunkedByKey('drive-quick-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), {
-                    approxCardHeight: 310
-                });
+                renderMarkupChunkedByKey('drive-quick-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), getDriveChunkRenderOptions('cards'));
                 return true;
             }
             const html = finalItems.map((item) => generateCard(item, 'drive', getDriveCardStatusClass(item))).join('');
@@ -130112,13 +130273,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No rows match the selected Q1 / Promo option.</div>`, 'drive:name:program-cards-empty');
                 return;
             }
-            if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
+            if (shouldUseChunkedCardRender(finalItems.length, 12, 72)) {
                 syncDriveCrumb(crumb, crumbText);
                 if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                renderMarkupChunkedByKey('drive-name-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), {
-                    approxCardHeight: 310
-                });
+                renderMarkupChunkedByKey('drive-name-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), getDriveChunkRenderOptions('cards'));
                 return;
             }
             applyDriveRenderMarkup(container, crumb, crumbText, finalItems.map((item) => generateCard(item, 'drive', getDriveCardStatusClass(item))).join(''), renderKey);
@@ -130203,13 +130362,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`, `drive:loc:cards-empty:${locationSearchTerm ? 'search' : 'all'}`);
                 return;
             }
-            if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
+            if (shouldUseChunkedCardRender(finalItems.length, 12, 72)) {
                 syncDriveCrumb(crumb, crumbText);
                 if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                renderMarkupChunkedByKey('drive-loc-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), {
-                    approxCardHeight: 310
-                });
+                renderMarkupChunkedByKey('drive-loc-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), getDriveChunkRenderOptions('cards'));
                 return;
             }
             applyDriveRenderMarkup(container, crumb, crumbText, finalItems.map((item) => generateCard(item, 'drive', getDriveCardStatusClass(item))).join(''), renderKey);
@@ -130241,14 +130398,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                 applyDriveRenderMarkup(container, crumb, crumbText, `${reportTabsHtml}<div class="p-8 text-center text-gray-400">No ${emptyLabel} rows${evalEmptyText} match the current Drive filters.</div>`, `drive:holdstopcode:${reportMode}:${evalFilter}:empty:${resolvedStateKey || ''}`);
                 return;
             }
-            if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
+            if (shouldUseChunkedCardRender(finalItems.length, 12, 72)) {
                 syncDriveCrumb(crumb, crumbText);
                 if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                renderMarkupChunkedByKey('drive-hold-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item, 'status-yellow')), {
-                    approxCardHeight: 310,
+                renderMarkupChunkedByKey('drive-hold-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item, 'status-yellow')), getDriveChunkRenderOptions('cards', {
                     prefixHtml: reportTabsHtml
-                });
+                }));
                 return;
             }
             applyDriveRenderMarkup(container, crumb, crumbText, reportTabsHtml + finalItems.map((item) => generateCard(item, 'drive', getDriveCardStatusClass(item, 'status-yellow'))).join(''), renderKey);
@@ -130267,13 +130423,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                 applyDriveRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No Season Sales Notes rows match the current Drive filters.</div>`, `drive:season-sales-notes:empty:${resolvedStateKey || ''}`);
                 return;
             }
-            if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
+            if (shouldUseChunkedCardRender(finalItems.length, 12, 72)) {
                 syncDriveCrumb(crumb, crumbText);
                 if (container.dataset && container.dataset.driveRenderKey === renderKey) return;
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                renderMarkupChunkedByKey('drive-season-sales-notes-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), {
-                    approxCardHeight: 310
-                });
+                renderMarkupChunkedByKey('drive-season-sales-notes-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), getDriveChunkRenderOptions('cards'));
                 return;
             }
             applyDriveRenderMarkup(container, crumb, crumbText, finalItems.map((item) => generateCard(item, 'drive', getDriveCardStatusClass(item))).join(''), renderKey);
@@ -130334,16 +130488,14 @@ ${folderNote ? `Folder Note: ${folderNote}
                 syncControls();
                 return;
             }
-            if (shouldUseChunkedCardRender(finalItems.length, 90, 170)) {
+            if (shouldUseChunkedCardRender(finalItems.length, 12, 72)) {
                 syncDriveCrumb(crumb, crumbText);
                 if (container.dataset && container.dataset.driveRenderKey === renderKey) {
                     syncControls();
                     return;
                 }
                 if (container.dataset) container.dataset.driveRenderKey = renderKey;
-                renderMarkupChunkedByKey('drive-main-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), {
-                    approxCardHeight: 310
-                });
+                renderMarkupChunkedByKey('drive-main-card', container, crumb, finalItems, crumbText, (item) => generateCard(item, 'drive', getDriveCardStatusClass(item)), getDriveChunkRenderOptions('cards'));
                 syncControls();
                 return;
             }
