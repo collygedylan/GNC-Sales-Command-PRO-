@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.11.06';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.11.07';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.06').trim() || 'V2026.08.11.06';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.07').trim() || 'V2026.08.11.07';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.06';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.07';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -27220,7 +27220,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.06').trim() || 'V2026.08.11.06';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.07').trim() || 'V2026.08.11.07';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -45621,9 +45621,9 @@ function toggleDriveQuickRequestItem(domId) {
             const interactiveSearch = options && options.interactiveCritical === true;
             const visibleSearch = interactiveSearch || (options && options.visibleSearch === true);
             const baseDelay = interactiveSearch
-                ? (touchOptimized ? 18 : 1)
+                ? (touchOptimized ? 8 : 1)
                 : (visibleSearch
-                    ? (touchOptimized ? 58 : 8)
+                    ? (touchOptimized ? 18 : 4)
                     : (safeKey === 'drive-search'
                         ? (touchOptimized ? 88 : 12)
                         : (touchOptimized ? 72 : 10)));
@@ -45636,7 +45636,7 @@ function toggleDriveQuickRequestItem(domId) {
                 10,
                 hasTypingDelay
                     ? (Number(options.typingDelay) || 10)
-                    : (interactiveSearch ? (touchOptimized ? 24 : 14) : (visibleSearch ? (touchOptimized ? 54 : 16) : (touchOptimized ? 90 : 24)))
+                    : (interactiveSearch ? (touchOptimized ? 12 : 10) : (visibleSearch ? (touchOptimized ? 18 : 14) : (touchOptimized ? 90 : 24)))
             );
             searchRenderTimer[safeKey] = setTimeout(() => {
                 delete searchRenderTimer[safeKey];
@@ -125769,7 +125769,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             cancelDriveSearchRenderWork();
             const requestToken = ++driveSearchRequestToken;
             const drillStateKey = getDriveDrillSelectionStateKey();
-            const requestDelay = (isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) ? 48 : 14;
+            const requestDelay = (isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) ? 24 : 8;
             driveSearchDebounceTimer = setTimeout(() => {
                 driveSearchDebounceTimer = null;
                 if (requestToken !== driveSearchRequestToken) return;
@@ -125778,7 +125778,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                     skipDebounce: true,
                     typingDelay: requestDelay,
                     requestToken,
-                    drillStateKey
+                    drillStateKey,
+                    allowAutoCommonNameDrill: activeDriveTab === 'name'
                 });
             }, requestDelay);
         }
@@ -125818,6 +125819,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                 delay: 0,
                 typingDelay: isTouchConstrainedDevice() ? 28 : 18,
                 forceRender: true,
+                preferImmediate: true,
+                allowSameFrameRender: true,
                 interactiveCritical: true,
                 allowDuringLiveGesture: true,
                 allowWhileTyping: true,
@@ -125881,7 +125884,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                     return false;
                 }
                 if (Number(nextOptions.requestToken || 0) && Number(nextOptions.requestToken || 0) !== driveSearchRequestToken) return false;
-                if (String(nextOptions.drillStateKey || '').trim() && String(nextOptions.drillStateKey || '').trim() !== getDriveDrillSelectionStateKey()) return false;
+                const didAutoDrillName = nextOptions.allowAutoCommonNameDrill === true
+                    ? tryAutoDrillDriveCommonNameSearch(term)
+                    : false;
+                if (!didAutoDrillName && String(nextOptions.drillStateKey || '').trim() && String(nextOptions.drillStateKey || '').trim() !== getDriveDrillSelectionStateKey()) return false;
                 const targetView = document.getElementById('view-drive');
                 if (!targetView || targetView.classList.contains('hidden')) return false;
                 renderViewContent('drive', false, false);
@@ -125890,7 +125896,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 force: !!nextOptions.force,
                 skipDebounce: !!nextOptions.skipDebounce,
                 debounceDelay: Math.max(0, hasDebounceDelay ? (Number(nextOptions.debounceDelay) || 0) : (touchConstrained ? 12 : 4)),
-                typingDelay: Math.max(touchConstrained ? 14 : 8, hasTypingDelay ? (Number(nextOptions.typingDelay) || 0) : (touchConstrained ? 18 : 10)),
+                typingDelay: Math.max(touchConstrained ? 10 : 8, hasTypingDelay ? (Number(nextOptions.typingDelay) || 0) : (touchConstrained ? 14 : 10)),
                 allowWhileTyping: Object.prototype.hasOwnProperty.call(nextOptions, 'allowWhileTyping') ? !!nextOptions.allowWhileTyping : true,
                 allowDuringLiveGesture: Object.prototype.hasOwnProperty.call(nextOptions, 'allowDuringLiveGesture') ? !!nextOptions.allowDuringLiveGesture : true,
                 allowWhileTouching: Object.prototype.hasOwnProperty.call(nextOptions, 'allowWhileTouching') ? !!nextOptions.allowWhileTouching : true,
@@ -125899,10 +125905,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                 allowDuringExtendedBlock: Object.prototype.hasOwnProperty.call(nextOptions, 'allowDuringExtendedBlock') ? !!nextOptions.allowDuringExtendedBlock : true,
                 interactiveCritical: true,
                 visibleSearch: true,
-                touchDelayMs: touchConstrained ? 12 : 8,
-                scrollDelayMs: touchConstrained ? 14 : 10,
-                interactionDelayMs: touchConstrained ? 12 : 8,
-                maxDeferMs: touchConstrained ? 150 : 120
+                touchDelayMs: touchConstrained ? 8 : 6,
+                scrollDelayMs: touchConstrained ? 10 : 8,
+                interactionDelayMs: touchConstrained ? 8 : 6,
+                maxDeferMs: touchConstrained ? 120 : 100
             });
         }
 
@@ -129696,8 +129702,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 setDriveSearchManualSelectionLock(false);
             } else if (activeDriveTab === 'name') {
                 resetDriveDrillSelectionState();
-                const didAutoDrillName = tryAutoDrillDriveCommonNameSearch(term);
-                setDriveSearchManualSelectionLock(term.length > 0 && !didAutoDrillName);
+                setDriveSearchManualSelectionLock(term.length > 0);
             } else if (activeDriveTab === 'loc') {
                 resetDriveDrillSelectionState();
                 setDriveSearchManualSelectionLock(term.length > 0);
