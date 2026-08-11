@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.11.13';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.11.14';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -125944,11 +125944,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 if (requestToken !== driveSearchRequestToken) return;
                 if (drillStateKey !== getDriveDrillSelectionStateKey()) return;
                 scheduleDriveSearchRender(term, {
+                    force: true,
                     skipDebounce: true,
                     typingDelay: requestDelay,
                     requestToken,
                     drillStateKey,
-                    allowAutoCommonNameDrill: activeDriveTab === 'name'
+                    allowAutoCommonNameDrill: shouldAllowDriveCommonNameAutoDrillForSearch(term)
                 });
             }, requestDelay);
         }
@@ -126006,10 +126007,15 @@ ${folderNote ? `Folder Note: ${folderNote}
             };
         }
 
-        function tryAutoDrillDriveCommonNameSearch(term = '') {
-            if (activeDriveTab !== 'name') return false;
+        function shouldAllowDriveCommonNameAutoDrillForSearch(term = '') {
             const normalizedTerm = normalizeSearchValue(term);
             if (normalizedTerm.length < 3) return false;
+            return activeDriveTab === 'name' || activeDriveTab === 'card';
+        }
+
+        function tryAutoDrillDriveCommonNameSearch(term = '') {
+            if (!shouldAllowDriveCommonNameAutoDrillForSearch(term)) return false;
+            const normalizedTerm = normalizeSearchValue(term);
             let driveViewState;
             try {
                 driveViewState = buildDriveFastVisibleItemsState();
@@ -126030,12 +126036,29 @@ ${folderNote ? `Folder Note: ${folderNote}
             const exactMatch = matchingNames.get(normalizedTerm);
             const nextName = exactMatch || (matchingNames.size === 1 ? matchingNames.values().next().value : '');
             if (!nextName) return false;
+            const previousTab = activeDriveTab;
+            if (previousTab !== 'name') {
+                applyDriveTabColumnFilterScope(previousTab, 'name');
+                activeDriveTab = 'name';
+                driveQuickRequestCardMode = false;
+                selectedDriveBlock = null;
+                selectedDriveLoc = null;
+                driveViewDropdownOpen = false;
+                driveSeasonDropdownOpen = false;
+                driveGenusFilterOpen = false;
+                driveContSizeFilterOpen = false;
+                driveLocationFilterOpen = false;
+                driveLotFilterOpen = false;
+                driveColumnFilterDropdownOpen = false;
+                driveQuickHoldStopOnly = false;
+            }
             selectedDriveName = nextName;
             selectedDriveSize = null;
             selectedDriveSeason = null;
             selectedDriveProgram = null;
             driveViewLevel = 1;
             setDriveSearchManualSelectionLock(false);
+            syncDriveTabPills();
             return true;
         }
 
@@ -129885,7 +129908,12 @@ ${folderNote ? `Folder Note: ${folderNote}
                 setDriveSearchManualSelectionLock(term.length > 0);
             } else {
                 driveViewLevel = 0;
+                selectedDriveName = null;
+                selectedDriveSize = null;
+                selectedDriveSeason = null;
                 selectedDriveProgram = null;
+                selectedDriveBlock = null;
+                selectedDriveLoc = null;
                 setDriveSearchManualSelectionLock(false);
             }
             scheduleDriveSearchRequest(term);
@@ -130310,6 +130338,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             const driveView = document.getElementById('view-drive');
             if (!driveView || driveView.classList.contains('hidden')) return false;
             if (activeDriveMode !== 'ok') return false;
+            syncDriveModeTabs();
+            syncDriveTabPills();
             const container = document.getElementById('drive-content');
             const crumb = document.getElementById('drive-crumb');
             if (!container || !crumb) return false;
