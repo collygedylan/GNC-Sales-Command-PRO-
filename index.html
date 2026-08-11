@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.11.10';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.11.11';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.10').trim() || 'V2026.08.11.10';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.11').trim() || 'V2026.08.11.11';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.10';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.11';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -19943,6 +19943,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 return false;
             }
             if (event && event.target) {
+                const footerNavigationTarget = event.target.closest('#bottom-nav .footer-nav-btn, #bottom-nav [data-footer-view]');
+                if (footerNavigationTarget) return false;
                 const interactiveTarget = event.target.closest('button,a,[onclick],[role="button"],.task-tab,.detail-tab,.drill-item,.drawer-item,.footer-nav-btn,.back-btn,.app-card-shell,.app-smart-card');
                 const textLikeTarget = event.target.closest('input,textarea,select,[contenteditable="true"]');
                 if (!interactiveTarget || textLikeTarget) return false;
@@ -20321,6 +20323,56 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
         function bindFastInvokeById(elementId = '', actionName = '', args = [], label = '') {
             const element = document.getElementById(String(elementId || '').trim());
             return bindFastPressTarget(element, 'invoke', actionName, args, label);
+        }
+
+        function clearFooterNavInteractionState() {
+            try { clearActiveFastPress(); } catch (error) {}
+            try { clearFastPressGhostClickSuppression(); } catch (error) {}
+            try {
+                if (typeof driveDrillCardClickSuppressCount !== 'undefined') driveDrillCardClickSuppressCount = 0;
+                if (typeof driveDrillCardClickSuppressUntil !== 'undefined') driveDrillCardClickSuppressUntil = 0;
+                if (typeof driveDrillCardClickArmedAt !== 'undefined') driveDrillCardClickArmedAt = 0;
+                if (typeof driveDrillCardClickSuppressSessionId !== 'undefined') driveDrillCardClickSuppressSessionId = 0;
+            } catch (error) {}
+        }
+
+        function blurFooterNavTextEntryTarget() {
+            const activeElement = document && document.activeElement ? document.activeElement : null;
+            if (!activeElement || activeElement === document.body) return false;
+            const tagName = String(activeElement.tagName || '').toUpperCase();
+            const isTextEntry = tagName === 'INPUT'
+                || tagName === 'TEXTAREA'
+                || tagName === 'SELECT'
+                || activeElement.isContentEditable === true;
+            if (!isTextEntry) return false;
+            try { activeElement.blur(); } catch (error) {}
+            return true;
+        }
+
+        function openFooterNavView(viewId = 'home') {
+            const safeViewId = String(viewId || 'home').trim() || 'home';
+            blurFooterNavTextEntryTarget();
+            clearFooterNavInteractionState();
+            try {
+                cancelScheduledUiRenderByPrefix('search:drive-search');
+                cancelScheduledUiRenderByPrefix('tracked-view:drive:');
+                cancelScheduledUiRenderByPrefix('view-switch-render:drive');
+                if (safeViewId !== 'drive' && typeof cancelScheduledViewRenderWork === 'function') cancelScheduledViewRenderWork('drive');
+            } catch (error) {}
+            try { clearStaleIosEditingChromeState('footer-nav', { force: true }); } catch (error) {}
+            try { repairAppShellScrollState(`footer-nav:${safeViewId}`, { resetGestureState: true, forceEditingCleanup: true }); } catch (error) {}
+            return switchView(safeViewId, {
+                force: true,
+                forceRender: true,
+                interactiveCritical: true,
+                preferImmediate: true,
+                allowDuringLiveGesture: true,
+                allowWhileTouching: true,
+                allowWhileScrolling: true,
+                allowDuringRecentInteraction: true,
+                allowDuringExtendedBlock: true,
+                paintYieldDelayMs: 0
+            });
         }
 
         function openDrawerView(viewId = 'home') {
@@ -21614,9 +21666,9 @@ bindFastInvokeById('home-tile-qc', 'switchView', ['qc'], 'QC');
             bindFastInvokeById('home-tile-review', 'switchView', ['review'], 'New Crop Release');
             bindFastInvokeById('home-tile-move-up', 'switchView', ['move-up'], 'Move Up');
 bindFastInvokeById('footer-menu-btn', 'toggleMenu', [], 'Menu');
-bindFastInvokeById('footer-sales-btn', 'switchView', ['sales'], 'Sales');
-bindFastInvokeById('footer-request-btn', 'switchView', ['request'], 'Que');
-bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 'Communication');
+bindFastInvokeById('footer-sales-btn', 'openFooterNavView', ['sales'], 'Sales');
+bindFastInvokeById('footer-request-btn', 'openFooterNavView', ['request'], 'Que');
+bindFastInvokeById('footer-communication-btn', 'openFooterNavView', ['communication'], 'Communication');
             bindFastInvokeById('footer-cart-btn', 'toggleCartPanel', [], 'Bloom Picker');
             bindFastInvokeById('sales-open-request', 'switchView', ['request'], 'Que');
             bindFastInvokeById('sales-open-tasks', 'switchView', ['tasks'], 'Task');
@@ -21645,7 +21697,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             document.querySelectorAll('#bottom-nav [data-footer-view]').forEach((element) => {
                 const viewId = String(element.getAttribute('data-footer-view') || '').trim();
                 if (!viewId) return;
-                bindFastPressTarget(element, 'invoke', 'switchView', [viewId], element.getAttribute('aria-label') || viewId);
+                bindFastPressTarget(element, 'invoke', 'openFooterNavView', [viewId], element.getAttribute('aria-label') || viewId);
             });
             bindFastInvokeById('run-google-script-btn', 'runGoogleAppsScriptTrigger', [], 'Run Script');
             bindFastInvokeById('tab-av-open', 'setAVTab', ['open'], 'Open Stock');
@@ -27251,7 +27303,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.10').trim() || 'V2026.08.11.10';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.11').trim() || 'V2026.08.11.11';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
