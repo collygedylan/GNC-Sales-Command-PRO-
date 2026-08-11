@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-        window.__APP_SHELL_VERSION__ = 'V2026.08.11.19';
+        window.__APP_SHELL_VERSION__ = 'V2026.08.11.20';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -6121,7 +6121,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.19').trim() || 'V2026.08.11.19';</script>
+<script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.11.20').trim() || 'V2026.08.11.20';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7591,7 +7591,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.19';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.11.20';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -9092,17 +9092,27 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set([]);
             return true;
         }
 
+        function clearNativeSelectInteractionState() {
+            if (activeTouchSessionClearTimer) {
+                clearTimeout(activeTouchSessionClearTimer);
+                activeTouchSessionClearTimer = null;
+            }
+            activeTouchSession = false;
+            lastTouchInteractionAt = Date.now() - ACTIVE_TOUCH_GRACE_MS - 1;
+            try { clearActiveFastPress(); } catch (error) {}
+            try { clearFastPressGhostClickSuppression(); } catch (error) {}
+        }
+
         function handleNativeSelectInteractionRelease(event) {
             const target = event && event.target && event.target.closest ? event.target.closest('select') : null;
             if (!target) return;
             const eventType = String(event && event.type || '').toLowerCase();
             if (eventType === 'pointerdown' || eventType === 'touchstart') {
-                setTimeout(() => releaseUserInteractionBlockers(`select:${eventType}:open`, { forceEditingCleanup: true, syncViewport: false }), 140);
-                setTimeout(() => releaseUserInteractionBlockers(`select:${eventType}:open-settled`, { forceEditingCleanup: true }), 520);
+                clearNativeSelectInteractionState();
                 return;
             }
-            releaseUserInteractionBlockers(`select:${eventType || 'event'}`, { forceEditingCleanup: true });
-            setTimeout(() => releaseUserInteractionBlockers(`select:${eventType || 'event'}:settled`, { forceEditingCleanup: true }), 80);
+            clearNativeSelectInteractionState();
+            if (eventType === 'change') markEmergencyForegroundAction('select-change');
         }
 
         function handleMobileTextEntryFocusOut(event) {
@@ -19230,10 +19240,18 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             cancelScheduledUiRenderByPrefix('scroll-top:');
         }
 
-        function beginDirectNavigationActivity() {
+        function beginDirectNavigationActivity(options = {}) {
             cancelPendingNavigationScrollResets();
             markEmergencyForegroundAction('direct-navigation');
-            try { releaseUserInteractionBlockers('direct-navigation', { forceEditingCleanup: true, syncViewport: false }); } catch (error) {}
+            const opts = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
+            if (opts.releaseBlockers === true) {
+                try {
+                    releaseUserInteractionBlockers(opts.reason || 'direct-navigation', {
+                        forceEditingCleanup: opts.forceEditingCleanup === true,
+                        syncViewport: opts.syncViewport === true
+                    });
+                } catch (error) {}
+            }
         }
 
         function shouldYieldUserActionRender(options = {}) {
@@ -20436,7 +20454,8 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
             return bindFastPressTarget(element, 'invoke', actionName, args, label);
         }
 
-        function clearFooterNavInteractionState() {
+        function clearFooterNavInteractionState(options = {}) {
+            const opts = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             try { clearActiveFastPress(); } catch (error) {}
             try { clearFastPressGhostClickSuppression(); } catch (error) {}
             try {
@@ -20445,7 +20464,15 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 if (typeof driveDrillCardClickArmedAt !== 'undefined') driveDrillCardClickArmedAt = 0;
                 if (typeof driveDrillCardClickSuppressSessionId !== 'undefined') driveDrillCardClickSuppressSessionId = 0;
             } catch (error) {}
-            try { releaseUserInteractionBlockers('footer-nav', { forceEditingCleanup: true, syncViewport: false }); } catch (error) {}
+            if (activeTouchSessionClearTimer) {
+                clearTimeout(activeTouchSessionClearTimer);
+                activeTouchSessionClearTimer = null;
+            }
+            activeTouchSession = false;
+            lastTouchInteractionAt = Date.now() - ACTIVE_TOUCH_GRACE_MS - 1;
+            if (opts.fullRelease === true) {
+                try { releaseUserInteractionBlockers('footer-nav', { forceEditingCleanup: true, syncViewport: false }); } catch (error) {}
+            }
         }
 
         function blurFooterNavTextEntryTarget() {
@@ -20478,7 +20505,6 @@ function broadcastRowSyncSnapshot(item, prefix = '') {
                 });
             } catch (error) {}
             try { clearStaleIosEditingChromeState('footer-nav', { force: true }); } catch (error) {}
-            try { repairAppShellScrollState(`footer-nav:${safeViewId}`, { resetGestureState: true, forceEditingCleanup: true }); } catch (error) {}
             return switchView(safeViewId, {
                 interactiveCritical: true,
                 preferImmediate: true,
@@ -27419,7 +27445,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.19').trim() || 'V2026.08.11.19';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.11.20').trim() || 'V2026.08.11.20';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -28787,25 +28813,34 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const nextOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const syncReason = normalizeUiSyncReason(nextOptions.reason);
             const chromeState = getGlobalHeaderChromeState();
-            const searchRepairState = repairGlobalHeaderSearchForView(chromeState.currentView, { reason: syncReason || 'global-header' });
-            const repairedSignature = getGlobalHeaderChromeState().signature;
-            if (!nextOptions.force && repairedSignature === lastGlobalHeaderChromeSignature && !searchRepairState.changed) {
-                return;
-            }
             if (!nextOptions.force && shouldDeferChromeSyncWork(syncReason)) {
                 scheduleDeferredChromeSyncTask('global-header', () => syncGlobalHeaderChrome({ reason: `deferred:${syncReason || 'global-header'}`, force: true }));
                 return;
             }
             const headerUser = document.getElementById('header-user');
             const headerVersion = document.getElementById('header-version');
+            const searchRow = document.getElementById('global-header-search-row');
             const title = document.getElementById('global-header-view-title');
             const backBtn = document.getElementById('global-header-inline-back');
+            const searchSlot = document.getElementById('global-header-search-slot');
+            const inlineTitle = document.getElementById('global-header-inline-title');
             if (headerUser) headerUser.innerText = currentUserDisplay || currentUser || 'User';
             if (headerVersion) headerVersion.innerText = APP_VERSION;
             syncGoogleScriptButton();
             if (title) title.innerText = chromeState.resolvedTitle;
             if (backBtn) backBtn.classList.toggle('hidden', chromeState.currentView === 'home' ? !chromeState.showHomeBack : false);
-            repairGlobalHeaderSearchForView(chromeState.currentView, { reason: syncReason || 'global-header:final' });
+            restoreGlobalHeaderSearchContainers();
+            if (searchSlot) clearNodeChildren(searchSlot);
+            if (searchSlot && chromeState.searchContainer && chromeState.searchVisible && chromeState.currentView !== 'home') {
+                if (searchRow) searchRow.classList.remove('hidden');
+                searchSlot.classList.remove('hidden');
+                searchSlot.appendChild(chromeState.searchContainer);
+                if (inlineTitle) inlineTitle.classList.add('hidden');
+            } else {
+                if (searchSlot) searchSlot.classList.add('hidden');
+                if (inlineTitle) inlineTitle.classList.toggle('hidden', chromeState.currentView === 'home');
+                if (searchRow) searchRow.classList.toggle('hidden', chromeState.currentView === 'home');
+            }
             lastGlobalHeaderChromeSignature = getGlobalHeaderChromeState().signature;
             scheduleStickyRailOffsetSync('global-header');
         }
@@ -67898,7 +67933,13 @@ function toggleDriveQuickRequestItem(domId) {
             const nextViewId = canAccessView(requestedViewId) ? requestedViewId : 'home';
             const currentViewId = getCurrentVisibleViewId();
             const forceViewRender = !!(switchOptions.force || switchOptions.forceRender || switchOptions.forceReset);
-            repairAppShellScrollState(`view-switch-start:${currentViewId || 'none'}:${nextViewId}`, { resetGestureState: currentViewId !== nextViewId });
+            const scheduleViewSwitchShellRepair = (reason = 'view-switch') => {
+                const repairViewId = nextViewId;
+                scheduleUiRender(`shell-repair:${repairViewId}:${reason}`, () => {
+                    if (getCurrentVisibleViewId() !== repairViewId) return;
+                    repairAppShellScrollState(`${reason}:${currentViewId || 'none'}:${repairViewId}`, { resetGestureState: currentViewId !== repairViewId });
+                }, isTouchConstrainedDevice() ? 90 : 36);
+            };
             if (nextViewId === 'request') {
                 setRealtimeSubscriptionsForView('request', true);
                 scheduleUiRender('request-switch-live-sync', () => {
@@ -67956,7 +67997,7 @@ function toggleDriveQuickRequestItem(domId) {
                     skipStickySync: false,
                     skipHeaderSync: false
                 });
-                repairAppShellScrollState(`view-reuse:${nextViewId}`);
+                scheduleViewSwitchShellRepair('view-reuse');
                 recordInternalPerfDuration('viewSwitchDurations', viewSwitchStartedAt, `${currentViewId || 'none'}->${nextViewId}`);
                 return false;
             }
@@ -67965,8 +68006,8 @@ function toggleDriveQuickRequestItem(domId) {
             const renderToken = needsTargetRender ? prepareLatestViewRender(nextViewId) : 0;
             if (targetView) {
                 showOnlyPrimaryView(nextViewId);
-                repairAppShellScrollState(`view-switch:${nextViewId}`, { resetGestureState: currentViewId !== nextViewId });
                 updateFooterNavState();
+                syncGlobalHeaderChrome({ reason: `view-switch:${nextViewId}`, force: true });
                 if (needsTargetRender) {
                     const runTargetRender = () => {
                         if (!isLatestViewRenderToken(nextViewId, renderToken)) {
@@ -67985,6 +68026,7 @@ function toggleDriveQuickRequestItem(domId) {
             } else if (needsTargetRender) {
                 queueViewRender(nextViewId);
             }
+            scheduleViewSwitchShellRepair('view-switch-settled');
             if (targetScrollTop != null) {
                 scheduleUiRender(`view-restore:${nextViewId}:${targetScrollTop}`, () => {
                     setMainAreaScrollTop(targetScrollTop);
@@ -112387,7 +112429,7 @@ C.14.043 C.15.000
             }
             const sourceWidth = Number(source.width || source.naturalWidth || 0);
             const sourceHeight = Number(source.height || source.naturalHeight || 0);
-            const maxDimension = 220;
+            const maxDimension = 144;
             const scale = Math.min(1, maxDimension / Math.max(1, sourceWidth, sourceHeight));
             const width = Math.max(1, Math.round(sourceWidth * scale));
             const height = Math.max(1, Math.round(sourceHeight * scale));
@@ -112532,6 +112574,46 @@ C.14.043 C.15.000
                 console.warn('Instant AgSight review failed.', error);
                 return false;
             }
+        }
+
+        let instantAgSightReviewQueue = [];
+        let instantAgSightReviewRunning = false;
+        let instantAgSightReviewTimer = null;
+
+        function scheduleInstantAgSightReviewQueue(delayMs = 420) {
+            if (instantAgSightReviewTimer) clearTimeout(instantAgSightReviewTimer);
+            instantAgSightReviewTimer = setTimeout(() => {
+                instantAgSightReviewTimer = null;
+                processInstantAgSightReviewQueue().catch((error) => console.warn('AgSight queue failed.', error));
+            }, Math.max(0, Number(delayMs) || 0));
+        }
+
+        function enqueueInstantAgSightForPhotoJob(localRow = null, payload = null, photoMeta = {}) {
+            const sourceRow = normalizeMlImageJobRow(localRow || payload);
+            const blob = photoMeta && (photoMeta.analysisBlob || photoMeta.blob);
+            if (!sourceRow || !sourceRow.UNIQUE_ID || !blob) return false;
+            instantAgSightReviewQueue.push({ localRow: sourceRow, payload, photoMeta: { ...photoMeta, analysisBlob: blob } });
+            if (instantAgSightReviewQueue.length > 12) instantAgSightReviewQueue = instantAgSightReviewQueue.slice(-12);
+            scheduleInstantAgSightReviewQueue(isTouchConstrainedDevice() ? 650 : 260);
+            return true;
+        }
+
+        async function processInstantAgSightReviewQueue() {
+            if (instantAgSightReviewRunning) return false;
+            if (!instantAgSightReviewQueue.length) return false;
+            if (shouldDeferInteractiveBackgroundWork()) {
+                scheduleInstantAgSightReviewQueue(isTouchConstrainedDevice() ? 1400 : 760);
+                return false;
+            }
+            instantAgSightReviewRunning = true;
+            const nextJob = instantAgSightReviewQueue.shift();
+            try {
+                await runInstantAgSightForPhotoJob(nextJob.localRow, nextJob.payload, nextJob.photoMeta);
+            } finally {
+                instantAgSightReviewRunning = false;
+            }
+            if (instantAgSightReviewQueue.length) scheduleInstantAgSightReviewQueue(isTouchConstrainedDevice() ? 900 : 360);
+            return true;
         }
 
         function getDiagnosticIssueCardTab(uid = '') {
@@ -113435,8 +113517,7 @@ C.14.043 C.15.000
                     if (typeof getCurrentVisibleViewId === 'function' && getCurrentVisibleViewId() === 'managers') scheduleManagersRender(true);
                     const analysisBlob = photoMeta && (photoMeta.analysisBlob || photoMeta.blob);
                     if (analysisBlob) {
-                        runInstantAgSightForPhotoJob(localRow, payload, { ...photoMeta, analysisBlob })
-                            .catch((error) => console.warn('Instant AgSight background task failed.', error));
+                        enqueueInstantAgSightForPhotoJob(localRow, payload, { ...photoMeta, analysisBlob });
                     }
                 }
                 return true;
@@ -126256,7 +126337,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             cancelDriveSearchRenderWork();
             const requestToken = ++driveSearchRequestToken;
             const drillStateKey = getDriveDrillSelectionStateKey();
-            const requestDelay = (isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) ? 10 : 4;
+            const requestDelay = (isIOSDevice() || isStandaloneApp() || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) ? 80 : 38;
             driveSearchDebounceTimer = setTimeout(() => {
                 driveSearchDebounceTimer = null;
                 if (requestToken !== driveSearchRequestToken) return;
