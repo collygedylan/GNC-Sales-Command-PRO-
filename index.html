@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://kzrnyjsosryejjejliii.supabase.co" crossorigin>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.08.12.10';
+      window.__APP_SHELL_VERSION__ = 'V2026.08.12.11';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -187,11 +187,11 @@ body.app-standalone #app-wrapper{height:var(--app-height);min-height:var(--app-h
         .app-card-ready{border-left:6px solid #22c55e !important}
         .app-card-hold{border-left:6px solid #facc15 !important}
         .app-card-stop{border-left:6px solid #ef4444 !important}
-        .app-smart-card.app-card-planstart-monday{border-left:8px solid #9333ea !important;background:linear-gradient(180deg,#f3e8ff 0%,#e9d5ff 100%) !important;border-color:#a855f7 !important;box-shadow:0 0 0 2px rgba(147,51,234,.24),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
-        .app-smart-card.app-card-planstart-tuesday,.app-smart-card.app-card-planstart-unknown{border-left:8px solid #ef4444 !important;background:linear-gradient(180deg,#ffe4e6 0%,#fecdd3 100%) !important;border-color:#fb7185 !important;box-shadow:0 0 0 2px rgba(239,68,68,.26),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
-        .app-smart-card.app-card-planstart-wednesday{border-left:8px solid #16a34a !important;background:linear-gradient(180deg,#dcfce7 0%,#bbf7d0 100%) !important;border-color:#22c55e !important;box-shadow:0 0 0 2px rgba(22,163,74,.24),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
-        .app-smart-card.app-card-planstart-thursday{border-left:8px solid #2563eb !important;background:linear-gradient(180deg,#dbeafe 0%,#bfdbfe 100%) !important;border-color:#3b82f6 !important;box-shadow:0 0 0 2px rgba(37,99,235,.24),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
-        .app-smart-card.app-card-planstart-friday{border-left:8px solid #64748b !important;background:linear-gradient(180deg,#e2e8f0 0%,#cbd5e1 100%) !important;border-color:#64748b !important;box-shadow:0 0 0 2px rgba(100,116,139,.22),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
+        .app-smart-card.app-card-planstart-monday,.request-swipe-row.app-card-planstart-monday,.request-swipe-surface.app-card-planstart-monday{border-left:8px solid #9333ea !important;background:linear-gradient(180deg,#f3e8ff 0%,#e9d5ff 100%) !important;border-color:#a855f7 !important;box-shadow:0 0 0 2px rgba(147,51,234,.24),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
+        .app-smart-card.app-card-planstart-tuesday,.app-smart-card.app-card-planstart-unknown,.request-swipe-row.app-card-planstart-tuesday,.request-swipe-row.app-card-planstart-unknown,.request-swipe-surface.app-card-planstart-tuesday,.request-swipe-surface.app-card-planstart-unknown{border-left:8px solid #ef4444 !important;background:linear-gradient(180deg,#ffe4e6 0%,#fecdd3 100%) !important;border-color:#fb7185 !important;box-shadow:0 0 0 2px rgba(239,68,68,.26),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
+        .app-smart-card.app-card-planstart-wednesday,.request-swipe-row.app-card-planstart-wednesday,.request-swipe-surface.app-card-planstart-wednesday{border-left:8px solid #16a34a !important;background:linear-gradient(180deg,#dcfce7 0%,#bbf7d0 100%) !important;border-color:#22c55e !important;box-shadow:0 0 0 2px rgba(22,163,74,.24),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
+        .app-smart-card.app-card-planstart-thursday,.request-swipe-row.app-card-planstart-thursday,.request-swipe-surface.app-card-planstart-thursday{border-left:8px solid #2563eb !important;background:linear-gradient(180deg,#dbeafe 0%,#bfdbfe 100%) !important;border-color:#3b82f6 !important;box-shadow:0 0 0 2px rgba(37,99,235,.24),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
+        .app-smart-card.app-card-planstart-friday,.request-swipe-row.app-card-planstart-friday,.request-swipe-surface.app-card-planstart-friday{border-left:8px solid #64748b !important;background:linear-gradient(180deg,#e2e8f0 0%,#cbd5e1 100%) !important;border-color:#64748b !important;box-shadow:0 0 0 2px rgba(100,116,139,.22),0 14px 34px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.04) !important}
         .app-card-note{border-radius:12px}
         .app-card-actions{display:flex;gap:.55rem;margin-top:.9rem;padding-top:.85rem;border-top:1px solid #e5e7eb}
         .app-card-shell img,.inv-card img{display:block}
@@ -6128,7 +6128,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.12.10').trim() || 'V2026.08.12.10';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.08.12.11').trim() || 'V2026.08.12.11';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Field Mode" aria-pressed="false" title="Field Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Field</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7598,7 +7598,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.12.10';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.08.12.11';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26772,7 +26772,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoaded = false;
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.12.10').trim() || 'V2026.08.12.10';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.08.12.11').trim() || 'V2026.08.12.11';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -93686,58 +93686,79 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 || null;
         }
 
+        const DOCK_SUSPEND_PLANSTART_ALIASES = ['PLANSTART', 'planstart', 'PLAN_START', 'plan_start', 'Plan Start', 'planStart', 'PLANSTARTDATE', 'planstartdate'];
+
         function getDockSuspendDcRequestPlanstartValue(item = null) {
             const sourceRow = isDockSuspendDcRequestMirrorRow(item) ? findDockSuspendDcRequestSourceRow(item) : null;
-            return firstNonEmptyValue(
-                item && item.PLANSTART,
-                item && item.planstart,
-                sourceRow && sourceRow.PLANSTART,
-                sourceRow && sourceRow.planstart,
-                ''
-            );
+            const getAliasValue = (row = null) => {
+                if (!row || typeof row !== 'object') return '';
+                const snapshot = row.SNAPSHOT && typeof row.SNAPSHOT === 'object' ? row.SNAPSHOT : null;
+                for (const key of DOCK_SUSPEND_PLANSTART_ALIASES) {
+                    if (row[key] !== null && row[key] !== undefined && String(row[key]).trim() !== '') return row[key];
+                    if (snapshot && snapshot[key] !== null && snapshot[key] !== undefined && String(snapshot[key]).trim() !== '') return snapshot[key];
+                }
+                return '';
+            };
+            const value = firstNonEmptyValue(getAliasValue(sourceRow), getAliasValue(item), '');
+            if (value !== null && value !== undefined && String(value).trim() !== '' && item && typeof item === 'object') {
+                item.PLANSTART = value;
+                item.planstart = value;
+                item.PLAN_START = value;
+            }
+            return value;
         }
 
-        function getUtcWeekdayFromDateParts(year, month, day) {
+        function getLocalWeekdayFromDateParts(year, month, day) {
             const y = Number(year);
             const m = Number(month);
             const d = Number(day);
             if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return null;
             if (m < 1 || m > 12 || d < 1 || d > 31) return null;
-            const date = new Date(Date.UTC(y, m - 1, d));
+            const date = new Date(y, m - 1, d);
             if (
-                date.getUTCFullYear() !== y
-                || date.getUTCMonth() !== m - 1
-                || date.getUTCDate() !== d
+                date.getFullYear() !== y
+                || date.getMonth() !== m - 1
+                || date.getDate() !== d
             ) return null;
-            return date.getUTCDay();
+            return date.getDay();
+        }
+
+        function getDockSuspendDcRequestPlanstartInfo(item = null) {
+            const rawValue = getDockSuspendDcRequestPlanstartValue(item);
+            const rawText = String(rawValue === null || rawValue === undefined ? '' : rawValue).trim();
+            let weekday = null;
+            if (rawValue instanceof Date && !Number.isNaN(rawValue.getTime())) {
+                weekday = getLocalWeekdayFromDateParts(rawValue.getFullYear(), rawValue.getMonth() + 1, rawValue.getDate());
+            } else if (rawText) {
+                const isoMatch = rawText.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:\b|T|\s|$)/);
+                if (isoMatch) {
+                    weekday = getLocalWeekdayFromDateParts(isoMatch[1], isoMatch[2], isoMatch[3]);
+                } else {
+                    const slashMatch = rawText.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})(?:\b|\s|$)/);
+                    if (slashMatch) {
+                        let year = Number(slashMatch[3]);
+                        if (year < 100) year += 2000;
+                        weekday = getLocalWeekdayFromDateParts(year, slashMatch[1], slashMatch[2]);
+                    }
+                }
+            }
+            const toneByWeekday = { 1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday' };
+            const tone = toneByWeekday[weekday] || 'unknown';
+            return {
+                value: rawText,
+                weekday,
+                tone,
+                valid: !!toneByWeekday[weekday],
+                className: `app-card-planstart-${tone}`
+            };
         }
 
         function getDockSuspendDcRequestPlanstartWeekday(item = null) {
-            const rawValue = getDockSuspendDcRequestPlanstartValue(item);
-            if (!rawValue) return null;
-            if (rawValue instanceof Date && !Number.isNaN(rawValue.getTime())) {
-                return getUtcWeekdayFromDateParts(rawValue.getUTCFullYear(), rawValue.getUTCMonth() + 1, rawValue.getUTCDate());
-            }
-            const text = String(rawValue || '').trim();
-            const isoMatch = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:\b|T|\s)/);
-            if (isoMatch) return getUtcWeekdayFromDateParts(isoMatch[1], isoMatch[2], isoMatch[3]);
-            const slashMatch = text.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})(?:\b|\s)/);
-            if (slashMatch) {
-                let year = Number(slashMatch[3]);
-                if (year < 100) year += 2000;
-                return getUtcWeekdayFromDateParts(year, slashMatch[1], slashMatch[2]);
-            }
-            return null;
+            return getDockSuspendDcRequestPlanstartInfo(item).weekday;
         }
 
         function getDockSuspendDcRequestPlanstartToneClass(item = null) {
-            const weekday = getDockSuspendDcRequestPlanstartWeekday(item);
-            if (weekday === 1) return 'app-card-planstart-monday';
-            if (weekday === 2) return 'app-card-planstart-tuesday';
-            if (weekday === 3) return 'app-card-planstart-wednesday';
-            if (weekday === 4) return 'app-card-planstart-thursday';
-            if (weekday === 5) return 'app-card-planstart-friday';
-            return 'app-card-planstart-unknown';
+            return getDockSuspendDcRequestPlanstartInfo(item).className;
         }
 
         function syncDockSuspendDcRequestQuantityAliases(row = null, sourceRow = null) {
@@ -117735,6 +117756,10 @@ C.14.043 C.15.000
                 row.classList.add('request-swipe-row');
                 const isSeasonSwipeRow = row.classList.contains('app-smart-card--season');
                 if (isSeasonSwipeRow) row.classList.add('request-swipe-row--season');
+                const planstartClass = Array.from(row.classList || []).find((className) => /^app-card-planstart-/.test(className));
+                const planstartTone = row.dataset ? String(row.dataset.planstartTone || '').trim() : '';
+                const planstartValue = row.dataset ? String(row.dataset.planstartValue || '').trim() : '';
+                const planstartValid = row.dataset ? String(row.dataset.planstartValid || '').trim() : '';
                 [
                     'onpointerdown',
                     'onpointermove',
@@ -117752,6 +117777,13 @@ C.14.043 C.15.000
                 const surface = document.createElement('div');
                 surface.className = 'request-swipe-surface';
                 if (isSeasonSwipeRow) surface.classList.add('request-swipe-surface--season');
+                if (planstartClass) {
+                    row.classList.add(planstartClass);
+                    surface.classList.add(planstartClass);
+                }
+                if (planstartTone) surface.dataset.planstartTone = planstartTone;
+                if (planstartValue) surface.dataset.planstartValue = planstartValue;
+                if (planstartValid) surface.dataset.planstartValid = planstartValid;
                 surface.setAttribute('role', 'button');
                 surface.setAttribute('tabindex', '0');
                 surface.setAttribute('aria-label', row.getAttribute('aria-label') || 'Open request row');
@@ -119832,8 +119864,9 @@ C.14.043 C.15.000
             );
             const isSuspendTagRequestCard = String(sourceView || '').trim().toLowerCase() === 'request'
                 && isDockSuspendDcRequestMirrorRow(item);
-            const suspendTagPlanstartToneClass = isSuspendTagRequestCard ? getDockSuspendDcRequestPlanstartToneClass(item) : '';
-            const suspendTagPlanstartToneDataAttr = suspendTagPlanstartToneClass ? ` data-planstart-tone="${escJsAttrValue(suspendTagPlanstartToneClass)}"` : '';
+            const suspendTagPlanstartInfo = isSuspendTagRequestCard ? getDockSuspendDcRequestPlanstartInfo(item) : null;
+            const suspendTagPlanstartToneClass = suspendTagPlanstartInfo ? suspendTagPlanstartInfo.className : '';
+            const suspendTagPlanstartToneDataAttr = suspendTagPlanstartInfo ? ` data-planstart-value="${escJsAttrValue(suspendTagPlanstartInfo.value)}" data-planstart-tone="${escJsAttrValue(suspendTagPlanstartInfo.tone)}" data-planstart-valid="${suspendTagPlanstartInfo.valid ? 'true' : 'false'}"` : '';
             const requestCardToneClass = suspendTagPlanstartToneClass || (isDocksRequestCard
                 ? 'bg-red-50 border-red-300 ring-1 ring-red-200'
                 : (isSeasonSalesNoteCard ? 'bg-orange-100 border-orange-600' : 'bg-white border-purple-200'));
